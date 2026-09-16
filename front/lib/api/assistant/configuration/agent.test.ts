@@ -261,6 +261,59 @@ describe("stable agent identities", () => {
     expect([...agentModelIds][0]).not.toBeNull();
   });
 
+  it("keeps the identity at its highest version, including after a rollback", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const currentVersion = async (sId: string) => {
+      const identity = await AgentModel.findOne({
+        where: { sId, workspaceId: workspace.id },
+      });
+      return identity?.currentVersion ?? null;
+    };
+
+    const firstVersion =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    expect(await currentVersion(firstVersion.sId)).toBe(0);
+
+    const secondVersion = await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      firstVersion.sId
+    );
+    expect(secondVersion.version).toBe(1);
+    expect(await currentVersion(firstVersion.sId)).toBe(1);
+
+    // Rolling back the newest version moves the pointer back to the previous one.
+    await unsafeHardDeleteAgentConfiguration(authenticator, secondVersion);
+    expect(await currentVersion(firstVersion.sId)).toBe(0);
+
+    await unsafeHardDeleteAgentConfiguration(authenticator, firstVersion);
+    expect(await currentVersion(firstVersion.sId)).toBeNull();
+  });
+
+  it("keeps a pending identity at version 0 through activation", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const pending = await createPendingAgentConfiguration(authenticator);
+    assert(pending.isOk());
+    const identityBefore = await AgentModel.findOne({
+      where: { sId: pending.value.sId, workspaceId: workspace.id },
+    });
+    expect(identityBefore?.currentVersion).toBe(0);
+
+    // Activation updates the pending row in place, so the version does not move.
+    const activated = await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      pending.value.sId
+    );
+    const identityAfter = await AgentModel.findOne({
+      where: { sId: pending.value.sId, workspaceId: workspace.id },
+    });
+    expect(activated.version).toBe(0);
+    expect(identityAfter?.currentVersion).toBe(0);
+  });
+
   it("deletes the identity and grants only after its last version is deleted", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",

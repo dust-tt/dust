@@ -20,11 +20,23 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
+/**
+ * @cc [owner:sfriquet,label:backend] agent-current-version-pointer
+ * `currentVersion` MUST equal the highest `version` among the agent's rows in
+ * `agent_configurations`, and an agent MUST NOT exist without such a row. A transaction that
+ * inserts a configuration row or deletes the one with the highest version MUST leave
+ * `currentVersion` satisfying this before it commits (`AgentResource.setCurrentConfiguration`,
+ * `destroyAgentConfigurationRow`). The current configuration is the row matching
+ * `(agentId, version) = (agents.id, agents.currentVersion)`, served by that unique index.
+ */
 export class AgentModel extends WorkspaceAwareModel<AgentModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare sId: string;
+
+  // Every agent starts at version 0, which is also the column default.
+  declare currentVersion: CreationOptional<number>;
 }
 
 AgentModel.init(
@@ -42,6 +54,11 @@ AgentModel.init(
     sId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    currentVersion: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
   },
   {

@@ -1,3 +1,5 @@
+import { destroyAgentConfigurationRow } from "@app/lib/api/assistant/configuration/agent";
+import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -8,7 +10,9 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { MentionModel } from "@app/lib/models/agent/conversation";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -17,7 +21,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 /**
  * Destroys a draft agent configuration and all associated configurations.
- * Avoids using transactions to prevent locks.
+ * Avoids long transactions to prevent locks: only the final row deletion runs in one.
  * Deletes the agent configuration last, allowing retries if deletion fails.
  *
  * /!\ Only deletes draft agent configuration if it hasn't been used in any messages.
@@ -88,11 +92,17 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
     },
   });
 
-  // Finally delete the agent configuration.
-  await AgentConfigurationModel.destroy({
-    where: {
-      id: agent.id,
-    },
+  // Finally delete the agent configuration, re-pointing or deleting its identity.
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  await withTransaction(async (t) => {
+    await destroyAgentConfigurationRow(
+      auth,
+      {
+        agent: AgentResource.fromAgentConfigurationModel(auth, agent),
+        configurationId: agent.id,
+      },
+      t
+    );
   });
 
   return true;
@@ -110,7 +120,15 @@ async function removeDraftAgentConfigurationsForWorkspace(
       workspaceId: workspace.id,
       status: "draft",
     },
-    attributes: ["id", "sId", "status"],
+    attributes: [
+      "id",
+      "sId",
+      "status",
+      "agentId",
+      "authorId",
+      "scope",
+      "workspaceId",
+    ],
   });
 
   if (draftAgents.length === 0) {

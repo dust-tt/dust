@@ -854,6 +854,16 @@ export async function createAgentConfiguration(
         );
       }
 
+      // A brand-new agent already starts at version 0; an upgrade moves the pointer.
+      if (agentConfigurationInstance.version !== 0) {
+        await AgentResource.fromAgentConfigurationModel(
+          auth,
+          agentConfigurationInstance
+        ).setCurrentConfiguration(auth, agentConfigurationInstance, {
+          transaction: t,
+        });
+      }
+
       const canManageProtectedTags = await auth.hasWorkspacePermission(
         "publish",
         "agent"
@@ -1396,18 +1406,37 @@ export async function cleanupAgentScopedResourcesForHardDeletion(
   await AgentUserRelationResource.deleteForAgent(auth, agentConfigurationId);
 }
 
-async function deleteAgentIdentityIfUnused(
+/**
+ * Deletes one `agent_configurations` row and keeps its identity consistent: `currentVersion` is
+ * moved to the highest remaining version, or the agent is deleted with its grants when no row
+ * remains. The row's satellites (tools, tags, skills, editor links, suggestions) must be gone
+ * already.
+ */
+export async function destroyAgentConfigurationRow(
   auth: Authenticator,
-  agent: AgentResource,
+  {
+    agent,
+    configurationId,
+  }: { agent: AgentResource; configurationId: ModelId },
   transaction: Transaction
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().id;
+
+  await AgentConfigurationModel.destroy({
+    where: { id: configurationId, workspaceId },
+    transaction,
+  });
+
   const remainingConfiguration = await AgentConfigurationModel.findOne({
     where: { sId: agent.sId, workspaceId },
-    attributes: ["id"],
+    attributes: ["agentId", "version"],
+    order: [["version", "DESC"]],
     transaction,
   });
   if (remainingConfiguration) {
+    await agent.setCurrentConfiguration(auth, remainingConfiguration, {
+      transaction,
+    });
     return;
   }
 
@@ -1501,15 +1530,11 @@ export async function unsafeHardDeleteAgentConfiguration(
       transaction: t,
     });
 
-    await AgentConfigurationModel.destroy({
-      where: {
-        id: agentConfiguration.id,
-        workspaceId,
-      },
-      transaction: t,
-    });
-
-    await deleteAgentIdentityIfUnused(auth, agentResource, t);
+    await destroyAgentConfigurationRow(
+      auth,
+      { agent: agentResource, configurationId: agentConfiguration.id },
+      t
+    );
   });
 }
 
