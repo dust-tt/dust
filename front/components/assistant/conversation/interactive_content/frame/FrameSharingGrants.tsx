@@ -207,7 +207,7 @@ export function FrameSharingGrants({
             </p>
           )}
           {canGrantDomains && (
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground px-2">
               Invitations are sent to email addresses only. People at an added
               domain can open the link after verifying their email.
             </p>
