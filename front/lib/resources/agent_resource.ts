@@ -284,14 +284,15 @@ export class AgentResource
     return resource;
   }
 
-  // -- Resolvers: latest active version, full when readable, light otherwise --
+  // -- Resolvers: latest version, full when readable, light otherwise --
 
   /**
    * @cc [owner:tdraier,label:backend] fetch-latest-active-version
-   * Resolves each requested agent to its single latest active configuration version, scoped to the
-   * authed workspace. Each is returned as a `full` resource when the caller can read it, otherwise a
-   * `light` resource. An agent with no active version (archived or never activated) yields no
-   * resource, and at most one resource is returned per `agentModelId`.
+   * Resolves each requested agent to its single latest configuration version, irrespective of
+   * status (active, archived, draft, or pending), scoped to the authed workspace. Each is returned
+   * as a `full` resource when the caller can read it, otherwise a `light` resource; a resource the
+   * caller cannot fetch at all (holds no verb on, per `canFetch`) is dropped. An agent with no
+   * version yields no resource, and at most one resource is returned per `agentModelId`.
    */
   static async fetchByModelIds(
     auth: Authenticator,
@@ -301,16 +302,7 @@ export class AgentResource
       return [];
     }
 
-    const configurations = await AgentConfigurationModel.findAll({
-      where: {
-        agentId: agentModelIds,
-        status: "active",
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      order: [["version", "DESC"]],
-    });
-
-    return this.buildLatestActive(auth, configurations);
+    return this.fetchLatestVersions(auth, { agentId: agentModelIds });
   }
 
   // Named `...WithAuth` because `BaseResource.fetchByModelId` already occupies the bare name with an
@@ -331,16 +323,7 @@ export class AgentResource
       return [];
     }
 
-    const configurations = await AgentConfigurationModel.findAll({
-      where: {
-        sId: agentIds,
-        status: "active",
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      order: [["version", "DESC"]],
-    });
-
-    return this.buildLatestActive(auth, configurations);
+    return this.fetchLatestVersions(auth, { sId: agentIds });
   }
 
   static async fetchById(
@@ -351,9 +334,28 @@ export class AgentResource
     return resource ?? null;
   }
 
-  // Keeps a single resource per agent — the highest active version, thanks to the version-DESC
-  // order. Each is full or light per the caller's read access (see `fromAgentConfigurationModel`).
-  private static buildLatestActive(
+  // Loads the configuration rows of the identified agents, scoped to the authed workspace, ordered
+  // so `buildLatestVersions` keeps the highest version per agent whatever its status. `identityWhere`
+  // selects the agents by their `agentId` (model id) or `sId`.
+  private static async fetchLatestVersions(
+    auth: Authenticator,
+    identityWhere: { agentId: ModelId[] } | { sId: string[] }
+  ): Promise<AgentResource[]> {
+    const configurations = await AgentConfigurationModel.findAll({
+      where: {
+        ...identityWhere,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      order: [["version", "DESC"]],
+    });
+
+    return this.buildLatestVersions(auth, configurations);
+  }
+
+  // Keeps a single resource per agent — the highest version, thanks to the version-DESC order. Each
+  // is full or light per the caller's read access (see `fromAgentConfigurationModel`). Resources the
+  // caller cannot fetch (holds no verb on) are dropped by the common `canFetch` gate.
+  private static buildLatestVersions(
     auth: Authenticator,
     configurations: AgentConfigurationModel[]
   ): AgentResource[] {
@@ -367,7 +369,7 @@ export class AgentResource
 
       resources.push(this.fromAgentConfigurationModel(auth, configuration));
     }
-    return resources;
+    return resources.filter((resource) => resource.canFetch(auth));
   }
 
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {

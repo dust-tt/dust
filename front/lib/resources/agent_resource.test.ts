@@ -92,12 +92,42 @@ describe("AgentResource", () => {
     }
   });
 
-  it("returns a light resource when the caller cannot read the agent", async () => {
+  it("returns a light resource when the caller holds a verb but cannot read the agent", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator,
       { scope: "hidden" }
     );
 
+    // Admins hold `admin` on hidden agents but not `read`: they can fetch a light resource.
+    const adminUser = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, adminUser, {
+      role: "admin",
+    });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      testContext.workspace.sId
+    );
+
+    const asAuthor = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    const asAdmin = await AgentResource.fetchById(adminAuth, agent.sId);
+
+    expect(asAuthor?.isFull()).toBe(true);
+    expect(asAdmin).not.toBeNull();
+    expect(asAdmin?.isFull()).toBe(false);
+    expect(asAdmin?.sId).toBe(agent.sId);
+  });
+
+  it("drops the agent from fetchers when the caller holds no verb on it", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { scope: "hidden" }
+    );
+    assert(agent.agentModelId !== null);
+
+    // A plain member holds no verb on a hidden agent, so the `canFetch` gate drops it.
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(testContext.workspace, otherUser, {
       role: "user",
@@ -107,19 +137,14 @@ describe("AgentResource", () => {
       testContext.workspace.sId
     );
 
-    const asAuthor = await AgentResource.fetchById(
-      testContext.authenticator,
-      agent.sId
-    );
-    const asOther = await AgentResource.fetchById(otherAuth, agent.sId);
-
-    expect(asAuthor?.isFull()).toBe(true);
-    expect(asOther).not.toBeNull();
-    expect(asOther?.isFull()).toBe(false);
-    expect(asOther?.sId).toBe(agent.sId);
+    expect(await AgentResource.fetchById(otherAuth, agent.sId)).toBeNull();
+    expect(
+      await AgentResource.fetchByModelIdWithAuth(otherAuth, agent.agentModelId)
+    ).toBeNull();
+    expect(await AgentResource.fetchByIds(otherAuth, [agent.sId])).toEqual([]);
   });
 
-  it("does not resolve an archived agent to a resource", async () => {
+  it("resolves an archived agent to its latest version", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator
     );
@@ -127,18 +152,21 @@ describe("AgentResource", () => {
 
     await archiveAgentConfiguration(testContext.authenticator, agent.sId);
 
-    expect(
-      await AgentResource.fetchById(testContext.authenticator, agent.sId)
-    ).toBeNull();
-    expect(
-      await AgentResource.fetchByModelIdWithAuth(
-        testContext.authenticator,
-        agent.agentModelId
-      )
-    ).toBeNull();
-    expect(
-      await AgentResource.fetchByIds(testContext.authenticator, [agent.sId])
-    ).toEqual([]);
+    const bySId = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    const byModelId = await AgentResource.fetchByModelIdWithAuth(
+      testContext.authenticator,
+      agent.agentModelId
+    );
+
+    for (const resource of [bySId, byModelId]) {
+      expect(resource).not.toBeNull();
+      expect(resource?.id).toBe(agent.agentModelId);
+      expect(resource?.sId).toBe(agent.sId);
+      expect(resource?.content.status).toBe("archived");
+    }
   });
 
   it("returns one resource per agent when fetching in batches", async () => {
