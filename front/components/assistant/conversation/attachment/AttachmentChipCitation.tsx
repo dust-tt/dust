@@ -6,6 +6,8 @@ import {
 import { AttachmentChip, Tooltip } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
+// A type alias rather than an interface: FileCitationCardProps is a union
+// (onClick / href / static), which an interface cannot extend.
 export type AttachmentChipCitationProps = Omit<FileCitationCardProps, "size">;
 
 /**

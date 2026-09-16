@@ -240,6 +240,7 @@ describe("InputBarAttachments", () => {
     expect(screen.getByText("report.pdf")).toBeInTheDocument();
     expect(container.querySelector('[aria-label="report.pdf"]')).toBeNull();
   });
+
   it("falls back to a chip for an image without a preview", () => {
     renderAttachments({
       fileBlobs: [
@@ -335,6 +336,7 @@ describe("InputBarAttachments", () => {
       Node.DOCUMENT_POSITION_FOLLOWING
     );
   });
+
   it("removes a file attachment from the remove button", async () => {
     const user = userEvent.setup();
     const { service } = renderAttachments({

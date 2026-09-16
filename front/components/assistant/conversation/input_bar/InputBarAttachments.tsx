@@ -54,7 +54,8 @@ function getAttachmentIconSize(hasImageAttachment: boolean) {
 }
 
 // Images are shown as previews. The preview URL only arrives once the upload
-// completes, so an uploading image counts as one.
+// completes, so an uploading image counts as one; once uploaded, the preview
+// also needs the file id to be opened, otherwise the image falls back to a chip.
 function isImageAttachment(attachment: FileAttachment): boolean {
   return (
     isSupportedImageContentType(attachment.contentType) &&
@@ -181,30 +182,24 @@ export function InputBarAttachments({
     return null;
   }
 
-  if (hasImageAttachment) {
-    return (
-      <CitationGrid className="border-b border-separator px-3 pb-3 pt-3">
-        {allAttachments.map((attachment) => (
-          <AttachmentCitation
-            key={attachment.id}
-            attachmentCitation={attachmentToAttachmentCitation(attachment)}
-          />
-        ))}
-      </CitationGrid>
-    );
-  }
+  const iconSize = getAttachmentIconSize(hasImageAttachment);
+  const citations = allAttachments.map((attachment) => (
+    <AttachmentCitation
+      key={attachment.id}
+      attachmentCitation={attachmentToAttachmentCitation(attachment, {
+        iconSize,
+      })}
+      variant={hasImageAttachment ? "card" : "chip"}
+    />
+  ));
 
-  return (
+  return hasImageAttachment ? (
+    <CitationGrid className="border-b border-separator px-3 pb-3 pt-3">
+      {citations}
+    </CitationGrid>
+  ) : (
     <div className="flex flex-wrap gap-2 border-b border-separator px-3 pb-3 pt-3">
-      {allAttachments.map((attachment) => (
-        <AttachmentCitation
-          key={attachment.id}
-          attachmentCitation={attachmentToAttachmentCitation(attachment, {
-            iconSize: getAttachmentIconSize(hasImageAttachment),
-          })}
-          variant="chip"
-        />
-      ))}
+      {citations}
     </div>
   );
 }

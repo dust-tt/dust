@@ -21,11 +21,15 @@ interface AttachmentCitationProps {
   variant?: AttachmentCitationVariant;
 }
 
-type FileCitationProps = FileCitationCardProps & {
+type CitationByVariantProps = FileCitationCardProps & {
   variant: AttachmentCitationVariant;
 };
 
-function FileCitation({ variant, size, ...props }: FileCitationProps) {
+function CitationByVariant({
+  variant,
+  size,
+  ...props
+}: CitationByVariantProps) {
   return variant === "chip" ? (
     <AttachmentChipCitation {...props} />
   ) : (
@@ -94,9 +98,9 @@ export function AttachmentCitation({
       tooltipLabel: tooltipContent,
     };
     return nodeUrl ? (
-      <FileCitation {...nodeBase} href={nodeUrl} />
+      <CitationByVariant {...nodeBase} href={nodeUrl} />
     ) : (
-      <FileCitation {...nodeBase} />
+      <CitationByVariant {...nodeBase} />
     );
   }
 
@@ -106,7 +110,7 @@ export function AttachmentCitation({
 
   if (fileId && !isLoading && isFrameContentType(contentType)) {
     return (
-      <FileCitation
+      <CitationByVariant
         icon={attachmentCitation.visual}
         title={title}
         description={attachmentCitation.description}
@@ -153,8 +157,8 @@ export function AttachmentCitation({
     tooltipLabel: title,
   };
   return sourceUrl ? (
-    <FileCitation {...fallbackBase} href={sourceUrl} />
+    <CitationByVariant {...fallbackBase} href={sourceUrl} />
   ) : (
-    <FileCitation {...fallbackBase} />
+    <CitationByVariant {...fallbackBase} />
   );
 }
