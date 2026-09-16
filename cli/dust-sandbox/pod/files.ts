@@ -20,7 +20,8 @@
 //    from a fixed list rather than from the file name, and must never serve a
 //    type that can execute script (svg, html).
 
-import { isAbsolute, join, resolve, sep } from "node:path";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 
 import { podEnv } from "./context.ts";
 
@@ -107,3 +108,62 @@ export function filePath(relativePath: string): string {
 
   return resolved;
 }
+
+/**
+ * Read and write the Frame's files folder.
+ *
+ * `write` creates missing parent directories: the folder starts empty, and
+ * `node:fs` writeFile fails with ENOENT rather than creating them, which is a
+ * wall every first write into a subdirectory hits otherwise.
+ *
+ * Each call is a GCS round trip — the mount holds no metadata cache — so a
+ * write followed by a read of the same file is two transfers of the payload.
+ * Do the write in one function and let the UI fetch the bytes from another
+ * rather than returning them from the call that stored them: a `fast` function
+ * has a 10-second ceiling and doing both in one call can exceed it.
+ */
+export const files = {
+  /** Write `data` to `relativePath`, creating parent directories as needed. */
+  async write(
+    relativePath: string,
+    data: Uint8Array | string
+  ): Promise<string> {
+    const absolutePath = filePath(relativePath);
+    await mkdir(dirname(absolutePath), { recursive: true });
+    await writeFile(absolutePath, data);
+
+    return absolutePath;
+  },
+
+  /** Read `relativePath`. Rejects with ENOENT when it does not exist. */
+  async read(relativePath: string): Promise<Buffer> {
+    return readFile(filePath(relativePath));
+  },
+
+  /**
+   * Names directly inside `relativePath`, or the folder root when omitted.
+   * Returns an empty list for a directory that does not exist, so a Frame that
+   * has never written anything does not have to special-case its first read.
+   */
+  async list(relativePath?: string): Promise<string[]> {
+    const absolutePath =
+      relativePath === undefined ? filesDir() : filePath(relativePath);
+    try {
+      return await readdir(absolutePath);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        error.code === "ENOENT"
+      ) {
+        return [];
+      }
+      throw error;
+    }
+  },
+
+  /** Delete `relativePath`. Succeeds when it is already absent. */
+  async remove(relativePath: string): Promise<void> {
+    await rm(filePath(relativePath), { force: true, recursive: true });
+  },
+};
