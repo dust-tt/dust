@@ -1,4 +1,3 @@
-import { destroyAgentConfigurationRow } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
@@ -119,16 +118,15 @@ async function deleteAgentAndRelatedResources(
   }
 
   // 7. Finally delete the agent configuration itself, re-pointing or deleting its identity.
-  await withTransaction(async (t) => {
-    await destroyAgentConfigurationRow(
+  await withTransaction(async (t) =>
+    AgentResource.fromAgentConfigurationModel(
       auth,
-      {
-        agent: AgentResource.fromAgentConfigurationModel(auth, agent),
-        configurationId: agent.id,
-      },
-      t
-    );
-  });
+      agent
+    ).destroyConfigurationVersion(auth, {
+      version: agent.version,
+      transaction: t,
+    })
+  );
 
   logger.info(
     { agentId: agent.sId, agentModelId: agent.id },

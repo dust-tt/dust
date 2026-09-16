@@ -557,6 +557,53 @@ export class AgentResource
   }
 
   /**
+   * Deletes the agent's configuration row at `version`, and keeps the identity consistent:
+   * `currentVersion` moves to the highest remaining version, or the agent is deleted with its
+   * grants when no row remains (see `agent-current-version-pointer` on `AgentModel`). The row's
+   * satellites (tools, tags, skills, editor links, suggestions) must already be gone.
+   */
+  async destroyConfigurationVersion(
+    auth: Authenticator,
+    { version, transaction }: { version: number; transaction: Transaction }
+  ): Promise<void> {
+    assert(this.scope !== "global");
+    assert(auth.getNonNullableWorkspace().id === this.workspaceId);
+
+    // Take the identity row lock before touching the version history: two transactions deleting
+    // two different versions of the same agent would otherwise each pick a replacement from its
+    // own snapshot and commit a `currentVersion` pointing at the row the other one deleted.
+    await AgentModel.findOne({
+      where: { id: this.id, workspaceId: this.workspaceId },
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+
+    await AgentConfigurationModel.destroy({
+      where: { agentId: this.id, version, workspaceId: this.workspaceId },
+      transaction,
+    });
+
+    const remainingConfiguration = await AgentConfigurationModel.findOne({
+      where: { agentId: this.id, workspaceId: this.workspaceId },
+      attributes: ["agentId", "version"],
+      order: [["version", "DESC"]],
+      transaction,
+    });
+    if (remainingConfiguration) {
+      await this.setCurrentConfiguration(auth, remainingConfiguration, {
+        transaction,
+      });
+      return;
+    }
+
+    await this.destroyPermissionsAndGroups(auth, { transaction });
+    await AgentModel.destroy({
+      where: { id: this.id, workspaceId: this.workspaceId },
+      transaction,
+    });
+  }
+
+  /**
    * Deletes the agent's permission rows and their regular_auto groups.
    * Only call after deleting the last configuration of the logical agent.
    */
