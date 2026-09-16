@@ -9,10 +9,7 @@ by `migrations/20260915_backfill_agent_current_version.ts`; until then their poi
 readers keep resolving the current version as today.
 
 No foreign key: `agent_configurations` already references `agents`, and a constraint in the other
-direction would make the two tables reference each other. The invariant is held by
-`AgentResource.setCurrentConfiguration` and `AgentResource.destroyConfigurationVersion`, and
-checked by the backfill script. Adding a NOT NULL column with a constant default does not rewrite
-the table.
+direction would make the two tables reference each other.
 */
 
 /*

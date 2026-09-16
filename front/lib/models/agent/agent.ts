@@ -26,7 +26,7 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
  * `agent_configurations`, and an agent MUST NOT exist without such a row. A transaction that
  * inserts a configuration row or deletes the one with the highest version MUST leave
  * `currentVersion` satisfying this before it commits (`AgentResource.setCurrentConfiguration`,
- * `AgentResource.destroyConfigurationVersion`). The current configuration is the row matching
+ * `destroyAgentConfigurationRow`). The current configuration is the row matching
  * `(agentId, version) = (agents.id, agents.currentVersion)`, served by that unique index.
  */
 export class AgentModel extends WorkspaceAwareModel<AgentModel> {

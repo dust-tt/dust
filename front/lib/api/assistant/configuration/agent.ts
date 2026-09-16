@@ -1406,6 +1406,56 @@ export async function cleanupAgentScopedResourcesForHardDeletion(
   await AgentUserRelationResource.deleteForAgent(auth, agentConfigurationId);
 }
 
+/**
+ * Deletes one `agent_configurations` row and keeps its identity consistent: `currentVersion` is
+ * moved to the highest remaining version, or the agent is deleted with its grants when no row
+ * remains. The row's satellites (tools, tags, skills, editor links, suggestions) must be gone
+ * already.
+ */
+export async function destroyAgentConfigurationRow(
+  auth: Authenticator,
+  {
+    agent,
+    configurationId,
+  }: { agent: AgentResource; configurationId: ModelId },
+  transaction: Transaction
+): Promise<void> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+
+  // Take the identity row lock before touching the version history: two transactions deleting two
+  // different versions of the same agent would otherwise each pick a replacement from its own
+  // snapshot and commit a `currentVersion` pointing at the row the other one deleted.
+  await AgentModel.findOne({
+    where: { id: agent.id, workspaceId },
+    lock: transaction.LOCK.UPDATE,
+    transaction,
+  });
+
+  await AgentConfigurationModel.destroy({
+    where: { id: configurationId, workspaceId },
+    transaction,
+  });
+
+  const remainingConfiguration = await AgentConfigurationModel.findOne({
+    where: { sId: agent.sId, workspaceId },
+    attributes: ["agentId", "version"],
+    order: [["version", "DESC"]],
+    transaction,
+  });
+  if (remainingConfiguration) {
+    await agent.setCurrentConfiguration(auth, remainingConfiguration, {
+      transaction,
+    });
+    return;
+  }
+
+  await agent.destroyPermissionsAndGroups(auth, { transaction });
+  await AgentModel.destroy({
+    where: { sId: agent.sId, workspaceId },
+    transaction,
+  });
+}
+
 // Should only be called when we need to clean up the agent configuration
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
@@ -1489,10 +1539,11 @@ export async function unsafeHardDeleteAgentConfiguration(
       transaction: t,
     });
 
-    await agentResource.destroyConfigurationVersion(auth, {
-      version: agentConfiguration.version,
-      transaction: t,
-    });
+    await destroyAgentConfigurationRow(
+      auth,
+      { agent: agentResource, configurationId: agentConfiguration.id },
+      t
+    );
   });
 }
 

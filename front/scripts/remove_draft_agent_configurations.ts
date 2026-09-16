@@ -1,3 +1,4 @@
+import { destroyAgentConfigurationRow } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
@@ -93,15 +94,16 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
 
   // Finally delete the agent configuration, re-pointing or deleting its identity.
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  await withTransaction(async (t) =>
-    AgentResource.fromAgentConfigurationModel(
+  await withTransaction(async (t) => {
+    await destroyAgentConfigurationRow(
       auth,
-      agent
-    ).destroyConfigurationVersion(auth, {
-      version: agent.version,
-      transaction: t,
-    })
-  );
+      {
+        agent: AgentResource.fromAgentConfigurationModel(auth, agent),
+        configurationId: agent.id,
+      },
+      t
+    );
+  });
 
   return true;
 }
@@ -125,7 +127,6 @@ async function removeDraftAgentConfigurationsForWorkspace(
       "agentId",
       "authorId",
       "scope",
-      "version",
       "workspaceId",
     ],
   });
