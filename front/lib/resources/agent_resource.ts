@@ -104,17 +104,18 @@ export interface FullAgentResource extends AgentResource {
 // - `light`: identity + `scope`/`name`/`description`/`versionAuthorId`, built without a query from a
 //   configuration already in hand. Sufficient for permission decisions.
 // - `full`: additionally carries `content` (every remaining `AgentConfigurationModel` column of the
-//   latest active version). Produced by the access-controlled `fetch*` resolvers.
+//   resolved version). Produced by the access-controlled `fetch*` resolvers.
 /**
  * @cc [owner:tdraier,label:backend] agent-resource-identity
- * The authoritative resolvers `fetchByModelIdWithAuth`/`fetchByModelIds`/`fetchById(s)` MUST return
- * a custom agent's latest active configuration version, so two fetched resources sharing an `id`
- * (= `agentModelId`) are consistent at a given time. The `from*` factories are an unchecked fast
- * path: they build a resource from whatever configuration the caller supplies, and do NOT yet
- * guarantee it is the latest active version — a caller deciding about the agent's current state must
- * pass that version, or use `fetch*`. (`from*` are intended to become private and enforce this.)
- * Global agents are exempt from the `id`-consistency clause: they have no `agent` row, are
- * identified by `sId`, and all share the `id: -1` sentinel.
+ * The authoritative resolvers `fetchByModelIdWithAuth`/`fetchByModelIds`/`fetchById(s)` MUST resolve
+ * a custom agent to a single deterministic configuration version — its active version when it has
+ * one, otherwise its latest version regardless of status (see `fetch-latest-active-version`) — so
+ * two fetched resources sharing an `id` (= `agentModelId`) are consistent at a given time. The
+ * `from*` factories are an unchecked fast path: they build a resource from whatever configuration
+ * the caller supplies, and do NOT yet guarantee it is the resolved version — a caller deciding about
+ * the agent's current state must pass that version, or use `fetch*`. (`from*` are intended to become
+ * private and enforce this.) Global agents are exempt from the `id`-consistency clause: they have no
+ * `agent` row, are identified by `sId`, and all share the `id: -1` sentinel.
  */
 export class AgentResource
   extends BaseResource<AgentModel>
