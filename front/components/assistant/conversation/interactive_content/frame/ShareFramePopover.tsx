@@ -287,7 +287,7 @@ function AccessScopeSection({
   return (
     <Section
       label={
-        <>
+        <span className="flex items-center">
           Who has access
           {isUpdatingScope && (
             <span role="status" className="ml-2 inline-flex items-center">
@@ -297,7 +297,7 @@ function AccessScopeSection({
               <span className="sr-only">Updating sharing settings</span>
             </span>
           )}
-        </>
+        </span>
       }
       action={
         <Button
