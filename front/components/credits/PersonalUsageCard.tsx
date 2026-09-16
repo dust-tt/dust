@@ -4,7 +4,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   formatCredits,
   formatCreditValue,
-  formatLimitTimeframe,
+  getTimeframeSecondsFromLiteral,
 } from "@app/lib/client/credits";
 import { useMyUsage, useSeatPlan } from "@app/lib/swr/credits";
 import { useFairUseCredits } from "@app/lib/swr/fair_use_credits";
@@ -13,7 +13,13 @@ import { isCreditPricedPlan } from "@app/types/plan";
 import { ONE_DAY_MS, ordinalDay } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
-import { ProgressBar, Separator, Spinner, Stars02 } from "@dust-tt/sparkle";
+import {
+  ProgressBar,
+  Separator,
+  Spinner,
+  Stars02,
+  Tooltip,
+} from "@dust-tt/sparkle";
 
 // Relative day label for a refill date: "today", "tomorrow", a weekday within
 // the week, or the calendar date beyond that.
@@ -124,6 +130,10 @@ export function PersonalUsageCard({
     ? fairUseAwuCreditsState.count >= fairUseAwuCreditsState.limit
     : false;
   const nextFairUseRefill = fairUseAwuCreditsState?.refillSchedule?.[0] ?? null;
+  const fairUseWindowDays = fairUseAwuCreditsState
+    ? getTimeframeSecondsFromLiteral(fairUseAwuCreditsState.timeframe) /
+      (24 * 60 * 60)
+    : null;
   const isLoading = isMyUsageLoading || isFairUseCreditsLoading;
 
   return (
@@ -195,35 +205,75 @@ export function PersonalUsageCard({
               <div className="flex items-end justify-between gap-3">
                 <div className="flex flex-col gap-1">
                   <span className="text-sm font-medium text-foreground">
-                    Credits consumption
+                    Fair Usage credits
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    Used{" "}
-                    {formatLimitTimeframe(
-                      fairUseAwuCreditsState.timeframe,
-                      "compact"
-                    )}
-                  </span>
+                  {fairUseWindowDays !== null && (
+                    <span className="text-xs text-muted-foreground">
+                      Resets on a rolling {fairUseWindowDays}-day basis
+                    </span>
+                  )}
                 </div>
                 <span className="text-sm tabular-nums text-muted-foreground">
                   {formatCredits(fairUseAwuCreditsState.count)}/
                   {formatCredits(fairUseAwuCreditsState.limit)}
                 </span>
               </div>
-              <ProgressBar
-                label="Fair-use credits consumed"
-                className="h-1.5 w-full bg-primary-100"
-                values={[
-                  {
-                    value: fairUseCreditsPercentage,
-                    className: "bg-foreground",
-                  },
-                  {
-                    value: 100 - fairUseCreditsPercentage,
-                    className: "bg-transparent",
-                  },
-                ]}
-              />
+              {fairUseAwuCreditsState.refillSchedule &&
+              fairUseAwuCreditsState.refillSchedule.length > 0 ? (
+                <Tooltip
+                  tooltipTriggerAsChild
+                  trigger={
+                    <div className="flex h-1.5 w-full cursor-help items-center">
+                      <ProgressBar
+                        label="Fair-use credits consumed"
+                        className="h-1.5 w-full bg-primary-100"
+                        values={[
+                          {
+                            value: fairUseCreditsPercentage,
+                            className: "bg-foreground",
+                          },
+                          {
+                            value: 100 - fairUseCreditsPercentage,
+                            className: "bg-transparent",
+                          },
+                        ]}
+                      />
+                    </div>
+                  }
+                  label={
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium">Reset schedule:</span>
+                      {fairUseAwuCreditsState.refillSchedule.map(
+                        ({ date, credits }) => (
+                          <span key={date}>
+                            {new Date(date).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              timeZone: "UTC",
+                            })}
+                            : +{formatCredits(credits)}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  }
+                />
+              ) : (
+                <ProgressBar
+                  label="Fair-use credits consumed"
+                  className="h-1.5 w-full bg-primary-100"
+                  values={[
+                    {
+                      value: fairUseCreditsPercentage,
+                      className: "bg-foreground",
+                    },
+                    {
+                      value: 100 - fairUseCreditsPercentage,
+                      className: "bg-transparent",
+                    },
+                  ]}
+                />
+              )}
               {isFairUseCreditsAtLimit && nextFairUseRefill ? (
                 <span className="text-xs text-muted-foreground">
                   {formatCreditValue(nextFairUseRefill.credits)} available again{" "}
@@ -240,8 +290,7 @@ export function PersonalUsageCard({
                     Premium messages
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    The limit applies to the past {premiumModelUsage.windowDays}{" "}
-                    day{pluralize(premiumModelUsage.windowDays)}
+                    Resets on a rolling {premiumModelUsage.windowDays}-day basis
                   </span>
                 </div>
                 <span className="text-sm tabular-nums text-muted-foreground">
@@ -249,20 +298,62 @@ export function PersonalUsageCard({
                   {premiumModelUsage.limitMessages}
                 </span>
               </div>
-              <ProgressBar
-                label="Premium messages used"
-                className="h-1.5 w-full bg-primary-100"
-                values={[
-                  {
-                    value: premiumModelUsagePercentage,
-                    className: "bg-foreground",
-                  },
-                  {
-                    value: 100 - premiumModelUsagePercentage,
-                    className: "bg-transparent",
-                  },
-                ]}
-              />
+              {premiumModelUsage.refillSchedule &&
+              premiumModelUsage.refillSchedule.length > 0 ? (
+                <Tooltip
+                  tooltipTriggerAsChild
+                  trigger={
+                    <div className="flex h-1.5 w-full cursor-help items-center">
+                      <ProgressBar
+                        label="Premium messages used"
+                        className="h-1.5 w-full bg-primary-100"
+                        values={[
+                          {
+                            value: premiumModelUsagePercentage,
+                            className: "bg-foreground",
+                          },
+                          {
+                            value: 100 - premiumModelUsagePercentage,
+                            className: "bg-transparent",
+                          },
+                        ]}
+                      />
+                    </div>
+                  }
+                  label={
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-medium">Reset schedule:</span>
+                      {premiumModelUsage.refillSchedule.map(
+                        ({ date, messages }) => (
+                          <span key={date}>
+                            {new Date(date).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              timeZone: "UTC",
+                            })}
+                            : +{messages}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  }
+                />
+              ) : (
+                <ProgressBar
+                  label="Premium messages used"
+                  className="h-1.5 w-full bg-primary-100"
+                  values={[
+                    {
+                      value: premiumModelUsagePercentage,
+                      className: "bg-foreground",
+                    },
+                    {
+                      value: 100 - premiumModelUsagePercentage,
+                      className: "bg-transparent",
+                    },
+                  ]}
+                />
+              )}
               {isPremiumModelUsageAtLimit ? (
                 <span className="text-xs text-muted-foreground">
                   {premiumModelUsage.nextRefill &&

@@ -1,4 +1,7 @@
-import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
+import type {
+  MaxAwuCreditsTimeframeType,
+  MaxMessagesTimeframeType,
+} from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 
@@ -98,4 +101,25 @@ export function formatMicroUsdCompact(microUsd: number): string {
     notation: "compact",
     maximumFractionDigits: 1,
   })}`;
+}
+
+export function getTimeframeSecondsFromLiteral(
+  timeframeLiteral: MaxMessagesTimeframeType | MaxAwuCreditsTimeframeType
+): number {
+  switch (timeframeLiteral) {
+    case "day":
+      return 60 * 60 * 24; // 1 day.
+
+    case "week":
+      return 60 * 60 * 24 * 7; // 7 days.
+
+    case "month":
+    // Lifetime is intentionally mapped to a 30-day period.
+    case "lifetime":
+      return 60 * 60 * 24 * 30; // 30 days.
+
+    default:
+      assertNeverAndIgnore(timeframeLiteral);
+      return 60 * 60 * 24 * 30; // Unknown timeframe: fall back to 30 days.
+  }
 }

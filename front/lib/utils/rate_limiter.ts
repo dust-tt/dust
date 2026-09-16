@@ -1,14 +1,9 @@
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { statsDMetrics } from "@app/lib/utils/statsd";
-import type {
-  MaxAwuCreditsTimeframeType,
-  MaxMessagesTimeframeType,
-} from "@app/types/plan";
 import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import chunk from "lodash/chunk";
 import { v4 as uuidv4 } from "uuid";
@@ -559,25 +554,7 @@ export async function getWeightedRateLimiterCount({
   return new Ok(result.value.count);
 }
 
-export function getTimeframeSecondsFromLiteral(
-  timeframeLiteral: MaxMessagesTimeframeType | MaxAwuCreditsTimeframeType
-): number {
-  switch (timeframeLiteral) {
-    case "day":
-      return 60 * 60 * 24; // 1 day.
-
-    case "week":
-      return 60 * 60 * 24 * 7; // 7 days.
-
-    case "month":
-    // Lifetime is intentionally mapped to a 30-day period.
-    case "lifetime":
-      return 60 * 60 * 24 * 30; // 30 days.
-
-    default:
-      assertNever(timeframeLiteral);
-  }
-}
+export { getTimeframeSecondsFromLiteral } from "@app/lib/client/credits";
 
 /**
  * Unconditionally records `incrementBy` units against a fixed-window counter

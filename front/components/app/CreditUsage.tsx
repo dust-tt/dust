@@ -1,6 +1,10 @@
 import type { CreditUsageCardVariant } from "@app/components/app/CreditUsageCard";
 import { CreditUsageCard } from "@app/components/app/CreditUsageCard";
-import { formatCredits, formatLimitTimeframe } from "@app/lib/client/credits";
+import {
+  formatCredits,
+  formatLimitTimeframe,
+  getTimeframeSecondsFromLiteral,
+} from "@app/lib/client/credits";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -22,6 +26,10 @@ interface RollingWindowCreditUsageState extends CreditUsageStateBase {
   usedCredits: number;
   limitCredits: number;
   timeframe: MaxAwuCreditsTimeframeType;
+  // Upcoming credit refills, oldest first. Only meaningful for a true rolling
+  // window (day/week/month) - omitted for the "lifetime" free-seat case, which
+  // never refills.
+  refillSchedule?: { date: string; credits: number }[];
 }
 
 export type CreditUsageState =
@@ -82,8 +90,14 @@ function getUsageDescription(
 
       return `${statusLabel}${RESET_LABEL_PREFIX[variant]} in ${state.resetInDays} ${resetUnit}`;
     }
-    case "rolling_window":
-      return `${formatCredits(state.usedCredits)} of ${formatCredits(state.limitCredits)} used ${formatLimitTimeframe(state.timeframe, "compact")}`;
+    case "rolling_window": {
+      if (state.timeframe === "lifetime") {
+        return `${formatCredits(state.usedCredits)} of ${formatCredits(state.limitCredits)} used ${formatLimitTimeframe(state.timeframe, "compact")}`;
+      }
+      const windowDays =
+        getTimeframeSecondsFromLiteral(state.timeframe) / (24 * 60 * 60);
+      return `Resets on a rolling ${windowDays}-day basis`;
+    }
     default:
       assertNeverAndIgnore(state);
       return "";
@@ -93,6 +107,8 @@ function getUsageDescription(
 export function CreditUsage({ state, variant, onLearnMore }: CreditUsageProps) {
   const usageDescription = getUsageDescription(state, variant);
   const tone = state.kind === "billing_period" ? state.target : "on_target";
+  const refillSchedule =
+    state.kind === "rolling_window" ? state.refillSchedule : undefined;
 
   return (
     <CreditUsageCard
@@ -100,6 +116,7 @@ export function CreditUsage({ state, variant, onLearnMore }: CreditUsageProps) {
       usedPercentage={state.usedPercentage}
       tone={tone}
       variant={variant}
+      refillSchedule={refillSchedule}
     >
       {onLearnMore ? (
         <div className="flex flex-col gap-2">
