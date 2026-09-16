@@ -12,7 +12,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   inference_hooks: {
     description:
-      "Enforce workspace inference hooks (Datadog AI Guard) on agent loop inputs and outputs",
+      "Enforce workspace inference hooks (Generic HTTP or Datadog AI Guard) on agent loop inputs and outputs",
     stage: "dust_only",
     owner: "zmarouf",
   },
