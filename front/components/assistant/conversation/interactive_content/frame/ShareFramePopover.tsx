@@ -1,13 +1,9 @@
+import { FrameSharingFiles } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingFiles";
 import { FrameSharingGrants } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingGrants";
 import { FrameSharingViewers } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingViewers";
 import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
 import { getAvailableScopeOptions } from "@app/components/assistant/conversation/interactive_content/frame/shareFrameScopeOptions";
-import type {
-  ShareFrameViewerFile,
-  ShareFrameViewerFileSourceKind,
-} from "@app/lib/api/viz/share_frame_viewer_files";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   useShareInteractiveContentFile,
   useSharingGrants,
@@ -20,13 +16,10 @@ import {
   Button,
   Check,
   ContentMessage,
-  Cube01,
-  File02,
   Icon,
   Label,
   ListGroup,
   ListItem,
-  MessageChatSquare,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -71,12 +64,14 @@ export function ShareFramePopover({
         preventAutoFocusOnClose={false}
         className="flex w-80 max-h-(--radix-popover-content-available-height) flex-col overflow-hidden p-2"
       >
+        <span id={titleId} className="sr-only">
+          Share this frame
+        </span>
         <ShareFramePopoverContent
           fileId={fileId}
           owner={owner}
           contentHash={contentHash}
           titleId={titleId}
-          onClose={() => setIsOpen(false)}
         />
       </PopoverContent>
     </PopoverRoot>
@@ -85,7 +80,6 @@ export function ShareFramePopover({
 
 interface ShareFramePopoverContentProps extends ShareFramePopoverProps {
   titleId: string;
-  onClose: () => void;
 }
 
 // Radix keeps this content mounted through the exit animation, including its queries.
@@ -94,7 +88,6 @@ function ShareFramePopoverContent({
   owner,
   contentHash,
   titleId,
-  onClose,
 }: ShareFramePopoverContentProps) {
   const { featureFlags } = useFeatureFlags();
   const isDomainSharingEnabled = featureFlags.includes("frame_domain_sharing");
@@ -222,6 +215,7 @@ function ShareFramePopoverContent({
                 {shareBlockError.join(", ")}
               </ContentMessage>
             )}
+            <FrameSharingFiles viewerFiles={viewerFiles} />
             <AccessScopeSection
               titleId={titleId}
               currentScope={currentScope}
@@ -256,7 +250,6 @@ function ShareFramePopoverContent({
                 }}
               />
             )}
-            <ViewerFilesSection viewerFiles={viewerFiles} />
           </div>
         )}
       </div>
@@ -365,70 +358,6 @@ function AccessScopeSection({
           );
         })}
       </ListGroup>
-    </Section>
-  );
-}
-
-const VIEWER_FILE_SOURCE_ICONS: Record<
-  ShareFrameViewerFileSourceKind,
-  typeof Cube01
-> = {
-  pod: Cube01,
-  conversation: MessageChatSquare,
-  workspace: File02,
-};
-
-interface ViewerFileLineProps {
-  viewerFile: ShareFrameViewerFile;
-}
-
-function ViewerFileLine({ viewerFile }: ViewerFileLineProps) {
-  const SourceIcon = VIEWER_FILE_SOURCE_ICONS[viewerFile.sourceKind];
-  const FileIcon = getFileTypeIcon(viewerFile.contentType, viewerFile.name);
-
-  return (
-    <li className="flex min-w-0 items-center gap-1.5 py-0.5 text-xs text-foreground">
-      <Icon
-        visual={FileIcon}
-        size="xs"
-        className="shrink-0 text-muted-foreground"
-      />
-      <div className="flex min-w-0 items-center gap-1 truncate">
-        <span className="shrink-0 font-medium">{viewerFile.name}</span>
-        <span className="shrink-0 text-muted-foreground">from</span>
-        <Icon
-          visual={SourceIcon}
-          size="xs"
-          className="shrink-0 text-muted-foreground"
-        />
-        <span className="truncate">{viewerFile.sourceName}</span>
-        {viewerFile.pathInSource ? (
-          <span className="truncate text-muted-foreground">{`in /${viewerFile.pathInSource}`}</span>
-        ) : null}
-      </div>
-    </li>
-  );
-}
-
-interface ViewerFilesSectionProps {
-  viewerFiles: ShareFrameViewerFile[];
-}
-
-function ViewerFilesSection({ viewerFiles }: ViewerFilesSectionProps) {
-  if (viewerFiles.length === 0) {
-    return null;
-  }
-
-  return (
-    <Section
-      label="Files used"
-      description="When shared, viewers can only access these files—not the rest of the conversation or pod."
-    >
-      <ul className="flex flex-col gap-0">
-        {viewerFiles.map((viewerFile) => (
-          <ViewerFileLine key={viewerFile.ref} viewerFile={viewerFile} />
-        ))}
-      </ul>
     </Section>
   );
 }
