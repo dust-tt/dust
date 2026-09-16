@@ -76,6 +76,22 @@ describe("AgentMemoryResource capacity handling", () => {
     expect(totalLength(entries)).toBeLessThanOrEqual(AGENT_MEMORY_LIMIT);
   });
 
+  it("evicts part of a single write that exceeds the limit on its own", async () => {
+    const twoThirdsBudget = "a".repeat(
+      Math.floor((AGENT_MEMORY_LIMIT * 2) / 3)
+    );
+
+    const { entries, evicted, skipped } = await record([
+      twoThirdsBudget,
+      twoThirdsBudget,
+    ]);
+
+    expect(skipped).toEqual([]);
+    expect(evicted).toHaveLength(1);
+    expect(entries).toHaveLength(1);
+    expect(totalLength(entries)).toBeLessThanOrEqual(AGENT_MEMORY_LIMIT);
+  });
+
   it("skips an entry larger than the whole budget and records the others", async () => {
     const tooLarge = "x".repeat(AGENT_MEMORY_LIMIT + 1);
 
@@ -86,7 +102,7 @@ describe("AgentMemoryResource capacity handling", () => {
     expect(entries.map((e) => e.content)).toEqual(["kept"]);
   });
 
-  it("never evicts the entry an edit just grew", async () => {
+  it("keeps the entry an edit just grew and evicts older ones", async () => {
     await record([quarterBudget("a")]);
     await record([quarterBudget("b")]);
     await record([quarterBudget("c")]);

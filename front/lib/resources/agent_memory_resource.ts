@@ -272,9 +272,13 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
 
   /**
    * @cc [owner:rfrenoy,label:product] memory-total-within-limit
-   * On return, the total content length of the (user, agent configuration) memory MUST be at most
-   * `AGENT_MEMORY_LIMIT`, achieved by deleting the least recently updated entries. Entries are
-   * considered newest first, so an entry just recorded or edited is never the one evicted.
+   * Absent concurrent writes to the same (user, agent configuration) memory, the total content
+   * length MUST be at most `AGENT_MEMORY_LIMIT` on return, achieved by deleting entries. Entries
+   * are kept newest first: an entry MUST be evicted only when the entries updated more recently
+   * than it, together with itself, exceed the limit. A write large enough to exceed the limit on
+   * its own therefore evicts part of what it just wrote. Concurrent writes are not serialized and
+   * each enforces the limit against the state it can see, so a race can leave the total above the
+   * limit until the next write trims it back.
    */
   private static async enforceMemoryLimit(
     auth: Authenticator,
