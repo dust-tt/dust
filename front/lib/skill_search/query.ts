@@ -14,12 +14,10 @@ import assert from "assert";
 import { z } from "zod";
 
 export const MAX_SKILL_SEARCH_RESULTS = 150;
-export const SKILL_SEARCH_KEEP_ALIVE_SECONDS = 300;
 export const SkillSearchSortSchema = z.tuple([
   z.number().finite(),
   z.string(),
   z.string(),
-  z.number().int(),
 ]);
 export type SkillSearchSort = z.infer<typeof SkillSearchSortSchema>;
 

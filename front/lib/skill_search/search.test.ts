@@ -60,9 +60,9 @@ function makeSkillDocument(
 function mockHits(documents: SkillSearchDocument[]) {
   mockClientSearch.mockResolvedValueOnce({
     hits: {
-      hits: documents.map((document, index) => ({
+      hits: documents.map((document) => ({
         _source: document,
-        sort: [1, document.name, String(document.skill_id), index],
+        sort: [1, document.name, String(document.skill_id)],
       })),
     },
   });
@@ -91,7 +91,6 @@ async function searchSkillDocuments(
   });
   const result = await searchSkillDocumentCandidates(auth, {
     query,
-    pitId: "test-pit",
     searchAfter: null,
     limit: Math.min(200, Math.max(50, limit * 3)),
     status,
@@ -460,7 +459,7 @@ describe("skill_search/search", () => {
     expect(mockClientSearch).toHaveBeenCalledOnce();
     const request = mockClientSearch.mock.calls[0][0];
     expect(request).toMatchObject({
-      pit: { id: "test-pit", keep_alive: "300s" },
+      index: "front.skills",
       size: 50,
       sort: [
         { _score: { order: "desc" } },
@@ -468,6 +467,7 @@ describe("skill_search/search", () => {
         { skill_id: { order: "asc" } },
       ],
     });
+    expect(request).not.toHaveProperty("pit");
     expect(
       request.query.bool.must[0].bool.must[0].dis_max.queries
     ).toHaveLength(3);

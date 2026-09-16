@@ -1,11 +1,12 @@
-import { ElasticsearchError, withEs } from "@app/lib/api/elasticsearch";
+import {
+  ElasticsearchError,
+  SKILL_SEARCH_ALIAS_NAME,
+  withEs,
+} from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillSearchSort } from "@app/lib/skill_search/query";
-import {
-  SKILL_SEARCH_KEEP_ALIVE_SECONDS,
-  SkillSearchSortSchema,
-} from "@app/lib/skill_search/query";
+import { SkillSearchSortSchema } from "@app/lib/skill_search/query";
 import type {
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
@@ -21,7 +22,6 @@ export type { SkillSearchSort } from "@app/lib/skill_search/query";
 export {
   MAX_SKILL_SEARCH_RESULTS,
   prepareSkillSearchQuery,
-  SKILL_SEARCH_KEEP_ALIVE_SECONDS,
   SkillSearchSortSchema,
 } from "@app/lib/skill_search/query";
 
@@ -35,14 +35,12 @@ export async function searchSkillDocumentCandidates(
   auth: Authenticator,
   {
     query,
-    pitId,
     searchAfter,
     limit,
     permissionFiltering = "strict",
     status,
   }: {
     query: estypes.QueryDslQueryContainer;
-    pitId: string;
     searchAfter: SkillSearchSort | null;
     limit: number;
     permissionFiltering?: SkillSearchPermissionFiltering;
@@ -53,7 +51,7 @@ export async function searchSkillDocumentCandidates(
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const result = await withEs((client) =>
     client.search<SkillSearchDocument>({
-      pit: { id: pitId, keep_alive: `${SKILL_SEARCH_KEEP_ALIVE_SECONDS}s` },
+      index: SKILL_SEARCH_ALIAS_NAME,
       query: {
         bool: {
           filter: [{ term: { workspace_id: workspaceId } }],
@@ -124,7 +122,6 @@ export async function searchSkillDocumentCandidates(
   }
   return new Ok({
     candidates,
-    pitId: result.value.pit_id ?? pitId,
     exhausted: hits.length < limit,
   });
 }
