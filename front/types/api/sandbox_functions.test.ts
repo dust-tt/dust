@@ -43,14 +43,21 @@ describe("isValidSandboxFunctionSlug", () => {
     expect(isValidSandboxFunctionSlug("tasklist/add-task")).toBe(false);
   });
 
-  // A Frame validates the `<podId>/<slug>` reference in the viz workspace, which cannot import from
-  // front and so carries its own copy of this grammar. Drift there is silent and expensive: a
-  // reference viz rejects resolves to a null SWR key, so the Frame issues no request at all rather
-  // than failing loudly.
-  it("stays aligned with the reference grammar Frames validate against", () => {
-    const slugs = [
+  // A Frame validates the reference it passes to `useFrameFunction` in the viz workspace, which
+  // cannot import from front and so carries its own copy of the grammar. Drift there is silent and
+  // expensive: a reference viz rejects resolves to a null SWR key, so the Frame issues no request
+  // at all rather than failing loudly.
+  //
+  // The relationship is containment, not equality. viz accepts only the bare manifest name the
+  // host can qualify, while this slug regex still admits the `<app>__` prefix Pod functions used;
+  // no v2 publication produces one (`createForFramePublication` sets `slug: fn.name`) and none
+  // exists in either region. So every reference viz accepts must be a valid slug, and a slug viz
+  // rejects must be one no v2 Frame can name.
+  it("accepts every reference the viz grammar lets a Frame send", () => {
+    const names = [
       "greet",
       "send-slack-message",
+      "a",
       "tasklist__add-task",
       "task-list__x",
       "tasklist__admin__purge",
@@ -59,16 +66,29 @@ describe("isValidSandboxFunctionSlug", () => {
       "tasklist_add-task",
       "TaskList__addTask",
       "tasklist add-task",
+      "list--notes",
+      "-greet",
     ];
 
-    for (const slug of slugs) {
+    for (const name of names) {
+      if (FRAME_FUNCTION_REFERENCE_REGEX.test(name)) {
+        expect({ name, accepted: isValidSandboxFunctionSlug(name) }).toEqual({
+          name,
+          accepted: true,
+        });
+      }
+    }
+  });
+
+  it("is the wider grammar, and only by the retired app prefix", () => {
+    const widerOnly = ["tasklist__add-task", "task-list__x"];
+
+    for (const slug of widerOnly) {
       expect({
         slug,
-        accepted: FRAME_FUNCTION_REFERENCE_REGEX.test(`vlt_1/${slug}`),
-      }).toEqual({
-        slug,
-        accepted: isValidSandboxFunctionSlug(slug),
-      });
+        slugAccepted: isValidSandboxFunctionSlug(slug),
+        referenceAccepted: FRAME_FUNCTION_REFERENCE_REGEX.test(slug),
+      }).toEqual({ slug, slugAccepted: true, referenceAccepted: false });
     }
   });
 
