@@ -10,6 +10,7 @@ import type {
   InferenceHookEnforcementMode,
   InferenceHookFailMode,
   InferenceHookProviderId,
+  InferenceHookType,
 } from "@app/types/inference_hook";
 import {
   INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT,
@@ -21,6 +22,7 @@ import {
   parseInferenceHookEndpoint,
   parseInferenceHookTimeoutMs,
 } from "@app/types/inference_hook";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -34,10 +36,84 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useReducer, useState } from "react";
 
 interface InferenceHooksSettingsProps {
   owner: WorkspaceType;
+}
+
+type SheetFormState = {
+  providerId: InferenceHookProviderId;
+  endpoint: string;
+  apiKey: string;
+  appKey: string;
+  enforcementMode: InferenceHookEnforcementMode;
+  failMode: InferenceHookFailMode;
+  timeoutMs: string;
+};
+
+type SheetFormAction =
+  | { type: "set_provider"; providerId: InferenceHookProviderId }
+  | { type: "set_endpoint"; endpoint: string }
+  | { type: "set_api_key"; apiKey: string }
+  | { type: "set_app_key"; appKey: string }
+  | {
+      type: "set_enforcement_mode";
+      enforcementMode: InferenceHookEnforcementMode;
+    }
+  | { type: "set_fail_mode"; failMode: InferenceHookFailMode }
+  | { type: "set_timeout_ms"; timeoutMs: string };
+
+function buildInitialFormState({
+  providerId,
+  inferenceHook,
+}: {
+  providerId: InferenceHookProviderId;
+  inferenceHook: InferenceHookType | null;
+}): SheetFormState {
+  const editingExisting = inferenceHook?.providerId === providerId;
+  return {
+    providerId,
+    endpoint: editingExisting ? (inferenceHook?.endpoint ?? "") : "",
+    apiKey: "",
+    appKey: "",
+    enforcementMode: editingExisting
+      ? (inferenceHook?.enforcementMode ??
+        INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT)
+      : INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT,
+    failMode: editingExisting
+      ? (inferenceHook?.failMode ?? INFERENCE_HOOK_FAIL_MODE_DEFAULT)
+      : INFERENCE_HOOK_FAIL_MODE_DEFAULT,
+    timeoutMs: String(
+      editingExisting
+        ? (inferenceHook?.timeoutMs ?? INFERENCE_HOOK_TIMEOUT_MS_DEFAULT)
+        : INFERENCE_HOOK_TIMEOUT_MS_DEFAULT
+    ),
+  };
+}
+
+function sheetFormReducer(
+  state: SheetFormState,
+  action: SheetFormAction
+): SheetFormState {
+  switch (action.type) {
+    case "set_provider":
+      return { ...state, providerId: action.providerId };
+    case "set_endpoint":
+      return { ...state, endpoint: action.endpoint };
+    case "set_api_key":
+      return { ...state, apiKey: action.apiKey };
+    case "set_app_key":
+      return { ...state, appKey: action.appKey };
+    case "set_enforcement_mode":
+      return { ...state, enforcementMode: action.enforcementMode };
+    case "set_fail_mode":
+      return { ...state, failMode: action.failMode };
+    case "set_timeout_ms":
+      return { ...state, timeoutMs: action.timeoutMs };
+    default:
+      assertNever(action);
+  }
 }
 
 export function InferenceHooksGovernanceSection({
@@ -46,8 +122,10 @@ export function InferenceHooksGovernanceSection({
   const { isAdmin } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [sheetProviderId, setSheetProviderId] =
-    useState<InferenceHookProviderId>("generic_http");
+  const [sheetSession, setSheetSession] = useState<{
+    providerId: InferenceHookProviderId;
+    key: number;
+  }>({ providerId: "generic_http", key: 0 });
   const { inferenceHook } = useInferenceHook(owner, {
     disabled: !hasFeature("inference_hooks") || !isAdmin,
   });
@@ -57,7 +135,10 @@ export function InferenceHooksGovernanceSection({
   }
 
   const openSheet = (providerId: InferenceHookProviderId) => {
-    setSheetProviderId(providerId);
+    setSheetSession((prev) => ({
+      providerId,
+      key: prev.key + 1,
+    }));
     setIsSheetOpen(true);
   };
 
@@ -105,10 +186,12 @@ export function InferenceHooksGovernanceSection({
         />
       </GovernanceSettingSection>
       <InferenceHooksSettingsSheet
+        key={sheetSession.key}
         owner={owner}
         isOpen={isSheetOpen}
         onOpenChange={setIsSheetOpen}
-        initialProviderId={sheetProviderId}
+        initialProviderId={sheetSession.providerId}
+        inferenceHook={inferenceHook}
       />
     </>
   );
@@ -119,78 +202,43 @@ function InferenceHooksSettingsSheet({
   isOpen,
   onOpenChange,
   initialProviderId,
+  inferenceHook,
 }: {
   owner: WorkspaceType;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   initialProviderId: InferenceHookProviderId;
+  inferenceHook: InferenceHookType | null;
 }) {
-  const { inferenceHook, isInferenceHookLoading } = useInferenceHook(owner, {
+  const { isInferenceHookLoading } = useInferenceHook(owner, {
     disabled: !isOpen,
   });
   const { upsertInferenceHook } = useUpsertInferenceHook({ owner });
   const { deleteInferenceHook } = useDeleteInferenceHook({ owner });
 
-  const [providerId, setProviderId] =
-    useState<InferenceHookProviderId>(initialProviderId);
-  const [endpoint, setEndpoint] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [appKey, setAppKey] = useState("");
-  const [enforcementMode, setEnforcementMode] =
-    useState<InferenceHookEnforcementMode>(
-      INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT
-    );
-  const [failMode, setFailMode] = useState<InferenceHookFailMode>(
-    INFERENCE_HOOK_FAIL_MODE_DEFAULT
-  );
-  const [timeoutMs, setTimeoutMs] = useState(
-    String(INFERENCE_HOOK_TIMEOUT_MS_DEFAULT)
+  const [form, dispatch] = useReducer(
+    sheetFormReducer,
+    { providerId: initialProviderId, inferenceHook },
+    buildInitialFormState
   );
   const [isSaving, setIsSaving] = useState(false);
-  const [wasOpen, setWasOpen] = useState(isOpen);
 
-  useEffect(() => {
-    if (isOpen && !wasOpen) {
-      const editingExisting = inferenceHook?.providerId === initialProviderId;
-      setProviderId(initialProviderId);
-      setEndpoint(editingExisting ? (inferenceHook?.endpoint ?? "") : "");
-      setApiKey("");
-      setAppKey("");
-      setEnforcementMode(
-        editingExisting
-          ? (inferenceHook?.enforcementMode ??
-              INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT)
-          : INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT
-      );
-      setFailMode(
-        editingExisting
-          ? (inferenceHook?.failMode ?? INFERENCE_HOOK_FAIL_MODE_DEFAULT)
-          : INFERENCE_HOOK_FAIL_MODE_DEFAULT
-      );
-      setTimeoutMs(
-        String(
-          editingExisting
-            ? (inferenceHook?.timeoutMs ?? INFERENCE_HOOK_TIMEOUT_MS_DEFAULT)
-            : INFERENCE_HOOK_TIMEOUT_MS_DEFAULT
-        )
-      );
-    }
-    setWasOpen(isOpen);
-  }, [isOpen, wasOpen, inferenceHook, initialProviderId]);
+  const {
+    providerId,
+    endpoint,
+    apiKey,
+    appKey,
+    enforcementMode,
+    failMode,
+    timeoutMs,
+  } = form;
 
   const providerMeta = INFERENCE_HOOK_PROVIDERS[providerId];
 
-  const endpointValidation = useMemo(() => {
-    if (!endpoint.trim()) {
-      return null;
-    }
-    return parseInferenceHookEndpoint(endpoint, providerId);
-  }, [endpoint, providerId]);
-
-  const timeoutValidation = useMemo(
-    () => parseInferenceHookTimeoutMs(timeoutMs),
-    [timeoutMs]
-  );
+  const endpointValidation = endpoint.trim()
+    ? parseInferenceHookEndpoint(endpoint, providerId)
+    : null;
+  const timeoutValidation = parseInferenceHookTimeoutMs(timeoutMs);
 
   const endpointMessage =
     endpointValidation && !endpointValidation.ok
@@ -275,7 +323,10 @@ function InferenceHooksSettingsSheet({
                 value={providerId}
                 disabled={isInferenceHookLoading || isSaving}
                 onChange={(e) =>
-                  setProviderId(e.target.value as InferenceHookProviderId)
+                  dispatch({
+                    type: "set_provider",
+                    providerId: e.target.value as InferenceHookProviderId,
+                  })
                 }
               >
                 {INFERENCE_HOOK_PROVIDER_IDS.map((id) => (
@@ -305,7 +356,9 @@ function InferenceHooksSettingsSheet({
               messageStatus={
                 endpointValidation && !endpointValidation.ok ? "error" : "info"
               }
-              onChange={(e) => setEndpoint(e.target.value)}
+              onChange={(e) =>
+                dispatch({ type: "set_endpoint", endpoint: e.target.value })
+              }
             />
             <Input
               label="API key"
@@ -321,7 +374,9 @@ function InferenceHooksSettingsSheet({
               }
               value={apiKey}
               disabled={isInferenceHookLoading || isSaving}
-              onChange={(e) => setApiKey(e.target.value)}
+              onChange={(e) =>
+                dispatch({ type: "set_api_key", apiKey: e.target.value })
+              }
             />
             {providerMeta.requiresAppKey && (
               <Input
@@ -336,7 +391,9 @@ function InferenceHooksSettingsSheet({
                 }
                 value={appKey}
                 disabled={isInferenceHookLoading || isSaving}
-                onChange={(e) => setAppKey(e.target.value)}
+                onChange={(e) =>
+                  dispatch({ type: "set_app_key", appKey: e.target.value })
+                }
               />
             )}
             <label className="flex flex-col gap-1 text-sm">
@@ -346,9 +403,11 @@ function InferenceHooksSettingsSheet({
                 value={enforcementMode}
                 disabled={isInferenceHookLoading || isSaving}
                 onChange={(e) =>
-                  setEnforcementMode(
-                    e.target.value as InferenceHookEnforcementMode
-                  )
+                  dispatch({
+                    type: "set_enforcement_mode",
+                    enforcementMode: e.target
+                      .value as InferenceHookEnforcementMode,
+                  })
                 }
               >
                 <option value="block">
@@ -364,7 +423,10 @@ function InferenceHooksSettingsSheet({
                 value={failMode}
                 disabled={isInferenceHookLoading || isSaving}
                 onChange={(e) =>
-                  setFailMode(e.target.value as InferenceHookFailMode)
+                  dispatch({
+                    type: "set_fail_mode",
+                    failMode: e.target.value as InferenceHookFailMode,
+                  })
                 }
               >
                 <option value="closed">Fail closed (block the step)</option>
@@ -379,7 +441,9 @@ function InferenceHooksSettingsSheet({
               disabled={isInferenceHookLoading || isSaving}
               message={timeoutMessage}
               messageStatus={timeoutValidation.ok ? "info" : "error"}
-              onChange={(e) => setTimeoutMs(e.target.value)}
+              onChange={(e) =>
+                dispatch({ type: "set_timeout_ms", timeoutMs: e.target.value })
+              }
             />
           </div>
         </SheetContainer>

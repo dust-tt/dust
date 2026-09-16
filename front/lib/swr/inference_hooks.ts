@@ -59,7 +59,7 @@ export function useUpsertInferenceHook({
           type: "error",
           title: "Failed to save inference hook",
           description:
-            err?.error?.message ?? "Could not save Datadog AI Guard settings.",
+            err?.error?.message ?? "Could not save inference hook settings.",
         });
         return false;
       }
@@ -72,7 +72,7 @@ export function useUpsertInferenceHook({
       sendNotification({
         type: "success",
         title: "Inference hook saved",
-        description: "Datadog AI Guard will enforce on agent runs.",
+        description: "The evaluate hook will run on agent model steps.",
       });
       return true;
     },
@@ -101,7 +101,7 @@ export function useDeleteInferenceHook({
         type: "error",
         title: "Failed to remove inference hook",
         description:
-          err?.error?.message ?? "Could not remove Datadog AI Guard settings.",
+          err?.error?.message ?? "Could not remove inference hook settings.",
       });
       return false;
     }
@@ -112,7 +112,7 @@ export function useDeleteInferenceHook({
       sendNotification({
         type: "success",
         title: "Inference hook removed",
-        description: "Datadog AI Guard is no longer configured.",
+        description: "No evaluate hook is configured for this workspace.",
       });
     }
     return data.success;
