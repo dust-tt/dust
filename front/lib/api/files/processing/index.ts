@@ -45,14 +45,6 @@ import { fileSync } from "tmp";
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 2; // 2 minute.
 const PROCESSING_TIMEOUT_MS = 1000 * 60 * 5; // 5 minutes.
 
-/**
- * @cc [owner:Nils-Fedrigo,label:backend] processed-version-always-materialized
- * A `ProcessingFunction` MUST write the file's `processed` version to storage before returning
- * `Ok`, and MUST return `Err` when it cannot. Returning `Ok` without writing leaves
- * `hasProcessedVersion()` true with no processed object in storage, and every reader that resolves
- * to the `processed` version (mount copies, snippets, content reads) then fails on a missing
- * object.
- */
 type ProcessingFunction = (
   auth: Authenticator,
   file: FileResource
