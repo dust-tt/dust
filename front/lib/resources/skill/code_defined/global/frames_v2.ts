@@ -28,7 +28,7 @@ manifest. Do not store durable application state in memory; use a Frame database
 
 ## Create a Frame
 
-Every Computer command is a round trip of several seconds. Create, write, and
+Every Computer command is a round trip of several seconds. When possible, create, write, and
 publish a new Frame in one Computer command:
 
 \`\`\`bash
