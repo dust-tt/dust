@@ -1,20 +1,10 @@
-import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import {
-  deleteWorkspaceSkillDocuments,
-  indexSkillDocument,
-} from "@app/lib/skill_search";
 import { indexUserDocument } from "@app/lib/user_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { removeNulls } from "@app/types/shared/utils/general";
-import uniq from "lodash/uniq";
-
-const SKILL_SEARCH_INDEX_CONCURRENCY = 10;
 
 export async function recreateUserSearchIndex({
   workspaceId,
@@ -104,76 +94,6 @@ export async function recreateUserSearchIndex({
   if (errorCount > 0) {
     throw new Error(
       `Failed to index ${errorCount} users for workspace ${workspaceId}`
-    );
-  }
-}
-
-export async function recreateSkillSearchIndex({
-  workspaceId,
-}: {
-  workspaceId: string;
-}): Promise<void> {
-  const localLogger = logger.child({ workspaceId });
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-
-  localLogger.info(
-    "[Skill Search] Recreating skill search index for workspace."
-  );
-
-  const deleteResult = await deleteWorkspaceSkillDocuments({ workspaceId });
-  if (deleteResult.isErr()) {
-    throw deleteResult.error;
-  }
-
-  const skills = await SkillResource.listByWorkspace(auth, {
-    permissionFiltering: "redact_unreadable",
-    status: ["active", "archived"],
-    onlyCustom: true,
-    withInstructions: false,
-    withTools: true,
-    withFileAttachments: false,
-  });
-  const editorsBySkillId = await SkillResource.batchListEditors(auth, skills);
-  const lastEditors = await UserResource.fetchByModelIds(
-    uniq(removeNulls(skills.map((skill) => skill.editedBy)))
-  );
-  const lastEditorByModelId = new Map(
-    lastEditors.map((user) => [user.id, user])
-  );
-  const workspace = auth.getNonNullableWorkspace();
-  const results = await concurrentExecutor(
-    skills,
-    async (skill) => {
-      const document = skill.toSearchDocument(workspace, {
-        editors: editorsBySkillId.get(skill.sId) ?? [],
-        lastEditedByUser:
-          skill.editedBy === null
-            ? null
-            : (lastEditorByModelId.get(skill.editedBy) ?? null),
-        activeUsersCount: 0,
-      });
-      const result = await indexSkillDocument(document);
-      if (result.isErr()) {
-        localLogger.error(
-          { error: result.error, skillId: document.skill_id },
-          "[Skill Search] Failed to index skill document"
-        );
-      }
-      return result.isOk();
-    },
-    { concurrency: SKILL_SEARCH_INDEX_CONCURRENCY }
-  );
-  const indexedCount = results.filter(Boolean).length;
-  const errorCount = results.length - indexedCount;
-
-  localLogger.info(
-    { errorCount, indexedCount },
-    "[Skill Search] Completed skill search index recreation for workspace"
-  );
-
-  if (errorCount > 0) {
-    throw new Error(
-      `Failed to index ${errorCount} skills for workspace ${workspaceId}`
     );
   }
 }

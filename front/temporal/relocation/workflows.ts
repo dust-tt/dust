@@ -316,8 +316,6 @@ export async function workspaceRelocateFrontEsIndexationWorkflow({
 
   // Recreate user search index.
   await destinationCellActivities.recreateUserSearchIndex({ workspaceId });
-
-  await destinationCellActivities.recreateSkillSearchIndex({ workspaceId });
 }
 
 /**

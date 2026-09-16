@@ -45,7 +45,6 @@ cd -
 cd front/
 npm install
 npx tsx ./scripts/create_elasticsearch_index.ts --index-name agent_message_analytics --index-version 2 --skip-confirmation --execute
-npx tsx ./scripts/create_elasticsearch_index.ts --index-name skills --index-version 1 --skip-confirmation --execute
 npx tsx ./scripts/create_elasticsearch_index.ts --index-name user_search --index-version 1 --skip-confirmation --execute
 cd -
 
