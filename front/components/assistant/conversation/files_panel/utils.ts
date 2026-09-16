@@ -4,12 +4,10 @@ import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import {
   frameSlideshowContentType,
   isFrameContentType,
 } from "@app/types/files";
-import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import type {
@@ -71,26 +69,4 @@ export function conversationAttachmentToRow(
   } else {
     assertNever(item);
   }
-}
-
-/**
- * Agents write legacy scoped paths (`conversation/report.xlsx`) while the files
- * panel carries canonical ones (`conversation-{cId}/report.xlsx`). The files API
- * only accepts the canonical form, so resolve both to it.
- */
-export function resolveFilePreviewPath({
-  conversation,
-  filePath,
-}: {
-  conversation: Pick<ConversationWithoutContentType, "sId" | "spaceId">;
-  filePath: string | undefined;
-}): string | null {
-  if (!filePath) {
-    return null;
-  }
-
-  return resolveCanonicalScopedPath(filePath, {
-    conversationId: conversation.sId,
-    spaceId: conversation.spaceId,
-  });
 }

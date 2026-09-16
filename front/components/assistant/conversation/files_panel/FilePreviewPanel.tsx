@@ -3,7 +3,6 @@ import {
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
-import { resolveFilePreviewPath } from "@app/components/assistant/conversation/files_panel/utils";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import {
   FilePreviewBody,
@@ -28,6 +27,7 @@ import {
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { contentTypeFromFileName } from "@app/types/files";
+import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, cn, Download01, Icon, Spinner } from "@dust-tt/sparkle";
 
@@ -49,7 +49,13 @@ export function FilePreviewPanel({
     disabled: !fileId,
   });
 
-  const path = resolveFilePreviewPath({ conversation, filePath });
+  // Agents write legacy scoped paths; the files API only resolves canonical ones.
+  const path = filePath
+    ? resolveCanonicalScopedPath(filePath, {
+        conversationId: conversation.sId,
+        spaceId: conversation.spaceId,
+      })
+    : null;
 
   // The conversion preview is cached (Cache-Control: max-age) per URL, so we
   // bust it with the file's lastModifiedMs. SWR revalidates this list on mount
