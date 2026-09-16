@@ -33,6 +33,7 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
+  useSkill,
   useSkillsWithRelations,
   useUpdateSkillFavorite,
   useUpdateSkillsAvailability,
@@ -313,6 +314,19 @@ export function ManageSkillsPage() {
     return knownSkillsById.get(skillIdParam) ?? null;
   }, [skillIdParam, knownSkillsById, selectedSkillOverride]);
 
+  // Deep links can point at a skill outside the loaded lists (hidden without "Show hidden
+  // skills", archived while on another tab), so resolve the hash id on its own.
+  const {
+    skill: deepLinkedSkill,
+    isSkillError: isDeepLinkedSkillError,
+    mutateSkill: retryDeepLinkedSkill,
+  } = useSkill({
+    workspaceId: owner.sId,
+    skillId: skillIdParam ?? null,
+    withRelations: true,
+    disabled: !skillIdParam || selectedSkill !== null,
+  });
+
   const handleUsedBySkillSelect = useCallback(
     (skillId: string) => {
       const skill = knownSkillsById.get(skillId);
@@ -389,7 +403,10 @@ export function ManageSkillsPage() {
   return (
     <>
       <SkillDetailsSheet
-        skill={selectedSkill}
+        skill={selectedSkill ?? deepLinkedSkill}
+        open={!!skillIdParam}
+        isError={selectedSkill === null && isDeepLinkedSkillError}
+        onRetry={retryDeepLinkedSkill}
         onClose={() => handleSkillSelect(null)}
         onFavoriteChange={handleFavoriteChange}
         user={user}
