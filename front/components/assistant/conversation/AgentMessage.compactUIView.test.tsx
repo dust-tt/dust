@@ -1,5 +1,6 @@
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import type { UiView } from "@app/components/assistant/conversation/types";
 import { makeInitialMessageStreamState } from "@app/components/assistant/conversation/types";
 import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
@@ -208,20 +209,22 @@ function renderAgentMessage({
   agentMessageOverrides?: Partial<LightAgentMessageWithActionsType>;
 }) {
   return render(
-    <AgentMessage
-      conversationId="conv_1"
-      spaceId={null}
-      uiView={uiView}
-      hideHeader={false}
-      isLastMessage={false}
-      agentMessage={buildAgentMessage(agentMessageOverrides)}
-      messageFeedback={messageFeedback}
-      owner={mockOwner}
-      user={mockUser}
-      triggeringUser={null}
-      isOnboardingConversation={false}
-      handleSubmit={async () => new Ok(undefined)}
-    />
+    <FilePreviewProvider owner={mockOwner}>
+      <AgentMessage
+        conversationId="conv_1"
+        spaceId={null}
+        uiView={uiView}
+        hideHeader={false}
+        isLastMessage={false}
+        agentMessage={buildAgentMessage(agentMessageOverrides)}
+        messageFeedback={messageFeedback}
+        owner={mockOwner}
+        user={mockUser}
+        triggeringUser={null}
+        isOnboardingConversation={false}
+        handleSubmit={async () => new Ok(undefined)}
+      />
+    </FilePreviewProvider>
   );
 }
 

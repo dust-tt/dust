@@ -168,6 +168,30 @@ describe("mount_path helpers", () => {
         })
       ).toBeNull();
     });
+
+    it("normalizes the relative part without node's path module", () => {
+      expect(
+        resolveCanonicalScopedPath(
+          "conversation/./sub//chart.png",
+          frameContext
+        )
+      ).toBe("conversation-conv_abc/sub/chart.png");
+      expect(
+        resolveCanonicalScopedPath(
+          "conversation/sub/../chart.png",
+          frameContext
+        )
+      ).toBe("conversation-conv_abc/chart.png");
+    });
+
+    it("rejects a relative part that escapes its scope", () => {
+      expect(
+        resolveCanonicalScopedPath("conversation/../secret.png", frameContext)
+      ).toBeNull();
+      expect(
+        resolveCanonicalScopedPath("conversation//etc/passwd", frameContext)
+      ).toBeNull();
+    });
   });
 
   describe("legacyScopedPathsMatch", () => {

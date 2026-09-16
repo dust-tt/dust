@@ -420,6 +420,41 @@ export function isAgentScopedPath(scopedPath: string): boolean {
 }
 
 /**
+ * Browser-safe subset of `path.posix.normalize`: `path` is a node builtin the
+ * SPA bundle does not ship, so anything reachable from a component must not use
+ * it. Trailing slashes are dropped; scoped file paths never carry one.
+ */
+function normalizePosixPath(rawPath: string): string {
+  const isAbsolute = rawPath.startsWith("/");
+
+  const segments: string[] = [];
+  for (const segment of rawPath.split("/")) {
+    if (segment === "" || segment === ".") {
+      continue;
+    }
+
+    if (segment !== "..") {
+      segments.push(segment);
+      continue;
+    }
+
+    const previous = segments[segments.length - 1];
+    if (segments.length > 0 && previous !== "..") {
+      segments.pop();
+    } else if (!isAbsolute) {
+      segments.push(segment);
+    }
+  }
+
+  const joined = segments.join("/");
+  if (isAbsolute) {
+    return `/${joined}`;
+  }
+
+  return joined === "" ? "." : joined;
+}
+
+/**
  * Resolve a legacy scoped path to its canonical form under the frame context.
  * Canonical paths are returned unchanged.
  */
@@ -437,7 +472,7 @@ export function resolveCanonicalScopedPath(
 
   const slashIdx = scopedPath.indexOf("/");
   const prefix = scopedPath.slice(0, slashIdx);
-  const rel = path.posix.normalize(scopedPath.slice(slashIdx + 1));
+  const rel = normalizePosixPath(scopedPath.slice(slashIdx + 1));
 
   if (rel.startsWith("..") || rel.startsWith("/")) {
     return null;

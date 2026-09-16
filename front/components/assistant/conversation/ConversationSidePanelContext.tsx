@@ -34,10 +34,9 @@ type OpenPanelParams =
       fileId: string;
       timestamp?: string;
     }
-  | {
+  | ({
       type: "file_preview";
-      filePath: string;
-    }
+    } & FilePreviewTarget)
   | {
       type: "files";
     }
@@ -56,6 +55,36 @@ type OpenPanelParams =
       toolId: string;
     };
 
+const FILE_PREVIEW_FILE_ID_PREFIX = "id:";
+
+// Content fragments without a sandbox path are addressed by id instead.
+export type FilePreviewTarget =
+  | { kind: "path"; filePath: string }
+  | { kind: "id"; fileId: string };
+
+export function parseFilePreviewData(
+  data: string | undefined
+): FilePreviewTarget | null {
+  if (!data) {
+    return null;
+  }
+
+  return data.startsWith(FILE_PREVIEW_FILE_ID_PREFIX)
+    ? { kind: "id", fileId: data.slice(FILE_PREVIEW_FILE_ID_PREFIX.length) }
+    : { kind: "path", filePath: data };
+}
+
+function filePreviewDataKey(target: FilePreviewTarget): string {
+  switch (target.kind) {
+    case "path":
+      return target.filePath;
+    case "id":
+      return `${FILE_PREVIEW_FILE_ID_PREFIX}${target.fileId}`;
+    default:
+      return assertNever(target);
+  }
+}
+
 // The `spid` hash value for a panel. Two panels are the same when type and key match.
 function panelDataKey(params: OpenPanelParams): string {
   switch (params.type) {
@@ -68,7 +97,7 @@ function panelDataKey(params: OpenPanelParams): string {
         ? `${params.fileId}@${params.timestamp}`
         : params.fileId;
     case FILE_PREVIEW_SIDE_PANEL_TYPE:
-      return params.filePath;
+      return filePreviewDataKey(params);
     case FILES_SIDE_PANEL_TYPE:
     case CREDITS_SIDE_PANEL_TYPE:
     case PLAN_SIDE_PANEL_TYPE:
@@ -118,8 +147,10 @@ function panelParamsFromHash(
       const [fileId, timestamp] = data.split("@");
       return { type, fileId, timestamp };
     }
-    case FILE_PREVIEW_SIDE_PANEL_TYPE:
-      return { type, filePath: data };
+    case FILE_PREVIEW_SIDE_PANEL_TYPE: {
+      const target = parseFilePreviewData(data);
+      return target ? { type, ...target } : null;
+    }
     case FILES_SIDE_PANEL_TYPE:
     case CREDITS_SIDE_PANEL_TYPE:
     case PLAN_SIDE_PANEL_TYPE:
