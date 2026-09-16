@@ -120,11 +120,6 @@ function makeChildAgentUnavailableError(childAgentName: string): MCPError {
   );
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:error-handling] unavailable-child-agent-name
- * Availability errors must use the fetched agent's name, falling back to the configured
- * name and then the agent ID when the agent cannot be fetched.
- */
 async function getRunnableChildAgent(
   auth: Authenticator,
   {

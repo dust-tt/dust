@@ -57,12 +57,6 @@ export class AgentResource implements WithAccessControl {
     private readonly scope: AgentConfigurationScope
   ) {}
 
-  /**
-   * @cc [owner:aubin-tchoi,label:security;backend] child-agent-metadata
-   * Return only the latest name and description within the authenticated workspace,
-   * including archived and disabled agents. This lookup bypasses read permissions for
-   * configured child-agent labels; it must not authorize running the agent.
-   */
   static async fetchLatestMetadataById(
     auth: Authenticator,
     agentId: string
