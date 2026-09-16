@@ -66,10 +66,19 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
   }, [activeIndex, resetHideTimer]);
 
   useEffect(() => {
+    /**
+     * @cc [owner:spolu,label:product] keyboard-navigation
+     * ArrowLeft, ArrowUp, and PageUp MUST invoke the previous-slide action. ArrowRight, ArrowDown,
+     * and PageDown MUST invoke the next-slide action. Other keys MUST NOT trigger slide navigation.
+     */
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp") {
         onPrev();
-      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      } else if (
+        e.key === "ArrowRight" ||
+        e.key === "ArrowDown" ||
+        e.key === "PageDown"
+      ) {
         onNext();
       }
     };
