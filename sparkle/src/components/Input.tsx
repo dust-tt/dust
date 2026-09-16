@@ -48,9 +48,9 @@ const fieldVariants = cva(
         default: cn(
           "border-border-form",
           "focus-within:border-border-form-active",
-          // Filled (has a value): darker border, plus a muted fill while the
-          // field is not focused — matches Figma's "filled" state.
-          "has-[input:not(:placeholder-shown)]:border-border-form-active",
+          // Filled (has a value) and not focused: a muted fill only. The
+          // border goes back to its resting color so the field does not look
+          // focused after the user moves on.
           "[&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-muted"
         ),
         error: cn("border-warning-500", "focus-within:border-warning-600"),
