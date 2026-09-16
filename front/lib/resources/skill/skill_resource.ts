@@ -629,114 +629,67 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<Map<string, SkillListItemType & { score: number }>> {
     assert(permissionFiltering !== "redact_unreadable" || auth.isAdmin());
     const workspace = auth.getNonNullableWorkspace();
-    const scoped = candidates.filter(
-      ({ document: candidate }) =>
-        candidate.workspace_id === workspace.sId &&
-        status.some((value) => value === candidate.status)
-    );
-    const scoreById = new Map(
-      scoped.map(({ document, score }) => [document.skill_id, score])
-    );
-    if (permissionFiltering === "redact_unreadable") {
-      const resources = await SkillResource.fetchByIds(
-        auth,
-        scoped.map(({ document }) => document.skill_id),
-        {
-          permissionFiltering,
-          withInstructions: false,
-          withTools: false,
-          withFileAttachments: false,
-        }
-      );
-      return new Map(
-        resources
-          .filter((resource) =>
-            status.some((value) => value === resource.status)
-          )
-          .map((resource) => {
-            const score = scoreById.get(resource.sId);
-            assert(score !== undefined);
-            return [resource.sId, resource.toSearchJSON(auth, score)];
-          })
-      );
-    }
+    const user = auth.user();
     const canEditAllSkills =
       auth.getResourceIdsWithVerb("skill", "write").kind === "all";
-    const editorFiltered = scoped.filter(({ document: candidate }) => {
-      if (candidate.availability !== "editors" || auth.isKey()) {
+    const scoped = candidates.filter(({ document }) => {
+      if (
+        document.workspace_id !== workspace.sId ||
+        !status.some((value) => value === document.status)
+      ) {
+        return false;
+      }
+      if (
+        permissionFiltering === "redact_unreadable" ||
+        document.availability !== "editors" ||
+        auth.isKey()
+      ) {
         return true;
       }
-      const user = auth.user();
       return (
         user !== null &&
         (canEditAllSkills ||
-          (Array.isArray(candidate.editor_ids) &&
-            candidate.editor_ids.includes(user.sId)))
+          (Array.isArray(document.editor_ids) &&
+            document.editor_ids.includes(user.sId)))
       );
     });
-    const visible = await this.fetchSearchResourcesByCurrentState(
-      auth,
-      editorFiltered.map(({ document }) => document)
-    );
-    return new Map(
-      visible.map((skill) => {
-        const score = scoreById.get(skill.sId);
-        assert(score !== undefined);
-        return [skill.sId, skill.toSearchJSON(auth, score)];
-      })
-    );
-  }
-
-  /**
-   * Check live permissions and indexed status, availability and space requirements.
-   * Editor lists may lag behind mutations; only the caller's current editor access matters.
-   */
-  private static async fetchSearchResourcesByCurrentState(
-    auth: Authenticator,
-    documents: SkillSearchDocument[]
-  ): Promise<SkillResource[]> {
-    if (documents.length === 0) {
-      return [];
-    }
-
-    const workspace = auth.getNonNullableWorkspace();
     const skills = await this.fetchByIds(
       auth,
-      documents.map((document) => document.skill_id),
+      scoped.map(({ document }) => document.skill_id),
       {
+        permissionFiltering,
         withInstructions: false,
         withTools: false,
         withFileAttachments: false,
       }
     );
-    const editorFilteredSkills = skills.filter(
-      (skill) => skill.availability !== "editors" || skill.canWrite(auth)
-    );
-    const skillById = new Map(
-      editorFilteredSkills.map((skill) => [skill.sId, skill])
-    );
-
-    const current = documents.filter((document) => {
+    const skillById = new Map(skills.map((skill) => [skill.sId, skill]));
+    const visible = new Map<string, SkillListItemType & { score: number }>();
+    for (const { document, score } of scoped) {
       const skill = skillById.get(document.skill_id);
-      return (
-        document.workspace_id === workspace.sId &&
-        skill !== undefined &&
-        document.status === skill.status &&
-        document.availability === skill.availability &&
-        Array.isArray(document.requested_space_ids) &&
-        isEqual(
-          [...document.requested_space_ids].sort(),
-          skill.requestedSpaceIds
-            .map((id) =>
-              SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
-            )
-            .sort()
-        )
-      );
-    });
-    return removeNulls(
-      current.map((document) => skillById.get(document.skill_id) ?? null)
-    );
+      if (!skill || !status.some((value) => value === skill.status)) {
+        continue;
+      }
+      if (
+        permissionFiltering === "strict" &&
+        ((skill.availability === "editors" && !skill.canWrite(auth)) ||
+          document.status !== skill.status ||
+          document.availability !== skill.availability ||
+          !Array.isArray(document.requested_space_ids) ||
+          !isEqual(
+            [...document.requested_space_ids].sort(),
+            skill.requestedSpaceIds
+              .map((id) =>
+                SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
+              )
+              .sort()
+          ))
+      ) {
+        continue;
+      }
+      visible.set(skill.sId, skill.toSearchJSON(auth, score));
+    }
+    return visible;
   }
 
   static async makeSuggestion(
