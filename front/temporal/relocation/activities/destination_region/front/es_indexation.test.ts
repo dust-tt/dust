@@ -24,7 +24,7 @@ describe("recreateSkillSearchIndex", () => {
     vi.mocked(indexSkillDocument).mockResolvedValue(new Ok(undefined));
   });
 
-  it("clears and rebuilds active and archived skills, excluding suggestions", async () => {
+  it("rebuilds restricted active and archived skills, excluding suggestions", async () => {
     const { authenticator, user, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -35,6 +35,7 @@ describe("recreateSkillSearchIndex", () => {
     });
     const archivedSkill = await SkillFactory.create(authenticator, {
       status: "archived",
+      requestedSpaceIds: [regularSpace.id],
     });
     await SkillFactory.create(authenticator, { status: "suggested" });
 
@@ -59,6 +60,7 @@ describe("recreateSkillSearchIndex", () => {
         skill_id: archivedSkill.sId,
         status: "archived",
         workspace_id: workspace.sId,
+        requested_space_ids: [regularSpace.sId],
       })
     );
     expect(

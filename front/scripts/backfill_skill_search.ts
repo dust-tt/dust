@@ -17,6 +17,7 @@ async function backfillWorkspace(
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const skills = await SkillResource.listByWorkspace(auth, {
+    permissionFiltering: "redact_unreadable",
     status: ["active", "archived"],
     onlyCustom: true,
     withInstructions: false,
