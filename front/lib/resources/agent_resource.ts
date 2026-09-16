@@ -183,6 +183,7 @@ export class AgentResource
         sId: configuration.sId,
         createdAt: new Date(),
         updatedAt: new Date(),
+        currentVersion: configuration.version,
       },
       {
         scope: configuration.scope,
@@ -224,6 +225,7 @@ export class AgentResource
         sId: configuration.sId,
         createdAt: new Date(),
         updatedAt: new Date(),
+        currentVersion: configuration.version,
       },
       {
         scope: "global",
@@ -253,6 +255,7 @@ export class AgentResource
         sId: configuration.sId,
         createdAt: configuration.createdAt,
         updatedAt: configuration.updatedAt,
+        currentVersion: configuration.version,
       },
       {
         scope: configuration.scope,
@@ -555,6 +558,29 @@ export class AgentResource
     if (revokeResult.isErr()) {
       throw revokeResult.error;
     }
+  }
+
+  /**
+   * Makes `configuration`, one of the agent's own rows, the current one. Called by every path
+   * that inserts a configuration row or deletes the current one (see
+   * `agent-current-version-pointer` on `AgentModel`).
+   */
+  async setCurrentConfiguration(
+    auth: Authenticator,
+    configuration: Pick<AgentConfigurationModel, "agentId" | "version">,
+    { transaction }: { transaction: Transaction }
+  ): Promise<void> {
+    assert(this.scope !== "global");
+    assert(auth.getNonNullableWorkspace().id === this.workspaceId);
+    assert(
+      configuration.agentId === this.id,
+      "Unexpected: configuration belongs to another agent"
+    );
+
+    await AgentModel.update(
+      { currentVersion: configuration.version },
+      { where: { id: this.id, workspaceId: this.workspaceId }, transaction }
+    );
   }
 
   /**
