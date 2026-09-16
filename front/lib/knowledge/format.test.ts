@@ -14,7 +14,6 @@ describe("parseKnowledgeTag", () => {
     ).toEqual({
       dataSourceViewId: "dsv_789",
       id: "notion-page-123",
-      sourceUrl: "https://notion.so/quarterly-report-123",
       spaceId: "vlt_456",
       title: "Quarterly Report",
     });
@@ -28,7 +27,6 @@ describe("parseKnowledgeTag", () => {
     ).toEqual({
       dataSourceViewId: null,
       id: "notion-page-123",
-      sourceUrl: null,
       spaceId: null,
       title: "Quarterly Report",
     });
