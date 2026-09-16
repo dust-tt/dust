@@ -43,6 +43,7 @@ const initialCreditsSchema = z.object({
     .int("Initial credits must be an integer number of credits")
     .min(1, "Initial credits must be at least 1 credit"),
   invoiceAmount: z.number().min(0, "Invoice amount must be zero or more"),
+  perUser: z.boolean().default(false),
   paymentSchedule: paymentScheduleSchema,
 });
 
