@@ -66,6 +66,7 @@ import {
   serializeSkillTag,
   serializeUnavailableSkillTag,
 } from "@app/lib/skills/format";
+import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -503,6 +504,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const skill = await this.model.create(
         {
           ...blob,
+          userFacingDescription: blob.userFacingDescription?.slice(
+            0,
+            USER_FACING_DESCRIPTION_MAX_LENGTH
+          ),
           instructionsHtml: blob.instructionsHtml ?? null,
           workspaceId: owner.id,
         },
@@ -3272,7 +3277,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         {
           name,
           agentFacingDescription,
-          userFacingDescription,
+          userFacingDescription: userFacingDescription?.slice(
+            0,
+            USER_FACING_DESCRIPTION_MAX_LENGTH
+          ),
           instructions,
           ...(instructionsHtml !== undefined ? { instructionsHtml } : {}),
           icon,
@@ -4620,7 +4628,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         status: skill.status,
         name: skill.name,
         agentFacingDescription: skill.agentFacingDescription,
-        userFacingDescription: skill.userFacingDescription,
+        userFacingDescription: skill.userFacingDescription?.slice(
+          0,
+          USER_FACING_DESCRIPTION_MAX_LENGTH
+        ),
         instructions: skill.instructions,
         instructionsHtml: skill.instructionsHtml,
         requestedSpaceIds: skill.requestedSpaceIds,

@@ -3,6 +3,13 @@ import type { SkillAvailability } from "@app/types/assistant/skill_configuration
 // Maximum length (in characters) of a skill's agent-facing description.
 export const AGENT_FACING_DESCRIPTION_MAX_LENGTH = 1_000;
 
+/**
+ * @cc [owner:aubin-tchoi,label:product;backend] bounded-user-facing-description
+ * Skill Builder MUST reject user-facing descriptions above this limit. Backend skill and
+ * version writes MUST truncate them to this limit before persistence.
+ */
+export const USER_FACING_DESCRIPTION_MAX_LENGTH = 2_048;
+
 export const SKILL_INVOCATION_LABEL = "When to use this skill";
 export const SKILL_INSTRUCTIONS_LABEL = "Instructions";
 

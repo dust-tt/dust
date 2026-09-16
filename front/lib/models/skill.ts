@@ -9,6 +9,7 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import type {
   SkillAvailability,
   SkillReinforcementMode,
@@ -44,7 +45,7 @@ const SKILL_MODEL_ATTRIBUTES = {
     allowNull: false,
   },
   userFacingDescription: {
-    type: DANGEROUSLY_UNBOUNDED_TEXT,
+    type: DataTypes.STRING(USER_FACING_DESCRIPTION_MAX_LENGTH),
     allowNull: true,
   },
   instructions: {
