@@ -175,7 +175,7 @@ export const UserMessageMarkdown = ({
             ? ` dsv=${knowledge.dataSourceViewId}`
             : "";
 
-          return `:knowledge[${knowledge.title}]{id=${knowledge.id}${spaceAttribute}${dsvAttribute}${urlAttribute}}`;
+          return `:knowledge[${knowledge.title}]{id=${knowledge.id}${spaceAttribute}${dsvAttribute}}`;
         }),
     [message.content]
   );
