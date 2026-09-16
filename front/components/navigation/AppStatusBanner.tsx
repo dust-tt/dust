@@ -1,7 +1,6 @@
 import type { AppStatus } from "@app/lib/api/status";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
-  FREE_BYOK_TRANSITIONING_PLAN_CODE,
   isDustCompanyPlan,
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
@@ -11,7 +10,6 @@ import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { useMetronomeContract } from "@app/lib/swr/workspaces";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
-import type { SubscriptionType } from "@app/types/plan";
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
@@ -110,12 +108,10 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
 
 interface UnhealthyCredentialsBannerProps {
   owner: WorkspaceType;
-  subscription: SubscriptionType;
 }
 
 function UnhealthyCredentialsBanner({
   owner,
-  subscription,
 }: UnhealthyCredentialsBannerProps) {
   const { providersHealth } = useAuth();
 
@@ -131,10 +127,6 @@ function UnhealthyCredentialsBanner({
   ) : (
     <>Contact your workspace admin.</>
   );
-  const variant =
-    subscription.plan.code === FREE_BYOK_TRANSITIONING_PLAN_CODE
-      ? "info"
-      : "warning";
 
   const hasConfiguredProviders = Object.keys(providersHealth).length > 0;
   const hasConfiguredEmbeddingProvider =
@@ -166,7 +158,7 @@ function UnhealthyCredentialsBanner({
     <StatusBanner
       title={title}
       description={description}
-      variant={variant}
+      variant="warning"
       footer={footer}
     />
   );
@@ -330,7 +322,7 @@ export function StatusBanners() {
   return (
     <>
       <WorkspaceUsageStatusBanner owner={owner} />
-      <UnhealthyCredentialsBanner owner={owner} subscription={subscription} />
+      <UnhealthyCredentialsBanner owner={owner} />
       {appStatus && <AppStatusBanner appStatus={appStatus} />}
       {subscription.paymentFailingSince &&
         isAdmin(owner) &&

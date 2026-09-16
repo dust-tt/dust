@@ -103,9 +103,24 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
   // usage row is created. Nullable only for legacy rows written before every
   // creation path supplied the classification.
   declare usageType: UsageType | null;
-  // Whether the workspace's own provider credentials served the inference (BYOK) rather than
-  // Dust's. Historical rows default to false, corrected per workspace by
-  // `migrations/20260916_backfill_byok_run_usages.ts`.
+  /**
+   * @cc [owner:pmilliotte,label:product] run-usage-records-credential-owner
+   * Records which credential source served the inference: `true` for credentials the workspace
+   * provided -- a BYOK plan, or the legacy per-app provider keys selected by
+   * `use_workspace_credentials` -- and `false` for Dust-managed ones. It must be set when the usage
+   * row is created, from the plan in force then, and never recomputed on finalize, so the row keeps
+   * pointing at the source that actually served it.
+   *
+   * Three limits on reading it. Rows created before 2026-09-16 read `false` whatever served them,
+   * since the column shipped with that default and only the workspaces corrected by
+   * `migrations/20260916_backfill_byok_run_usages.ts` read `true` before that date; and `runs`
+   * carries an unrelated legacy column of the same name that predates this one. A legacy app run on
+   * workspace provider keys records `true` from that selection alone: those credentials carry no
+   * `DUST_BYOK` marker, so `core` can still fall back to its own environment key for a provider the
+   * workspace never configured. And a batch row is only created when the results are retrieved, so it
+   * carries the plan in force then rather than at submit: a workspace that flips BYOK while a batch
+   * is pending records the source that did not serve it.
+   */
   declare useWorkspaceCredentials: boolean;
   // Pending and unavailable rows represent provider attempts for which usage has not been
   // reported. Null is accepted during the rolling deployment.

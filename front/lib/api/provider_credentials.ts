@@ -1,7 +1,5 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
-import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type {
@@ -14,9 +12,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import assert from "assert";
 import type { z } from "zod";
-
-// Fraction of requests that use BYOK credentials during the transition period.
-const BYOK_TRANSITION_BYOK_KEYS_RATIO = 1; // 100%
 
 export const MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE =
   "An OpenAI API key is required to perform this action. Please configure it in your workspace settings or contact an admin.";
@@ -34,6 +29,9 @@ function dustManagedByokProviderKeys(): Record<ProviderCredentialKey, string> {
 
 function dustManagedOtherProviderKeys() {
   return {
+    // Vertex authenticates with a Dust service account scoped to this project, so the project id
+    // is itself a Dust-managed credential and must never reach a BYOK workspace.
+    AGENT_PLATFORM_PROJECT_ID: config.getVertexAiProjectId(),
     AZURE_OPENAI_API_KEY: env("DUST_MANAGED_AZURE_OPENAI_API_KEY"),
     AZURE_OPENAI_ENDPOINT: env("DUST_MANAGED_AZURE_OPENAI_ENDPOINT"),
     MISTRAL_API_KEY: env("DUST_MANAGED_MISTRAL_API_KEY"),
@@ -52,7 +50,6 @@ function baseCredentialVariables() {
     OPENAI_USE_EU_ENDPOINT:
       config.getRegion() === "europe-west1" ? "true" : "false",
     OPENAI_BASE_URL: env("DUST_MANAGED_OPENAI_BASE_URL"),
-    AGENT_PLATFORM_PROJECT_ID: config.getVertexAiProjectId(),
   };
 }
 
@@ -76,12 +73,20 @@ export function dangerouslyGetDustManagedLlmCredentials(): LLMCredentialsType {
 }
 
 /**
+ * Whether `getLlmCredentials(auth)` answers with credentials the workspace provided rather than
+ * Dust's. Recorded per usage row on `run_usages.useWorkspaceCredentials`, so billed usage can be
+ * traced back to whose provider account paid for it.
+ */
+export function usesWorkspaceProvidedCredentials(auth: Authenticator): boolean {
+  return auth.getNonNullablePlan().isByok;
+}
+
+/**
  * Returns LLM credentials for the workspace.
  *
  * - Non-BYOK workspaces: returns Dust-managed keys from environment variables.
- * - BYOK workspaces: resolves customer-provided keys from OAuth credentials.
- *   - For BYOK_TRANSITIONING plan, fallback on Dust-managed keys if customer keys are not provided.
- *   - For all others, do not fallback.
+ * - BYOK workspaces: resolves customer-provided keys from OAuth credentials, with no fallback on
+ *   Dust-managed keys.
  *
  * `OPENAI_EMBEDDING_API_KEY` is set separately from `OPENAI_API_KEY` so Dust apps
  * don't accidentally use the customer's LLM key for embeddings.
@@ -91,6 +96,18 @@ export function dangerouslyGetDustManagedLlmCredentials(): LLMCredentialsType {
  * Pass `skipEmbeddingApiKeyRequirement: true` for call sites that only need LLM
  * keys (agent loop, token counting, image generation, etc.).
  */
+/**
+ * @cc [owner:pmilliotte,label:security;product] byok-credentials-are-customer-owned
+ * For a workspace whose plan has `isByok`, every provider credential in the returned object MUST
+ * come from the keys that workspace configured (`ProviderCredentialResource`), and the object MUST
+ * carry `DUST_BYOK: "true"` so downstream consumers can refuse a Dust-managed substitute.
+ *
+ * Nothing that authenticates to a provider may be read from Dust's environment into it: no API key,
+ * and no identifier Dust's own service account authenticates against such as
+ * `AGENT_PLATFORM_PROJECT_ID`. Routing configuration that carries no identity -- the
+ * `baseCredentialVariables()` endpoint selectors -- is allowed, since it decides which host the
+ * customer's own key is presented to.
+ */
 export async function getLlmCredentials(
   auth: Authenticator,
   { skipEmbeddingApiKeyRequirement } = {
@@ -99,46 +116,12 @@ export async function getLlmCredentials(
 ): Promise<LLMCredentialsType> {
   const plan = auth.getNonNullablePlan();
 
-  const DUST_MANAGED_BYOK_PROVIDERS_API_KEYS = dustManagedByokProviderKeys();
-  const BASE_VARIABLES = baseCredentialVariables();
-
   if (!plan.isByok) {
     return dangerouslyGetDustManagedLlmCredentials();
   }
 
-  const featureFlags = await getFeatureFlags(auth);
-
-  if (featureFlags.includes("use_dust_keys")) {
-    return {
-      ...BASE_VARIABLES,
-      ...DUST_MANAGED_BYOK_PROVIDERS_API_KEYS,
-    };
-  }
-
   const providerCredentials =
     await ProviderCredentialResource.listByWorkspace(auth);
-
-  // Use healthy keys only and fallback on Dust keys for this specific plan only
-  if (isByokTransitioningPlan(plan)) {
-    const healthyCredentials = mapOauthCredentialsToLlmCredentials(
-      providerCredentials
-        .filter(({ isHealthy }) => isHealthy)
-        .map((cred) => ({
-          providerId: cred.providerId,
-          content: cred.credentials,
-        }))
-    );
-
-    const shouldUseByokKeys = Math.random() < BYOK_TRANSITION_BYOK_KEYS_RATIO;
-
-    return shouldUseByokKeys
-      ? {
-          ...BASE_VARIABLES,
-          ...DUST_MANAGED_BYOK_PROVIDERS_API_KEYS,
-          ...healthyCredentials,
-        }
-      : { ...BASE_VARIABLES, ...DUST_MANAGED_BYOK_PROVIDERS_API_KEYS };
-  }
 
   const credentials = mapOauthCredentialsToLlmCredentials(
     providerCredentials.map((cred) => ({
@@ -155,7 +138,8 @@ export async function getLlmCredentials(
   }
 
   return {
-    ...BASE_VARIABLES,
+    ...baseCredentialVariables(),
+    DUST_BYOK: "true",
     ...credentials,
   };
 }

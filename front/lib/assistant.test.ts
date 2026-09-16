@@ -8,6 +8,7 @@ import { Authenticator } from "@app/lib/auth";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
+  FREE_BYOK_PLAN_CODE,
   FREE_NO_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
@@ -42,13 +43,17 @@ function createMockModel(
 
 function createMockPlan(
   code: string,
-  { hasAdvancedModelAccess = false }: { hasAdvancedModelAccess?: boolean } = {}
+  {
+    hasAdvancedModelAccess = false,
+    isByok = false,
+  }: { hasAdvancedModelAccess?: boolean; isByok?: boolean } = {}
 ): PlanType {
   return renderPlanFromModel({
     plan: {
       ...FREE_NO_PLAN_DATA,
       code,
       hasAdvancedModelAccess,
+      isByok,
     },
   });
 }
@@ -86,6 +91,33 @@ describe("isModelAvailable", () => {
       isModelAvailable(model, {
         featureFlags: [],
         plan,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
+        region: TEST_REGION,
+      })
+    ).toBe(true);
+  });
+
+  it("should return false for an EAP model on a BYOK plan, true otherwise", () => {
+    const model = createMockModel({
+      providerId: "anthropic",
+      useEapKey: true,
+      largeModel: false,
+      availableIfOneOf: undefined,
+    });
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: [],
+        plan: createMockPlan(FREE_BYOK_PLAN_CODE, { isByok: true }),
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
+        region: TEST_REGION,
+      })
+    ).toBe(false);
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: [],
+        plan: createMockPlan(PRO_PLAN_SEAT_29_CODE),
         regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
         region: TEST_REGION,
       })

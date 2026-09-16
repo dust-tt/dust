@@ -42,6 +42,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
 import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
+import { usesWorkspaceProvidedCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
@@ -698,6 +699,9 @@ export abstract class LLM<
   ): Promise<BatchResultWithRunIds> {
     const enrichedResults: BatchResultWithRunIds = new Map();
     const usageType = this.getUsageType();
+    const useWorkspaceCredentials = usesWorkspaceProvidedCredentials(
+      this.authenticator
+    );
 
     for (const [customId, events] of results) {
       const traceId = createLLMTraceId(randomUUID());
@@ -721,6 +725,7 @@ export abstract class LLM<
               isBatch: true,
               inferenceRegion: this.metadata.inferenceRegion,
               usageType,
+              useWorkspaceCredentials,
             }
           );
         }

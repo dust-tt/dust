@@ -10,7 +10,7 @@ use crate::providers::openai::{completion, REMAINING_TOKENS_MARGIN};
 use crate::providers::provider::{Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, decode_async, encode_async};
 use crate::providers::tiktoken::tiktoken::{cl100k_base_singleton, CoreBPE};
-use crate::run::Credentials;
+use crate::run::{credential_or_env, Credentials};
 use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -167,36 +167,8 @@ impl LLM for AzureOpenAILLM {
     }
 
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
-        match credentials.get("AZURE_OPENAI_API_KEY") {
-            Some(api_key) => {
-                self.api_key = Some(api_key.clone());
-            }
-            None => {
-                match tokio::task::spawn_blocking(|| std::env::var("AZURE_OPENAI_API_KEY")).await? {
-                    Ok(key) => {
-                        self.api_key = Some(key);
-                    }
-                    Err(_) => Err(anyhow!(
-                        "Credentials or environment variable `AZURE_OPENAI_API_KEY` is not set."
-                    ))?,
-                }
-            }
-        }
-        match credentials.get("AZURE_OPENAI_ENDPOINT") {
-            Some(endpoint) => {
-                self.endpoint = Some(endpoint.clone());
-            }
-            None => match tokio::task::spawn_blocking(|| std::env::var("AZURE_OPENAI_ENDPOINT"))
-                .await?
-            {
-                Ok(endpoint) => {
-                    self.endpoint = Some(endpoint);
-                }
-                Err(_) => Err(anyhow!(
-                    "Credentials or environment variable `AZURE_OPENAI_ENDPOINT` is not set."
-                ))?,
-            },
-        }
+        self.api_key = Some(credential_or_env(&credentials, "AZURE_OPENAI_API_KEY").await?);
+        self.endpoint = Some(credential_or_env(&credentials, "AZURE_OPENAI_ENDPOINT").await?);
 
         let d = get_deployment(
             self.endpoint.as_ref().unwrap(),
@@ -538,36 +510,8 @@ impl Embedder for AzureOpenAIEmbedder {
     }
 
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
-        match credentials.get("AZURE_OPENAI_API_KEY") {
-            Some(api_key) => {
-                self.api_key = Some(api_key.clone());
-            }
-            None => {
-                match tokio::task::spawn_blocking(|| std::env::var("AZURE_OPENAI_API_KEY")).await? {
-                    Ok(key) => {
-                        self.api_key = Some(key);
-                    }
-                    Err(_) => Err(anyhow!(
-                        "Credentials or environment variable `AZURE_OPENAI_API_KEY` is not set."
-                    ))?,
-                }
-            }
-        }
-        match credentials.get("AZURE_OPENAI_ENDPOINT") {
-            Some(endpoint) => {
-                self.endpoint = Some(endpoint.clone());
-            }
-            None => match tokio::task::spawn_blocking(|| std::env::var("AZURE_OPENAI_ENDPOINT"))
-                .await?
-            {
-                Ok(endpoint) => {
-                    self.endpoint = Some(endpoint);
-                }
-                Err(_) => Err(anyhow!(
-                    "Credentials or environment variable `AZURE_OPENAI_ENDPOINT` is not set."
-                ))?,
-            },
-        }
+        self.api_key = Some(credential_or_env(&credentials, "AZURE_OPENAI_API_KEY").await?);
+        self.endpoint = Some(credential_or_env(&credentials, "AZURE_OPENAI_ENDPOINT").await?);
 
         // We ensure at initialize that we only use supported models.
         match self.model_id.as_str() {

@@ -19,7 +19,6 @@ export const CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE = "CP_ENT_DEFAULT_PLAN";
 export const CREDIT_PRICED_DUST_COMPANY_PLAN_CODE = "CP_DUST_COMPANY";
 
 // BYOK plan:
-export const FREE_BYOK_TRANSITIONING_PLAN_CODE = "FREE_BYOK_TRANSITIONING";
 export const FREE_BYOK_PLAN_CODE = "FREE_BYOK";
 
 /**
@@ -100,9 +99,6 @@ export function isProPlan(plan?: PlanType) {
     plan?.code === PRO_PLAN_LARGE_FILES_CODE
   );
 }
-
-export const isByokTransitioningPlan = (plan?: PlanType) =>
-  plan?.code === FREE_BYOK_TRANSITIONING_PLAN_CODE;
 
 export function isBusinessPlan(plan?: PlanType) {
   return plan?.code === PRO_PLAN_SEAT_39_CODE;

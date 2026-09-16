@@ -1,5 +1,6 @@
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import apiConfig from "@app/lib/api/config";
+import { usesWorkspaceProvidedCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { USAGE_TYPE_PROGRAMMATIC } from "@app/lib/metronome/constants";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
@@ -182,6 +183,10 @@ export async function consumeRunStream({
   // App runs are invoked through the public API, so their usage is programmatic.
   await run.recordRunUsage(auth, usages, {
     usageType: USAGE_TYPE_PROGRAMMATIC,
+    // A BYOK workspace reaches the provider on its own keys even when the app run asked for
+    // Dust-managed credentials, because that is all `getLlmCredentials` can hand it.
+    useWorkspaceCredentials:
+      !useDustCredentials || usesWorkspaceProvidedCredentials(auth),
   });
   return { usages, traces, dustRunId };
 }
