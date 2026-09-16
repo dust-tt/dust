@@ -1,5 +1,6 @@
 import type { MCPToolType } from "@app/lib/api/mcp";
 import { Authenticator } from "@app/lib/auth";
+import { untrustedFetch } from "@app/lib/egress/server";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import {
   getMCPAuthorizationScope,
@@ -9,7 +10,13 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Response } from "undici";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/egress/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/egress/server")>()),
+  untrustedFetch: vi.fn(),
+}));
 
 const oauthMocks = vi.hoisted(() => ({
   discoverAuthorizationServerMetadata: vi.fn(),
@@ -105,6 +112,110 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata", () => {
     if (result.isOk()) {
       expect(result.value.token_endpoint_auth_method).toBe(registeredMethod);
     }
+  });
+
+  describe("registration rate limits", () => {
+    const fetchMock = vi.mocked(untrustedFetch);
+
+    beforeEach(async () => {
+      const sdk = await vi.importActual<
+        typeof import("@modelcontextprotocol/sdk/client/auth.js")
+      >("@modelcontextprotocol/sdk/client/auth.js");
+      oauthMocks.registerClient.mockImplementation(sdk.registerClient);
+      fetchMock.mockReset();
+      vi.useFakeTimers({ toFake: ["setTimeout", "Date"] });
+      vi.setSystemTime(new Date("2026-09-16T12:00:00Z"));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it.each([
+      "3",
+      "Wed, 16 Sep 2026 12:00:03 GMT",
+    ])("honors Retry-After %s without repeating discovery", async (retryAfter) => {
+      fetchMock
+        .mockResolvedValueOnce(
+          new Response(null, {
+            status: 429,
+            headers: { "Retry-After": retryAfter },
+          })
+        )
+        .mockResolvedValueOnce(
+          Response.json({
+            ...oauthProvider.clientMetadata,
+            client_id: "registered-client",
+          })
+        );
+      const pending = RemoteMCPServerResource.discoverOAuthMetadata({
+        serverUrl: "https://mcp.example.com/mcp",
+        provider: oauthProvider,
+        customHeaders: { "X-Custom-Header": "test-value" },
+      });
+
+      await vi.advanceTimersByTimeAsync(2_999);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      const result = await pending;
+
+      expect(result.isOk()).toBe(true);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(
+        oauthMocks.discoverOAuthProtectedResourceMetadata
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        oauthMocks.discoverAuthorizationServerMetadata
+      ).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls[1]).toEqual(fetchMock.mock.calls[0]);
+      expect(fetchMock.mock.calls[1][1]).toMatchObject({
+        method: "POST",
+        headers: { "X-Custom-Header": "test-value" },
+      });
+    });
+
+    it.each([
+      { status: 429, retryAfter: null, attempts: 3 },
+      { status: 429, retryAfter: "invalid", attempts: 3 },
+      { status: 429, retryAfter: "60", attempts: 1 },
+      { status: 400, retryAfter: "0", attempts: 1 },
+    ])("bounds retries for HTTP $status with Retry-After $retryAfter", async ({
+      status,
+      retryAfter,
+      attempts,
+    }) => {
+      fetchMock.mockImplementation(
+        async () =>
+          new Response(null, {
+            status,
+            headers: retryAfter === null ? {} : { "Retry-After": retryAfter },
+          })
+      );
+      const pending = RemoteMCPServerResource.discoverOAuthMetadata({
+        serverUrl: "https://mcp.example.com/mcp",
+        provider: oauthProvider,
+      });
+      await vi.runAllTimersAsync();
+      const result = await pending;
+
+      expect(fetchMock).toHaveBeenCalledTimes(attempts);
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain(
+          status === 429 ? "rate limiting" : "pre-approval"
+        );
+      }
+    });
+
+    it("does not replay registration after a network failure", async () => {
+      fetchMock.mockRejectedValue(new TypeError("Connection lost"));
+      const result = await RemoteMCPServerResource.discoverOAuthMetadata({
+        serverUrl: "https://mcp.example.com/mcp",
+        provider: oauthProvider,
+      });
+      expect(result.isErr()).toBe(true);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
   });
 });
 

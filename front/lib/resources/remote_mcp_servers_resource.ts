@@ -21,6 +21,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { mcpToolsRequireConfiguration } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { MCPOAuthConnectionMetadataType } from "@app/types/api/oauth/providers/mcp";
@@ -656,8 +657,15 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
    * advertises `client_id_metadata_document_supported`, returns a public-client
    * metadata (`token_endpoint_auth_method: "none"`, no `client_secret`) whose
    * `client_id` is `MCP_CLIENT_ID_METADATA_DOCUMENT_URL`; else (2) attempts
-   * Dynamic Client Registration; else (3) fails with a `DustError` directing the
-   * caller to Static OAuth. It never performs DCR when CIMD applies.
+   * Dynamic Client Registration. When no registration endpoint exists, fails
+   * with a `DustError` directing the caller to Static OAuth. It never performs
+   * DCR when CIMD applies.
+   */
+  /**
+   * @cc [owner:aubin-tchoi,label:mcp;error-handling] oauth-registration-rate-limits
+   * Registration retries only HTTP 429, at most twice within 10 seconds, and
+   * must not retry before a valid Retry-After delay. Exhausted rate limits must
+   * surface as rate limits, not as a pre-approval requirement.
    */
   static async discoverOAuthMetadata({
     serverUrl,
@@ -781,12 +789,40 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       return new Ok(connectionMetadata);
     }
 
+    let registrationRateLimited = false;
     try {
       // Try DCR.
       const fullInformation = await registerClient(serverUrl, {
         metadata,
         clientMetadata,
-        fetchFn,
+        fetchFn: async (input, init) => {
+          const deadlineMs = Date.now() + 10_000;
+          const requestInit = { ...init, signal: AbortSignal.timeout(10_000) };
+          let response = await fetchFn(input, requestInit);
+          for (
+            let attempt = 0;
+            attempt < 2 && response.status === 429;
+            attempt++
+          ) {
+            const retryAfter = response.headers.get("Retry-After")?.trim();
+            const retryAfterMs = retryAfter
+              ? /^\d+$/.test(retryAfter)
+                ? Number(retryAfter) * 1_000
+                : Date.parse(retryAfter) - Date.now()
+              : NaN;
+            const delayMs = Number.isNaN(retryAfterMs)
+              ? 1_000 * 2 ** attempt
+              : Math.max(0, retryAfterMs);
+            if (delayMs >= deadlineMs - Date.now()) {
+              break;
+            }
+            await response.body?.cancel();
+            await setTimeoutAsync(delayMs);
+            response = await fetchFn(input, requestInit);
+          }
+          registrationRateLimited = response.status === 429;
+          return response;
+        },
       });
 
       const tokenEndpointAuthMethod = selectClientAuthMethod(
@@ -810,11 +846,13 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       // Servers that don't advertise a registration_endpoint don't support DCR at all — the
       // failure isn't a broken registration attempt, it's expected, and Static OAuth is the
       // right path.
-      const message = metadata.registration_endpoint
-        ? "Failed to register client, this server might require a pre-approval process. Please contact support@dust.com."
-        : "This server does not support automatic OAuth setup (no dynamic client registration " +
-          "endpoint). Please use Static OAuth with the client ID/secret provided by the " +
-          "server's OAuth application.";
+      const message = registrationRateLimited
+        ? "The OAuth server is rate limiting client registration. Please wait and try connecting again."
+        : metadata.registration_endpoint
+          ? "Failed to register client, this server might require a pre-approval process. Please contact support@dust.com."
+          : "This server does not support automatic OAuth setup (no dynamic client registration " +
+            "endpoint). Please use Static OAuth with the client ID/secret provided by the " +
+            "server's OAuth application.";
       logger.error(
         {
           error: normalizeError(e),
