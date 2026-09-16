@@ -52,6 +52,24 @@ export const SKILL_SUGGESTION_KINDS = ["edit", "editors"] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
 
+// Kinds the reinforcement workflow produces (synthetic analysis) and consumes (aggregation).
+// Reinforcement code MUST filter on these kinds when fetching suggestions so it never has to
+// handle other kinds.
+export const REINFORCEMENT_SKILL_SUGGESTION_KINDS = [
+  "edit",
+] as const satisfies readonly SkillSuggestionKind[];
+
+export type ReinforcementSkillSuggestionKind =
+  (typeof REINFORCEMENT_SKILL_SUGGESTION_KINDS)[number];
+
+export function isReinforcementSkillSuggestionKind(
+  kind: SkillSuggestionKind
+): kind is ReinforcementSkillSuggestionKind {
+  return REINFORCEMENT_SKILL_SUGGESTION_KINDS.includes(
+    kind as ReinforcementSkillSuggestionKind
+  );
+}
+
 export const SkillInstructionEditItemSchema = z.object({
   targetBlockId: z
     .string()
@@ -176,3 +194,14 @@ export const SkillSuggestionSchema = BaseSkillSuggestionSchema.and(
 );
 
 export type SkillSuggestionType = z.infer<typeof SkillSuggestionSchema>;
+
+export type ReinforcementSkillSuggestionType = Extract<
+  SkillSuggestionType,
+  { kind: ReinforcementSkillSuggestionKind }
+>;
+
+export function isReinforcementSkillSuggestion(
+  suggestion: SkillSuggestionType
+): suggestion is ReinforcementSkillSuggestionType {
+  return isReinforcementSkillSuggestionKind(suggestion.kind);
+}

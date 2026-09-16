@@ -12,7 +12,7 @@ import {
   noSuggestion,
   rejectSuggestion,
 } from "@app/tests/reinforcement-evals/lib/types";
-import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import type { ReinforcementSkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 
 const SKILL_SID = "skill_customer_support";
 
@@ -26,7 +26,7 @@ function makeInstructionSuggestion(input: {
   }>;
   skillConfigurationId?: string;
   source?: "reinforcement" | "synthetic";
-}): SkillSuggestionType {
+}): ReinforcementSkillSuggestionType {
   return {
     sId: input.sId,
     createdAt: Date.now(),
@@ -57,7 +57,7 @@ function makeAgentFacingDescriptionSuggestion(input: {
   content: string;
   skillConfigurationId?: string;
   source?: "reinforcement" | "synthetic";
-}): SkillSuggestionType {
+}): ReinforcementSkillSuggestionType {
   return {
     sId: input.sId,
     createdAt: Date.now(),

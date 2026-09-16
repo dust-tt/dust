@@ -99,6 +99,7 @@ import {
 import { ensureReinforcementWorkspaceSchedules } from "@app/temporal/reinforcement/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { REINFORCEMENT_SKILL_SUGGESTION_KINDS } from "@app/types/suggestions/skill_suggestion";
 import { ApplicationFailure } from "@temporalio/common";
 import { Op } from "sequelize";
 
@@ -931,6 +932,7 @@ export async function getSkillsWithSyntheticSuggestionsActivity({
   >[2] = {
     sources: ["synthetic"],
     states: ["pending"],
+    kinds: REINFORCEMENT_SKILL_SUGGESTION_KINDS,
   };
 
   if (skillId) {
