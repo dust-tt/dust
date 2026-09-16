@@ -1062,48 +1062,6 @@ describe("FileResource", () => {
     });
   });
 
-  describe("toJSONWithMetadata", () => {
-    it("exposes the scoped path so clients can address the file by path", async () => {
-      const { authenticator: auth } = await createResourceTest({
-        role: "admin",
-      });
-
-      const file = await FileFactory.create(auth, null, {
-        contentType:
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        fileName: "report.xlsx",
-        fileSize: 100,
-        status: "created",
-        useCase: "conversation",
-        useCaseMetadata: { conversationId: "conv-metadata-1" },
-      });
-      await file.markAsReady(auth);
-
-      const ready = await FileResource.fetchById(auth, file.sId);
-      assert(ready, "File should exist after markAsReady");
-
-      expect(ready.toJSONWithMetadata(auth).path).toBe(
-        "conversation-conv-metadata-1/report.xlsx"
-      );
-    });
-
-    it("exposes a null path for a file that has no mount path", async () => {
-      const { authenticator: auth } = await createResourceTest({
-        role: "admin",
-      });
-
-      const file = await FileFactory.create(auth, null, {
-        contentType: "image/png",
-        fileName: "avatar.png",
-        fileSize: 500,
-        status: "ready",
-        useCase: "avatar",
-      });
-
-      expect(file.toJSONWithMetadata(auth).path).toBeNull();
-    });
-  });
-
   describe("getContentBucketAndPath", () => {
     it("should resolve to 'original' version for plain text files", async () => {
       const { authenticator: auth } = await createResourceTest({

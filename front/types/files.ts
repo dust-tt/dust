@@ -282,7 +282,6 @@ export type FileTypeWithUploadUrl = FileType & {
 };
 
 export type FileTypeWithMetadata = FileType & {
-  path: string | null;
   useCaseMetadata: FileUseCaseMetadata;
 };
 

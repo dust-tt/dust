@@ -3,6 +3,7 @@ import {
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
+import { resolveFilePreviewPath } from "@app/components/assistant/conversation/files_panel/utils";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import {
   FilePreviewBody,
@@ -48,9 +49,7 @@ export function FilePreviewPanel({
     disabled: !fileId,
   });
 
-  // Resolve an id-addressed file to its path so every preview goes through the
-  // same endpoint. Files with no mount path have none, and fall back to the id.
-  const path = filePath ?? fileMetadata?.path ?? null;
+  const path = resolveFilePreviewPath({ conversation, filePath });
 
   // The conversion preview is cached (Cache-Control: max-age) per URL, so we
   // bust it with the file's lastModifiedMs. SWR revalidates this list on mount
