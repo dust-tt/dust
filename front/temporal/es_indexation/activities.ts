@@ -179,6 +179,7 @@ export async function refreshWorkspaceSearchUsageActivity({
     throw activeUsers.error;
   }
   const skills = await SkillResource.listByWorkspace(auth, {
+    permissionFiltering: "redact_unreadable",
     status: ["active", "archived"],
     onlyCustom: true,
     withInstructions: false,
