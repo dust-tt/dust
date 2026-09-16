@@ -332,6 +332,11 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     return launchMicrosoftFullSyncWorkflow(this.connectorId);
   }
 
+  /**
+   * @cc [owner:frankaloia,label:error-handling] missing-permission-container-is-not-found
+   * A Microsoft Graph 404 while retrieving a container's permissions MUST be
+   * returned as `CONTENT_NODE_NOT_FOUND`, rather than escaping as an internal error.
+   */
   async retrievePermissions({
     parentInternalId,
     filterPermission,
@@ -491,6 +496,14 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       }
       return new Ok(nodesWithPermissions);
     } catch (e) {
+      if (e instanceof GraphError && e.statusCode === 404) {
+        return new Err(
+          new ConnectorManagerError(
+            "CONTENT_NODE_NOT_FOUND",
+            `Microsoft content node not found: ${parentInternalId ?? "root"}`
+          )
+        );
+      }
       if (
         e instanceof ExternalOAuthTokenError ||
         (e instanceof GraphError &&

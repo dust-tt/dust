@@ -18,7 +18,7 @@ import type {
 } from "@app/types/connectors/content_nodes";
 import type { DataSourceType } from "@app/types/data_source";
 import type { APIError } from "@app/types/error";
-import { isAPIErrorResponse } from "@app/types/error";
+import { isAPIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -67,9 +67,9 @@ function getConnectorPermissionsUrl({
  */
 function getFetchChildResourcesError(error: unknown): FetchChildResourcesError {
   const isResourceInaccessible =
-    isAPIErrorResponse(error) &&
-    (error.error.type === "data_source_auth_error" ||
-      error.error.type === "data_source_document_not_found");
+    isAPIError(error) &&
+    (error.type === "data_source_auth_error" ||
+      error.type === "data_source_document_not_found");
 
   return {
     error: normalizeError(error),
@@ -141,7 +141,6 @@ export function useFetchConnectorPermissions({
 }): (
   parentId: string
 ) => Promise<Result<ContentNode[], FetchChildResourcesError>> {
-  const { fetcher } = useFetcher();
   const { featureFlags } = useFeatureFlags();
   const { trigger } = useSWRMutation(
     getConnectorPermissionsUrl({
@@ -151,25 +150,27 @@ export function useFetchConnectorPermissions({
       viewType,
     }),
     async (_key: string, { arg: parentId }: { arg: string }) => {
-      try {
-        const data: GetDataSourcePermissionsResponseBody = await fetcher(
-          getConnectorPermissionsUrl({
-            owner,
-            dataSource,
-            parentId,
-            viewType,
-          })
-        );
-        return new Ok(
-          data.resources.filter(
-            (resource) =>
-              resource.providerVisibility !== "private" ||
-              featureFlags.includes("index_private_slack_channel")
-          )
-        );
-      } catch (error) {
+      const response = await clientFetch(
+        getConnectorPermissionsUrl({
+          owner,
+          dataSource,
+          parentId,
+          viewType,
+        })
+      );
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
         return new Err(getFetchChildResourcesError(error));
       }
+
+      const data: GetDataSourcePermissionsResponseBody = await response.json();
+      return new Ok(
+        data.resources.filter(
+          (resource) =>
+            resource.providerVisibility !== "private" ||
+            featureFlags.includes("index_private_slack_channel")
+        )
+      );
     }
   );
 
