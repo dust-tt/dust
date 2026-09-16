@@ -103,12 +103,13 @@ export async function indexSkillSearchActivity({
   }
 
   const editors = await skill.listEditors(auth);
-  const [lastEditor] = await UserResource.fetchByModelIds(
-    skill.editedBy === null ? [] : [skill.editedBy]
-  );
+  let lastEditor = null;
+  if (skill.editedBy) {
+    lastEditor = await UserResource.fetchByModelId(skill.editedBy);
+  }
   const document = skill.toSearchDocument(auth.getNonNullableWorkspace(), {
     editors: editors ?? [],
-    lastEditedByUser: lastEditor ?? null,
+    lastEditedByUser: lastEditor,
     activeUsersCount: 0,
   });
   const result = await indexSkillDocument(document);
