@@ -34,6 +34,20 @@ function isPublicMcpPath(path: string): boolean {
   return path === "/mcp" || path.startsWith("/mcp/");
 }
 
+const WEBHOOK_INGEST_PATH = /^\/api\/v1\/w\/[^/]+\/triggers\/hooks\//;
+
+/**
+ * @cc [owner:adrsimon,label:security] webhook-ingest-origin-exempt
+ * Webhook ingest requests MUST bypass the origin allowlist and MUST NOT receive
+ * `Access-Control-Allow-Origin` or `Access-Control-Allow-Credentials`. The endpoint authenticates
+ * through its URL secret and payload signature and never reads cookies, so the allowlist protects
+ * nothing while rejecting providers (GoCardless, etc.) that send `Origin` on server-to-server
+ * deliveries. Every other non-MCP path MUST stay behind the allowlist.
+ */
+function isWebhookIngestPath(path: string): boolean {
+  return WEBHOOK_INGEST_PATH.test(path);
+}
+
 /**
  * Adds the cross-origin headers expected by browser clients to every
  * Hono-served response. Applied globally so `/api/*` and `/sse/*` requests
@@ -69,6 +83,12 @@ export const cors: MiddlewareHandler = async (ctx, next) => {
     ctx.header("Access-Control-Allow-Methods", ALLOW_METHODS);
     ctx.header("Access-Control-Allow-Headers", ALLOWED_HEADERS.join(", "));
     ctx.header("Access-Control-Expose-Headers", EXPOSE_HEADERS);
+    return;
+  }
+
+  // Server-to-server webhook delivery that happens to carry an Origin (see above).
+  if (isWebhookIngestPath(ctx.req.path)) {
+    await next();
     return;
   }
 

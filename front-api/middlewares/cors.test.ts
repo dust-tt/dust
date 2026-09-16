@@ -13,10 +13,15 @@ function createApp() {
   app.use("*", cors);
   app.get("/", (ctx) => ctx.text("ok"));
   app.all("/mcp", (ctx) => ctx.text("ok"));
+  app.post(WEBHOOK_INGEST_PATH, (ctx) => ctx.text("ok"));
   return app;
 }
 
 const EXTENSION_ORIGIN = "chrome-extension://adoiifkpgaibbkgbicbdhpeoffmblbeb";
+
+const WEBHOOK_INGEST_PATH = "/api/v1/w/wsId/triggers/hooks/srcId/urlSecret";
+
+const PROVIDER_ORIGIN = "https://api.gocardless.com";
 
 function getExposedHeaders(response: Response): string[] {
   return (
@@ -69,6 +74,19 @@ describe("cors middleware", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(response.headers.get("Access-Control-Allow-Credentials")).toBeNull();
+  });
+
+  it("lets a webhook delivery through whatever origin it carries", async () => {
+    // Providers such as GoCardless send an Origin on server-to-server POSTs; the endpoint
+    // authenticates on its URL secret and payload signature, not on cookies.
+    const response = await createApp().request(WEBHOOK_INGEST_PATH, {
+      method: "POST",
+      headers: { Origin: PROVIDER_ORIGIN },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
     expect(response.headers.get("Access-Control-Allow-Credentials")).toBeNull();
   });
 
