@@ -111,9 +111,6 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
   auth: Authenticator,
   file: FileResource
 ) => {
-  // Without transcription there is no processed version to write, so the file cannot be stored at
-  // all. `processAndStoreFile` refuses audio uploads before the original bytes are written; this is
-  // the backstop that keeps `processed-version-always-materialized` true.
   if (!isAudioTranscriptionAvailableForAuth(auth)) {
     return new Err(new Error(AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE));
   }
