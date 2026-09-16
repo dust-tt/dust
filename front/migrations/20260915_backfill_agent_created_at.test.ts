@@ -1,9 +1,7 @@
-import {
-  AgentConfigurationModel,
-  AgentModel,
-} from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { backfillAgentCreatedAt } from "@app/migrations/20260915_backfill_agent_created_at";
 import baseLogger from "@app/logger/logger";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import assert from "assert";
@@ -43,10 +41,12 @@ describe("backfillAgentCreatedAt", () => {
       { createdAt: SECOND_VERSION_DATE },
       { where: { sId: lateAgent.sId, workspaceId: workspace.id, version: 1 } }
     );
-    const freshIdentityBefore = await AgentModel.findOne({
-      where: { sId: freshAgent.sId, workspaceId: workspace.id },
-    });
-    assert(freshIdentityBefore);
+    const createdAtBefore = await AgentResource.listCreatedAtByAgentId(
+      authenticator,
+      [freshAgent.sId]
+    );
+    const freshCreatedAtBefore = createdAtBefore.get(freshAgent.sId);
+    assert(freshCreatedAtBefore);
 
     await expect(
       backfillAgentCreatedAt({ execute: false, logger, workspace })
@@ -56,17 +56,15 @@ describe("backfillAgentCreatedAt", () => {
       backfillAgentCreatedAt({ execute: true, logger, workspace })
     ).resolves.toEqual({ agentsToFix: 1, updated: 1 });
 
-    const lateIdentity = await AgentModel.findOne({
-      where: { sId: lateAgent.sId, workspaceId: workspace.id },
-    });
-    const freshIdentity = await AgentModel.findOne({
-      where: { sId: freshAgent.sId, workspaceId: workspace.id },
-    });
-    assert(lateIdentity && freshIdentity);
-    expect(lateIdentity.createdAt.getTime()).toBe(FIRST_VERSION_DATE.getTime());
-    expect(freshIdentity.createdAt.getTime()).toBe(
-      freshIdentityBefore.createdAt.getTime()
+    const createdAtAfter = await AgentResource.listCreatedAtByAgentId(
+      authenticator,
+      [lateAgent.sId, freshAgent.sId]
     );
+    const lateCreatedAt = createdAtAfter.get(lateAgent.sId);
+    const freshCreatedAt = createdAtAfter.get(freshAgent.sId);
+    assert(lateCreatedAt && freshCreatedAt);
+    expect(lateCreatedAt.getTime()).toBe(FIRST_VERSION_DATE.getTime());
+    expect(freshCreatedAt.getTime()).toBe(freshCreatedAtBefore.getTime());
 
     await expect(
       backfillAgentCreatedAt({ execute: true, logger, workspace })

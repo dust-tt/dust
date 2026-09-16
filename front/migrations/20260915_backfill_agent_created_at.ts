@@ -10,7 +10,7 @@ const DEFAULT_BATCH_SIZE = 1_000;
 // Identities created by 20260828_backfill_agent_identities carry that backfill's date, which is
 // later than the agent's first configuration. Agents created since then were inserted in the same
 // transaction as their first configuration and are never selected here.
-const SELECT_LATE_AGENT_IDS_SQL = `
+const SELECT_LATE_AGENT_MODEL_IDS_SQL = `
   SELECT agent.id
   FROM agents AS agent
   JOIN agent_configurations AS configuration
@@ -30,7 +30,7 @@ const UPDATE_BATCH_SQL = `
     SELECT "agentId", MIN("createdAt") AS "createdAt"
     FROM agent_configurations
     WHERE "workspaceId" = :workspaceId
-      AND "agentId" IN (:agentIds)
+      AND "agentId" IN (:agentModelIds)
     GROUP BY "agentId"
   ) AS first_configuration
   WHERE agent."workspaceId" = :workspaceId
@@ -45,11 +45,11 @@ export type AgentCreatedAtBackfillStats = {
   updated: number;
 };
 
-async function selectLateAgentIds(
+async function selectLateAgentModelIds(
   workspace: MigrationWorkspace
 ): Promise<number[]> {
   const rows = await frontSequelize.query<{ id: number }>(
-    SELECT_LATE_AGENT_IDS_SQL,
+    SELECT_LATE_AGENT_MODEL_IDS_SQL,
     {
       replacements: { workspaceId: workspace.id },
       type: QueryTypes.SELECT,
@@ -78,15 +78,15 @@ export async function backfillAgentCreatedAt({
     throw new Error("batchSize must be a positive integer");
   }
 
-  const lateAgentIds = await selectLateAgentIds(workspace);
+  const lateAgentModelIds = await selectLateAgentModelIds(workspace);
   const stats: AgentCreatedAtBackfillStats = {
-    agentsToFix: lateAgentIds.length,
+    agentsToFix: lateAgentModelIds.length,
     updated: 0,
   };
 
   let batch = 0;
-  for (let offset = 0; offset < lateAgentIds.length; offset += batchSize) {
-    const agentIds = lateAgentIds.slice(offset, offset + batchSize);
+  for (let offset = 0; offset < lateAgentModelIds.length; offset += batchSize) {
+    const agentModelIds = lateAgentModelIds.slice(offset, offset + batchSize);
     batch += 1;
 
     if (!execute) {
@@ -94,7 +94,7 @@ export async function backfillAgentCreatedAt({
     }
 
     const [, updated] = await frontSequelize.query(UPDATE_BATCH_SQL, {
-      replacements: { workspaceId: workspace.id, agentIds },
+      replacements: { workspaceId: workspace.id, agentModelIds },
       type: QueryTypes.UPDATE,
     });
     stats.updated += updated;
@@ -103,7 +103,7 @@ export async function backfillAgentCreatedAt({
       {
         workspaceId: workspace.sId,
         batch,
-        agentCount: agentIds.length,
+        agentCount: agentModelIds.length,
         updated,
         totalUpdated: stats.updated,
       },
@@ -112,7 +112,7 @@ export async function backfillAgentCreatedAt({
   }
 
   if (execute) {
-    const remaining = await selectLateAgentIds(workspace);
+    const remaining = await selectLateAgentModelIds(workspace);
     if (remaining.length > 0) {
       throw new Error(
         `Workspace ${workspace.sId} still has ${remaining.length} agents created after their first configuration.`
