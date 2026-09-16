@@ -171,27 +171,27 @@ describe("AgentResource", () => {
     }
   });
 
-  it("prefers the active version over a higher-version non-active one", async () => {
+  it("resolves the version the currentVersion pointer designates, ignoring stray higher rows", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator
     );
     assert(agent.agentModelId !== null);
 
-    const activeConfig = await AgentConfigurationModel.findOne({
+    const currentConfig = await AgentConfigurationModel.findOne({
       where: {
         sId: agent.sId,
         status: "active",
         workspaceId: testContext.workspace.id,
       },
     });
-    assert(activeConfig !== null);
+    assert(currentConfig !== null);
 
-    // A later draft (e.g. the builder "try" state) can carry a higher version than the active one;
-    // fetchers must still resolve the active version.
-    const { id: _id, ...activeAttributes } = activeConfig.get();
+    // Insert a higher-version row without advancing `currentVersion` (e.g. a leftover builder "try"
+    // draft). The resolver joins on `currentVersion`, so it follows the pointer and ignores this row.
+    const { id: _id, ...currentAttributes } = currentConfig.get();
     await AgentConfigurationModel.create({
-      ...activeAttributes,
-      version: activeConfig.version + 1,
+      ...currentAttributes,
+      version: currentConfig.version + 1,
       status: "draft",
     });
 
@@ -203,7 +203,7 @@ describe("AgentResource", () => {
     expect(resource).not.toBeNull();
     expect(resource?.id).toBe(agent.agentModelId);
     expect(resource?.status).toBe("active");
-    expect(resource?.content.version).toBe(activeConfig.version);
+    expect(resource?.content.version).toBe(currentConfig.version);
   });
 
   it("returns one resource per agent when fetching in batches", async () => {
