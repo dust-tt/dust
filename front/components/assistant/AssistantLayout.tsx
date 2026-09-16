@@ -32,10 +32,10 @@ interface AssistantLayoutProps {
  * the sidebar, refetching its conversations and Pods, and dropping its scroll and
  * collapsed-section state.
  *
- * This contract is about ownership, not mount stability: `AssistantLayout` itself does remount
- * during a navigation, because `AppContentLayout` changes the outlet's depth when `contentWidth`
- * or `hasTitle` change. That is harmless here precisely because the clear and the set stay
- * paired within one commit.
+ * This contract is about ownership, not mount stability: it holds even when `AssistantLayout`
+ * itself remounts, precisely because the clear and the set stay paired within one commit. In
+ * practice it no longer remounts on a `contentWidth` or `hasTitle` change, because
+ * `AppContentLayout` renders the outlet at a fixed position in the React tree.
  */
 export function AssistantLayout({
   children,

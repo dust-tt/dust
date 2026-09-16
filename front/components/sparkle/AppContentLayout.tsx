@@ -94,6 +94,9 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
 
   useDocumentScrollMode(isMobile);
 
+  const isCenteredContent = contentWidth === "centered";
+  const hasTitleBarOffsetHeight = hasTitleBar && !!title && isCenteredContent;
+
   return (
     <div
       className={cn(
@@ -134,85 +137,53 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
             isMobile={isMobile}
             isFullScreen={isFullScreen}
           >
-            {/* Temporary measure to preserve title existence on smaller screens.
-             * Page has no title, prepend empty AppLayoutTitle. */}
-            {!hasTitleBar && (
+            <div
+              className={cn(
+                "flex flex-1 flex-col",
+                isMobile
+                  ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
+                  : cn(
+                      "min-h-0 overflow-y-auto [scrollbar-gutter:stable]",
+                      !hasTitleBar && "h-panel"
+                    )
+              )}
+            >
+              {/* Temporary measure to preserve title existence on smaller screens.
+               * Page has no title, prepend empty AppLayoutTitle. */}
+              {!hasTitleBar ? <AppLayoutTitle /> : null}
+              {hasTitleBar && contentWidth ? title : null}
               <div
-                className={cn(
-                  "flex flex-1 flex-col",
-                  isMobile
-                    ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
-                    : "min-h-0 h-panel overflow-y-auto [scrollbar-gutter:stable]"
-                )}
-              >
-                <AppLayoutTitle />
-                {contentWidth ? (
-                  <div
-                    className={cn(
-                      "flex w-full flex-col items-center",
-                      isMobile
-                        ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
-                        : "h-full overflow-y-auto [scrollbar-gutter:stable]",
-                      contentWidth === "centered" ? "pt-4" : "pt-8",
-                      contentClassName
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "flex w-full grow flex-col px-4 md:px-8",
-                        contentWidth === "centered" && "max-w-4xl"
-                      )}
-                    >
-                      {children}
-                    </div>
-                  </div>
-                ) : (
-                  children
-                )}
-              </div>
-            )}
-            {hasTitleBar && (
-              <div
-                className={cn(
-                  "flex flex-1 flex-col",
-                  isMobile
-                    ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
-                    : "min-h-0 overflow-y-auto [scrollbar-gutter:stable]"
-                )}
-              >
-                {contentWidth ? (
-                  <>
-                    {title}
-                    <div
-                      className={cn(
+                className={
+                  contentWidth
+                    ? cn(
                         "flex w-full flex-col items-center",
                         isMobile
                           ? MOBILE_DOCUMENT_SCROLL_CLASSES.contentArea
                           : "overflow-y-auto [scrollbar-gutter:stable]",
-                        contentWidth === "centered"
-                          ? cn(
-                              title ? "h-[calc(100vh-3.5rem)]" : "h-full",
-                              "pt-4"
-                            )
-                          : "h-full pt-8",
+                        hasTitleBarOffsetHeight && "h-[calc(100vh-3.5rem)]",
+                        !hasTitleBarOffsetHeight &&
+                          (hasTitleBar || !isMobile) &&
+                          "h-full",
+                        isCenteredContent ? "pt-4" : "pt-8",
                         contentClassName
-                      )}
-                    >
-                      <div
-                        className={cn(
+                      )
+                    : "contents"
+                }
+              >
+                <div
+                  className={
+                    contentWidth
+                      ? cn(
                           "flex w-full grow flex-col px-4 md:px-8",
-                          contentWidth === "centered" && "max-w-4xl"
-                        )}
-                      >
-                        {children}
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  children
-                )}
+                          isCenteredContent && "max-w-4xl"
+                        )
+                      : "contents"
+                  }
+                >
+                  {children}
+                </div>
               </div>
-            )}
+            </div>
           </AppContentInnerWrapper>
         </div>
         <CommandPalette owner={owner} user={user} />
