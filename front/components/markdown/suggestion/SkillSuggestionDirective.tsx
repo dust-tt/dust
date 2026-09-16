@@ -127,6 +127,9 @@ function ConversationSkillSuggestion({
         />
       );
 
+    case "editors":
+      return null;
+
     default:
       assertNeverAndIgnore(kind);
       return null;

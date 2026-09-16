@@ -270,6 +270,15 @@ export function SkillSuggestionCard({
   isAccepting = false,
   isDeclining = false,
 }: SkillSuggestionCardProps) {
+  switch (suggestion.kind) {
+    case "edit":
+      break;
+    case "editors":
+      return null;
+    default:
+      assertNeverAndIgnore(suggestion);
+      return null;
+  }
   const { instructionEdits, agentFacingDescriptionEdit } =
     suggestion.suggestion;
   const isClickable = !!onSelect;

@@ -8,11 +8,46 @@ import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type {
+  SkillEditorsSuggestionType,
   SkillEditSuggestionType,
   SkillInstructionEditItemType,
+  SkillSuggestionKind,
   SkillSuggestionSource,
 } from "@app/types/suggestions/skill_suggestion";
-import { REVIEWABLE_SKILL_SUGGESTION_SOURCES } from "@app/types/suggestions/skill_suggestion";
+import {
+  parseSkillSuggestionData,
+  REVIEWABLE_SKILL_SUGGESTION_SOURCES,
+} from "@app/types/suggestions/skill_suggestion";
+
+type EditSkillSuggestionResource = SkillSuggestionResource & {
+  kind: "edit";
+  suggestion: SkillEditSuggestionType;
+};
+
+type EditorsSkillSuggestionResource = SkillSuggestionResource & {
+  kind: "editors";
+  suggestion: SkillEditorsSuggestionType;
+};
+
+interface SuggestionResourceByKind {
+  edit: EditSkillSuggestionResource;
+  editors: EditorsSkillSuggestionResource;
+}
+
+// Validates kind and payload together: `kind` and `suggestion` are separate columns.
+function isSuggestionOfKind<K extends SkillSuggestionKind>(
+  suggestion: SkillSuggestionResource,
+  kind: K
+): suggestion is SuggestionResourceByKind[K] {
+  if (suggestion.kind !== kind) {
+    return false;
+  }
+  const result = parseSkillSuggestionData({
+    kind: suggestion.kind,
+    suggestion: suggestion.suggestion,
+  });
+  return result.kind === kind;
+}
 
 // Reviewable suggestions: pruning applies to every source a user may accept or reject, whether
 // it is surfaced in the builder (`reinforcement`) or inline in a conversation (`conversational`).
@@ -100,11 +135,17 @@ export async function pruneConflictingSkillEditSuggestions(
     }
   );
 
-  const existingPending = allPending.filter((s) => s.sId !== newSuggestion.sId);
+  const existingPending = allPending.filter(
+    (s): s is EditSkillSuggestionResource =>
+      s.sId !== newSuggestion.sId && isSuggestionOfKind(s, "edit")
+  );
   if (existingPending.length === 0) {
     return;
   }
 
+  if (!isSuggestionOfKind(newSuggestion, "edit")) {
+    return;
+  }
   const newInstructionEdits = newSuggestion.suggestion.instructionEdits ?? [];
   const newHasAgentFacingDescriptionEdit =
     newSuggestion.suggestion.agentFacingDescriptionEdit !== undefined;
@@ -170,10 +211,14 @@ export async function pruneOutdatedSkillEditSuggestions(
   auth: Authenticator,
   skill: SkillResource
 ): Promise<void> {
-  const pending = await SkillSuggestionResource.listBySkillConfigurationId(
-    auth,
-    skill.sId,
-    { states: ["pending"], kind: "edit", sources: PRUNED_SOURCES }
+  const pending = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
+      states: ["pending"],
+      kind: "edit",
+      sources: PRUNED_SOURCES,
+    })
+  ).filter((s): s is EditSkillSuggestionResource =>
+    isSuggestionOfKind(s, "edit")
   );
   if (pending.length === 0) {
     return;
