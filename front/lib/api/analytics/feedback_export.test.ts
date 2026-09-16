@@ -10,7 +10,7 @@ import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { formatInTimeZone } from "date-fns-tz";
 import { describe, expect, it, vi } from "vitest";
 
-const formatUtcDate = (date: Date) =>
+const formatAsUtcYyyyMmDd = (date: Date) =>
   formatInTimeZone(date, "UTC", "yyyy-MM-dd");
 
 // fetchAgentMetadata and fetchFeedbackExportRows read from the read replica;
@@ -76,8 +76,8 @@ describe("fetchFeedbackExportRows", () => {
     const today = new Date();
     const result = await fetchFeedbackExportRows({
       owner: workspace,
-      startDate: formatUtcDate(new Date(today.getTime() - ONE_DAY_MS)),
-      endDate: formatUtcDate(new Date(today.getTime() + ONE_DAY_MS)),
+      startDate: formatAsUtcYyyyMmDd(new Date(today.getTime() - ONE_DAY_MS)),
+      endDate: formatAsUtcYyyyMmDd(new Date(today.getTime() + ONE_DAY_MS)),
       timezone: "UTC",
     });
 
@@ -143,7 +143,7 @@ describe("fetchFeedbackExportRows", () => {
       agentConfigurationId: agent.sId,
     });
 
-    const startDate = formatUtcDate(new Date());
+    const startDate = formatAsUtcYyyyMmDd(new Date());
     const startOfDay = new Date(`${startDate}T00:00:00.000Z`);
 
     const feedback = await AgentMessageFeedbackResource.makeNew({
@@ -220,8 +220,8 @@ describe("fetchFeedbackExportRows", () => {
     const today = new Date();
     const result = await fetchFeedbackExportRows({
       owner: workspace,
-      startDate: formatUtcDate(new Date(today.getTime() - ONE_DAY_MS)),
-      endDate: formatUtcDate(new Date(today.getTime() + ONE_DAY_MS)),
+      startDate: formatAsUtcYyyyMmDd(new Date(today.getTime() - ONE_DAY_MS)),
+      endDate: formatAsUtcYyyyMmDd(new Date(today.getTime() + ONE_DAY_MS)),
       timezone: "UTC",
     });
 
