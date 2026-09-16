@@ -1,3 +1,8 @@
+import {
+  ACCENT_COLOR_LABELS,
+  ACCENT_COLORS,
+  useAccentColor,
+} from "@app/components/sparkle/AccentColorContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ReactNode } from "react";
 
@@ -30,6 +35,7 @@ export function ToolbarControls({
   compact,
 }: ToolbarControlsProps) {
   const { theme, setTheme } = useTheme();
+  const { accentColor, setAccentColor } = useAccentColor();
   const overrideCount = Object.keys(getFeatureFlagOverrides()).length;
   const colorOverrideCount = Object.keys(readColorOverrides()).length;
   const fontFamilyOverrides = readFontFamilyOverrides();
@@ -49,6 +55,26 @@ export function ToolbarControls({
           >
             {t === "light" ? "☀" : "☾"}
           </button>
+        ))}
+        <span style={S.dockedSep} />
+        {/* Accent color: same preference as Settings > Customization, so
+            switching here persists for the user like the theme does. */}
+        {ACCENT_COLORS.map((color) => (
+          <button
+            key={color}
+            title={ACCENT_COLOR_LABELS[color]}
+            aria-label={ACCENT_COLOR_LABELS[color]}
+            aria-pressed={accentColor === color}
+            style={{
+              ...S.dockedBtn(accentColor === color),
+              width: 14,
+              height: 14,
+              padding: 0,
+              borderRadius: 999,
+              background: `var(--color-${color}-500)`,
+            }}
+            onClick={() => void setAccentColor(color)}
+          />
         ))}
         <span style={S.dockedSep} />
         <button
