@@ -206,7 +206,7 @@ export function ConversationFileExplorer({
   const onOpenInPanel = useCallback(
     (entry: FileEntry): boolean => {
       if (isFilePreviewableContentType(entry.contentType)) {
-        openPanel({ type: "file_preview", filePath: entry.path });
+        openPanel({ type: "file_preview", kind: "path", filePath: entry.path });
         return true;
       }
       return false;

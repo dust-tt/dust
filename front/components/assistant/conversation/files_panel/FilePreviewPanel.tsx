@@ -41,21 +41,23 @@ export function FilePreviewPanel({
   owner,
 }: FilePreviewPanelProps) {
   const { data, closePanel } = useConversationSidePanelContext();
-  const { fileId, filePath } = parseFilePreviewData(data);
+  const target = parseFilePreviewData(data);
+  const fileId = target?.kind === "id" ? target.fileId : null;
 
   const { fileMetadata, isFileMetadataLoading } = useFileMetadata({
-    fileId: fileId ?? null,
+    fileId,
     owner,
     disabled: !fileId,
   });
 
   // Agents write legacy scoped paths; the files API only resolves canonical ones.
-  const path = filePath
-    ? resolveCanonicalScopedPath(filePath, {
-        conversationId: conversation.sId,
-        spaceId: conversation.spaceId,
-      })
-    : null;
+  const path =
+    target?.kind === "path"
+      ? resolveCanonicalScopedPath(target.filePath, {
+          conversationId: conversation.sId,
+          spaceId: conversation.spaceId,
+        })
+      : null;
 
   // The conversion preview is cached (Cache-Control: max-age) per URL, so we
   // bust it with the file's lastModifiedMs. SWR revalidates this list on mount
@@ -108,7 +110,7 @@ export function FilePreviewPanel({
           fileName,
           path: path ?? "",
           contentType,
-          fileId: fileId ?? null,
+          fileId,
           thumbnailUrl: null,
           sizeBytes: 0,
           lastModifiedMs: 0,
@@ -140,7 +142,9 @@ export function FilePreviewPanel({
             <Spinner />
           ) : (
             <p className="text-sm text-muted-foreground">
-              This file is no longer available.
+              {target?.kind === "path"
+                ? "This file path could not be resolved."
+                : "This file is no longer available."}
             </p>
           )}
         </CenteredState>

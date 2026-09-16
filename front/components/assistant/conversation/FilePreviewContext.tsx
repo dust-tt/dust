@@ -41,11 +41,15 @@ export function FilePreviewProvider({
     (file: PreviewableFile) => {
       if (isFilePreviewableContentType(file.contentType)) {
         if (file.filePath) {
-          openPanel({ type: "file_preview", filePath: file.filePath });
+          openPanel({
+            type: "file_preview",
+            kind: "path",
+            filePath: file.filePath,
+          });
           return;
         }
         if (file.fileId) {
-          openPanel({ type: "file_preview", fileId: file.fileId });
+          openPanel({ type: "file_preview", kind: "id", fileId: file.fileId });
           return;
         }
       }

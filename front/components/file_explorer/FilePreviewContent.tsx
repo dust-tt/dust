@@ -20,7 +20,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
-export const MAX_CSV_ROWS = 200;
+const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {

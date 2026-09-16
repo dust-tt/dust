@@ -420,12 +420,12 @@ export function isAgentScopedPath(scopedPath: string): boolean {
 }
 
 /**
- * `path.posix.normalize` for the browser: `path` is a node builtin the SPA
- * bundle does not ship, so anything reachable from a component must not use it.
+ * Browser-safe subset of `path.posix.normalize`: `path` is a node builtin the
+ * SPA bundle does not ship, so anything reachable from a component must not use
+ * it. Trailing slashes are dropped; scoped file paths never carry one.
  */
 function normalizePosixPath(rawPath: string): string {
   const isAbsolute = rawPath.startsWith("/");
-  const hasTrailingSlash = rawPath.endsWith("/") && rawPath.length > 1;
 
   const segments: string[] = [];
   for (const segment of rawPath.split("/")) {
@@ -433,26 +433,20 @@ function normalizePosixPath(rawPath: string): string {
       continue;
     }
 
-    if (segment === ".." && !isAbsolute) {
-      const previous = segments[segments.length - 1];
-      if (segments.length > 0 && previous !== "..") {
-        segments.pop();
-        continue;
-      }
-
+    if (segment !== "..") {
       segments.push(segment);
       continue;
     }
 
-    if (segment === "..") {
+    const previous = segments[segments.length - 1];
+    if (segments.length > 0 && previous !== "..") {
       segments.pop();
-      continue;
+    } else if (!isAbsolute) {
+      segments.push(segment);
     }
-
-    segments.push(segment);
   }
 
-  const joined = segments.join("/") + (hasTrailingSlash ? "/" : "");
+  const joined = segments.join("/");
   if (isAbsolute) {
     return `/${joined}`;
   }

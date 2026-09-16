@@ -80,6 +80,7 @@ describe("useFilePreviewContext", () => {
 
     expect(openPanel).toHaveBeenCalledWith({
       type: "file_preview",
+      kind: "path",
       filePath: "conversation-c1/report.pdf",
     });
   });

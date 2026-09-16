@@ -176,6 +176,7 @@ describe("getFilePreviewPlugin", () => {
     await waitFor(() => {
       expect(openPanel).toHaveBeenCalledWith({
         type: "file_preview",
+        kind: "path",
         filePath: "conversation-c1/reports/report final.pdf",
       });
     });

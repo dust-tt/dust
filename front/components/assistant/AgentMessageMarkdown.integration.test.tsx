@@ -160,6 +160,7 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
       await waitFor(() => {
         expect(openPanel).toHaveBeenCalledWith({
           type: "file_preview",
+          kind: "path",
           filePath: "conversation-c1/booklet.pdf",
         });
       });
