@@ -164,7 +164,7 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   "datadog europe": "development",
   canva: "productivity",
   hex: "data",
-  spendesk: "crm",
+  spendesk: "productivity",
 };
 
 // Category mapping for connectors
