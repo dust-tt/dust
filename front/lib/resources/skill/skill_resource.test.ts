@@ -11,6 +11,7 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -2443,6 +2444,15 @@ describe("SkillResource", () => {
   describe("fetchById", () => {
     it("supports lightweight hydration while preserving the default hydration", async () => {
       const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const toolMetadata = {
+        toolName: "tool",
+        permission: "low",
+        enabled: true,
+      } as const;
+      await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(
+        testContext.authenticator,
+        { serverSId: server.sId, ...toolMetadata }
+      );
       const serverView = await MCPServerViewFactory.create(
         testContext.workspace,
         server.sId,
@@ -2463,6 +2473,16 @@ describe("SkillResource", () => {
         instructionsHtml: "<p>Large instructions</p>",
         mcpServerViews: [expect.objectContaining({ sId: serverView.sId })],
       });
+      expect(full?.mcpServerViews[0].toJSON().toolsMetadata).toEqual([]);
+
+      const withMetadata = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId,
+        { withToolMetadata: true }
+      );
+      expect(withMetadata?.mcpServerViews[0].toJSON().toolsMetadata).toEqual([
+        toolMetadata,
+      ]);
 
       const light = await SkillResource.fetchById(
         testContext.authenticator,
