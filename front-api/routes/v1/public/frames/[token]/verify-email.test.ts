@@ -92,7 +92,10 @@ describe("verify-email endpoint", () => {
       "emails_only"
     );
 
-    await file.addSharingGrants(auth, { emails: ["test@example.com"] });
+    await SharingGrantFactory.create(auth, file, {
+      kind: "email",
+      value: "test@example.com",
+    });
 
     // Clear mock after grant creation (which fires a share notification email).
     vi.mocked(sendEmailWithTemplate).mockClear();
@@ -169,7 +172,10 @@ describe("verify-email endpoint", () => {
       "emails_only"
     );
 
-    await file.addSharingGrants(auth, { emails: ["test@example.com"] });
+    await SharingGrantFactory.create(auth, file, {
+      kind: "email",
+      value: "test@example.com",
+    });
 
     // Clear mock after grant creation (which fires a share notification email).
     vi.mocked(sendEmailWithTemplate).mockClear();

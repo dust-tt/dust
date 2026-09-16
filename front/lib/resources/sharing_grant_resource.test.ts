@@ -373,7 +373,6 @@ describe("SharingGrantResource", () => {
       value: "example.com",
     });
     expect(domain.toLegacyJSON()).toBeNull();
-    expect(await file.listActiveSharingGrants()).toEqual([]);
     expect(
       (
         await file.revokeSharingGrant(authenticator, { grantId: domain.id })
@@ -383,12 +382,10 @@ describe("SharingGrantResource", () => {
       (await file.revokeSharingGrant(authenticator, { grantId: -1 })).isErr()
     ).toBe(true);
 
-    const added = await file.addSharingGrants(authenticator, {
-      emails: ["alice@example.com"],
+    const email = await SharingGrantFactory.create(authenticator, file, {
+      kind: "email",
+      value: "alice@example.com",
     });
-    assert(added.isOk());
-    const [email] = added.value;
-    assert(email);
     expect(email.lastViewedAt).toBeNull();
     const emailResource = await SharingGrantResource.findForEmail(
       file,
@@ -400,7 +397,8 @@ describe("SharingGrantResource", () => {
     expect(emailResource.toLegacyJSON()?.lastViewedAt).toBe(
       emailResource.lastViewedAt?.getTime()
     );
-    const viewed = (await file.listActiveSharingGrants())[0];
+    const recorded = await SharingGrantResource.fetchById(file, email.sId);
+    const viewed = recorded?.toLegacyJSON();
     expect(viewed?.id).toBe(email.id);
     expect(viewed?.lastViewedAt).toEqual(expect.any(Number));
     expect(
@@ -418,7 +416,8 @@ describe("SharingGrantResource", () => {
     expect(
       (await SharingGrantResource.fetchById(file, domain.sId))?.lastViewedAt
     ).toBeNull();
-    expect(await file.listActiveSharingGrants()).toEqual([]);
+    const activeGrants = await SharingGrantResource.listForFile(file);
+    expect(activeGrants.map((grant) => grant.sId)).toEqual([domain.sId]);
     expect(await file.listAllSharingGrants()).toHaveLength(1);
     expect(
       (await SharingGrantResource.findForEmail(file, "alice@example.com"))?.sId

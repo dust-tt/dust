@@ -50,7 +50,10 @@ describe("POST /api/v1/public/frames/[token]/verify-code", () => {
     });
 
     await file.setShareScope(auth, "emails_only");
-    await file.addSharingGrants(auth, { emails: [VIEWER_EMAIL] });
+    await SharingGrantFactory.create(auth, file, {
+      kind: "email",
+      value: VIEWER_EMAIL,
+    });
 
     const shareInfo = await file.getShareInfo();
     assert(shareInfo, "Share info should be available");

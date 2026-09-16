@@ -19,7 +19,6 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import crypto from "crypto";
 import { escape } from "html-escaper";
-import type { Transaction } from "sequelize";
 import { BaseError } from "sequelize";
 
 export interface FrameSharingState {
@@ -32,7 +31,7 @@ export interface FrameSharingState {
 
 async function canGrantFrameDomains(
   auth: Authenticator,
-  membersOnly: boolean
+  { membersOnly }: { membersOnly: boolean }
 ): Promise<boolean> {
   return (
     !membersOnly &&
@@ -70,12 +69,13 @@ export async function listFrameSharing(
       }
     }
   }
+  const canGrantDomains = await canGrantFrameDomains(auth, { membersOnly });
   return {
     grants,
     viewers,
     blockedGrantIds,
     membersOnly,
-    canGrantDomains: await canGrantFrameDomains(auth, membersOnly),
+    canGrantDomains,
   };
 }
 
@@ -88,19 +88,17 @@ export async function addFrameSharingGrants(
   file: FileResource,
   { emails = [], domains = [] }: { emails?: string[]; domains?: string[] }
 ): Promise<Result<FrameSharingState, DustError>> {
-  if (
-    domains.length > 0 &&
-    !(await canGrantFrameDomains(
-      auth,
-      await frameRequiresMembership(auth, file)
-    ))
-  ) {
-    return new Err(
-      new DustError(
-        "unauthorized",
-        "You cannot share this frame with an email domain."
-      )
-    );
+  if (domains.length > 0) {
+    const membersOnly = await frameRequiresMembership(auth, file);
+    const canGrantDomains = await canGrantFrameDomains(auth, { membersOnly });
+    if (!canGrantDomains) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You cannot share this frame with an email domain."
+        )
+      );
+    }
   }
   const permission = await checkFrameEmailGrantPermission(auth, emails, file);
   if (permission.isErr()) {
@@ -116,7 +114,8 @@ export async function addFrameSharingGrants(
   }
   const createdEmails = removeNulls(created.value.map((grant) => grant.email));
   notifyFrameSharingInvitations(auth, file, createdEmails);
-  return new Ok(await listFrameSharing(auth, file));
+  const sharing = await listFrameSharing(auth, file);
+  return new Ok(sharing);
 }
 
 /**
@@ -267,10 +266,12 @@ async function getFrameWorkspaceMemberEmails(
     users,
     workspace: auth.getNonNullableWorkspace(),
   });
-  const memberIds = new Set(memberships.map((membership) => membership.userId));
+  const userModelIds = new Set(
+    memberships.map((membership) => membership.userId)
+  );
   return new Set(
     users
-      .filter((user) => memberIds.has(user.id))
+      .filter((user) => userModelIds.has(user.id))
       .map((user) => user.email.toLowerCase())
   );
 }
@@ -383,11 +384,10 @@ export async function sendFrameSharedEmail({
  * @cc [owner:flvndvd,label:error-handling] sharing-notification-failures
  * Failures fetching share links or sending invitations are logged without failing grant creation.
  */
-export function notifyFrameSharingInvitations(
+function notifyFrameSharingInvitations(
   auth: Authenticator,
   file: FileResource,
-  emails: string[],
-  { transaction }: { transaction?: Transaction } = {}
+  emails: string[]
 ): void {
   if (emails.length === 0) {
     return;
@@ -421,24 +421,16 @@ export function notifyFrameSharingInvitations(
       });
     }
   };
-  const scheduleNotifications = () => {
-    void sendNotifications().catch((error) => {
-      logger.error(
-        {
-          error: normalizeError(error),
-          fileId: file.sId,
-          workspaceId: file.workspaceId,
-        },
-        "Failed to send Frame sharing notifications"
-      );
-    });
-  };
-
-  if (transaction) {
-    transaction.afterCommit(scheduleNotifications);
-  } else {
-    scheduleNotifications();
-  }
+  void sendNotifications().catch((error) => {
+    logger.error(
+      {
+        error: normalizeError(error),
+        fileId: file.sId,
+        workspaceId: file.workspaceId,
+      },
+      "Failed to send Frame sharing notifications"
+    );
+  });
 }
 
 type ValidateOtpError =

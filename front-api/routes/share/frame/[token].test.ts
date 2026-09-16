@@ -73,13 +73,16 @@ describe("GET /api/share/frame/:token - requiresEmailVerification", () => {
       kind: "domain",
       value: "example.com",
     });
-    expect(
-      (await (await getShareFrame(token)).json()).requiresEmailVerification
-    ).toBe(true);
-    expect((await grant.revoke(auth)).isOk()).toBe(true);
-    expect(
-      (await (await getShareFrame(token)).json()).requiresEmailVerification
-    ).toBe(false);
+    const response = await getShareFrame(token);
+    const body = await response.json();
+    expect(body.requiresEmailVerification).toBe(true);
+
+    const revoked = await grant.revoke(auth);
+    expect(revoked.isOk()).toBe(true);
+
+    const revokedResponse = await getShareFrame(token);
+    const revokedBody = await revokedResponse.json();
+    expect(revokedBody.requiresEmailVerification).toBe(false);
   });
 
   it("returns false for workspace_and_emails with no grants", async () => {
@@ -102,7 +105,10 @@ describe("GET /api/share/frame/:token - requiresEmailVerification", () => {
       "workspace_and_emails"
     );
 
-    await file.addSharingGrants(auth, { emails: ["viewer@example.com"] });
+    await SharingGrantFactory.create(auth, file, {
+      kind: "email",
+      value: "viewer@example.com",
+    });
 
     const response = await getShareFrame(token);
 
@@ -126,7 +132,10 @@ describe("GET /api/share/frame/:token - requiresEmailVerification", () => {
       "emails_only"
     );
 
-    await file.addSharingGrants(auth, { emails: ["viewer@example.com"] });
+    await SharingGrantFactory.create(auth, file, {
+      kind: "email",
+      value: "viewer@example.com",
+    });
 
     const response = await getShareFrame(token);
 
@@ -212,7 +221,10 @@ describe("GET /api/share/frame/:token - Frame v2 function gating", () => {
 
   it("returns 404 rather than offering email verification", async () => {
     const { frame, token } = await createFrameV2WithFunction("emails_only");
-    await frame.addSharingGrants(auth, { emails: ["viewer@example.com"] });
+    await SharingGrantFactory.create(auth, frame, {
+      kind: "email",
+      value: "viewer@example.com",
+    });
 
     const response = await getShareFrame(token);
 

@@ -7,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isConversationFileUseCase } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SharingGrantsResponse } from "@app/types/sharing_grants";
@@ -157,6 +158,10 @@ function serializeFrameSharing({
   };
 }
 
+/**
+ * @cc [owner:flvndvd,label:security] frame-sharing-space-access
+ * Pod and folder Frames require read access to their space before listing viewers or changing grants.
+ */
 async function fetchShareableFile(
   ctx: Context,
   auth: Authenticator,
@@ -168,6 +173,21 @@ async function fetchShareableFile(
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
     });
+  }
+
+  if (
+    file.useCase === "project_context" ||
+    file.useCase === "folders_document"
+  ) {
+    const space = file.useCaseMetadata?.spaceId
+      ? await SpaceResource.fetchById(auth, file.useCaseMetadata.spaceId)
+      : null;
+    if (!space || !auth.can("read", space)) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: { type: "file_not_found", message: "File not found." },
+      });
+    }
   }
 
   if (
