@@ -90,7 +90,6 @@ function ConversationSkillSuggestion({
     skillId,
     workspaceId: owner.sId,
     sources: ["conversational"],
-    states: ["pending"],
   });
 
   const { skill, isSkillLoading } = useSkill({
