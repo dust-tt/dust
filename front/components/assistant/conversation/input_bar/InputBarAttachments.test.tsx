@@ -330,10 +330,10 @@ describe("InputBarAttachments", () => {
       container.querySelector('[aria-label="Product Roadmap"]')
     ).toBeNull();
 
-    // The image comes first in document order.
+    // Attachment order is preserved: the PDF was attached before the image.
     const image = container.querySelector("img");
     expect(image?.compareDocumentPosition(screen.getByText("a.pdf"))).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING
+      Node.DOCUMENT_POSITION_PRECEDING
     );
   });
 

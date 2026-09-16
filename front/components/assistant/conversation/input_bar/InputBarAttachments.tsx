@@ -29,7 +29,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isFolder, isWebsite } from "@dust-tt/client";
 import { CitationGrid, cn, DoubleIcon, Icon } from "@dust-tt/sparkle";
-import partition from "lodash/partition";
 import { useCallback, useMemo } from "react";
 
 interface FileAttachmentsProps {
@@ -124,13 +123,9 @@ export function InputBarAttachments({
     return fileService.fileBlobs.map((blob) => createFileAttachment(blob));
   }, [fileService, createFileAttachment]);
 
-  const [imageAttachments, otherFileAttachments] = partition(
-    fileAttachments,
-    isImageAttachment
-  );
   // Image previews need a tall row anyway, so every attachment keeps its
   // card next to them. Without images, attachments collapse into chips.
-  const hasImageAttachment = imageAttachments.length > 0;
+  const hasImageAttachment = fileAttachments.some(isImageAttachment);
 
   // Convert content nodes to NodeAttachment objects
   const nodeAttachments: NodeAttachment[] = useMemo(() => {
@@ -171,11 +166,7 @@ export function InputBarAttachments({
     );
   }, [nodes, spacesMap, disable, hasImageAttachment]);
 
-  const allAttachments: Attachment[] = [
-    ...imageAttachments,
-    ...otherFileAttachments,
-    ...nodeAttachments,
-  ];
+  const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
 
   if (allAttachments.length === 0) {
     return null;
