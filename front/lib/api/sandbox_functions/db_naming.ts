@@ -1,63 +1,20 @@
 /**
- * App namespacing for pod databases.
+ * Reading the app-namespaced database names Pod functions left behind.
  *
  * A pod's databases live in one flat directory, `{name}.db` files replicated to GCS by litestream
- * under a prefix keyed on that filename. So an app's databases are namespaced by prefixing the
- * FILE name (`myapp__chat.db`), never by nesting them in a per-app subdirectory: subdirectories
- * would make two apps' `chat.db` share one replica prefix.
+ * under a prefix keyed on that filename. An app's databases were namespaced by prefixing the FILE
+ * name (`myapp__chat.db`), never by nesting them in a per-app subdirectory: subdirectories would
+ * have made two apps' `chat.db` share one replica prefix.
  *
- * The app prefix is never written in the function's source. Source code says `db("chat")`, and the
- * prefix is derived from the function's slug when invoking. That is what makes an app folder copyable inside a pod: the copy
- * publishes under its own prefix and so gets its own databases, with no source edit.
- *
- * Databases created before app namespacing existed keep their bare filenames;
- * `resolveDatabasePath` in cli/dust-sandbox/pod/db.ts prefers the prefixed file when it exists and
- * falls back to the bare one, so those keep working untouched.
+ * Nothing writes a prefix any more. The prefix came from the app folder a Pod function's source
+ * lived in, derived from its slug at invocation time; Frame functions carry no app prefix, front
+ * passes no `DUST_POD_DATABASE_PREFIX`, and `resolveDatabasePath` in cli/dust-sandbox/pod/db.ts
+ * falls back to the bare filename when no prefixed file exists. What remains is reading the names
+ * already on disk, which is what `copy_pod_databases_to_frame.ts` does when moving them to a Frame.
  */
 
-// The separator between an app prefix and a database name. Function slugs used to share it; they
-// no longer carry a prefix, but databases created under the old scheme still do, which is what
-// `podDatabaseNameWithoutAppPrefix` strips when copying them to a Frame.
+/** The separator between an app prefix and a database name, in the names the old scheme wrote. */
 const POD_DATABASE_PREFIX_SEPARATOR = "__";
-
-/**
- * Convert an app prefix (function-slug form, hyphen-separated) into a pod database prefix,
- * separator included: `my-app` becomes `my_app__`.
- *
- * Hyphens become underscores because database names admit `[a-z0-9_]` only, while slug segments use
- * hyphens. The mapping is injective over the prefixes publish could produce, which never contained
- * an underscore — so two apps can never normalize onto the same database prefix.
- *
- * Returns `null` when the app name cannot start a database name (the contract requires a leading
- * letter, but a folder like `2048Game` normalizes to `2048game`). Such an app falls back to
- * unprefixed database names, which is how every pod behaved before namespacing — deliberately not
- * an error, since refusing would leave the app unable to create any database at all.
- */
-function podDatabasePrefixFromAppPrefix(
-  appPrefix: string | null
-): string | null {
-  if (appPrefix === null) {
-    return null;
-  }
-  const normalized = appPrefix.replace(/-/g, "_");
-  if (!/^[a-z]/.test(normalized)) {
-    return null;
-  }
-  return `${normalized}${POD_DATABASE_PREFIX_SEPARATOR}`;
-}
-
-/**
- * The database prefix for a published function, derived from its slug's app segment. Used at
- * invocation time, where the slug is all the app identity front has — the source path is not
- * involved in running a published bundle.
- */
-export function podDatabasePrefixFromSlug(slug: string): string | null {
-  const separatorIndex = slug.indexOf(POD_DATABASE_PREFIX_SEPARATOR);
-  if (separatorIndex <= 0) {
-    return null;
-  }
-  return podDatabasePrefixFromAppPrefix(slug.slice(0, separatorIndex));
-}
 
 /**
  * A database's app-relative name, i.e. the on-disk name with its app prefix removed. This is the name
