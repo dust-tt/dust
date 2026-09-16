@@ -1278,6 +1278,7 @@ function AgentMessageContent({
             ? agentMessage.costCredits + (agentMessage.subAgentCostCredits ?? 0)
             : null
         }
+        reloadMessage={reloadMessage}
       />
     ) : null;
 

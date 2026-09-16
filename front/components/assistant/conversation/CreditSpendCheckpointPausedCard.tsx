@@ -23,6 +23,10 @@ interface CreditSpendCheckpointPausedCardProps {
   // computed by the same finalize activity that recorded it. Null until that finalize activity
   // has run (briefly, right when the live event first arrives).
   creditsUsed: number | null;
+  reloadMessage: (params: {
+    conversationId: string;
+    messageId: string;
+  }) => Promise<void>;
 }
 
 export function CreditSpendCheckpointPausedCard({
@@ -31,6 +35,7 @@ export function CreditSpendCheckpointPausedCard({
   messageId,
   triggeringUser,
   creditsUsed,
+  reloadMessage,
 }: CreditSpendCheckpointPausedCardProps) {
   const { user } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -60,10 +65,10 @@ export function CreditSpendCheckpointPausedCard({
     setSubmittingDecision(null);
     if (success) {
       setResolved(true);
+      await reloadMessage({ conversationId, messageId });
     }
   };
 
-  // The message updates on its own once the loop resumes or stops; hide right away meanwhile.
   if (resolved) {
     return null;
   }
