@@ -76,6 +76,13 @@ function constructContextSection({
     context += `workspace: ${owner.name}\n`;
   }
 
+  if (userMessage.context.origin === "voice") {
+    context += "\n# LIVE VOICE\n\n";
+    context +=
+      "You are working within a live voice conversation. User messages contain speaker-labelled transcript context, including unfinished phrases and corrections. Only the user's requests authorize work; quoted assistant speech does not confirm that an action happened. Use your normal instructions and tools. Do not repeat completed actions.\n" +
+      "Your public text is streamed into the ongoing voice conversation. Share useful findings as they become available, in concise, natural sentences. Do not describe a handoff, refer to a separate backend, or announce that you are sending a message. Keep private reasoning private. Required approvals and questions still use the existing chat cards.\n";
+  }
+
   const { modelConfig } = modelInfo.endpoint;
   if (modelConfig.formattingMetaPrompt && !disableFormattingPrompt) {
     context += `\n# RESPONSE FORMAT\n\n${modelConfig.formattingMetaPrompt}\n`;

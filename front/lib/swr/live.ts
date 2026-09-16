@@ -2,7 +2,9 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { liveDelegationInput, splitLiveAppend } from "@app/lib/client/live";
+import type { LiveTaskUpdate } from "@app/lib/client/live_task";
 import { clientFetch } from "@app/lib/egress/client";
+import { useLiveTaskStream } from "@app/lib/swr/live_task";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { PostConversationsResponseBodySchema } from "@app/types/api/assistant";
 import type { FetchConversationMessageResponse } from "@app/types/api/assistant/messages";
@@ -121,6 +123,11 @@ async function waitForIce(
  * tool validation enabled. Voice events MUST NOT approve tools or answer question
  * cards. Duplicate delegation IDs MUST NOT create duplicate Dust messages.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] live-context-is-not-a-chat-message
+ * Transcript handoffs MUST use the voice origin so internal context is excluded
+ * from the visible chat. Tool approvals MUST remain visible and actionable.
+ */
 export function useLiveConversation({
   owner,
   user,
@@ -154,10 +161,11 @@ export function useLiveConversation({
   const completedMessageIds = useRef(new Set<string>());
   const submitMessage = useSubmitMessage({ owner, user, conversationId });
   const { fetcher } = useFetcher();
-  const { data, error: taskError } = useSWRWithDefaults<
-    string | null,
-    FetchConversationMessageResponse
-  >(
+  const {
+    data,
+    error: taskError,
+    mutate: refreshTask,
+  } = useSWRWithDefaults<string | null, FetchConversationMessageResponse>(
     task
       ? `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${task.messageId}`
       : null,
@@ -188,6 +196,29 @@ export function useLiveConversation({
     },
     []
   );
+
+  const onTaskUpdate = useCallback(
+    (update: LiveTaskUpdate) => {
+      if (!task) {
+        return;
+      }
+      append(update.type, task.delegationId, update.content);
+      if (update.status) {
+        setTaskStatus(update.status);
+      }
+    },
+    [append, task]
+  );
+  const onTaskStreamEnd = useCallback(() => {
+    void refreshTask();
+  }, [refreshTask]);
+  const taskRelay = useLiveTaskStream({
+    workspaceId: owner.sId,
+    conversationId,
+    messageId: task?.messageId ?? null,
+    onUpdate: onTaskUpdate,
+    onEnd: onTaskStreamEnd,
+  });
 
   const cleanup = useCallback(() => {
     epoch.current += 1;
@@ -232,6 +263,7 @@ export function useLiveConversation({
       mentions: [{ configurationId: agentId }],
       contentFragments: { uploaded: [], contentNodes: [] },
       skipToolsValidation: false,
+      origin: "voice",
     });
     if (epoch.current !== currentEpoch) {
       return;
@@ -298,7 +330,9 @@ export function useLiveConversation({
           ? (message.content ??
             "The agent finished without a text response. Check the chat for its output.")
           : `The Dust task ${message.status}. ${message.error?.message ?? "Check the chat for details."}`;
-      append("session.commentary.append", task.delegationId, content);
+      for (const update of taskRelay.complete(content)) {
+        append(update.type, task.delegationId, update.content);
+      }
       setTask(null);
       setTaskStatus("Result available in chat");
       busy.current = false;
@@ -323,7 +357,7 @@ export function useLiveConversation({
     } else {
       setTaskStatus("Your Dust agent is working…");
     }
-  }, [append, data, task]);
+  }, [append, data, task, taskRelay]);
 
   const stop = useCallback(() => {
     const live = connection.current;

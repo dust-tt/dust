@@ -3,7 +3,10 @@
 GPT-Live supplies continuous voice over WebRTC. Its client delegation events enter
 Dust through `useSubmitMessage`, with the selected agent and tool validation enabled.
 The normal durable agent loop owns tools, permissions, execution, and the answer.
-The browser polls that answer and sends it back to the voice session for speech.
+The browser streams public answer sentences and quiet tool-status updates into
+the ongoing voice session. Polling recovers missed completions. Transcript handoffs
+use an internal voice origin and stay out of the chat; approvals and results remain
+visible. Voice does not announce a backend handoff.
 
 ![Live voice after a real Dust tool result](live-voice.png)
 
@@ -57,9 +60,9 @@ The browser test requires Playwright with Chromium installed. It writes
 `/tmp/gpt-live-e2e.json`, `/tmp/gpt-live-e2e.png`, and a final screenshot. The JSON
 contains local test transcripts and tool output, so keep it outside version control.
 
-Verified on 2026-09-15: spoken calculation, real `math_operation`, spoken 391,
-mute, received audio, and confirmed session close with final usage. The successful
-run received 341,524 audio bytes and reported 22 seconds of voice usage. API tests
+Verified on 2026-09-16: hidden transcript context, real `math_operation`, live tool
+status over SSE, streamed answer, spoken 391, mute, and confirmed session close.
+The successful run received 319,824 audio bytes and reported 20 seconds of voice usage. API tests
 cover access controls and provider restrictions; hook tests cover duplicate events,
 waiting for chat input, resumed results, and cancellation during microphone access.
 Composer coverage checks selected-agent routing, creation before microphone access,
@@ -73,6 +76,8 @@ delayed audio mounting, question-card replacement, and navigation cleanup.
   voice does not reconnect to them automatically.
 - Delegation IDs are deduplicated within a browser session. The snapshot waits
   briefly for transcript fragments; unclear or late speech can require repetition.
+- Separate delegated requests remain queued. Voice stays live while each Dust run
+  executes tools and streams updates.
 - Approvals and question cards were checked through lifecycle tests, not a live
   browser approval or question-answer scenario. Voice-only approvals are out of scope.
 - Storybook previews render, but the Storybook MCP test runner fails importing its

@@ -12,6 +12,23 @@ import { createElement } from "react";
 import { SWRConfig } from "swr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const eventSources = vi.hoisted(
+  () => new Map<string, { onmessage?: (event: { data: string }) => void }>()
+);
+vi.mock("event-source-polyfill", () => ({
+  EventSourcePolyfill: class {
+    static CLOSED = 2;
+    readyState = 1;
+    onmessage?: (event: { data: string }) => void;
+    constructor(url: string) {
+      eventSources.set(url, this);
+    }
+    close() {
+      this.readyState = 2;
+    }
+  },
+}));
+
 const owner: WorkspaceType = {
   id: 1,
   sId: "workspace",
@@ -100,6 +117,7 @@ beforeEach(() => {
   blocked = false;
   postCount = 0;
   requests.length = 0;
+  eventSources.clear();
   track.enabled = true;
   vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
   vi.stubGlobal("RTCPeerConnection", Peer);
@@ -140,6 +158,81 @@ afterEach(() => {
 });
 
 describe("live delegation lifecycle", () => {
+  it("blends public speech and tool progress into an active call before the Dust run finishes", async () => {
+    const { result, unmount } = setupHook();
+    await act(async () => {
+      await result.current.start(document.createElement("audio"));
+    });
+    act(() => {
+      channel.emit({ type: "session.started" });
+      channel.emit({
+        type: "session.input_transcript.delta",
+        event_id: "speech",
+        delta: "Compare the first two results",
+        start_ms: 0,
+        end_ms: 1000,
+      });
+      channel.emit({
+        type: "session.delegation.created",
+        offset_ms: 1000,
+        delegation: { id: "delegation", target: "client" },
+      });
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    const stream = Array.from(eventSources.values())[0];
+    expect(stream).toBeDefined();
+    const partial = JSON.stringify({
+      eventId: "result-1",
+      data: {
+        type: "generation_tokens",
+        messageId: "message_1",
+        step: 0,
+        classification: "tokens",
+        text: "The first result is 391. I am checking the second.",
+      },
+    });
+    act(() => {
+      stream.onmessage?.({ data: partial });
+      stream.onmessage?.({ data: partial });
+    });
+    expect(messageStatus).toBe("created");
+    expect(
+      channel.send.mock.calls
+        .map(([raw]) => JSON.parse(raw))
+        .filter((update) => update.type === "session.commentary.append")
+    ).toEqual([
+      expect.objectContaining({
+        delegation_id: "delegation",
+        content: "The first result is 391.",
+      }),
+    ]);
+    act(() => {
+      stream.onmessage?.({
+        data: JSON.stringify({
+          eventId: "tool-started",
+          data: {
+            type: "tool_params",
+            messageId: "message_1",
+            action: {
+              sId: "tool",
+              status: "running",
+              displayLabels: { running: "Searching", done: "Found results" },
+            },
+          },
+        }),
+      });
+    });
+    expect(channel.send).toHaveBeenCalledWith(
+      expect.stringContaining("Tool in progress: Searching")
+    );
+    expect(result.current.taskStatus).toBe("Searching");
+    expect(track.enabled).toBe(true);
+    expect(result.current.status).toBe("connected");
+    unmount();
+  });
+
   it.each([
     "blocked_validation_required",
     "blocked_user_answer_required",
@@ -173,6 +266,7 @@ describe("live delegation lifecycle", () => {
     expect(requests).toHaveLength(1);
     expect(requests[0].body).toMatchObject({
       skipToolsValidation: false,
+      context: { origin: "voice" },
       mentions: [{ configurationId: "dust" }],
     });
     expect(result.current.taskStatus).toBe("Your input is needed in chat");
