@@ -1,4 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { SkillNameSchema } from "@app/lib/api/skills/schemas";
 import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { z } from "zod";
 
@@ -12,7 +13,7 @@ export const CREATE_SKILL_DESCRIPTION =
   "Create a new reusable Skill in this workspace: a named, reusable set of instructions an agent can later enable. v1 creates instructions-only skills.";
 
 export const CREATE_SKILL_INPUT_SCHEMA = z.object({
-  name: z.string().describe("Unique, human-readable skill name."),
+  name: SkillNameSchema.describe("Unique, human-readable skill name."),
   userFacingDescription: z
     .string()
     .describe("Short description shown to users browsing skills."),
@@ -114,7 +115,7 @@ export const SKILL_AUTHORING_TOOLS_METADATA = [
       "manages: preserve them verbatim, and prefer a targeted edit when they are present.",
     schema: {
       sId: z.string().describe("The custom skill id to update."),
-      name: z.string().optional().describe("New skill name."),
+      name: SkillNameSchema.optional().describe("New skill name."),
       userFacingDescription: z
         .string()
         .optional()

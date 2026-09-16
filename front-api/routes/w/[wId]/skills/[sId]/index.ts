@@ -1,4 +1,7 @@
-import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
+import {
+  AttachedKnowledgeSchema,
+  SkillNameSchema,
+} from "@app/lib/api/skills/schemas";
 import {
   findSkillEditorsWithoutSpaceAccess,
   getReferencedSkillSpaceModelIds,
@@ -48,7 +51,7 @@ const ParamsSchema = z.object({
 
 // Request body schema for PATCH.
 const PatchSkillRequestBodySchema = z.object({
-  name: z.string(),
+  name: SkillNameSchema,
   agentFacingDescription: z.string(),
   userFacingDescription: z.string(),
   instructions: z.string(),

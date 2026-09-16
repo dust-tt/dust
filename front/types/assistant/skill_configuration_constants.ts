@@ -17,3 +17,5 @@ export const SKILL_AVAILABILITIES = [
 export type SkillAvailability = (typeof SKILL_AVAILABILITIES)[number];
 
 export const DEFAULT_SKILL_AVAILABILITY = "editors" satisfies SkillAvailability;
+
+export const SKILL_NAME_MAX_LENGTH = 256;

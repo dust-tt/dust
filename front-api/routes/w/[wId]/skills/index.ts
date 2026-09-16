@@ -1,5 +1,8 @@
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
-import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
+import {
+  AttachedKnowledgeSchema,
+  SkillNameSchema,
+} from "@app/lib/api/skills/schemas";
 import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
@@ -50,7 +53,7 @@ const SkillAvailabilitiesSchema = z
 // Request body schema for POST.
 const PostSkillRequestBodySchema = z.intersection(
   z.object({
-    name: z.string(),
+    name: SkillNameSchema,
     agentFacingDescription: z.string(),
     userFacingDescription: z.string(),
     instructions: z.string(),

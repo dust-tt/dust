@@ -3769,7 +3769,7 @@
                       "type": "string",
                       "format": "binary"
                     },
-                    "description": "Skill files or ZIP archives to import."
+                    "description": "Skill files or ZIP archives to import. Skill names must be at most 256 characters."
                   },
                   "names": {
                     "type": "array",
@@ -15517,6 +15517,7 @@
           },
           "name": {
             "type": "string",
+            "maxLength": 256,
             "description": "Name of the skill",
             "example": "Customer Support"
           },

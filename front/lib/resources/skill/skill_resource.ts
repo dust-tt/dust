@@ -5,6 +5,7 @@ import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/ag
 import { getEffectiveSpaceIdsForAgentRun } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
+import { SkillNameSchema } from "@app/lib/api/skills/schemas";
 import {
   filterUsersWithSharedMembership,
   hasSharedMembership,
@@ -91,6 +92,7 @@ import type {
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
+import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
@@ -484,6 +486,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       fileAttachments?: FileResource[];
     }
   ): Promise<SkillResource> {
+    SkillNameSchema.parse(blob.name);
     const owner = auth.getNonNullableWorkspace();
 
     assert(
@@ -3100,8 +3103,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           existingArchivedSkill.updatedAt.getTime(),
           "long"
         );
+        const suffix = ` (archived on ${timestamp}, ${SkillResource.modelIdToSId(existingArchivedSkill)})`;
+        const name = existingArchivedSkill.name.slice(
+          0,
+          SKILL_NAME_MAX_LENGTH - suffix.length
+        );
         await existingArchivedSkill.update(
-          { name: `${existingArchivedSkill.name} (archived on ${timestamp})` },
+          { name: `${name}${suffix}` },
           { transaction }
         );
       }
@@ -3222,6 +3230,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   ): Promise<void> {
     assert(this.canWrite(auth), "User is not authorized to update this skill");
+    SkillNameSchema.parse(name);
 
     const availabilityChanged =
       availability !== undefined && availability !== this.availability;

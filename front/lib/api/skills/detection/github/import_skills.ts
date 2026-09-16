@@ -15,6 +15,7 @@ import type {
 import { suggestMCPServersForDetectedSkill } from "@app/lib/api/skills/detection/suggest_mcp_servers";
 import { validateSkillsForImport } from "@app/lib/api/skills/detection/validate_skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
+import { SkillNameSchema } from "@app/lib/api/skills/schemas";
 import type { Authenticator } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -27,6 +28,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Octokit } from "@octokit/core";
 import path from "path";
+import { fromError } from "zod-validation-error";
 
 const FILE_IMPORT_CONCURRENCY = 4;
 
@@ -84,6 +86,16 @@ export async function importSkillsFromGitHub(
     (skill) =>
       requestedNames.has(skill.name) && skill.name && skill.instructions.trim()
   );
+
+  const nameValidation = SkillNameSchema.array().safeParse(
+    selectedSkills.map((skill) => skill.name)
+  );
+  if (!nameValidation.success) {
+    return new Err({
+      type: "validation_error",
+      message: fromError(nameValidation.error).toString(),
+    });
+  }
 
   const uniqueNames = [...new Set(selectedSkills.map((s) => s.name))];
   const existingSkills = await SkillResource.fetchByNames(auth, uniqueNames);
