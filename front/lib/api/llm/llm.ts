@@ -44,6 +44,7 @@ import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
 import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
 import { usesWorkspaceProvidedCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
@@ -205,14 +206,7 @@ export abstract class LLM<
     const baseTags = this.getTelemetryTags({ surface: "stream" });
     const latencyTags = this.getLatencyTelemetryTags({ surface: "stream" });
 
-    void recordLLMAttempt({
-      endpoint: {
-        modelId: this.modelId,
-        providerId: this.modelConfig.providerId,
-        host: this.host,
-      },
-      outcome: outcomeTelemetry,
-    });
+    void this.recordModelHealthAttempt(outcomeTelemetry);
 
     switch (outcomeTelemetry.outcome) {
       case "error":
@@ -240,6 +234,33 @@ export abstract class LLM<
     });
     emitLLMTimeToFirstEventMs(timeToFirstEventMs, latencyTags);
     emitLLMTimeToFirstTokenMs(timeToFirstTokenMs, latencyTags);
+  }
+
+  // The breaker is fed per workspace during rollout: only flagged workspaces'
+  // attempts count toward detection windows. A lease, once created, routes
+  // every workspace around the endpoint -- a detected outage is provider-side
+  // and real for everyone.
+  private async recordModelHealthAttempt(
+    outcome: LLMAttemptOutcomeTelemetry
+  ): Promise<void> {
+    try {
+      const featureFlags = await getFeatureFlags(this.authenticator);
+      if (!featureFlags.includes("automatic_model_health_routing")) {
+        return;
+      }
+    } catch {
+      // A flags read failure skips one attempt; `recordLLMAttempt` catches its
+      // own failures.
+      return;
+    }
+    await recordLLMAttempt({
+      endpoint: {
+        modelId: this.modelId,
+        providerId: this.modelConfig.providerId,
+        host: this.host,
+      },
+      outcome,
+    });
   }
 
   /**

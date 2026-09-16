@@ -5,14 +5,16 @@ import {
 import { evaluateEndpoint, isBreaching } from "@app/lib/api/llm/health/detect";
 import {
   ATTEMPTS_FIELD,
+  minuteBucket,
   modelHealthKey,
   PROVIDER_ERRORS_FIELD,
 } from "@app/lib/api/llm/health/keys";
 import { logModelHealthTransition } from "@app/lib/api/llm/health/transitions";
+import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import { launchModelHealthRecovery } from "@app/temporal/model_health/client";
 import { redisMock } from "@app/tests/utils/mocks/redis";
 import { Err, Ok } from "@app/types/shared/result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/temporal/model_health/client", () => ({
   launchModelHealthRecovery: vi.fn(),
@@ -33,7 +35,7 @@ const ENDPOINT = {
 const ATTEMPTS = MIN_ATTEMPTS_IN_WINDOW;
 const BREACHING_ERRORS = Math.ceil(ATTEMPTS * ERROR_RATIO_THRESHOLD);
 
-const NOW = new Date("2026-09-03T14:32:10Z");
+const NOW = new Date();
 const DEGRADED_SINCE_MS = NOW.getTime();
 
 async function seedWindow({
@@ -43,7 +45,7 @@ async function seedWindow({
   attempts: number;
   providerErrors: number;
 }): Promise<void> {
-  const key = modelHealthKey(ENDPOINT, "202609031432");
+  const key = modelHealthKey(ENDPOINT, minuteBucket(NOW));
   await redisMock.cacheClient.hIncrBy(key, ATTEMPTS_FIELD, attempts);
   await redisMock.cacheClient.hIncrBy(
     key,
@@ -77,6 +79,21 @@ describe("isBreaching", () => {
 });
 
 describe("evaluateEndpoint", () => {
+  afterEach(async () => {
+    await ModelDegradationResource.updateDegradedEndpoints([
+      { ...ENDPOINT, degraded: false },
+    ]);
+  });
+
+  async function isEndpointDegraded(): Promise<boolean> {
+    return (await ModelDegradationResource.listDegradedEndpoints()).some(
+      (endpoint) =>
+        endpoint.modelId === ENDPOINT.modelId &&
+        endpoint.providerId === ENDPOINT.providerId &&
+        endpoint.host === ENDPOINT.host
+    );
+  }
+
   beforeEach(() => {
     redisMock.reset();
     vi.clearAllMocks();
@@ -94,6 +111,7 @@ describe("evaluateEndpoint", () => {
     });
 
     expect(launchModelHealthRecovery).toHaveBeenCalledWith(ENDPOINT);
+    expect(await isEndpointDegraded()).toBe(true);
     expect(logModelHealthTransition).toHaveBeenCalledWith(
       expect.objectContaining({ endpoint: ENDPOINT, transition: "degraded" })
     );
@@ -130,6 +148,7 @@ describe("evaluateEndpoint", () => {
     });
 
     expect(launchModelHealthRecovery).toHaveBeenCalledTimes(1);
+    expect(await isEndpointDegraded()).toBe(true);
     expect(logModelHealthTransition).not.toHaveBeenCalled();
   });
 
