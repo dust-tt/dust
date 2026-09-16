@@ -194,9 +194,9 @@ function ShareFramePopoverContent({
           <div className="flex flex-col gap-4">
             {!canInviteExternal && (
               <ContentMessage
-                icon={InfoCircle}
                 variant="info"
                 title="Only workspace members can be added"
+                size="sm"
               >
                 {externalSharingDisabledByPolicy
                   ? "Your admin has disabled external sharing. You can only invite people already in your workspace."
@@ -205,9 +205,8 @@ function ShareFramePopoverContent({
             )}
             {lostPublishPermission && (
               <ContentMessage
-                icon={InfoCircle}
-                variant="info"
                 title="You no longer have permission to share frames publicly"
+                size="sm"
               >
                 This frame is currently shared publicly. You can restrict
                 access, but you won’t be able to make it public again.
@@ -215,9 +214,9 @@ function ShareFramePopoverContent({
             )}
             {shareBlockError && shareBlockError.length > 0 && (
               <ContentMessage
-                icon={InfoCircle}
                 variant="warning"
                 title="Some referenced files cannot be shared"
+                size="sm"
               >
                 Viewers will only be able to access files you can verify. Fix or
                 remove these references before sharing:{" "}
