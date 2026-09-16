@@ -87,8 +87,8 @@ export const POD_DATABASE_MAX_SIZE_BYTES_ENV =
 /**
  * Env var carrying the per-invocation database namespace prefix (separator
  * included, e.g. `"myapp__"`). Optional: empty or absent means unprefixed
- * names, including Frame functions and Pod functions published outside an app
- * folder.
+ * names, including Frame functions and pod-scoped sandboxes running outside an
+ * app folder.
  *
  * Front owns the value and derives it from the invoked function's slug, so no
  * layer below front knows how a prefix is built. Read through `podEnv`, so a
@@ -512,9 +512,9 @@ function assertDatabaseOwnerCanUse(name: string): boolean {
 }
 
 /**
- * Get the sandbox owner's Drizzle handle for database `name`. Pod functions
- * resolve app-relative names through {@link resolveDatabasePath}; Frame
- * functions use unprefixed names declared by the selected publication.
+ * Get the sandbox owner's Drizzle handle for database `name`. A pod-scoped
+ * sandbox resolves app-relative names through {@link resolveDatabasePath};
+ * Frame functions use unprefixed names declared by the selected publication.
  *
  * @throws SandboxDatabaseInvalidNameError when `name` does not match the contract.
  * @throws SandboxDatabasesUnavailableError when both SPACE_ID and FRAME_ID are
@@ -527,8 +527,8 @@ function assertDatabaseOwnerCanUse(name: string): boolean {
  * @throws SandboxDatabaseError when DUST_SANDBOX_DATABASES_DIR or
  *   DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES is absent or invalid. db() only works
  *   in functions launched by `dsbx function run`.
- * @throws PodDatabaseNotDeclaredError for a Pod function when no database file exists. Databases
- *   are created by their first reconcile.
+ * @throws PodDatabaseNotDeclaredError for a pod-scoped sandbox when no database file exists.
+ *   Databases are created by their first reconcile.
  * @throws SandboxDatabaseFullError (from queries) when the database hits its quota.
  */
 export function db(name: string): SandboxDatabase {

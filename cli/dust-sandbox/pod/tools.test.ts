@@ -255,7 +255,7 @@ describe("error envelope classification", () => {
       stdout: envelopeJson({
         code: "fast_function_called_tools",
         message:
-          "This Pod function is published as fast and cannot call tools.",
+          "This Frame function is published as fast and cannot call tools.",
         retryable: false,
         status: 403,
       }),
