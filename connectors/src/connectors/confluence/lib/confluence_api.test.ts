@@ -41,4 +41,11 @@ describe("getConfluenceAccessToken", () => {
       expect(result.error).toBe(error);
     }
   });
+
+  it("rethrows unexpected repository errors", async () => {
+    const error = new Error("Missing OAUTH_API configuration");
+    mocks.getOAuthConnectionAccessTokenWithThrow.mockRejectedValue(error);
+
+    await expect(getConfluenceAccessToken("connection-id")).rejects.toBe(error);
+  });
 });

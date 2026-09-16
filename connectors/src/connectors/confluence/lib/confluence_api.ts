@@ -6,13 +6,14 @@ import {
   CONFLUENCE_SUPPORTED_SPACE_TYPES,
   ConfluenceClient,
 } from "@connectors/connectors/confluence/lib/confluence_client";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { ConfluenceConfigurationModel } from "@connectors/lib/models/confluence";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import type { Result } from "@dust-tt/client";
-import { Err, normalizeError, Ok } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 const PAGE_FETCH_LIMIT = 100;
 
@@ -39,7 +40,11 @@ export async function getConfluenceAccessToken(
 
     return new Ok(token.access_token);
   } catch (error) {
-    return new Err(normalizeError(error));
+    if (error instanceof ExternalOAuthTokenError) {
+      return new Err(error);
+    }
+
+    throw error;
   }
 }
 
