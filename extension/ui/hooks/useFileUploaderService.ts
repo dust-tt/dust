@@ -31,6 +31,7 @@ export function useFileUploaderService(
   }, [conversationId]);
 
   const {
+    acceptedFileExtensions,
     handleFilesUpload,
     resetUpload,
     fileBlobs,
@@ -199,6 +200,7 @@ export function useFileUploaderService(
 
   const value = useMemo(
     () => ({
+      acceptedFileExtensions,
       isCapturing,
       fileBlobs,
       handleFileChange,
@@ -212,6 +214,7 @@ export function useFileUploaderService(
       uploadContentTab,
     }),
     [
+      acceptedFileExtensions,
       isCapturing,
       fileBlobs,
       handleFileChange,
