@@ -117,6 +117,7 @@ export class AgentResource
 {
   readonly sId: string;
   readonly workspaceId: ModelId;
+  readonly createdAt: Date;
   readonly scope: AgentConfigurationScope;
   readonly name: string;
   readonly description: string;
@@ -137,6 +138,7 @@ export class AgentResource
 
     this.sId = blob.sId;
     this.workspaceId = blob.workspaceId;
+    this.createdAt = blob.createdAt;
     this.scope = extra.scope;
     this.name = extra.name;
     this.description = extra.description;
@@ -419,15 +421,14 @@ export class AgentResource
     return resource ?? null;
   }
 
-  // Caller-independent query: the current `full` resource of each identified agent — the row whose
-  // `version` equals the agent's `currentVersion` pointer, joined via the unique `(agentId, version)`
-  // index — one per agent, scoped to the workspace. No read-access decision is folded in; that is the
-  // caller's job (see `fetchCurrentVersions`/`fetchById`). Takes a bare `workspaceId` so both the
-  // access-controlled resolvers and the cache seam can share it.
-  private static async loadResource(
+  // Caller-independent query: each identified agent paired with its current configuration — the row
+  // whose `version` equals the agent's `currentVersion` pointer — one pair per agent, scoped to the
+  // workspace. Takes a bare `workspaceId` so both the access-controlled resolvers and the cache seam
+  // can share it.
+  private static async loadCurrentVersions(
     workspaceId: ModelId,
     identityWhere: { id: ModelId[] } | { sId: string[] }
-  ): Promise<FullAgentResource[]> {
+  ): Promise<{ agent: AgentModel; configuration: AgentConfigurationModel }[]> {
     // Driven from `agents` (its unique `sId` / PK index) with the current configuration inner-joined
     // on `agent_configuration.version = agent.currentVersion`, so the single current row is resolved
     // through the unique `(agentId, version)` index instead of scanning every version.
@@ -450,10 +451,48 @@ export class AgentResource
       const configurations = agent.get(
         "agent_configurations"
       ) as AgentConfigurationModel[];
-      return configurations.map((configuration) =>
-        this.buildResource(agent, configuration)
-      );
+      return configurations.map((configuration) => ({ agent, configuration }));
     });
+  }
+
+  // Caller-independent query: the current `full` resource of each identified agent. No read-access
+  // decision is folded in; that is the caller's job (see `fetchCurrentVersions`/`fetchById`).
+  private static async loadResource(
+    workspaceId: ModelId,
+    identityWhere: { id: ModelId[] } | { sId: string[] }
+  ): Promise<FullAgentResource[]> {
+    const currentVersions = await this.loadCurrentVersions(
+      workspaceId,
+      identityWhere
+    );
+
+    return currentVersions.map(({ agent, configuration }) =>
+      this.buildResource(agent, configuration)
+    );
+  }
+
+  /**
+   * @cc [owner:sfriquet,label:backend] fetch-current-configuration-models
+   * Returns the raw `agent_configurations` rows at the requested agents' current version, for
+   * callers that render configurations rather than resources. Resolves the same rows as
+   * `fetchByIds` (see `fetch-current-version`) minus the read-access split: no `full`/`light`
+   * downgrade and no `canFetch` gate, so callers MUST apply their own permission filtering. Ids of
+   * other workspaces' agents, unknown ids and global agent ids yield no row.
+   */
+  static async fetchCurrentConfigurationModels(
+    auth: Authenticator,
+    agentIds: string[]
+  ): Promise<AgentConfigurationModel[]> {
+    if (agentIds.length === 0) {
+      return [];
+    }
+
+    const currentVersions = await this.loadCurrentVersions(
+      auth.getNonNullableWorkspace().id,
+      { sId: agentIds }
+    );
+
+    return currentVersions.map(({ configuration }) => configuration);
   }
 
   // The access-controlled resolver: each current-version resource, downgraded to `light` when the
@@ -565,25 +604,6 @@ export class AgentResource
     }
 
     return result;
-  }
-
-  static async listCreatedAtByAgentId(
-    auth: Authenticator,
-    agentIds: string[]
-  ): Promise<Map<string, Date>> {
-    if (agentIds.length === 0) {
-      return new Map();
-    }
-
-    const agents = await AgentModel.findAll({
-      attributes: ["sId", "createdAt"],
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        sId: { [Op.in]: agentIds },
-      },
-    });
-
-    return new Map(agents.map(({ sId, createdAt }) => [sId, createdAt]));
   }
 
   static async listEditorConfigModelIds(

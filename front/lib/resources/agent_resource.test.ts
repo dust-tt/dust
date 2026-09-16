@@ -15,6 +15,7 @@ import assert from "assert";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const AGENT_MODEL_ID = 42;
+const AGENT_CREATED_AT = new Date("2025-01-01T00:00:00.000Z");
 
 // A full agent configuration with sensible defaults; override only what a test cares about.
 function makeAgentConfiguration(
@@ -70,7 +71,7 @@ describe("AgentResource", () => {
     expect(resource.workspaceId).toBe(testContext.workspace.id);
   });
 
-  it("fetches an agent's latest active version by sId and by model id", async () => {
+  it("fetches an agent's current version by sId and by model id", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator
     );
@@ -146,7 +147,37 @@ describe("AgentResource", () => {
     expect(await AgentResource.fetchByIds(otherAuth, [agent.sId])).toEqual([]);
   });
 
-  it("resolves an archived agent to its latest version", async () => {
+  it("resolves the current version and keeps the agent's own creation date", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Edited agent" }
+    );
+    await AgentConfigurationFactory.backdate(
+      authenticator,
+      agent.sId,
+      AGENT_CREATED_AT
+    );
+    const latestVersion = await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      agent.sId,
+      { name: "Edited agent" }
+    );
+
+    const resource = await AgentResource.fetchById(authenticator, agent.sId);
+
+    assert(resource);
+    assert(resource.isFull());
+    expect(resource.content.agentConfigurationModelId).toBe(latestVersion.id);
+    expect(resource.content.version).toBe(1);
+    // `createdAt` is the agent's; `content.createdAt` is the current version's.
+    expect(resource.createdAt.getTime()).toBe(AGENT_CREATED_AT.getTime());
+    expect(resource.content.createdAt.getTime()).toBeGreaterThan(
+      AGENT_CREATED_AT.getTime()
+    );
+  });
+
+  it("resolves an archived agent to its archived current version", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator
     );
@@ -204,6 +235,58 @@ describe("AgentResource", () => {
     expect(resource?.id).toBe(agent.agentModelId);
     expect(resource?.status).toBe("active");
     expect(resource?.content.version).toBe(currentConfig.version);
+  });
+
+  it("returns the current configuration of each requested workspace agent", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const editedAgent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Edited agent" }
+    );
+    await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      editedAgent.sId,
+      { name: "Edited agent" }
+    );
+    const latestVersion = await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      editedAgent.sId,
+      { name: "Edited agent" }
+    );
+    const untouchedAgent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Untouched agent" }
+    );
+    const other = await createResourceTest({ role: "admin" });
+    const foreignAgent = await AgentConfigurationFactory.createTestAgent(
+      other.authenticator
+    );
+
+    const configurations = await AgentResource.fetchCurrentConfigurationModels(
+      authenticator,
+      [
+        editedAgent.sId,
+        untouchedAgent.sId,
+        editedAgent.sId,
+        foreignAgent.sId,
+        GLOBAL_AGENTS_SID.DUST,
+        "unknown",
+      ]
+    );
+
+    expect(
+      configurations
+        .map(({ id, sId, version }) => ({ id, sId, version }))
+        .sort((a, b) => a.id - b.id)
+    ).toEqual(
+      [
+        { id: latestVersion.id, sId: editedAgent.sId, version: 2 },
+        { id: untouchedAgent.id, sId: untouchedAgent.sId, version: 0 },
+      ].sort((a, b) => a.id - b.id)
+    );
+    expect(
+      await AgentResource.fetchCurrentConfigurationModels(authenticator, [])
+    ).toEqual([]);
   });
 
   it("returns one resource per agent when fetching in batches", async () => {
@@ -426,7 +509,7 @@ describe("AgentResource", () => {
 
     // A visible agent is normally readable by every member, but this one is backed by a space the
     // member cannot read. `read` is the member's only verb on it, so denying `read` leaves no verb
-    // at all and the `canFetch` gate drops the agent (see `fetch-latest-active-version`).
+    // at all and the `canFetch` gate drops the agent (see `fetch-current-version`).
     expect(await AgentResource.fetchById(otherAuth, agent.sId)).toBeNull();
 
     // An admin keeps the `admin` verb whatever the space restriction, so the agent is still

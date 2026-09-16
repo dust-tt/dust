@@ -110,9 +110,9 @@ export async function fetchArchivableAgents(
   });
 
   const agentIds = idleAgents.map(({ agentId }) => agentId);
-  const createdAtByAgentId = await AgentResource.listCreatedAtByAgentId(
-    auth,
-    agentIds
+  const agents = await AgentResource.fetchByIds(auth, agentIds);
+  const createdAtByAgentId = new Map(
+    agents.map((agent) => [agent.sId, agent.createdAt])
   );
   const statusAndTriggersByAgentId = await fetchStatusAndTriggers(
     auth,
@@ -126,8 +126,8 @@ export async function fetchArchivableAgents(
   for (const { agentId, lastMentionedAt } of idleAgents) {
     const createdAt = createdAtByAgentId.get(agentId);
     const statusAndTriggers = statusAndTriggersByAgentId.get(agentId);
-    // No first version either means the agent is unreadable, or that we could not establish the
-    // date the age rule needs. Both are reasons not to archive it.
+    // No identity means the agent was deleted since the mentions read; no status means the caller
+    // cannot see it. Both are reasons not to archive it.
     if (!createdAt || !statusAndTriggers) {
       skipped.push({ agentId, reason: "agent_not_found" });
       continue;

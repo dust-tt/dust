@@ -80,12 +80,7 @@ import type { UserType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import assert from "assert";
 import type { Transaction } from "sequelize";
-import {
-  Op,
-  QueryTypes,
-  UniqueConstraintError,
-  ValidationError,
-} from "sequelize";
+import { Op, UniqueConstraintError, ValidationError } from "sequelize";
 
 // Placeholder constants for pending agents
 const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
@@ -259,49 +254,6 @@ export async function listsAgentConfigurationVersions<
     : LightAgentConfigurationType[];
 }
 
-async function fetchLatestWorkspaceAgentModels(
-  auth: Authenticator,
-  workspaceAgentIds: string[]
-): Promise<AgentConfigurationModel[]> {
-  if (workspaceAgentIds.length === 0) {
-    return [];
-  }
-
-  // Agent sIds are globally unique (every agent starts at version 0, and
-  // (sId, version) is unique). Resolve the latest model id through that index
-  // first, then enforce workspace isolation while loading the model row. This
-  // avoids sorting every historical version of heavily edited agents.
-  const query = `
-    SELECT agent_configuration.*
-    FROM (
-      SELECT DISTINCT unnest($agentIds::text[]) AS "sId"
-    ) requested_agent
-    JOIN LATERAL (
-      SELECT id
-      FROM agent_configurations
-      WHERE "sId" = requested_agent."sId"
-      ORDER BY version DESC
-      LIMIT 1
-    ) latest_agent ON true
-    JOIN agent_configurations AS agent_configuration
-      ON agent_configuration.id = latest_agent.id
-      AND agent_configuration."workspaceId" = $workspaceId
-    ORDER BY agent_configuration.version DESC
-  `;
-
-  return (
-    (await AgentConfigurationModel.sequelize?.query(query, {
-      type: QueryTypes.SELECT,
-      bind: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        agentIds: workspaceAgentIds,
-      },
-      model: AgentConfigurationModel,
-      mapToModel: true,
-    })) ?? []
-  );
-}
-
 /**
  * Get the latest versions of multiple agents.
  */
@@ -343,7 +295,7 @@ export async function getAgentConfigurations<V extends AgentFetchVariant>(
 
     let workspaceAgents: AgentConfigurationType[] = [];
     if (workspaceAgentIds.length > 0) {
-      const agentModels = await fetchLatestWorkspaceAgentModels(
+      const agentModels = await AgentResource.fetchCurrentConfigurationModels(
         auth,
         workspaceAgentIds
       );
@@ -489,7 +441,7 @@ export async function getAgentLabelsByIds(
   }
 
   const workspaceAgentIds = agentIds.filter((id) => !isGlobalAgentId(id));
-  const agentModels = await fetchLatestWorkspaceAgentModels(
+  const agentModels = await AgentResource.fetchCurrentConfigurationModels(
     auth,
     workspaceAgentIds
   );
