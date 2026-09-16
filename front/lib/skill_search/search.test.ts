@@ -591,7 +591,8 @@ describe("skill_search/search", () => {
       fields: [
         "name.autocomplete",
         "name.autocomplete._2gram",
-        "name.autocomplete._3gram",
+        "name.autocomplete_preserved",
+        "name.autocomplete_preserved._2gram",
       ],
     });
   });
