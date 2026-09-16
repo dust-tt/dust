@@ -86,6 +86,16 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       return new Map();
     }
 
+    if (!isLegacyAclsEnabled()) {
+      const resources = await AgentResource.fetchByIds(auth, agentIds);
+      return new Map(
+        resources.map((resource) => [
+          resource.sId,
+          { kind: "grants", resource },
+        ])
+      );
+    }
+
     // Fetch agent configurations.
     const agentConfigs = await getAgentConfigurations(auth, {
       agentIds: agentIds,
@@ -94,19 +104,6 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
     if (agentConfigs.length === 0) {
       return new Map();
-    }
-
-    if (!isLegacyAclsEnabled()) {
-      const resources = AgentResource.fromAgentConfigurations(
-        auth,
-        agentConfigs
-      );
-      return new Map(
-        resources.map((resource) => [
-          resource.sId,
-          { kind: "grants", resource },
-        ])
-      );
     }
 
     // Fetch editor groups for these agents.
