@@ -34,7 +34,10 @@ const messageVariant = cva("", {
 const fieldVariants = cva(
   cn(
     "flex w-full items-center overflow-hidden border transition-colors",
-    "bg-background"
+    // Light: a white field on any surface. Dark: follow the surface (the
+    // page background token is darker than the panel and modal surfaces, so
+    // a fixed fill reads as a dark well there).
+    "bg-background dark:bg-transparent"
   ),
   {
     variants: {
@@ -57,7 +60,10 @@ const fieldVariants = cva(
           "dark:[&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-foreground/5"
         ),
         error: cn("border-warning-500", "focus-within:border-warning-600"),
-        disabled: cn("cursor-not-allowed border-transparent", "bg-muted"),
+        disabled: cn(
+          "cursor-not-allowed border-transparent",
+          "bg-muted dark:bg-foreground/5"
+        ),
       },
     },
     defaultVariants: {
@@ -107,7 +113,10 @@ const labelVariants = cva("pb-0.5 font-medium text-foreground", {
 // Sized to its content with a floor, so a word ("days") is not clipped by the
 // field's overflow-hidden while a single glyph ("$") keeps its square box.
 const slotBoxVariants = cva(
-  cn("flex h-full shrink-0 items-center justify-center", "bg-muted"),
+  cn(
+    "flex h-full shrink-0 items-center justify-center",
+    "bg-muted dark:bg-foreground/5"
+  ),
   {
     variants: {
       size: {
