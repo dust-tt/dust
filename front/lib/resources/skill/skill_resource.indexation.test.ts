@@ -109,10 +109,19 @@ describe("resource-owned skill search indexation", () => {
     const parentIds = [parentSkill.sId, secondParent.sId];
     const currentChild = await SkillResource.fetchById(auth, childSkill.sId);
     assert(currentChild);
-    for (const mutate of [
-      () => currentChild.archive(auth),
-      () => currentChild.restore(auth),
-      () => currentChild.delete(auth),
+    for (const { mutate, indexedSkillIds } of [
+      {
+        mutate: () => currentChild.archive(auth),
+        indexedSkillIds: [childSkill.sId, ...parentIds],
+      },
+      {
+        mutate: () => currentChild.restore(auth),
+        indexedSkillIds: [childSkill.sId, ...parentIds],
+      },
+      {
+        mutate: () => currentChild.delete(auth),
+        indexedSkillIds: parentIds,
+      },
     ]) {
       vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
       await mutate();
@@ -122,7 +131,7 @@ describe("resource-owned skill search indexation", () => {
             .mocked(launchIndexSkillSearchWorkflow)
             .mock.calls.map(([target]) => target.skillId)
         )
-      ).toEqual(new Set([childSkill.sId, ...parentIds]));
+      ).toEqual(new Set(indexedSkillIds));
     }
   });
 
@@ -158,9 +167,7 @@ describe("resource-owned skill search indexation", () => {
     });
     vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
     expect((await skill.delete(auth)).isOk()).toBe(true);
-    expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledExactlyOnceWith(
-      target
-    );
+    expect(launchIndexSkillSearchWorkflow).not.toHaveBeenCalled();
     expect(await SkillResource.fetchById(auth, skill.sId)).toBeNull();
   });
 

@@ -4127,10 +4127,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
     );
 
-    await SkillResource.launchSearchIndexation(auth, [
-      this.sId,
-      ...referencingSkillIds,
-    ]);
+    await SkillResource.launchSearchIndexation(auth, referencingSkillIds);
 
     // Delete files from cloud storage outside the transaction (I/O with GCS).
     for (const file of filesToDelete) {
