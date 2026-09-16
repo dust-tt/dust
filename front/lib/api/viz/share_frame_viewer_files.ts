@@ -20,6 +20,7 @@ export type ShareFrameViewerFileSourceKind =
   | "workspace";
 
 export type ShareFrameViewerFile = {
+  ref: string;
   name: string;
   contentType: string;
   sourceKind: ShareFrameViewerFileSourceKind;
@@ -118,6 +119,7 @@ function toShareFrameViewerFile(
       : undefined;
 
   return {
+    ref: ref.ref,
     name,
     contentType:
       file?.contentType ??

@@ -417,11 +417,8 @@ function ViewerFilesSection({ viewerFiles }: ViewerFilesSectionProps) {
         conversation or pod.
       </p>
       <ul className="flex flex-col gap-0">
-        {viewerFiles.map((viewerFile, index) => (
-          <ViewerFileLine
-            key={`${viewerFile.sourceKind}:${viewerFile.sourceName}:${viewerFile.name}:${index}`}
-            viewerFile={viewerFile}
-          />
+        {viewerFiles.map((viewerFile) => (
+          <ViewerFileLine key={viewerFile.ref} viewerFile={viewerFile} />
         ))}
       </ul>
     </fieldset>
