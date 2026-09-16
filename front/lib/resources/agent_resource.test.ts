@@ -1,5 +1,6 @@
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -167,6 +168,41 @@ describe("AgentResource", () => {
       expect(resource?.sId).toBe(agent.sId);
       expect(resource?.content.status).toBe("archived");
     }
+  });
+
+  it("prefers the active version over a higher-version non-active one", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+    assert(agent.agentModelId !== null);
+
+    const activeConfig = await AgentConfigurationModel.findOne({
+      where: {
+        sId: agent.sId,
+        status: "active",
+        workspaceId: testContext.workspace.id,
+      },
+    });
+    assert(activeConfig !== null);
+
+    // A later draft (e.g. the builder "try" state) can carry a higher version than the active one;
+    // fetchers must still resolve the active version.
+    const { id: _id, ...activeAttributes } = activeConfig.get();
+    await AgentConfigurationModel.create({
+      ...activeAttributes,
+      version: activeConfig.version + 1,
+      status: "draft",
+    });
+
+    const resource = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+
+    expect(resource).not.toBeNull();
+    expect(resource?.id).toBe(agent.agentModelId);
+    expect(resource?.content.status).toBe("active");
+    expect(resource?.content.version).toBe(activeConfig.version);
   });
 
   it("returns one resource per agent when fetching in batches", async () => {

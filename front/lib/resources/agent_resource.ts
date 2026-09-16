@@ -288,11 +288,12 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:backend] fetch-latest-active-version
-   * Resolves each requested agent to its single latest configuration version, irrespective of
-   * status (active, archived, draft, or pending), scoped to the authed workspace. Each is returned
-   * as a `full` resource when the caller can read it, otherwise a `light` resource; a resource the
-   * caller cannot fetch at all (holds no verb on, per `canFetch`) is dropped. An agent with no
-   * version yields no resource, and at most one resource is returned per `agentModelId`.
+   * Resolves each requested agent to a single configuration version, scoped to the authed
+   * workspace: its active version when it has one, otherwise its latest version irrespective of
+   * status (archived, draft, or pending). Each is returned as a `full` resource when the caller can
+   * read it, otherwise a `light` resource; a resource the caller cannot fetch at all (holds no verb
+   * on, per `canFetch`) is dropped. An agent with no version yields no resource, and at most one
+   * resource is returned per `agentModelId`.
    */
   static async fetchByModelIds(
     auth: Authenticator,
@@ -352,24 +353,31 @@ export class AgentResource
     return this.buildLatestVersions(auth, configurations);
   }
 
-  // Keeps a single resource per agent — the highest version, thanks to the version-DESC order. Each
-  // is full or light per the caller's read access (see `fromAgentConfigurationModel`). Resources the
-  // caller cannot fetch (holds no verb on) are dropped by the common `canFetch` gate.
+  // Keeps a single configuration per agent. Rows are ordered version-DESC, so the first seen for an
+  // agent is its highest version; that stands unless a later row reveals the agent's active version
+  // (at most one), which is always preferred. Each chosen row becomes a full or light resource per
+  // the caller's read access (see `fromAgentConfigurationModel`); resources the caller cannot fetch
+  // (holds no verb on) are dropped by the common `canFetch` gate.
   private static buildLatestVersions(
     auth: Authenticator,
     configurations: AgentConfigurationModel[]
   ): AgentResource[] {
-    const seenAgentModelIds = new Set<ModelId>();
-    const resources: AgentResource[] = [];
+    const chosenByAgentModelId = new Map<ModelId, AgentConfigurationModel>();
     for (const configuration of configurations) {
-      if (seenAgentModelIds.has(configuration.agentId)) {
-        continue;
+      const chosen = chosenByAgentModelId.get(configuration.agentId);
+      if (
+        !chosen ||
+        (chosen.status !== "active" && configuration.status === "active")
+      ) {
+        chosenByAgentModelId.set(configuration.agentId, configuration);
       }
-      seenAgentModelIds.add(configuration.agentId);
-
-      resources.push(this.fromAgentConfigurationModel(auth, configuration));
     }
-    return resources.filter((resource) => resource.canFetch(auth));
+
+    return [...chosenByAgentModelId.values()]
+      .map((configuration) =>
+        this.fromAgentConfigurationModel(auth, configuration)
+      )
+      .filter((resource) => resource.canFetch(auth));
   }
 
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
