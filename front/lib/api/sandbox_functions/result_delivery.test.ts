@@ -165,7 +165,7 @@ describe("resolveSpilledResult", () => {
       error: {
         code: "invocation_failed",
         message:
-          "Pod function result could not be read back from /tmp/dust-fn-results/abc.json: gone",
+          "Frame function result could not be read back from /tmp/dust-fn-results/abc.json: gone",
       },
     });
   });

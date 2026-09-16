@@ -51,7 +51,7 @@ export function parseStdoutResultEnvelope(stdout: string): ParsedStdoutResult {
         ok: false,
         error: {
           code: "invocation_failed",
-          message: "Pod function produced no stdout result envelope.",
+          message: "Frame function produced no stdout result envelope.",
         },
       },
       timings: null,
@@ -68,7 +68,7 @@ export function parseStdoutResultEnvelope(stdout: string): ParsedStdoutResult {
         ok: false,
         error: {
           code: "invocation_failed",
-          message: "Pod function stdout was not valid JSON.",
+          message: "Frame function stdout was not valid JSON.",
         },
       },
       timings: null,
@@ -95,13 +95,13 @@ function spillReadFailure(
 ): NormalizedSandboxFunctionOutcome {
   logger.warn(
     { resultFile: spill.resultFile, resultBytes: spill.resultBytes, reason },
-    "Failed to read back a spilled Pod function result"
+    "Failed to read back a spilled Frame function result"
   );
   return {
     ok: false,
     error: {
       code: "invocation_failed",
-      message: `Pod function result could not be read back from ${spill.resultFile}: ${reason}`,
+      message: `Frame function result could not be read back from ${spill.resultFile}: ${reason}`,
     },
   };
 }

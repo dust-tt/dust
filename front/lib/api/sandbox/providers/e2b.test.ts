@@ -738,7 +738,7 @@ describe("E2BSandboxProvider", () => {
         expect(result.error.message).toContain("connection refused");
       }
       // The SDK aborts a start on its own request timeout, which can fire after envd has already
-      // forked the process. A failed start is not proof that nothing ran, and pod functions are
+      // forked the process. A failed start is not proof that nothing ran, and frame functions are
       // not idempotent, so the error is surfaced rather than retried.
       expect(mockRun).toHaveBeenCalledTimes(2);
     });

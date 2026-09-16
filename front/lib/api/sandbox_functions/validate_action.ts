@@ -144,8 +144,8 @@ export async function validateSandboxFunctionAction(
     });
   }
 
-  // Same action as the conversation flavor, with pod function identifiers standing in for the
-  // conversation ones. No agent metadata: a pod function has none.
+  // Same action as the conversation flavor, with frame function identifiers standing in for the
+  // conversation ones. No agent metadata: a frame function has none.
   void emitAuditLogEvent({
     auth,
     action: "tool.approval_resolved",

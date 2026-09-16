@@ -1003,7 +1003,7 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(refetched?.error).toMatchObject({
       code: "invocation_failed",
       message:
-        "Pod function result could not be read back from /tmp/dust-fn-results/spill.json: file not found",
+        "Frame function result could not be read back from /tmp/dust-fn-results/spill.json: file not found",
     });
   });
 
@@ -1168,7 +1168,7 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(refetched?.status).toBe("errored");
     expect(refetched?.error).toEqual({
       code: "invocation_failed",
-      message: "Pod function produced no stdout result envelope.",
+      message: "Frame function produced no stdout result envelope.",
     });
   });
 

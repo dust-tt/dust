@@ -132,7 +132,7 @@ ${PUBLISH_PARAGRAPH}
 `;
 
 // Pod conversations only. A Pod's Frames belong to the Pod rather than to the conversation that
-// happened to create them, and each one gets its own folder so the pod functions and database
+// happened to create them, and each one gets its own folder so the frame functions and database
 // schema it may grow later land next to it instead of forcing a second move.
 const POD_APP_SECTION = `\
 ### Frames In A Pod

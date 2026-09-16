@@ -55,7 +55,7 @@ export async function awaitSandboxFunctionInvocationOutcome({
     // The invocation itself is unaffected, only this wait failed. Fall back to the stream.
     logger.error(
       { invocationId, error: normalizeError(error).message },
-      "Failed to wait for Pod function invocation outcome"
+      "Failed to wait for Frame function invocation outcome"
     );
     return null;
   }
@@ -65,7 +65,7 @@ export async function awaitSandboxFunctionInvocationOutcome({
   // function settling this slowly is the case the wait cannot help with.
   logger.info(
     { invocationId, timeoutMs },
-    "Pod function invocation outlived the synchronous wait"
+    "Frame function invocation outlived the synchronous wait"
   );
 
   return null;
