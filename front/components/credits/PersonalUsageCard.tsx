@@ -130,10 +130,12 @@ export function PersonalUsageCard({
     ? fairUseAwuCreditsState.count >= fairUseAwuCreditsState.limit
     : false;
   const nextFairUseRefill = fairUseAwuCreditsState?.refillSchedule?.[0] ?? null;
-  const fairUseWindowDays = fairUseAwuCreditsState
-    ? getTimeframeSecondsFromLiteral(fairUseAwuCreditsState.timeframe) /
-      (24 * 60 * 60)
-    : null;
+  // "lifetime" never refills, so it has no rolling window to report.
+  const fairUseWindowDays =
+    fairUseAwuCreditsState && fairUseAwuCreditsState.timeframe !== "lifetime"
+      ? getTimeframeSecondsFromLiteral(fairUseAwuCreditsState.timeframe) /
+        (24 * 60 * 60)
+      : null;
   const isLoading = isMyUsageLoading || isFairUseCreditsLoading;
 
   return (

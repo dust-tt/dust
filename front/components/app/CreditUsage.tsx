@@ -73,31 +73,49 @@ export function CreditUsageLearnMoreButton({
   );
 }
 
+function getBillingPeriodUsageDescription(
+  state: BillingPeriodCreditUsageState,
+  variant: CreditUsageCardVariant
+): string {
+  const resetUnit = `day${pluralize(state.resetInDays)}`;
+  const companionStatusLabel =
+    variant === "companion" && state.target !== "on_target"
+      ? COMPANION_STATUS_LABELS[state.target]
+      : null;
+  const statusLabel = companionStatusLabel ? `${companionStatusLabel} · ` : "";
+
+  return `${statusLabel}${RESET_LABEL_PREFIX[variant]} in ${state.resetInDays} ${resetUnit}`;
+}
+
+// The free-seat lifetime cap shares the rolling_window kind's state shape
+// (used/limit credits) but never refills, so it gets its own description
+// rather than a rolling-window day count.
+function getLifetimeUsageDescription(
+  state: RollingWindowCreditUsageState
+): string {
+  return `${formatCredits(state.usedCredits)} of ${formatCredits(state.limitCredits)} used ${formatLimitTimeframe(state.timeframe, "compact")}`;
+}
+
+function getRollingWindowUsageDescription(
+  state: RollingWindowCreditUsageState
+): string {
+  if (state.timeframe === "lifetime") {
+    return getLifetimeUsageDescription(state);
+  }
+  const windowDays =
+    getTimeframeSecondsFromLiteral(state.timeframe) / (24 * 60 * 60);
+  return `Resets on a rolling ${windowDays}-day basis`;
+}
+
 function getUsageDescription(
   state: CreditUsageState,
   variant: CreditUsageCardVariant
 ): string {
   switch (state.kind) {
-    case "billing_period": {
-      const resetUnit = `day${pluralize(state.resetInDays)}`;
-      const companionStatusLabel =
-        variant === "companion" && state.target !== "on_target"
-          ? COMPANION_STATUS_LABELS[state.target]
-          : null;
-      const statusLabel = companionStatusLabel
-        ? `${companionStatusLabel} · `
-        : "";
-
-      return `${statusLabel}${RESET_LABEL_PREFIX[variant]} in ${state.resetInDays} ${resetUnit}`;
-    }
-    case "rolling_window": {
-      if (state.timeframe === "lifetime") {
-        return `${formatCredits(state.usedCredits)} of ${formatCredits(state.limitCredits)} used ${formatLimitTimeframe(state.timeframe, "compact")}`;
-      }
-      const windowDays =
-        getTimeframeSecondsFromLiteral(state.timeframe) / (24 * 60 * 60);
-      return `Resets on a rolling ${windowDays}-day basis`;
-    }
+    case "billing_period":
+      return getBillingPeriodUsageDescription(state, variant);
+    case "rolling_window":
+      return getRollingWindowUsageDescription(state);
     default:
       assertNeverAndIgnore(state);
       return "";

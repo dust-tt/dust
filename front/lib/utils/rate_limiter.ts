@@ -1,9 +1,15 @@
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { statsDMetrics } from "@app/lib/utils/statsd";
+import type {
+  MaxAwuCreditsTimeframeType,
+  MaxMessagesTimeframeType,
+} from "@app/types/plan";
+import { TIMEFRAME_SECONDS } from "@app/types/plan";
 import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import chunk from "lodash/chunk";
 import { v4 as uuidv4 } from "uuid";
@@ -554,7 +560,23 @@ export async function getWeightedRateLimiterCount({
   return new Ok(result.value.count);
 }
 
-export { getTimeframeSecondsFromLiteral } from "@app/lib/client/credits";
+// Server-side quota enforcement: throws on an unrecognized timeframe rather
+// than silently falling back, since a swallowed error here would silently
+// widen the rate-limit window instead of failing loudly.
+export function getTimeframeSecondsFromLiteral(
+  timeframeLiteral: MaxMessagesTimeframeType | MaxAwuCreditsTimeframeType
+): number {
+  // Widen the key type: this guards against a timeframe value that bypassed
+  // the static type (e.g. stale plan data), which TIMEFRAME_SECONDS's own
+  // exhaustive-by-construction typing can't otherwise express as lookupable.
+  const seconds = (TIMEFRAME_SECONDS as Record<string, number | undefined>)[
+    timeframeLiteral
+  ];
+  if (seconds === undefined) {
+    assertNever(timeframeLiteral as never);
+  }
+  return seconds;
+}
 
 /**
  * Unconditionally records `incrementBy` units against a fixed-window counter
