@@ -6,4 +6,5 @@ export type Credentials = {
   MISTRAL_API_KEY?: string;
   FIREWORKS_API_KEY?: string;
   XAI_API_KEY?: string;
+  AWS_BEARER_TOKEN_BEDROCK?: string;
 };
