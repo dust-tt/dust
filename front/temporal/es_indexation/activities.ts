@@ -83,7 +83,7 @@ export async function indexUserSearchActivity({
 
 /**
  * @cc [owner:aubin-tchoi,label:backend;security] searchable-skill-index-projection
- * Index only active or archived custom skills fetched through normal resource permissions.
+ * Index active or archived custom skills, including those the internal admin cannot read.
  */
 export async function indexSkillSearchActivity({
   workspaceId,
@@ -94,6 +94,7 @@ export async function indexSkillSearchActivity({
 }): Promise<void> {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const skill = await SkillResource.fetchById(auth, skillId, {
+    permissionFiltering: "redact_unreadable",
     withInstructions: false,
     withTools: true,
     withFileAttachments: false,

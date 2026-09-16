@@ -1,7 +1,11 @@
+import { Authenticator } from "@app/lib/auth";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import * as skillIndex from "@app/lib/skill_search";
 import { indexSkillSearchActivity } from "@app/temporal/es_indexation/activities";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -45,27 +49,42 @@ describe("skill search indexing activity", () => {
   it.each([
     "regular",
     "project",
-  ] as const)("uses normal resource access for a restricted %s space", async (kind) => {
+  ] as const)("indexes metadata for a restricted %s space without read access", async (kind) => {
     const {
       authenticator: auth,
       workspace,
-      globalGroup,
+      user,
     } = await createResourceTest({ role: "admin" });
     const space = await SpaceFactory[kind](workspace);
+    const server = await RemoteMCPServerFactory.create(workspace);
+    const serverView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      space
+    );
     const skill = await SkillFactory.create(auth, {
+      availability: "editors",
       requestedSpaceIds: [space.id],
+      mcpServerViews: [serverView],
     });
+    const internalAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    expect(await SkillResource.fetchById(internalAuth, skill.sId)).toBeNull();
     const target = { workspaceId: workspace.sId, skillId: skill.sId };
 
-    await indexSkillSearchActivity(target);
-    expect(skillIndex.indexSkillDocument).not.toHaveBeenCalled();
-
-    await SpaceFactory.attachGroup(space, globalGroup);
     await indexSkillSearchActivity(target);
     expect(skillIndex.indexSkillDocument).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         skill_id: skill.sId,
+        workspace_id: workspace.sId,
+        name: skill.name,
+        description: skill.userFacingDescription,
+        availability: "editors",
         requested_space_ids: [space.sId],
+        editor_ids: [user.sId],
+        last_edited_by_user_id: user.sId,
+        mcp_server_view_ids: [serverView.sId],
       })
     );
   });
