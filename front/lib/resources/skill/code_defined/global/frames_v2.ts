@@ -307,20 +307,32 @@ lifetime of the Frame. It holds bytes: images and documents a viewer uploads, fi
 generates. It is not part of the Frame source and never appears in the Frame folder, so its
 contents exist only at run time and you cannot read them while authoring.
 
-Reach it through \`@dust/pod\`. \`filePath()\` resolves a path inside the folder and refuses one
-that would escape it, which matters because a file name often comes from a viewer:
+Reach it through \`files\` from \`@dust/pod\`, which resolves every path inside the folder and
+refuses one that would escape it — a file name often comes from a viewer:
 
 \`\`\`ts
-import { filePath } from "@dust/pod";
-import { readFile, writeFile } from "node:fs/promises";
+import { files } from "@dust/pod";
 
-await writeFile(filePath(\`uploads/\${imageId}.png\`), bytes);
-const stored = await readFile(filePath(\`uploads/\${imageId}.png\`));
+await files.write(\`uploads/\${imageId}.png\`, bytes);
+const stored = await files.read(\`uploads/\${imageId}.png\`);
+const names = await files.list("uploads");
+await files.remove(\`uploads/\${imageId}.png\`);
 \`\`\`
+
+\`files.write\` creates missing parent directories; plain \`node:fs\` \`writeFile\` fails with
+ENOENT instead, because the folder starts empty. \`files.list\` returns an empty array for a
+directory that does not exist yet, so a first read needs no special case.
 
 Never build a path by interpolating into \`filesDir()\`, and never read the folder's location from
 the environment yourself: only \`@dust/pod\` resolves it per invocation, so a fast function that
 reads the environment directly can get another invocation's folder.
+
+**Never write a file and read it back in the same call.** The folder is remote storage with no
+metadata cache, so each operation is a round trip and the payload crosses the wire twice. A
+\`fast\` function has a ten-second ceiling and doing both will exceed it for anything but a tiny
+file. Store the bytes in one function, return only an identifier, and let the UI fetch them from a
+separate read function. Declare a function \`durable\` when one operation on a large file needs
+more than ten seconds; that raises the ceiling to two minutes.
 
 The folder holds unstructured data, so organize it with paths. A directory listing is the only
 index it has: when a Frame needs to filter, sort, or join over its files, keep that metadata in a
@@ -332,7 +344,7 @@ path a viewer sends proves nothing about who owns the file.
 The folder is object storage behind a mount, which sets the rules:
 
 - Write whole files. There are no partial writes, so appending to or seeking within a file
-  rewrites the whole object.
+  rewrites the whole object, and every write is a full upload.
 - Never put a SQLite database in it. Declare a Frame database instead.
 - Keep it to what the Frame needs. Nothing removes files until the Frame is deleted.
 - Stick to \`.png\`, \`.jpeg\`, \`.json\`, \`.txt\`, and \`.csv\`. Nothing validates what gets
