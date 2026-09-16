@@ -24,6 +24,10 @@
         "autocomplete": {
           "type": "search_as_you_type",
           "analyzer": "autocomplete_analyzer"
+        },
+        "autocomplete_preserved": {
+          "type": "search_as_you_type",
+          "analyzer": "icu_analyzer"
         }
       }
     },
