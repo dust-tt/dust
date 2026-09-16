@@ -12,12 +12,12 @@ import type {
   SkillInstructionEditItemType,
   SkillSuggestionSource,
 } from "@app/types/suggestions/skill_suggestion";
+import { REVIEWABLE_SKILL_SUGGESTION_SOURCES } from "@app/types/suggestions/skill_suggestion";
 
 // Reviewable suggestions: pruning applies to every source a user may accept or reject, whether
 // it is surfaced in the builder (`reinforcement`) or inline in a conversation (`conversational`).
 const PRUNED_SOURCES: SkillSuggestionSource[] = [
-  "reinforcement",
-  "conversational",
+  ...REVIEWABLE_SKILL_SUGGESTION_SOURCES,
 ];
 
 /**

@@ -39,6 +39,15 @@ export function isSkillSuggestionSource(
   );
 }
 
+// Sources a user may review (accept/reject) in a product surface.
+export const REVIEWABLE_SKILL_SUGGESTION_SOURCES = [
+  "reinforcement",
+  "conversational",
+] as const satisfies readonly SkillSuggestionSource[];
+
+export type ReviewableSkillSuggestionSource =
+  (typeof REVIEWABLE_SKILL_SUGGESTION_SOURCES)[number];
+
 export const SKILL_SUGGESTION_KINDS = ["edit"] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];

@@ -17,7 +17,7 @@ import { describe, expect, it } from "vitest";
 import { TOOLS } from "./index";
 
 const SKILL_SUGGESTION_DIRECTIVE_REGEX =
-  /^:skill_suggestion\[\]\{sId=(\S+) kind=edit\}$/;
+  /^:skill_suggestion\[\]\{sId=(\S+) kind=edit skillId=(\S+)\}$/;
 
 function getTool(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -61,11 +61,18 @@ async function seedSkill(
 }
 
 function extractSuggestionId(text: string): string {
+  return extractDirective(text).suggestionId;
+}
+
+function extractDirective(text: string): {
+  suggestionId: string;
+  skillId: string;
+} {
   const match = SKILL_SUGGESTION_DIRECTIVE_REGEX.exec(text);
   if (!match) {
     throw new Error(`Unexpected tool output: ${text}`);
   }
-  return match[1];
+  return { suggestionId: match[1], skillId: match[2] };
 }
 
 describe("building_agents_and_skills tools", () => {
@@ -145,7 +152,8 @@ describe("building_agents_and_skills tools", () => {
       if (output?.type !== "text") {
         throw new Error("Expected text output.");
       }
-      const suggestionId = extractSuggestionId(output.text);
+      const { suggestionId, skillId } = extractDirective(output.text);
+      expect(skillId).toBe(skill.sId);
 
       const suggestion = await SkillSuggestionResource.fetchById(
         authenticator,

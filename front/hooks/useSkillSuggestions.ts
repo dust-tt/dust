@@ -14,6 +14,7 @@ import type {
   PatchSkillSuggestionRequestBody,
   PatchSkillSuggestionResponseBody,
 } from "@app/types/api/assistant/skills/suggestions";
+import type { ReviewableSkillSuggestionSource } from "@app/types/suggestions/skill_suggestion";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
@@ -29,6 +30,7 @@ interface UseSkillSuggestionsParams {
   disabled?: boolean;
   kind?: GetSkillSuggestionsQuery["kind"];
   states?: GetSkillSuggestionsQuery["states"];
+  sources: ReviewableSkillSuggestionSource[];
   limit?: number;
   workspaceId: string;
 }
@@ -38,6 +40,7 @@ export function useSkillSuggestions({
   disabled,
   kind,
   states,
+  sources,
   limit,
   workspaceId,
 }: UseSkillSuggestionsParams) {
@@ -48,6 +51,7 @@ export function useSkillSuggestions({
   if (states) {
     states.forEach((s) => urlParams.append("states", s));
   }
+  sources.forEach((s) => urlParams.append("sources", s));
   if (kind) {
     urlParams.append("kind", kind);
   }

@@ -1,3 +1,4 @@
+import { hasFeatureFlag } from "@app/lib/auth";
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
 import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -9,6 +10,7 @@ import {
   GetSkillSuggestionsQuerySchema,
   PatchSkillSuggestionRequestBodySchema,
 } from "@app/types/api/assistant/skills/suggestions";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { skillApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -25,14 +27,11 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
   const auth = ctx.get("auth");
   const skill = ctx.get("skill");
 
-  if (!(await hasReinforcementEnabled(auth))) {
-    return ctx.json({ suggestions: [] });
-  }
-
   // Hono path-param fetch returns single-value query; for `states` we want all
   // repeats too. Build the input object explicitly.
   const queryInput = {
     states: ctx.req.queries("states"),
+    sources: ctx.req.queries("sources"),
     kind: ctx.req.query("kind"),
     limit: ctx.req.query("limit"),
   };
@@ -47,7 +46,7 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
     });
   }
 
-  const { states, kind, limit } = queryValidation.data;
+  const { states, sources, kind, limit } = queryValidation.data;
 
   const parsedLimit = limit ? parseInt(limit, 10) : undefined;
   if (parsedLimit !== undefined && isNaN(parsedLimit)) {
@@ -60,12 +59,26 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
     });
   }
 
+  const requestedSources = sources ?? ["reinforcement"];
+  const enabledSources = removeNulls([
+    (await hasReinforcementEnabled(auth)) ? ("reinforcement" as const) : null,
+    (await hasFeatureFlag(auth, "conversational_building"))
+      ? ("conversational" as const)
+      : null,
+  ]);
+  const effectiveSources = requestedSources.filter((source) =>
+    enabledSources.includes(source)
+  );
+  if (effectiveSources.length === 0) {
+    return ctx.json({ suggestions: [] });
+  }
+
   const suggestions = await SkillSuggestionResource.listBySkillConfigurationId(
     auth,
     skill.sId,
     {
       states,
-      sources: ["reinforcement"],
+      sources: effectiveSources,
       kind,
       limit: parsedLimit,
     }
