@@ -93,8 +93,20 @@ describe("finalizeUriForProvider", () => {
   });
 
   it.each([
+    undefined,
+    "personal_actions",
+    "platform_actions",
+    "connection",
+  ] as const)("uses the legacy base for a new gong client with use case %s", (useCase) => {
+    expect(
+      finalizeUriForProvider({ provider: "gong", connection: null, useCase })
+    ).toBe("https://eu.dust.tt/oauth/gong/finalize");
+  });
+
+  it.each([
     "mcp",
     "mcp_static",
+    "gong",
   ] as const)("preserves an app callback already registered for %s", (provider) => {
     const redirectUri = `https://app.dust.tt/oauth/${provider}/finalize`;
     expect(
