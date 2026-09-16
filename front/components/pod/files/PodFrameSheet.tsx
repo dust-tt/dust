@@ -1,6 +1,6 @@
 import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
-import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
+import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
 import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -107,7 +107,7 @@ export function PodFrameSheet({
                   fileName={fileMetadata?.fileName}
                   contentType={fileMetadata?.contentType}
                 />
-                <ShareFrameSheet fileId={fileId} owner={owner} />
+                <ShareFramePopover fileId={fileId} owner={owner} />
                 <PinPodBannerButton
                   owner={owner}
                   spaceId={podId}
