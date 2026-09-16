@@ -1321,7 +1321,8 @@ export class Authenticator {
     }
     return this.getGovernanceGrantVerbs(
       resourceType,
-      WHOLE_TYPE_RESOURCE_ID
+      WHOLE_TYPE_RESOURCE_ID,
+      this.getNonNullableWorkspace().id
     ).includes(verb);
   }
 
@@ -1599,10 +1600,20 @@ export class Authenticator {
    * exercise on the resource: completeness requires the resource's `getAllowedVerbs` (checked via
    * `hasPermission` / `can`), which unions these governance verbs with the resource's role grants.
    */
+  /**
+   * @cc [owner:tdraier,label:security] governance-grants-workspace-bound
+   * Governance grants — including the type-wide (`-1`) wildcard — are bound to the caller's own
+   * workspace. This returns no verbs when `workspaceModelId` is not the caller's workspace, so a
+   * caller's grants can never confer access on a resource from another workspace.
+   */
   getGovernanceGrantVerbs(
     resourceType: ConcreteResourceType,
-    resourceId: number
+    resourceId: number,
+    workspaceModelId: ModelId
   ): GrantVerb[] {
+    if (this.getNonNullableWorkspace().id !== workspaceModelId) {
+      return [];
+    }
     return this._permissions.resolvedVerbsForResource(resourceType, resourceId);
   }
 

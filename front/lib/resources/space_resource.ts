@@ -1920,11 +1920,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         return false;
       case "regular":
         return auth
-          .getGovernanceGrantVerbs("space", this.id)
+          .getGovernanceGrantVerbs("space", this.id, this.workspaceId)
           .includes(REGULAR_SPACE_MEMBERSHIP_VERB);
       case "project":
         return auth
-          .getGovernanceGrantVerbs("space", this.id)
+          .getGovernanceGrantVerbs("space", this.id, this.workspaceId)
           .includes(POD_SPACE_MEMBERSHIP_VERB);
       default:
         assertNever(this.kind);
@@ -2074,7 +2074,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // The caller's own verbs on this space from `group_permissions` (kept in sync by
     // `writeGroupPermissions`), plus the per-kind role rules.
     return new Set([
-      ...auth.getGovernanceGrantVerbs("space", this.id),
+      ...auth.getGovernanceGrantVerbs("space", this.id, this.workspaceId),
       ...verbsFromRoleGrants(auth, this.spaceRoleGrants(), this.workspaceId),
     ]);
   }

@@ -2318,7 +2318,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     skill: { id: ModelId; workspaceId: ModelId }
   ): Set<GrantVerb> {
     return new Set([
-      ...auth.getGovernanceGrantVerbs("skill", skill.id),
+      ...auth.getGovernanceGrantVerbs("skill", skill.id, skill.workspaceId),
       ...verbsFromRoleGrants(auth, SKILL_ROLE_GRANTS, skill.workspaceId),
     ]);
   }

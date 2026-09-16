@@ -332,7 +332,11 @@ export class AgentResource implements WithAccessControl {
         assert(this.id !== null);
         assert(this.authorId !== null);
 
-        const grants = auth.getGovernanceGrantVerbs("agent", this.id);
+        const grants = auth.getGovernanceGrantVerbs(
+          "agent",
+          this.id,
+          this.workspaceId
+        );
         const isAuthor =
           auth.workspace()?.id === this.workspaceId &&
           auth.user()?.id === this.authorId;

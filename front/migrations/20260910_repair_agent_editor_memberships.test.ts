@@ -106,7 +106,7 @@ describe("repairEditorMemberships", () => {
       workspace.sId
     );
     expect(
-      before.getGovernanceGrantVerbs("agent", grant.resourceId)
+      before.getGovernanceGrantVerbs("agent", grant.resourceId, workspace.id)
     ).not.toContain("write");
     const spec = {
       wId: workspace.sId,
@@ -134,7 +134,9 @@ describe("repairEditorMemberships", () => {
       workspace.sId
     );
     expect(
-      after.getGovernanceGrantVerbs("agent", grant.resourceId).includes("write")
+      after
+        .getGovernanceGrantVerbs("agent", grant.resourceId, workspace.id)
+        .includes("write")
     ).toBe(rejoined);
 
     if (!rejoined) {
@@ -144,7 +146,11 @@ describe("repairEditorMemberships", () => {
         workspace.sId
       );
       expect(
-        restored.getGovernanceGrantVerbs("agent", grant.resourceId)
+        restored.getGovernanceGrantVerbs(
+          "agent",
+          grant.resourceId,
+          workspace.id
+        )
       ).toContain("write");
     }
   });
