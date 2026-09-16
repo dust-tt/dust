@@ -66,10 +66,19 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
   }, [activeIndex, resetHideTimer]);
 
   useEffect(() => {
+    /**
+     * @cc [owner:spolu,label:product] page-key-navigation
+     * PageUp MUST invoke the same previous-slide action as ArrowLeft and ArrowUp; PageDown MUST
+     * invoke the same next-slide action as ArrowRight and ArrowDown.
+     */
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp") {
         onPrev();
-      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      } else if (
+        e.key === "ArrowRight" ||
+        e.key === "ArrowDown" ||
+        e.key === "PageDown"
+      ) {
         onNext();
       }
     };
