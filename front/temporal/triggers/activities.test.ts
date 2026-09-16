@@ -1,5 +1,6 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import * as capTriggerAlert from "@app/lib/api/credits/programmatic_cap_trigger_alert";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -158,7 +159,7 @@ describe("runTriggeredAgentsActivity", () => {
         },
       })
     );
-    const { user, workspace, trigger } =
+    const { authenticator, user, workspace, trigger } =
       await createProgrammaticScheduleTrigger();
 
     await expect(
@@ -171,6 +172,26 @@ describe("runTriggeredAgentsActivity", () => {
     expect(
       capTriggerAlert.notifyAdminsTriggerBlockedByProgrammaticCap
     ).not.toHaveBeenCalled();
+
+    const conversations = await ConversationResource.listAll(authenticator);
+    expect(conversations).toHaveLength(1);
+    expect(conversations[0].hasError).toBe(true);
+
+    const failedAgentMessages = await AgentMessageModel.findAll({
+      where: {
+        conversationId: conversations[0].id,
+        workspaceId: workspace.id,
+        status: "failed",
+        errorCode: "credits_exhausted",
+      },
+    });
+    expect(failedAgentMessages).toHaveLength(1);
+    expect(failedAgentMessages[0].errorMessage).toBe(
+      "Your workspace has run out of credits."
+    );
+    expect(failedAgentMessages[0].errorMetadata).toMatchObject({
+      category: "credits_exhausted",
+    });
   });
 
   it("posts the triggered message when the programmatic monthly cap is not reached", async () => {

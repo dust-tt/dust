@@ -5,6 +5,7 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
+import { createTriggerLimitExceededMessages } from "@app/lib/api/assistant/conversation/trigger_limit_exceeded";
 import { resolvedModelFromUserMessageRow } from "@app/lib/api/assistant/models";
 import {
   buildAuditLogTarget,
@@ -166,14 +167,16 @@ async function createConversationForAgentConfiguration({
   });
 
   if (messageRes.isErr()) {
-    const { type: errorType } = messageRes.error.api_error;
-    if (
+    const { type: errorType, message: errorMessage } =
+      messageRes.error.api_error;
+    const isLimitError =
       errorType === "plan_message_limit_exceeded" ||
       errorType === "credits_exhausted" ||
       errorType === "user_cap_reached" ||
       errorType === "rate_limit_error" ||
-      errorType === "no_seat"
-    ) {
+      errorType === "no_seat";
+
+    if (isLimitError) {
       PostHogServerSideTracking.trackEvent({
         distinctId: auth.getNonNullableUser().sId,
         event: "trigger_blocked",
@@ -183,6 +186,43 @@ async function createConversationForAgentConfiguration({
           error_type: errorType,
         },
       });
+
+      logger.error(
+        {
+          agentConfigurationId: trigger.agentConfigurationId,
+          conversationId: newConversation.sId,
+          error: messageRes.error,
+          triggerId: trigger.sId,
+          workspaceId: auth.workspace()?.sId,
+        },
+        "scheduledAgentCallActivity: Error sending message."
+      );
+
+      const content =
+        serializeMention(agentConfiguration) +
+        (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : "");
+
+      await createTriggerLimitExceededMessages(auth, {
+        conversation: newConversation.toJSON(),
+        agentConfiguration,
+        content,
+        context: triggeredContext,
+        error: { type: errorType, message: errorMessage },
+      });
+
+      if (webhookRequest) {
+        await webhookRequest.markRelatedTrigger({
+          trigger,
+          status:
+            errorType === "credits_exhausted"
+              ? "credits_exhausted"
+              : "workflow_start_failed",
+          errorMessage,
+        });
+      }
+
+      // Conversation now contains a failed agent message explaining the limit.
+      return new Ok(newConversation.toJSON());
     }
 
     logger.error(
