@@ -1,6 +1,6 @@
 import type { FileViewerType } from "@app/types/file_viewers";
 import type { SharingGrantType } from "@app/types/files";
-import { MAX_EMAILS_PER_INVITE } from "@app/types/files";
+import { MAX_EMAILS_OR_DOMAINS_PER_INVITE } from "@app/types/files";
 import type { UserType } from "@app/types/user";
 import { z } from "zod";
 
@@ -29,15 +29,21 @@ export const sharingEmailSchema = z
 
 export const addSharingGrantsSchema = z
   .object({
-    emails: z.array(z.string().email()).max(MAX_EMAILS_PER_INVITE).optional(),
-    domains: z.array(sharingDomainSchema).max(MAX_EMAILS_PER_INVITE).optional(),
+    emails: z
+      .array(z.string().email())
+      .max(MAX_EMAILS_OR_DOMAINS_PER_INVITE)
+      .optional(),
+    domains: z
+      .array(sharingDomainSchema)
+      .max(MAX_EMAILS_OR_DOMAINS_PER_INVITE)
+      .optional(),
   })
   .refine(
     ({ emails = [], domains = [] }) =>
       emails.length + domains.length > 0 &&
-      emails.length + domains.length <= MAX_EMAILS_PER_INVITE,
+      emails.length + domains.length <= MAX_EMAILS_OR_DOMAINS_PER_INVITE,
     {
-      message: `Add between 1 and ${MAX_EMAILS_PER_INVITE} email addresses or domains`,
+      message: `Add between 1 and ${MAX_EMAILS_OR_DOMAINS_PER_INVITE} email addresses or domains`,
     }
   );
 

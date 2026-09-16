@@ -4,7 +4,7 @@ import { ConversationSidePanelHeader } from "@app/components/assistant/conversat
 import { DEFAULT_FRAME_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
-import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
+import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
@@ -379,7 +379,7 @@ export function FrameRenderer({
                 fileName={fileMetadata?.fileName}
                 contentType={fileMetadata?.contentType}
               />
-              <ShareFrameSheet
+              <ShareFramePopover
                 key={contentHash ?? fileId}
                 fileId={fileId}
                 owner={owner}
@@ -442,7 +442,7 @@ export function FrameRenderer({
               fileName={fileMetadata?.fileName}
               contentType={fileMetadata?.contentType}
             />
-            <ShareFrameSheet
+            <ShareFramePopover
               key={contentHash ?? fileId}
               fileId={fileId}
               owner={owner}
