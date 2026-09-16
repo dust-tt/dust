@@ -114,7 +114,7 @@ function subAgentApiHeaders(auth: Authenticator): Record<string, string> {
 
 function makeChildAgentUnavailableError(childAgentName: string): MCPError {
   return new MCPError(
-    `Agent @${childAgentName} is not available to the user running this conversation. ` +
+    `Agent ${childAgentName} is not available to the user running this conversation. ` +
       "Ask a workspace admin to grant access to the agent and its spaces.",
     { tracked: false }
   );
@@ -138,7 +138,7 @@ async function getRunnableChildAgent(
   if (childAgent?.status === "archived") {
     return new Err(
       new MCPError(
-        `Agent @${childAgent.name} is archived and cannot be run. ` +
+        `Agent ${childAgent.name} is archived and cannot be run. ` +
           "Ask a workspace admin to restore the agent or select another agent.",
         { tracked: false }
       )
