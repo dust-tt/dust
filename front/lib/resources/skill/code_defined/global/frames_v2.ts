@@ -28,8 +28,8 @@ manifest. Do not store durable application state in memory; use a Frame database
 
 ## Create a Frame
 
-Every Computer command is a round trip of several seconds. Create, write, and publish a new Frame in
-one Computer command:
+Every Computer command is a round trip of several seconds. Create, write, and
+publish a new Frame in one Computer command:
 
 \`\`\`bash
 FRAME=/files/conversation-<conversationId>/<frame-folder>
@@ -43,9 +43,9 @@ dsbx frame publish "$FRAME/manifest.json"
 \`\`\`
 
 In a Pod, create it under \`/files/pod-<podId>/...\` instead. \`dsbx frame create\` scaffolds a
-placeholder \`manifest.json\` and \`index.tsx\` and assigns the Frame's stable identity. Do not read
-the scaffolded files back: overwrite \`index.tsx\` with the real component and, when the Frame
-declares any, write the manifest, function, and database files in the same command. Only use
+placeholder \`manifest.json\` and \`index.tsx\` and assigns the Frame's stable identity. Do not
+read the scaffolded files back: overwrite \`index.tsx\` with the real component and, when the
+Frame declares any, write the manifest, function, and database files in the same command. Only use
 separate commands when a step needs the previous one's output.
 
 Always pass canonical \`/files/conversation-<conversationId>/...\` or
