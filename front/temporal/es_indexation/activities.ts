@@ -4,7 +4,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
-  deleteSkillDocument,
   deleteWorkspaceSkillDocuments,
   indexSkillDocument,
 } from "@app/lib/skill_search";
@@ -88,7 +87,6 @@ export async function indexUserSearchActivity({
 /**
  * @cc [owner:aubin-tchoi,label:backend;security] searchable-skill-index-projection
  * Index active or archived custom skills, including those the internal admin cannot read.
- * Delete documents for missing or suggested skills.
  */
 export async function indexSkillSearchActivity({
   workspaceId,
@@ -107,10 +105,6 @@ export async function indexSkillSearchActivity({
   // Suggested skills are not indexed: they have only been suggested and are not
   // ready to be used yet.
   if (!skill || skill.status === "suggested") {
-    const result = await deleteSkillDocument({ workspaceId, skillId });
-    if (result.isErr()) {
-      throw result.error;
-    }
     return;
   }
 
