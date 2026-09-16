@@ -24,23 +24,12 @@ export function KnowledgeChipDirectiveBlock({
 }: KnowledgeChipDirectiveBlockProps) {
   const icon = nodeData ? getKnowledgeIcon(nodeData) : undefined;
 
-  if (sourceUrl) {
-    return (
-      <AttachmentChip
-        label={title}
-        icon={icon ? { visual: icon } : undefined}
-        href={sourceUrl}
-        target="_blank"
-        color="primary"
-        size="xs"
-      />
-    );
-  }
-
   return (
     <AttachmentChip
       label={title}
       icon={icon ? { visual: icon } : undefined}
+      href={sourceUrl ?? undefined}
+      target={sourceUrl ? "_blank" : undefined}
       color="primary"
       size="xs"
     />
