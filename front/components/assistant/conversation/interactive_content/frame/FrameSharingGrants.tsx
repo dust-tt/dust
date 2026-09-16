@@ -198,7 +198,11 @@ export function FrameSharingGrants({
             />
           </div>
           {errors.recipients && (
-            <p id={errorId} role="alert" className="text-sm text-foreground px-2">
+            <p
+              id={errorId}
+              role="alert"
+              className="text-sm text-foreground px-2"
+            >
               {errors.recipients.message}
             </p>
           )}
