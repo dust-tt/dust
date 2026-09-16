@@ -367,27 +367,21 @@ export class AgentResource
     return resources;
   }
 
-  /**
-   * @cc [owner:philipperolet,label:backend] editor-read-transaction
-   * Editor reads supplied a transaction use it for every lookup.
-   */
   async listEditors(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<UserResource[] | null> {
-    if (this.scope === "global") {
-      return null;
-    }
-    const group = await GroupPermissionResource.findRegularAutoGroupForGrant(
+    const editorsByAgentId = await AgentResource.batchListEditors(
       auth,
+      [this],
       {
-        resourceType: "agent",
-        resourceId: this.id,
-        grantType: "editor",
         transaction,
       }
     );
-    return group ? group.getActiveMembers(auth, { transaction }) : [];
+    const editors = editorsByAgentId.get(this.sId);
+    assert(editors !== undefined);
+
+    return editors;
   }
 
   /**
@@ -395,9 +389,14 @@ export class AgentResource
    * Each input agent has a map entry: `null` for globals and active workspace members
    * of its editor grant for custom agents, or `[]` when there are none.
    */
+  /**
+   * @cc [owner:philipperolet,label:backend] editor-read-transaction
+   * Editor reads supplied a transaction use it for every lookup.
+   */
   static async batchListEditors(
     auth: Authenticator,
-    agents: AgentResource[]
+    agents: AgentResource[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Map<string, UserResource[] | null>> {
     const result = new Map<string, UserResource[] | null>(
       agents.map((agent) => [agent.sId, null])
@@ -415,6 +414,7 @@ export class AgentResource
     const groupByGrant =
       await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
         grants: customAgents.map(editorGrant),
+        transaction,
       });
     const groupByAgentModelId = new Map<ModelId, GroupResource>(
       removeNulls(
@@ -425,16 +425,21 @@ export class AgentResource
       )
     );
     const membershipsByGroupId =
-      await GroupResource.getActiveMembershipsForGroups(auth, [
-        ...groupByAgentModelId.values(),
-      ]);
+      await GroupResource.getActiveMembershipsForGroups(
+        auth,
+        [...groupByAgentModelId.values()],
+        { transaction }
+      );
     const userModelIds = [
       ...new Set(Object.values(membershipsByGroupId).flat()),
     ];
-    const users = await UserResource.fetchByModelIds(userModelIds);
+    const users = await UserResource.fetchByModelIds(userModelIds, {
+      transaction,
+    });
     const { memberships } = await MembershipResource.getActiveMemberships({
       users,
       workspace: auth.getNonNullableWorkspace(),
+      transaction,
     });
     const activeUserModelIds = new Set(
       memberships.map((membership) => membership.userId)
