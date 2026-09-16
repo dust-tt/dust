@@ -1,9 +1,14 @@
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   GET_MENTION_MARKDOWN_TOOL_NAME,
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
   USER_MENTIONS_SERVER_NAME,
 } from "@app/lib/api/actions/servers/user_mentions/metadata";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+
+function userMentionsToolName(toolName: string): string {
+  return getPrefixedToolName(USER_MENTIONS_SERVER_NAME, toolName);
+}
 
 export const mentionUsersSkill = {
   sId: "mention_users",
@@ -19,8 +24,8 @@ export const mentionUsersSkill = {
   instructions: `The "user_mentions" tools allow you to search for users in the workspace and mention them in your responses.
 
 Important notes:
-- Before mentioning a user if you lack the user's id or name, search for users first using ${USER_MENTIONS_SERVER_NAME}__${SEARCH_AVAILABLE_USERS_TOOL_NAME} tool
-- Use the ${USER_MENTIONS_SERVER_NAME}__${GET_MENTION_MARKDOWN_TOOL_NAME} tool if you need to get the correct Markdown format for mentions
+- Before mentioning a user if you lack the user's id or name, search for users first using ${userMentionsToolName(SEARCH_AVAILABLE_USERS_TOOL_NAME)} tool
+- Use the ${userMentionsToolName(GET_MENTION_MARKDOWN_TOOL_NAME)} tool if you need to get the correct Markdown format for mentions
 - Only mention users when it is relevant and appropriate
 - Do not over-mention users, only when explicitly requested or clearly necessary
 

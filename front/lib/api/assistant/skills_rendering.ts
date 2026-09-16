@@ -1,8 +1,6 @@
-import {
-  ENABLE_SKILL_TOOL_NAME,
-  TOOL_NAME_SEPARATOR,
-} from "@app/lib/actions/constants";
+import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { stripSkillTagPresentationAttributes } from "@app/lib/skills/format";
 import { stripToolTagPresentationAttributes } from "@app/lib/tools/format";
@@ -63,7 +61,10 @@ export function renderEquippedSkillsUserMessage(
     return null;
   }
 
-  const enableSkillToolName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
+  const enableSkillToolName = getPrefixedToolName(
+    SKILL_MANAGEMENT_SERVER_NAME,
+    ENABLE_SKILL_TOOL_NAME
+  );
 
   return renderSkillMessage(
     `<dust_system>\n` +
@@ -82,7 +83,10 @@ export function renderFavoriteSkillsUserMessage(
     return null;
   }
 
-  const enableSkillToolName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
+  const enableSkillToolName = getPrefixedToolName(
+    SKILL_MANAGEMENT_SERVER_NAME,
+    ENABLE_SKILL_TOOL_NAME
+  );
 
   return renderSkillMessage(
     `<dust_system>\n` +
