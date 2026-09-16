@@ -90,7 +90,8 @@ export const updateSkillEditorsPlugin = createPlugin({
       userResources.map((user) => [user.sId, user.toJSON()])
     );
 
-    // Keep editor permission mutations behind SkillResource.
+    // Go through the resource rather than the group directly: it keeps the per-user grants in sync
+    // with the editor-group membership (see `SkillResource.writeEditorUserGrants`).
     const userResourceMap = new Map(
       userResources.map((user) => [user.sId, user])
     );

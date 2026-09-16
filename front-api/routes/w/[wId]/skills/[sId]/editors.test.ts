@@ -84,7 +84,6 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     await MembershipFactory.associate(workspace, builderUser, {
       role: "user",
     });
-    // Skill creation now indexes through the resource; count only this request's effects.
     vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
 
     const response = await patch(workspace, skill.sId, {

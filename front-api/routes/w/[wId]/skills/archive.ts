@@ -72,7 +72,8 @@ app.post(
       });
     }
 
-    // Archiving updates dependent agents and parent skills in one transaction.
+    // Archiving a skill updates its dependent agents, parent skills, and editor
+    // memberships in one transaction, so preserve that resource-level operation.
     for (const skill of skills) {
       await skill.archive(auth);
     }
