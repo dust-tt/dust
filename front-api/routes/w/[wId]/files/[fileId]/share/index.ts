@@ -1,29 +1,19 @@
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
 import { checkFrameShareScopePermission } from "@app/lib/api/share/frame_sharing";
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import {
   buildShareFileResponse,
   type ShareFrameViewerFile,
 } from "@app/lib/api/viz/share_frame_viewer_files";
-import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
-import type { APIErrorResponse } from "@app/types/error";
 import {
   fileShareScopeSchema,
-  isConversationFileUseCase,
   isUnverifiableFrameFileRefsShareError,
 } from "@app/types/files";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import type { Context, TypedResponse } from "hono";
+import { withShareableFrame } from "@front-api/middlewares/with_shareable_frame";
 import { z } from "zod";
 
 import grants from "./grants";
@@ -50,14 +40,10 @@ app.route("/grants", grants);
 app.get(
   "/",
   validate("param", ParamsSchema),
+  withShareableFrame,
   async (ctx): HandlerResult<ShareFileResponseBody> => {
     const auth = ctx.get("auth");
-    const { fileId } = ctx.req.valid("param");
-
-    const file = await fetchShareableFile(ctx, auth, fileId);
-    if (file instanceof Response) {
-      return file;
-    }
+    const file = ctx.get("frame");
 
     const shareResponse = await buildShareFileResponse(auth, file);
     if (!shareResponse) {
@@ -75,14 +61,10 @@ app.post(
   "/",
   validate("param", ParamsSchema),
   validate("json", ShareFileRequestBodySchema),
+  withShareableFrame,
   async (ctx): HandlerResult<ShareFileResponseBody> => {
     const auth = ctx.get("auth");
-    const { fileId } = ctx.req.valid("param");
-
-    const file = await fetchShareableFile(ctx, auth, fileId);
-    if (file instanceof Response) {
-      return file;
-    }
+    const file = ctx.get("frame");
 
     const { shareScope } = ctx.req.valid("json");
 
@@ -102,23 +84,6 @@ app.post(
     }
 
     await file.setShareScope(auth, shareScope);
-
-    void emitAuditLogEvent({
-      auth,
-      action: "frame.share_scope_updated",
-      targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        buildAuditLogTarget("frame", {
-          sId: file.sId,
-          name: file.fileName ?? file.sId,
-        }),
-      ],
-      context: getAuditLogContext(auth),
-      metadata: {
-        frame_name: file.fileName ?? file.sId,
-        share_scope: shareScope,
-      },
-    });
 
     const allowlistResult = await ensureAuthorizedFileAccessForShare(
       auth,
@@ -153,50 +118,5 @@ app.post(
     return ctx.json(shareResponse);
   }
 );
-
-// Returns the file when it exists, is a Frame, and (if linked to a
-// conversation) the caller can access it. Otherwise returns a `Response` for
-// the handler to short-circuit on.
-async function fetchShareableFile(
-  ctx: Context,
-  auth: Authenticator,
-  fileId: string
-): Promise<FileResource | (Response & TypedResponse<APIErrorResponse>)> {
-  const file = await FileResource.fetchById(auth, fileId);
-  if (!file) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: { type: "file_not_found", message: "File not found." },
-    });
-  }
-
-  if (
-    isConversationFileUseCase(file.useCase) &&
-    file.useCaseMetadata?.conversationId
-  ) {
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      file.useCaseMetadata.conversationId
-    );
-    if (!conversation) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: { type: "file_not_found", message: "File not found." },
-      });
-    }
-  }
-
-  if (!file.isShareableFrame) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Only Frame files can be shared publicly.",
-      },
-    });
-  }
-
-  return file;
-}
 
 export default app;

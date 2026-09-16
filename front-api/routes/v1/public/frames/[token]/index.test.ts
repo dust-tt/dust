@@ -1,5 +1,6 @@
-import { createFrameSession } from "@app/lib/api/share/frame_session";
+import { serializeFrameSessionCookie } from "@app/lib/api/share/frame_session";
 import { Authenticator } from "@app/lib/auth";
+import { ExternalViewerSessionResource } from "@app/lib/resources/external_viewer_session_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import {
@@ -67,7 +68,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
     });
 
     // Create session and extract token from the Set-Cookie header.
-    const cookie = await createFrameSession(workspace, { email });
+    const session = await ExternalViewerSessionResource.create(workspace, {
+      email,
+    });
+    const cookie = serializeFrameSessionCookie(session);
     const match = cookie.match(/dust_frame_session=([^;]+)/);
     expect(match).not.toBeNull();
     return match![1];
@@ -94,7 +98,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
       value: "example.com",
     });
     const requestAs = async (email: string) => {
-      const cookie = await createFrameSession(workspace, { email });
+      const session = await ExternalViewerSessionResource.create(workspace, {
+        email,
+      });
+      const cookie = serializeFrameSessionCookie(session);
       return honoApp.request(`/api/v1/public/frames/${token}`, {
         headers: { cookie },
       });
@@ -434,9 +441,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
       });
 
       // Create session for bob (no grant for bob).
-      const cookie = await createFrameSession(workspace, {
+      const session = await ExternalViewerSessionResource.create(workspace, {
         email: "bob@example.com",
       });
+      const cookie = serializeFrameSessionCookie(session);
       const match = cookie.match(/dust_frame_session=([^;]+)/);
       expect(match).not.toBeNull();
       const bobSessionToken = match![1];
@@ -492,9 +500,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
       expect(grant).not.toBeNull();
       expect(grant!.lastViewedAt).toBeNull();
 
-      const cookie = await createFrameSession(workspace, {
+      const session = await ExternalViewerSessionResource.create(workspace, {
         email: "viewer@example.com",
       });
+      const cookie = serializeFrameSessionCookie(session);
       const match = cookie.match(/dust_frame_session=([^;]+)/);
       expect(match).not.toBeNull();
 
@@ -529,7 +538,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
       });
 
       // Create one session for this email.
-      const cookie = await createFrameSession(workspace, { email });
+      const session = await ExternalViewerSessionResource.create(workspace, {
+        email,
+      });
+      const cookie = serializeFrameSessionCookie(session);
       const match = cookie.match(/dust_frame_session=([^;]+)/);
       expect(match).not.toBeNull();
       const sessionToken = match![1];

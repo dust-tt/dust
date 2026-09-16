@@ -1,8 +1,6 @@
 /** @ignoreswagger */
-import { createFrameSession } from "@app/lib/api/share/frame_session";
-import { validateFrameOtpChallenge } from "@app/lib/api/share/frame_sharing";
-import { FileResource } from "@app/lib/resources/file_resource";
-import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
+import { serializeFrameSessionCookie } from "@app/lib/api/share/frame_session";
+import { verifyFrameEmailCode } from "@app/lib/api/share/frame_verification";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -36,41 +34,27 @@ app.post(
   async (ctx): HandlerResult<VerifyCodeResponseBody> => {
     const { token } = ctx.req.valid("param");
     const { email: rawEmail, code } = ctx.req.valid("json");
-    const email = rawEmail.toLowerCase().trim();
-
-    const result = await FileResource.fetchByShareToken(token);
-    if (result.isErr()) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "Share not found.",
-        },
-      });
-    }
-
-    const { file, shareScope, workspace } = result.value;
-    // Only email-based scopes require OTP — return 404 to prevent scope enumeration.
-    if (shareScope !== "emails_only" && shareScope !== "workspace_and_emails") {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "Share not found.",
-        },
-      });
-    }
-
-    // Validate OTP before checking grants. This prevents enumeration: an attacker calling this
-    // endpoint directly (without going through verify-email) gets an OTP error, not a grant error.
-    const otpResult = await validateFrameOtpChallenge({
+    const result = await verifyFrameEmailCode({
       shareToken: token,
-      email,
-      submittedCode: code,
+      email: rawEmail,
+      code,
     });
-    if (otpResult.isErr()) {
-      const otpError = otpResult.error;
-      switch (otpError) {
+    if (result.isErr()) {
+      const error = result.error;
+      switch (error) {
+        case "share_not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: { type: "file_not_found", message: "Share not found." },
+          });
+        case "no_access":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "invalid_request_error",
+              message: "You do not have access to this shared content.",
+            },
+          });
         case "expired":
           return apiError(ctx, {
             status_code: 410,
@@ -98,25 +82,11 @@ app.post(
             },
           });
         default:
-          assertNever(otpError);
+          assertNever(error);
       }
     }
 
-    // OTP is valid. Now check the grant — it may have been revoked between code request and
-    // submission. A valid OTP proves the user went through verify-email (which requires a grant),
-    // so revealing "no access" here doesn't enable enumeration.
-    const hasGrant = await SharingGrantResource.findForEmail(file, email);
-    if (!hasGrant) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message: "You do not have access to this shared content.",
-        },
-      });
-    }
-
-    const cookie = await createFrameSession(workspace, { email });
+    const cookie = serializeFrameSessionCookie(result.value);
     ctx.header("Set-Cookie", cookie);
 
     return ctx.json({ success: true });
