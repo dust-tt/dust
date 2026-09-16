@@ -3,7 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { CreateAgentArgs } from "@app/lib/api/actions/servers/agent_authoring/metadata";
+import type { CreateAgentArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
@@ -35,13 +35,13 @@ export async function createAgent(
     );
   }
 
+  if (!(await auth.hasWorkspacePermission("create", "agent"))) {
+    return new Err(new MCPError("Creating agents is restricted."));
+  }
+
   const trimmedName = name.trim();
   if (!trimmedName) {
     return new Err(new MCPError("Agent name cannot be empty."));
-  }
-
-  if (!(await auth.hasWorkspacePermission("create", "agent"))) {
-    return new Err(new MCPError("Creating agents is restricted."));
   }
 
   const { defaultModel } = await getModelsForAuth(auth);
