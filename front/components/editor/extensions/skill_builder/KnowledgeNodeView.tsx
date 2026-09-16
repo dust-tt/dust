@@ -116,13 +116,43 @@ function KnowledgeDisplayComponent({
   );
 }
 
-export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
+// Rendered in the conversation composer, which has no SpacesProvider: full
+// items already carry their node, base items degrade to a plain chip since the
+// node cannot be fetched without the context.
+function StaticKnowledgeChip({
+  item,
+  onRemove,
+}: {
+  item: KnowledgeItem;
+  onRemove?: () => void;
+}) {
+  if (isFullKnowledgeItem(item)) {
+    return (
+      <InlineKnowledgeChip
+        node={item.node}
+        onRemove={onRemove}
+        title={item.label}
+      />
+    );
+  }
+
+  return (
+    <Chip label={item.label} color="primary" size="xs" onRemove={onRemove} />
+  );
+}
+
+// Shared shell for the concrete node views: owns the empty-node cleanup and the
+// NodeViewWrapper, and hands the resolved item + remove handler to `children`.
+// The static vs interactive choice is made at registration time via node
+// options (see KnowledgeNodeWithView), not by sniffing the ambient context.
+function KnowledgeNodeViewShell({
   deleteNode,
   editor,
   node,
-  updateAttributes,
-}) => {
-  const { owner, isSpacesLoading } = useSpacesContext();
+  children,
+}: Pick<NodeViewProps, "deleteNode" | "editor" | "node"> & {
+  children: (item: KnowledgeItem, onRemove?: () => void) => React.ReactNode;
+}) {
   const { selectedItems } = node.attrs as KnowledgeNodeAttributes;
 
   const handleRemove = useCallback(
@@ -143,15 +173,43 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
     return null;
   }
 
+  const item = selectedItems[0];
+  const onRemove = editor.isEditable ? handleRemove : undefined;
+
   return (
     <NodeViewWrapper className="inline-flex align-middle" data-drag-handle="">
-      <KnowledgeDisplayComponent
-        item={selectedItems[0]}
-        owner={owner}
-        isSpacesLoading={isSpacesLoading}
-        onRemove={editor.isEditable ? handleRemove : undefined}
-        updateAttributes={updateAttributes}
-      />
+      {children(item, onRemove)}
     </NodeViewWrapper>
   );
+}
+
+// Skill/agent builder view: always mounted inside a SpacesProvider, so it reads
+// the (throwing) context directly and can rehydrate base items into full chips.
+export const InteractiveKnowledgeNodeView: React.FC<NodeViewProps> = (
+  props
+) => {
+  const { owner, isSpacesLoading } = useSpacesContext();
+
+  return (
+    <KnowledgeNodeViewShell {...props}>
+      {(item, onRemove) => (
+        <KnowledgeDisplayComponent
+          item={item}
+          owner={owner}
+          isSpacesLoading={isSpacesLoading}
+          onRemove={onRemove}
+          updateAttributes={props.updateAttributes}
+        />
+      )}
+    </KnowledgeNodeViewShell>
+  );
 };
+
+// Composer view: no SpacesProvider, renders whatever the item already carries.
+export const StaticKnowledgeNodeView: React.FC<NodeViewProps> = (props) => (
+  <KnowledgeNodeViewShell {...props}>
+    {(item, onRemove) => (
+      <StaticKnowledgeChip item={item} onRemove={onRemove} />
+    )}
+  </KnowledgeNodeViewShell>
+);

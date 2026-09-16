@@ -4,6 +4,7 @@ import type {
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import {
   computeHasChildren,
+  getItemSourceUrl,
   isFullKnowledgeItem,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { Node } from "@tiptap/core";
@@ -26,11 +27,17 @@ export const KNOWLEDGE_NODE_TYPE = "knowledgeNode";
 
 interface KnowledgeNodeOptions {
   readOnly: boolean;
+  // When true, the node view rehydrates base items into full nodes by fetching
+  // through the SpacesContext (skill/agent builder). When false (the composer
+  // default), the view renders items as-is and never touches the spaces
+  // context. See KnowledgeNodeWithView for how this selects the concrete node
+  // view.
+  hydratesFromSpaces: boolean;
 }
 
 export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
   addOptions() {
-    return { readOnly: false };
+    return { readOnly: false, hydratesFromSpaces: false };
   },
   name: KNOWLEDGE_NODE_TYPE,
 
@@ -58,6 +65,7 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
       const idMatch = attributesString.match(/id="([^"]+)"/);
       const spaceMatch = attributesString.match(/space="([^"]*)"/);
       const titleMatch = attributesString.match(/title="([^"]+)"/);
+      const urlMatch = attributesString.match(/url="([^"]*)"/);
 
       if (!idMatch || !titleMatch) {
         return undefined;
@@ -70,6 +78,7 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
         knowledgeId: idMatch[1],
         knowledgeTitle: titleMatch[1],
         raw: match[0],
+        sourceUrl: urlMatch?.[1] ? urlMatch[1] : undefined,
         spaceId: spaceMatch ? spaceMatch[1] : undefined,
       };
 
@@ -91,6 +100,7 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
                 hasChildren: element.getAttribute("hasChildren") === "true",
                 label: title,
                 nodeId: id,
+                sourceUrl: element.getAttribute("url") || null,
                 spaceId: element.getAttribute("space") ?? "",
               };
               return [item];
@@ -118,11 +128,13 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
           const hasChildren = isFullKnowledgeItem(item)
             ? computeHasChildren(item.node)
             : item.hasChildren;
+          const sourceUrl = getItemSourceUrl(item);
           return {
             id: item.nodeId,
             title: item.label,
             space: item.spaceId,
             dsv: item.dataSourceViewId,
+            ...(sourceUrl ? { url: sourceUrl } : {}),
             hasChildren: String(hasChildren),
           };
         },
@@ -192,7 +204,11 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
 
       // Serialize essential data for model understanding and API fetching.
       // Format kept aligned with renderNode() output for consistency.
-      return `<${KNOWLEDGE_TAG} id="${item.nodeId}" title="${item.label}" space="${item.spaceId}" dsv="${item.dataSourceViewId}" hasChildren="${hasChildren}" />`;
+      // The url attribute is attached only when source url is available
+      const sourceUrl = getItemSourceUrl(item);
+      const urlAttribute = sourceUrl ? ` url="${sourceUrl}"` : "";
+
+      return `<${KNOWLEDGE_TAG} id="${item.nodeId}" title="${item.label}" space="${item.spaceId}" dsv="${item.dataSourceViewId}"${urlAttribute} hasChildren="${hasChildren}" />`;
     }
 
     // Don't serialize search state, empty nodes shouldn't be saved.
@@ -205,6 +221,7 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
       hasChildren: token.hasChildren,
       label: token.knowledgeTitle,
       nodeId: token.knowledgeId,
+      sourceUrl: token.sourceUrl ?? null,
       spaceId: token.spaceId,
     };
 

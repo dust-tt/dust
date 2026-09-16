@@ -32,6 +32,9 @@ import {
   SELECT_TOOL_SLASH_COMMAND_ACTION,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+import { knowledgeNodeToItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor, {
@@ -55,6 +58,7 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
+import { hasAnotherAttachedNode } from "@app/lib/editor/utils";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
@@ -189,24 +193,7 @@ function readDefaultSkillEditorState(editor: Editor): {
   return { skillIds, hasUserContent };
 }
 
-function hasAnotherAttachedNode(
-  editor: Editor,
-  nodeType: string,
-  attrName: string,
-  value: string
-): boolean {
-  let found = false;
-  editor.state.doc.descendants((node) => {
-    if (found) {
-      return false;
-    }
-    if (node.type.name === nodeType && node.attrs[attrName] === value) {
-      found = true;
-    }
-    return true;
-  });
-  return found;
-}
+const EMPTY_ATTACHED_NODES: DataSourceViewContentNode[] = [];
 
 function sameSkillIds(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((id, index) => id === b[index]);
@@ -419,6 +406,14 @@ const InputBarContainer = ({
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
   const attachedNodesRef = useRef(attachedNodes);
   attachedNodesRef.current = attachedNodes;
+  // With inline references the same node can be inserted as many times as the user
+  // wants, so the pickers must not mark or hide already-attached nodes. Only one
+  // content fragment per node is sent: the parent's onNodeSelect dedups attachments.
+  const pickerAttachedNodes = isInlineReferenceEnabled
+    ? EMPTY_ATTACHED_NODES
+    : attachedNodes;
+  const pickerAttachedNodesRef = useRef(pickerAttachedNodes);
+  pickerAttachedNodesRef.current = pickerAttachedNodes;
   const selectedMCPServerViewIds = useMemo(
     () =>
       isInlineReferenceEnabled
@@ -447,7 +442,6 @@ const InputBarContainer = ({
     undefined
   );
   const onNodeSelectRef = useRef(onNodeSelect);
-  onNodeSelectRef.current = onNodeSelect;
   const includeAttachKnowledgeRef = useRef(actions.includes("attachment"));
   includeAttachKnowledgeRef.current = actions.includes("attachment");
   const includePickModelRef = useRef(false);
@@ -727,6 +721,27 @@ const InputBarContainer = ({
       .run();
   };
 
+  const handleNodeSelect = (node: DataSourceViewContentNode) => {
+    onNodeSelect(node);
+
+    if (!isInlineReferenceEnabled) {
+      return;
+    }
+
+    editorRef.current
+      ?.chain()
+      .focus()
+      .insertContent([
+        {
+          type: KNOWLEDGE_NODE_TYPE,
+          attrs: { selectedItems: [knowledgeNodeToItem(node)] },
+        },
+        { type: "text", text: " " },
+      ])
+      .run();
+  };
+  onNodeSelectRef.current = handleNodeSelect;
+
   const handleSlashCommandSelect = (command: InputBarSlashCommand) => {
     switch (command.id) {
       case "upload-file":
@@ -837,7 +852,7 @@ const InputBarContainer = ({
       slashCommandsRef,
       includeAttachKnowledgeRef,
       includePickModelRef,
-      attachedNodesRef,
+      attachedNodesRef: pickerAttachedNodesRef,
       onModelSelectRef,
       onNodeSelectRef,
       spaceIdRef,
@@ -1165,9 +1180,7 @@ const InputBarContainer = ({
           isString(nodeId) &&
           !hasAnotherAttachedNode(
             currentEditor,
-            "dataSourceLink",
-            "nodeId",
-            nodeId
+            (n) => n.type.name === "dataSourceLink" && n.attrs.nodeId === nodeId
           )
         ) {
           const attachedNode = attachedNodesRef.current.find(
@@ -1186,9 +1199,9 @@ const InputBarContainer = ({
           isString(mcpServerViewId) &&
           !hasAnotherAttachedNode(
             currentEditor,
-            TOOL_NODE_TYPE,
-            "mcpServerViewId",
-            mcpServerViewId
+            (n) =>
+              n.type.name === TOOL_NODE_TYPE &&
+              n.attrs.mcpServerViewId === mcpServerViewId
           )
         ) {
           const view = selectedMCPServerViews.find(
@@ -1196,6 +1209,30 @@ const InputBarContainer = ({
           );
           if (view) {
             onMCPServerViewDeselect(view);
+          }
+        }
+        return;
+      }
+
+      if (node.type.name === KNOWLEDGE_NODE_TYPE) {
+        const item = (node.attrs.selectedItems as KnowledgeItem[])[0];
+        if (
+          item &&
+          !hasAnotherAttachedNode(
+            currentEditor,
+            (n) =>
+              n.type.name === KNOWLEDGE_NODE_TYPE &&
+              (n.attrs.selectedItems as KnowledgeItem[])[0]?.nodeId ===
+                item.nodeId
+          )
+        ) {
+          const attachedNode = attachedNodesRef.current.find(
+            (n) =>
+              n.internalId === item.nodeId &&
+              n.dataSourceView.sId === item.dataSourceViewId
+          );
+          if (attachedNode) {
+            onNodeUnselect(attachedNode);
           }
         }
       }
@@ -1854,7 +1891,7 @@ const InputBarContainer = ({
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}
-                      attachedNodes={attachedNodes}
+                      attachedNodes={pickerAttachedNodes}
                       buttonSize={buttonSize}
                       clientType={clientType}
                       conversation={conversation}
@@ -1871,7 +1908,7 @@ const InputBarContainer = ({
                       onMCPServerViewSelect={handleToolSelect}
                       modelSelectionRef={modelSelectionRef}
                       modelSelectionCommitRef={modelSelectionCommitRef}
-                      onNodeSelect={onNodeSelect}
+                      onNodeSelect={handleNodeSelect}
                       onNodeUnselect={onNodeUnselect}
                       onSkillSelect={handleSkillSelect}
                       owner={owner}
@@ -1995,9 +2032,9 @@ const InputBarContainer = ({
                           fileUploaderService={fileUploaderService}
                           owner={owner}
                           isLoading={false}
-                          onNodeSelect={onNodeSelect}
+                          onNodeSelect={handleNodeSelect}
                           onNodeUnselect={onNodeUnselect}
-                          attachedNodes={attachedNodes}
+                          attachedNodes={pickerAttachedNodes}
                           buttonSize={buttonSize}
                           toolFileUpload={{
                             useCase: "conversation",
