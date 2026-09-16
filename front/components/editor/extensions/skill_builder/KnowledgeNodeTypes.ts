@@ -20,6 +20,18 @@ export interface FullKnowledgeItem extends BaseKnowledgeItem {
 
 export type KnowledgeItem = BaseKnowledgeItem | FullKnowledgeItem;
 
+export function getKnowledgeItems(attrs: {
+  selectedItems?: unknown;
+}): KnowledgeItem[] {
+  return Array.isArray(attrs.selectedItems) ? attrs.selectedItems : [];
+}
+
+export function getFirstKnowledgeItem(attrs: {
+  selectedItems?: unknown;
+}): KnowledgeItem | undefined {
+  return getKnowledgeItems(attrs)[0];
+}
+
 export function isFullKnowledgeItem(
   item: KnowledgeItem
 ): item is FullKnowledgeItem {

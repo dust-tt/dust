@@ -33,8 +33,10 @@ import {
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
-import { knowledgeNodeToItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+import {
+  getFirstKnowledgeItem,
+  knowledgeNodeToItem,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor, {
@@ -1212,15 +1214,14 @@ const InputBarContainer = ({
       }
 
       if (node.type.name === KNOWLEDGE_NODE_TYPE) {
-        const item = (node.attrs.selectedItems as KnowledgeItem[])[0];
+        const item = getFirstKnowledgeItem(node.attrs);
         if (
           item &&
           !hasAnotherAttachedNode(
             currentEditor,
             (n) =>
               n.type.name === KNOWLEDGE_NODE_TYPE &&
-              (n.attrs.selectedItems as KnowledgeItem[])[0]?.nodeId ===
-                item.nodeId
+              getFirstKnowledgeItem(n.attrs)?.nodeId === item.nodeId
           )
         ) {
           const attachedNode = attachedNodesRef.current.find(
