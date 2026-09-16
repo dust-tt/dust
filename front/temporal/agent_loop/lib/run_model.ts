@@ -54,6 +54,8 @@ import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { DurationRecorder } from "@app/lib/duration_recorder";
+import { enforceInferenceHooks } from "@app/lib/inference_hook/enforce";
+import { trailingAssistantFromOutput } from "@app/lib/inference_hook/transcript";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -781,6 +783,22 @@ export async function runModel(
     return null;
   }
 
+  const inputHook = await enforceInferenceHooks(auth, {
+    phase: "input",
+    systemPrompt: promptText,
+    modelConversation: modelConversationRes.value.modelConversation,
+  });
+  if (inputHook.ruling !== "proceed") {
+    await publishAgentError({
+      code: inputHook.code ?? "inference_hook_blocked",
+      message:
+        inputHook.message ??
+        "This request was blocked by the workspace inference security policy.",
+      metadata: null,
+    });
+    return null;
+  }
+
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
@@ -968,6 +986,26 @@ export async function runModel(
 
   const { dustRunId, nativeChainOfThought, output, stopReason } =
     getOutputFromActionResponse.value;
+
+  const outputHook = await enforceInferenceHooks(auth, {
+    phase: "output",
+    systemPrompt: promptText,
+    modelConversation: modelConversationRes.value.modelConversation,
+    trailingAssistant: trailingAssistantFromOutput(output),
+  });
+  if (outputHook.ruling !== "proceed") {
+    await publishAgentError(
+      {
+        code: outputHook.code ?? "inference_hook_blocked",
+        message:
+          outputHook.message ??
+          "This request was blocked by the workspace inference security policy.",
+        metadata: null,
+      },
+      dustRunId
+    );
+    return null;
+  }
 
   // Create a new object to avoid mutation
   const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };
