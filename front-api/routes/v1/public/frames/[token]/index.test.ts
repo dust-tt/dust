@@ -1,6 +1,7 @@
 import { createFrameSession } from "@app/lib/api/share/frame_session";
 import { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import {
   ExternalViewerSessionModel,
   SharingGrantModel,
@@ -11,6 +12,7 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { FileShareScope } from "@app/types/files";
@@ -59,7 +61,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
   };
 
   const createGrantAndSession = async (file: FileResource, email: string) => {
-    await file.addSharingGrants(auth, { emails: [email] });
+    await SharingGrantFactory.create(auth, file, {
+      kind: "email",
+      value: email,
+    });
 
     // Create session and extract token from the Set-Cookie header.
     const cookie = await createFrameSession(workspace, { email });
@@ -80,6 +85,55 @@ describe("GET /api/v1/public/frames/[token]", () => {
     }
     return honoApp.request(`/api/v1/public/frames/${token}`, { headers });
   };
+
+  it("records each verified domain viewer and stops access after revocation", async () => {
+    vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
+    const { file, token } = await createFrameWithScope("emails_only");
+    const grant = await SharingGrantFactory.create(auth, file, {
+      kind: "domain",
+      value: "example.com",
+    });
+    const requestAs = async (email: string) => {
+      const cookie = await createFrameSession(workspace, { email });
+      return honoApp.request(`/api/v1/public/frames/${token}`, {
+        headers: { cookie },
+      });
+    };
+    for (const email of [
+      "alice@example.com",
+      "bob@example.com",
+      "alice@example.com",
+    ]) {
+      expect((await requestAs(email)).status).toBe(200);
+    }
+    const viewers = await file.getViewerSummaries();
+    expect(viewers).toHaveLength(2);
+    expect(viewers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ email: "alice@example.com", viewedDays: 1 }),
+        expect.objectContaining({ email: "bob@example.com", viewedDays: 1 }),
+      ])
+    );
+    expect((await requestAs("alice@sub.example.com")).status).toBe(404);
+    expect((await requestAs("alice@notexample.com")).status).toBe(404);
+    expect((await grant.revoke(auth)).isOk()).toBe(true);
+    expect((await requestAs("alice@example.com")).status).toBe(404);
+    expect(await file.getViewerSummaries()).toEqual(viewers);
+  });
+
+  it("records an email grant in both the daily history and legacy last-view field", async () => {
+    vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
+    const { file, token } = await createFrameWithScope("emails_only");
+    const session = await createGrantAndSession(file, "alice@example.com");
+    expect(
+      (await requestFrame(token, { cookies: { dust_frame_session: session } }))
+        .status
+    ).toBe(200);
+    const [viewer] = await file.getViewerSummaries();
+    const [grant] = await SharingGrantResource.listForFile(file);
+    expect(viewer.email).toBe("alice@example.com");
+    expect(grant.lastViewedAt).toEqual(viewer.lastViewedAt);
+  });
 
   // A shared Frame that lives in an app folder must resolve its app's functions by bare name just
   // as it does when opened from the Pod, so the response has to tell it which app it belongs to.
@@ -168,7 +222,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
       await MembershipFactory.associate(workspace, otherUser, {
         role: "user",
       });
-      await file.addSharingGrants(auth, { emails: [otherUser.email] });
+      await SharingGrantFactory.create(auth, file, {
+        kind: "email",
+        value: otherUser.email,
+      });
       const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
         otherUser.sId,
         workspace.sId
@@ -267,8 +324,9 @@ describe("GET /api/v1/public/frames/[token]", () => {
 
       // Grant exists for their email, but they can't prove email ownership
       // without workspace membership — they must go through OTP.
-      await file.addSharingGrants(auth, {
-        emails: ["other-workspace-user@example.com"],
+      await SharingGrantFactory.create(auth, file, {
+        kind: "email",
+        value: "other-workspace-user@example.com",
       });
 
       const response = await requestFrame(token);
@@ -285,7 +343,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
       vi.mocked(resolveOptionalAuth).mockResolvedValue(auth);
 
       // Grant access to the logged-in user's email.
-      await file.addSharingGrants(auth, { emails: [user.email] });
+      await SharingGrantFactory.create(auth, file, {
+        kind: "email",
+        value: user.email,
+      });
 
       const response = await requestFrame(token);
 
@@ -367,7 +428,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
       vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
 
       // Grant is for alice, but session is for bob.
-      await file.addSharingGrants(auth, { emails: ["alice@example.com"] });
+      await SharingGrantFactory.create(auth, file, {
+        kind: "email",
+        value: "alice@example.com",
+      });
 
       // Create session for bob (no grant for bob).
       const cookie = await createFrameSession(workspace, {
@@ -388,7 +452,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
       const { file, token } = await createFrameWithScope("emails_only");
       vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
 
-      await file.addSharingGrants(auth, { emails: ["viewer@example.com"] });
+      await SharingGrantFactory.create(auth, file, {
+        kind: "email",
+        value: "viewer@example.com",
+      });
 
       // Create an expired session directly.
       const sessionToken = crypto.randomUUID();
@@ -410,7 +477,10 @@ describe("GET /api/v1/public/frames/[token]", () => {
       const { file, token } = await createFrameWithScope("emails_only");
       vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
 
-      await file.addSharingGrants(auth, { emails: ["viewer@example.com"] });
+      await SharingGrantFactory.create(auth, file, {
+        kind: "email",
+        value: "viewer@example.com",
+      });
 
       // Get the grant to check lastViewedAt later.
       const grant = await SharingGrantModel.findOne({
@@ -449,8 +519,14 @@ describe("GET /api/v1/public/frames/[token]", () => {
 
       // Grant access to both frames for the same email.
       const email = "viewer@example.com";
-      await file1.addSharingGrants(auth, { emails: [email] });
-      await file2.addSharingGrants(auth, { emails: [email] });
+      await SharingGrantFactory.create(auth, file1, {
+        kind: "email",
+        value: email,
+      });
+      await SharingGrantFactory.create(auth, file2, {
+        kind: "email",
+        value: email,
+      });
 
       // Create one session for this email.
       const cookie = await createFrameSession(workspace, { email });

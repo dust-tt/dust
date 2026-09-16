@@ -1,10 +1,13 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { frameContentType } from "@app/types/files";
@@ -78,6 +81,67 @@ function deleteGrant(
 describe("sharing grants endpoint", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("requires Pod access to read viewer history or change grants", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest();
+    const space = await SpaceFactory.project(workspace, user.id);
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameContentType,
+      fileName: "private-frame.tsx",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+    const grant = await SharingGrantFactory.create(auth, file, {
+      kind: "domain",
+      value: "example.com",
+    });
+    await file.recordView({
+      verifiedEmail: "alice@example.com",
+      viewedAt: new Date("2026-09-14T08:00:00Z"),
+    });
+
+    const ownerResponse = await getGrants(workspace, file.sId);
+    expect(ownerResponse.status).toBe(200);
+    const ownerState = await ownerResponse.json();
+    expect(ownerState.viewers).toEqual([
+      expect.objectContaining({ email: "alice@example.com", viewedDays: 1 }),
+    ]);
+
+    const outsider = await createPrivateApiMockRequest({ workspace });
+    expect(outsider.auth.can("read", space)).toBe(false);
+    await grantInviteToEveryone(workspace);
+    await FeatureFlagFactory.basic(outsider.auth, "frame_domain_sharing");
+
+    const readResponse = await getGrants(workspace, file.sId);
+    expect(readResponse.status).toBe(404);
+    const createResponse = await postGrants(workspace, file.sId, {
+      domains: ["example.org"],
+    });
+    expect(createResponse.status).toBe(404);
+    const revokeResponse = await deleteGrant(workspace, file.sId, {
+      grantId: grant.sId,
+    });
+    expect(revokeResponse.status).toBe(404);
+
+    const remaining = await SharingGrantResource.listForFile(file);
+    expect(remaining.map((entry) => entry.sId)).toEqual([grant.sId]);
+  });
+
+  it("rejects a Pod Frame without its space metadata", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest();
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameContentType,
+      fileName: "orphaned-frame.tsx",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+    });
+
+    const response = await getGrants(workspace, file.sId);
+    expect(response.status).toBe(404);
   });
 
   it("should return 400 for non-interactive-content files", async () => {
@@ -186,7 +250,7 @@ describe("sharing grants endpoint", () => {
         message: expect.stringContaining("255"),
       },
     });
-    expect(await file.listActiveSharingGrants()).toEqual([]);
+    expect(await SharingGrantResource.listForFile(file)).toEqual([]);
     expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
   });
 
@@ -406,7 +470,10 @@ describe("sharing grants endpoint", () => {
       });
 
       // Add a grant while policy is still permissive.
-      await file.addSharingGrants(auth, { emails: ["external@example.com"] });
+      await SharingGrantFactory.create(auth, file, {
+        kind: "email",
+        value: "external@example.com",
+      });
 
       // Now restrict to workspace_only.
       await setSharingPolicy(workspace, "workspace_only");
@@ -437,7 +504,10 @@ describe("sharing grants endpoint", () => {
         useCase: "conversation",
       });
 
-      await file.addSharingGrants(auth, { emails: [member.email] });
+      await SharingGrantFactory.create(auth, file, {
+        kind: "email",
+        value: member.email,
+      });
 
       await setSharingPolicy(workspace, "workspace_only");
 
@@ -619,7 +689,10 @@ describe("sharing grants endpoint", () => {
       });
 
       // Seed an external grant directly (bypasses the endpoint's permission check).
-      await file.addSharingGrants(auth, { emails: ["external@example.com"] });
+      await SharingGrantFactory.create(auth, file, {
+        kind: "email",
+        value: "external@example.com",
+      });
 
       const response = await getGrants(workspace, file.sId);
 
@@ -682,7 +755,10 @@ describe("sharing grants endpoint", () => {
       // Opens both gates the refusal could otherwise be attributed to.
       await setSharingPolicy(workspace, "all_scopes");
       await grantInviteToEveryone(workspace);
-      const space = await SpaceFactory.project(workspace);
+      const space = await SpaceFactory.project(
+        workspace,
+        auth.getNonNullableUser().id
+      );
       const { frame } = await createTestFrameFunction(auth, { space });
 
       const response = await postGrants(workspace, frame.sId, {
@@ -690,7 +766,7 @@ describe("sharing grants endpoint", () => {
       });
 
       expect(response.status).toBe(403);
-      expect(await frame.listActiveSharingGrants()).toHaveLength(0);
+      expect(await SharingGrantResource.listForFile(frame)).toHaveLength(0);
     });
 
     it("blocks an admin from inviting an external email to a frame with functions", async () => {
@@ -699,7 +775,10 @@ describe("sharing grants endpoint", () => {
         role: "admin",
       });
       await setSharingPolicy(workspace, "all_scopes");
-      const space = await SpaceFactory.project(workspace);
+      const space = await SpaceFactory.project(
+        workspace,
+        auth.getNonNullableUser().id
+      );
       const { frame } = await createTestFrameFunction(auth, { space });
 
       const response = await postGrants(workspace, frame.sId, {
@@ -717,7 +796,10 @@ describe("sharing grants endpoint", () => {
       await setSharingPolicy(workspace, "all_scopes");
       const member = await UserFactory.basic();
       await MembershipFactory.associate(workspace, member, { role: "user" });
-      const space = await SpaceFactory.project(workspace);
+      const space = await SpaceFactory.project(
+        workspace,
+        auth.getNonNullableUser().id
+      );
       const { frame } = await createTestFrameFunction(auth, { space });
 
       const response = await postGrants(workspace, frame.sId, {
@@ -739,7 +821,10 @@ describe("sharing grants endpoint", () => {
       await grantInviteToEveryone(workspace);
       const member = await UserFactory.basic();
       await MembershipFactory.associate(workspace, member, { role: "user" });
-      const space = await SpaceFactory.project(workspace);
+      const space = await SpaceFactory.project(
+        workspace,
+        auth.getNonNullableUser().id
+      );
       const { frame } = await createTestFrameFunction(auth, { space });
 
       const response = await postGrants(workspace, frame.sId, {
@@ -747,7 +832,7 @@ describe("sharing grants endpoint", () => {
       });
 
       expect(response.status).toBe(403);
-      expect(await frame.listActiveSharingGrants()).toHaveLength(0);
+      expect(await SharingGrantResource.listForFile(frame)).toHaveLength(0);
     });
 
     it("marks pre-existing external grants as blockedByPolicy on GET", async () => {
@@ -757,9 +842,15 @@ describe("sharing grants endpoint", () => {
       });
       await setSharingPolicy(workspace, "all_scopes");
       await grantInviteToEveryone(workspace);
-      const space = await SpaceFactory.project(workspace);
+      const space = await SpaceFactory.project(
+        workspace,
+        auth.getNonNullableUser().id
+      );
       const { frame } = await createTestFrameFunction(auth, { space });
-      await frame.addSharingGrants(auth, { emails: ["external@example.com"] });
+      await SharingGrantFactory.create(auth, frame, {
+        kind: "email",
+        value: "external@example.com",
+      });
 
       const response = await getGrants(workspace, frame.sId);
 
@@ -777,20 +868,210 @@ describe("sharing grants endpoint", () => {
       });
       await setSharingPolicy(workspace, "all_scopes");
       await grantInviteToEveryone(workspace);
-      const space = await SpaceFactory.project(workspace);
+      const space = await SpaceFactory.project(
+        workspace,
+        auth.getNonNullableUser().id
+      );
       const { frame } = await createTestFrameFunction(auth, { space });
-      const result = await frame.addSharingGrants(auth, {
-        emails: ["external@example.com"],
+      const grant = await SharingGrantFactory.create(auth, frame, {
+        kind: "email",
+        value: "external@example.com",
       });
-      assert(result.isOk());
-      const [grant] = result.value;
 
       const response = await deleteGrant(workspace, frame.sId, {
         grantId: grant.id,
       });
 
       expect(response.status).toBe(204);
-      expect(await frame.listActiveSharingGrants()).toHaveLength(0);
+      expect(await SharingGrantResource.listForFile(frame)).toHaveLength(0);
     });
+  });
+});
+
+describe("domain sharing grants", () => {
+  async function setup() {
+    const ctx = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+    const file = await FileFactory.create(ctx.auth, ctx.user, {
+      contentType: frameContentType,
+      fileName: "frame.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+    });
+    return { ...ctx, file };
+  }
+
+  beforeEach(() => vi.clearAllMocks());
+
+  it("adds mixed targets, audits only new grants and revokes by string ID", async () => {
+    const { auth, workspace, file } = await setup();
+    await FeatureFlagFactory.basic(auth, "frame_domain_sharing");
+    await grantInviteToEveryone(workspace);
+    const body = {
+      emails: ["alice@example.com"],
+      domains: ["EXAMPLE.COM", "@example.com"],
+    };
+    const response = await postGrants(workspace, file.sId, body);
+    expect(response.status).toBe(200);
+    const { grants, accessGrants, viewers, canGrantDomains } =
+      await response.json();
+    expect(grants).toHaveLength(1);
+    expect(grants[0].email).toBe("alice@example.com");
+    expect(accessGrants).toHaveLength(2);
+    expect(viewers).toEqual([]);
+    expect(canGrantDomains).toBe(true);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "frame.domain_grant_added",
+        metadata: { frame_name: "frame.tsx", domains: "example.com" },
+      })
+    );
+    mockEmitAuditLogEvent.mockClear();
+    expect((await postGrants(workspace, file.sId, body)).status).toBe(200);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+    const [domain] = (await SharingGrantResource.listForFile(file)).filter(
+      (grant) => grant.domain
+    );
+    assert(domain);
+    expect(
+      (await deleteGrant(workspace, file.sId, { grantId: domain.id })).status
+    ).toBe(404);
+    expect(
+      (await deleteGrant(workspace, file.sId, { grantId: domain.sId })).status
+    ).toBe(204);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "frame.domain_grant_revoked",
+        metadata: { frame_name: "frame.tsx", domain: "example.com" },
+      })
+    );
+    expect(
+      await SharingGrantResource.findForEmail(file, "bob@example.com")
+    ).toBeNull();
+    expect(
+      await SharingGrantResource.findForEmail(file, "alice@example.com")
+    ).not.toBeNull();
+  });
+
+  it("requires the flag and invitation permission before creating any target", async () => {
+    const { auth, workspace, file } = await setup();
+    const body = { emails: ["alice@example.com"], domains: ["example.com"] };
+    expect((await postGrants(workspace, file.sId, body)).status).toBe(403);
+    await FeatureFlagFactory.basic(auth, "frame_domain_sharing");
+    expect((await postGrants(workspace, file.sId, body)).status).toBe(403);
+    expect(await SharingGrantResource.listForFile(file)).toEqual([]);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+    await grantInviteToEveryone(workspace);
+    for (const domains of [["*.example.com"], ["https://example.com"]]) {
+      expect((await postGrants(workspace, file.sId, { domains })).status).toBe(
+        400
+      );
+    }
+    expect((await postGrants(workspace, file.sId, body)).status).toBe(200);
+    await setSharingPolicy(workspace, "workspace_only");
+    expect(
+      (await postGrants(workspace, file.sId, { domains: ["example.org"] }))
+        .status
+    ).toBe(403);
+    const response = await getGrants(workspace, file.sId);
+    const state = await response.json();
+    expect(state.canGrantDomains).toBe(false);
+    expect(state.accessGrants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target: { kind: "domain", value: "example.com" },
+          blockedByPolicy: true,
+        }),
+      ])
+    );
+  });
+
+  it("blocks domain additions to Frames with functions and marks older domain grants", async () => {
+    const { auth, workspace } = await setup();
+    await FeatureFlagFactory.basic(auth, "frame_domain_sharing");
+    await grantInviteToEveryone(workspace);
+    const space = await SpaceFactory.project(
+      workspace,
+      auth.getNonNullableUser().id
+    );
+    const { frame } = await createTestFrameFunction(auth, { space });
+    await SharingGrantFactory.create(auth, frame, {
+      kind: "domain",
+      value: "example.com",
+    });
+    expect(
+      (await postGrants(workspace, frame.sId, { domains: ["example.org"] }))
+        .status
+    ).toBe(403);
+    const response = await getGrants(workspace, frame.sId);
+    const state = await response.json();
+    expect(state.canGrantDomains).toBe(false);
+    expect(state.grants).toEqual([]);
+    expect(state.accessGrants).toEqual([
+      expect.objectContaining({ blockedByPolicy: true }),
+    ]);
+  });
+
+  it("keeps viewer identities and daily frequency after revocation and scopes grant IDs to the file", async () => {
+    const { auth, user, workspace, file } = await setup();
+    const grant = await SharingGrantFactory.create(auth, file, {
+      kind: "domain",
+      value: "example.com",
+    });
+    for (const viewedAt of [
+      "2026-09-13T08:00:00Z",
+      "2026-09-14T08:00:00Z",
+      "2026-09-14T10:00:00Z",
+    ]) {
+      await file.recordView({
+        verifiedEmail: "alice@example.com",
+        viewedAt: new Date(viewedAt),
+      });
+    }
+    await file.recordView({
+      verifiedEmail: "bob@example.com",
+      viewedAt: new Date("2026-09-14T09:00:00Z"),
+    });
+    const otherFile = await FileFactory.create(auth, user, {
+      contentType: frameContentType,
+      fileName: "other.tsx",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+    });
+    expect(
+      (await deleteGrant(workspace, otherFile.sId, { grantId: grant.sId }))
+        .status
+    ).toBe(404);
+    expect(
+      (await deleteGrant(workspace, file.sId, { grantId: grant.sId })).status
+    ).toBe(204);
+    const response = await getGrants(workspace, file.sId);
+    const state = await response.json();
+    expect(state.accessGrants).toEqual([]);
+    expect(state.viewers).toEqual([
+      {
+        email: "alice@example.com",
+        firstViewedAt: Date.parse("2026-09-13T08:00:00Z"),
+        lastViewedAt: Date.parse("2026-09-14T10:00:00Z"),
+        viewedDays: 2,
+      },
+      {
+        email: "bob@example.com",
+        firstViewedAt: Date.parse("2026-09-14T09:00:00Z"),
+        lastViewedAt: Date.parse("2026-09-14T09:00:00Z"),
+        viewedDays: 1,
+      },
+    ]);
+    const otherWorkspace = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    expect((await getGrants(otherWorkspace.workspace, file.sId)).status).toBe(
+      404
+    );
   });
 });

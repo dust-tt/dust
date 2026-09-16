@@ -1,6 +1,7 @@
 import { loadFramePublicationDescriptor } from "@app/lib/api/frames/publication_storage";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { makeTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
+import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -109,16 +110,23 @@ describe("GET /api/poke/workspaces/:wId/frames/:frameId", () => {
       isSuperUser: true,
     });
     await frame.setShareScope(adminAuth, "emails_only");
-    await frame.addSharingGrantsAndGetCreatedEmails(adminAuth, {
-      emails: ["active@dust.tt", "revoked@dust.tt"],
+    await SharingGrantFactory.create(adminAuth, frame, {
+      kind: "email",
+      value: "active@example.com",
+    });
+    await SharingGrantFactory.create(adminAuth, frame, {
+      kind: "email",
+      value: "revoked@example.com",
     });
 
     const grants = await frame.listAllSharingGrants();
-    const toRevoke = grants.find((grant) => grant.email === "revoked@dust.tt");
+    const toRevoke = grants.find(
+      (grant) => grant.email === "revoked@example.com"
+    );
     if (!toRevoke) {
       throw new Error("Expected the grant to revoke to exist.");
     }
-    const revokeResult = await frame.revokeSharingGrant({
+    const revokeResult = await frame.revokeSharingGrant(adminAuth, {
       grantId: toRevoke.id,
     });
     expect(revokeResult.isOk()).toBe(true);
@@ -155,7 +163,9 @@ describe("GET /api/poke/workspaces/:wId/frames/:frameId", () => {
         ]
       )
     );
-    expect(revokedAtByEmail.get("active@dust.tt")).toBeNull();
-    expect(revokedAtByEmail.get("revoked@dust.tt")).toEqual(expect.any(Number));
+    expect(revokedAtByEmail.get("active@example.com")).toBeNull();
+    expect(revokedAtByEmail.get("revoked@example.com")).toEqual(
+      expect.any(Number)
+    );
   });
 });

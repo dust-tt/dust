@@ -8,6 +8,7 @@ import {
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { frameContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
@@ -49,7 +50,10 @@ describe("POST /api/v1/public/frames/[token]/verify-code", () => {
     });
 
     await file.setShareScope(auth, "emails_only");
-    await file.addSharingGrants(auth, { emails: [VIEWER_EMAIL] });
+    await SharingGrantFactory.create(auth, file, {
+      kind: "email",
+      value: VIEWER_EMAIL,
+    });
 
     const shareInfo = await file.getShareInfo();
     assert(shareInfo, "Share info should be available");
@@ -62,6 +66,40 @@ describe("POST /api/v1/public/frames/[token]/verify-code", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+
+  it("issues individual domain sessions and rechecks revocation after OTP issuance", async () => {
+    const grant = await SharingGrantFactory.create(auth, file, {
+      kind: "domain",
+      value: "example.com",
+    });
+    const aliceOtp = await generateFrameOtpChallenge({
+      shareToken,
+      email: "alice@example.com",
+    });
+    assert(aliceOtp.isOk());
+    const aliceResponse = await postVerifyCode(shareToken, {
+      email: "alice@example.com",
+      code: aliceOtp.value.code,
+    });
+    expect(aliceResponse.status).toBe(200);
+    expect(aliceResponse.headers.get("Set-Cookie")).toContain(
+      "dust_frame_session="
+    );
+    const bobOtp = await generateFrameOtpChallenge({
+      shareToken,
+      email: "bob@example.com",
+    });
+    assert(bobOtp.isOk());
+    expect((await grant.revoke(auth)).isOk()).toBe(true);
+    expect(
+      (
+        await postVerifyCode(shareToken, {
+          email: "bob@example.com",
+          code: bobOtp.value.code,
+        })
+      ).status
+    ).toBe(403);
+  });
 
   it("returns 200 and sets dust_frame_session cookie on valid code", async () => {
     const otpResult = await generateFrameOtpChallenge({

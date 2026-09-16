@@ -16,6 +16,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
+import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
@@ -569,7 +570,10 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
     });
     expect(denied.status).toBe(404);
 
-    await frame.addSharingGrants(adminAuth, { emails: [user.email] });
+    await SharingGrantFactory.create(adminAuth, frame, {
+      kind: "email",
+      value: user.email,
+    });
     const allowed = await postInvocation({
       workspaceId: workspace.sId,
       functionIdOrSlug: `${frame.sId}/run-function`,
