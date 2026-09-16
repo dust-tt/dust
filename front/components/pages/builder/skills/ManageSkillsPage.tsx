@@ -42,7 +42,7 @@ import {
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
-import { isSkillHiddenFromNonEditors } from "@app/types/assistant/skill_configuration";
+import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
   Button,
@@ -349,7 +349,10 @@ export function ManageSkillsPage() {
   const isDeepLinkedSkillHidden =
     deepLinkedSkill !== null &&
     !canBypassEditorVisibility &&
-    isSkillHiddenFromNonEditors(deepLinkedSkill);
+    !isSkillVisibleToViewer({
+      availability: deepLinkedSkill.availability,
+      viewerCanWrite: deepLinkedSkill.canWrite,
+    });
   const deepLinkedSkillErrorReason = getDeepLinkErrorReason({
     isHidden: isDeepLinkedSkillHidden,
     isNotFound: isDeepLinkedSkillNotFound,

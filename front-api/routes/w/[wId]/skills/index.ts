@@ -22,7 +22,7 @@ import type {
 import {
   availabilityFromIsDefault,
   DEFAULT_SKILL_AVAILABILITY,
-  isSkillHiddenFromNonEditors,
+  isSkillVisibleToViewer,
   SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
   type SkillAvailability,
@@ -228,9 +228,9 @@ app.get(
       ? allSkills
       : allSkills.filter(
           (skill) =>
-            !isSkillHiddenFromNonEditors({
+            isSkillVisibleToViewer({
               availability: skill.availability,
-              canWrite: skill.canWrite(auth),
+              viewerCanWrite: skill.canWrite(auth),
             }) ||
             (skill.status === "suggested" &&
               canCreateSkill &&

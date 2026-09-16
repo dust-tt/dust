@@ -11,7 +11,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type { UsedBySkillType } from "@app/types/assistant/skill_configuration";
-import { isSkillHiddenFromNonEditors } from "@app/types/assistant/skill_configuration";
+import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
 import type {
   AgentsAndSkillsUsageType,
   ConnectorProvider,
@@ -77,12 +77,11 @@ function groupSkillsByKnowledgeId(
 ): Map<ModelId, UsedBySkillType[]> {
   const visibleSkills = auth.isAdmin()
     ? skills
-    : skills.filter(
-        (skill) =>
-          !isSkillHiddenFromNonEditors({
-            availability: skill.availability,
-            canWrite: skill.canWrite(auth),
-          })
+    : skills.filter((skill) =>
+        isSkillVisibleToViewer({
+          availability: skill.availability,
+          viewerCanWrite: skill.canWrite(auth),
+        })
       );
 
   const requested = new Set(requestedIds);

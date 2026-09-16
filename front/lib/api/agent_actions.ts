@@ -4,7 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import type { UsedBySkillType } from "@app/types/assistant/skill_configuration";
-import { isSkillHiddenFromNonEditors } from "@app/types/assistant/skill_configuration";
+import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
 import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import { QueryTypes } from "sequelize";
@@ -97,12 +97,11 @@ async function fetchSkillsByMCPServer(
   });
   const skills = auth.isAdmin()
     ? workspaceSkills
-    : workspaceSkills.filter(
-        (skill) =>
-          !isSkillHiddenFromNonEditors({
-            availability: skill.availability,
-            canWrite: skill.canWrite(auth),
-          })
+    : workspaceSkills.filter((skill) =>
+        isSkillVisibleToViewer({
+          availability: skill.availability,
+          viewerCanWrite: skill.canWrite(auth),
+        })
       );
 
   const skillsByMCPServer = new Map<string, UsedBySkillType[]>();
