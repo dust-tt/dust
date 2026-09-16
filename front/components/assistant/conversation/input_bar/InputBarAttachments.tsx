@@ -48,6 +48,11 @@ interface InputBarAttachmentsProps {
   disable?: boolean;
 }
 
+// Cards keep the default icon size; chips need a smaller one.
+function getAttachmentIconSize(hasImageAttachment: boolean) {
+  return hasImageAttachment ? "md" : "sm";
+}
+
 // Images are shown as previews. The preview URL only arrives once the upload
 // completes, so an uploading image counts as one.
 function isImageAttachment(attachment: FileAttachment): boolean {
@@ -125,10 +130,10 @@ export function InputBarAttachments({
   // Image previews need a tall row anyway, so every attachment keeps its
   // card next to them. Without images, attachments collapse into chips.
   const hasImageAttachment = imageAttachments.length > 0;
-  const iconSize = hasImageAttachment ? "md" : "sm";
 
   // Convert content nodes to NodeAttachment objects
   const nodeAttachments: NodeAttachment[] = useMemo(() => {
+    const iconSize = getAttachmentIconSize(hasImageAttachment);
     return (
       nodes?.items.map((node) => {
         const logo = getConnectorProviderLogoWithFallback({
@@ -163,7 +168,7 @@ export function InputBarAttachments({
         };
       }) ?? []
     );
-  }, [nodes, spacesMap, disable, iconSize]);
+  }, [nodes, spacesMap, disable, hasImageAttachment]);
 
   // Images first, then the other attachments.
   const allAttachments: Attachment[] = [
@@ -195,7 +200,7 @@ export function InputBarAttachments({
         <AttachmentCitation
           key={attachment.id}
           attachmentCitation={attachmentToAttachmentCitation(attachment, {
-            iconSize,
+            iconSize: getAttachmentIconSize(hasImageAttachment),
           })}
           variant="chip"
         />
