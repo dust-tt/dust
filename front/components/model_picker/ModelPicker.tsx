@@ -168,8 +168,8 @@ export function ModelPicker({
   }
 
   const materializedShownSelection = useMemo(
-    () => shownModelSelection ?? materializeSelection(shown.display),
-    [shownModelSelection, shown.display]
+    () => shown.toSend ?? materializeSelection(shown.display),
+    [shown]
   );
   useEffect(() => {
     onShownSelectionChange?.(materializedShownSelection);
