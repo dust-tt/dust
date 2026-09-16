@@ -2730,9 +2730,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const result = await this.writeEditorUserGrants(auth, users, "grant");
-    if (result.isOk()) {
-      await SkillResource.launchSearchIndexation(auth, [this.sId]);
-    }
+    // Earlier editor updates may have succeeded even if a later one failed.
+    await SkillResource.launchSearchIndexation(auth, [this.sId]);
     return result;
   }
 
@@ -2758,9 +2757,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const result = await this.writeEditorUserGrants(auth, users, "revoke");
-    if (result.isOk()) {
-      await SkillResource.launchSearchIndexation(auth, [this.sId]);
-    }
+    // Earlier editor updates may have succeeded even if a later one failed.
+    await SkillResource.launchSearchIndexation(auth, [this.sId]);
     return result;
   }
 
