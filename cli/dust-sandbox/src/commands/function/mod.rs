@@ -21,9 +21,10 @@ pub use envelope::ResultDelivery;
 pub use get::cmd_function_get;
 pub use run::cmd_function_run;
 
-/// Eagerly materialize `$DUST_FUNCTIONS_DIR`'s sibling `functions.tar` into the
-/// local warm archives directory. Idempotent. Intended for publish-time seed
-/// so the first cold invoke does not pay the tar download.
+/// Eagerly materialize `$DUST_FUNCTIONS_DIR`'s sibling `functions.tar`: extract
+/// into the local warm archives dir and fill `bundles/<sha>.js` for every
+/// slug. Idempotent. Intended for publish-time seed so the first warm/cold
+/// invoke does not pay the tar download or a fuse ensureBundle.
 pub fn cmd_function_materialize_archive() -> Result<()> {
     let dir = functions_dir().map_err(emit_error)?;
     match archive::ensure_functions_archive_extracted(&dir) {
@@ -91,8 +92,9 @@ pub enum FunctionCommand {
         /// Output path for the extracted JSON-Schema contract
         out_schema: String,
     },
-    /// Copy + extract `$DUST_FUNCTIONS_DIR`'s sibling `functions.tar` into the
-    /// local warm archives dir so the next cold run skips the fuse download.
+    /// Copy + extract `$DUST_FUNCTIONS_DIR`'s sibling `functions.tar` and
+    /// populate the per-sha bundle cache for every slug so warm and cold
+    /// skips the fuse download.
     MaterializeArchive,
 }
 
