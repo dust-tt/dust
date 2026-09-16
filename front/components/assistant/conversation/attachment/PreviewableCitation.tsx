@@ -1,8 +1,12 @@
+import { AttachmentChipCitation } from "@app/components/assistant/conversation/attachment/AttachmentChipCitation";
 import type {
   FileCitationCardIcon,
   FileCitationCardSize,
 } from "@app/components/assistant/conversation/attachment/FileCitationCard";
-import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
+import {
+  FileCitationCard,
+  FileCitationTooltipLabel,
+} from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
@@ -35,7 +39,8 @@ interface PreviewableCitationProps {
   thumbnailUrl?: string;
   title: string;
   tooltipLabel?: React.ReactNode;
-  variant?: "card" | "inline";
+  // `chip` is the composer attachment row; `inline` is a text-level reference.
+  variant?: "card" | "chip" | "inline";
 }
 
 export function PreviewableCitation({
@@ -73,10 +78,7 @@ export function PreviewableCitation({
     const inlineTooltipLabel =
       tooltipLabel ??
       (description ? (
-        <div className="flex flex-col gap-0.5">
-          <div>{title}</div>
-          <div className="text-sm text-muted-foreground">{description}</div>
-        </div>
+        <FileCitationTooltipLabel title={title} description={description} />
       ) : (
         title
       ));
@@ -148,6 +150,14 @@ export function PreviewableCitation({
     onRemove,
     tooltipLabel: tooltipLabel ?? title,
   };
+
+  if (variant === "chip") {
+    return canPreview ? (
+      <AttachmentChipCitation {...cardProps} onClick={handleClick} />
+    ) : (
+      <AttachmentChipCitation {...cardProps} />
+    );
+  }
 
   return canPreview ? (
     <FileCitationCard {...cardProps} onClick={handleClick} />
