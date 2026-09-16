@@ -1,4 +1,5 @@
-const DISPOSABLE_EMAIL_DOMAINS = new Set([
+// Public email providers and disposable email services.
+const NON_BUSINESS_EMAIL_DOMAINS = new Set([
   "0-mail.com",
   "027168.com",
   "0815.su",
@@ -4776,6 +4777,6 @@ const DISPOSABLE_EMAIL_DOMAINS = new Set([
   "zzz.pl",
 ]);
 
-export function isDisposableEmailDomain(emailDomain: string) {
-  return DISPOSABLE_EMAIL_DOMAINS.has(emailDomain);
+export function isNonBusinessEmailDomain(emailDomain: string) {
+  return NON_BUSINESS_EMAIL_DOMAINS.has(emailDomain);
 }

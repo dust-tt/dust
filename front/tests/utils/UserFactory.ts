@@ -11,6 +11,10 @@ export class UserFactory {
     return UserResource.makeNew(this.defaultParams(true));
   }
 
+  static async withEmail(email: string) {
+    return UserResource.makeNew({ ...this.defaultParams(false), email });
+  }
+
   static async withCreatedAt(createdAt: Date) {
     return UserResource.makeNew(this.defaultParams(false, createdAt));
   }

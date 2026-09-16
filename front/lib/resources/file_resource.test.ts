@@ -116,9 +116,7 @@ describe("FileResource", () => {
       useCaseMetadata: { activePublicationId: "publication-1" },
     });
     await frame.setShareScope(auth, "emails_only");
-    const member = await UserFactory.basic();
-    const domain = member.email.split("@")[1];
-    assert(domain);
+    const member = await UserFactory.withEmail("member@example.com");
     await MembershipFactory.associate(workspace, member, { role: "user" });
     const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
       member.sId,
@@ -127,7 +125,7 @@ describe("FileResource", () => {
     expect(await frame.canCurrentUserUseFrame(memberAuth)).toBe(false);
     const grant = await SharingGrantFactory.create(auth, frame, {
       kind: "domain",
-      value: domain,
+      value: "example.com",
     });
     expect(await frame.canCurrentUserUseFrame(memberAuth)).toBe(true);
     expect((await grant.revoke(auth)).isOk()).toBe(true);

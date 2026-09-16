@@ -498,6 +498,47 @@ describe("SharingGrantResource", () => {
     expect(await SharingGrantResource.listForFile(file)).toEqual([]);
   });
 
+  it.each([
+    "gmail.com",
+    " @GMAIL.COM ",
+    "mailinator.com",
+  ])("rejects non-business domain %s without writing any grants", async (domain) => {
+    const { authenticator, file } = await setup();
+    mockEmitAuditLogEvent.mockClear();
+    const result = await SharingGrantResource.add(authenticator, file, {
+      emails: ["alice@example.com"],
+      domains: ["example.com", domain],
+    });
+
+    assert(result.isErr());
+    expect(result.error.code).toBe("invalid_request_error");
+    expect(result.error.message).toContain(
+      "Invite individual email addresses instead."
+    );
+    expect(await SharingGrantResource.listForFile(file)).toEqual([]);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
+  it("allows individual non-business emails alongside company domains", async () => {
+    const { authenticator, file } = await setup();
+    const result = await SharingGrantResource.add(authenticator, file, {
+      emails: [" ALICE@GMAIL.COM "],
+      domains: [" @EXAMPLE.COM "],
+    });
+
+    assert(result.isOk());
+    expect(result.value.map((grant) => grant.target)).toEqual([
+      { kind: "email", value: "alice@gmail.com" },
+      { kind: "domain", value: "example.com" },
+    ]);
+    expect(
+      await SharingGrantResource.findForEmail(file, "alice@gmail.com")
+    ).not.toBeNull();
+    expect(
+      await SharingGrantResource.findForEmail(file, "bob@gmail.com")
+    ).toBeNull();
+  });
+
   it("returns an Err for an invalid email without writing grants", async () => {
     const { authenticator, file } = await setup();
     const result = await SharingGrantResource.add(authenticator, file, {
