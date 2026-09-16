@@ -170,7 +170,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         return data.contentFragments;
       }
 
-      // no need to show the content fragment card if it's inlined 
+      // no need to show the content fragment card if it's inlined
       return data.contentFragments.filter(
         (fragment) =>
           !(
