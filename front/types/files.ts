@@ -76,7 +76,7 @@ export function isConversationFileUseCase(
   return ["conversation", "tool_output"].includes(useCase);
 }
 
-export const MAX_EMAILS_PER_INVITE = 20;
+export const MAX_EMAILS_OR_DOMAINS_PER_INVITE = 20;
 
 export const fileShareScopeSchema = z.enum([
   "emails_only",

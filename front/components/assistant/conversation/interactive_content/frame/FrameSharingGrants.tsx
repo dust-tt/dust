@@ -1,6 +1,6 @@
 import { FrameSharingRow } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingRow";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
-import { MAX_EMAILS_PER_INVITE } from "@app/types/files";
+import { MAX_EMAILS_OR_DOMAINS_PER_INVITE } from "@app/types/files";
 import type {
   FileSharingGrantType,
   SharingGrantsResponse,
@@ -31,10 +31,13 @@ const recipientsSchema = z
       .split(",")
       .map((value) => value.trim())
       .filter(Boolean);
-    if (recipients.length === 0 || recipients.length > MAX_EMAILS_PER_INVITE) {
+    if (
+      recipients.length === 0 ||
+      recipients.length > MAX_EMAILS_OR_DOMAINS_PER_INVITE
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Add between 1 and ${MAX_EMAILS_PER_INVITE} email addresses or domains.`,
+        message: `Add between 1 and ${MAX_EMAILS_OR_DOMAINS_PER_INVITE} email addresses or domains.`,
       });
       return z.NEVER;
     }
@@ -162,7 +165,8 @@ export function FrameSharingGrants({
       <form
         className="flex flex-col gap-2"
         onSubmit={handleSubmit(async ({ recipients }) => {
-          if (await onAdd(recipients)) {
+          const isAdded = await onAdd(recipients);
+          if (isAdded) {
             reset();
           }
         })}

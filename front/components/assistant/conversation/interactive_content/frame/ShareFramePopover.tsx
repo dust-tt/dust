@@ -42,7 +42,7 @@ import { useId, useState } from "react";
 interface ShareFramePopoverProps {
   fileId: string;
   owner: LightWorkspaceType;
-  /** Busts share/grants cache when frame content changes (e.g. `fileId@updatedAt`). */
+  /** Bursts share/grants cache when frame content changes (e.g. `fileId@updatedAt`). */
   contentHash?: string | null;
 }
 
