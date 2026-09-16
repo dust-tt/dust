@@ -776,7 +776,7 @@ export const InputBar = React.memo(function InputBar({
               owner={owner}
               files={{ service: fileUploaderService }}
               nodes={{
-                items: attachedNodes,
+                items: isInlineReferenceEnabled ? [] : attachedNodes,
                 onRemove: handleNodesAttachmentRemove,
               }}
             />

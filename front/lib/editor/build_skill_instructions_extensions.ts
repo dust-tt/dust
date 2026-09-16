@@ -6,7 +6,7 @@ import { BlockIdExtension } from "@app/components/editor/extensions/instructions
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
-import { KnowledgeNodeWithView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeWithView";
+import { SkillBuilderKnowledgeNodeWithView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeWithView";
 import {
   RawMarkdownBlock,
   rawMarkdownBlockParsers,
@@ -97,7 +97,9 @@ export function buildSkillInstructionsExtensions(
       },
     }),
     BlockIdExtension,
-    KnowledgeNodeWithView.configure({ readOnly: isReadOnly }),
+    SkillBuilderKnowledgeNodeWithView.configure({
+      readOnly: isReadOnly,
+    }),
     ToolNodeWithView.configure({ onToolDetails }),
     SkillNode.configure({ onSkillDetails: onSkillNodeDetails }),
   ];
