@@ -350,9 +350,9 @@ describe("createSpaceAndGroup", () => {
         // administrate the pod with no manual refresh (contrast the reconstructed stale-auth test
         // above, which has to call refresh() itself).
         expect(userAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
-        expect(userAuth.getGovernanceGrantVerbs("space", pod.id)).toContain(
-          "admin"
-        );
+        expect(
+          userAuth.getGovernanceGrantVerbs("space", pod.id, pod.workspaceId)
+        ).toContain("admin");
         expect(userAuth.can("admin", pod)).toBe(true);
       }
 

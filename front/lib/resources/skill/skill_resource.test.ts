@@ -1502,6 +1502,36 @@ describe("SkillResource", () => {
   });
 
   describe("archive and restore", () => {
+    it("keeps archived names within 256 characters when resolving a name conflict", async () => {
+      const name = "a".repeat(256);
+      const archivedSkill = await SkillFactory.create(
+        testContext.authenticator,
+        {
+          name,
+          status: "archived",
+        }
+      );
+      const activeSkill = await SkillFactory.create(testContext.authenticator, {
+        name,
+      });
+
+      await activeSkill.archive(testContext.authenticator);
+
+      const renamedSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        archivedSkill.sId
+      );
+      expect(renamedSkill?.name).toHaveLength(256);
+      expect(renamedSkill?.name).toContain(" (archived on ");
+      expect(renamedSkill?.name).toContain(archivedSkill.sId);
+      const newlyArchivedSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        activeSkill.sId
+      );
+      expect(newlyArchivedSkill?.name).toBe(name);
+      expect(newlyArchivedSkill?.status).toBe("archived");
+    });
+
     it("keeps the editor grants active when archiving, so editors are still listed", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill To Archive",

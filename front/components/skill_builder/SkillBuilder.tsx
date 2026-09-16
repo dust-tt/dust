@@ -102,6 +102,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const { suggestions } = useSkillSuggestions({
     skillId: skill?.sId ?? null,
     states: ["pending"],
+    sources: ["reinforcement"],
     workspaceId: owner.sId,
     disabled: !skill || !areSuggestionsEnabled,
   });

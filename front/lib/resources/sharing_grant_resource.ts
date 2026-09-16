@@ -1,3 +1,9 @@
+import type { AuditAction } from "@app/lib/api/audit/workos_audit";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -13,11 +19,11 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { SharingGrantType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   FileSharingGrantType,
@@ -50,7 +56,8 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
   constructor(
     _model: ModelStaticWorkspaceAware<SharingGrantModel>,
     blob: Attributes<SharingGrantModel>,
-    readonly grantingUser: UserResource | null
+    readonly grantingUser: UserResource | null,
+    private readonly file: FileResource
   ) {
     super(SharingGrantModel, blob);
   }
@@ -93,7 +100,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       ],
     });
 
-    return this.fromModels(grants, options.transaction ?? undefined);
+    return this.fromModels(file, grants, options.transaction ?? undefined);
   }
 
   /**
@@ -153,6 +160,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
   }
 
   private static async fromModels(
+    file: FileResource,
     grants: SharingGrantModel[],
     transaction?: Transaction
   ): Promise<SharingGrantResource[]> {
@@ -166,7 +174,8 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
         new this(
           this.model,
           grant.get(),
-          grant.grantedBy ? (usersById.get(grant.grantedBy) ?? null) : null
+          grant.grantedBy ? (usersById.get(grant.grantedBy) ?? null) : null,
+          file
         )
     );
   }
@@ -260,11 +269,61 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
 
     // Another request may insert the same grant after our lookup.
     // ignoreDuplicates skips that insert and returns a row without an id.
-    return new Ok(
-      created
-        .filter((grant) => Number.isInteger(grant.id))
-        .map((grant) => new this(this.model, grant.get(), user))
-    );
+    const grants = created
+      .filter((grant) => Number.isInteger(grant.id))
+      .map((grant) => new this(this.model, grant.get(), user, file));
+    const createdEmails = removeNulls(grants.map((grant) => grant.email));
+    const createdDomains = removeNulls(grants.map((grant) => grant.domain));
+    if (createdEmails.length > 0) {
+      this.emitAuditEvent(
+        auth,
+        file,
+        "frame.email_grant_added",
+        {
+          emails: createdEmails.join(","),
+        },
+        transaction
+      );
+    }
+    if (createdDomains.length > 0) {
+      this.emitAuditEvent(
+        auth,
+        file,
+        "frame.domain_grant_added",
+        {
+          domains: createdDomains.join(","),
+        },
+        transaction
+      );
+    }
+    return new Ok(grants);
+  }
+
+  private static emitAuditEvent(
+    auth: Authenticator,
+    file: FileResource,
+    action: AuditAction,
+    metadata: Record<string, string>,
+    transaction?: Transaction
+  ): void {
+    const emit = () => {
+      void emitAuditLogEvent({
+        auth,
+        action,
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("frame", { sId: file.sId, name: file.fileName }),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: { frame_name: file.fileName, ...metadata },
+      });
+    };
+    // A rolled-back grant must not appear in the audit log.
+    if (transaction) {
+      transaction.afterCommit(emit);
+    } else {
+      emit();
+    }
   }
 
   static async fetchById(
@@ -296,13 +355,26 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
 
   /**
    * @cc [owner:flvndvd,label:security] authorized-grant-revocation
-   * Callers MUST authorize revocation. Keep other grants and viewer history intact.
+   * Callers must authorize Frame access. Revocation requires Frame invite permission.
+   * Keep other grants and viewer history intact.
    */
-  async revoke({
-    transaction,
-  }: {
-    transaction?: Transaction;
-  } = {}): Promise<Result<undefined, DustError>> {
+  async revoke(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<undefined, DustError>> {
+    assert(
+      auth.getNonNullableWorkspace().id === this.workspaceId,
+      "Sharing grant workspace mismatch"
+    );
+    const canInvite = await auth.hasWorkspacePermission("invite", "frame");
+    if (!canInvite) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to revoke sharing grants for Frames."
+        )
+      );
+    }
     const where: WhereOptions<SharingGrantModel> = {
       workspaceId: this.workspaceId,
       revokedAt: null,
@@ -316,6 +388,34 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       return new Err(
         new DustError("file_not_found", "Sharing grant not found")
       );
+    }
+
+    const target = this.target;
+    switch (target.kind) {
+      case "email":
+        SharingGrantResource.emitAuditEvent(
+          auth,
+          this.file,
+          "frame.email_grant_revoked",
+          {
+            email: target.value,
+          },
+          transaction
+        );
+        break;
+      case "domain":
+        SharingGrantResource.emitAuditEvent(
+          auth,
+          this.file,
+          "frame.domain_grant_revoked",
+          {
+            domain: target.value,
+          },
+          transaction
+        );
+        break;
+      default:
+        assertNever(target);
     }
 
     return new Ok(undefined);
@@ -336,28 +436,12 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
     });
   }
 
-  // Compatibility methods for the existing email-only readers and view writer.
-  static async findLegacyEmailGrant(
-    workspace: LightWorkspaceType | WorkspaceResource,
-    { email, shareableFileId }: { email: string; shareableFileId: ModelId }
-  ): Promise<SharingGrantResource | null> {
-    const grant = await this.model.findOne({
-      where: {
-        workspaceId: workspace.id,
-        shareableFileId,
-        email: email.toLowerCase(),
-        revokedAt: null,
-      },
-    });
-
-    const [resource] = await this.fromModels(grant ? [grant] : []);
-    return resource ?? null;
-  }
-
   async recordLegacyView({
     transaction,
+    viewedAt = new Date(),
   }: {
     transaction?: Transaction;
+    viewedAt?: Date;
   } = {}): Promise<void> {
     if (this.email === null) {
       return;
@@ -367,7 +451,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       workspaceId: this.workspaceId,
       revokedAt: null,
     };
-    await this.update({ lastViewedAt: new Date() }, transaction, where);
+    await this.update({ lastViewedAt: viewedAt }, transaction, where);
   }
 
   async delete(
@@ -381,7 +465,11 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
     return new Ok(undefined);
   }
 
-  toJSON(): FileSharingGrantType {
+  toJSON({
+    blockedByPolicy,
+  }: {
+    blockedByPolicy?: boolean;
+  } = {}): FileSharingGrantType {
     return {
       sId: this.sId,
       target: this.target,
@@ -389,6 +477,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       grantedBy: this.grantingUser?.toJSON() ?? null,
       expiresAt: this.expiresAt?.getTime() ?? null,
       revokedAt: this.revokedAt?.getTime() ?? null,
+      ...(blockedByPolicy !== undefined && { blockedByPolicy }),
     };
   }
 
@@ -397,10 +486,15 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
    * Legacy sharing responses MUST omit grants without an email and retain a string
    * email field for every serialized grant.
    */
-  toLegacyJSON(): SharingGrantType | null {
+  toLegacyJSON({
+    blockedByPolicy,
+  }: {
+    blockedByPolicy?: boolean;
+  } = {}): SharingGrantType | null {
     if (this.email === null) {
       return null;
     }
+
     return {
       id: this.id,
       email: this.email,
@@ -409,6 +503,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       expiresAt: this.expiresAt?.getTime() ?? null,
       revokedAt: this.revokedAt?.getTime() ?? null,
       lastViewedAt: this.lastViewedAt?.getTime() ?? null,
+      ...(blockedByPolicy !== undefined && { blockedByPolicy }),
     };
   }
 }

@@ -1,4 +1,5 @@
-import { CoinsStacked01, cn, ProgressBar } from "@dust-tt/sparkle";
+import { formatCredits } from "@app/lib/client/credits";
+import { CoinsStacked01, cn, ProgressBar, Tooltip } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
 export type CreditUsageTone = "on_target" | "elevated" | "critical";
@@ -28,6 +29,7 @@ interface CreditUsageCardProps {
   tone: CreditUsageTone;
   variant: CreditUsageCardVariant;
   children: ReactNode;
+  refillSchedule?: { date: string; credits: number }[];
 }
 
 export function CreditUsageCard({
@@ -36,8 +38,20 @@ export function CreditUsageCard({
   tone,
   variant,
   children,
+  refillSchedule,
 }: CreditUsageCardProps) {
   const usedPercentage = Math.min(Math.max(rawUsedPercentage, 0), 100);
+
+  const progressBar = (
+    <ProgressBar
+      aria-label={`${label} used`}
+      className="h-1 w-full bg-border"
+      values={[
+        { value: usedPercentage, className: TONE_BAR_CLASSES[tone] },
+        { value: 100 - usedPercentage, className: "bg-transparent" },
+      ]}
+    />
+  );
 
   return (
     <div className={cn("flex flex-col gap-2", CONTAINER_CLASSES[variant])}>
@@ -49,14 +63,33 @@ export function CreditUsageCard({
           </div>
           <span className={TONE_TEXT_CLASSES[tone]}>{usedPercentage}%</span>
         </div>
-        <ProgressBar
-          aria-label={`${label} used`}
-          className="h-1 w-full bg-border"
-          values={[
-            { value: usedPercentage, className: TONE_BAR_CLASSES[tone] },
-            { value: 100 - usedPercentage, className: "bg-transparent" },
-          ]}
-        />
+        {refillSchedule && refillSchedule.length > 0 ? (
+          <Tooltip
+            tooltipTriggerAsChild
+            trigger={
+              <div className="flex h-1 w-full cursor-help items-center">
+                {progressBar}
+              </div>
+            }
+            label={
+              <div className="flex flex-col gap-0.5">
+                <span className="font-medium">Reset schedule:</span>
+                {refillSchedule.map(({ date, credits }) => (
+                  <span key={date}>
+                    {new Date(date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    })}
+                    : +{formatCredits(credits)}
+                  </span>
+                ))}
+              </div>
+            }
+          />
+        ) : (
+          progressBar
+        )}
       </div>
       <div className="text-xs font-medium text-muted-foreground">
         {children}

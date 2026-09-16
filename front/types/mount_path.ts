@@ -153,16 +153,14 @@ const SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
  * fresh object so callers can spread it into their own env without sharing a reference.
  *
  * The `DUST_POD_*` names are the existing DSBX/@dust/pod ABI and also apply to Frame-owned state.
- * `databasePrefix` is the Pod app prefix that namespaces the databases the exec resolves by their
- * app-relative name, i.e. `@dust/pod`'s `db("chat")` inside a published function (see
- * `podDatabasePrefixFromSlug`). Omit it for execs that address databases by their on-disk name —
- * every `dsbx db` subcommand does, since front resolves the name before running them.
+ * `DUST_POD_DATABASE_PREFIX` is always empty: it carried the Pod app prefix that namespaced the
+ * databases an exec resolved by their app-relative name, and Frame functions have no app prefix. It
+ * is still sent because the shim reads it, and dropping a name from the ABI needs a runner-first
+ * rollout for no gain.
  */
 export function sandboxDatabaseExecEnvVars({
-  databasePrefix,
   framePublicationDescriptorPath,
 }: {
-  databasePrefix?: string | null;
   framePublicationDescriptorPath?: string;
 } = {}): {
   DUST_POD_DATABASES_DIR: string;
@@ -174,7 +172,7 @@ export function sandboxDatabaseExecEnvVars({
     DUST_POD_DATABASES_DIR: SANDBOX_STATE_DATABASES_DIR,
     DUST_POD_DATABASE_MAX_SIZE_BYTES: String(SANDBOX_DATABASE_MAX_SIZE_BYTES),
     // Empty means unprefixed, which is what the shim reads an absent value as.
-    DUST_POD_DATABASE_PREFIX: databasePrefix ?? "",
+    DUST_POD_DATABASE_PREFIX: "",
     ...(framePublicationDescriptorPath
       ? {
           DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH:

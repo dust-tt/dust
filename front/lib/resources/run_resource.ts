@@ -70,6 +70,7 @@ export interface RunUsageAttemptType extends RunUsageType {
   runUsageModelId: ModelId;
   usageState: RunUsageState | null;
   usageType: UsageType | null;
+  useWorkspaceCredentials: boolean;
 }
 
 interface PendingRunUsageParameters {
@@ -78,6 +79,7 @@ interface PendingRunUsageParameters {
   providerId: ModelProviderIdType;
   region: Region | null;
   usageType: UsageType;
+  useWorkspaceCredentials: boolean;
 }
 
 type FetchRunOptions<T extends boolean> = {
@@ -127,6 +129,7 @@ export class RunResource extends BaseResource<RunModel> {
           isBatch: false,
           serviceTier: "default",
           usageType: usage.usageType,
+          useWorkspaceCredentials: usage.useWorkspaceCredentials,
           usageState: "pending",
         },
         { transaction }
@@ -454,12 +457,15 @@ export class RunResource extends BaseResource<RunModel> {
    * Run usage.
    */
 
-  // Billing classification is immutable event-time metadata. Every new usage
-  // row must be classified when it is created.
+  // Billing classification and credential owner are immutable event-time
+  // metadata. Every new usage row must carry both when it is created.
   async recordRunUsage(
     auth: Authenticator,
     usages: RunUsageType[],
-    { usageType }: { usageType: UsageType }
+    {
+      usageType,
+      useWorkspaceCredentials,
+    }: { usageType: UsageType; useWorkspaceCredentials: boolean }
   ) {
     await RunUsageModel.bulkCreate(
       usages.map(
@@ -490,6 +496,7 @@ export class RunResource extends BaseResource<RunModel> {
           isBatch,
           serviceTier: serviceTier ?? "default",
           usageType,
+          useWorkspaceCredentials,
           usageState: "reported",
         })
       )
@@ -553,10 +560,12 @@ export class RunResource extends BaseResource<RunModel> {
       isBatch = false,
       inferenceRegion = "global",
       usageType,
+      useWorkspaceCredentials,
     }: {
       isBatch?: boolean;
       inferenceRegion?: InferenceRegionType;
       usageType: UsageType;
+      useWorkspaceCredentials: boolean;
     }
   ) {
     const runUsage = this.tokenUsageToRunUsage(usage, modelId, {
@@ -567,7 +576,10 @@ export class RunResource extends BaseResource<RunModel> {
       return;
     }
 
-    await this.recordRunUsage(auth, [runUsage], { usageType });
+    await this.recordRunUsage(auth, [runUsage], {
+      usageType,
+      useWorkspaceCredentials,
+    });
 
     // Return the computed cost so callers can meter it (e.g. the free-usage cost
     // cap). The result is undefined when the model is unknown and nothing was recorded.
@@ -633,13 +645,18 @@ export class RunResource extends BaseResource<RunModel> {
     }
 
     if (additionalUsages.length > 0) {
-      const usageType = updatedUsages[0]?.usageType;
-      if (!usageType) {
+      const finalizedUsage = updatedUsages[0];
+      if (!finalizedUsage?.usageType) {
         throw new Error(
           "Cannot record additional usage for a run without a billing classification"
         );
       }
-      await this.recordRunUsage(auth, additionalUsages, { usageType });
+      // The credential owner is event-time metadata: carry the finalized row's value instead of
+      // recomputing it from a plan that may have changed since the run started.
+      await this.recordRunUsage(auth, additionalUsages, {
+        usageType: finalizedUsage.usageType,
+        useWorkspaceCredentials: finalizedUsage.useWorkspaceCredentials,
+      });
     }
     this.emitRunUsageMetrics([firstUsage]);
     return true;
@@ -755,6 +772,7 @@ export class RunResource extends BaseResource<RunModel> {
       isBatch: usage.isBatch,
       serviceTier: usage.serviceTier,
       usageType: usage.usageType,
+      useWorkspaceCredentials: usage.useWorkspaceCredentials,
       usageState: usage.usageState,
     }));
   }

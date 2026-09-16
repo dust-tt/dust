@@ -34,7 +34,10 @@ const messageVariant = cva("", {
 const fieldVariants = cva(
   cn(
     "flex w-full items-center overflow-hidden border transition-colors",
-    "bg-background"
+    // Light: a white field on any surface. Dark: follow the surface (the
+    // page background token is darker than the panel and modal surfaces, so
+    // a fixed fill reads as a dark well there).
+    "bg-background dark:bg-transparent"
   ),
   {
     variants: {
@@ -48,13 +51,19 @@ const fieldVariants = cva(
         default: cn(
           "border-border-form",
           "focus-within:border-border-form-active",
-          // Filled (has a value): darker border, plus a muted fill while the
-          // field is not focused — matches Figma's "filled" state.
-          "has-[input:not(:placeholder-shown)]:border-border-form-active",
-          "[&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-muted"
+          // Filled (has a value) and not focused: a muted fill only. The
+          // border goes back to its resting color so the field does not look
+          // focused after the user moves on. In dark mode the fill is a
+          // translucent foreground tint rather than the near-black `muted`
+          // token, so it lifts lighter surfaces (modal) instead of sinking.
+          "[&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-muted",
+          "dark:[&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-foreground/5"
         ),
         error: cn("border-warning-500", "focus-within:border-warning-600"),
-        disabled: cn("cursor-not-allowed border-transparent", "bg-muted"),
+        disabled: cn(
+          "cursor-not-allowed border-transparent",
+          "bg-muted dark:bg-foreground/5"
+        ),
       },
     },
     defaultVariants: {
@@ -104,7 +113,10 @@ const labelVariants = cva("pb-0.5 font-medium text-foreground", {
 // Sized to its content with a floor, so a word ("days") is not clipped by the
 // field's overflow-hidden while a single glyph ("$") keeps its square box.
 const slotBoxVariants = cva(
-  cn("flex h-full shrink-0 items-center justify-center", "bg-muted"),
+  cn(
+    "flex h-full shrink-0 items-center justify-center",
+    "bg-muted dark:bg-foreground/5"
+  ),
   {
     variants: {
       size: {

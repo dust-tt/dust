@@ -10,6 +10,7 @@ import {
   updateAgentConfigurationsScope,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
+import { getEditors } from "@app/lib/api/assistant/editors";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
@@ -22,6 +23,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -260,6 +262,59 @@ describe("stable agent identities", () => {
     expect([...agentModelIds][0]).not.toBeNull();
   });
 
+  it("keeps the identity at its highest version, including after a rollback", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const currentVersion = async (sId: string) => {
+      const identity = await AgentModel.findOne({
+        where: { sId, workspaceId: workspace.id },
+      });
+      return identity?.currentVersion ?? null;
+    };
+
+    const firstVersion =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    expect(await currentVersion(firstVersion.sId)).toBe(0);
+
+    const secondVersion = await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      firstVersion.sId
+    );
+    expect(secondVersion.version).toBe(1);
+    expect(await currentVersion(firstVersion.sId)).toBe(1);
+
+    // Rolling back the newest version moves the pointer back to the previous one.
+    await unsafeHardDeleteAgentConfiguration(authenticator, secondVersion);
+    expect(await currentVersion(firstVersion.sId)).toBe(0);
+
+    await unsafeHardDeleteAgentConfiguration(authenticator, firstVersion);
+    expect(await currentVersion(firstVersion.sId)).toBeNull();
+  });
+
+  it("keeps a pending identity at version 0 through activation", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const pending = await createPendingAgentConfiguration(authenticator);
+    assert(pending.isOk());
+    const identityBefore = await AgentModel.findOne({
+      where: { sId: pending.value.sId, workspaceId: workspace.id },
+    });
+    expect(identityBefore?.currentVersion).toBe(0);
+
+    // Activation updates the pending row in place, so the version does not move.
+    const activated = await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      pending.value.sId
+    );
+    const identityAfter = await AgentModel.findOne({
+      where: { sId: pending.value.sId, workspaceId: workspace.id },
+    });
+    expect(activated.version).toBe(0);
+    expect(identityAfter?.currentVersion).toBe(0);
+  });
+
   it("deletes the identity and grants only after its last version is deleted", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
@@ -338,8 +393,10 @@ describe("createAgentConfiguration with pending agent", () => {
     if (!pendingAgent) {
       throw new Error("Pending agent was not created");
     }
-    const pendingAgentResource =
-      AgentResource.fromAgentConfigurationModel(pendingAgent);
+    const pendingAgentResource = AgentResource.fromAgentConfigurationModel(
+      authenticator,
+      pendingAgent
+    );
     if (!pendingAgentResource.id) {
       throw new Error("Pending agent identity was not created");
     }
@@ -1179,7 +1236,10 @@ describe("updateAgentConfigurationsScope", () => {
     expect(row!.scope).toBe("hidden");
   });
 
-  it("disables triggers of non-editors when transitioning visible → hidden", async () => {
+  it.each([
+    false,
+    true,
+  ])("disables non-editor triggers when hiding an agent (grants: %s)", async (grants) => {
     const { authenticator, workspace, user } = await createResourceTest({
       plan: "creditPriced",
       role: "admin",
@@ -1233,6 +1293,27 @@ describe("updateAgentConfigurationsScope", () => {
     const nonEditorTrigger = nonEditorTriggerRes.isOk()
       ? nonEditorTriggerRes.value
       : null;
+
+    // A stale editor-group membership must not retain access after leaving the workspace.
+    const editorGroup = await GroupResource.findEditorGroupForAgent(
+      authenticator,
+      agent
+    );
+    if (editorGroup.isErr()) {
+      throw editorGroup.error;
+    }
+    await GroupFactory.withMembers(authenticator, editorGroup.value, [
+      nonEditor,
+    ]);
+    expect(
+      (
+        await MembershipResource.revokeMembership({
+          user: nonEditor,
+          workspace,
+        })
+      ).isOk()
+    ).toBe(true);
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
 
     const result = await updateAgentConfigurationsScope(
       authenticator,
@@ -1500,4 +1581,42 @@ describe("publish agent capability", () => {
     });
     expect(row!.scope).toBe("visible");
   });
+});
+
+it("revokes grant-only editors when saving the complete editor set", async () => {
+  const { authenticator: auth, workspace } = await createResourceTest({
+    role: "user",
+  });
+  const agent = await AgentConfigurationFactory.createTestAgent(auth);
+  const editor = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, editor, { role: "user" });
+  const resource = AgentResource.fromAgentConfiguration(auth, agent);
+  assert(resource.id !== null);
+  assert(
+    (
+      await GroupPermissionResource.grantToUser(auth, {
+        user: editor.toJSON(),
+        resourceType: "agent",
+        resourceId: resource.id,
+        grantType: "editor",
+      })
+    ).isOk()
+  );
+  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(false);
+  await AgentConfigurationFactory.updateTestAgent(auth, agent.sId);
+  expect((await getEditors(auth, agent)).map((user) => user.id)).not.toContain(
+    editor.id
+  );
+  const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    editor.sId,
+    workspace.sId
+  );
+  expect(
+    (
+      await getAgentConfiguration(editorAuth, {
+        agentId: agent.sId,
+        variant: "light",
+      })
+    )?.canEdit
+  ).toBe(false);
 });

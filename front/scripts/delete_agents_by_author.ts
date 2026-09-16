@@ -1,3 +1,4 @@
+import { destroyAgentConfigurationRow } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
@@ -11,9 +12,11 @@ import {
 } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { Op } from "sequelize";
@@ -115,8 +118,17 @@ async function deleteAgentAndRelatedResources(
     await group.delete(auth);
   }
 
-  // 7. Finally delete the agent configuration itself
-  await agent.destroy();
+  // 7. Finally delete the agent configuration itself, re-pointing or deleting its identity.
+  await withTransaction(async (t) => {
+    await destroyAgentConfigurationRow(
+      auth,
+      {
+        agent: AgentResource.fromAgentConfigurationModel(auth, agent),
+        configurationId: agent.id,
+      },
+      t
+    );
+  });
 
   logger.info(
     { agentId: agent.sId, agentModelId: agent.id },

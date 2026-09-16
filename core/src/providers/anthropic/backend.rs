@@ -1,5 +1,5 @@
 use crate::gcp_auth::get_gcp_access_token;
-use crate::run::Credentials;
+use crate::run::{credential_or_env, Credentials, BYOK_CREDENTIAL_KEY};
 use anyhow::{anyhow, Result};
 use hyper::Uri;
 use reqwest::header::HeaderMap;
@@ -30,18 +30,7 @@ impl DirectAnthropicBackend {
 #[async_trait::async_trait]
 impl AnthropicBackend for DirectAnthropicBackend {
     async fn initialize(&mut self, credentials: &Credentials) -> Result<String> {
-        let api_key = match credentials.get("ANTHROPIC_API_KEY") {
-            Some(api_key) => api_key.clone(),
-            None => match tokio::task::spawn_blocking(|| std::env::var("ANTHROPIC_API_KEY")).await?
-            {
-                Ok(key) => key,
-                Err(_) => {
-                    return Err(anyhow!(
-                        "Credentials or environment variable `ANTHROPIC_API_KEY` is not set."
-                    ))
-                }
-            },
-        };
+        let api_key = credential_or_env(credentials, "ANTHROPIC_API_KEY").await?;
 
         self.api_key = Some(api_key.clone());
         Ok(api_key)
@@ -151,6 +140,13 @@ impl VertexAnthropicBackend {
 #[async_trait::async_trait]
 impl AnthropicBackend for VertexAnthropicBackend {
     async fn initialize(&mut self, credentials: &Credentials) -> Result<String> {
+        if credentials.contains_key(BYOK_CREDENTIAL_KEY) {
+            return Err(anyhow!(
+                "Vertex is served by Dust's own GCP project and service account, it must not be \
+                 reached by a BYOK workspace."
+            ));
+        }
+
         let api_key = get_gcp_access_token().await?;
 
         let project_id = match credentials.get("GOOGLE_CLOUD_PROJECT_ID") {

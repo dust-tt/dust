@@ -204,30 +204,10 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     expect(data.skill.relations.usage.skills).toEqual([]);
   });
 
-  it("should not expose favorite state when the feature flag is disabled", async () => {
+  it("should include favorite state", async () => {
     const { workspace, skill, requestUserAuth } = await setupTest({
       requestUserRole: "admin",
     });
-
-    const result = await skill.setFavorite(requestUserAuth, true);
-    expect(result.isOk()).toBe(true);
-
-    const response = await getSkill(workspace, skill.sId);
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.skill).not.toHaveProperty("isFavorite");
-
-    const relationsResponse = await getSkillWithRelations(workspace, skill.sId);
-    expect(relationsResponse.status).toBe(200);
-    const relationsData = await relationsResponse.json();
-    expect(relationsData.skill).not.toHaveProperty("isFavorite");
-  });
-
-  it("should include favorite state when the feature flag is enabled", async () => {
-    const { workspace, skill, requestUserAuth } = await setupTest({
-      requestUserRole: "admin",
-    });
-    await FeatureFlagFactory.basic(requestUserAuth, "skill_favorites");
 
     const result = await skill.setFavorite(requestUserAuth, true);
     expect(result.isOk()).toBe(true);
@@ -499,6 +479,39 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
         message: 'A skill with the name "Other Skill" already exists.',
       },
     });
+  });
+
+  it.each([
+    { length: 256, status: 200 },
+    { length: 257, status: 400 },
+  ])("returns $status when renaming a skill to $length characters", async ({
+    length,
+    status,
+  }) => {
+    const { workspace, skill, requestUserAuth } = await setupTest();
+    const name = "a".repeat(length);
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name,
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(status);
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.name).toBe(status === 200 ? name : skill.name);
+    if (status === 400) {
+      const body = await response.json();
+      expect(body.error.message).toContain("at most 256 characters");
+    }
   });
 
   it("should return 400 for invalid MCP server view ID", async () => {

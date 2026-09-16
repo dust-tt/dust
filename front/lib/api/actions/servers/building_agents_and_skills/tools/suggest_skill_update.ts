@@ -125,7 +125,9 @@ export async function suggestSkillUpdateHandler(
   return new Ok([
     {
       type: "text" as const,
-      text: `:skill_suggestion[]{sId=${created.sId} kind=${created.kind}}`,
+      text:
+        `:skill_suggestion[]{sId=${created.sId} kind=${created.kind} ` +
+        `skillId=${created.skillConfigurationSId}}`,
     },
   ]);
 }

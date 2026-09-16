@@ -7,6 +7,7 @@ import {
 } from "@app/lib/api/skills/detection/zip/detect_skills";
 import type { ZipDetectedSkill } from "@app/lib/api/skills/detection/zip/types";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
+import { SkillNameSchema } from "@app/lib/api/skills/schemas";
 import type { Authenticator } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -25,6 +26,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type formidable from "formidable";
 import { readFile, unlink } from "fs/promises";
 import path from "path";
+import { fromError } from "zod-validation-error";
 
 const FILE_IMPORT_CONCURRENCY = 4;
 
@@ -119,6 +121,13 @@ export async function importSkillsFromFiles(
       skill.instructions.trim() &&
       (!requestedSet || requestedSet.has(skill.name))
   );
+
+  const nameValidation = SkillNameSchema.array().safeParse(
+    selectedSkills.map((skill) => skill.name)
+  );
+  if (!nameValidation.success) {
+    return new Err(new Error(fromError(nameValidation.error).toString()));
+  }
 
   const uniqueNames = [...new Set(selectedSkills.map((s) => s.name))];
   const existingSkills = await SkillResource.fetchByNames(auth, uniqueNames);

@@ -37,8 +37,8 @@ vi.mock(
 );
 
 vi.mock(
-  "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet",
-  () => ({ ShareFrameSheet: () => null })
+  "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover",
+  () => ({ ShareFramePopover: () => null })
 );
 
 vi.mock("@app/components/pod/files/PinPodBannerButton", () => ({

@@ -112,7 +112,7 @@ describe("CreditUsage", () => {
     );
 
     expect(
-      screen.getByText("2,000 of 20,000 used in the last 7 days")
+      screen.getByText("Resets on a rolling 7-day basis")
     ).toBeInTheDocument();
   });
 });

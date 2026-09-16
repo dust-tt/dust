@@ -2248,6 +2248,99 @@ export const tailoredEnrichments: Record<
     ],
     relatedIntegrations: ["netsuite", "stripe", "slack"],
   },
+  // [generic] StackOne — 3 real tools
+  stackone: {
+    chatStoryline: {
+      userPrompt:
+        "Chase our invoices that are 60+ days past due, and loop in the account owner in Salesforce for each one.",
+      toolCalls: [
+        "stackone_list_accounts",
+        "stackone_search_actions",
+        "stackone_execute_action",
+      ],
+      completedInSeconds: 16,
+      responseIntro:
+        "Checked your connected NetSuite and Salesforce accounts, found the matching actions, and ran them.",
+      responseSections: [
+        {
+          heading: "Invoices 60+ days overdue (3)",
+          bullets: [
+            {
+              title: "INV-4821 — Northwind Retail",
+              body: "$61,750 outstanding, 71 days past due, pulled from your linked NetSuite account.",
+            },
+            {
+              title: "INV-4790 — Belmont GmbH",
+              body: "$47,900 outstanding, 64 days past due.",
+            },
+            {
+              title: "INV-4756 — Acme Logistics",
+              body: "$84,200 outstanding, 60 days past due.",
+            },
+          ],
+        },
+        {
+          heading: "Account owners notified",
+          bullets: [
+            {
+              title: "3 owners found in Salesforce",
+              body: "Matched each invoice to its account owner via your linked Salesforce account — ready for a reminder.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to draft the reminder emails for each owner in Gmail?",
+    },
+    benefits: [
+      {
+        icon: "ActionMagnifyingGlassIcon",
+        color: "blue",
+        title: "One prompt, any connected system",
+        description:
+          "StackOne discovers the right action across your organization's connected HR, ATS, CRM, finance, and IT tools and runs it — so agents can act on Workday, Greenhouse, Salesforce, NetSuite, and 500+ others without a dedicated integration for each one.",
+        toolMatches: [
+          "stackone_list_accounts",
+          "stackone_search_actions",
+          "stackone_execute_action",
+        ],
+      },
+      {
+        icon: "ActionLockIcon",
+        color: "green",
+        title: "Runs under each person's own access",
+        description:
+          "Actions execute against the requesting user's own linked accounts and whatever your IT team has approved — not a shared service account — so agents stay inside existing permission boundaries.",
+        toolMatches: ["stackone_list_accounts", "stackone_execute_action"],
+      },
+      {
+        icon: "ActionGitBranchIcon",
+        color: "golden",
+        title: "Chain actions across HR, CRM, and Finance",
+        description:
+          "Ask for a multi-step workflow — like chasing overdue invoices in NetSuite and looping in the deal owner in Salesforce — and StackOne finds and runs each step in the connected system it belongs to.",
+        toolMatches: ["stackone_search_actions", "stackone_execute_action"],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do with StackOne?",
+        answer:
+          "Dust agents can discover and run actions across whatever HR, ATS, CRM, finance, or IT systems your organization has connected to StackOne — for example creating a candidate in an ATS, posting a job to your HRIS, or chasing overdue invoices in NetSuite — without a dedicated integration for each app.",
+      },
+      {
+        question: "Which systems does StackOne connect to?",
+        answer:
+          "StackOne connects to 500+ SaaS tools spanning HRIS/HCM (Workday, BambooHR, Personio), ATS (Greenhouse, Lever, Ashby), CRM (Salesforce, HubSpot), finance (NetSuite, QuickBooks, Xero), and IT/support (Zendesk, Okta) — the exact set available to an agent depends on what your organization has linked.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "StackOne uses OAuth with dynamic client registration. Once connected, actions run scoped to your own linked accounts and your IT team's approved permissions, not a shared service account.",
+      },
+    ],
+    relatedIntegrations: ["salesforce", "hubspot", "netsuite"],
+  },
   // [generic] Statuspage — 6 real tools
   statuspage: {
     chatStoryline: {
@@ -4755,6 +4848,110 @@ export const tailoredEnrichments: Record<
         ],
       },
     ],
+  },
+  // Youtrust — 5 real tools. De-slopped reference listing.
+  youtrust: {
+    seoTitle: "Run Youtrust e-signature from Dust",
+    seoSubtitle:
+      "Draft signature requests from your templates, send them, and track which ones are still open.",
+    tagline:
+      "Send documents for signature and follow up on the ones that stall.",
+    chatStoryline: {
+      userPrompt:
+        "Send our standard NDA to the three new vendors, then tell me what's still unsigned from last week.",
+      toolCalls: [
+        "search-templates",
+        "create-signature-request-from-template",
+        "send-signature-request",
+        "search-signature-requests",
+      ],
+      completedInSeconds: 13,
+      responseIntro:
+        "I found your NDA template in Youtrust, drafted a request for each vendor, and sent them. Here is last week's unsigned list too.",
+      responseSections: [
+        {
+          heading: "Sent for signature (3)",
+          bullets: [
+            {
+              title: "Acme Corp",
+              body: "Drafted from the Mutual NDA template. Sent to legal@acme.example. Not opened yet.",
+            },
+            {
+              title: "Globex",
+              body: "Sent to procurement@globex.example. Two signers, in sequence. Reminders on.",
+            },
+            {
+              title: "Initech",
+              body: "Sent to ops@initech.example. One signer. Expires in 14 days.",
+            },
+          ],
+        },
+        {
+          heading: "Still awaiting signature (2)",
+          bullets: [
+            {
+              title: "Order form #4187",
+              body: "Open 8 days. The signer opened it twice, then stopped.",
+            },
+            {
+              title: "Consulting agreement #4172",
+              body: "Open 11 days. No activity since you sent it.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to send a reminder on the two that are still open?",
+    },
+    benefits: [
+      {
+        icon: "ActionMagnifyingGlassIcon",
+        color: "blue",
+        title: "See what's still unsigned",
+        description:
+          "Ask which requests are pending, who has them, and how long they have been open. Dust reads the request list and each activity feed.",
+        toolMatches: [
+          "search-signature-requests",
+          "get-signature-request-activity-feed",
+        ],
+      },
+      {
+        icon: "ActionDocumentTextIcon",
+        color: "green",
+        title: "Send from a template in one prompt",
+        description:
+          "Name a Youtrust template, like an NDA or an offer letter. Dust drafts the request and sends it to the signers you name.",
+        toolMatches: [
+          "search-templates",
+          "create-signature-request-from-template",
+          "send-signature-request",
+        ],
+      },
+      {
+        icon: "ActionListCheckIcon",
+        color: "golden",
+        title: "Weekly signature recap",
+        description:
+          "Ask what got signed, what stalled, and what needs a nudge. Dust pulls it from your active requests and their activity feeds.",
+        toolMatches: [
+          "search-signature-requests",
+          "get-signature-request-activity-feed",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do in Youtrust?",
+        answer:
+          "Search your signature requests and templates, read a request's activity feed, and create and send new requests from an existing template.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "Youtrust uses OAuth 2.1 with dynamic client registration. You sign in with your Youtrust account and approve access from the Dust chat.",
+      },
+    ],
+    relatedIntegrations: ["gmail", "google_drive", "notion"],
   },
   // [legacy] Zendesk — 6 real tools
   zendesk: {

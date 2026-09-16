@@ -5,7 +5,7 @@ import { PodConversationsTab } from "@app/components/pod/conversation/PodConvers
 import { PodFilesTab } from "@app/components/pod/files/PodFilesTab";
 import { GoalPodOverview } from "@app/components/pod/GoalPodOverview";
 import { PodFileTabContent } from "@app/components/pod/PodFileTabContent";
-import { PodSettingsTab } from "@app/components/pod/settings/PodSettingsTab";
+import { PodSettingsSection } from "@app/components/pod/settings/PodSettingsSection";
 import { PodTasksTab } from "@app/components/pod/tasks/PodTasksTab";
 import type { PodConversationListFilter } from "@app/hooks/conversations/usePodConversations";
 import { usePodConversations } from "@app/hooks/conversations/usePodConversations";
@@ -234,7 +234,7 @@ export function PodPageContent({
         </NavTabPillContent>
       ))}
       <NavTabPillContent value="settings">
-        <PodSettingsTab
+        <PodSettingsSection
           key={podInfo.sId}
           owner={owner}
           pod={podInfo}

@@ -27,7 +27,7 @@ describe("RunResource reasoning token usage", () => {
         totalTokens: 1_300,
       },
       GPT_5_MINI_MODEL_CONFIG.modelId,
-      { usageType: USAGE_TYPE_USER }
+      { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: false }
     );
 
     const usages = await run.listRunUsages(auth);
@@ -57,7 +57,7 @@ describe("RunResource reasoning token usage", () => {
         totalTokens: 1_100,
       },
       GPT_5_MINI_MODEL_CONFIG.modelId,
-      { usageType: USAGE_TYPE_USER }
+      { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: false }
     );
 
     const usages = await run.listRunUsages(auth);
@@ -83,6 +83,7 @@ describe("RunResource service tier usage", () => {
         providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
         region: "global",
         usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
       }
     );
 
@@ -141,7 +142,7 @@ describe("RunResource service tier usage", () => {
         totalTokens: 1_100,
       },
       GPT_5_MINI_MODEL_CONFIG.modelId,
-      { usageType: USAGE_TYPE_USER }
+      { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: false }
     );
 
     const usages = await run.listRunUsages(auth);
@@ -196,6 +197,7 @@ describe("RunResource usage type immutability", () => {
         providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
         region: "global",
         usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
       }
     );
 
@@ -214,6 +216,72 @@ describe("RunResource usage type immutability", () => {
 
     expect(await run.listRunUsageAttempts(auth)).toMatchObject([
       { usageState: "reported", usageType: USAGE_TYPE_USER },
+    ]);
+  });
+});
+
+describe("RunResource credential owner", () => {
+  it("persists the credential source the usage row was created on", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const run = await RunResource.makeNew({
+      appId: null,
+      dustRunId: generateRandomModelSId(),
+      runType: "deploy",
+      useWorkspaceCredentials: false,
+      workspaceId: workspace.id,
+    });
+
+    await run.recordTokenUsage(
+      auth,
+      {
+        inputTokens: 1_000,
+        totalOutputTokens: 100,
+        totalTokens: 1_100,
+      },
+      GPT_5_MINI_MODEL_CONFIG.modelId,
+      { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: true }
+    );
+
+    expect(await run.listRunUsageAttempts(auth)).toMatchObject([
+      { useWorkspaceCredentials: true },
+    ]);
+  });
+
+  it("keeps the creation-time source when finalizing and on extra usages", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const { run, runUsageModelId } = await RunResource.makeNewWithPendingUsage(
+      {
+        appId: null,
+        dustRunId: generateRandomModelSId(),
+        runType: "deploy",
+        useWorkspaceCredentials: false,
+        workspaceId: workspace.id,
+      },
+      {
+        inferenceProvider: "openai-responses",
+        modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+        providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+        region: "global",
+        usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: true,
+      }
+    );
+
+    const usage = {
+      cachedTokens: null,
+      completionTokens: 30,
+      costMicroUsd: 10,
+      isBatch: false,
+      modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+      promptTokens: 120,
+      providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+      reasoningTokens: null,
+    };
+    await run.finalizePendingRunUsage(auth, runUsageModelId, [usage, usage]);
+
+    expect(await run.listRunUsageAttempts(auth)).toMatchObject([
+      { useWorkspaceCredentials: true, usageState: "reported" },
+      { useWorkspaceCredentials: true, usageState: "reported" },
     ]);
   });
 });

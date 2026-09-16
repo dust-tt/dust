@@ -2,6 +2,7 @@
 import { createFrameSession } from "@app/lib/api/share/frame_session";
 import { validateFrameOtpChallenge } from "@app/lib/api/share/frame_sharing";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -48,7 +49,7 @@ app.post(
       });
     }
 
-    const { shareScope, shareableFileId, workspace } = result.value;
+    const { file, shareScope, workspace } = result.value;
     // Only email-based scopes require OTP — return 404 to prevent scope enumeration.
     if (shareScope !== "emails_only" && shareScope !== "workspace_and_emails") {
       return apiError(ctx, {
@@ -104,10 +105,7 @@ app.post(
     // OTP is valid. Now check the grant — it may have been revoked between code request and
     // submission. A valid OTP proves the user went through verify-email (which requires a grant),
     // so revealing "no access" here doesn't enable enumeration.
-    const hasGrant = await FileResource.getActiveGrantForEmail(workspace, {
-      email,
-      shareableFileId,
-    });
+    const hasGrant = await SharingGrantResource.findForEmail(file, email);
     if (!hasGrant) {
       return apiError(ctx, {
         status_code: 403,

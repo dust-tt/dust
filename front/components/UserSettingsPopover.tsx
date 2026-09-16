@@ -1,4 +1,5 @@
 import { MarkdownEditor } from "@app/components/editor/MarkdownEditor";
+import { MODAL_SETTINGS_LIST_CLASSES } from "@app/components/me/modalSettingsList";
 import {
   NotificationPreferences,
   useNotificationPreferencesForm,
@@ -241,7 +242,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
           onChange={handleImageUpload}
         />
 
-        <SettingsList>
+        <SettingsList className={MODAL_SETTINGS_LIST_CLASSES}>
           <SettingsList.Row
             title="Profile picture"
             description={
@@ -456,7 +457,7 @@ function CustomizationSection() {
         />
       }
     >
-      <SettingsList>
+      <SettingsList className={MODAL_SETTINGS_LIST_CLASSES}>
         <SettingsList.Row
           title="Theme"
           description="Choose how Dust looks on this device"

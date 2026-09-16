@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import { getBatchLLM, getStreamLLM } from "@app/lib/api/llm";
 import { LLMRunLifecycle } from "@app/lib/api/llm/run_lifecycle";
 import { createLLMTraceId } from "@app/lib/api/llm/traces/buffer";
@@ -261,6 +262,27 @@ describe("LLMRunLifecycle", () => {
     await lifecycle.close();
     expect(await run.listRunUsageAttempts(auth)).toMatchObject([
       { usageState: "unavailable" },
+    ]);
+  });
+
+  it.each([
+    { isByok: false, useWorkspaceCredentials: false },
+    { isByok: true, useWorkspaceCredentials: true },
+  ])("records useWorkspaceCredentials=$useWorkspaceCredentials on the pending usage for a byok=$isByok workspace", async ({
+    isByok,
+    useWorkspaceCredentials,
+  }) => {
+    const { authenticator: auth } = await createResourceTest({ isByok });
+    const parameters = makeLifecycleParameters();
+
+    await LLMRunLifecycle.start(auth, parameters);
+
+    const run = await RunResource.fetchByDustRunId(auth, {
+      dustRunId: parameters.dustRunId,
+    });
+    assert(run, "Expected the LLM run to exist");
+    expect(await run.listRunUsageAttempts(auth)).toMatchObject([
+      { useWorkspaceCredentials },
     ]);
   });
 

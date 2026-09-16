@@ -475,6 +475,7 @@ export function SkillBuilderInstructionsEditor({
   const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
     skillId,
     states: ["pending"],
+    sources: ["reinforcement"],
     workspaceId: owner.sId,
     disabled: !skillId || !areSuggestionsEnabled,
   });

@@ -77,33 +77,24 @@ export const SANDBOX_FUNCTION_INVOCATION_ORIGINS = [
 export type SandboxFunctionInvocationOrigin =
   (typeof SANDBOX_FUNCTION_INVOCATION_ORIGINS)[number];
 
-// One slug segment: lowercase alphanumeric with single hyphen separators (e.g. `greet`,
-// `send-slack-message`). A function's own name is a single segment; the app prefix publish derives
-// from the source path is another.
-const SANDBOX_FUNCTION_SLUG_SEGMENT = "[a-z0-9]+(?:-[a-z0-9]+)*";
-
-export const SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX = new RegExp(
-  `^${SANDBOX_FUNCTION_SLUG_SEGMENT}$`
-);
-
-// A published function's slug: `<appPrefix>__<name>` (e.g. `tasklist__add-task`), where publish
-// derives the prefix from the app folder the source lives in. The prefix is optional so slugs
-// published before app namespacing existed stay valid.
+// A published function's slug: lowercase alphanumeric with single hyphen separators (e.g. `greet`,
+// `send-slack-message`). This is the same grammar the manifest validates a function name against —
+// `createForFramePublication` stores `slug: fn.name` — so a declared name and a stored slug can
+// never disagree, and a Frame's bare reference addresses the row directly.
+//
+// It once admitted an optional `<appPrefix>__` half that publish derived from the app folder a Pod
+// function's source lived in. Pod functions are gone, no v2 publication can produce a prefix (the
+// manifest name is a single segment), and no prefixed slug exists in either region.
 //
 // Stays deliberately stricter than dsbx's own `[A-Za-z0-9_-]+` (is_valid_name in
 // cli/dust-sandbox/src/commands/function/mod.rs), which is what lets `<slug>.ts` resolve in the flat
 // $DUST_FUNCTIONS_DIR mount without any CLI change.
-export const SANDBOX_FUNCTION_SLUG_REGEX = new RegExp(
-  `^${SANDBOX_FUNCTION_SLUG_SEGMENT}(?:__${SANDBOX_FUNCTION_SLUG_SEGMENT})?$`
-);
+export const SANDBOX_FUNCTION_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 // Mirrors DB_NAME_REGEX in cli/dust-sandbox/functions-runner/types/db.ts. Regex values cannot
 // be type-checked and front cannot runtime-import cli code; equality is asserted in
 // build_on_sandbox.test.ts.
 export const SANDBOX_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
-
-// Pod databases and Frame databases share the dsbx runtime naming contract.
-export const POD_DATABASE_NAME_REGEX = SANDBOX_DATABASE_NAME_REGEX;
 
 export function isValidSandboxFunctionSlug(value: unknown): value is string {
   return typeof value === "string" && SANDBOX_FUNCTION_SLUG_REGEX.test(value);

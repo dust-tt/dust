@@ -165,6 +165,9 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   canva: "productivity",
   hex: "data",
   spendesk: "productivity",
+  // StackOne is a multi-vertical gateway (HR, ATS, CRM, finance, IT) with no
+  // single fitting category — "productivity" is the closest general bucket.
+  stackone: "productivity",
 };
 
 // Category mapping for connectors

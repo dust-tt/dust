@@ -1,5 +1,8 @@
 import { actionSchema } from "@app/components/shared/tools_picker/types";
-import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
+import {
+  AGENT_FACING_DESCRIPTION_MAX_LENGTH,
+  USER_FACING_DESCRIPTION_MAX_LENGTH,
+} from "@app/lib/skills/labels";
 import {
   SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
@@ -50,7 +53,13 @@ export const skillBuilderFormSchema = z.object({
       AGENT_FACING_DESCRIPTION_MAX_LENGTH,
       `Description must be ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters or less`
     ),
-  userFacingDescription: z.string().min(1, "Skill description is required"),
+  userFacingDescription: z
+    .string()
+    .min(1, "Skill description is required")
+    .max(
+      USER_FACING_DESCRIPTION_MAX_LENGTH,
+      `Description must be ${USER_FACING_DESCRIPTION_MAX_LENGTH} characters or less`
+    ),
   instructions: z.string().min(1, "Skill instructions are required"),
   instructionsHtml: z.string(),
   editors: z.array(editorUserSchema),

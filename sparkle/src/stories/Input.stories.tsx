@@ -192,3 +192,49 @@ export const WithInfoMessage: Story = {
     messageStatus: "info",
   },
 };
+
+const SURFACES = [
+  { label: "background", className: "bg-background" },
+  { label: "panel-background", className: "bg-panel-background" },
+  { label: "muted-background", className: "bg-muted-background" },
+  { label: "modal-background", className: "bg-modal-background" },
+] as const;
+
+/**
+ * The same field states on each surface token, to check that the resting
+ * border, the filled fill and the disabled fill read correctly everywhere,
+ * in both themes. The filled fill is a translucent tint in dark mode so it
+ * lifts lighter surfaces such as the modal instead of sinking into them.
+ * Toggle the theme in the toolbar to compare.
+ * @summary Field states across surface tokens.
+ */
+export const OnSurfaces: Story = {
+  tags: ["!manifest"],
+  render: () => (
+    <div className="grid w-[880px] grid-cols-2 gap-4">
+      {SURFACES.map((surface) => (
+        <div
+          key={surface.label}
+          className={`flex flex-col gap-3 rounded-2xl border border-border p-5 ${surface.className}`}
+        >
+          <span className="label-sm text-muted-foreground">
+            {surface.label}
+          </span>
+          <Input placeholder="Empty" />
+          <Input defaultValue="Filled, not focused" />
+          <Input
+            defaultValue="42"
+            prefix={<span className="text-faint">$</span>}
+          />
+          <Input defaultValue="Disabled" disabled />
+          <Input
+            defaultValue="Invalid value"
+            isError
+            message="Please enter a valid value"
+            messageStatus="error"
+          />
+        </div>
+      ))}
+    </div>
+  ),
+};

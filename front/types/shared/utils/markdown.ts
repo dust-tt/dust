@@ -70,6 +70,12 @@ function replaceAgentSuggestions(text: string): string {
     .replaceAll(/:agent_suggestion\[\]\{([^}]*)\}/g, () => "Suggestion");
 }
 
+function replaceSkillSuggestions(text: string): string {
+  return text
+    .replaceAll(/::skill_suggestion\[\]\{([^}]*)\}/g, () => "Suggestion")
+    .replaceAll(/:skill_suggestion\[\]\{([^}]*)\}/g, () => "Suggestion");
+}
+
 function replaceActionCards(text: string): string {
   return text.replaceAll(
     /:::action_card\{([^}]*)\}\s*\n[\s\S]*?\n:::\s*/g,
@@ -101,6 +107,7 @@ function replaceDustDirectives(text: string): string {
   out = replaceContentNodeMentions(out);
   out = replacePastedAttachments(out);
   out = replaceAgentSuggestions(out);
+  out = replaceSkillSuggestions(out);
   out = replaceActionCards(out);
   out = replaceMentionsWithAt(out);
   return out;

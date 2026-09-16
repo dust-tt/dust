@@ -1,0 +1,12 @@
+@cc [owner:avervaet,label:react;architecture] client-modules-stay-browser-safe
+Files directly under `lib/client/` MUST NOT import server-only modules (`lib/api/*`, database or
+Redis clients, `lib/utils/statsd.ts`, `lib/utils/rate_limiter.ts`, or anything transitively
+depending on them). Front-spa's browser bundle imports these files directly from React
+components; Vite externalizes Node built-ins (e.g. `os`, `net`) for the browser, so a server-only
+transitive import fails at runtime instead of at build time — the app crashes at load with an
+error like "Cannot read properties of undefined (reading 'errno')" rather than a type or build
+error.
+
+Pure logic shared between server and browser code (formatting, timeframe/unit conversions, etc.)
+belongs here or gets re-exported from here; server-only call sites should import it from this
+location rather than duplicating it.

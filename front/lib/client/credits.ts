@@ -1,4 +1,8 @@
-import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
+import type {
+  MaxAwuCreditsTimeframeType,
+  MaxMessagesTimeframeType,
+} from "@app/types/plan";
+import { TIMEFRAME_SECONDS } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 
@@ -98,4 +102,24 @@ export function formatMicroUsdCompact(microUsd: number): string {
     notation: "compact",
     maximumFractionDigits: 1,
   })}`;
+}
+
+// Browser display only: tolerates an unrecognized timeframe (the server may
+// add new plan literals before the client is updated) by falling back to a
+// 30-day window instead of crashing the app.
+export function getTimeframeSecondsFromLiteral(
+  timeframeLiteral: MaxMessagesTimeframeType | MaxAwuCreditsTimeframeType
+): number {
+  // Widen the key type: this guards against a timeframe value that bypassed
+  // the static type (e.g. a server-added plan literal the client doesn't
+  // know about yet), which TIMEFRAME_SECONDS's own exhaustive-by-construction
+  // typing can't otherwise express as lookupable.
+  const seconds = (TIMEFRAME_SECONDS as Record<string, number | undefined>)[
+    timeframeLiteral
+  ];
+  if (seconds === undefined) {
+    assertNeverAndIgnore(timeframeLiteral as never);
+    return 60 * 60 * 24 * 30; // Unknown timeframe: fall back to 30 days.
+  }
+  return seconds;
 }

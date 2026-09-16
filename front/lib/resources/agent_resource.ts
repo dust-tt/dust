@@ -1,15 +1,27 @@
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
+import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import {
+  AgentConfigurationModel,
+  AgentModel,
+} from "@app/lib/models/agent/agent";
+
+import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
+import { BaseResource } from "@app/lib/resources/base_resource";
+
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentConfigurationScope,
+  AgentConfigurationStatus,
+  AgentConfigurationType,
+  AgentModelConfigurationType,
+  AgentReinforcementMode,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
-import type { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
@@ -19,88 +31,145 @@ import type {
 } from "@app/types/resource_permissions";
 import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
-import type { Transaction } from "sequelize";
+import type { Attributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 // Legacy `canEdit` also allows changing the editor set, so the author fallback mirrors the full
 // editor role rather than granting write alone.
-const AGENT_EDITOR_VERBS: GrantVerb[] = ["read", "write", "admin", "use"];
+const AGENT_EDITOR_VERBS: GrantVerb[] = ["read", "write", "admin"];
 
 // Human workspace admins manage editors but must grant themselves editor access to change the agent.
-// Admins do not receive `use` on hidden agents: a hidden agent is usable only by its editors, not by
-// virtue of the workspace admin role.
+// The admin role alone does not read a hidden agent (see the `hidden-agent-content` contract).
 const HIDDEN_AGENT_ROLE_GRANTS: RoleGrant[] = [
   { role: "admin", permissions: ["admin"] },
 ];
 
-// Visible agents are readable by every workspace role and usable by every active role, including
-// admins (who additionally keep the hidden-grant `admin` verb). The `none` role — a revoked /
-// non-member caller — can read but not use.
+// Visible agents are readable by every workspace role. Kept explicit (not spread from
+// `HIDDEN_AGENT_ROLE_GRANTS`) so the admin role keeps `read` here even though it does not on hidden.
 const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
-  { role: "admin", permissions: ["read", "admin", "use"] },
-  { role: "manager", permissions: ["read", "use"] },
-  { role: "builder", permissions: ["read", "use"] },
-  { role: "user", permissions: ["read", "use"] },
+  { role: "admin", permissions: ["read", "admin"] },
+  { role: "manager", permissions: ["read"] },
+  { role: "builder", permissions: ["read"] },
+  { role: "user", permissions: ["read"] },
   { role: "none", permissions: ["read"] },
 ];
 
-export class AgentResource implements WithAccessControl {
+// Full-only payload: every `AgentConfigurationModel` column that is not part of the identity/core
+// carried by both shapes. Present only on `full` resources (see `AgentResource` variants).
+export type AgentResourceContent = {
+  agentConfigurationModelId: ModelId;
+  version: number;
+  instructions: string | null;
+  instructionsHtml: string | null;
+  maxStepsPerRun: number;
+  templateId: ModelId | null;
+  reinforcement: AgentReinforcementMode;
+  lastReinforcementAnalysisAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type AgentResourceExtraBlob = {
+  scope: AgentConfigurationScope;
+  name: string;
+  description: string;
+  status: AgentConfigurationStatus;
+  pictureUrl: string;
+  versionAuthorId: ModelId | null;
+  requestedSpaceIds: ModelId[];
+  modelConfiguration: AgentModelConfigurationType;
+  content: AgentResourceContent | null;
+};
+
+// A `full` resource always exposes its `content`.
+export interface FullAgentResource extends AgentResource {
+  readonly variant: "full";
+}
+
+// The stable identity of an agent, backed by `AgentModel` (so `id` is the agent's `agentModelId`).
+// It comes in two shapes, discriminated by `variant`:
+// - `light`: identity + `scope`/`name`/`description`/`status`/`pictureUrl`/`versionAuthorId`/
+//   `requestedSpaceIds`/`modelConfiguration`, built without a query from a configuration already in
+//   hand. These core fields are not read-gated — they are carried by every resource — and are
+//   sufficient for permission decisions.
+// - `full`: additionally carries `content` (every remaining `AgentConfigurationModel` column of the
+//   resolved version). Produced by the access-controlled `fetch*` resolvers.
+/**
+ * @cc [owner:tdraier,label:backend] agent-resource-identity
+ * The authoritative resolvers `fetchByModelIdWithAuth`/`fetchByModelIds`/`fetchById(s)` MUST resolve
+ * a custom agent to a single deterministic configuration version — its active version when it has
+ * one, otherwise its latest version regardless of status (see `fetch-latest-active-version`) — so
+ * two fetched resources sharing an `id` (= `agentModelId`) are consistent at a given time. The
+ * `from*` factories are an unchecked fast path: they build a resource from whatever configuration
+ * the caller supplies, and do NOT yet guarantee it is the resolved version — a caller deciding about
+ * the agent's current state must pass that version, or use `fetch*`. (`from*` are intended to become
+ * private and enforce this.) Global agents are exempt from the `id`-consistency clause: they have no
+ * `agent` row, are identified by `sId`, and all share the `id: -1` sentinel.
+ */
+export class AgentResource
+  extends BaseResource<AgentModel>
+  implements WithAccessControl
+{
+  readonly sId: string;
+  readonly workspaceId: ModelId;
+  readonly scope: AgentConfigurationScope;
+  readonly name: string;
+  readonly description: string;
+  readonly status: AgentConfigurationStatus;
+  readonly pictureUrl: string;
+  private readonly versionAuthorId: ModelId | null;
+  private readonly requestedSpaceIds: ModelId[];
+  readonly modelConfiguration: AgentModelConfigurationType;
+  // Mutable so a light resource can be enriched to full in place once read access is confirmed
+  // (see `fromAgentConfigurationModel`). `variant` is derived from its presence.
+  private _content: AgentResourceContent | null;
+
   private constructor(
-    readonly id: ModelId | null,
-    readonly sId: string,
-    readonly workspaceId: ModelId,
-    readonly kind: "custom" | "global",
-    private readonly authorId: ModelId | null,
-    private readonly scope: AgentConfigurationScope
-  ) {}
+    blob: Attributes<AgentModel>,
+    extra: AgentResourceExtraBlob
+  ) {
+    super(AgentModel, blob);
 
-  static fromAgentConfigurationModel(
-    configuration: Pick<
-      AgentConfigurationModel,
-      "agentId" | "authorId" | "sId" | "scope" | "workspaceId"
-    >
-  ): AgentResource {
-    return new AgentResource(
-      configuration.agentId,
-      configuration.sId,
-      configuration.workspaceId,
-      "custom",
-      configuration.authorId,
-      configuration.scope
-    );
+    this.sId = blob.sId;
+    this.workspaceId = blob.workspaceId;
+    this.scope = extra.scope;
+    this.name = extra.name;
+    this.description = extra.description;
+    this.status = extra.status;
+    this.pictureUrl = extra.pictureUrl;
+    this.versionAuthorId = extra.versionAuthorId;
+    this.requestedSpaceIds = extra.requestedSpaceIds;
+    this.modelConfiguration = extra.modelConfiguration;
+    this._content = extra.content;
   }
 
-  static fromGlobalAgent({
-    agentId,
-    workspaceModelId,
-  }: {
-    agentId: GLOBAL_AGENTS_SID;
-    workspaceModelId: ModelId;
-  }): AgentResource {
-    return new AgentResource(
-      null,
-      agentId,
-      workspaceModelId,
-      "global",
-      null,
-      "global"
-    );
+  get variant(): "light" | "full" {
+    return this._content === null ? "light" : "full";
   }
 
-  /**
-   * Builds the identity resource for a custom agent from an already-loaded configuration.
-   * Pure: the stable `agentModelId` travels on the configuration, so no query is needed. The
-   * workspace comes from `auth` (a configuration always belongs to the authed workspace).
-   */
+  isFull(): this is FullAgentResource {
+    return this._content !== null;
+  }
+
+  get content(): AgentResourceContent {
+    assert(
+      this._content !== null,
+      "Unexpected: `content` accessed on a light AgentResource"
+    );
+
+    return this._content;
+  }
+
+  // -- Light factories (no query; identity + core only) --
+
   static fromAgentConfiguration(
     auth: Authenticator,
-    configuration: Pick<
-      LightAgentConfigurationType,
-      "agentModelId" | "sId" | "scope" | "versionAuthorId"
-    >
+    configuration: LightAgentConfigurationType
   ): AgentResource {
     assert(configuration.scope !== "global");
     assert(
@@ -113,29 +182,263 @@ export class AgentResource implements WithAccessControl {
     );
 
     return new AgentResource(
-      configuration.agentModelId,
-      configuration.sId,
-      auth.getNonNullableWorkspace().id,
-      "custom",
-      configuration.versionAuthorId,
-      configuration.scope
+      {
+        id: configuration.agentModelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: configuration.sId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        currentVersion: configuration.version,
+      },
+      {
+        scope: configuration.scope,
+        name: configuration.name,
+        description: configuration.description,
+        status: configuration.status,
+        pictureUrl: configuration.pictureUrl,
+        versionAuthorId: configuration.versionAuthorId,
+        // `LightAgentConfigurationType.requestedSpaceIds` are space sIds; the resource holds model ids.
+        requestedSpaceIds: removeNulls(
+          configuration.requestedSpaceIds.map(getResourceIdFromSId)
+        ),
+        modelConfiguration: configuration.model,
+        content: null,
+      }
     );
   }
 
   static fromAgentConfigurations(
     auth: Authenticator,
-    configurations: Pick<
-      LightAgentConfigurationType,
-      "agentModelId" | "sId" | "scope" | "versionAuthorId"
-    >[]
+    configurations: LightAgentConfigurationType[]
   ): AgentResource[] {
     return configurations.map((configuration) =>
       this.fromAgentConfiguration(auth, configuration)
     );
   }
 
-  async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
-    const editorsByAgentId = await AgentResource.batchListEditors(auth, [this]);
+  // Global agents are code-defined and have no `agent`/configuration rows; their
+  // `AgentConfigurationType` is built from synthetic values by `getGlobalAgent(s)`.
+  static fromGlobalAgent(
+    auth: Authenticator,
+    configuration: AgentConfigurationType
+  ): AgentResource {
+    assert(isGlobalAgentId(configuration.sId));
+
+    return new AgentResource(
+      {
+        // No `agent` identity row; `-1` mirrors their synthetic configuration id.
+        id: -1,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: configuration.sId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        currentVersion: configuration.version,
+      },
+      {
+        scope: "global",
+        name: configuration.name,
+        description: configuration.description,
+        status: configuration.status,
+        pictureUrl: configuration.pictureUrl,
+        versionAuthorId: null,
+        requestedSpaceIds: [],
+        modelConfiguration: configuration.model,
+        content: null,
+      }
+    );
+  }
+
+  // -- Full/light factory --
+
+  // Builds a resource from an already-loaded configuration row: `full` (with `content`) when the
+  // caller can read the agent, `light` otherwise. Read access depends only on core fields, so it is
+  // decided on the light resource and the (larger) content payload is materialized only when needed.
+  static fromAgentConfigurationModel(
+    auth: Authenticator,
+    configuration: AgentConfigurationModel
+  ): AgentResource {
+    const resource = new AgentResource(
+      {
+        id: configuration.agentId,
+        workspaceId: configuration.workspaceId,
+        sId: configuration.sId,
+        createdAt: configuration.createdAt,
+        updatedAt: configuration.updatedAt,
+        currentVersion: configuration.version,
+      },
+      {
+        scope: configuration.scope,
+        name: configuration.name,
+        description: configuration.description,
+        status: configuration.status,
+        pictureUrl: configuration.pictureUrl,
+        versionAuthorId: configuration.authorId,
+        requestedSpaceIds: configuration.requestedSpaceIds,
+        modelConfiguration: {
+          providerId: configuration.providerId,
+          modelId: configuration.modelId,
+          temperature: configuration.temperature,
+          reasoningEffort: configuration.reasoningEffort ?? undefined,
+          responseFormat: configuration.responseFormat,
+        },
+        content: null,
+      }
+    );
+
+    if (auth.can("read", resource)) {
+      resource._content = {
+        agentConfigurationModelId: configuration.id,
+        version: configuration.version,
+        instructions: configuration.instructions,
+        instructionsHtml: configuration.instructionsHtml,
+        maxStepsPerRun: configuration.maxStepsPerRun,
+        templateId: configuration.templateId,
+        reinforcement: configuration.reinforcement,
+        lastReinforcementAnalysisAt: configuration.lastReinforcementAnalysisAt,
+        createdAt: configuration.createdAt,
+        updatedAt: configuration.updatedAt,
+      };
+    }
+
+    return resource;
+  }
+
+  // -- Resolvers: latest version, full when readable, light otherwise --
+
+  /**
+   * @cc [owner:tdraier,label:backend] fetch-latest-active-version
+   * Resolves each requested custom agent to a single configuration version, scoped to the authed
+   * workspace: its active version when it has one, otherwise its latest version irrespective of
+   * status (archived, draft, or pending). Each is returned as a `full` resource when the caller can
+   * read it, otherwise a `light` resource; a resource the caller cannot fetch at all (holds no verb
+   * on, per `canFetch`) is dropped. An agent with no version yields no resource, and at most one
+   * resource is returned per `agentModelId`. `fetchById(s)` additionally resolve global agents by
+   * `sId` (they have no configuration rows) via `getGlobalAgents`, gated by the same `canFetch`
+   * check; `fetchByModelId(s)` cannot, since global agents have no `agentModelId`.
+   */
+  static async fetchByModelIds(
+    auth: Authenticator,
+    agentModelIds: ModelId[]
+  ): Promise<AgentResource[]> {
+    if (agentModelIds.length === 0) {
+      return [];
+    }
+
+    return this.fetchLatestVersions(auth, { agentId: agentModelIds });
+  }
+
+  // Named `...WithAuth` because `BaseResource.fetchByModelId` already occupies the bare name with an
+  // unauthenticated signature.
+  static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    agentModelId: ModelId
+  ): Promise<AgentResource | null> {
+    const [resource] = await this.fetchByModelIds(auth, [agentModelId]);
+    return resource ?? null;
+  }
+
+  static async fetchByIds(
+    auth: Authenticator,
+    agentIds: string[]
+  ): Promise<AgentResource[]> {
+    if (agentIds.length === 0) {
+      return [];
+    }
+
+    const globalAgentIds = agentIds.filter(isGlobalAgentId);
+    const customAgentIds = agentIds.filter((id) => !isGlobalAgentId(id));
+
+    const [customResources, globalResources] = await Promise.all([
+      customAgentIds.length > 0
+        ? this.fetchLatestVersions(auth, { sId: customAgentIds })
+        : [],
+      this.fetchGlobalAgents(auth, globalAgentIds),
+    ]);
+
+    return [...customResources, ...globalResources];
+  }
+
+  // Global agents are code-defined and have no `agent`/configuration rows, so they cannot be
+  // resolved by the version query; they are built from `getGlobalAgents` (which enforces workspace
+  // plan/availability) and gated by the same `canFetch` check as custom agents.
+  private static async fetchGlobalAgents(
+    auth: Authenticator,
+    globalAgentIds: string[]
+  ): Promise<AgentResource[]> {
+    if (globalAgentIds.length === 0) {
+      return [];
+    }
+
+    const configurations = await getGlobalAgents(auth, globalAgentIds, "light");
+    return configurations
+      .map((configuration) => this.fromGlobalAgent(auth, configuration))
+      .filter((resource) => resource.canFetch(auth));
+  }
+
+  static async fetchById(
+    auth: Authenticator,
+    agentId: string
+  ): Promise<AgentResource | null> {
+    const [resource] = await this.fetchByIds(auth, [agentId]);
+    return resource ?? null;
+  }
+
+  // Loads the configuration rows of the identified agents, scoped to the authed workspace, ordered
+  // so `buildLatestVersions` keeps the highest version per agent whatever its status. `identityWhere`
+  // selects the agents by their `agentId` (model id) or `sId`.
+  private static async fetchLatestVersions(
+    auth: Authenticator,
+    identityWhere: { agentId: ModelId[] } | { sId: string[] }
+  ): Promise<AgentResource[]> {
+    const configurations = await AgentConfigurationModel.findAll({
+      where: {
+        ...identityWhere,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      order: [["version", "DESC"]],
+    });
+
+    return this.buildLatestVersions(auth, configurations);
+  }
+
+  // Keeps a single configuration per agent. Rows are ordered version-DESC, so the first seen for an
+  // agent is its highest version; that stands unless a later row reveals the agent's active version
+  // (at most one), which is always preferred. Each chosen row becomes a full or light resource per
+  // the caller's read access (see `fromAgentConfigurationModel`); resources the caller cannot fetch
+  // (holds no verb on) are dropped by the common `canFetch` gate.
+  private static buildLatestVersions(
+    auth: Authenticator,
+    configurations: AgentConfigurationModel[]
+  ): AgentResource[] {
+    const chosenByAgentModelId = new Map<ModelId, AgentConfigurationModel>();
+    for (const configuration of configurations) {
+      const chosen = chosenByAgentModelId.get(configuration.agentId);
+      if (
+        !chosen ||
+        (chosen.status !== "active" && configuration.status === "active")
+      ) {
+        chosenByAgentModelId.set(configuration.agentId, configuration);
+      }
+    }
+
+    return [...chosenByAgentModelId.values()]
+      .map((configuration) =>
+        this.fromAgentConfigurationModel(auth, configuration)
+      )
+      .filter((resource) => resource.canFetch(auth));
+  }
+
+  async listEditors(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<UserResource[] | null> {
+    const editorsByAgentId = await AgentResource.batchListEditors(
+      auth,
+      [this],
+      {
+        transaction,
+      }
+    );
     const editors = editorsByAgentId.get(this.sId);
     assert(editors !== undefined);
 
@@ -149,48 +452,51 @@ export class AgentResource implements WithAccessControl {
    */
   static async batchListEditors(
     auth: Authenticator,
-    agents: AgentResource[]
+    agents: AgentResource[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Map<string, UserResource[] | null>> {
     const result = new Map<string, UserResource[] | null>(
       agents.map((agent) => [agent.sId, null])
     );
-    const customAgents = agents.filter((agent) => agent.id !== null);
+    const customAgents = agents.filter((agent) => agent.scope !== "global");
     if (customAgents.length === 0) {
       return result;
     }
 
-    const editorGrant = (agent: AgentResource) => {
-      assert(agent.id !== null);
-      return {
-        grantType: "editor" as const,
-        resourceType: "agent" as const,
-        resourceId: agent.id,
-      };
-    };
+    const editorGrant = (agent: AgentResource) => ({
+      grantType: "editor" as const,
+      resourceType: "agent" as const,
+      resourceId: agent.id,
+    });
     const groupByGrant =
       await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
         grants: customAgents.map(editorGrant),
+        transaction,
       });
     const groupByAgentModelId = new Map<ModelId, GroupResource>(
       removeNulls(
         customAgents.map((agent) => {
-          assert(agent.id !== null);
           const group = groupByGrant.get(grantKey(editorGrant(agent)));
           return group ? ([agent.id, group] as const) : null;
         })
       )
     );
     const membershipsByGroupId =
-      await GroupResource.getActiveMembershipsForGroups(auth, [
-        ...groupByAgentModelId.values(),
-      ]);
+      await GroupResource.getActiveMembershipsForGroups(
+        auth,
+        [...groupByAgentModelId.values()],
+        { transaction }
+      );
     const userModelIds = [
       ...new Set(Object.values(membershipsByGroupId).flat()),
     ];
-    const users = await UserResource.fetchByModelIds(userModelIds);
+    const users = await UserResource.fetchByModelIds(userModelIds, {
+      transaction,
+    });
     const { memberships } = await MembershipResource.getActiveMemberships({
       users,
       workspace: auth.getNonNullableWorkspace(),
+      transaction,
     });
     const activeUserModelIds = new Set(
       memberships.map((membership) => membership.userId)
@@ -202,7 +508,6 @@ export class AgentResource implements WithAccessControl {
     );
 
     for (const agent of customAgents) {
-      assert(agent.id !== null);
       const group = groupByAgentModelId.get(agent.id);
       const memberModelIds = group
         ? (membershipsByGroupId[group.id] ?? [])
@@ -216,6 +521,25 @@ export class AgentResource implements WithAccessControl {
     }
 
     return result;
+  }
+
+  static async listCreatedAtByAgentId(
+    auth: Authenticator,
+    agentIds: string[]
+  ): Promise<Map<string, Date>> {
+    if (agentIds.length === 0) {
+      return new Map();
+    }
+
+    const agents = await AgentModel.findAll({
+      attributes: ["sId", "createdAt"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: { [Op.in]: agentIds },
+      },
+    });
+
+    return new Map(agents.map(({ sId, createdAt }) => [sId, createdAt]));
   }
 
   static async listEditorConfigModelIds(
@@ -240,8 +564,7 @@ export class AgentResource implements WithAccessControl {
     auth: Authenticator,
     { editors, transaction }: { editors: UserType[]; transaction: Transaction }
   ): Promise<void> {
-    assert(this.kind === "custom");
-    assert(this.id !== null);
+    assert(this.scope !== "global");
     assert(auth.getNonNullableWorkspace().id === this.workspaceId);
 
     const grantResult = await GroupPermissionResource.grantToUsers(auth, {
@@ -260,8 +583,7 @@ export class AgentResource implements WithAccessControl {
     auth: Authenticator,
     { editors, transaction }: { editors: UserType[]; transaction: Transaction }
   ): Promise<void> {
-    assert(this.kind === "custom");
-    assert(this.id !== null);
+    assert(this.scope !== "global");
     assert(auth.getNonNullableWorkspace().id === this.workspaceId);
 
     const revokeResult = await GroupPermissionResource.revokeFromUsers(auth, {
@@ -277,6 +599,29 @@ export class AgentResource implements WithAccessControl {
   }
 
   /**
+   * Makes `configuration`, one of the agent's own rows, the current one. Called by every path
+   * that inserts a configuration row or deletes the current one (see
+   * `agent-current-version-pointer` on `AgentModel`).
+   */
+  async setCurrentConfiguration(
+    auth: Authenticator,
+    configuration: Pick<AgentConfigurationModel, "agentId" | "version">,
+    { transaction }: { transaction: Transaction }
+  ): Promise<void> {
+    assert(this.scope !== "global");
+    assert(auth.getNonNullableWorkspace().id === this.workspaceId);
+    assert(
+      configuration.agentId === this.id,
+      "Unexpected: configuration belongs to another agent"
+    );
+
+    await AgentModel.update(
+      { currentVersion: configuration.version },
+      { where: { id: this.id, workspaceId: this.workspaceId }, transaction }
+    );
+  }
+
+  /**
    * Deletes the agent's permission rows and their regular_auto groups.
    * Only call after deleting the last configuration of the logical agent.
    */
@@ -284,8 +629,7 @@ export class AgentResource implements WithAccessControl {
     auth: Authenticator,
     { transaction }: { transaction: Transaction }
   ): Promise<void> {
-    assert(this.kind === "custom");
-    assert(this.id !== null);
+    assert(this.scope !== "global");
     assert(auth.getNonNullableWorkspace().id === this.workspaceId);
 
     const grantGroups =
@@ -308,6 +652,33 @@ export class AgentResource implements WithAccessControl {
     }
   }
 
+  // Agent deletion goes through the configuration layer (archive/hard-delete). The resource-level
+  // teardown lives in `destroyPermissionsAndGroups`, called after the last configuration is removed.
+  async delete(): Promise<Result<undefined, Error>> {
+    return new Err(
+      new Error(
+        "AgentResource.delete is not supported; archive the agent via " +
+          "archiveAgentConfiguration and clean up with destroyPermissionsAndGroups."
+      )
+    );
+  }
+
+  // Whether the caller can read every space backing the agent's tools/skills/data. Space read comes
+  // from the caller's governance snapshot (`getReadableSpaceModelIds`), so this needs no extra query.
+  // A `kind: "all"` result is the type-wide wildcard grant (a full system key) and reads every space;
+  // a system key downscoped to a group subset (see `Authenticator.fromKey` with `requestedGroupIds`)
+  // enumerates only what those groups grant, so it is checked like any other caller. A missing or
+  // deleted space is absent from the snapshot and therefore fails closed.
+  private requestedSpacesReadable(auth: Authenticator): boolean {
+    const readableSpaces = auth.getReadableSpaceModelIds();
+    return (
+      readableSpaces.kind === "all" ||
+      this.requestedSpaceIds.every((spaceId) =>
+        readableSpaces.resourceIds.includes(spaceId)
+      )
+    );
+  }
+
   /**
    * @cc [owner:philipperolet,label:security] admin-key-agent-write
    * The admin role grants `write` on custom agents to regular API keys only; human and system-key
@@ -318,40 +689,63 @@ export class AgentResource implements WithAccessControl {
    * Admin role alone must not grant `read` on hidden agents, including for regular API keys
    * with role-based write access. Agent details may separately override admin redaction.
    */
+  /**
+   * @cc [owner:tdraier,label:security;product] agent-read-requires-space-read
+   * `read` on a custom agent requires read access to every space in `requestedSpaceIds` (the spaces
+   * backing its tools/skills/data): a caller who cannot read one of them does not get `read`.
+   * `requestedSpaceIds` is a core field carried by every variant, so the gate applies regardless of
+   * `light`/`full`. Global agents have no requested spaces and are unaffected.
+   */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
-    switch (this.kind) {
-      case "global": {
-        assert(isGlobalAgentId(this.sId));
+    if (this.scope === "global") {
+      assert(isGlobalAgentId(this.sId));
 
-        const roleGrants: RoleGrant[] = globalAgentReaderRoles(this.sId).map(
-          (role) => ({ role, permissions: ["read"] })
-        );
-        return new Set(verbsFromRoleGrants(auth, roleGrants, this.workspaceId));
-      }
-      case "custom": {
-        assert(this.id !== null);
-        assert(this.authorId !== null);
+      const roleGrants: RoleGrant[] = globalAgentReaderRoles(this.sId).map(
+        (role) => ({ role, permissions: ["read"] })
+      );
 
-        const grants = auth.getGovernanceGrantVerbs("agent", this.id);
-        const isAuthor =
-          auth.workspace()?.id === this.workspaceId &&
-          auth.user()?.id === this.authorId;
-        const roles =
-          this.scope === "visible"
-            ? VISIBLE_AGENT_ROLE_GRANTS
-            : HIDDEN_AGENT_ROLE_GRANTS;
-        const roleGrants: RoleGrant[] =
-          auth.isKey() && !auth.isSystemKey()
-            ? [...roles, { role: "admin", permissions: ["write"] }]
-            : roles;
-
-        return new Set([
-          ...(isAuthor ? [...grants, ...AGENT_EDITOR_VERBS] : grants),
-          ...verbsFromRoleGrants(auth, roleGrants, this.workspaceId),
-        ]);
-      }
-      default:
-        return assertNever(this.kind);
+      return new Set(verbsFromRoleGrants(auth, roleGrants, this.workspaceId));
     }
+
+    assert(this.versionAuthorId !== null);
+
+    const grants = auth.getGovernanceGrantVerbs(
+      "agent",
+      this.id,
+      this.workspaceId
+    );
+    const isAuthor =
+      auth.workspace()?.id === this.workspaceId &&
+      auth.user()?.id === this.versionAuthorId;
+    const roles =
+      this.scope === "visible"
+        ? VISIBLE_AGENT_ROLE_GRANTS
+        : HIDDEN_AGENT_ROLE_GRANTS;
+    const roleGrants: RoleGrant[] =
+      auth.isKey() && !auth.isSystemKey()
+        ? [...roles, { role: "admin", permissions: ["write"] }]
+        : roles;
+
+    const verbs = new Set([
+      ...(isAuthor ? [...grants, ...AGENT_EDITOR_VERBS] : grants),
+      ...verbsFromRoleGrants(auth, roleGrants, this.workspaceId),
+    ]);
+
+    // `read` additionally requires read access to every space backing the agent (see
+    // `requestedSpacesReadable`): a caller who cannot read one of them cannot read the agent.
+    if (!this.requestedSpacesReadable(auth)) {
+      verbs.delete("read");
+      verbs.delete("write");
+    }
+
+    return verbs;
+  }
+
+  toLogJSON(): ResourceLogJSON {
+    return {
+      agentModelId: this.id,
+      sId: this.sId,
+      variant: this.variant,
+    };
   }
 }

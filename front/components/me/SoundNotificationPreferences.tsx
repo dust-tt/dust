@@ -1,3 +1,4 @@
+import { MODAL_SETTINGS_LIST_CLASSES } from "@app/components/me/modalSettingsList";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
@@ -131,7 +132,7 @@ export function SoundNotificationPreferences({
   };
 
   return (
-    <SettingsList>
+    <SettingsList className={MODAL_SETTINGS_LIST_CLASSES}>
       <SettingsList.Row
         title="Agent waiting sound alert"
         description="Play a sound when an agent needs your input to continue"

@@ -42,11 +42,11 @@ export type GetReinforcementDailySpendResponseBody = {
 };
 
 export type GetSkillResponseBody = {
-  skill: SkillType & { isFavorite?: boolean };
+  skill: SkillType & { isFavorite: boolean };
 };
 
 export type GetSkillWithRelationsResponseBody = {
-  skill: SkillWithRelationsType & { isFavorite?: boolean };
+  skill: SkillWithRelationsType & { isFavorite: boolean };
 };
 
 export type PatchSkillResponseBody = {

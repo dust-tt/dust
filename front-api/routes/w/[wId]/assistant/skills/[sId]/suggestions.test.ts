@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -549,5 +550,75 @@ describe("GET /api/w/:wId/assistant/skills/:sId/suggestions", () => {
 
     expect(response.status).toBe(200);
     expect((await response.json()).suggestions).toHaveLength(0);
+  });
+});
+
+describe("skill suggestion sources", () => {
+  it("omits conversational suggestions when no source is requested", async () => {
+    const { workspace, auth, skill } = await setup();
+    await FeatureFlagFactory.basic(auth, "conversational_building");
+    const reinforcement = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      source: "reinforcement",
+    });
+    await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      source: "conversational",
+    });
+
+    const response = await get(workspace, skill.sId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.suggestions).toHaveLength(1);
+    expect(body.suggestions[0].sId).toBe(reinforcement.sId);
+  });
+
+  it("returns conversational suggestions when they are requested", async () => {
+    const { workspace, auth, skill } = await setup();
+    await FeatureFlagFactory.basic(auth, "conversational_building");
+    await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      source: "reinforcement",
+    });
+    const conversational = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      source: "conversational",
+    });
+
+    const response = await get(workspace, skill.sId, {
+      sources: ["conversational"],
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.suggestions).toHaveLength(1);
+    expect(body.suggestions[0].sId).toBe(conversational.sId);
+  });
+
+  it("returns no conversational suggestions without the feature flag", async () => {
+    const { workspace, auth, skill } = await setup();
+    await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      source: "conversational",
+    });
+
+    const response = await get(workspace, skill.sId, {
+      sources: ["conversational"],
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions).toHaveLength(0);
+  });
+
+  it("rejects synthetic as a source", async () => {
+    const { workspace, skill } = await setup();
+
+    const response = await get(workspace, skill.sId, {
+      sources: ["synthetic"],
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
   });
 });

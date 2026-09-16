@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  frame_domain_sharing: {
+    description: "Allow sharing Frames with an email domain",
+    stage: "dust_only",
+    owner: "flvndvd",
+  },
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
@@ -306,24 +311,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "fabiencelier",
   },
-  skill_favorites: {
-    description:
-      "Enable user favorites for skills, including favorite controls and runtime skill availability.",
-    stage: "dust_only",
-    owner: "aubin-tchoi",
-  },
   allow_old_notion_mcp: {
     description:
       "Allow individual workspaces to keep using the old internal Notion MCP server alongside the official one",
     stage: "self_serve",
     owner: "davidebbo",
-  },
-  use_dust_keys: {
-    description:
-      "Force BYOK workspaces to use Dust-managed keys instead of customer-provided keys",
-    // Not really self-serve but we want to be able to enable it for customers
-    stage: "self_serve",
-    owner: "pmilliotte",
   },
   dummy_feature_for_flag_testing: {
     description: "Dummy feature flag used for testing feature flag behavior",

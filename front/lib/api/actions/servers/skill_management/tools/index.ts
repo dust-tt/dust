@@ -5,8 +5,10 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
+import { prewarmConversationSandbox } from "@app/lib/api/sandbox/lifecycle";
 import { upsertSkillFilesToConversation } from "@app/lib/api/skills/conversation_files";
 import type { Authenticator } from "@app/lib/auth";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -178,6 +180,12 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       agentConfiguration,
       conversation,
     });
+
+    // A cold Computer takes several seconds to create. Skills whose workflow starts with a
+    // Computer command bring it up now, behind the model turn that follows this tool call.
+    if (await GlobalSkillsRegistry.warmsConversationSandbox(auth, skill.sId)) {
+      prewarmConversationSandbox(auth, conversation);
+    }
 
     const { loadedPaths } = mountResult.value;
     const loadedFilesList = loadedPaths.map((p) => `  - ${p}`).join("\n");

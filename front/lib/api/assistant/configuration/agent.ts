@@ -9,6 +9,7 @@ import {
   redactPrivateAgentConfigurationFields,
 } from "@app/lib/api/assistant/configuration/helpers";
 import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
+import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
@@ -16,6 +17,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
@@ -147,10 +149,13 @@ export async function createPendingAgentConfiguration(
       transaction: t,
       authorId: user.id,
     });
-    await AgentResource.fromAgentConfigurationModel(agent).grantEditors(auth, {
-      editors: [user.toJSON()],
-      transaction: t,
-    });
+    await AgentResource.fromAgentConfigurationModel(auth, agent).grantEditors(
+      auth,
+      {
+        editors: [user.toJSON()],
+        transaction: t,
+      }
+    );
     await auth.refresh({ transaction: t });
   });
 
@@ -295,30 +300,6 @@ async function fetchLatestWorkspaceAgentModels(
       mapToModel: true,
     })) ?? []
   );
-}
-
-/**
- * When each agent first appeared. Not the active row's `createdAt`: upgrading inserts a new row, so
- * that date is really the last edit.
- */
-export async function fetchFirstVersionCreatedAtByAgentId(
-  auth: Authenticator,
-  agentIds: string[]
-): Promise<Map<string, Date>> {
-  if (agentIds.length === 0) {
-    return new Map();
-  }
-
-  const firstVersions = await AgentConfigurationModel.findAll({
-    attributes: ["sId", "createdAt"],
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      sId: { [Op.in]: agentIds },
-      version: 0,
-    },
-  });
-
-  return new Map(firstVersions.map(({ sId, createdAt }) => [sId, createdAt]));
 }
 
 /**
@@ -874,6 +855,16 @@ export async function createAgentConfiguration(
         );
       }
 
+      // A brand-new agent already starts at version 0; an upgrade moves the pointer.
+      if (agentConfigurationInstance.version !== 0) {
+        await AgentResource.fromAgentConfigurationModel(
+          auth,
+          agentConfigurationInstance
+        ).setCurrentConfiguration(auth, agentConfigurationInstance, {
+          transaction: t,
+        });
+      }
+
       const canManageProtectedTags = await auth.hasWorkspacePermission(
         "publish",
         "agent"
@@ -993,9 +984,20 @@ export async function createAgentConfiguration(
         }
 
         const agentResource = AgentResource.fromAgentConfigurationModel(
+          auth,
           agentConfigurationInstance
         );
         await agentResource.grantEditors(auth, { editors, transaction: t });
+        if (!isLegacyAclsEnabled()) {
+          const currentEditors = await agentResource.listEditors(auth, {
+            transaction: t,
+          });
+          assert(currentEditors !== null);
+          const editorIds = new Set(editors.map((editor) => editor.id));
+          removedEditors = currentEditors
+            .filter((editor) => !editorIds.has(editor.id))
+            .map((editor) => editor.toJSON());
+        }
         await agentResource.revokeEditors(auth, {
           editors: removedEditors,
           transaction: t,
@@ -1415,18 +1417,49 @@ export async function cleanupAgentScopedResourcesForHardDeletion(
   await AgentUserRelationResource.deleteForAgent(auth, agentConfigurationId);
 }
 
-async function deleteAgentIdentityIfUnused(
+/**
+ * Deletes one `agent_configurations` row and keeps its identity consistent: `currentVersion` is
+ * moved to the highest remaining version, or the agent is deleted with its grants when no row
+ * remains. The row's satellites (tools, tags, skills, editor links, suggestions) must be gone
+ * already.
+ */
+export async function destroyAgentConfigurationRow(
   auth: Authenticator,
-  agent: AgentResource,
+  {
+    agent,
+    configurationId,
+  }: { agent: AgentResource; configurationId: ModelId },
   transaction: Transaction
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().id;
+
+  await AgentConfigurationModel.destroy({
+    where: { id: configurationId, workspaceId },
+    transaction,
+  });
+
+  // Hold the identity row from here to commit: two transactions deleting two different versions of
+  // the same agent would otherwise each pick a replacement from its own snapshot and commit a
+  // `currentVersion` pointing at the row the other one deleted. The lock is taken after the
+  // deletion above, not before: an upgrade locks `agent_configurations` (archiving the previous
+  // versions) before it locks `agents` (the FK check of the new version row, then the pointer
+  // update), so locking `agents` first would invert that order and deadlock.
+  await AgentModel.findOne({
+    where: { id: agent.id, workspaceId },
+    lock: transaction.LOCK.UPDATE,
+    transaction,
+  });
+
   const remainingConfiguration = await AgentConfigurationModel.findOne({
     where: { sId: agent.sId, workspaceId },
-    attributes: ["id"],
+    attributes: ["agentId", "version"],
+    order: [["version", "DESC"]],
     transaction,
   });
   if (remainingConfiguration) {
+    await agent.setCurrentConfiguration(auth, remainingConfiguration, {
+      transaction,
+    });
     return;
   }
 
@@ -1520,15 +1553,11 @@ export async function unsafeHardDeleteAgentConfiguration(
       transaction: t,
     });
 
-    await AgentConfigurationModel.destroy({
-      where: {
-        id: agentConfiguration.id,
-        workspaceId,
-      },
-      transaction: t,
-    });
-
-    await deleteAgentIdentityIfUnused(auth, agentResource, t);
+    await destroyAgentConfigurationRow(
+      auth,
+      { agent: agentResource, configurationId: agentConfiguration.id },
+      t
+    );
   });
 }
 
@@ -1710,10 +1739,36 @@ export async function updateAgentPermissions(
             )
           );
         }
+        let legacyUsersToRemove = usersToRemove;
+        if (!isLegacyAclsEnabled()) {
+          const editors = await agentResource.listEditors(auth, {
+            transaction: t,
+          });
+          assert(editors !== null);
+          const editorIds = new Set(editors.map((editor) => editor.id));
+          if (usersToRemove.some((user) => !editorIds.has(user.id))) {
+            return new Err(
+              new DustError(
+                "user_not_member",
+                "Cannot remove: user is not an agent editor"
+              )
+            );
+          }
+          const legacyEditors = await editorGroupRes.value.getActiveMembers(
+            auth,
+            { transaction: t }
+          );
+          const legacyEditorIds = new Set(
+            legacyEditors.map((editor) => editor.id)
+          );
+          legacyUsersToRemove = usersToRemove.filter((user) =>
+            legacyEditorIds.has(user.id)
+          );
+        }
         const removeRes = await editorGroupRes.value.dangerouslyRemoveMembers(
           auth,
           {
-            users: usersToRemove,
+            users: legacyUsersToRemove,
             transaction: t,
           }
         );
@@ -1940,34 +1995,20 @@ async function disableTriggersForNonEditors(
     return;
   }
 
-  const editorGroupsRes = await GroupResource.findEditorGroupsForAgents(
-    auth,
-    agents
+  const editorsByAgentId = await getAgentsEditors(auth, agents);
+  // Fetch members once per agent, with a batched lookup shared by both permission sources.
+  const editorModelIdsByAgentId = new Map(
+    Object.entries(editorsByAgentId).map(([agentId, editors]) => [
+      agentId,
+      new Set(editors.map((editor) => editor.id)),
+    ])
   );
-  const editorGroupsByAgentId = editorGroupsRes.isOk()
-    ? editorGroupsRes.value
-    : {};
-
-  // Fetch members once per unique editor group.
-  const editorModelIdsByGroupModelId = new Map<ModelId, Set<ModelId>>();
-  for (const group of Object.values(editorGroupsByAgentId)) {
-    if (editorModelIdsByGroupModelId.has(group.id)) {
-      continue;
-    }
-    const members = await group.getActiveMembers(auth);
-    editorModelIdsByGroupModelId.set(
-      group.id,
-      new Set(members.map((m) => m.id))
-    );
-  }
-
-  const triggersToDisable = triggers.filter((trigger) => {
-    const group = editorGroupsByAgentId[trigger.agentConfigurationId];
-    const editorModelIds = group
-      ? editorModelIdsByGroupModelId.get(group.id)
-      : null;
-    return !editorModelIds || !editorModelIds.has(trigger.editor);
-  });
+  const triggersToDisable = triggers.filter(
+    (trigger) =>
+      !editorModelIdsByAgentId
+        .get(trigger.agentConfigurationId)
+        ?.has(trigger.editor)
+  );
 
   if (triggersToDisable.length === 0) {
     return;

@@ -15,6 +15,10 @@ import {
 } from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
 import {
+  getSkillSuggestionPlugin,
+  skillSuggestionDirective,
+} from "@app/components/markdown/suggestion/SkillSuggestionDirective";
+import {
   getTaskDirectiveBlock,
   taskDirective,
 } from "@app/components/markdown/TaskDirectiveBlock";
@@ -73,6 +77,7 @@ export const AgentMessageMarkdown = ({
       dustimg: getImgPlugin(owner),
       file_preview: getFilePreviewPlugin(),
       instruction_block: InstructionBlock,
+      skill_suggestion: getSkillSuggestionPlugin(owner),
       ...additionalMarkdownComponents,
     }),
     [owner, additionalMarkdownComponents]
@@ -90,6 +95,7 @@ export const AgentMessageMarkdown = ({
       toolDirective,
       quickReplyDirective,
       actionCardDirective,
+      skillSuggestionDirective,
       ...additionalMarkdownPlugins,
     ];
 

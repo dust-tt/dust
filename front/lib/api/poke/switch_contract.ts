@@ -636,6 +636,7 @@ async function stepContractEdits({
   alignedStart,
   endingAtDate,
   resolvedCurrency,
+  workspaceId,
   pkg,
   pkgSeatByType,
   body,
@@ -677,49 +678,75 @@ async function stepContractEdits({
     });
   }
 
-  // Initial credits prepaid commit.
+  // Number of committed seats on the new contract: the sum of every selected
+  // seat type's billing floor. Drives per-user initial credits.
+  const committedSeats = Object.values(body.seats).reduce(
+    (sum, seat) =>
+      sum + (seat.selected && seat.minSeats > 0 ? seat.minSeats : 0),
+    0
+  );
+
+  // Initial credits prepaid commit. A per-user grant scales both the credit
+  // amount and its invoice by the committed seat count; a flat grant uses the
+  // amounts verbatim.
   if (body.initialCredits) {
-    const invoiceAmountCents = Math.round(
-      body.initialCredits.invoiceAmount * 100
-    );
-    const scheduleItems = buildInvoiceScheduleItems({
-      invoiceAmountCents,
-      resolvedCurrency,
-      alignedStart,
-      commitmentEnd,
-      paymentSchedule: body.initialCredits.paymentSchedule,
-    });
-    const initialCreditsEndingBefore = floorToHourISO(
-      oneYearAfter(alignedStart)
-    );
-    addCommits.push({
-      product_id: getProductPrepaidCommitId(),
-      type: "PREPAID",
-      name: `Initial credits: ${body.initialCredits.amountCredits.toLocaleString()} credits`,
-      priority: AWU_PRIORITY_PURCHASED_COMMIT,
-      applicable_product_tags: ["usage"],
-      custom_fields: {
-        [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: initialCreditsEndingBefore,
-      },
-      access_schedule: {
-        credit_type_id: getCreditTypeAwuId(),
-        schedule_items: [
-          {
-            amount: body.initialCredits.amountCredits,
-            starting_at: floorToHourISO(alignedStart),
-            ending_before: initialCreditsEndingBefore,
-          },
-        ],
-      },
-      invoice_schedule: {
-        credit_type_id: CURRENCY_TO_CREDIT_TYPE_ID[resolvedCurrency],
-        schedule_items: scheduleItems.map((item) => ({
-          unit_price: item.unitPrice,
-          quantity: item.quantity,
-          timestamp: floorToHourISO(item.timestamp),
-        })),
-      },
-    });
+    const seatMultiplier = body.initialCredits.perUser ? committedSeats : 1;
+    const amountCredits = body.initialCredits.amountCredits * seatMultiplier;
+    if (amountCredits <= 0) {
+      // Per-user grant with no committed seats resolves to nothing to grant;
+      // skip the commit rather than create a zero-amount one.
+      logger.warn(
+        {
+          workspaceId,
+          metronomeContractId,
+          amountCredits: body.initialCredits.amountCredits,
+          committedSeats,
+        },
+        "[switch_contract] Skipping per-user initial credits: no committed seats"
+      );
+    } else {
+      const invoiceAmountCents = Math.round(
+        body.initialCredits.invoiceAmount * seatMultiplier * 100
+      );
+      const scheduleItems = buildInvoiceScheduleItems({
+        invoiceAmountCents,
+        resolvedCurrency,
+        alignedStart,
+        commitmentEnd,
+        paymentSchedule: body.initialCredits.paymentSchedule,
+      });
+      const initialCreditsEndingBefore = floorToHourISO(
+        oneYearAfter(alignedStart)
+      );
+      addCommits.push({
+        product_id: getProductPrepaidCommitId(),
+        type: "PREPAID",
+        name: `Initial credits: ${amountCredits.toLocaleString()} credits`,
+        priority: AWU_PRIORITY_PURCHASED_COMMIT,
+        applicable_product_tags: ["usage"],
+        custom_fields: {
+          [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: initialCreditsEndingBefore,
+        },
+        access_schedule: {
+          credit_type_id: getCreditTypeAwuId(),
+          schedule_items: [
+            {
+              amount: amountCredits,
+              starting_at: floorToHourISO(alignedStart),
+              ending_before: initialCreditsEndingBefore,
+            },
+          ],
+        },
+        invoice_schedule: {
+          credit_type_id: CURRENCY_TO_CREDIT_TYPE_ID[resolvedCurrency],
+          schedule_items: scheduleItems.map((item) => ({
+            unit_price: item.unitPrice,
+            quantity: item.quantity,
+            timestamp: floorToHourISO(item.timestamp),
+          })),
+        },
+      });
+    }
   }
 
   // Scheduled/one-off charge — a pure invoice line item, no credit grant.

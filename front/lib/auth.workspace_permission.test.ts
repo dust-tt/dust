@@ -262,18 +262,47 @@ describe("Authenticator.fromKey permission resolution", () => {
     // Every verb the registry defines holds, on the granted agent and on one that carries no
     // grant at all (instance verbs and type-level capabilities alike).
     expect(
-      [...workspaceAuth.getGovernanceGrantVerbs("agent", 42)].sort()
-    ).toEqual(["admin", "create", "publish", "read", "use", "write"]);
+      [
+        ...workspaceAuth.getGovernanceGrantVerbs(
+          "agent",
+          42,
+          workspaceAuth.getNonNullableWorkspace().id
+        ),
+      ].sort()
+    ).toEqual(["admin", "create", "publish", "read", "write"]);
     expect(
-      [...workspaceAuth.getGovernanceGrantVerbs("agent", 99)].sort()
-    ).toEqual(["admin", "create", "publish", "read", "use", "write"]);
-    expect(workspaceAuth.getGovernanceGrantVerbs("space", 1234)).toContain(
-      "admin"
-    );
+      [
+        ...workspaceAuth.getGovernanceGrantVerbs(
+          "agent",
+          99,
+          workspaceAuth.getNonNullableWorkspace().id
+        ),
+      ].sort()
+    ).toEqual(["admin", "create", "publish", "read", "write"]);
+    expect(
+      workspaceAuth.getGovernanceGrantVerbs(
+        "space",
+        1234,
+        workspaceAuth.getNonNullableWorkspace().id
+      )
+    ).toContain("admin");
 
     // It survives the Temporal round trip the agent loop puts the auth through.
     const restored = await Authenticator.fromJSON(workspaceAuth.toJSON());
-    expect(restored.getGovernanceGrantVerbs("space", 1234)).toContain("admin");
+    expect(
+      restored.getGovernanceGrantVerbs(
+        "space",
+        1234,
+        restored.getNonNullableWorkspace().id
+      )
+    ).toContain("admin");
+
+    // Governance grants are bound to the caller's own workspace: the same type-wide agent grants
+    // yield nothing when the queried resource lives in a different workspace.
+    const otherWorkspace = await WorkspaceFactory.basic();
+    expect(
+      workspaceAuth.getGovernanceGrantVerbs("agent", 42, otherWorkspace.id)
+    ).toEqual([]);
   });
 
   it("gives a system key nothing on a workspace that is not its own", async () => {
@@ -285,7 +314,13 @@ describe("Authenticator.fromKey permission resolution", () => {
     const key = await KeyFactory.system(systemGroup);
     const workspaceAuth = await Authenticator.fromKey(key, otherWorkspace.sId);
 
-    expect(workspaceAuth.getGovernanceGrantVerbs("space", 1234)).toEqual([]);
+    expect(
+      workspaceAuth.getGovernanceGrantVerbs(
+        "space",
+        1234,
+        workspaceAuth.getNonNullableWorkspace().id
+      )
+    ).toEqual([]);
   });
 
   it("resolves grants for non-system keys", async () => {
@@ -305,9 +340,21 @@ describe("Authenticator.fromKey permission resolution", () => {
     const workspaceAuth = await Authenticator.fromKey(key, workspace.sId);
 
     expect(
-      [...workspaceAuth.getGovernanceGrantVerbs("agent", 42)].sort()
-    ).toEqual(["admin", "read", "use", "write"]);
-    expect(workspaceAuth.getGovernanceGrantVerbs("agent", 99)).toEqual([]);
+      [
+        ...workspaceAuth.getGovernanceGrantVerbs(
+          "agent",
+          42,
+          workspaceAuth.getNonNullableWorkspace().id
+        ),
+      ].sort()
+    ).toEqual(["admin", "read", "write"]);
+    expect(
+      workspaceAuth.getGovernanceGrantVerbs(
+        "agent",
+        99,
+        workspaceAuth.getNonNullableWorkspace().id
+      )
+    ).toEqual([]);
   });
 
   it("resolves permissions for explicitly scoped system keys", async () => {
@@ -349,9 +396,19 @@ describe("Authenticator.fromKey permission resolution", () => {
     // grant on agent 42 is loaded; the out-of-scope group's grant on agent 99 is not.
     expect(listForGroups).toHaveBeenCalled();
     expect(
-      workspaceAuth.getGovernanceGrantVerbs("agent", 42).length
+      workspaceAuth.getGovernanceGrantVerbs(
+        "agent",
+        42,
+        workspaceAuth.getNonNullableWorkspace().id
+      ).length
     ).toBeGreaterThan(0);
-    expect(workspaceAuth.getGovernanceGrantVerbs("agent", 99)).toEqual([]);
+    expect(
+      workspaceAuth.getGovernanceGrantVerbs(
+        "agent",
+        99,
+        workspaceAuth.getNonNullableWorkspace().id
+      )
+    ).toEqual([]);
   });
 });
 
@@ -374,7 +431,13 @@ describe("Authenticator.refresh permission resolution", () => {
     const workspaceAuth = await Authenticator.fromKey(key, workspace.sId, [
       group.sId,
     ]);
-    expect(workspaceAuth.getGovernanceGrantVerbs("agent", 42)).toEqual([]);
+    expect(
+      workspaceAuth.getGovernanceGrantVerbs(
+        "agent",
+        42,
+        workspaceAuth.getNonNullableWorkspace().id
+      )
+    ).toEqual([]);
 
     // A grant lands on one of the key's groups AFTER the auth was built (mirrors a backfill or an
     // updatePermissions write arriving mid-run). `editor` on `agent` confers read, write and admin.
@@ -390,10 +453,22 @@ describe("Authenticator.refresh permission resolution", () => {
     await workspaceAuth.refresh();
 
     expect(
-      [...workspaceAuth.getGovernanceGrantVerbs("agent", 42)].sort()
-    ).toEqual(["admin", "read", "use", "write"]);
+      [
+        ...workspaceAuth.getGovernanceGrantVerbs(
+          "agent",
+          42,
+          workspaceAuth.getNonNullableWorkspace().id
+        ),
+      ].sort()
+    ).toEqual(["admin", "read", "write"]);
     // It stays scoped to the requested groups: refreshing must not widen it back to everything the
     // system key itself holds.
-    expect(workspaceAuth.getGovernanceGrantVerbs("space", 1234)).toEqual([]);
+    expect(
+      workspaceAuth.getGovernanceGrantVerbs(
+        "space",
+        1234,
+        workspaceAuth.getNonNullableWorkspace().id
+      )
+    ).toEqual([]);
   });
 });
