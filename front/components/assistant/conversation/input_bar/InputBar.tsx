@@ -677,12 +677,11 @@ export const InputBar = React.memo(function InputBar({
   };
 
   const handleNodesAttachmentSelect = (node: DataSourceViewContentNode) => {
-    const isNodeAlreadyAttached = attachedNodes.some((attachedNode) =>
-      isEqualNode(attachedNode, node)
+    setAttachedNodes((prev) =>
+      prev.some((attachedNode) => isEqualNode(attachedNode, node))
+        ? prev
+        : [...prev, node]
     );
-    if (!isNodeAlreadyAttached) {
-      setAttachedNodes((prev) => [...prev, node]);
-    }
   };
 
   const handleNodesAttachmentRemove = (node: DataSourceViewContentNode) => {
