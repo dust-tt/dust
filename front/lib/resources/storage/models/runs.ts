@@ -103,6 +103,10 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
   // usage row is created. Nullable only for legacy rows written before every
   // creation path supplied the classification.
   declare usageType: UsageType | null;
+  // Whether the workspace's own provider credentials served the inference (BYOK) rather than
+  // Dust's. Historical rows default to false, corrected per workspace by
+  // `migrations/20260916_backfill_byok_run_usages.ts`.
+  declare useWorkspaceCredentials: boolean;
   // Pending and unavailable rows represent provider attempts for which usage has not been
   // reported. Null is accepted during the rolling deployment.
   declare usageState: RunUsageState | null;
@@ -170,6 +174,11 @@ RunUsageModel.init(
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,
+    },
+    useWorkspaceCredentials: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     usageState: {
       type: DataTypes.STRING,
