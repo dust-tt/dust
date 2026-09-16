@@ -288,9 +288,8 @@ export async function getFrameDetails(
 }
 
 /**
- * Frame functions get their own shapes rather than reusing the Pod ones. A Pod function's `fileId`
- * is its published bundle while a Frame function's is the Frame manifest, so the Pod shape would
- * mislead here — and Pods are being retired, so sharing a type would only have to be untangled.
+ * A Frame function's `fileId` is the Frame manifest rather than its published bundle, which is why
+ * the bundle is addressed by `slug` below instead.
  */
 export type PokeFrameFunction = {
   sId: string;

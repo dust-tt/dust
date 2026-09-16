@@ -8,8 +8,8 @@ const BARE_FUNCTION_NAME_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export type FrameFunctionReferenceScope =
   | { kind: "v2"; frameId: string }
-  // Legacy Frames used to call Pod functions, which no longer exist. They still render; they
-  // just have nothing to call.
+  // Legacy Frames predate Frame-owned functions, so they have nothing to call. They still
+  // render; every function reference from one is refused.
   | { kind: "legacy" };
 
 export type FrameFunctionReferenceKind = FrameFunctionReferenceScope["kind"];

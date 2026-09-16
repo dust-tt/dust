@@ -9,7 +9,8 @@ const DUST_REACT_HOOKS_MODULE = "@dust/react-hooks";
 
 // The two hooks a Frame's UI calls its own functions through, plus the `usePodFunction` names they
 // were published under before the Pod -> Frame rename, which the renderer still aliases.
-// `callFunction` is deliberately not here: it addressed Pod functions, which no longer exist.
+// `callFunction` is deliberately not here: it is an unadvertised escape hatch rather than the
+// declared-name surface these hooks are, so a literal passed to it is not checked.
 const FRAME_FUNCTION_HOOKS = new Set([
   "useFrameFunction",
   "useFrameFunctionMutation",
