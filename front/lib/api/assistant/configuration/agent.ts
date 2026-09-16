@@ -9,6 +9,7 @@ import {
   redactPrivateAgentConfigurationFields,
 } from "@app/lib/api/assistant/configuration/helpers";
 import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
+import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
@@ -1944,34 +1945,20 @@ async function disableTriggersForNonEditors(
     return;
   }
 
-  const editorGroupsRes = await GroupResource.findEditorGroupsForAgents(
-    auth,
-    agents
+  const editorsByAgentId = await getAgentsEditors(auth, agents);
+  // Fetch members once per agent, with a batched lookup shared by both permission sources.
+  const editorModelIdsByAgentId = new Map(
+    Object.entries(editorsByAgentId).map(([agentId, editors]) => [
+      agentId,
+      new Set(editors.map((editor) => editor.id)),
+    ])
   );
-  const editorGroupsByAgentId = editorGroupsRes.isOk()
-    ? editorGroupsRes.value
-    : {};
-
-  // Fetch members once per unique editor group.
-  const editorModelIdsByGroupModelId = new Map<ModelId, Set<ModelId>>();
-  for (const group of Object.values(editorGroupsByAgentId)) {
-    if (editorModelIdsByGroupModelId.has(group.id)) {
-      continue;
-    }
-    const members = await group.getActiveMembers(auth);
-    editorModelIdsByGroupModelId.set(
-      group.id,
-      new Set(members.map((m) => m.id))
-    );
-  }
-
-  const triggersToDisable = triggers.filter((trigger) => {
-    const group = editorGroupsByAgentId[trigger.agentConfigurationId];
-    const editorModelIds = group
-      ? editorModelIdsByGroupModelId.get(group.id)
-      : null;
-    return !editorModelIds || !editorModelIds.has(trigger.editor);
-  });
+  const triggersToDisable = triggers.filter(
+    (trigger) =>
+      !editorModelIdsByAgentId
+        .get(trigger.agentConfigurationId)
+        ?.has(trigger.editor)
+  );
 
   if (triggersToDisable.length === 0) {
     return;
