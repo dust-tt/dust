@@ -105,6 +105,28 @@ export function getDefaultToolStakeLevel(
   );
 }
 
+/**
+ * @cc [owner:adrsimon,label:product] admin-stake-overrides-default
+ * The returned stake MUST be the admin-configured `toolsMetadata` permission for `toolName` when
+ * one exists, and the server default only in its absence. A surface that reads the default alone
+ * shows a stake the tool does not run at.
+ */
+export function getEffectiveToolSettings(
+  mcpServerView: MCPServerViewType,
+  toolName: string
+): ToolSettings {
+  const metadata = mcpServerView.toolsMetadata?.find(
+    (m) => m.toolName === toolName
+  );
+
+  return {
+    enabled: metadata?.enabled ?? true,
+    permission:
+      metadata?.permission ??
+      getDefaultToolStakeLevel(mcpServerView.server, toolName),
+  };
+}
+
 export function canToolUseMediumStakeLevel(
   server: MCPServerViewType["server"],
   toolName: string
@@ -129,13 +151,7 @@ export function getMCPServerFormDefaults(
   // Tool settings defaults.
   const toolSettings: Record<string, ToolSettings> = {};
   for (const tool of view.server.tools ?? []) {
-    const metadata = view.toolsMetadata?.find((m) => m.toolName === tool.name);
-    const defaultPermission =
-      metadata?.permission ?? getDefaultToolStakeLevel(view.server, tool.name);
-    toolSettings[tool.name] = {
-      enabled: metadata?.enabled ?? true,
-      permission: defaultPermission,
-    };
+    toolSettings[tool.name] = getEffectiveToolSettings(view, tool.name);
   }
 
   // Sharing settings defaults - which spaces have this server.
