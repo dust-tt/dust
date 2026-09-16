@@ -159,6 +159,9 @@ function KnowledgeNodeViewShell({
     [deleteNode]
   );
 
+  // Clean up empty knowledge nodes (e.g. a dismissed search state or malformed
+  // paste): an empty node renders as null and isn't serialized, so drop it from
+  // the editable doc rather than leaving an invisible orphan.
   useLayoutEffect(() => {
     if (selectedItems.length === 0 && editor.isEditable) {
       deleteNode();
