@@ -4,7 +4,9 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import type * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
+import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -15,7 +17,12 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { UserType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it, vi } from "vitest";
+import assert from "assert";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 vi.mock("@app/lib/api/assistant/recent_authors", () => ({
   agentConfigurationWasUpdatedBy: vi.fn(),
@@ -543,4 +550,59 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
       },
     });
   });
+});
+
+it("uses grants for editor responses and editor administration", async () => {
+  const { workspace, user } = await createPrivateApiMockRequest({
+    role: "user",
+  });
+  const author = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, author, { role: "user" });
+  const authorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    author.sId,
+    workspace.sId
+  );
+  const agent = await AgentConfigurationFactory.createTestAgent(authorAuth, {
+    scope: "hidden",
+  });
+  const resource = AgentResource.fromAgentConfiguration(authorAuth, agent);
+  assert(resource.id !== null);
+  assert(
+    (
+      await GroupPermissionResource.grantToUser(authorAuth, {
+        user: user.toJSON(),
+        resourceType: "agent",
+        resourceId: resource.id,
+        grantType: "editor",
+      })
+    ).isOk()
+  );
+  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(false);
+  const response = await getEditors(workspace, agent.sId);
+  expect(response.status).toBe(200);
+  expect((await response.json()).editors).toEqual(
+    expect.arrayContaining([expect.objectContaining({ sId: user.sId })])
+  );
+
+  const newEditor = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, newEditor, { role: "user" });
+  const patched = await patchEditors(workspace, agent.sId, {
+    addEditorIds: [newEditor.sId],
+  });
+  expect(patched.status).toBe(200);
+  expect((await patched.json()).editors).toEqual(
+    expect.arrayContaining([expect.objectContaining({ sId: newEditor.sId })])
+  );
+
+  const removed = await patchEditors(workspace, agent.sId, {
+    removeEditorIds: [user.sId],
+  });
+  expect(removed.status).toBe(200);
+  expect((await removed.json()).editors).not.toEqual(
+    expect.arrayContaining([expect.objectContaining({ sId: user.sId })])
+  );
+  const denied = await patchEditors(workspace, agent.sId, {
+    removeEditorIds: [newEditor.sId],
+  });
+  expect(denied.status).toBe(403);
 });

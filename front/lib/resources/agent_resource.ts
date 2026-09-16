@@ -387,8 +387,17 @@ export class AgentResource
       .filter((resource) => resource.canFetch(auth));
   }
 
-  async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
-    const editorsByAgentId = await AgentResource.batchListEditors(auth, [this]);
+  async listEditors(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<UserResource[] | null> {
+    const editorsByAgentId = await AgentResource.batchListEditors(
+      auth,
+      [this],
+      {
+        transaction,
+      }
+    );
     const editors = editorsByAgentId.get(this.sId);
     assert(editors !== undefined);
 
@@ -402,7 +411,8 @@ export class AgentResource
    */
   static async batchListEditors(
     auth: Authenticator,
-    agents: AgentResource[]
+    agents: AgentResource[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Map<string, UserResource[] | null>> {
     const result = new Map<string, UserResource[] | null>(
       agents.map((agent) => [agent.sId, null])
@@ -420,6 +430,7 @@ export class AgentResource
     const groupByGrant =
       await GroupPermissionResource.findRegularAutoGroupsForGrants(auth, {
         grants: customAgents.map(editorGrant),
+        transaction,
       });
     const groupByAgentModelId = new Map<ModelId, GroupResource>(
       removeNulls(
@@ -430,16 +441,21 @@ export class AgentResource
       )
     );
     const membershipsByGroupId =
-      await GroupResource.getActiveMembershipsForGroups(auth, [
-        ...groupByAgentModelId.values(),
-      ]);
+      await GroupResource.getActiveMembershipsForGroups(
+        auth,
+        [...groupByAgentModelId.values()],
+        { transaction }
+      );
     const userModelIds = [
       ...new Set(Object.values(membershipsByGroupId).flat()),
     ];
-    const users = await UserResource.fetchByModelIds(userModelIds);
+    const users = await UserResource.fetchByModelIds(userModelIds, {
+      transaction,
+    });
     const { memberships } = await MembershipResource.getActiveMemberships({
       users,
       workspace: auth.getNonNullableWorkspace(),
+      transaction,
     });
     const activeUserModelIds = new Set(
       memberships.map((membership) => membership.userId)
