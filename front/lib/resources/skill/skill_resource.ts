@@ -121,6 +121,8 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+const SKILL_SEARCH_INDEXATION_CONCURRENCY = 8;
+
 export type SkillMCPServerConfiguration = {
   view: MCPServerViewResource;
   childAgentId?: string;
@@ -591,7 +593,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       uniq(skillIds),
       (skillId) =>
         launchIndexSkillSearchWorkflow({ workspaceId: workspace.sId, skillId }),
-      { concurrency: 8 }
+      { concurrency: SKILL_SEARCH_INDEXATION_CONCURRENCY }
     );
     const failedResult = results.find((result) => result.isErr());
     if (failedResult?.isErr()) {
