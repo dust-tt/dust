@@ -1,4 +1,5 @@
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
+import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
@@ -15,10 +16,10 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentConfigurationScope,
+  AgentConfigurationStatus,
   AgentConfigurationType,
   AgentModelConfigurationType,
   AgentReinforcementMode,
-  AgentStatus,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
@@ -63,10 +64,8 @@ const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
 export type AgentResourceContent = {
   agentConfigurationModelId: ModelId;
   version: number;
-  status: AgentStatus;
   instructions: string | null;
   instructionsHtml: string | null;
-  pictureUrl: string;
   maxStepsPerRun: number;
   templateId: ModelId | null;
   reinforcement: AgentReinforcementMode;
@@ -79,6 +78,8 @@ type AgentResourceExtraBlob = {
   scope: AgentConfigurationScope;
   name: string;
   description: string;
+  status: AgentConfigurationStatus;
+  pictureUrl: string;
   versionAuthorId: ModelId | null;
   requestedSpaceIds: ModelId[];
   modelConfiguration: AgentModelConfigurationType;
@@ -92,10 +93,10 @@ export interface FullAgentResource extends AgentResource {
 
 // The stable identity of an agent, backed by `AgentModel` (so `id` is the agent's `agentModelId`).
 // It comes in two shapes, discriminated by `variant`:
-// - `light`: identity + `scope`/`name`/`description`/`versionAuthorId`/`requestedSpaceIds`/
-//   `modelConfiguration`, built without a query from a configuration already in hand. These core
-//   fields are not read-gated — they are carried by every resource — and are sufficient for
-//   permission decisions.
+// - `light`: identity + `scope`/`name`/`description`/`status`/`pictureUrl`/`versionAuthorId`/
+//   `requestedSpaceIds`/`modelConfiguration`, built without a query from a configuration already in
+//   hand. These core fields are not read-gated — they are carried by every resource — and are
+//   sufficient for permission decisions.
 // - `full`: additionally carries `content` (every remaining `AgentConfigurationModel` column of the
 //   resolved version). Produced by the access-controlled `fetch*` resolvers.
 /**
@@ -119,6 +120,8 @@ export class AgentResource
   readonly scope: AgentConfigurationScope;
   readonly name: string;
   readonly description: string;
+  readonly status: AgentConfigurationStatus;
+  readonly pictureUrl: string;
   private readonly versionAuthorId: ModelId | null;
   private readonly requestedSpaceIds: ModelId[];
   readonly modelConfiguration: AgentModelConfigurationType;
@@ -137,6 +140,8 @@ export class AgentResource
     this.scope = extra.scope;
     this.name = extra.name;
     this.description = extra.description;
+    this.status = extra.status;
+    this.pictureUrl = extra.pictureUrl;
     this.versionAuthorId = extra.versionAuthorId;
     this.requestedSpaceIds = extra.requestedSpaceIds;
     this.modelConfiguration = extra.modelConfiguration;
@@ -188,6 +193,8 @@ export class AgentResource
         scope: configuration.scope,
         name: configuration.name,
         description: configuration.description,
+        status: configuration.status,
+        pictureUrl: configuration.pictureUrl,
         versionAuthorId: configuration.versionAuthorId,
         // `LightAgentConfigurationType.requestedSpaceIds` are space sIds; the resource holds model ids.
         requestedSpaceIds: removeNulls(
@@ -229,6 +236,8 @@ export class AgentResource
         scope: "global",
         name: configuration.name,
         description: configuration.description,
+        status: configuration.status,
+        pictureUrl: configuration.pictureUrl,
         versionAuthorId: null,
         requestedSpaceIds: [],
         modelConfiguration: configuration.model,
@@ -258,6 +267,8 @@ export class AgentResource
         scope: configuration.scope,
         name: configuration.name,
         description: configuration.description,
+        status: configuration.status,
+        pictureUrl: configuration.pictureUrl,
         versionAuthorId: configuration.authorId,
         requestedSpaceIds: configuration.requestedSpaceIds,
         modelConfiguration: {
@@ -275,10 +286,8 @@ export class AgentResource
       resource._content = {
         agentConfigurationModelId: configuration.id,
         version: configuration.version,
-        status: configuration.status,
         instructions: configuration.instructions,
         instructionsHtml: configuration.instructionsHtml,
-        pictureUrl: configuration.pictureUrl,
         maxStepsPerRun: configuration.maxStepsPerRun,
         templateId: configuration.templateId,
         reinforcement: configuration.reinforcement,
@@ -295,12 +304,14 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:backend] fetch-latest-active-version
-   * Resolves each requested agent to a single configuration version, scoped to the authed
+   * Resolves each requested custom agent to a single configuration version, scoped to the authed
    * workspace: its active version when it has one, otherwise its latest version irrespective of
    * status (archived, draft, or pending). Each is returned as a `full` resource when the caller can
    * read it, otherwise a `light` resource; a resource the caller cannot fetch at all (holds no verb
    * on, per `canFetch`) is dropped. An agent with no version yields no resource, and at most one
-   * resource is returned per `agentModelId`.
+   * resource is returned per `agentModelId`. `fetchById(s)` additionally resolve global agents by
+   * `sId` (they have no configuration rows) via `getGlobalAgents`, gated by the same `canFetch`
+   * check; `fetchByModelId(s)` cannot, since global agents have no `agentModelId`.
    */
   static async fetchByModelIds(
     auth: Authenticator,
@@ -331,7 +342,34 @@ export class AgentResource
       return [];
     }
 
-    return this.fetchLatestVersions(auth, { sId: agentIds });
+    const globalAgentIds = agentIds.filter(isGlobalAgentId);
+    const customAgentIds = agentIds.filter((id) => !isGlobalAgentId(id));
+
+    const [customResources, globalResources] = await Promise.all([
+      customAgentIds.length > 0
+        ? this.fetchLatestVersions(auth, { sId: customAgentIds })
+        : [],
+      this.fetchGlobalAgents(auth, globalAgentIds),
+    ]);
+
+    return [...customResources, ...globalResources];
+  }
+
+  // Global agents are code-defined and have no `agent`/configuration rows, so they cannot be
+  // resolved by the version query; they are built from `getGlobalAgents` (which enforces workspace
+  // plan/availability) and gated by the same `canFetch` check as custom agents.
+  private static async fetchGlobalAgents(
+    auth: Authenticator,
+    globalAgentIds: string[]
+  ): Promise<AgentResource[]> {
+    if (globalAgentIds.length === 0) {
+      return [];
+    }
+
+    const configurations = await getGlobalAgents(auth, globalAgentIds, "light");
+    return configurations
+      .map((configuration) => this.fromGlobalAgent(auth, configuration))
+      .filter((resource) => resource.canFetch(auth));
   }
 
   static async fetchById(

@@ -167,7 +167,7 @@ describe("AgentResource", () => {
       expect(resource).not.toBeNull();
       expect(resource?.id).toBe(agent.agentModelId);
       expect(resource?.sId).toBe(agent.sId);
-      expect(resource?.content.status).toBe("archived");
+      expect(resource?.status).toBe("archived");
     }
   });
 
@@ -202,7 +202,7 @@ describe("AgentResource", () => {
 
     expect(resource).not.toBeNull();
     expect(resource?.id).toBe(agent.agentModelId);
-    expect(resource?.content.status).toBe("active");
+    expect(resource?.status).toBe("active");
     expect(resource?.content.version).toBe(activeConfig.version);
   });
 
