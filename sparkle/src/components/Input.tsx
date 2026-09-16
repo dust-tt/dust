@@ -50,8 +50,11 @@ const fieldVariants = cva(
           "focus-within:border-border-form-active",
           // Filled (has a value) and not focused: a muted fill only. The
           // border goes back to its resting color so the field does not look
-          // focused after the user moves on.
-          "[&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-muted"
+          // focused after the user moves on. In dark mode the fill is a
+          // translucent foreground tint rather than the near-black `muted`
+          // token, so it lifts lighter surfaces (modal) instead of sinking.
+          "[&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-muted",
+          "dark:[&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-foreground/5"
         ),
         error: cn("border-warning-500", "focus-within:border-warning-600"),
         disabled: cn("cursor-not-allowed border-transparent", "bg-muted"),
