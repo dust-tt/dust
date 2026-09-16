@@ -66,4 +66,8 @@ export const planModeSkill = {
   },
   // Auto-enabled for every agent loop once the feature flag is on.
   getAutoEnabledOrEquippedForAgentLoop: () => "enabled",
+  // Sub-agent runs (run_agent, agent_handover) happen in child conversations nobody opens, so a
+  // plan there has no reader.
+  isDisabledForAgentLoop: ({ userMessage }) =>
+    userMessage.agenticMessageData !== undefined,
 } as const satisfies SystemSkillDefinition;
