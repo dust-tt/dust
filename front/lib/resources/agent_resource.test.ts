@@ -425,10 +425,24 @@ describe("AgentResource", () => {
     );
 
     // A visible agent is normally readable by every member, but this one is backed by a space the
-    // member cannot read, so `read` is denied and it resolves to a light resource.
-    const resource = await AgentResource.fetchById(otherAuth, agent.sId);
-    expect(resource).not.toBeNull();
-    expect(resource?.isFull()).toBe(false);
+    // member cannot read. `read` is the member's only verb on it, so denying `read` leaves no verb
+    // at all and the `canFetch` gate drops the agent (see `fetch-latest-active-version`).
+    expect(await AgentResource.fetchById(otherAuth, agent.sId)).toBeNull();
+
+    // An admin keeps the `admin` verb whatever the space restriction, so the agent is still
+    // returned — but as a light resource, since the space gate denied `read` and `_content` is
+    // materialized only for readers.
+    const adminUser = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, adminUser, {
+      role: "admin",
+    });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      testContext.workspace.sId
+    );
+    const adminResource = await AgentResource.fetchById(adminAuth, agent.sId);
+    expect(adminResource).not.toBeNull();
+    expect(adminResource?.isFull()).toBe(false);
   });
 
   it("resolves an agent to full when all its requested spaces are readable", async () => {
