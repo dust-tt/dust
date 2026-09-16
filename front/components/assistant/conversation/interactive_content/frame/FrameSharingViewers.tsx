@@ -1,4 +1,5 @@
 import { FrameSharingRow } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingRow";
+import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
 import type { FileViewerType } from "@app/types/file_viewers";
 import {
   Button,
@@ -38,16 +39,8 @@ export function FrameSharingViewers({
   hasError,
   onRetry,
 }: FrameSharingViewersProps) {
-  const headingId = useId();
-
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2">
-      <div className="flex flex-col gap-0.5">
-        <h3 id={headingId} className="text-sm font-semibold text-foreground">
-          Viewers
-        </h3>
-        <p className="text-xs text-muted-foreground">{VIEWERS_DESCRIPTION}</p>
-      </div>
+    <Section label="Viewers" description={VIEWERS_DESCRIPTION}>
       {isLoading ? (
         <div role="status" className="flex items-center gap-2 py-2">
           <div aria-hidden="true">
@@ -65,7 +58,7 @@ export function FrameSharingViewers({
           <Button label="Retry" variant="outline" onClick={onRetry} />
         </div>
       ) : viewers.length === 0 ? (
-        <p className="py-2 text-sm text-muted-foreground">
+        <p className="p-2 text-sm text-muted-foreground">
           No views recorded yet.
         </p>
       ) : (
@@ -99,7 +92,7 @@ export function FrameSharingViewers({
           )}
         </>
       )}
-    </section>
+    </Section>
   );
 }
 
