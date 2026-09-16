@@ -26,7 +26,7 @@ export function useModels({
   const { fetcher } = useFetcher();
   const modelsFetcher: Fetcher<GetEnabledModelsResponseType> = fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error } = useSWRWithDefaults(
     `/api/w/${owner.sId}/models`,
     modelsFetcher,
     {
@@ -40,6 +40,7 @@ export function useModels({
     () => (data ? new Set(data.degradedModelIds) : EMPTY_DEGRADED_MODEL_IDS),
     [data]
   );
+
   return {
     models:
       data?.models.filter((model) => isStaticModelId(model.modelId)) ??
@@ -47,7 +48,6 @@ export function useModels({
     defaultModel: data?.defaultModel ?? null,
     streams: data?.streams ?? null,
     degradedModelIds,
-    revalidateModels: mutate,
     isModelsLoading: !error && !data && !disabled,
     isModelsError: !!error,
   };

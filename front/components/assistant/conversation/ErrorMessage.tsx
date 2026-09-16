@@ -21,14 +21,13 @@ import {
   InfoCircle,
   RefreshCw02,
 } from "@dust-tt/sparkle";
-import { useContext, useEffect } from "react";
+import { useContext } from "react";
 
 interface ErrorMessageProps {
   error: GenericErrorContent;
   owner: LightWorkspaceType;
   retryHandler: (modelSelection?: ModelSelectionType) => Promise<void>;
   failedModel?: ResolvedRequestedModel;
-  canSwitchModel?: boolean;
 }
 
 export function ErrorMessage({
@@ -36,9 +35,8 @@ export function ErrorMessage({
   owner,
   retryHandler,
   failedModel,
-  canSwitchModel = true,
 }: ErrorMessageProps) {
-  const { openModelPickerRef, shownModelSelectionRef } =
+  const { openModelPickerRef, pickerShownSelection } =
     useContext(InputBarContext);
   const isContextWindowExceeded =
     isAgentErrorCategory(error.metadata?.category) &&
@@ -51,7 +49,11 @@ export function ErrorMessage({
       error.metadata?.category === "stream_error" ||
       error.metadata?.category === "empty_content" ||
       error.metadata?.category === "credits_exhausted");
-  const { degradedModelIds, revalidateModels, isModelsLoading } = useModels({
+  // Renders from whatever catalog SWR already has, with no loading gate: the
+  // error card must paint immediately, and the degraded copy/switcher are
+  // progressive enhancement. The server re-checks degradation at retry time,
+  // so a stale or empty catalog can never cause an incorrect retry.
+  const { degradedModelIds } = useModels({
     owner,
     disabled: !failedModel,
   });
@@ -60,7 +62,9 @@ export function ErrorMessage({
     errorCategory: error.metadata?.category,
     degradedModelIds,
   });
-  const showModelSwitcher = isDegradedFailure && canSwitchModel;
+  // A null published selection means no live picker: offer no switch and send
+  // no override, so the retry preserves the failed message's resolved model.
+  const showModelSwitcher = isDegradedFailure && pickerShownSelection !== null;
   const failedModelConfig = failedModel
     ? getSupportedModelConfig(failedModel)
     : null;
@@ -68,21 +72,11 @@ export function ErrorMessage({
     ? getModelMakerDisplayName(getModelMaker(failedModelConfig))
     : failedModel?.providerId;
 
-  useEffect(() => {
-    if (failedModel) {
-      void revalidateModels();
-    }
-  }, [failedModel, revalidateModels]);
-
   // A degraded retry follows what the picker displays. Other retries omit the
   // selection and preserve the original message's resolved model.
   const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
     async () =>
-      retryHandler(
-        showModelSwitcher
-          ? (shownModelSelectionRef.current ?? undefined)
-          : undefined
-      )
+      retryHandler(showModelSwitcher ? pickerShownSelection : undefined)
   );
 
   return (
@@ -134,8 +128,8 @@ export function ErrorMessage({
           icon={RefreshCw02}
           label="Retry"
           onClick={() => void retry()}
-          isLoading={isRetrying || isModelsLoading}
-          disabled={isRetrying || isModelsLoading}
+          isLoading={isRetrying}
+          disabled={isRetrying}
         />
       </div>
     </ContentMessage>

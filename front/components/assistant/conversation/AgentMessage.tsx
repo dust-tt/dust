@@ -251,7 +251,6 @@ interface AgentMessageProps {
   additionalMarkdownPlugins?: PluggableList;
   isProjectArchived?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
-  canSwitchModel?: boolean;
 }
 
 export function AgentMessage({
@@ -272,7 +271,6 @@ export function AgentMessage({
   additionalMarkdownPlugins,
   isProjectArchived = false,
   setLimitReachedCode,
-  canSwitchModel = true,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
@@ -1128,7 +1126,6 @@ export function AgentMessage({
           additionalMarkdownComponents={additionalMarkdownComponents}
           additionalMarkdownPlugins={additionalMarkdownPlugins}
           uiView={uiView}
-          canSwitchModel={canSwitchModel}
         />
       )}
     </ConversationMessageContent>
@@ -1217,7 +1214,6 @@ function AgentMessageContent({
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
   uiView,
-  canSwitchModel,
 }: {
   onOpenDetails?: (messageId: string, actionId?: string) => void;
   triggeringUser: UserType | null;
@@ -1252,7 +1248,6 @@ function AgentMessageContent({
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   uiView: UiView;
-  canSwitchModel: boolean;
 }) {
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
@@ -1583,7 +1578,6 @@ function AgentMessageContent({
                 modelSelection,
               })
             }
-            canSwitchModel={canSwitchModel}
           />
         )}
       </div>

@@ -1,6 +1,6 @@
 import { apiError } from "@front-api/middlewares/utils";
 import { zValidator } from "@hono/zod-validator";
-import type { Env, MiddlewareHandler, ValidationTargets } from "hono";
+import type { ValidationTargets } from "hono";
 import type { ZodType } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -16,12 +16,20 @@ const TARGET_LABEL: Record<keyof ValidationTargets, string> = {
 /**
  * Wraps `@hono/zod-validator` so failures match our standard
  * `{ error: { type, message } }` shape instead of the validator's default.
+ *
+ * `allowEmptyBody` (json target only) normalizes an empty request body to `{}`
+ * before validation, for legacy clients that POST `Content-Type:
+ * application/json` with no payload; Hono's json parsing would 400 on it.
  */
 export function validate<
   Target extends keyof ValidationTargets,
   Schema extends ZodType,
->(target: Target, schema: Schema) {
-  return zValidator(target, schema, (result, ctx) => {
+>(
+  target: Target,
+  schema: Schema,
+  { allowEmptyBody = false }: { allowEmptyBody?: boolean } = {}
+) {
+  const validator = zValidator(target, schema, (result, ctx) => {
     if (!result.success) {
       return apiError(ctx, {
         status_code: 400,
@@ -32,53 +40,18 @@ export function validate<
       });
     }
   });
-}
-
-// Existing clients POST `Content-Type: application/json` with an empty body.
-// Hono's json validator parses before Zod and 400s on that payload, so empty
-// bodies are normalized to `{}` here, then validated as usual.
-export function validateJsonAllowingEmpty<
-  Schema extends ZodType,
-  E extends Env = Env,
-  P extends string = string,
->(
-  schema: Schema
-): MiddlewareHandler<
-  E,
-  P,
-  {
-    in: { json: Schema["_input"] };
-    out: { json: Schema["_output"] };
+  if (!allowEmptyBody || target !== "json") {
+    return validator;
   }
-> {
-  return async (ctx, next) => {
-    const raw = await ctx.req.text();
-    let parsed: unknown = {};
-    if (raw.trim() !== "") {
-      try {
-        parsed = JSON.parse(raw);
-      } catch {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid request body: malformed JSON",
-          },
-        });
-      }
+  const normalizeEmptyBodyAndValidate: typeof validator = async (ctx, next) => {
+    // Clone so the original body stays unread: the wrapped validator must be
+    // the first consumer, or it would see Hono's cache of the empty payload.
+    // Middleware has no non-mutating way to hand a rewritten body downstream;
+    // `req.raw` is the public, mutable slot validators read lazily.
+    if ((await ctx.req.raw.clone().text()).trim() === "") {
+      ctx.req.raw = new Request(ctx.req.raw, { body: "{}" });
     }
-    const result = await schema.safeParseAsync(parsed);
-    if (!result.success) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Invalid request body: ${fromError(result.error).toString()}`,
-        },
-      });
-    }
-
-    ctx.req.addValidatedData("json", result.data);
-    await next();
+    return validator(ctx, next);
   };
+  return normalizeEmptyBodyAndValidate;
 }

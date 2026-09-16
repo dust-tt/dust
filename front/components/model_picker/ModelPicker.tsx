@@ -82,9 +82,11 @@ export interface ModelPickerProps {
   commitApiRef?: MutableRefObject<((selection: Selection) => void) | null>;
   // Lets components outside the input bar (e.g. the sidebar banner) open the menu.
   openApiRef?: MutableRefObject<(() => void) | null>;
-  // Read-at-retry sink for the currently displayed model, including the
-  // materialized agent default when toSend is undefined.
-  shownModelSelectionRef?: MutableRefObject<ModelSelectionType | null>;
+  // Reports the currently displayed model on every change, including the
+  // materialized agent default when toSend is undefined. Unlike
+  // `onSelectionChange`, this also fires for derived changes (agent switches,
+  // sticky resolution), so callers can mirror what the trigger shows.
+  onShownSelectionChange?: (selection: ModelSelectionType) => void;
   // When set, emits `assistant:model_picker:*` analytics tagged with this
   // surface. Consumers that don't pass it (e.g. the agent builder) are not
   // tracked.
@@ -111,7 +113,7 @@ export function ModelPicker({
   setStickyModelOverride,
   commitApiRef,
   openApiRef,
-  shownModelSelectionRef,
+  onShownSelectionChange,
   trackingSurface,
   showDegradations = true,
 }: ModelPickerProps) {
@@ -164,10 +166,14 @@ export function ModelPicker({
   if (selectionRef) {
     selectionRef.current = shownModelSelection;
   }
-  if (shownModelSelectionRef) {
-    shownModelSelectionRef.current =
-      shownModelSelection ?? materializeSelection(shown.display);
-  }
+
+  const materializedShownSelection = useMemo(
+    () => shownModelSelection ?? materializeSelection(shown.display),
+    [shownModelSelection, shown.display]
+  );
+  useEffect(() => {
+    onShownSelectionChange?.(materializedShownSelection);
+  }, [onShownSelectionChange, materializedShownSelection]);
 
   const canRevert = !isSameSelection(shown.display, agentDefault.display);
 

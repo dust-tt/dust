@@ -98,9 +98,11 @@ export const InputBarContext = createContext<{
   // Imperative handle published by the input bar's model picker so components
   // outside the input bar (e.g. the sidebar banner) can open its menu.
   openModelPickerRef: MutableRefObject<(() => void) | null>;
-  // Render-time sink for the picker's currently displayed model. Degraded
-  // retries read it on click so they follow what the input bar is showing.
-  shownModelSelectionRef: MutableRefObject<ModelSelectionType | null>;
+  // The selection the input bar's picker currently displays; null whenever no
+  // picker is mounted, so consumers (e.g. degraded retries) can tell a live
+  // picker from a stale one.
+  pickerShownSelection: ModelSelectionType | null;
+  setPickerShownSelection: (selection: ModelSelectionType | null) => void;
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
   // Fired right before submit; the extension uses it to snapshot browser tab state.
@@ -122,7 +124,8 @@ export const InputBarContext = createContext<{
   stickyModelOverride: undefined,
   setStickyModelOverride: () => {},
   openModelPickerRef: { current: null },
-  shownModelSelectionRef: { current: null },
+  pickerShownSelection: null,
+  setPickerShownSelection: () => {},
   fileUploaderService: {
     fileBlobs: [],
     handleFileChange: async () => undefined,
@@ -153,7 +156,8 @@ export function InputBarContextProvider({
 
   // Set by the input bar's model picker while it is mounted; null otherwise.
   const openModelPickerRef = useRef<(() => void) | null>(null);
-  const shownModelSelectionRef = useRef<ModelSelectionType | null>(null);
+  const [pickerShownSelection, setPickerShownSelection] =
+    useState<ModelSelectionType | null>(null);
 
   // Useful when a component needs to set the selected agent for the input bar but do not have direct access to the input bar.
   const [selectedAgent, setSelectedAgent] = useState<RichAgentMention | null>(
@@ -271,7 +275,8 @@ export function InputBarContextProvider({
       stickyModelOverride,
       setStickyModelOverride,
       openModelPickerRef,
-      shownModelSelectionRef,
+      pickerShownSelection,
+      setPickerShownSelection,
       captureActions,
       fileUploaderService,
       onBeforeSubmit,
@@ -289,6 +294,7 @@ export function InputBarContextProvider({
       isLoadingGoTemplate,
       stickyModelOverride,
       setStickyModelOverride,
+      pickerShownSelection,
       captureActions,
       fileUploaderService,
       onBeforeSubmit,

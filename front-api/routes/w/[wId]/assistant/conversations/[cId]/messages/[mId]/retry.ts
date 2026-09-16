@@ -7,10 +7,7 @@ import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { ModelSelectionSchema } from "@app/types/assistant/models/types";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
-import {
-  validate,
-  validateJsonAllowingEmpty,
-} from "@front-api/middlewares/validator";
+import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -23,7 +20,9 @@ const PostRetryRequestBodySchema = z.object({
 });
 
 const validateParams = validate("param", ParamsSchema);
-const validateBody = validateJsonAllowingEmpty(PostRetryRequestBodySchema);
+const validateBody = validate("json", PostRetryRequestBodySchema, {
+  allowEmptyBody: true,
+});
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/retry.
 const app = workspaceApp();

@@ -50,9 +50,11 @@ export function getDegradedModelTooltip(displayName: string): string {
 
 /**
  * @cc [owner:frankaloia,label:product;error-handling] degraded-retry-offers-a-choice
- * The degraded retry UX MUST only replace a model-related failure while the failed model is
- * currently degraded. Surfaces with a model picker MUST offer switching and retry with its
- * displayed selection; surfaces without one MUST retry without a model override.
+ * When a model-related failure's model is degraded per the client's current models catalog AND a
+ * live input-bar picker is publishing its shown selection, the failure UI MUST offer switching
+ * and retry with that published selection. Every other retry MUST send no model override.
+ * Catalog freshness and the failed model's preservation are not client guarantees; the server
+ * enforces them at retry time (see `retry-model-selection` on `retryAgentMessage`).
  */
 export function isDegradedModelFailure({
   failedModelId,
