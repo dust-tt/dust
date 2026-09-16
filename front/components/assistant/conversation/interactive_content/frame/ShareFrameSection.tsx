@@ -1,9 +1,9 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 interface SectionProps {
-  label: ReactNode;
-  description?: ReactNode;
-  action?: ReactNode;
+  label: ReactElement | string;
+  description?: ReactElement | string;
+  action?: ReactElement;
   children: ReactNode;
 }
 
