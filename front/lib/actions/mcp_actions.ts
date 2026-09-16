@@ -1381,6 +1381,17 @@ async function listToolsForClientSideMCPServer(
   return new Ok(clientSideToolConfigs);
 }
 
+const PERSONAL_CREDENTIALS_NOTE =
+  "This server is configured with personal credentials: it acts as the user running the agent, " +
+  "with that user's own permissions, not through a shared workspace service account.";
+
+/**
+ * @cc [owner:adrsimon,label:mcp] personal-credential-mode-in-tool-descriptions
+ * When the server view is configured with `oAuthUseCase: "personal_actions"`, every returned tool
+ * configuration's description MUST state that the server acts as the running user. Without it the
+ * model answers questions about the connection from its training prior, which assumes a shared
+ * service account. Descriptions MUST be left unchanged for any other `oAuthUseCase`.
+ */
 export async function listToolsForServerSideMCPServer(
   auth: Authenticator,
   connectionParams: ServerSideMCPConnectionParams,
@@ -1403,6 +1414,16 @@ export async function listToolsForServerSideMCPServer(
       })),
     ];
   } while (nextPageCursor);
+
+  if (
+    isConnectViaMCPServerId(connectionParams) &&
+    connectionParams.oAuthUseCase === "personal_actions"
+  ) {
+    allToolsRaw = allToolsRaw.map((tool) => ({
+      ...tool,
+      description: `${tool.description}\n\n${PERSONAL_CREDENTIALS_NOTE}`,
+    }));
+  }
 
   if (!isConnectViaMCPServerId(connectionParams)) {
     const rawTools = allToolsRaw.map((tool) => ({

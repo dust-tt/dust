@@ -21,7 +21,10 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
+import type {
+  MCPConnectionParams,
+  ServerSideMCPConnectionParams,
+} from "@app/lib/actions/mcp_metadata";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import type { ServerSideMCPToolTypeWithStakeAndRetryPolicy } from "@app/lib/api/mcp";
@@ -380,6 +383,38 @@ describe("MCP Actions", () => {
         }),
       ])
     );
+  });
+  it.each([
+    { oAuthUseCase: null, expectsNote: false },
+    { oAuthUseCase: "platform_actions" as const, expectsNote: false },
+    { oAuthUseCase: "personal_actions" as const, expectsNote: true },
+  ])("mentions personal credentials in tool descriptions only for personal_actions ($oAuthUseCase)", async ({
+    oAuthUseCase,
+    expectsNote,
+  }) => {
+    const { auth, mcpServerId, mcpClient, config } = await setupTest();
+
+    const connectionParams: ServerSideMCPConnectionParams = {
+      type: "mcpServerId",
+      mcpServerId,
+      oAuthUseCase,
+      remoteMCPServerUrl: null,
+    };
+
+    const toolsResult = await listToolsForServerSideMCPServer(
+      auth,
+      connectionParams,
+      mcpClient,
+      config
+    );
+
+    assert(toolsResult.isOk());
+    assert(toolsResult.value.length > 0);
+    for (const tool of toolsResult.value) {
+      expect(tool.description?.includes("personal credentials")).toBe(
+        expectsNote
+      );
+    }
   });
 });
 
