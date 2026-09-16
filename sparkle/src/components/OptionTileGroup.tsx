@@ -64,14 +64,18 @@ export function OptionTileGroup<T extends string = string>({
           disabled={option.disabled}
           className={cn(
             "flex min-w-24 flex-col items-center justify-center gap-1 px-3 py-2",
+            // Surface-agnostic chrome: no own background, so the tile sits on
+            // whatever it is placed on (page, panel, modal), and a border that
+            // stays lighter than every dark surface (the plain `border` token
+            // is darker than the dark modal surface).
+            "rounded-2xl border border-border dark:border-border-dark bg-transparent",
             // Muted glyph and label at rest; the selected tile reads in the
             // full foreground, like an active Tab.
-            "rounded-2xl border border-border bg-background text-muted-foreground",
-            "data-[state=checked]:text-foreground",
+            "text-muted-foreground data-[state=checked]:text-foreground",
             "transition-colors duration-100 ease-out motion-reduce:transition-none",
-            "hover:bg-muted-background",
+            "hover:bg-foreground/5",
             "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-200/70",
-            "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-background",
+            "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent",
             // Selected: a highlight outline, no fill, so the tile's own
             // visual (icon or specimen) stays the focus.
             "data-[state=checked]:border-highlight data-[state=checked]:shadow-[inset_0_0_0_1px_var(--color-highlight)]"

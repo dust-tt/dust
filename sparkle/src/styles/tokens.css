@@ -272,7 +272,7 @@
   --color-hover: rgba(0, 0, 0, 0.02);
   --color-selected: rgba(0, 0, 0, 0.06);
   --color-loading: rgba(0, 0, 0, 0.06);
-  --color-faint: var(--color-stone-400);
+  --color-faint: var(--color-stone-500);
 
   /* Text */
   /* stone-900 (17.9:1 on white) softens the black; stone-950 was 19.8:1. */
@@ -434,7 +434,7 @@
   --color-hover: rgba(255, 255, 255, 0.04);
   --color-selected: rgba(255, 255, 255, 0.08);
   --color-loading: rgba(255, 255, 255, 0.08);
-  --color-faint: var(--color-stone-600);
+  --color-faint: var(--color-stone-500);
 
   /* Text */
   --color-foreground: var(--color-stone-200);

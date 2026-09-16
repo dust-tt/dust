@@ -154,6 +154,36 @@ export const InSettingsRow: Story = {
 };
 
 /**
+ * On the modal surface, which in dark mode is lighter than the default border
+ * token: the tiles and the list must still read as outlined, not sunken.
+ * @summary On a modal surface.
+ */
+export const OnModalSurface: Story = {
+  args: {
+    ariaLabel: "Theme",
+    options: THEME_OPTIONS,
+    value: "light",
+    onValueChange: () => {},
+  },
+  render: () => (
+    <div className="w-[640px] rounded-2xl bg-modal-background p-6">
+      <SettingsList className="dark:border-border-dark dark:divide-border-dark">
+        <SettingsList.Row
+          title="Theme"
+          description="Choose how Dust looks"
+          action={<ThemeTiles />}
+        />
+        <SettingsList.Row
+          title="Conversation font"
+          description="Font used for agent answers"
+          action={<FontTiles />}
+        />
+      </SettingsList>
+    </div>
+  ),
+};
+
+/**
  * Whole group disabled.
  * @summary Disabled.
  */
