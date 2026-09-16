@@ -45,6 +45,18 @@ export function isDefaultFromAvailability(
   }
 }
 
+// Editors-only skills are unpublished: the skills list shows them only to their editors. Shared by
+// the list route and any client surface that resolves a skill outside that list.
+export function isSkillHiddenFromNonEditors({
+  availability,
+  canWrite,
+}: {
+  availability: SkillAvailability;
+  canWrite: boolean;
+}): boolean {
+  return availability === "editors" && !canWrite;
+}
+
 export const SKILL_SOURCES = [
   "web_app",
   "github",

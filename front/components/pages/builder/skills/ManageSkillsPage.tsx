@@ -41,6 +41,7 @@ import {
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
+import { isSkillHiddenFromNonEditors } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
   Button,
@@ -324,6 +325,12 @@ export function ManageSkillsPage() {
     withRelations: true,
     disabled: !skillIdParam || selectedSkill !== null,
   });
+  // Same rule as the list: unpublished skills stay hidden from non-editors. Admins get them, as
+  // they could reveal them with "Show hidden skills" anyway.
+  const isDeepLinkedSkillHidden =
+    deepLinkedSkill !== null &&
+    !canBypassEditorVisibility &&
+    isSkillHiddenFromNonEditors(deepLinkedSkill);
 
   const handleUsedBySkillSelect = useCallback(
     (skillId: string) => {
@@ -401,9 +408,11 @@ export function ManageSkillsPage() {
   return (
     <>
       <SkillDetailsSheet
-        skill={selectedSkill ?? deepLinkedSkill}
+        skill={
+          selectedSkill ?? (isDeepLinkedSkillHidden ? null : deepLinkedSkill)
+        }
         open={!!skillIdParam}
-        isError={isDeepLinkedSkillError}
+        isError={isDeepLinkedSkillError || isDeepLinkedSkillHidden}
         onRetry={retryDeepLinkedSkill}
         onClose={() => handleSkillSelect(null)}
         onFavoriteChange={handleFavoriteChange}
