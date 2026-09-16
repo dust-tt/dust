@@ -167,7 +167,7 @@ describe("sharing grants endpoint", () => {
     const denied = await deleteGrant(workspace, file.sId, { grantId });
     expect(denied.status).toBe(403);
     expect(await denied.json()).toMatchObject({
-      error: { type: "invalid_request_error" },
+      error: { type: "workspace_auth_error" },
     });
     const unchanged = await SharingGrantResource.fetchById(file, grant.sId);
     expect(unchanged?.revokedAt).toBeNull();

@@ -107,7 +107,7 @@ app.delete(
           api_error: {
             type:
               result.error.code === "unauthorized"
-                ? "invalid_request_error"
+                ? "workspace_auth_error"
                 : "file_not_found",
             message: result.error.message,
           },
@@ -124,7 +124,7 @@ app.delete(
         api_error: {
           type:
             result.error.code === "unauthorized"
-              ? "invalid_request_error"
+              ? "workspace_auth_error"
               : "file_not_found",
           message: result.error.message,
         },
