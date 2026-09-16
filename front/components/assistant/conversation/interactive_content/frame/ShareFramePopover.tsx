@@ -23,7 +23,6 @@ import {
   Cube01,
   File02,
   Icon,
-  InfoCircle,
   Label,
   ListGroup,
   ListItem,
