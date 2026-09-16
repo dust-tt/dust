@@ -5,6 +5,7 @@ import type {
   MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,
 } from "@app/types/plan";
+import { TIMEFRAME_SECONDS } from "@app/types/plan";
 import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -559,24 +560,22 @@ export async function getWeightedRateLimiterCount({
   return new Ok(result.value.count);
 }
 
+// Server-side quota enforcement: throws on an unrecognized timeframe rather
+// than silently falling back, since a swallowed error here would silently
+// widen the rate-limit window instead of failing loudly.
 export function getTimeframeSecondsFromLiteral(
   timeframeLiteral: MaxMessagesTimeframeType | MaxAwuCreditsTimeframeType
 ): number {
-  switch (timeframeLiteral) {
-    case "day":
-      return 60 * 60 * 24; // 1 day.
-
-    case "week":
-      return 60 * 60 * 24 * 7; // 7 days.
-
-    case "month":
-    // Lifetime is intentionally mapped to a 30-day period.
-    case "lifetime":
-      return 60 * 60 * 24 * 30; // 30 days.
-
-    default:
-      assertNever(timeframeLiteral);
+  // Widen the key type: this guards against a timeframe value that bypassed
+  // the static type (e.g. stale plan data), which TIMEFRAME_SECONDS's own
+  // exhaustive-by-construction typing can't otherwise express as lookupable.
+  const seconds = (TIMEFRAME_SECONDS as Record<string, number | undefined>)[
+    timeframeLiteral
+  ];
+  if (seconds === undefined) {
+    assertNever(timeframeLiteral as never);
   }
+  return seconds;
 }
 
 /**

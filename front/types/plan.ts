@@ -25,6 +25,17 @@ export function isMaxAwuCreditsTimeframeType(
   return (MAX_AWU_CREDITS_TIMEFRAMES as unknown as string[]).includes(value);
 }
 
+export const TIMEFRAME_SECONDS: Record<
+  MaxMessagesTimeframeType | MaxAwuCreditsTimeframeType,
+  number
+> = {
+  day: 60 * 60 * 24,
+  week: 60 * 60 * 24 * 7,
+  // Lifetime is intentionally mapped to a 30-day period.
+  month: 60 * 60 * 24 * 30,
+  lifetime: 60 * 60 * 24 * 30,
+};
+
 /**
  *  Expresses limits for usage of the product
  * Any positive number enforces the limit, -1 means no limit.

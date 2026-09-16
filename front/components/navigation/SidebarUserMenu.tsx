@@ -85,6 +85,7 @@ export function SidebarUserMenu({
           usedPercentage: Math.round(
             (fairUseAwuCreditsState.count / fairUseAwuCreditsState.limit) * 100
           ),
+          refillSchedule: fairUseAwuCreditsState.refillSchedule,
         }
       : null;
   const creditUsageState =
