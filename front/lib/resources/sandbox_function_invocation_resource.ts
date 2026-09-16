@@ -1437,11 +1437,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
   /**
    * @cc [owner:davidebbo,label:performance] retention-sweep-walks-primary-key
-   * The retention sweep MUST select its candidates by ascending `id` from `afterModelId` and
-   * compare `createdAt` in memory. It MUST NOT push a `createdAt` predicate into the query:
-   * there is no index on `createdAt`, so the batch that reaches the retention boundary would
-   * scan every remaining row of the table looking for further matches. Rows are insert-only
-   * with monotonically increasing ids, so primary-key order is creation order.
+   * The retention sweep MUST walk candidates in ascending `id` order, resuming after
+   * `afterModelId`, and compare `createdAt` in memory. It MUST NOT push a `createdAt` predicate
+   * into the query: there is no index on `createdAt`, so the batch that reaches the retention
+   * boundary would scan every remaining row of the table looking for further matches. Rows are
+   * insert-only with monotonically increasing ids, so primary-key order is creation order.
    */
   /**
    * @cc [owner:davidebbo,label:backend] retention-sweep-deletes-only-expired-rows
