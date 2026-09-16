@@ -3,6 +3,7 @@ import {
   CONSUMPTION_DIMENSION_FIELDS,
 } from "@app/lib/api/analytics/consumption/scope";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
+import { dayBoundaryInTimezone } from "@app/lib/api/timezone";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -11,7 +12,6 @@ import {
   ONE_DAY_MS,
 } from "@app/types/shared/utils/date_utils";
 import type { estypes } from "@elastic/elasticsearch";
-import moment from "moment-timezone";
 
 export interface ActiveUsersExportRow {
   date: string;
@@ -90,20 +90,16 @@ export async function fetchActiveUsersExportRows(
   // Resolved to timezone-local instants, not bare "YYYY-MM-DD" strings:
   // Elasticsearch parses a bare date as UTC midnight, which would disagree
   // with the composite aggregation's timezone-local day buckets below.
-  const extendedStartInstant = moment
-    .tz(startDate, timezone)
-    .subtract(MAU_WINDOW_DAYS - 1, "days")
-    .startOf("day")
-    .toISOString();
-  const exclusiveEndInstant = moment
-    .tz(endDate, timezone)
-    .add(1, "day")
-    .startOf("day")
-    .toISOString();
-  const cutoffTimestampMs = moment
-    .tz(startDate, timezone)
-    .startOf("day")
-    .valueOf();
+  const extendedStartInstant = dayBoundaryInTimezone(startDate, timezone, {
+    offsetDays: -(MAU_WINDOW_DAYS - 1),
+  }).toISOString();
+  const exclusiveEndInstant = dayBoundaryInTimezone(endDate, timezone, {
+    offsetDays: 1,
+  }).toISOString();
+  const cutoffTimestampMs = dayBoundaryInTimezone(
+    startDate,
+    timezone
+  ).getTime();
 
   const query: estypes.QueryDslQueryContainer = {
     bool: {

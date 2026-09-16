@@ -1,4 +1,18 @@
 import { stringify } from "csv-stringify/sync";
+import { formatInTimeZone } from "date-fns-tz";
+
+// Export cell for a timestamp. An unparseable value renders as a placeholder
+// instead of failing the whole export.
+export function formatExportCellDateTime(
+  value: Date | string | number,
+  timezone: string
+): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Invalid date";
+  }
+  return formatInTimeZone(date, timezone, "yyyy-MM-dd HH:mm:ss");
+}
 
 // Sanitize CSV cells to prevent formula injection when opened in spreadsheets.
 // Prefixes dangerous leading characters (=, +, -, @) with an apostrophe.

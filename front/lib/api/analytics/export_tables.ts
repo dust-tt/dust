@@ -31,6 +31,10 @@ import {
   USER_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/users_export";
 import { fetchContextOriginDailyBreakdown } from "@app/lib/api/assistant/observability/context_origin";
+import {
+  dayBoundaryInTimezone,
+  dayRangeInTimezone,
+} from "@app/lib/api/timezone";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
@@ -38,7 +42,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
-import moment from "moment-timezone";
 
 type AnalyticsExportTable =
   | "usage_metrics"
@@ -263,20 +266,16 @@ function buildExportConsumptionScopeQuery(
     timezone,
   }: { startDate: string; endDate: string; timezone: string }
 ): estypes.QueryDslQueryContainer {
-  const startInstant = moment
-    .tz(startDate, timezone)
-    .startOf("day")
-    .toISOString();
-  const exclusiveEndInstant = moment
-    .tz(endDate, timezone)
-    .add(1, "day")
-    .startOf("day")
-    .toISOString();
+  const { startInstant, exclusiveEndInstant } = dayRangeInTimezone(
+    startDate,
+    endDate,
+    timezone
+  );
 
   return buildConsumptionScopeQuery({
     auth,
-    startDate: startInstant,
-    endDate: exclusiveEndInstant,
+    startDate: startInstant.toISOString(),
+    endDate: exclusiveEndInstant.toISOString(),
   });
 }
 
@@ -451,8 +450,8 @@ async function exportUsers({
   const result = await fetchUserExportRows({
     baseQuery,
     owner,
-    startDate: moment.tz(startDate, timezone).startOf("day").toDate(),
-    endDate: moment.tz(endDate, timezone).endOf("day").toDate(),
+    startDate: dayBoundaryInTimezone(startDate, timezone),
+    endDate: dayBoundaryInTimezone(endDate, timezone, { boundary: "end" }),
     timezone,
   });
 
