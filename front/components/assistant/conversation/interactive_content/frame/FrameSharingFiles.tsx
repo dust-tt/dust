@@ -24,10 +24,6 @@ const SOURCE_LABELS: Record<ShareFrameViewerFile["sourceKind"], string> = {
   workspace: "Workspace",
 };
 
-/**
- * @cc [owner:flvndvd,label:product] shared-files-notice
- * Keep the sharing notice in the popover when the file dialog is closed.
- */
 export function FrameSharingFiles({ viewerFiles }: FrameSharingFilesProps) {
   if (viewerFiles.length === 0) {
     return null;
