@@ -110,6 +110,8 @@ function formatSuggestion(s: SkillSuggestionType): string {
       xml += "</suggestion>";
       return xml;
     }
+    case "editors":
+      throw new Error("Editors suggestions are not aggregated.");
   }
 }
 

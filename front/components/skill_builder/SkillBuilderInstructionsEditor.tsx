@@ -34,6 +34,7 @@ import {
   UNAVAILABLE_SKILL_TAG_NAME,
 } from "@app/lib/skills/format";
 import { TOOL_TAG_NAME } from "@app/lib/tools/format";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { cn } from "@dust-tt/sparkle";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
@@ -664,6 +665,15 @@ export function SkillBuilderInstructionsEditor({
     editor.commands.rejectAllSuggestions();
 
     for (const suggestion of suggestions) {
+      switch (suggestion.kind) {
+        case "edit":
+          break;
+        case "editors":
+          continue;
+        default:
+          assertNeverAndIgnore(suggestion);
+          continue;
+      }
       const { instructionEdits } = suggestion.suggestion;
       if (!instructionEdits || instructionEdits.length === 0) {
         continue;
