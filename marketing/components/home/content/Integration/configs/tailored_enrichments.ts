@@ -4647,6 +4647,110 @@ export const tailoredEnrichments: Record<
       },
     ],
   },
+  // Youtrust — 5 real tools. De-slopped reference listing.
+  youtrust: {
+    seoTitle: "Run Youtrust e-signature from Dust",
+    seoSubtitle:
+      "Draft signature requests from your templates, send them, and track which ones are still open.",
+    tagline:
+      "Send documents for signature and follow up on the ones that stall.",
+    chatStoryline: {
+      userPrompt:
+        "Send our standard NDA to the three new vendors, then tell me what's still unsigned from last week.",
+      toolCalls: [
+        "search-templates",
+        "create-signature-request-from-template",
+        "send-signature-request",
+        "search-signature-requests",
+      ],
+      completedInSeconds: 13,
+      responseIntro:
+        "I found your NDA template in Youtrust, drafted a request for each vendor, and sent them. Here is last week's unsigned list too.",
+      responseSections: [
+        {
+          heading: "Sent for signature (3)",
+          bullets: [
+            {
+              title: "Acme Corp",
+              body: "Drafted from the Mutual NDA template. Sent to legal@acme.example. Not opened yet.",
+            },
+            {
+              title: "Globex",
+              body: "Sent to procurement@globex.example. Two signers, in sequence. Reminders on.",
+            },
+            {
+              title: "Initech",
+              body: "Sent to ops@initech.example. One signer. Expires in 14 days.",
+            },
+          ],
+        },
+        {
+          heading: "Still awaiting signature (2)",
+          bullets: [
+            {
+              title: "Order form #4187",
+              body: "Open 8 days. The signer opened it twice, then stopped.",
+            },
+            {
+              title: "Consulting agreement #4172",
+              body: "Open 11 days. No activity since you sent it.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to send a reminder on the two that are still open?",
+    },
+    benefits: [
+      {
+        icon: "ActionMagnifyingGlassIcon",
+        color: "blue",
+        title: "See what's still unsigned",
+        description:
+          "Ask which requests are pending, who has them, and how long they have been open. Dust reads the request list and each activity feed.",
+        toolMatches: [
+          "search-signature-requests",
+          "get-signature-request-activity-feed",
+        ],
+      },
+      {
+        icon: "ActionDocumentTextIcon",
+        color: "green",
+        title: "Send from a template in one prompt",
+        description:
+          "Name a Youtrust template, like an NDA or an offer letter. Dust drafts the request and sends it to the signers you name.",
+        toolMatches: [
+          "search-templates",
+          "create-signature-request-from-template",
+          "send-signature-request",
+        ],
+      },
+      {
+        icon: "ActionListCheckIcon",
+        color: "golden",
+        title: "Weekly signature recap",
+        description:
+          "Ask what got signed, what stalled, and what needs a nudge. Dust pulls it from your active requests and their activity feeds.",
+        toolMatches: [
+          "search-signature-requests",
+          "get-signature-request-activity-feed",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do in Youtrust?",
+        answer:
+          "Search your signature requests and templates, read a request's activity feed, and create and send new requests from an existing template.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "Youtrust uses OAuth 2.1 with dynamic client registration. You sign in with your Youtrust account and approve access from the Dust chat.",
+      },
+    ],
+    relatedIntegrations: ["gmail", "google_drive", "notion"],
+  },
   // [legacy] Zendesk — 6 real tools
   zendesk: {
     chatStoryline: {
