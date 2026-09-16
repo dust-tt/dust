@@ -1,3 +1,4 @@
+import { MODAL_SETTINGS_LIST_CLASSES } from "@app/components/me/modalSettingsList";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useConversationNotificationPreferences } from "@app/lib/swr/notifications";
@@ -258,7 +259,7 @@ export function NotificationPreferences({
 
   return (
     <div className="flex flex-col gap-3">
-      <SettingsList>
+      <SettingsList className={MODAL_SETTINGS_LIST_CLASSES}>
         <SettingsList.Row
           title="Notify me about"
           description="Applies to in-app popups, email, and Slack"
@@ -307,7 +308,7 @@ export function NotificationPreferences({
         </ContentMessageInline>
       )}
 
-      <SettingsList>
+      <SettingsList className={MODAL_SETTINGS_LIST_CLASSES}>
         {displaySlackOption && (
           <SettingsList.Row
             title="Slack"
