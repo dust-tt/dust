@@ -38,9 +38,9 @@ it("opens a file dialog and returns keyboard focus to the sharing popover", asyn
   const share = screen.getByRole("button", { name: "Share" });
   await user.click(share);
 
-  const notice = screen.getByText(/Sharing does not grant access to the rest/);
+  const notice = screen.getByText(/They can’t access the rest/);
   expect(notice).toHaveTextContent(
-    "Viewers can access the files and data used by this frame. Sharing does not grant access to the rest of the conversation or pod."
+    "People who can view this frame can also access the files and data it uses. They can’t access the rest of the conversation or pod."
   );
   expect(screen.queryByRole("list")).not.toBeInTheDocument();
   const trigger = screen.getByRole("button", { name: "View 2 files" });

@@ -1,7 +1,6 @@
 import type { ShareFrameViewerFile } from "@app/lib/api/viz/share_frame_viewer_files";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
-  Button,
   ContentMessage,
   Dialog,
   DialogContent,
@@ -10,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  Hoverable,
   Icon,
   ListItem,
 } from "@dust-tt/sparkle";
@@ -31,23 +31,22 @@ export function FrameSharingFiles({ viewerFiles }: FrameSharingFilesProps) {
 
   return (
     <ContentMessage
-      title="Files and data are shared too"
+      title="Files and data used by this frame are shared too"
       variant="blue"
       size="sm"
     >
       <p>
-        Viewers can access the files and data used by this frame. Sharing does
-        not grant access to the rest of the conversation or pod.
+        People who can view this frame can also access the files and data it
+        uses. They can’t access the rest of the conversation or pod.
       </p>
       <Dialog>
         <div className="mt-2">
-          <DialogTrigger asChild>
-            <Button
-              label={`View ${viewerFiles.length} ${viewerFiles.length === 1 ? "file" : "files"}`}
-              variant="ghost-secondary"
-              size="sm"
-            />
-          </DialogTrigger>
+          <Hoverable variant="highlight" asChild>
+            <DialogTrigger>
+              View {viewerFiles.length}{" "}
+              {viewerFiles.length === 1 ? "file" : "files"}
+            </DialogTrigger>
+          </Hoverable>
         </div>
         <DialogContent size="md" preventAutoFocusOnClose={false}>
           <DialogHeader hideButton>
