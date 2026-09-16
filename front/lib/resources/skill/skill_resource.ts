@@ -59,7 +59,6 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { launchSkillsSearchIndexation } from "@app/lib/skill_search/indexation";
 import {
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
@@ -71,6 +70,7 @@ import {
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
   AgentConfigurationWithoutModelType,
   LightAgentConfigurationType,
@@ -587,10 +587,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     if (skillIds.length === 0) {
       return;
     }
-    await launchSkillsSearchIndexation({
-      workspaceId: workspace.sId,
-      skillIds: uniq(skillIds),
-    });
+    const results = await concurrentExecutor(
+      uniq(skillIds),
+      (skillId) =>
+        launchIndexSkillSearchWorkflow({ workspaceId: workspace.sId, skillId }),
+      { concurrency: 8 }
+    );
+    const failedResult = results.find((result) => result.isErr());
+    if (failedResult?.isErr()) {
+      throw failedResult.error;
+    }
   }
 
   static async makeSuggestion(
