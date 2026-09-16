@@ -18,6 +18,9 @@ describe("skill search indexing activity", () => {
     vi.spyOn(skillIndex, "indexSkillDocument").mockResolvedValue(
       new Ok(undefined)
     );
+    vi.spyOn(skillIndex, "deleteSkillDocument").mockResolvedValue(
+      new Ok(undefined)
+    );
   });
 
   it("fetches current editors and resolves the last editor independently", async () => {
@@ -113,7 +116,7 @@ describe("skill search indexing activity", () => {
     );
   });
 
-  it("upserts active and archived skills", async () => {
+  it("upserts active and archived skills but deletes suggested and missing documents", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -134,7 +137,20 @@ describe("skill search indexing activity", () => {
     expect(skillIndex.indexSkillDocument).toHaveBeenLastCalledWith(
       expect.objectContaining({ skill_id: skill.sId, status: "active" })
     );
+    expect(skillIndex.deleteSkillDocument).not.toHaveBeenCalled();
 
+    expect((await skill.delete(auth)).isOk()).toBe(true);
+    await indexSkillSearchActivity(target);
+    expect(skillIndex.deleteSkillDocument).toHaveBeenLastCalledWith(target);
+    const suggestion = await SkillFactory.create(auth, { status: "suggested" });
+    await indexSkillSearchActivity({
+      workspaceId: workspace.sId,
+      skillId: suggestion.sId,
+    });
+    expect(skillIndex.deleteSkillDocument).toHaveBeenLastCalledWith({
+      workspaceId: workspace.sId,
+      skillId: suggestion.sId,
+    });
     expect(skillIndex.indexSkillDocument).toHaveBeenCalledTimes(3);
   });
 });
