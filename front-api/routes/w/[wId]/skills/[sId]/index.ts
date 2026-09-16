@@ -4,7 +4,6 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -137,14 +136,8 @@ app.get(
 
     const withRelations = ctx.req.query("withRelations");
 
-    const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
-    let favoriteState: { isFavorite?: boolean } = {};
-    if (hasSkillFavorites) {
-      const isFavorite = await skill.isFavoriteForCurrentUser(auth);
-      favoriteState = { isFavorite };
-    }
-
-    const serializedSkill = skill.toJSON(auth);
+    const isFavorite = await skill.isFavoriteForCurrentUser(auth);
+    const serializedSkill = { ...skill.toJSON(auth), isFavorite };
 
     if (withRelations === "true") {
       const usage = await skill.fetchUsage(auth);
@@ -156,7 +149,7 @@ app.get(
           skill.sId
         ) ?? [];
 
-      const skillWithRelations: SkillWithRelationsType = {
+      const skillWithRelations = {
         ...serializedSkill,
         relations: {
           usage: {
@@ -177,14 +170,14 @@ app.get(
             return childSkillWithoutInstructionsAndTools;
           }),
         },
-      };
+      } satisfies SkillWithRelationsType;
 
       return ctx.json({
-        skill: { ...skillWithRelations, ...favoriteState },
+        skill: skillWithRelations,
       } satisfies GetSkillWithRelationsResponseBody);
     }
     return ctx.json({
-      skill: { ...serializedSkill, ...favoriteState },
+      skill: serializedSkill,
     } satisfies GetSkillResponseBody);
   }
 );
