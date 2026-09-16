@@ -3,15 +3,12 @@ import type {
   FileCitationCardSize,
 } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
-import { ConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
-import { useSendNotification } from "@app/hooks/useNotification";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   isFrameContentType,
   isSupportedImageContentType,
 } from "@app/types/files";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   Citation,
   CitationImage,
@@ -20,7 +17,6 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type React from "react";
-import { useContext } from "react";
 
 interface PreviewableCitationProps {
   containerClassName?: string;
@@ -59,35 +55,17 @@ export function PreviewableCitation({
   tooltipLabel,
   variant = "card",
 }: PreviewableCitationProps) {
-  const { openFilePreview, resolveFileIdFromPath } = useFilePreviewContext();
-  const sendNotification = useSendNotification();
-  const sidePanel = useContext(ConversationSidePanelContext);
+  // Previews render in the side panel, so without one the citation is static.
+  const { canPreview, openFilePreview, openFramePreview } =
+    useFilePreviewContext();
 
   const handleClick = async () => {
-    if (isFrameContentType(contentType) && sidePanel) {
-      try {
-        const resolvedFileId =
-          fileId ?? (filePath ? await resolveFileIdFromPath(filePath) : null);
-
-        if (!resolvedFileId) {
-          throw new Error("No linked file was found for this Frame.");
-        }
-
-        sidePanel.openPanel({
-          type: "interactive_content",
-          fileId: resolvedFileId,
-        });
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to open Frame",
-          description: normalizeError(error).message,
-        });
-      }
+    if (isFrameContentType(contentType)) {
+      await openFramePreview({ fileId, filePath });
       return;
     }
 
-    openFilePreview({ fileId, filePath, title, contentType });
+    openFilePreview({ fileId, filePath, contentType });
   };
 
   if (variant === "inline") {
@@ -103,24 +81,32 @@ export function PreviewableCitation({
         title
       ));
 
+    const inlineContent = (
+      <>
+        <Icon visual={FileIcon} size="xs" className="shrink-0 self-center" />
+        <span className="truncate">{title}</span>
+      </>
+    );
+    const inlineClassName =
+      "inline-flex max-w-full items-baseline gap-1 align-baseline";
+
     return (
       <Tooltip
         tooltipTriggerAsChild
         trigger={
-          <Hoverable variant="highlight" asChild>
-            <button
-              type="button"
-              onClick={handleClick}
-              className="inline-flex max-w-full items-baseline gap-1 align-baseline"
-            >
-              <Icon
-                visual={FileIcon}
-                size="xs"
-                className="shrink-0 self-center"
-              />
-              <span className="truncate">{title}</span>
-            </button>
-          </Hoverable>
+          canPreview ? (
+            <Hoverable variant="highlight" asChild>
+              <button
+                type="button"
+                onClick={handleClick}
+                className={inlineClassName}
+              >
+                {inlineContent}
+              </button>
+            </Hoverable>
+          ) : (
+            <span className={inlineClassName}>{inlineContent}</span>
+          )
         }
         label={inlineTooltipLabel}
       />
@@ -142,7 +128,7 @@ export function PreviewableCitation({
               title={title}
               isLoading={isLoading}
               onClose={onRemove}
-              onClick={handleClick}
+              onClick={canPreview ? handleClick : undefined}
             />
           </Citation>
         }
@@ -152,17 +138,20 @@ export function PreviewableCitation({
   }
 
   const FileIcon = getFileTypeIcon(contentType, title);
-  return (
-    <FileCitationCard
-      icon={icon ?? FileIcon}
-      title={title}
-      description={description}
-      size={size}
-      isLoading={isLoading}
-      loadingLabel={loadingLabel}
-      onClick={handleClick}
-      onRemove={onRemove}
-      tooltipLabel={tooltipLabel ?? title}
-    />
+  const cardProps = {
+    icon: icon ?? FileIcon,
+    title,
+    description,
+    size,
+    isLoading,
+    loadingLabel,
+    onRemove,
+    tooltipLabel: tooltipLabel ?? title,
+  };
+
+  return canPreview ? (
+    <FileCitationCard {...cardProps} onClick={handleClick} />
+  ) : (
+    <FileCitationCard {...cardProps} />
   );
 }

@@ -884,7 +884,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "legacy_billing"
   | "plan_mode"
   | "admin_can_see_private_entities"
-  | "skill_favorites"
   | "poke_mcp"
   | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
@@ -3235,12 +3234,22 @@ const AnalyticsExportTableSchema = z.enum([
   "feedback",
 ]);
 
-const AnalyticsDateSchema = z
-  .string()
-  .refine(
-    (s): s is string => /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(s),
-    { message: "Date must be in YYYY-MM-DD format" }
+function isRealCalendarDate(s: string): boolean {
+  if (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(s)) {
+    return false;
+  }
+  const [year, month, day] = s.split("-").map(Number);
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  return (
+    probe.getUTCFullYear() === year &&
+    probe.getUTCMonth() === month - 1 &&
+    probe.getUTCDate() === day
   );
+}
+
+const AnalyticsDateSchema = z.string().refine(isRealCalendarDate, {
+  message: "Date must be a real calendar day in YYYY-MM-DD format",
+});
 
 export const GetAnalyticsExportRequestSchema = z
   .object({
@@ -3639,6 +3648,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SlabLogo"
   | "SlackLogo"
   | "SnowflakeLogo"
+  | "SpendeskLogo"
   | "StackOneLogo"
   | "StatuspageLogo"
   | "StripeLogo"

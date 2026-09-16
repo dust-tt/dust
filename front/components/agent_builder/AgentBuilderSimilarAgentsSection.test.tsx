@@ -58,6 +58,7 @@ vi.mock("@app/lib/swr/assistants", () => ({
 function makeAgent(sId: string, name: string): LightAgentConfigurationType {
   return {
     id: 1,
+    agentModelId: 1,
     versionCreatedAt: null,
     sId,
     version: 1,

@@ -45,6 +45,7 @@ export function _getClaude3HaikuGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -100,6 +101,7 @@ export function _getClaude3OpusGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -155,6 +157,7 @@ export function _getClaude3GlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -210,6 +213,7 @@ export function _getClaude4SonnetGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -265,6 +269,7 @@ export function _getClaude3_7GlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -334,6 +339,7 @@ export function _getClaude5SonnetGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -389,6 +395,7 @@ export function _getClaude4_5SonnetGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -445,6 +452,7 @@ export function _getClaude4_5HaikuGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,

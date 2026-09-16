@@ -18,6 +18,7 @@ import type { GetConsumptionTopReasoningEffortsResponse } from "@app/lib/api/ana
 import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
 import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/consumption/top_sources";
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
+import type { GetConsumptionTopTriggersResponse } from "@app/lib/api/analytics/consumption/top_triggers";
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
 import { emptyArray } from "@app/lib/swr/swr";
 import type {
@@ -38,6 +39,7 @@ const CONSUMPTION_TOP_ENDPOINTS = {
   tool: "top-tools",
   skill: "top-skills",
   source: "top-sources",
+  trigger: "top-triggers",
   api_key: "top-api-keys",
 } as const satisfies Record<ConsumptionTopDimension, string>;
 
@@ -66,6 +68,7 @@ export type ConsumptionTopResponse =
   | GetConsumptionTopToolsResponse
   | GetConsumptionTopSkillsResponse
   | GetConsumptionTopSourcesResponse
+  | GetConsumptionTopTriggersResponse
   | GetConsumptionTopApiKeysResponse;
 
 export interface UseConsumptionTopParams {
@@ -190,6 +193,20 @@ export function toConsumptionTopRows(
   if ("sources" in data) {
     return data.sources.map((row) => ({
       id: row.source,
+      name: row.name,
+      pictureUrl: null,
+      description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
+      credits: row.credits,
+      avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
+    }));
+  }
+  if ("triggers" in data) {
+    return data.triggers.map((row) => ({
+      id: row.triggerId,
       name: row.name,
       pictureUrl: null,
       description: null,

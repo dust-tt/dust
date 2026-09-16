@@ -29,10 +29,12 @@ import {
 } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
+import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import type { GrantVerb } from "@app/types/group_permissions";
 import type {
   GroupGrantableRole,
   GroupGrantableSeatType,
@@ -55,10 +57,12 @@ import type {
   MembershipSeatType,
 } from "@app/types/memberships";
 import { SEAT_TYPE_ORDER } from "@app/types/memberships";
-import type { AccessControlList } from "@app/types/resource_permissions";
+import type { RoleGrant } from "@app/types/resource_permissions";
+import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -487,12 +491,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    const group = await GroupResource.makeNew({
-      name,
-      kind: "regular_manual",
-      workspaceId: owner.id,
-    });
-
+    // Everything that can reject the request is checked before the group row exists: a rejected
+    // creation must not leave an empty group behind, which would also block retrying the name.
     const uniqueMemberIds = [...new Set(memberIds)];
     const users = await UserResource.fetchByIds(uniqueMemberIds);
     if (users.length !== uniqueMemberIds.length) {
@@ -500,7 +500,27 @@ export class GroupResource extends BaseResource<GroupModel> {
         new DustError("user_not_found", "Some users were not found.")
       );
     }
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({
+        users,
+        workspace: owner,
+      });
+    if (workspaceMemberships.length !== users.length) {
+      return new Err(
+        new DustError(
+          "user_not_found",
+          "Cannot add: users are not members of the workspace"
+        )
+      );
+    }
     const memberUsers = users.map((u) => u.toJSON());
+
+    const group = await GroupResource.makeNew({
+      name,
+      kind: "regular_manual",
+      workspaceId: owner.id,
+    });
+    // Cannot fail past this point: the users were validated above and the group is empty.
     const addResult = await group.dangerouslyAddMembers(auth, {
       users: memberUsers,
     });
@@ -2385,36 +2405,6 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Whether applying `addUserIds` then `removeUserIds` could leave the group without any active
-   * member. `addUserIds` and `removeUserIds` must be deduplicated; a user in both lists ends up
-   * removed, since members are added first and removed second.
-   *
-   * Only reads the current members when the answer is not already settled by the two lists, so
-   * the common add-only and add-and-remove cases cost no query.
-   */
-  private async wouldBeEmptyAfterMemberChange(
-    auth: Authenticator,
-    {
-      addUserIds,
-      removeUserIds,
-    }: { addUserIds: string[]; removeUserIds: string[] }
-  ): Promise<boolean> {
-    // Removing nothing can only grow the group.
-    if (removeUserIds.length === 0) {
-      return false;
-    }
-
-    // Any added user that is not removed again survives the change.
-    const removedUserIds = new Set(removeUserIds);
-    if (addUserIds.some((userId) => !removedUserIds.has(userId))) {
-      return false;
-    }
-
-    const currentMembers = await this.getActiveMembers(auth);
-    return currentMembers.every((member) => removedUserIds.has(member.sId));
-  }
-
-  /**
    * Adds and/or removes members of a manually-managed group, leaving the other members untouched.
    */
   /**
@@ -2493,13 +2483,67 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Checked before any mutation so a rejected update leaves the members untouched.
-    if (
-      await this.wouldBeEmptyAfterMemberChange(auth, {
-        addUserIds: uniqueAddUserIds,
-        removeUserIds: uniqueRemoveUserIds,
-      })
-    ) {
+    // Everything that can reject the request is checked before any mutation: the additions and
+    // removals below run as two separate writes, so a late rejection would leave the first one
+    // persisted (and unaudited by the caller).
+    const owner = auth.getNonNullableWorkspace();
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({
+        users,
+        workspace: owner,
+      });
+    const activeWorkspaceUserIds = new Set(
+      workspaceMemberships.map((m) => m.userId)
+    );
+    const userModelIdBySId = new Map(users.map((u) => [u.sId, u.id]));
+    const isActiveWorkspaceMember = (userId: string) => {
+      const modelId = userModelIdBySId.get(userId);
+      return modelId !== undefined && activeWorkspaceUserIds.has(modelId);
+    };
+    if (!uniqueAddUserIds.every(isActiveWorkspaceMember)) {
+      return new Err(
+        new DustError(
+          "user_not_found",
+          "Cannot add: users are not members of the workspace"
+        )
+      );
+    }
+    if (!uniqueRemoveUserIds.every(isActiveWorkspaceMember)) {
+      return new Err(
+        new DustError(
+          "user_not_member",
+          "Cannot remove: users are not members of the workspace"
+        )
+      );
+    }
+
+    const currentMemberIds = new Set(
+      (await this.getActiveMembers(auth)).map((m) => m.sId)
+    );
+    if (uniqueAddUserIds.some((userId) => currentMemberIds.has(userId))) {
+      return new Err(
+        new DustError(
+          "user_already_member",
+          "Cannot add: users are already members of the group"
+        )
+      );
+    }
+    if (!uniqueRemoveUserIds.every((userId) => currentMemberIds.has(userId))) {
+      return new Err(
+        new DustError(
+          "user_not_member",
+          "Cannot remove: users are not members of the group"
+        )
+      );
+    }
+
+    // Members are added first and removed second, so a user in both lists ends up removed.
+    const removedUserIds = new Set(uniqueRemoveUserIds);
+    const remainingCount =
+      [...currentMemberIds].filter((userId) => !removedUserIds.has(userId))
+        .length +
+      uniqueAddUserIds.filter((userId) => !removedUserIds.has(userId)).length;
+    if (remainingCount === 0) {
       return new Err(
         new DustError("last_group_member", LAST_GROUP_MEMBER_ERROR_MESSAGE)
       );
@@ -2675,47 +2719,43 @@ export class GroupResource extends BaseResource<GroupModel> {
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"
    * will NOT have it
    *
-   * @returns Array of AccessControlList objects defining the default access
-   * configuration
+   * @returns The verbs the caller holds on this group. Group access is role-only (no governance
+   * grants), so the set is the caller's role rules for the group's kind.
    */
-  getAccessControlLists(auth: Authenticator): AccessControlList[] {
-    // regular_manual: admins and managers manage the group; everyone can read.
-    if (this.isRegularManual()) {
-      return [
-        {
-          roles: [
-            { role: "admin", permissions: ["read", "write", "admin"] },
-            { role: "manager", permissions: ["read", "write", "admin"] },
-            { role: "user", permissions: ["read"] },
-            { role: "builder", permissions: ["read"] },
-          ],
-          workspaceId: this.workspaceId,
-        },
-      ];
+  getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
+    let roleGrants: RoleGrant[];
+    switch (this.kind) {
+      // regular_manual: admins and managers manage the group; everyone can read.
+      case "regular_manual":
+        roleGrants = [
+          { role: "admin", permissions: ["read", "write", "admin"] },
+          { role: "manager", permissions: ["read", "write", "admin"] },
+          { role: "user", permissions: ["read"] },
+          { role: "builder", permissions: ["read"] },
+        ];
+        break;
+      case "global":
+      case "provisioned":
+        roleGrants = [
+          { role: "admin", permissions: ["read"] },
+          { role: "manager", permissions: ["read"] },
+          { role: "user", permissions: ["read"] },
+          { role: "builder", permissions: ["read"] },
+        ];
+        break;
+      // system, regular_auto, agent_editors: no permission for anyone. Access to a regular_auto
+      // group is decided on the resource it is linked to, and its owner fetches it without a check.
+      case "system":
+      case "regular_auto":
+      case "agent_editors":
+        roleGrants = [];
+        break;
+      default:
+        assertNever(this.kind);
     }
 
-    if (this.isGlobal() || this.isProvisioned()) {
-      return [
-        {
-          roles: [
-            { role: "admin", permissions: ["read"] },
-            { role: "manager", permissions: ["read"] },
-            { role: "user", permissions: ["read"] },
-            { role: "builder", permissions: ["read"] },
-          ],
-          workspaceId: this.workspaceId,
-        },
-      ];
-    }
-
-    // system, regular_auto: no permission for anyone. Access to a regular_auto group is
-    // decided on the resource it is linked to, and its owner fetches it without an ACL check.
-    return [
-      {
-        roles: [],
-        workspaceId: this.workspaceId,
-      },
-    ];
+    // Group access is role-only (no governance grants).
+    return new Set(verbsFromRoleGrants(auth, roleGrants, this.workspaceId));
   }
 
   canRead(auth: Authenticator): boolean {
@@ -2941,6 +2981,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       { transaction }
     );
 
+    let didUpdateRole = false;
+
     for (const user of users) {
       const currentMembership =
         await MembershipResource.getActiveMembershipOfUserInWorkspace({
@@ -2997,6 +3039,8 @@ export class GroupResource extends BaseResource<GroupModel> {
         );
       }
 
+      didUpdateRole = true;
+
       logger.info(
         {
           workspaceId: workspace.sId,
@@ -3006,6 +3050,14 @@ export class GroupResource extends BaseResource<GroupModel> {
         },
         "Synced workspace role from group membership"
       );
+    }
+
+    // A group-driven role change can add or remove an admin. `updateMembershipRole`
+    // above bypasses `updateMembershipRoleAndTrack` (transaction + import cycle),
+    // so enqueue the debounced WorkOS IT-contacts sync here. One coalesced run
+    // covers the whole batch; the activity re-reads the admin set at run time.
+    if (didUpdateRole) {
+      await launchSyncWorkOSITContactsWorkflow({ workspaceId: workspace.sId });
     }
   }
 
@@ -3193,7 +3245,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Metronome seat-billed or the contract bills no seat at that tier. Assumes
    * this group does not already grant a seat (the mapping is being added).
    */
-  async listMembersMovedByGrantingSeat(
+  async listMembersAffectedByGrantingSeat(
     auth: Authenticator,
     seatType: GroupGrantableSeatType
   ): Promise<{
@@ -3201,11 +3253,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     targetSeatType: MembershipSeatType | null;
   }> {
     const workspace = auth.getNonNullableWorkspace();
-    const members = await this.getActiveMembers(auth);
-    if (members.length === 0 || !workspace.metronomeCustomerId) {
+
+    // Resolve whether the contract bills this tier FIRST — independent of the
+    // group's membership. A `null` targetSeatType must mean "the contract does
+    // not bill this tier", never "the group happens to be empty": callers surface
+    // it as a billing error.
+    if (!workspace.metronomeCustomerId) {
       return { members: [], targetSeatType: null };
     }
-
     const contract = await getActiveContract(workspace.sId);
     if (!contract || !(await hasContractSeatSubscription(contract))) {
       return { members: [], targetSeatType: null };
@@ -3223,17 +3278,22 @@ export class GroupResource extends BaseResource<GroupModel> {
       return { members: [], targetSeatType: null };
     }
 
+    // The contract bills the tier; an empty group is a valid mapping with no
+    // members to move.
+    const members = await this.getActiveMembers(auth);
+    if (members.length === 0) {
+      return { members: [], targetSeatType };
+    }
+
     const grantedSeatsByUser =
       await GroupResource.listGrantedSeatsByUserInWorkspace(auth);
-    const { memberships } = await MembershipResource.getActiveMemberships({
-      workspace,
-      users: members,
-    });
-    const currentSeatByUser = new Map<ModelId, MembershipSeatType>(
-      memberships.map((m) => [m.userId, m.seatType])
-    );
 
-    const moved = members.filter((member) => {
+    // Members whose resulting highest-wins tier IS this grant's tier. This
+    // includes members already on the tier (shown as "unchanged" in the preview,
+    // and whose pending removal would be cancelled) — only members covered by a
+    // higher tier from another group are excluded, since this mapping wouldn't
+    // affect them.
+    const affected = members.filter((member) => {
       const otherGrants = grantedSeatsByUser.get(member.id) ?? [];
       const resultingTierSeat = GroupResource.seatFromGrantedSeats(
         [...otherGrants, seatType].filter(
@@ -3242,19 +3302,13 @@ export class GroupResource extends BaseResource<GroupModel> {
             null
         )
       );
-      // A higher granted tier elsewhere wins, so this mapping wouldn't move them.
-      if (
-        resultingTierSeat === null ||
-        SEAT_TYPE_ORDER[resultingTierSeat] !== targetTier
-      ) {
-        return false;
-      }
-      // Already on the granted tier (any cadence): kept, not moved.
-      const currentSeat = currentSeatByUser.get(member.id);
-      return !currentSeat || SEAT_TYPE_ORDER[currentSeat] !== targetTier;
+      return (
+        resultingTierSeat !== null &&
+        SEAT_TYPE_ORDER[resultingTierSeat] === targetTier
+      );
     });
 
-    return { members: moved, targetSeatType };
+    return { members: affected, targetSeatType };
   }
 
   // Builds `userModelId -> granted base seats` for the whole workspace by loading

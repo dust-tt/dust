@@ -43,6 +43,7 @@ export function _getMistralLargeGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -97,6 +98,7 @@ export function _getMistralMediumGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -146,6 +148,7 @@ export function _getMistralSmallGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,

@@ -163,8 +163,19 @@ export type GlobalAgentContext = {
   staticReply?: string;
 };
 
+// `agentModelId` carries the agent's stable identity onto every rendered configuration so callers
+// can build an `AgentResource` (`AgentResource.fromAgentConfiguration`) without a database lookup.
+/**
+ * @cc [owner:tdraier,label:backend] agent-model-id-population
+ * `agentModelId` MUST be the stable `AgentModel.id` for custom agents (`scope !== "global"`) and
+ * MUST be `null` for global agents (`scope === "global"`). A custom-agent configuration MUST NOT
+ * carry a `null` `agentModelId`.
+ */
 export const LightAgentConfigurationSchema = z.object({
   id: DbModelIdSchema,
+  // Stable `AgentModel.id` shared across every version. Null for global agents,
+  // which have no `agent` identity row.
+  agentModelId: DbModelIdSchema.nullable(),
   versionCreatedAt: z.string().nullable(),
   sId: z.string(),
   version: z.number(),

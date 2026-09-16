@@ -489,7 +489,7 @@ async function executeToolStreaming(
             name: agentConfiguration.name,
           },
           // The agent is the actor, so it is deliberately not repeated as a
-          // target: pod function tool calls share this action and have no agent.
+          // target: frame function tool calls share this action and have no agent.
           targets: [
             buildAuditLogTarget("workspace", conversation.owner),
             buildAuditLogTarget("tool", {

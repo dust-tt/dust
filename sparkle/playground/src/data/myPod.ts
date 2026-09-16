@@ -40,24 +40,12 @@ export function isMyPodGroupConversation(conversation: Conversation): boolean {
   return conversation.userParticipants.length > 1;
 }
 
-export function isMyPodTriggeredConversation(
-  conversation: Conversation
-): boolean {
-  return (
-    conversation.userParticipants.length === 0 &&
-    conversation.agentParticipants.length >= 1
-  );
-}
-
+/**
+ * Automated work is never anything but a trigger's run, so the trigger it came
+ * from is the whole test: no trigger, no automation, whoever is in the room.
+ */
 export function isTriggeredConversation(conversation: Conversation): boolean {
-  if (isMyPodTriggeredConversation(conversation)) {
-    return true;
-  }
-  let hash = 0;
-  for (let i = 0; i < conversation.id.length; i++) {
-    hash = (hash + conversation.id.charCodeAt(i)) % 997;
-  }
-  return hash % 4 === 0;
+  return conversation.triggerId !== undefined;
 }
 
 export function matchesMyPodConversationFilter(
@@ -73,7 +61,7 @@ export function matchesMyPodConversationFilter(
     case "group":
       return isMyPodGroupConversation(conversation);
     case "triggered":
-      return isMyPodTriggeredConversation(conversation);
+      return isTriggeredConversation(conversation);
   }
 }
 
@@ -152,9 +140,12 @@ export function enrichMyPodConversationParticipants(
       myPodSeedRandom(`${conversation.id}-${b.id}`, 0)
   );
 
+  // The last bucket is you and a couple of agents. A conversation with no
+  // human in it at all would be automated work, and that only ever comes from
+  // a trigger.
   return {
     ...conversation,
-    userParticipants: [],
+    userParticipants: [currentUserId],
     agentParticipants: shuffledAgents
       .slice(0, agentCount)
       .map((agent) => agent.id),

@@ -7,12 +7,15 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import { fetchPokeFromAllCells } from "@app/poke/swr/cells";
 import type { PokeListPluginRunsResponseBody } from "@app/types/api/poke/plugin_manager";
 import type { PokeGetPluginAsyncArgsResponseBody } from "@app/types/api/poke/plugins/async_args";
 import type { PokeGetPluginDetailsResponseBody } from "@app/types/api/poke/plugins/manifest";
+import type { CellInfo } from "@app/types/cell";
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Fetcher } from "swr";
 
 export function usePokeListPluginForResourceType({
@@ -113,6 +116,11 @@ export function usePokePluginAsyncArgs({
   };
 }
 
+export interface CellPluginRunResult {
+  cell: CellInfo;
+  result: Result<PokeRunPluginResponseBody["result"], string>;
+}
+
 export function useRunPokePlugin({
   pluginId,
   pluginResourceTarget,
@@ -132,39 +140,35 @@ export function useRunPokePlugin({
     urlSearchParams.append("workspaceId", pluginResourceTarget.workspace.sId);
   }
 
-  const doRunPlugin = async (
-    args: object
-  ): Promise<Result<PokeRunPluginResponseBody["result"], string>> => {
-    // Check if any of the args are File objects
+  // Args carrying a File must go over FormData; otherwise JSON keeps the
+  // request body typed for the API route.
+  const buildRunRequestInit = (args: object): RequestInit => {
     const hasFiles = Object.values(args).some((arg) => arg instanceof File);
-    let res;
     if (hasFiles) {
-      // Use FormData for multipart/form-data when files are present
       const formData = new FormData();
       Object.entries(args).forEach(([key, value]) => {
         formData.append(key, value);
       });
 
-      res = await clientFetch(
-        `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-    } else {
-      // Use JSON when no files are present
-      res = await clientFetch(
-        `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(args),
-        }
-      );
+      return { method: "POST", credentials: "include", body: formData };
     }
+
+    return {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(args),
+    };
+  };
+
+  const runPath = `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`;
+
+  const runPlugin = async (
+    args: object
+  ): Promise<Result<PokeRunPluginResponseBody["result"], string>> => {
+    const res = await clientFetch(runPath, buildRunRequestInit(args));
 
     if (res.ok) {
       const response: PokeRunPluginResponseBody = await res.json();
@@ -177,7 +181,31 @@ export function useRunPokePlugin({
     }
   };
 
-  return { doRunPlugin };
+  const doRunPlugin = (args: object) => runPlugin(args);
+
+  const doRunPluginOnCells = async (
+    args: object,
+    cells: CellInfo[]
+  ): Promise<CellPluginRunResult[]> => {
+    // Each cell's own URL is prefixed onto runPath by fetchPokeFromAllCells,
+    // which is how the run gets targeted at that cell.
+    const results = await fetchPokeFromAllCells<PokeRunPluginResponseBody>({
+      cells,
+      path: runPath,
+      init: buildRunRequestInit(args),
+    });
+
+    return results.map((result) =>
+      result.ok
+        ? { cell: result.cell, result: new Ok(result.data.result) }
+        : {
+            cell: result.cell,
+            result: new Err(normalizeError(result.error).message),
+          }
+    );
+  };
+
+  return { doRunPlugin, doRunPluginOnCells };
 }
 
 interface PokePluginRunsFetchProps {

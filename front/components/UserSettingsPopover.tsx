@@ -8,6 +8,12 @@ import {
   SoundNotificationPreferences,
   useSoundNotificationPreferencesForm,
 } from "@app/components/me/SoundNotificationPreferences";
+import type { ConversationFont } from "@app/components/sparkle/ConversationFontContext";
+import {
+  CONVERSATION_FONT_LABELS,
+  CONVERSATION_FONTS,
+  useConversationFont,
+} from "@app/components/sparkle/ConversationFontContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
@@ -25,6 +31,11 @@ import {
 } from "@app/lib/swr/user";
 import { useAuthContext } from "@app/lib/swr/workspaces";
 import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
+import {
   MAX_USER_MEMORY_CHARS,
   MAX_USER_MEMORY_CONTENT_LENGTH,
 } from "@app/types/api/me/memory";
@@ -34,12 +45,14 @@ import {
   ANONYMOUS_USER_IMAGE_URL,
   areConversationExternalNotificationsEnabled,
 } from "@app/types/user";
+import type { OptionTile } from "@dust-tt/sparkle";
 import {
   Avatar,
   Bell01,
   Brain,
   Button,
   ContentMessageInline,
+  cn,
   Dialog,
   DialogClose,
   DialogContent,
@@ -51,11 +64,12 @@ import {
   Edit04,
   InfoCircle,
   Input,
-  Label,
   Mail01,
+  Monitor01,
   Moon01,
   NavigationList,
   NavigationListItem,
+  OptionTileGroup,
   Page,
   Settings01,
   SettingsList,
@@ -106,7 +120,7 @@ function SectionContent({
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-5 pb-8 pt-5 sm:px-6 sm:pt-8">
         <header className="flex flex-col gap-1">
-          <h2 className="heading-2xl text-foreground">{title}</h2>
+          <h2 className="heading-xl text-foreground">{title}</h2>
           {description && (
             <p className="copy-sm text-muted-foreground">{description}</p>
           )}
@@ -206,6 +220,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
   return (
     <SectionContent
       title="Personal Information"
+      description="How you appear to other members of the workspace"
       footer={
         <Button
           label="Save"
@@ -226,55 +241,86 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
           onChange={handleImageUpload}
         />
 
-        <div className="group relative w-fit">
-          <Avatar size="lg" visual={currentImageUrl} isRounded />
-          <Button
-            variant="outline"
-            size="sm"
-            icon={Edit04}
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
-            disabled={isUploadingImage || isProvisioned}
-            isLoading={isUploadingImage}
+        <SettingsList>
+          <SettingsList.Row
+            title="Profile picture"
+            description={
+              isProvisioned
+                ? "Managed by your identity provider"
+                : "Shown next to your messages"
+            }
+            action={
+              <div className="group relative w-fit">
+                <Avatar size="md" visual={currentImageUrl} isRounded />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Edit04}
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  // Circular overlay the exact size of the avatar, so the
+                  // hover state reads as "edit this picture", not a square
+                  // button floating over a circle.
+                  className="absolute inset-0 h-full w-full rounded-full opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                  disabled={isUploadingImage || isProvisioned}
+                  isLoading={isUploadingImage}
+                />
+              </div>
+            }
           />
-        </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Input
-                label="First Name"
-                {...form.register("firstName")}
-                placeholder="First Name"
-                disabled={isProvisioned}
-                isError={!!form.formState.errors.firstName}
-                message={form.formState.errors.firstName?.message}
-                messageStatus={
-                  form.formState.errors.firstName ? "error" : undefined
-                }
-              />
-            </div>
-            <div className="flex-1">
-              <Input
-                label="Last Name"
-                {...form.register("lastName")}
-                placeholder="Last Name"
-                disabled={isProvisioned}
-                isError={!!form.formState.errors.lastName}
-                message={form.formState.errors.lastName?.message}
-                messageStatus={
-                  form.formState.errors.lastName ? "error" : undefined
-                }
-              />
-            </div>
-          </div>
+          <SettingsList.Row
+            title="First name"
+            description={
+              isProvisioned ? "Managed by your identity provider" : undefined
+            }
+            action={
+              <div className="w-64">
+                <Input
+                  {...form.register("firstName")}
+                  placeholder="First name"
+                  disabled={isProvisioned}
+                  isError={!!form.formState.errors.firstName}
+                  message={form.formState.errors.firstName?.message}
+                  messageStatus={
+                    form.formState.errors.firstName ? "error" : undefined
+                  }
+                />
+              </div>
+            }
+          />
 
-          <div className="flex items-center gap-2">
-            <Label>Email</Label>
-            <span className="text-sm text-muted-foreground">{user?.email}</span>
-          </div>
-        </div>
+          <SettingsList.Row
+            title="Last name"
+            description={
+              isProvisioned ? "Managed by your identity provider" : undefined
+            }
+            action={
+              <div className="w-64">
+                <Input
+                  {...form.register("lastName")}
+                  placeholder="Last name"
+                  disabled={isProvisioned}
+                  isError={!!form.formState.errors.lastName}
+                  message={form.formState.errors.lastName?.message}
+                  messageStatus={
+                    form.formState.errors.lastName ? "error" : undefined
+                  }
+                />
+              </div>
+            }
+          />
+
+          <SettingsList.Row
+            title="Email"
+            description="Used to sign in and receive notifications"
+            action={
+              <span className="copy-sm text-muted-foreground">
+                {user?.email}
+              </span>
+            }
+          />
+        </SettingsList>
       </FormProvider>
     </SectionContent>
   );
@@ -282,8 +328,43 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
 // ─── Customization ────────────────────────────────────────────────────────────
 
+type ThemeChoice = "light" | "dark" | "system";
+
+const THEME_OPTIONS: OptionTile<ThemeChoice>[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon01 },
+  { value: "system", label: "Auto", icon: Monitor01 },
+];
+
+// Each tile previews its option as a type specimen in that face.
+const CONVERSATION_FONT_SPECIMEN_CLASSES: Record<ConversationFont, string> = {
+  sans: "font-sans",
+  serif: "font-serif",
+  dyslexic: "font-dyslexic",
+};
+
+const CONVERSATION_FONT_OPTIONS: OptionTile<ConversationFont>[] =
+  CONVERSATION_FONTS.map((font) => ({
+    value: font,
+    label: CONVERSATION_FONT_LABELS[font],
+    visual: (
+      <span
+        className={cn(
+          CONVERSATION_FONT_SPECIMEN_CLASSES[font],
+          "text-xl leading-none"
+        )}
+      >
+        Aa
+      </span>
+    ),
+  }));
+
 function CustomizationSection() {
   const { theme: currentTheme, setTheme } = useTheme();
+  const { conversationFont, setConversationFont } = useConversationFont();
+  const sendNotification = useSendNotification();
+  const [localConversationFont, setLocalConversationFont] =
+    useState<ConversationFont>(conversationFont);
   const isMac = useIsMac();
   const { isAgentsSectionVisible, setAgentsSectionVisible } =
     useAgentsSectionVisibility();
@@ -308,7 +389,9 @@ function CustomizationSection() {
     typeof document !== "undefined" ? document.body : undefined
   );
 
-  const [localTheme, setLocalTheme] = useState(currentTheme ?? "system");
+  const [localTheme, setLocalTheme] = useState<ThemeChoice>(
+    currentTheme ?? "system"
+  );
   const [submitKey, setSubmitKey] = useState<"enter" | "cmd+enter">(() => {
     if (typeof window === "undefined") {
       return "enter";
@@ -318,6 +401,7 @@ function CustomizationSection() {
   });
   const isDirty =
     localTheme !== currentTheme ||
+    localConversationFont !== conversationFont ||
     submitKey !==
       (typeof window !== "undefined"
         ? (localStorage.getItem("submitMessageKey") ?? "enter")
@@ -325,16 +409,43 @@ function CustomizationSection() {
     localAgentsSectionVisible !== isAgentsSectionVisible;
 
   const handleSave = () => {
-    setTheme(localTheme as "light" | "dark" | "system");
+    if (localTheme !== currentTheme) {
+      trackEvent({
+        area: TRACKING_AREAS.SETTINGS,
+        object: "theme",
+        action: TRACKING_ACTIONS.SELECT,
+        extra: { theme: localTheme },
+      });
+    }
+    setTheme(localTheme);
     if (typeof window !== "undefined") {
       localStorage.setItem("submitMessageKey", submitKey);
     }
     setAgentsSectionVisible(localAgentsSectionVisible);
+    if (localConversationFont !== conversationFont) {
+      trackEvent({
+        area: TRACKING_AREAS.SETTINGS,
+        object: "conversation_font",
+        action: TRACKING_ACTIONS.SELECT,
+        extra: { font: localConversationFont },
+      });
+      void setConversationFont(localConversationFont).then((saved) => {
+        if (!saved) {
+          sendNotification({
+            type: "error",
+            title: "Could not save the conversation font",
+            description:
+              "It applies on this device, but could not be saved to your account.",
+          });
+        }
+      });
+    }
   };
 
   return (
     <SectionContent
       title="Customization"
+      description="Adjust how Dust looks and behaves for you."
       footer={
         <Button
           label="Save"
@@ -350,46 +461,25 @@ function CustomizationSection() {
           title="Theme"
           description="Choose how Dust looks on this device"
           action={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={
-                    localTheme === "light"
-                      ? Sun
-                      : localTheme === "dark"
-                        ? Moon01
-                        : Sun
-                  }
-                  label={
-                    localTheme === "light"
-                      ? "Light"
-                      : localTheme === "dark"
-                        ? "Dark"
-                        : "System"
-                  }
-                  isSelect
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent mountPortalContainer={portalContainer}>
-                <DropdownMenuItem
-                  icon={Sun}
-                  label="Light"
-                  onClick={() => setLocalTheme("light")}
-                />
-                <DropdownMenuItem
-                  icon={Moon01}
-                  label="Dark"
-                  onClick={() => setLocalTheme("dark")}
-                />
-                <DropdownMenuItem
-                  icon={Sun}
-                  label="System"
-                  onClick={() => setLocalTheme("system")}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <OptionTileGroup
+              ariaLabel="Theme"
+              options={THEME_OPTIONS}
+              value={localTheme}
+              onValueChange={setLocalTheme}
+            />
+          }
+        />
+
+        <SettingsList.Row
+          title="Conversation font"
+          description="Font used for agent answers in conversations"
+          action={
+            <OptionTileGroup
+              ariaLabel="Conversation font"
+              options={CONVERSATION_FONT_OPTIONS}
+              value={localConversationFont}
+              onValueChange={setLocalConversationFont}
+            />
           }
         />
 

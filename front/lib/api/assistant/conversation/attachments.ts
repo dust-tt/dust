@@ -178,6 +178,22 @@ function shouldSuppressTabularAttachmentHints({
  * In file explorer mode every flag is off: files are reached by path through the `files` MCP server
  * and tabular files are analyzed by the Computer, so none of the conversation_files JIT tools apply.
  */
+/**
+ * @cc [owner:frankaloia,label:product] file-explorer-disables-conversation-file-tools
+ * When `isNewFileExplorer` is true, `isQueryable`, `isIncludable`, and `isSearchable` MUST all be
+ * false. Regular files are reached by path through the `files` server, not `conversation_files`.
+ */
+/**
+ * @cc [owner:frankaloia,label:product] includable-independent-of-snippet
+ * When `isNewFileExplorer` is false, `isIncludable` MUST follow content type and tabular
+ * suppression only. A null `snippet` MUST NOT make `isIncludable` false: `conversation_files__cat`
+ * reads original file content, which still exists after JIT indexing was removed.
+ */
+/**
+ * @cc [owner:frankaloia,label:product] query-search-require-snippet
+ * `isQueryable` and `isSearchable` MUST be false when `snippet` is null or the content type is a
+ * pasted file. Those capabilities require JIT-indexed content that snippet-less files do not have.
+ */
 function computeFileAttachmentCapabilityFlags({
   contentType,
   snippet,
@@ -195,13 +211,15 @@ function computeFileAttachmentCapabilityFlags({
   isIncludable: boolean;
   isSearchable: boolean;
 } {
-  // snippet !== null distinguishes pre-JIT attachments (no snippet) from newer ones.
-  // Pasted files and the new file explorer do not use conversation_files JIT for regular files.
-  const canDoJIT =
-    snippet !== null && !isPastedFile(contentType) && !isNewFileExplorer;
-  if (!canDoJIT) {
+  if (isNewFileExplorer) {
     return { isQueryable: false, isIncludable: false, isSearchable: false };
   }
+
+  // Query/search need a snippet from JIT indexing. Direct reading does not: after JIT upsert
+  // was removed, newly uploaded files legitimately have `snippet: null` while their original
+  // content remains readable via `conversation_files__cat`. Pasted files are inlined and are
+  // not queryable or searchable.
+  const canQueryOrSearch = snippet !== null && !isPastedFile(contentType);
 
   const shouldSuppressTabularHints = shouldSuppressTabularAttachmentHints({
     contentType,
@@ -211,13 +229,14 @@ function computeFileAttachmentCapabilityFlags({
 
   return {
     isQueryable:
+      canQueryOrSearch &&
       !shouldSuppressTabularHints &&
       isQueryableContentType(contentType) &&
       !hasSandboxTools, // Only use query_tables_v2 if Computer is not available.
     isIncludable:
       !shouldSuppressTabularHints &&
       isConversationIncludableFileContentType(contentType),
-    isSearchable: isSearchableContentType(contentType),
+    isSearchable: canQueryOrSearch && isSearchableContentType(contentType),
   };
 }
 

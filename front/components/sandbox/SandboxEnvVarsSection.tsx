@@ -466,7 +466,7 @@ export function SandboxEnvVarsSection({
         />
 
         <ContentMessage
-          variant="info"
+          variant="primary"
           icon={InfoCircle}
           size="lg"
           title="Choose the right kind for each value"

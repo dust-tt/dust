@@ -241,7 +241,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
             },
           });
           if (!currentFunction) {
-            return new Err(new Error("The Pod Function no longer exists."));
+            return new Err(new Error("The Frame Function no longer exists."));
           }
 
           // Hash of the exact code the upload below writes. Compared against the row re-read

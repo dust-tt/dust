@@ -12,6 +12,10 @@ vi.mock("@app/hooks/useConsumptionOverview", () => ({
   useConsumptionOverview: mockUseConsumptionOverview,
 }));
 
+vi.mock("@app/lib/auth/AuthContext", () => ({
+  useAuth: () => ({ isManager: true }),
+}));
+
 const period = { kind: "days", days: 30 } as const;
 const agentAnalyticsScope: ConsumptionAnalyticsScope = {
   kind: "agent",

@@ -5,14 +5,17 @@ import {
   PokeAlertTitle,
 } from "@app/components/poke/shadcn/ui/alert";
 import type { PluginListItem, PluginResponse } from "@app/lib/api/poke/types";
+import { getCellDisplay } from "@app/lib/poke/cells";
 import {
   usePokePluginAsyncArgs,
   usePokePluginManifest,
   useRunPokePlugin,
 } from "@app/poke/swr/plugins";
+import type { CellInfo, CellType } from "@app/types/cell";
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import {
   Button,
+  CheckboxWithText,
   Clipboard,
   ClipboardCheck,
   cn,
@@ -50,6 +53,50 @@ function pluginResponseToCopyText(result: PluginResponse): string {
   }
 }
 
+interface CellRunResult {
+  cell: CellInfo;
+  ok: boolean;
+  message: string;
+}
+
+interface CellRunResultsProps {
+  results: CellRunResult[];
+}
+
+function CellRunResults({ results }: CellRunResultsProps) {
+  const succeeded = results.filter((result) => result.ok);
+  const failed = results.filter((result) => !result.ok);
+
+  return (
+    <div className="mb-4 mt-4 flex flex-col gap-2">
+      {succeeded.length > 0 && (
+        <PokeAlert variant="success">
+          <PokeAlertTitle>Succeeded</PokeAlertTitle>
+          <PokeAlertDescription>
+            {succeeded
+              .map(
+                (result) => `${getCellDisplay(result.cell)}: ${result.message}`
+              )
+              .join(" · ")}
+          </PokeAlertDescription>
+        </PokeAlert>
+      )}
+      {failed.length > 0 && (
+        <PokeAlert variant="destructive">
+          <PokeAlertTitle>Failed</PokeAlertTitle>
+          <PokeAlertDescription>
+            {failed
+              .map(
+                (result) => `${getCellDisplay(result.cell)}: ${result.message}`
+              )
+              .join(" · ")}
+          </PokeAlertDescription>
+        </PokeAlert>
+      )}
+    </div>
+  );
+}
+
 function PluginResultHeader({
   isCopied,
   onCopy,
@@ -77,6 +124,11 @@ type ExecutePluginDialogProps = {
   onClose: () => void;
   plugin: PluginListItem;
   pluginResourceTarget: PluginResourceTarget;
+  // When set, the plugin runs once per selected cell
+  cellSelection?: {
+    cells: CellInfo[];
+    initiallySelected?: CellType[];
+  };
 };
 
 export function RunPluginDialog({
@@ -84,11 +136,20 @@ export function RunPluginDialog({
   onClose,
   plugin,
   pluginResourceTarget,
+  cellSelection,
 }: ExecutePluginDialogProps) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PluginResponse | null>(null);
+  const [cellResults, setCellResults] = useState<CellRunResult[] | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [selectedCells, setSelectedCells] = useState<Set<CellType>>(
+    () =>
+      new Set(
+        cellSelection?.initiallySelected ??
+          cellSelection?.cells.map((cell) => cell.name)
+      )
+  );
 
   const { isLoading, manifest } = usePokePluginManifest({
     disabled: false,
@@ -106,12 +167,19 @@ export function RunPluginDialog({
     pluginResourceTarget,
   });
 
-  const { doRunPlugin } = useRunPokePlugin({
+  const { doRunPlugin, doRunPluginOnCells } = useRunPokePlugin({
     pluginId: plugin.id,
     pluginResourceTarget,
   });
 
   const [isCopied, copyToClipboard] = useCopyToClipboard();
+
+  // Inputs and cell choices are frozen while running or after a fully
+  // successful run; a run with failures stays editable so it can be retried.
+  const hasCellFailures =
+    cellResults?.some((cellResult) => !cellResult.ok) ?? false;
+  const isLocked =
+    isRunning || result !== null || (cellResults !== null && !hasCellFailures);
 
   // Tick an elapsed timer every 5s while the plugin runs so long jobs don't
   // look stalled. Hidden until the first tick so fast plugins stay quiet.
@@ -140,6 +208,7 @@ export function RunPluginDialog({
   const handleClose = () => {
     setError(null);
     setResult(null);
+    setCellResults(null);
     setElapsedSeconds(0);
     onClose();
   };
@@ -148,20 +217,43 @@ export function RunPluginDialog({
     async (args: object) => {
       setError(null);
       setResult(null);
+      setCellResults(null);
       setIsRunning(true);
 
       try {
-        const runRes = await doRunPlugin(args);
-        if (runRes.isErr()) {
-          setError(runRes.error);
+        if (cellSelection) {
+          const targetCells = cellSelection.cells.filter((cell) =>
+            selectedCells.has(cell.name)
+          );
+          if (targetCells.length === 0) {
+            setError("Select at least one cell to run this plugin on.");
+            return;
+          }
+          const results = await doRunPluginOnCells(args, targetCells);
+          setCellResults(
+            results.map(({ cell, result }) =>
+              result.isOk()
+                ? {
+                    cell,
+                    ok: true,
+                    message: pluginResponseToCopyText(result.value),
+                  }
+                : { cell, ok: false, message: result.error }
+            )
+          );
         } else {
-          setResult(runRes.value);
+          const runRes = await doRunPlugin(args);
+          if (runRes.isErr()) {
+            setError(runRes.error);
+          } else {
+            setResult(runRes.value);
+          }
         }
       } finally {
         setIsRunning(false);
       }
     },
-    [doRunPlugin]
+    [cellSelection, selectedCells, doRunPlugin, doRunPluginOnCells]
   );
 
   return (
@@ -176,9 +268,11 @@ export function RunPluginDialog({
       >
         <DialogHeader className="bg-structure-100 rounded-t-2xl pb-4">
           <DialogTitle>Run {plugin.name} plugin</DialogTitle>
-          <DialogDescription className="whitespace-pre-line">
-            {plugin.description}
-          </DialogDescription>
+          {!cellSelection && (
+            <DialogDescription className="whitespace-pre-line">
+              {plugin.description}
+            </DialogDescription>
+          )}
         </DialogHeader>
         <div className="flex flex-col gap-2 px-5 py-4 text-foreground">
           {isLoading || (hasAsyncArgs && isLoadingAsyncArgs) ? (
@@ -267,8 +361,53 @@ export function RunPluginDialog({
                   </div>
                 </div>
               )}
+              {cellResults && <CellRunResults results={cellResults} />}
+              {cellSelection && (
+                <div className="mb-2 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">Cells:</div>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      label={
+                        selectedCells.size === cellSelection.cells.length
+                          ? "Unselect All"
+                          : "Select All"
+                      }
+                      disabled={isLocked}
+                      onClick={() =>
+                        setSelectedCells(
+                          selectedCells.size === cellSelection.cells.length
+                            ? new Set()
+                            : new Set(cellSelection.cells.map((c) => c.name))
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-1">
+                    {cellSelection.cells.map((cell) => (
+                      <CheckboxWithText
+                        key={cell.name}
+                        id={`run-plugin-cell-${cell.name}`}
+                        text={getCellDisplay(cell)}
+                        checked={selectedCells.has(cell.name)}
+                        disabled={isLocked}
+                        onCheckedChange={(checked) => {
+                          const nextSelectedCells = new Set(selectedCells);
+                          if (checked === true) {
+                            nextSelectedCells.add(cell.name);
+                          } else {
+                            nextSelectedCells.delete(cell.name);
+                          }
+                          setSelectedCells(nextSelectedCells);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
               <PluginForm
-                disabled={result !== null || isRunning}
+                disabled={isLocked}
                 initialValues={initialValues}
                 isRunning={isRunning}
                 manifest={manifest}

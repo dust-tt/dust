@@ -1,6 +1,9 @@
 import {
-  FilePreviewContent,
-  MAX_CSV_ROWS,
+  FilePreviewBody,
+  filePreviewLayoutClassName,
+} from "@app/components/file_explorer/FilePreviewBody";
+import {
+  formatRecordCounts,
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
@@ -83,14 +86,8 @@ export function FilePreviewDialog({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onPrev, onNext]);
 
-  const {
-    category,
-    truncatedContent,
-    processedContent,
-    recordCounts,
-    hasError,
-    isContentLoading,
-  } = useFilePreviewContent({ entry, fileUrl, enabled: isOpen });
+  const preview = useFilePreviewContent({ entry, fileUrl, enabled: isOpen });
+  const { category, recordCounts } = preview;
 
   const FileIcon = entry
     ? getFileTypeIcon(entry.contentType, entry.fileName)
@@ -101,9 +98,9 @@ export function FilePreviewDialog({
     entryPath: entry?.path,
     fileUrl,
     isActive: isOpen,
-    isContentLoading,
+    isContentLoading: preview.isContentLoading,
     owner,
-    processedContent,
+    processedContent: preview.processedContent,
   });
 
   return (
@@ -132,8 +129,7 @@ export function FilePreviewDialog({
                   "text-muted-foreground"
                 )}
               >
-                Showing {recordCounts.displayed} of {recordCounts.total} records
-                {recordCounts.total > MAX_CSV_ROWS && " (truncated)"}
+                {formatRecordCounts(recordCounts)}
               </span>
             )}
           </div>
@@ -147,66 +143,23 @@ export function FilePreviewDialog({
             />
           </div>
         )}
-        {hasError ? (
-          <div className="flex h-48 items-center justify-center px-4">
-            <p className="text-sm text-muted-foreground">
-              Unable to preview this file. You can download it instead.
-            </p>
-          </div>
-        ) : category === "delimited" ? (
-          <div className="flex min-h-0 flex-1 flex-col px-4">
-            {entry && (
-              <FilePreviewContent
-                category={category}
-                entry={entry}
-                fileContent={truncatedContent}
-                fileUrl={fileUrl ?? ""}
-                isContentLoading={isContentLoading}
-                markdownCanEdit={markdown.canEdit}
-                markdownContent={markdown.content}
-                markdownViewMode={markdown.viewMode}
-                onMarkdownContentChange={
-                  markdown.canEdit ? markdown.setDraft : undefined
-                }
-                onMarkdownViewModeChange={
-                  markdown.canEdit ? markdown.setViewMode : undefined
-                }
-                owner={owner}
-                processedContent={processedContent}
-              />
-            )}
-          </div>
-        ) : (
-          <div
-            className={cn(
-              "min-h-0 flex-1 px-4",
-              category === "markdown"
-                ? "flex flex-col overflow-hidden"
-                : "overflow-y-auto"
-            )}
-          >
-            {entry && (
-              <FilePreviewContent
-                category={category}
-                entry={entry}
-                fileContent={truncatedContent}
-                fileUrl={fileUrl ?? ""}
-                isContentLoading={isContentLoading}
-                markdownCanEdit={markdown.canEdit}
-                markdownContent={markdown.content}
-                markdownViewMode={markdown.viewMode}
-                onMarkdownContentChange={
-                  markdown.canEdit ? markdown.setDraft : undefined
-                }
-                onMarkdownViewModeChange={
-                  markdown.canEdit ? markdown.setViewMode : undefined
-                }
-                owner={owner}
-                processedContent={processedContent}
-              />
-            )}
-          </div>
-        )}
+        <div
+          className={cn(
+            "min-h-0 flex-1 px-4",
+            filePreviewLayoutClassName(category)
+          )}
+        >
+          <FilePreviewBody
+            entry={entry}
+            fileUrl={fileUrl}
+            markdown={markdown}
+            onMarkdownViewModeChange={
+              markdown.canEdit ? markdown.setViewMode : undefined
+            }
+            owner={owner}
+            preview={preview}
+          />
+        </div>
         <DialogFooter className="px-4">
           <div className="flex w-full items-center justify-between">
             <div className="flex items-center gap-1">

@@ -15,6 +15,7 @@ export const CONSUMPTION_DIMENSIONS: ConsumptionDimension[] = [
   "tool",
   "skill",
   "source",
+  "trigger",
   "api_key",
 ];
 
@@ -31,6 +32,7 @@ export const CONSUMPTION_ATTRIBUTION_DIMENSIONS: ConsumptionAttributionDimension
     "tool",
     "skill",
     "source",
+    "trigger",
     "api_key",
     "conversation",
   ];
@@ -110,6 +112,12 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
   source: {
     label: "Sources",
     breakdownLabel: "source",
+    hasAvatar: false,
+    avgLabel: MESSAGE_AVG_LABEL,
+  },
+  trigger: {
+    label: "Triggers",
+    breakdownLabel: "trigger",
     hasAvatar: false,
     avgLabel: MESSAGE_AVG_LABEL,
   },

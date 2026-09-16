@@ -35,7 +35,10 @@ import { getSkillIcon } from "@app/lib/skill";
 import { parseSkillTag, SKILL_TAG_REGEX } from "@app/lib/skills/format";
 import { parseToolTag, TOOL_TAG_REGEX } from "@app/lib/tools/format";
 import type { UserMessageType } from "@app/types/assistant/conversation";
-import { SKILL_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
+import {
+  SKILL_SIDE_PANEL_TYPE,
+  TOOL_SIDE_PANEL_TYPE,
+} from "@app/types/conversation_side_panel";
 import type { WorkspaceType } from "@app/types/user";
 import { Markdown } from "@dust-tt/sparkle";
 import { useMemo } from "react";
@@ -80,11 +83,14 @@ export const UserMessageMarkdown = ({
           />
         );
       },
-      tool: ({ icon, name }: AttachmentChipDirectiveProps) => (
+      tool: ({ id, icon, name }: AttachmentChipDirectiveProps) => (
         <AttachmentChipDirectiveBlock
           label={name}
           icon={icon ?? null}
           getIcon={getToolIcon}
+          onClick={() =>
+            togglePanel({ type: TOOL_SIDE_PANEL_TYPE, toolId: id })
+          }
         />
       ),
       project_task: getTaskDirectiveBlock(owner),

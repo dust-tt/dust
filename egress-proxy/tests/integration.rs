@@ -69,6 +69,7 @@ struct MockPolicies {
 
 const TEST_WORKSPACE_ID: &str = "workspace-456";
 const TEST_OWNER_ID: &str = "owner-789";
+const TEST_OTHER_OWNER_ID: &str = "owner-321";
 const TEST_POD_ID: &str = "pod-space-123";
 
 #[derive(Debug, Serialize)]
@@ -374,35 +375,10 @@ async fn pod_id_without_owner_id_is_rejected() -> Result<()> {
 }
 
 #[tokio::test]
-async fn pod_function_allowed_through_pod_file_as_owner() -> Result<()> {
-    // Pod-owned (pod function) sandboxes carry ownerId=<pod> and no podId:
-    // the pod's file IS their owner file, granting workspace + pod scope.
-    let (upstream_port, _upstream_handles) =
-        start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
-    let proxy = start_proxy_with_mock_gcs(
-        MockPolicies {
-            workspace: None,
-            owner: None,
-            pod: Some(policy_response(&["localhost"])),
-        },
-        None,
-        true,
-        "test",
-    )
-    .await?;
-    let token = make_pod_function_token(SECRET, 60);
-
-    let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
-
-    assert_eq!(response, Some(ALLOW_RESPONSE));
-    Ok(())
-}
-
-#[tokio::test]
-async fn conversation_policy_does_not_apply_to_pod_function() -> Result<()> {
-    // A conversation's on-the-fly approvals stay scoped to that
-    // conversation: the pod-function sandbox (ownerId=<pod>) must not pick
-    // them up.
+async fn owner_policy_does_not_apply_to_a_different_owner() -> Result<()> {
+    // Owner policies are keyed strictly by the ownerId claim: one sandbox's
+    // on-the-fly approvals must not leak to another's. This is what keeps a
+    // conversation's grants out of a Frame sandbox running beside it.
     let (upstream_port, _upstream_handles) =
         start_localhost_servers(UpstreamBehavior::EchoFixed { read_len: 4 }).await?;
     let proxy = start_proxy_with_mock_gcs(
@@ -416,7 +392,7 @@ async fn conversation_policy_does_not_apply_to_pod_function() -> Result<()> {
         "test",
     )
     .await?;
-    let token = make_pod_function_token(SECRET, 60);
+    let token = make_token_with_other_owner(SECRET, 60);
 
     let response = send_handshake(&proxy, &token, "localhost", upstream_port).await?;
 
@@ -1600,14 +1576,14 @@ fn make_malformed_pod_token(secret: &str, exp_offset_seconds: i64) -> String {
     )
 }
 
-// A pod-owned (pod function) sandbox: its ownerId IS the pod, no podId claim.
-fn make_pod_function_token(secret: &str, exp_offset_seconds: i64) -> String {
+// A sandbox whose owner file is not the one the test installed a policy at.
+fn make_token_with_other_owner(secret: &str, exp_offset_seconds: i64) -> String {
     make_token_with_claims(
         secret,
         FullClaims {
             sb_id: Some(TEST_SANDBOX_ID),
             w_id: Some(TEST_WORKSPACE_ID),
-            owner_id: Some(TEST_POD_ID),
+            owner_id: Some(TEST_OTHER_OWNER_ID),
             pod_id: None,
             action: None,
             iss: "dust-front",

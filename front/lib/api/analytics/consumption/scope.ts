@@ -81,6 +81,7 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
   // Multi-valued: one tool call can be attributed to several skills at once.
   skill: "tool.attributed_skill_ids",
   source: "normalized_origin",
+  trigger: TRIGGER_ID_FIELD,
 };
 
 export const AGENT_TAG_IDS_FIELD = "agent.tag_ids";
@@ -110,6 +111,7 @@ export const CONSUMPTION_DIMENSION_UNIT: Record<
   tool: "invocation",
   skill: "invocation",
   source: "message",
+  trigger: "message",
 };
 
 export const CONSUMPTION_TOP_DIMENSION_UNIT: Record<
@@ -133,6 +135,7 @@ export const CONSUMPTION_MESSAGE_DIMENSIONS = [
   "group",
   "model",
   "source",
+  "trigger",
   "conversation",
   "tag",
   "reasoning_effort",

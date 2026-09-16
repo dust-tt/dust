@@ -1,13 +1,13 @@
 import {
-  CUSTOM_RESOURCE_ALLOWED,
-  INTERNAL_ALLOWED_ICONS,
-} from "@app/components/resources/resources_icon_names";
-import {
   DataSourceConfigurationSchema,
   ProjectConfigurationSchema,
   TableDataSourceConfigurationSchema,
 } from "@app/lib/api/assistant/configuration/types";
 import { DustAppRunConfigurationSchema } from "@app/types/app";
+import {
+  CUSTOM_RESOURCE_ALLOWED,
+  INTERNAL_ALLOWED_ICONS,
+} from "@app/types/resources_icon_names";
 import { DbModelIdSchema } from "@app/types/shared/model_id";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";

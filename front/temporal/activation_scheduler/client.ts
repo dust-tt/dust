@@ -1,4 +1,5 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
+import { localTimeOfDayToUtc } from "@app/lib/api/timezone";
 import { Authenticator } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -16,7 +17,6 @@ import {
   WorkflowExecutionAlreadyStartedError,
   WorkflowNotFoundError,
 } from "@temporalio/client";
-import moment from "moment-timezone";
 
 import { QUEUE_NAME } from "./config";
 import { runActivationSignal } from "./signals";
@@ -341,16 +341,13 @@ export async function stopAllActivationWorkspaceSchedules(): Promise<void> {
 
 const ENSURE_ACTIVATION_SCHEDULES_WORKFLOW_ID = `ensure-${WORKSPACE_WORKFLOW_ID_PREFIX}schedules`;
 
-const ELEVEN_PM = "23:00";
-
 export async function launchEnsureActivationSchedulesWorkflow(): Promise<
   Result<string, Error>
 > {
   const client = await getTemporalClientForFrontNamespace();
   const region = config.getCurrentRegion();
   const timezone = REGION_TIMEZONES[region];
-  const elevenPmInTz = moment.tz(ELEVEN_PM, "HH:mm", timezone);
-  const utcHour = elevenPmInTz.utc().hour();
+  const { hour: utcHour } = localTimeOfDayToUtc(23, 0, timezone);
 
   try {
     await client.workflow.start(ensureActivationWorkspaceSchedulesWorkflow, {

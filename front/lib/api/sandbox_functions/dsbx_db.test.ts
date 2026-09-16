@@ -203,9 +203,8 @@ describe("queryDatabaseOnReadySandbox", () => {
           ok: true,
           columns: [],
           rows: [],
-          row_count: 0,
+          truncated: false,
           changes: 2,
-          results_file: null,
           note: null,
         }),
         stderr: "",
@@ -221,9 +220,8 @@ describe("queryDatabaseOnReadySandbox", () => {
     expect(result.isOk() && result.value).toEqual({
       columns: [],
       rows: [],
-      rowCount: 0,
+      truncated: false,
       changes: 2,
-      resultsFile: null,
       note: null,
     });
     expect(sandbox.exec).toHaveBeenCalledWith(

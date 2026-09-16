@@ -1,25 +1,24 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import moment from "moment-timezone";
 
-const CONSUMPTION_EXPORT_BUCKET_HOURS = 6;
+const CONSUMPTION_EXPORT_BUCKET_MS = 6 * 60 * 60 * 1000;
 
 export function splitConsumptionPeriodIntoBuckets(
   period: ConsumptionPeriod
 ): ConsumptionPeriod[] {
-  const end = moment.utc(period.endDate);
+  const endMs = new Date(period.endDate).getTime();
 
   const buckets: ConsumptionPeriod[] = [];
-  let bucketStart = moment.utc(period.startDate);
-  while (bucketStart.isBefore(end)) {
-    const bucketEnd = moment.min(
-      bucketStart.clone().add(CONSUMPTION_EXPORT_BUCKET_HOURS, "hours"),
-      end
+  let bucketStartMs = new Date(period.startDate).getTime();
+  while (bucketStartMs < endMs) {
+    const bucketEndMs = Math.min(
+      bucketStartMs + CONSUMPTION_EXPORT_BUCKET_MS,
+      endMs
     );
     buckets.push({
-      startDate: bucketStart.toISOString(),
-      endDate: bucketEnd.toISOString(),
+      startDate: new Date(bucketStartMs).toISOString(),
+      endDate: new Date(bucketEndMs).toISOString(),
     });
-    bucketStart = bucketEnd;
+    bucketStartMs = bucketEndMs;
   }
 
   return buckets;

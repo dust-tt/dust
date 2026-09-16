@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { computeSeatUsage, splitConsumedAwuCredits } from "./seat_usage";
+import {
+  computePoolLimitAwuCredits,
+  computeSeatUsage,
+  splitConsumedAwuCredits,
+} from "./seat_usage";
 
 describe("splitConsumedAwuCredits", () => {
   it.each([
@@ -159,5 +163,24 @@ describe("computeSeatUsage", () => {
     expect(usage.isFreeWithBalance).toBe(false);
     expect(usage.consumed).toBe(40);
     expect(usage.percent).toBe(40);
+  });
+});
+
+describe("computePoolLimitAwuCredits", () => {
+  it.each([
+    { memberUsageLimit: 100, effectiveLimit: 250, poolLimit: 150 },
+    { memberUsageLimit: 100, effectiveLimit: 100, poolLimit: 0 },
+    { memberUsageLimit: 100, effectiveLimit: 40, poolLimit: 0 },
+    { memberUsageLimit: 100, effectiveLimit: null, poolLimit: 0 },
+    { memberUsageLimit: null, effectiveLimit: 80, poolLimit: 80 },
+    { memberUsageLimit: null, effectiveLimit: null, poolLimit: 0 },
+  ])("derives $poolLimit from allowance $memberUsageLimit and cap $effectiveLimit", ({
+    memberUsageLimit,
+    effectiveLimit,
+    poolLimit,
+  }) => {
+    expect(
+      computePoolLimitAwuCredits({ memberUsageLimit, effectiveLimit })
+    ).toBe(poolLimit);
   });
 });

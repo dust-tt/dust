@@ -1012,6 +1012,7 @@ export async function createAgentConfiguration(
      */
     const agentConfiguration: LightAgentConfigurationType = {
       id: agent.id,
+      agentModelId: agent.agentId,
       sId: agent.sId,
       versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
@@ -1445,10 +1446,9 @@ export async function unsafeHardDeleteAgentConfiguration(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   await withTransaction(async (t) => {
-    const agentResource = await AgentResource.fetchByAgentConfiguration(
+    const agentResource = AgentResource.fromAgentConfiguration(
       auth,
-      agentConfiguration,
-      { transaction: t }
+      agentConfiguration
     );
 
     // Clean up MCP server configurations and their children first
@@ -1666,21 +1666,18 @@ export async function updateAgentPermissions(
   const canAdministrate = await shadowCanAdminAgent(
     auth,
     agent,
-    auth.isAdmin() ||
+    async () =>
+      auth.isAdmin() ||
       (await editorGroupRes.value.isMember(auth.getNonNullableUser())),
     "updateAgentPermissions"
   );
 
   try {
     const transactionResult = await withTransaction(async (t) => {
-      const agentResource = await AgentResource.fetchByAgentConfiguration(
-        auth,
-        agent,
-        { transaction: t }
-      );
+      const agentResource = AgentResource.fromAgentConfiguration(auth, agent);
 
       if (usersToAdd.length > 0) {
-        // TODO(governance) serve the AgentResource permission after shadow verification.
+        // The rollout switch selects the permission source for both editor writes.
         if (!canAdministrate) {
           return new Err(
             new DustError(
@@ -1704,7 +1701,7 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
-        // TODO(governance) serve the AgentResource permission after shadow verification.
+        // The rollout switch selects the permission source for both editor writes.
         if (!canAdministrate) {
           return new Err(
             new DustError(
@@ -1862,7 +1859,6 @@ export async function updateAgentConfigurationsScope(
   const editableAgents = await shadowEditableAgents(
     auth,
     agentConfigs,
-    agentConfigs.filter((agent) => agent.canEdit || auth.isAdmin()),
     "updateAgentConfigurationsScope"
   );
   if (editableAgents.length === 0) {

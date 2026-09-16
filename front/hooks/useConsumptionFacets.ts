@@ -8,6 +8,7 @@ import type {
   UsageFilterSkillOption,
   UsageFilterSourceOption,
   UsageFilterToolOption,
+  UsageFilterTriggerOption,
 } from "@app/components/workspace/analytics/usageFilter";
 import { EMPTY_FACET_OPTIONS } from "@app/components/workspace/analytics/usageFilter";
 import {
@@ -93,6 +94,10 @@ export function toConsumptionFacetOptions(
       connectorProvider: isConnectorProvider(facet.value)
         ? facet.value
         : undefined,
+    })),
+    trigger: data.facets.trigger.map<UsageFilterTriggerOption>((facet) => ({
+      ...baseOption(facet),
+      kind: "trigger",
     })),
     api_key: data.facets.api_key.map<UsageFilterApiKeyOption>((facet) => ({
       ...baseOption(facet),

@@ -116,6 +116,7 @@ function makeAgentConfiguration({
 }): LightAgentConfigurationType {
   return {
     id: 1,
+    agentModelId: 1,
     versionCreatedAt: null,
     sId,
     version: 0,

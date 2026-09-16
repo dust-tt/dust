@@ -261,27 +261,19 @@ describe("Authenticator.fromKey permission resolution", () => {
 
     // Every verb the registry defines holds, on the granted agent and on one that carries no
     // grant at all (instance verbs and type-level capabilities alike).
-    expect([...workspaceAuth.getGrantedVerbs("agent", 42)].sort()).toEqual([
-      "admin",
-      "create",
-      "publish",
-      "read",
-      "use",
-      "write",
-    ]);
-    expect([...workspaceAuth.getGrantedVerbs("agent", 99)].sort()).toEqual([
-      "admin",
-      "create",
-      "publish",
-      "read",
-      "use",
-      "write",
-    ]);
-    expect(workspaceAuth.getGrantedVerbs("space", 1234)).toContain("admin");
+    expect(
+      [...workspaceAuth.getGovernanceGrantVerbs("agent", 42)].sort()
+    ).toEqual(["admin", "create", "publish", "read", "use", "write"]);
+    expect(
+      [...workspaceAuth.getGovernanceGrantVerbs("agent", 99)].sort()
+    ).toEqual(["admin", "create", "publish", "read", "use", "write"]);
+    expect(workspaceAuth.getGovernanceGrantVerbs("space", 1234)).toContain(
+      "admin"
+    );
 
     // It survives the Temporal round trip the agent loop puts the auth through.
     const restored = await Authenticator.fromJSON(workspaceAuth.toJSON());
-    expect(restored.getGrantedVerbs("space", 1234)).toContain("admin");
+    expect(restored.getGovernanceGrantVerbs("space", 1234)).toContain("admin");
   });
 
   it("gives a system key nothing on a workspace that is not its own", async () => {
@@ -293,7 +285,7 @@ describe("Authenticator.fromKey permission resolution", () => {
     const key = await KeyFactory.system(systemGroup);
     const workspaceAuth = await Authenticator.fromKey(key, otherWorkspace.sId);
 
-    expect(workspaceAuth.getGrantedVerbs("space", 1234)).toEqual([]);
+    expect(workspaceAuth.getGovernanceGrantVerbs("space", 1234)).toEqual([]);
   });
 
   it("resolves grants for non-system keys", async () => {
@@ -312,13 +304,10 @@ describe("Authenticator.fromKey permission resolution", () => {
     const key = await KeyFactory.regular(globalGroup);
     const workspaceAuth = await Authenticator.fromKey(key, workspace.sId);
 
-    expect([...workspaceAuth.getGrantedVerbs("agent", 42)].sort()).toEqual([
-      "admin",
-      "read",
-      "use",
-      "write",
-    ]);
-    expect(workspaceAuth.getGrantedVerbs("agent", 99)).toEqual([]);
+    expect(
+      [...workspaceAuth.getGovernanceGrantVerbs("agent", 42)].sort()
+    ).toEqual(["admin", "read", "use", "write"]);
+    expect(workspaceAuth.getGovernanceGrantVerbs("agent", 99)).toEqual([]);
   });
 
   it("resolves permissions for explicitly scoped system keys", async () => {
@@ -359,10 +348,10 @@ describe("Authenticator.fromKey permission resolution", () => {
     // Downscoped by `requestedGroupIds`, so the grants are resolved for real: the in-scope group's
     // grant on agent 42 is loaded; the out-of-scope group's grant on agent 99 is not.
     expect(listForGroups).toHaveBeenCalled();
-    expect(workspaceAuth.getGrantedVerbs("agent", 42).length).toBeGreaterThan(
-      0
-    );
-    expect(workspaceAuth.getGrantedVerbs("agent", 99)).toEqual([]);
+    expect(
+      workspaceAuth.getGovernanceGrantVerbs("agent", 42).length
+    ).toBeGreaterThan(0);
+    expect(workspaceAuth.getGovernanceGrantVerbs("agent", 99)).toEqual([]);
   });
 });
 
@@ -385,7 +374,7 @@ describe("Authenticator.refresh permission resolution", () => {
     const workspaceAuth = await Authenticator.fromKey(key, workspace.sId, [
       group.sId,
     ]);
-    expect(workspaceAuth.getGrantedVerbs("agent", 42)).toEqual([]);
+    expect(workspaceAuth.getGovernanceGrantVerbs("agent", 42)).toEqual([]);
 
     // A grant lands on one of the key's groups AFTER the auth was built (mirrors a backfill or an
     // updatePermissions write arriving mid-run). `editor` on `agent` confers read, write and admin.
@@ -400,14 +389,11 @@ describe("Authenticator.refresh permission resolution", () => {
     // `_user`-gated body skipped user-less auths entirely, leaving the stale (empty) snapshot.
     await workspaceAuth.refresh();
 
-    expect([...workspaceAuth.getGrantedVerbs("agent", 42)].sort()).toEqual([
-      "admin",
-      "read",
-      "use",
-      "write",
-    ]);
+    expect(
+      [...workspaceAuth.getGovernanceGrantVerbs("agent", 42)].sort()
+    ).toEqual(["admin", "read", "use", "write"]);
     // It stays scoped to the requested groups: refreshing must not widen it back to everything the
     // system key itself holds.
-    expect(workspaceAuth.getGrantedVerbs("space", 1234)).toEqual([]);
+    expect(workspaceAuth.getGovernanceGrantVerbs("space", 1234)).toEqual([]);
   });
 });

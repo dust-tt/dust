@@ -1,8 +1,3 @@
-import { extractKnowledgeTagSignatures } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeConstants";
-import {
-  isCustomResourceIconType,
-  isInternalAllowedIcon,
-} from "@app/components/resources/resources_icon_names";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -19,6 +14,7 @@ import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
 import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
+import { extractKnowledgeTagSignatures } from "@app/lib/editor/knowledge_node_constants";
 import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -28,6 +24,10 @@ import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import { extractToolTags, serializeToolTag } from "@app/lib/tools/format";
 import logger from "@app/logger/logger";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
+import {
+  isCustomResourceIconType,
+  isInternalAllowedIcon,
+} from "@app/types/resources_icon_names";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 

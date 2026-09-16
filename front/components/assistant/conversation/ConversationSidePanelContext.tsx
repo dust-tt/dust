@@ -14,6 +14,7 @@ import {
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
   SKILL_SIDE_PANEL_TYPE,
+  TOOL_SIDE_PANEL_TYPE,
 } from "@app/types/conversation_side_panel";
 import {
   assertNever,
@@ -33,10 +34,9 @@ type OpenPanelParams =
       fileId: string;
       timestamp?: string;
     }
-  | {
+  | ({
       type: "file_preview";
-      filePath: string;
-    }
+    } & FilePreviewTarget)
   | {
       type: "files";
     }
@@ -49,7 +49,41 @@ type OpenPanelParams =
   | {
       type: "skill";
       skillId: string;
+    }
+  | {
+      type: "tool";
+      toolId: string;
     };
+
+const FILE_PREVIEW_FILE_ID_PREFIX = "id:";
+
+// Content fragments without a sandbox path are addressed by id instead.
+export type FilePreviewTarget =
+  | { kind: "path"; filePath: string }
+  | { kind: "id"; fileId: string };
+
+export function parseFilePreviewData(
+  data: string | undefined
+): FilePreviewTarget | null {
+  if (!data) {
+    return null;
+  }
+
+  return data.startsWith(FILE_PREVIEW_FILE_ID_PREFIX)
+    ? { kind: "id", fileId: data.slice(FILE_PREVIEW_FILE_ID_PREFIX.length) }
+    : { kind: "path", filePath: data };
+}
+
+function filePreviewDataKey(target: FilePreviewTarget): string {
+  switch (target.kind) {
+    case "path":
+      return target.filePath;
+    case "id":
+      return `${FILE_PREVIEW_FILE_ID_PREFIX}${target.fileId}`;
+    default:
+      return assertNever(target);
+  }
+}
 
 // The `spid` hash value for a panel. Two panels are the same when type and key match.
 function panelDataKey(params: OpenPanelParams): string {
@@ -63,13 +97,15 @@ function panelDataKey(params: OpenPanelParams): string {
         ? `${params.fileId}@${params.timestamp}`
         : params.fileId;
     case FILE_PREVIEW_SIDE_PANEL_TYPE:
-      return params.filePath;
+      return filePreviewDataKey(params);
     case FILES_SIDE_PANEL_TYPE:
     case CREDITS_SIDE_PANEL_TYPE:
     case PLAN_SIDE_PANEL_TYPE:
       return params.type;
     case SKILL_SIDE_PANEL_TYPE:
       return params.skillId;
+    case TOOL_SIDE_PANEL_TYPE:
+      return params.toolId;
     default:
       return assertNever(params);
   }
@@ -111,14 +147,18 @@ function panelParamsFromHash(
       const [fileId, timestamp] = data.split("@");
       return { type, fileId, timestamp };
     }
-    case FILE_PREVIEW_SIDE_PANEL_TYPE:
-      return { type, filePath: data };
+    case FILE_PREVIEW_SIDE_PANEL_TYPE: {
+      const target = parseFilePreviewData(data);
+      return target ? { type, ...target } : null;
+    }
     case FILES_SIDE_PANEL_TYPE:
     case CREDITS_SIDE_PANEL_TYPE:
     case PLAN_SIDE_PANEL_TYPE:
       return { type };
     case SKILL_SIDE_PANEL_TYPE:
       return { type, skillId: data };
+    case TOOL_SIDE_PANEL_TYPE:
+      return { type, toolId: data };
     default:
       assertNeverAndIgnore(type);
       return null;
@@ -134,10 +174,13 @@ const isSupportedPanelType = (
   type === "file_preview" ||
   type === "files" ||
   type === "plan" ||
-  type === "skill";
+  type === "skill" ||
+  type === "tool";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
+  // Preview affordances render nothing without a conversation to host the panel.
+  hasConversation: boolean;
   // True between closePanel() and the end of the collapse transition. `currentPanel` keeps the
   // old value meanwhile so the panel content does not flicker; toggles read this to unselect
   // right away.
@@ -175,6 +218,23 @@ export function useConversationSidePanelContext() {
   return context;
 }
 
+// Separate from the main context so the setter stays out of consumers' reach.
+const SidePanelConversationRegistrationContext = React.createContext<
+  ((hasConversation: boolean) => void) | undefined
+>(undefined);
+
+// Called by whichever surface renders the panel content.
+export function useRegisterSidePanelConversation(hasConversation: boolean) {
+  const setHasConversation = React.useContext(
+    SidePanelConversationRegistrationContext
+  );
+
+  useEffect(() => {
+    setHasConversation?.(hasConversation);
+    return () => setHasConversation?.(false);
+  }, [hasConversation, setHasConversation]);
+}
+
 export function parseDataAsMessageIdAndActionId(data?: string): {
   messageId?: string;
   actionId?: string;
@@ -205,6 +265,7 @@ export function ConversationSidePanelProvider({
   const previousConversationIdRef = React.useRef(activeConversationId);
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
+  const [hasConversation, setHasConversation] = React.useState(false);
   const [isPanelClosing, setIsPanelClosing] = React.useState(false);
   const [virtuosoMsg, setVirtuosoMsg] =
     React.useState<AgentMessageWithStreaming | null>(null);
@@ -397,6 +458,7 @@ export function ConversationSidePanelProvider({
       currentPanel: isSupportedPanelType(currentPanel)
         ? currentPanel
         : undefined,
+      hasConversation,
       isPanelClosing,
       openPanel,
       togglePanel,
@@ -411,6 +473,7 @@ export function ConversationSidePanelProvider({
     }),
     [
       currentPanel,
+      hasConversation,
       isPanelClosing,
       openPanel,
       togglePanel,
@@ -424,8 +487,12 @@ export function ConversationSidePanelProvider({
   );
 
   return (
-    <ConversationSidePanelContext.Provider value={value}>
-      {children}
-    </ConversationSidePanelContext.Provider>
+    <SidePanelConversationRegistrationContext.Provider
+      value={setHasConversation}
+    >
+      <ConversationSidePanelContext.Provider value={value}>
+        {children}
+      </ConversationSidePanelContext.Provider>
+    </SidePanelConversationRegistrationContext.Provider>
   );
 }

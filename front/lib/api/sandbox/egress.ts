@@ -107,9 +107,9 @@ async function runSuccessfulRootCommand(
 }
 
 // ownerId is the sandbox owner's stable sId (conversation sId for
-// conversation sandboxes, space sId for pod sandboxes); it selects the owner
-// policy file `w/{wId}/sandboxes/{ownerId}.json`. podId is set for
-// conversation sandboxes running inside a pod and selects the pod's policy
+// conversation sandboxes, Frame sId for Frame sandboxes); it selects the owner
+// policy file `w/{wId}/sandboxes/{ownerId}.json`. podId is set for either kind
+// running inside a pod and selects the pod's policy
 // file as an inherited layer — the proxy allows a domain if the workspace,
 // owner, or pod policy allows it. sbId stays for identity and log tracing.
 // Older proxy builds ignore unknown claims. Object params on purpose: the

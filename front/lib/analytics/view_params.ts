@@ -53,6 +53,7 @@ const CATEGORY_PARAM = {
   tool: "t",
   skill: "sk",
   source: "s",
+  trigger: "tr",
   api_key: "k",
 } as const satisfies Record<ConsumptionScopeDimension, string>;
 

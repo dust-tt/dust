@@ -30,7 +30,7 @@ export async function getAgentEditorsShadowed(
     auth,
     legacy: sortedUserModelIds(legacyEditors),
     candidate: async () => {
-      const resource = await AgentResource.fetchByAgentConfiguration(
+      const resource = AgentResource.fromAgentConfiguration(
         auth,
         agentConfiguration
       );
@@ -103,7 +103,7 @@ async function shadowAgentEditorsBatch(
     auth,
     legacy: normalizedLegacyEditors,
     candidate: async () => {
-      const resources = await AgentResource.fetchByAgentConfigurations(
+      const resources = AgentResource.fromAgentConfigurations(
         auth,
         customAgents
       );

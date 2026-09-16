@@ -2620,7 +2620,9 @@ describe("SpaceResource group_permissions enforcement", () => {
     // Restricted regular space: the global group is not attached, and the admin's "admin" role
     // grants nothing on the table path, so the admin holds no read grant on it yet.
     const space = await SpaceFactory.regular(workspace);
-    expect(adminAuth.getGrantedVerbs("space", space.id)).not.toContain("read");
+    expect(adminAuth.getGovernanceGrantVerbs("space", space.id)).not.toContain(
+      "read"
+    );
 
     const res = await space.updatePermissions(adminAuth, {
       isRestricted: false,
@@ -2633,7 +2635,9 @@ describe("SpaceResource group_permissions enforcement", () => {
     // post-commit, so its snapshot now resolves that grant. Without the refresh this stays [] (the
     // stale construction-time snapshot), which — now that the table is the served path — would deny
     // read on a space the caller just opened, in the same request.
-    expect(adminAuth.getGrantedVerbs("space", space.id)).toContain("read");
+    expect(adminAuth.getGovernanceGrantVerbs("space", space.id)).toContain(
+      "read"
+    );
   });
 
   // The company space's member list is administrated like any other space's, except that it can

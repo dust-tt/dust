@@ -70,8 +70,6 @@ export const schema = {
 - `interactive_workspace_user_required`: require a workspace member calling
   directly from a live Dust session, rather than through an agent, schedule, or
   API client acting on that member's behalf.
-- `pod_member_required`: require membership in the owning Pod. Retained for
-  legacy Pod Functions.
 - `frame_author_required`: for Frame v2 functions, require write access to the
   Frame's source files.
 

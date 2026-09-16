@@ -4,30 +4,9 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
-import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
-import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
-import { ArrowUpRight, Button, Chip, LoadingBlock } from "@dust-tt/sparkle";
-
-const TARGET_CHIP: Record<
-  CreditUsageTarget,
-  { label: string; color: "highlight" | "info" | "warning" }
-> = {
-  on_target: { label: "On target", color: "highlight" },
-  elevated: { label: "Off target", color: "info" },
-  critical: { label: "Critical", color: "warning" },
-};
-
-// The counterpart the used share of the cap is read against.
-function cycleElapsedPercent({
-  startDate,
-  endDate,
-}: ConsumptionPeriod): number {
-  const startMs = new Date(startDate).getTime();
-  const endMs = new Date(endDate).getTime();
-  const elapsedRatio = (Date.now() - startMs) / (endMs - startMs);
-  return Math.round(Math.min(Math.max(elapsedRatio, 0), 1) * 100);
-}
+import { ArrowUpRight, Button, LoadingBlock } from "@dust-tt/sparkle";
 
 export interface ConsumptionSummaryProps {
   workspaceId: string;
@@ -38,6 +17,8 @@ export interface ConsumptionSummaryProps {
   disabled?: boolean;
 }
 
+// The usage page this summary links to is manager-only, so the link itself
+// only shows for managers (mirrors the gating in UsageUpgradeButton).
 export function ConsumptionSummary({
   workspaceId,
   period: periodSelection,
@@ -46,6 +27,7 @@ export function ConsumptionSummary({
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   disabled,
 }: ConsumptionSummaryProps) {
+  const { isManager } = useAuth();
   const { overview, isOverviewLoading, isOverviewError } =
     useConsumptionOverview({
       workspaceId,
@@ -62,6 +44,7 @@ export function ConsumptionSummary({
       usageHref={usageHref}
       usageLinkLabel={usageLinkLabel}
       analyticsScope={analyticsScope}
+      showUsageLink={isManager}
     />
   );
 }
@@ -77,6 +60,7 @@ interface ConsumptionSummaryViewProps extends ConsumptionSummaryData {
   usageLinkLabel: string;
   responsiveLayout?: boolean;
   analyticsScope?: ConsumptionAnalyticsScope;
+  showUsageLink?: boolean;
 }
 
 export function ConsumptionSummaryView({
@@ -87,6 +71,7 @@ export function ConsumptionSummaryView({
   usageLinkLabel,
   responsiveLayout = false,
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
+  showUsageLink = true,
 }: ConsumptionSummaryViewProps) {
   if (analyticsScope.kind === "agent") {
     return (
@@ -130,25 +115,8 @@ export function ConsumptionSummaryView({
 
   return (
     <div className="flex flex-col gap-4">
-      {creditUsage && (
-        <div
-          className={
-            responsiveLayout
-              ? "flex flex-col items-start justify-between gap-3 rounded-xl border border-border bg-panel-background p-2 sm:flex-row sm:items-center"
-              : "flex items-center justify-between gap-4 rounded-xl border border-border bg-panel-background p-2"
-          }
-        >
-          <div className="flex items-center gap-2">
-            <Chip
-              size="mini"
-              color={TARGET_CHIP[creditUsage.status.target].color}
-              label={TARGET_CHIP[creditUsage.status.target].label}
-            />
-            <span className="text-sm text-muted-foreground">
-              {creditUsage.status.usedPercentage}% of the cap used,{" "}
-              {cycleElapsedPercent(overview.period)}% of the cycle elapsed
-            </span>
-          </div>
+      {showUsageLink && (
+        <div className="flex justify-end">
           <Button
             label={usageLinkLabel}
             variant="highlight-ghost"

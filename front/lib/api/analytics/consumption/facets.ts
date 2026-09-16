@@ -61,6 +61,7 @@ const EMPTY_FACET_CATALOG: ConsumptionFacetCatalog = {
   tool: [],
   skill: [],
   source: [],
+  trigger: [],
 };
 
 export type ConsumptionFacet = {
@@ -94,6 +95,7 @@ export type ConsumptionFacets = {
     tool: ConsumptionFacet[];
     skill: ConsumptionFacet[];
     source: ConsumptionFacet[];
+    trigger: ConsumptionFacet[];
   };
 };
 
@@ -424,6 +426,13 @@ async function fetchConsumptionFacetsWithoutTracing(
     catalog.source
   );
 
+  const triggerFacets = await resolveRequestedFacets(
+    auth,
+    "trigger",
+    bucketsByDimension,
+    catalog.trigger
+  );
+
   return new Ok({
     period,
     facets: {
@@ -435,6 +444,7 @@ async function fetchConsumptionFacetsWithoutTracing(
       tool: toolFacets,
       skill: skillFacets,
       source: sourceFacets,
+      trigger: triggerFacets,
     },
   });
 }

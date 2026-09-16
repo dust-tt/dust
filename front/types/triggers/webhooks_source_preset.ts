@@ -1,12 +1,12 @@
 import type {
-  CustomResourceIconType,
-  InternalAllowedIconType,
-} from "@app/components/resources/resources_icon_names";
-import type {
   WebhookCreateFormComponentProps,
   WebhookDetailsComponentProps,
 } from "@app/components/triggers/webhook_preset_components";
 import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/types/resources_icon_names";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type React from "react";

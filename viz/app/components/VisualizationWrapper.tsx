@@ -4,14 +4,14 @@ import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
+import {
+  FrameFunctionHooksProvider,
+  useFrameFunction,
+  useFrameFunctionMutation,
+  useUserIdentity,
+} from "@viz/app/lib/frame-function-hooks";
 import type { FrameRuntimeImportName } from "@viz/app/lib/frame-runtime-imports";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
-import {
-  PodFunctionHooksProvider,
-  usePodFunction,
-  usePodFunctionMutation,
-  useUserIdentity,
-} from "@viz/app/lib/pod-function-hooks";
 import { transformEditableText } from "@viz/app/lib/transformEditableText";
 import type {
   VisualizationAPI,
@@ -492,8 +492,13 @@ export function VisualizationWrapper({
               ...args: Parameters<typeof memoizedDownloadFile>
             ) => memoizedDownloadFileRef.current(...args),
             useFile: (fileId: string) => useFile(fileId, api.data),
-            usePodFunction,
-            usePodFunctionMutation,
+            useFrameFunction,
+            useFrameFunctionMutation,
+            // Frames published before the Pod -> Frame rename import these names. Their stored
+            // source is never rebuilt, so the aliases must stay even though nothing advertises
+            // them.
+            usePodFunction: useFrameFunction,
+            usePodFunctionMutation: useFrameFunctionMutation,
             useUserIdentity,
           },
         } satisfies Record<FrameRuntimeImportName, unknown>;
@@ -681,9 +686,9 @@ export function VisualizationWrapper({
         </div>
       )}
       <VizContext.Provider value={vizContextValue}>
-        <PodFunctionHooksProvider dataAPI={api.data}>
+        <FrameFunctionHooksProvider dataAPI={api.data}>
           {isEditable ? <EditableFrame>{runner}</EditableFrame> : runner}
-        </PodFunctionHooksProvider>
+        </FrameFunctionHooksProvider>
       </VizContext.Provider>
     </div>
   );

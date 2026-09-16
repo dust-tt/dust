@@ -32,7 +32,7 @@ async function seedRevokedEditor() {
   );
   const legacy = await GroupResource.findEditorGroupForAgent(auth, agent);
   assert(legacy.isOk());
-  const resource = await AgentResource.fetchByAgentConfiguration(auth, agent);
+  const resource = AgentResource.fromAgentConfiguration(auth, agent);
   assert(resource.id !== null);
   const grant = {
     grantType: "editor" as const,
@@ -105,9 +105,9 @@ describe("repairEditorMemberships", () => {
       user.sId,
       workspace.sId
     );
-    expect(before.getGrantedVerbs("agent", grant.resourceId)).not.toContain(
-      "write"
-    );
+    expect(
+      before.getGovernanceGrantVerbs("agent", grant.resourceId)
+    ).not.toContain("write");
     const spec = {
       wId: workspace.sId,
       logger: logger.child({}, { level: "silent" }),
@@ -134,7 +134,7 @@ describe("repairEditorMemberships", () => {
       workspace.sId
     );
     expect(
-      after.getGrantedVerbs("agent", grant.resourceId).includes("write")
+      after.getGovernanceGrantVerbs("agent", grant.resourceId).includes("write")
     ).toBe(rejoined);
 
     if (!rejoined) {
@@ -143,9 +143,9 @@ describe("repairEditorMemberships", () => {
         user.sId,
         workspace.sId
       );
-      expect(restored.getGrantedVerbs("agent", grant.resourceId)).toContain(
-        "write"
-      );
+      expect(
+        restored.getGovernanceGrantVerbs("agent", grant.resourceId)
+      ).toContain("write");
     }
   });
 

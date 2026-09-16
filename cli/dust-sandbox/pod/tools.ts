@@ -1,4 +1,4 @@
-// Typed client for calling workspace tools (MCP servers) from pod function
+// Typed client for calling workspace tools (MCP servers) from frame function
 // code.
 //
 // `tools.call(server, tool, args)` delegates to the dsbx CLI: it spawns
@@ -226,7 +226,7 @@ function requiredEnv(name: string): string {
   if (!value) {
     throw new ToolCallError(
       "missing_env",
-      `${name} is not set: tools.call() only works inside a pod function invocation.`,
+      `${name} is not set: tools.call() only works inside a frame function invocation.`,
       { retryable: false }
     );
   }

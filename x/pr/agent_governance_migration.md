@@ -3,7 +3,7 @@
 This plan migrates workspace-agent editor permissions from the `agent_editors` group kind and
 `group_agents` join table to the `regular_auto` group kind and `group_permissions` table.
 
-Each numbered item is one PR, except PR 11's three parts. The 300-line target is a soft bound: combine
+Each numbered item is one PR, except PR 11's three parts and PR 12's stack. The 300-line target is a soft bound: combine
 related changes when an intermediate state has no review or operational value. Split at real deploy,
 backfill, observation, or rollback boundaries.
 
@@ -113,16 +113,41 @@ editor-list, permission, listing, backfill, and cache-related mismatches to reac
 
 ### PR 12: Flip all grant-backed reads
 
-Serve editor lists, permission decisions, and list/manage/archive filtering from grants at the same
-time, behind one operational switch with a single kill-switch fallback to legacy reads.
+Start with a small prerequisite that lets shadow comparisons serve either source while keeping
+legacy/grant log fields stable. Split the read flip into four stacked PRs:
+
+- **PR 12a: Permissions and usage.** Reuse `use_legacy_acls` to switch permission decisions,
+  usage filters, and suggestions. Preserve API-key status/space checks and internal-caller access.
+- **PR 12b: Editor reads.** Switch single/batch editor lists, configuration context, and trigger
+  cleanup when hiding an agent. Both editor sources exclude former workspace members.
+- **PR 12c: Editor removals.** Revoke grant-only editors during incremental changes and full saves,
+  with transaction-aware editor reads.
+- **PR 12d: Views and rollout verification.** Switch list/manage/archive filtering and verify
+  editor lists, permissions, views, and rollback together.
+
+**Deployment gate:** enable `use_legacy_acls` before deploying the first part and keep it enabled
+until all four parts are deployed. Only then disable it after satisfying the operational gate below,
+so all reads switch together.
+
+Serve editor lists, permission decisions, and list/manage/archive filtering from grants together
+when `use_legacy_acls` is disabled. This switches all workspaces together; enabling the switch
+restores legacy reads within its 60-second refresh window.
+
+The switch also covers configuration context, tool/data-source/webhook usage filters, agent
+suggestions, and editor checks when disabling triggers after an agent becomes hidden. With
+`group_permissions_shadow` enabled, compare grants while serving legacy reads and compare legacy
+reads while serving grants. Comparison failures are logged without affecting the served result;
+failures reading the selected source propagate. Dual writes remain active.
 
 Use `auth.can("write", agentResource)` for agent authorization, including regular admin API keys via
 the resource ACL. Keep the existing active-status and requested-space checks outside that ACL.
-Remove the legacy admin-key condition in configuration enrichment when flipping and cleaning up.
+Keep the legacy admin-key condition only on the fallback path until cleanup.
 `getResourceIdsWithVerb()` only enumerates governance grants, not role-based ACL permissions; account
 for that distinction when using it to filter editable agents.
 
-**Operational gate:** observe the complete read flip before removing the fallback.
+**Operational gate:** after all PR11 comparisons and the backfill report zero mismatches, disable
+`use_legacy_acls` and observe the complete read flip before removing the fallback. Roll back by
+enabling `use_legacy_acls`.
 
 ### PR 13: Remove legacy reads and rollout infrastructure
 

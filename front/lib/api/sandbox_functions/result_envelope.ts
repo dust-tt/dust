@@ -118,7 +118,10 @@ function invalidResultEnvelope(
   reason: string,
   details?: Record<string, unknown>
 ): NormalizedSandboxFunctionOutcome {
-  logger.warn({ reason, ...details }, "Rejected Pod function result envelope");
+  logger.warn(
+    { reason, ...details },
+    "Rejected Frame function result envelope"
+  );
   return {
     ok: false,
     error: {
@@ -154,7 +157,7 @@ function isSupportedProtocolVersion(version: number): boolean {
 }
 
 /**
- * Normalize a Pod function result payload from a worker-owned stdout envelope into one
+ * Normalize a Frame function result payload from a worker-owned stdout envelope into one
  * classified outcome.
  */
 export function normalizeSandboxFunctionResult(
@@ -171,13 +174,13 @@ export function normalizeSandboxFunctionResult(
     if (!isSupportedProtocolVersion(protocolVersion)) {
       logger.warn(
         { reason: "unsupported_protocol_version", protocolVersion },
-        "Rejected Pod function result envelope"
+        "Rejected Frame function result envelope"
       );
       return {
         ok: false,
         error: {
           code: "invocation_failed",
-          message: `Unsupported Pod function result protocol version ${protocolVersion}.`,
+          message: `Unsupported Frame function result protocol version ${protocolVersion}.`,
         },
       };
     }

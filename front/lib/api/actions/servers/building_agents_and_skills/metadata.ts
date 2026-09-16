@@ -7,6 +7,7 @@ import { z } from "zod";
 export const BUILDING_AGENTS_AND_SKILLS_SERVER_NAME =
   "building_agents_and_skills" as const;
 
+export const DESCRIBE_SKILL_TOOL_NAME = "describe_skill" as const;
 export const SUGGEST_SKILL_UPDATE_TOOL_NAME = "suggest_skill_update" as const;
 
 // Bounds the O(n²) pairwise conflict check in hasSuggestionSelfConflict; larger rewrites
@@ -55,7 +56,24 @@ export type SuggestSkillUpdateArgs = z.infer<
 
 export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   {
+    name: DESCRIBE_SKILL_TOOL_NAME,
+    description:
+      "Get a custom Skill's name, agent-facing description, and instructions as HTML whose blocks " +
+      "carry a data-block-id.",
+    schema: {
+      skillId: z.string().describe("The id of the custom skill to describe."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Describing skill",
+      done: "Describe skill",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
     name: SUGGEST_SKILL_UPDATE_TOOL_NAME,
+    // TODO(conversational-building): consider splitting this into prompt and description
     description:
       "Suggest an update to an existing custom Skill. The change is not applied directly: it " +
       "is recorded as a pending suggestion that the skill's editors can review, accept, or " +

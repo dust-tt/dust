@@ -23,7 +23,7 @@ describe("AgentResource", () => {
       testContext.authenticator
     );
 
-    const resource = await AgentResource.fetchByAgentConfiguration(
+    const resource = AgentResource.fromAgentConfiguration(
       testContext.authenticator,
       agent
     );
@@ -42,7 +42,7 @@ describe("AgentResource", () => {
       testContext.authenticator,
       { name: "Second agent" }
     );
-    const resources = await AgentResource.fetchByAgentConfigurations(
+    const resources = AgentResource.fromAgentConfigurations(
       testContext.authenticator,
       [firstAgent, secondAgent]
     );
@@ -108,7 +108,7 @@ describe("AgentResource", () => {
       adminAuth.hasPermission("read", resource),
       adminAuth.hasPermission("write", resource),
       adminAuth.hasPermission("admin", resource),
-    ]).toEqual([true, false, true]);
+    ]).toEqual([false, false, true]);
 
     const grantResult = await GroupPermissionResource.grantToUser(
       testContext.authenticator,
@@ -141,6 +141,19 @@ describe("AgentResource", () => {
       scope: "hidden" as const,
       workspaceId: workspace.id,
     };
+
+    expect(
+      auth.can("read", AgentResource.fromAgentConfigurationModel(configuration))
+    ).toBe(false);
+    expect(
+      auth.can(
+        "read",
+        AgentResource.fromAgentConfigurationModel({
+          ...configuration,
+          scope: "visible",
+        })
+      )
+    ).toBe(true);
 
     expect(
       auth.can(

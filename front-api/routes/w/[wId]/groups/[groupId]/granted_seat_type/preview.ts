@@ -22,10 +22,11 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/groups/:groupId/granted_seat_type/preview.
 const app = workspaceApp();
 
-// Previews mapping this group to a seat: reports how many of the group's members
-// would actually move to that seat (highest-wins, so members already on a higher
-// seat via another group are excluded) and the cost, reusing the bulk seat-change
-// preview. Admin only, gated behind the feature flag.
+// Previews mapping this group to a seat: reports the members this grant applies
+// to (highest-wins, so members already on a higher seat via another group are
+// excluded; members already on the tier are included and shown as unchanged) and
+// the cost, reusing the bulk seat-change preview. Admin only, gated behind the
+// feature flag.
 /** @ignoreswagger */
 app.post(
   "/",
@@ -82,9 +83,10 @@ app.post(
 
     const group = groupRes.value;
     // `targetSeatType` is the seat the contract bills for this tier (monthly
-    // preferred); `members` are only those who'd actually move to it.
+    // preferred); `members` are those this grant applies to — movers plus those
+    // already on the tier (excluding members covered by a higher tier elsewhere).
     const { members, targetSeatType } =
-      await group.listMembersMovedByGrantingSeat(auth, grantedSeatType);
+      await group.listMembersAffectedByGrantingSeat(auth, grantedSeatType);
     if (targetSeatType === null || !isPaidSeatType(targetSeatType)) {
       return apiError(ctx, {
         status_code: 400,

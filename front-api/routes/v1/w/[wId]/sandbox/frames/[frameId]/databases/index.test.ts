@@ -164,9 +164,8 @@ describe("conversation sandbox Frame database access", () => {
       new Ok({
         columns: [],
         rows: [],
-        rowCount: 0,
+        truncated: false,
         changes: 3,
-        resultsFile: null,
         note: null,
       })
     );
@@ -185,9 +184,8 @@ describe("conversation sandbox Frame database access", () => {
     await expect(response.json()).resolves.toEqual({
       columns: [],
       rows: [],
-      rowCount: 0,
+      truncated: false,
       changes: 3,
-      resultsFile: null,
       note: null,
     });
     expect(ensureFrameSandboxReady).toHaveBeenCalledWith(

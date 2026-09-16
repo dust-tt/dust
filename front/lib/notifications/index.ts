@@ -18,12 +18,10 @@ import { NovuError } from "@novu/api/models/errors";
 import type { ChannelPreference } from "@novu/react";
 import { WebClient } from "@slack/web-api";
 import { createHmac } from "crypto";
-import { Op } from "sequelize";
 import config from "../api/config";
 import { Authenticator, getFeatureFlags } from "../auth";
 import { DustError } from "../error";
 import { DataSourceResource } from "../resources/data_source_resource";
-import { UserMetadataModel } from "../resources/storage/models/user";
 
 export type NotificationAllowedTags = Array<"conversations" | "admin">;
 
@@ -67,14 +65,9 @@ export const getUserNotificationDelay = async ({
   if (!user) {
     return DEFAULT_NOTIFICATION_DELAY;
   }
-  const metadata = await UserMetadataModel.findOne({
-    where: {
-      userId: user.id,
-      key: {
-        [Op.eq]: makeNotificationPreferencesUserMetadata(channel),
-      },
-    },
-  });
+  const metadata = await user.getMetadata(
+    makeNotificationPreferencesUserMetadata(channel)
+  );
   const metadataValue = metadata?.value;
   return isNotificationPreferencesDelay(metadataValue)
     ? metadataValue

@@ -5,7 +5,6 @@ import logger from "@app/logger/logger";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
-import moment from "moment-timezone";
 
 /**
  * Period resolution for the consumption analytics endpoints: turns a requested
@@ -30,10 +29,11 @@ function calendarMonthBounds(now: Date): {
   cycleStart: Date;
   cycleEnd: Date;
 } {
-  const startOfMonth = moment.utc(now).startOf("month");
   return {
-    cycleStart: startOfMonth.toDate(),
-    cycleEnd: startOfMonth.clone().add(1, "month").toDate(),
+    cycleStart: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
+    cycleEnd: new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+    ),
   };
 }
 
@@ -78,18 +78,12 @@ async function resolveCycleBounds(
 export function previousConsumptionPeriod(
   currentPeriod: ConsumptionPeriod
 ): ConsumptionPeriod {
-  const startMs = moment.utc(currentPeriod.startDate).valueOf();
-  const endMs = Math.min(
-    moment.utc(currentPeriod.endDate).valueOf(),
-    Date.now()
-  );
+  const startMs = new Date(currentPeriod.startDate).getTime();
+  const endMs = Math.min(new Date(currentPeriod.endDate).getTime(), Date.now());
   const durationMs = endMs - startMs;
 
   return {
-    startDate: moment
-      .utc(currentPeriod.startDate)
-      .subtract(durationMs, "milliseconds")
-      .toISOString(),
+    startDate: new Date(startMs - durationMs).toISOString(),
     endDate: currentPeriod.startDate,
   };
 }
@@ -108,11 +102,11 @@ export async function resolveConsumptionPeriod(
         endDate: cycleEnd.toISOString(),
       };
     case "days":
-      const startMs = moment
-        .utc(now)
-        .subtract(input.days - 1, "days")
-        .startOf("day")
-        .valueOf();
+      const startMs = Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() - (input.days - 1)
+      );
       return {
         startDate: new Date(startMs).toISOString(),
         endDate: now.toISOString(),

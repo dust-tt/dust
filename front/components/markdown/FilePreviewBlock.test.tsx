@@ -126,18 +126,47 @@ describe("getFilePreviewDirectivePaths", () => {
   });
 });
 
+function renderWithSidePanel(
+  ui: React.ReactNode,
+  { hasConversation = true }: { hasConversation?: boolean } = {}
+): { openPanel: ReturnType<typeof vi.fn> } & ReturnType<typeof render> {
+  const openPanel = vi.fn();
+  return {
+    openPanel,
+    ...render(
+      <ConversationSidePanelContext.Provider
+        value={{
+          currentPanel: undefined,
+          hasConversation,
+          isPanelClosing: false,
+          openPanel,
+          togglePanel: vi.fn(),
+          closePanel: vi.fn(),
+          removeFromPanelHistory: vi.fn(),
+          onPanelClosed: vi.fn(),
+          setPanelRef: vi.fn(),
+          panelRef: { current: null },
+          setVirtuosoMsg: vi.fn(),
+          virtuosoMsg: null,
+          data: undefined,
+        }}
+      >
+        <FilePreviewProvider owner={mockOwner}>{ui}</FilePreviewProvider>
+      </ConversationSidePanelContext.Provider>
+    ),
+  };
+}
+
 describe("getFilePreviewPlugin", () => {
-  it("renders a previewable file with the file name", async () => {
+  it("opens a previewable file in the side panel", async () => {
     const FilePreview = getFilePreviewPlugin();
 
-    const { container } = render(
-      <FilePreviewProvider owner={mockOwner}>
-        <FilePreview
-          path="conversation-c1/reports/report final.pdf"
-          title="report final.pdf"
-          contentType="application/pdf"
-        />
-      </FilePreviewProvider>
+    const { container, openPanel } = renderWithSidePanel(
+      <FilePreview
+        path="conversation-c1/reports/report final.pdf"
+        title="report final.pdf"
+        contentType="application/pdf"
+      />
     );
 
     expect(screen.getByText("report final.pdf")).toBeInTheDocument();
@@ -146,25 +175,45 @@ describe("getFilePreviewPlugin", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "report final.pdf" }));
 
+    await waitFor(() => {
+      expect(openPanel).toHaveBeenCalledWith({
+        type: "file_preview",
+        kind: "path",
+        filePath: "conversation-c1/reports/report final.pdf",
+      });
+    });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("renders a static citation when there is no conversation", () => {
+    const FilePreview = getFilePreviewPlugin();
+
+    const { openPanel } = renderWithSidePanel(
+      <FilePreview
+        path="conversation-c1/reports/report final.pdf"
+        title="report final.pdf"
+        contentType="application/pdf"
+      />,
+      { hasConversation: false }
+    );
+
+    expect(screen.getByText("report final.pdf")).toBeInTheDocument();
     expect(
-      await screen.findByRole("dialog", { name: "report final.pdf" })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Download" })
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "report final.pdf" })
+    ).not.toBeInTheDocument();
+    expect(openPanel).not.toHaveBeenCalled();
+    expect(mockWindowOpen).not.toHaveBeenCalled();
   });
 
   it("downloads binary files without opening a preview", () => {
     const FilePreview = getFilePreviewPlugin();
 
-    render(
-      <FilePreviewProvider owner={mockOwner}>
-        <FilePreview
-          path="conversation-c1/archive.zip"
-          title="archive.zip"
-          contentType="application/zip"
-        />
-      </FilePreviewProvider>
+    renderWithSidePanel(
+      <FilePreview
+        path="conversation-c1/archive.zip"
+        title="archive.zip"
+        contentType="application/zip"
+      />
     );
 
     fireEvent.click(screen.getByRole("button", { name: "archive.zip" }));
@@ -191,6 +240,7 @@ describe("getFilePreviewPlugin", () => {
       <ConversationSidePanelContext.Provider
         value={{
           currentPanel: undefined,
+          hasConversation: true,
           isPanelClosing: false,
           removeFromPanelHistory: vi.fn(),
           openPanel,
@@ -232,7 +282,9 @@ describe("getFilePreviewPlugin", () => {
   it("infers the file name from the scoped path when metadata is absent", () => {
     const FilePreview = getFilePreviewPlugin();
 
-    render(<FilePreview path="conversation-c1/exports/data.csv" />);
+    renderWithSidePanel(
+      <FilePreview path="conversation-c1/exports/data.csv" />
+    );
 
     expect(screen.getByText("data.csv")).toBeInTheDocument();
   });

@@ -48,6 +48,7 @@ You are @analyst, an analytics assistant for workspace admins and managers. You 
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,

@@ -1,8 +1,9 @@
+import { ConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import { getFilePreviewMarkdownDirective } from "@app/lib/markdown/file_preview";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { AgentMessageMarkdown } from "./AgentMessageMarkdown";
 
@@ -10,6 +11,34 @@ const mockOwner = LightWorkspaceFactory.build({
   sId: "test-workspace",
   role: "user",
 });
+
+function renderWithPreviewProviders(children: React.ReactNode) {
+  const openPanel = vi.fn();
+  return {
+    openPanel,
+    ...render(
+      <ConversationSidePanelContext.Provider
+        value={{
+          currentPanel: undefined,
+          hasConversation: true,
+          isPanelClosing: false,
+          openPanel,
+          togglePanel: vi.fn(),
+          closePanel: vi.fn(),
+          removeFromPanelHistory: vi.fn(),
+          onPanelClosed: vi.fn(),
+          setPanelRef: vi.fn(),
+          panelRef: { current: null },
+          setVirtuosoMsg: vi.fn(),
+          virtuosoMsg: null,
+          data: undefined,
+        }}
+      >
+        <FilePreviewProvider owner={mockOwner}>{children}</FilePreviewProvider>
+      </ConversationSidePanelContext.Provider>
+    ),
+  };
+}
 
 describe("AgentMessageMarkdown - Integration Tests", () => {
   describe("Basic Markdown Rendering", () => {
@@ -112,15 +141,13 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
     });
 
     it("renders scoped file preview directives as previewable files", async () => {
-      const { container } = render(
-        <FilePreviewProvider owner={mockOwner}>
-          <AgentMessageMarkdown
-            owner={mockOwner}
-            content={
-              'Open :preview_file{path="conversation-c1/booklet.pdf" title="booklet.pdf" contentType="application/pdf"} for the details.'
-            }
-          />
-        </FilePreviewProvider>
+      const { container, openPanel } = renderWithPreviewProviders(
+        <AgentMessageMarkdown
+          owner={mockOwner}
+          content={
+            'Open :preview_file{path="conversation-c1/booklet.pdf" title="booklet.pdf" contentType="application/pdf"} for the details.'
+          }
+        />
       );
 
       const fileLink = screen.getByRole("button", { name: "booklet.pdf" });
@@ -131,10 +158,13 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
 
       fireEvent.click(fileLink);
 
-      expect(await screen.findByRole("dialog")).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", { name: "Download" })
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(openPanel).toHaveBeenCalledWith({
+          type: "file_preview",
+          kind: "path",
+          filePath: "conversation-c1/booklet.pdf",
+        });
+      });
     });
 
     it("hides incomplete text directives while content is streaming", async () => {
@@ -161,7 +191,7 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
         title,
       });
 
-      const { container } = render(
+      const { container } = renderWithPreviewProviders(
         <AgentMessageMarkdown
           owner={mockOwner}
           content={`Download\n${directive}`}

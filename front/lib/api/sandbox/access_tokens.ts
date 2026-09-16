@@ -64,7 +64,7 @@ const SandboxTokenPayloadSchema = z
     invocationId: z.string().optional(),
     filesystem: z.literal(true).optional(),
     fileSystemRoots: SandboxFileSystemRootsSchema.optional(),
-    // Set for a fast Pod function, published on the promise that it does not call tools. A tool
+    // Set for a fast Frame function, published on the promise that it does not call tools. A tool
     // call can wait on the user for as long as they take, which a fast invocation has no way to
     // survive, so the token it runs under cannot make one.
     noTools: z.literal(true).optional(),

@@ -213,11 +213,13 @@ app.patch(
     }
 
     const editorGroup = editorGroupRes.value;
-    // TODO(governance) serve the AgentResource permission after shadow verification.
+    // The rollout switch selects the permission source for both editor writes.
     const canAdministrate = await shadowCanAdminAgent(
       auth,
       agent,
-      auth.isAdmin() || (await editorGroup.isMember(auth.getNonNullableUser())),
+      async () =>
+        auth.isAdmin() ||
+        (await editorGroup.isMember(auth.getNonNullableUser())),
       "patchAgentEditorsRoute"
     );
     if (!canAdministrate) {

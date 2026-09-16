@@ -11,7 +11,7 @@ import assert from "assert";
 import { describe, expect, it } from "vitest";
 
 describe("uploadAndFormatImageResponse", () => {
-  it("writes generated images to the pod function tool outputs folder", async () => {
+  it("writes generated images to the frame function tool outputs folder", async () => {
     const {
       auth,
       workspace,

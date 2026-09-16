@@ -23,14 +23,9 @@ import {
 } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { useSidekickMCPServer } from "@app/components/agent_builder/sidekick/useMCPServer";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
-import {
-  getDefaultAgentFormData,
-  transformAgentConfigurationToFormData,
-  transformDuplicateAgentToFormData,
-  transformTemplateToFormData,
-} from "@app/components/agent_builder/transformAgentConfiguration";
 import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   BuilderEditorGateMessage,
@@ -43,8 +38,15 @@ import type {
   BuilderAction,
 } from "@app/components/shared/tools_picker/types";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
+import { useBuilderTracking } from "@app/hooks/useBuilderTracking";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  getDefaultAgentFormData,
+  transformAgentConfigurationToFormData,
+  transformDuplicateAgentToFormData,
+  transformTemplateToFormData,
+} from "@app/lib/agent_builder/transform_agent_configuration";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { useAppRouter } from "@app/lib/platform";
@@ -185,6 +187,15 @@ function AgentBuilderForm({
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
   const [pendingAgentId, setPendingAgentId] = useState<string | null>(null);
   const hasPendingCreationRef = useRef(false);
+
+  // A duplicate starts from an existing agent but produces a new one, so it is its own entry
+  // point rather than an edit.
+  const entryPoint = duplicateAgentId
+    ? "duplicate"
+    : agentConfiguration
+      ? "edit"
+      : "new";
+  const { trackSave } = useBuilderTracking({ builder: "agent", entryPoint });
 
   const {
     actions,
@@ -581,6 +592,20 @@ function AgentBuilderForm({
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const isCreatingNew = duplicateAgentId || !agentConfiguration;
 
+      trackSave({
+        agent_id: createdAgent.sId,
+        is_update: !isCreatingNew,
+        scope: formData.agentSettings.scope,
+        has_instructions: !!formData.instructions,
+        action_count: formData.actions.length,
+        skill_count: formData.skills.length,
+        trigger_count:
+          formData.triggersToCreate.length + formData.triggersToUpdate.length,
+        model_id: formData.generationSettings.modelSettings?.modelId ?? "",
+        model_provider:
+          formData.generationSettings.modelSettings?.providerId ?? "",
+      });
+
       // Check if there's a warning about Slack channel linking
       if (
         "_warning" in createdAgent &&
@@ -966,10 +991,12 @@ function AgentBuilderContent({
             suppressAutoStart={isCreatedDialogOpen}
           >
             <ConversationSidePanelProvider>
-              <AgentBuilderRightPanel
-                agentConfiguration={agentConfiguration}
-                isSidekickDisabled={isEditorLocked}
-              />
+              <FilePreviewProvider owner={owner}>
+                <AgentBuilderRightPanel
+                  agentConfiguration={agentConfiguration}
+                  isSidekickDisabled={isEditorLocked}
+                />
+              </FilePreviewProvider>
             </ConversationSidePanelProvider>
           </SidekickPanelProvider>
         }

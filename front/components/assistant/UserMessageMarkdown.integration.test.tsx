@@ -61,6 +61,7 @@ vi.mock(
     ...(await importOriginal()),
     useConversationSidePanelContext: () => ({
       currentPanel: undefined,
+      hasConversation: true,
       isPanelClosing: false,
       removeFromPanelHistory: vi.fn(),
       openPanel: vi.fn(),

@@ -9666,7 +9666,7 @@
     "/api/w/{wId}/sandbox-functions/{functionId}/invocations/{invocationId}/events": {
       "get": {
         "summary": "Stream sandbox function invocation events",
-        "description": "Stream real-time events for a Pod function invocation using Server-Sent Events (SSE). This endpoint is redirected to /api/sse/ for SSE traffic routing.",
+        "description": "Stream real-time events for a Frame function invocation using Server-Sent Events (SSE). This endpoint is redirected to /api/sse/ for SSE traffic routing.",
         "tags": [
           "Private Events"
         ],
@@ -9684,7 +9684,7 @@
             "in": "path",
             "name": "functionId",
             "required": true,
-            "description": "ID of the Pod function",
+            "description": "ID of the Frame function",
             "schema": {
               "type": "string"
             }
@@ -12294,6 +12294,11 @@
           "id": {
             "type": "integer"
           },
+          "agentModelId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Stable identifier of the agent across versions; null for global agents"
+          },
           "sId": {
             "type": "string"
           },
@@ -14702,6 +14707,12 @@
           "id": {
             "type": "integer",
             "example": 12345
+          },
+          "agentModelId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Stable identifier of the agent across versions; null for global agents",
+            "example": 6789
           },
           "sId": {
             "type": "string",

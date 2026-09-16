@@ -17,6 +17,10 @@ import { fromError } from "zod-validation-error";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
+export function isNonRetryableUpsertError(message: string): boolean {
+  return message.includes("[max_tokens_per_request]");
+}
+
 export function cleanUtf8Content(content: string): string {
   // Strip null bytes (invalid in PostgreSQL text columns and JSON strings per RFC4627)
   const withoutNullBytes = content.replace(/\0/g, "");
@@ -151,6 +155,10 @@ export async function upsertDocumentActivity(
       message: `Upsert error: ${upsertRes.error.message}`,
       type: "upsert_queue_upsert_document_error",
     };
+
+    if (isNonRetryableUpsertError(upsertRes.error.message)) {
+      throw ApplicationFailure.nonRetryable(error.message, error.type);
+    }
 
     throw error;
   }

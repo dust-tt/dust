@@ -1,5 +1,4 @@
 import {
-  Archive,
   ArrowRight,
   Avatar,
   Button,
@@ -7,15 +6,6 @@ import {
   ButtonsSwitchList,
   Check,
   CheckDouble,
-  Chip,
-  ContentMessage,
-  ConversationListItem,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -27,16 +17,13 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EmptyCTA,
-  EmptyCTAButton,
-  File02,
   Icon,
-  Input,
   ListGroup,
   ListItemSection,
   MagicWand02,
   MessageChatSquare,
   ReplySection,
+  Robot,
   SearchInput,
   SearchInputWithPopover,
   Sheet,
@@ -44,20 +31,15 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SliderToggle,
   Tabs,
   TabsContent,
   Trash01,
   TypingAnimation,
-  Upload01,
-  Users01,
-  XClose,
-  Zap,
-  ZapOff,
+  Umbrella03,
+  User01,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import { cn } from "@sparkle/lib/utils";
-import type { ColumnDef } from "@tanstack/react-table";
 import {
   Fragment,
   useCallback,
@@ -81,20 +63,31 @@ import {
   isMyPodMineConversation,
   isTriggeredConversation,
 } from "../data/myPod";
+import {
+  DEFAULT_POD_NOTIFICATION_CONDITION,
+  type PodNotificationCondition,
+} from "../data/podSettings";
+import { formatRowTime } from "../data/time";
+import { getTriggerById } from "../data/triggers";
 import type {
   Agent,
   Conversation,
   DataSource,
   Space,
+  Trigger,
   User,
 } from "../data/types";
 import { getUserById } from "../data/users";
-import {
-  PodCustomizationSection,
-  type PodTabCustomizationItem,
-} from "./PodCustomizationSection";
+import type { PodTabCustomizationItem } from "./PodCustomizationSection";
+import { buildConversationRowMenuItems } from "./conversationRowMenu";
 import { EmptyState } from "./EmptyState";
-import { DataTable } from "./DataTableDnd";
+import {
+  collectAgents,
+  collectUsers,
+  FilterMenu,
+  type FilterGroup,
+  type FilterSelection,
+} from "./FilterMenu";
 import { FilePreviewPanel } from "./FilePreviewPanel";
 import { FilesBrowser } from "./FilesBrowser";
 import { FrameSheetHeader } from "./FrameSheetHeader";
@@ -103,9 +96,12 @@ import {
   DATA_SOURCE_FILE_NAME_DRAG_MIME,
 } from "./FreeButtonSwitch";
 import { InputBar, type InputBarTaskCommand } from "./InputBar";
+import { PodSettingsSection } from "./PodSettingsSection";
 import { SuggestionBox } from "./SuggestionBox";
 import { TaskItem } from "./TaskItem";
+import { TriggerRunAvatar } from "./TriggerRunAvatar";
 import { TodoInputBar } from "./TodoInputBar";
+import { ConversationListItem } from "./ConversationListItem";
 
 interface GroupConversationViewProps {
   space: Space;
@@ -120,6 +116,11 @@ interface GroupConversationViewProps {
   onUpdateSpaceName?: (spaceId: string, newName: string) => void;
   onUpdateSpacePublic?: (spaceId: string, isPublic: boolean) => void;
   spacePublicSettings?: Map<string, boolean>;
+  onUpdateSpaceNotifications?: (
+    spaceId: string,
+    condition: PodNotificationCondition
+  ) => void;
+  spaceNotificationSettings?: Map<string, PodNotificationCondition>;
   isProjectJoined?: boolean;
   onJoinProject?: () => void;
   onLeaveProject?: () => void;
@@ -137,11 +138,26 @@ interface GroupConversationViewProps {
   showComposer?: boolean;
   hideConversationFilters?: boolean;
   currentUserId?: string;
+  /** The rows read elsewhere, which stop calling for attention here too. */
+  readRowIds?: Set<string>;
+  /** Reports rows as read, from a row's menu. */
+  onRowsRead?: (rowIds: string[]) => void;
+  /** The rows put back to unread from a row's menu, dot and all. */
+  unreadRowIds?: Set<string>;
+  /** Reports rows as unread, from a row's menu. */
+  onRowsUnread?: (rowIds: string[]) => void;
+  /** Leaves a conversation, which is the end of it in every list. */
+  onLeaveConversation?: (conversationId: string) => void;
+  /** The conversations already left, kept out of the list. */
+  leftConversationIds?: Set<string>;
+  /** The triggers behind automated rows, which name their agent and type. */
+  triggers?: Trigger[];
   podTabCustomization?: {
     tabs: PodTabCustomizationItem[];
     addableFiles: DataSource[];
     onReorder: (draggedValue: string, targetValue: string) => void;
     onChangeIcon: (tabValue: string, iconName: string) => void;
+    onRename: (tabValue: string, title: string) => void;
     onRemove: (tabValue: string) => void;
     onAdd: (file: DataSource) => void;
   };
@@ -329,55 +345,69 @@ function generateConversationsWithDates(
   const now = new Date();
   const generated: Conversation[] = [];
 
-  // Duplicate and vary existing conversations
-  for (let i = 0; i < count; i++) {
-    const baseConversation = conversations[i % conversations.length];
-    const rowSeed = `${seed}-${baseConversation.id}-${i}`;
-    const daysAgo = Math.floor(seededRandom(rowSeed, 0) * 35); // Up to 35 days ago
-    const hoursAgo = Math.floor(seededRandom(rowSeed, 1) * 24);
-    const minutesAgo = Math.floor(seededRandom(rowSeed, 2) * 60);
-    const title =
-      GENERATED_CONVERSATION_TITLES[
-        Math.floor(
-          seededRandom(rowSeed, 3) * GENERATED_CONVERSATION_TITLES.length
-        )
-      ];
-    const descriptionTemplate =
-      GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES[
-        Math.floor(
-          seededRandom(rowSeed, 4) *
-            GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES.length
-        )
-      ];
+  // Duplicate and vary existing conversations. Each copy is seeded by the
+  // conversation it comes from rather than its rank in the list, so dropping
+  // one conversation leaves every other row exactly as it was.
+  const copiesPerConversation = Math.ceil(count / conversations.length);
 
-    const updatedAt = new Date(now);
-    updatedAt.setDate(updatedAt.getDate() - daysAgo);
-    updatedAt.setHours(updatedAt.getHours() - hoursAgo);
-    updatedAt.setMinutes(updatedAt.getMinutes() - minutesAgo);
+  for (const baseConversation of conversations) {
+    for (let copy = 0; copy < copiesPerConversation; copy++) {
+      const rowSeed = `${seed}-${baseConversation.id}-${copy}`;
+      const daysAgo = Math.floor(seededRandom(rowSeed, 0) * 35); // Up to 35 days ago
+      const hoursAgo = Math.floor(seededRandom(rowSeed, 1) * 24);
+      const minutesAgo = Math.floor(seededRandom(rowSeed, 2) * 60);
+      const title =
+        GENERATED_CONVERSATION_TITLES[
+          Math.floor(
+            seededRandom(rowSeed, 3) * GENERATED_CONVERSATION_TITLES.length
+          )
+        ];
+      const descriptionTemplate =
+        GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES[
+          Math.floor(
+            seededRandom(rowSeed, 4) *
+              GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES.length
+          )
+        ];
 
-    const createdAt = new Date(updatedAt);
-    createdAt.setDate(
-      createdAt.getDate() - Math.floor(seededRandom(rowSeed, 5) * 5)
-    );
+      const updatedAt = new Date(now);
+      updatedAt.setDate(updatedAt.getDate() - daysAgo);
+      updatedAt.setHours(updatedAt.getHours() - hoursAgo);
+      updatedAt.setMinutes(updatedAt.getMinutes() - minutesAgo);
 
-    generated.push({
-      ...baseConversation,
-      id: `${baseConversation.id}-${i}`,
-      updatedAt,
-      createdAt,
-      title,
-      description: descriptionTemplate.replace("{title}", title.toLowerCase()),
-    });
+      const createdAt = new Date(updatedAt);
+      createdAt.setDate(
+        createdAt.getDate() - Math.floor(seededRandom(rowSeed, 5) * 5)
+      );
+
+      // A run is named by the trigger that started it, so repeats of the same
+      // automation keep that name instead of borrowing a human thread's.
+      const isRun = baseConversation.triggerId !== undefined;
+
+      generated.push({
+        ...baseConversation,
+        id: `${baseConversation.id}-${copy}`,
+        updatedAt,
+        createdAt,
+        title: isRun ? baseConversation.title : title,
+        description: isRun
+          ? baseConversation.description
+          : descriptionTemplate.replace("{title}", title.toLowerCase()),
+      });
+    }
   }
 
   return generated;
 }
 
-// Seeded random function for deterministic randomness
+// Seeded random function for deterministic randomness. The hash folds in the
+// position of each character, so seeds that share the same letters — two
+// conversation ids apart only in their digits — don't land on the same row.
 function seededRandom(seed: string, index: number): number {
-  const hash = seed
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  let hash = 5381;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 33 + seed.charCodeAt(i)) | 0;
+  }
   const x = Math.sin((hash + index) * 12.9898) * 43758.5453;
   return x - Math.floor(x);
 }
@@ -1234,7 +1264,9 @@ function GroupConversationTabContent({
         <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-4">
           <div
             className={cn(
-              "mx-auto flex w-full max-w-4xl flex-col gap-3 py-8",
+              // flex-1 so an empty state below the input centers on what is
+              // left of the panel instead of hugging it.
+              "mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 py-8",
               contentClassName
             )}
           >
@@ -1275,6 +1307,7 @@ function ProjectSetupEmptyState({
 }) {
   return (
     <EmptyState
+      icon={Umbrella03}
       title="It's quiet in here."
       description="Your Pod is ready but empty! Let us help you invite people, add key data, and more."
       action={
@@ -1304,6 +1337,8 @@ export function GroupConversationView({
   onUpdateSpaceName,
   onUpdateSpacePublic,
   spacePublicSettings,
+  onUpdateSpaceNotifications,
+  spaceNotificationSettings,
   isProjectJoined = false,
   onJoinProject = () => {},
   onLeaveProject = () => {},
@@ -1320,6 +1355,13 @@ export function GroupConversationView({
   showComposer = true,
   hideConversationFilters = false,
   currentUserId,
+  readRowIds,
+  onRowsRead,
+  unreadRowIds,
+  onRowsUnread,
+  onLeaveConversation,
+  leftConversationIds,
+  triggers = [],
   podTabCustomization,
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
@@ -1333,6 +1375,8 @@ export function GroupConversationView({
   const [goodToKnowFilter, setGoodToKnowFilter] = useState<
     "all" | "shared" | "mine"
   >("all");
+  const [conversationFilter, setConversationFilter] =
+    useState<FilterSelection>(null);
   const [todoSearchText, setTodoSearchText] = useState("");
   const [todoReassignSearchText, setTodoReassignSearchText] = useState("");
   const [todoSuggestionStatus, setTodoSuggestionStatus] =
@@ -1403,29 +1447,6 @@ export function GroupConversationView({
   const pendingFocusTodoItemKeyRef = useRef<string | null>(null);
   const todoItemEditorRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  // Settings state
-  const [roomName, setRoomName] = useState(space.name);
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [roomDescription, setRoomDescription] = useState(
-    space.description ?? ""
-  );
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [editorIds, setEditorIds] = useState<string[]>(editorUserIds);
-  const [isPublic, setIsPublic] = useState(
-    spacePublicSettings?.get(space.id) ?? space.isPublic ?? true
-  );
-  const [showNameSaveDialog, setShowNameSaveDialog] = useState(false);
-  const [showPublicToggleDialog, setShowPublicToggleDialog] = useState(false);
-  const [pendingPublicValue, setPendingPublicValue] = useState<boolean | null>(
-    null
-  );
-
-  const [isProjectArchived, setIsProjectArchived] = useState(false);
-  const [archivedAt, setArchivedAt] = useState<Date | null>(null);
-  const [archivedByName, setArchivedByName] = useState<string | null>(null);
-  const [showDeleteProjectDialog, setShowDeleteProjectDialog] = useState(false);
-  const [deleteConfirmDraft, setDeleteConfirmDraft] = useState("");
-
   // Active tab — controlled externally if activeTab/onTabChange props are provided
   const [internalActiveTab, setInternalActiveTab] = useState("conversations");
   const activeTab = controlledActiveTab ?? internalActiveTab;
@@ -1459,13 +1480,8 @@ export function GroupConversationView({
   );
 
   // Members tab state
-  const [membersSearchText, setMembersSearchText] = useState("");
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [isMemberSheetOpen, setIsMemberSheetOpen] = useState(false);
-  const [removeMemberDialogOpen, setRemoveMemberDialogOpen] = useState(false);
-  const [selectedMemberIdToRemove, setSelectedMemberIdToRemove] = useState<
-    string | null
-  >(null);
   const [conversationIdToShowFocus, setConversationIdToShowFocus] = useState<
     string | null
   >(null);
@@ -1513,6 +1529,39 @@ export function GroupConversationView({
     users,
   ]);
 
+  // The conversations the tab holds before the filter narrows them, so the
+  // options never drop out of the menu they were picked from.
+  const filterSourceConversations =
+    podVariant === "personal"
+      ? myPodEnrichedConversations
+      : expandedConversations;
+
+  const conversationFilterGroups = useMemo(
+    (): FilterGroup[] => [
+      {
+        kind: "member",
+        label: "Member",
+        icon: User01,
+        options: collectUsers(
+          filterSourceConversations.flatMap(
+            (conversation) => conversation.userParticipants
+          )
+        ),
+      },
+      {
+        kind: "agent",
+        label: "Agent",
+        icon: Robot,
+        options: collectAgents(
+          filterSourceConversations.flatMap(
+            (conversation) => conversation.agentParticipants
+          )
+        ),
+      },
+    ],
+    [filterSourceConversations]
+  );
+
   const visibleConversations = useMemo(() => {
     const source =
       podVariant === "personal"
@@ -1520,6 +1569,18 @@ export function GroupConversationView({
         : expandedConversations;
 
     return source.filter((conversation) => {
+      if (leftConversationIds?.has(conversation.id)) {
+        return false;
+      }
+      if (conversationFilter) {
+        const matches =
+          conversationFilter.kind === "member"
+            ? conversation.userParticipants.includes(conversationFilter.value)
+            : conversation.agentParticipants.includes(conversationFilter.value);
+        if (!matches) {
+          return false;
+        }
+      }
       if (podVariant === "personal" && !hideConversationFilters) {
         if (isTriggeredConversation(conversation)) {
           return false;
@@ -1546,11 +1607,13 @@ export function GroupConversationView({
       return true;
     });
   }, [
+    conversationFilter,
     currentUserId,
     expandedConversations,
     goodToKnowFilter,
     hideConversationFilters,
     hideTriggeredConversations,
+    leftConversationIds,
     myPodEnrichedConversations,
     podVariant,
   ]);
@@ -1799,6 +1862,8 @@ export function GroupConversationView({
         messageCount: number;
         replyCount: number;
         time: string;
+        unread: boolean;
+        trigger?: Trigger;
       }
     >();
 
@@ -1812,24 +1877,28 @@ export function GroupConversationView({
         seededRandom(rowSeed, 2) * (messageCount + 1)
       );
 
+      // A thread you have not read yet is most often a recent one, so age
+      // weights the odds rather than deciding them outright.
+      const ageInDays =
+        (Date.now() - conversation.updatedAt.getTime()) / (24 * 60 * 60 * 1000);
+      const unreadOdds = ageInDays < 1 ? 0.6 : ageInDays < 7 ? 0.4 : 0.25;
+
       itemMap.set(conversation.id, {
         avatarProps: participantsToAvatarProps(participants),
         creator: getRandomCreator(conversation, users),
         mentionCount,
         messageCount,
         replyCount,
-        time: conversation.updatedAt
-          .toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          })
-          .replace("24:", "00:"),
+        time: formatRowTime(conversation.updatedAt),
+        unread: seededRandom(rowSeed, 3) < unreadOdds,
+        trigger: conversation.triggerId
+          ? getTriggerById(triggers, conversation.triggerId)
+          : undefined,
       });
     });
 
     return itemMap;
-  }, [agents, space.id, users, visibleConversations]);
+  }, [agents, space.id, triggers, users, visibleConversations]);
 
   const getAutoCheckRationales = (
     summary: OngoingSummary,
@@ -2010,54 +2079,6 @@ export function GroupConversationView({
       }
     };
   }, []);
-
-  // Handle room name save confirmation
-  const handleNameSaveConfirm = () => {
-    onUpdateSpaceName?.(space.id, roomName);
-    setIsEditingName(false);
-    setShowNameSaveDialog(false);
-  };
-
-  // Handle public toggle confirmation
-  const handlePublicToggleConfirm = () => {
-    if (pendingPublicValue !== null) {
-      setIsPublic(pendingPublicValue);
-      onUpdateSpacePublic?.(space.id, pendingPublicValue);
-      setPendingPublicValue(null);
-    }
-    setShowPublicToggleDialog(false);
-  };
-
-  const handleArchiveProject = () => {
-    setIsProjectArchived(true);
-    setArchivedAt(new Date());
-    setArchivedByName(users[0]?.fullName ?? users[0]?.email ?? "Unknown");
-  };
-
-  const handleUnarchiveProject = () => {
-    setIsProjectArchived(false);
-    setArchivedAt(null);
-    setArchivedByName(null);
-  };
-
-  // Reset room name when space changes
-  useEffect(() => {
-    setRoomName(space.name);
-    setIsEditingName(false);
-    setRoomDescription(space.description ?? "");
-    setIsEditingDescription(false);
-    setEditorIds(editorUserIds);
-    setIsPublic(spacePublicSettings?.get(space.id) ?? space.isPublic ?? true);
-    setIsProjectArchived(false);
-    setArchivedAt(null);
-    setArchivedByName(null);
-    setShowDeleteProjectDialog(false);
-    setDeleteConfirmDraft("");
-  }, [space.id, space.name, spacePublicSettings, space.isPublic]);
-
-  useEffect(() => {
-    setEditorIds(editorUserIds);
-  }, [editorUserIds]);
 
   useEffect(() => {
     if (!hasHistory) {
@@ -3047,167 +3068,11 @@ export function GroupConversationView({
     };
   }, [checkedSummaryItems, handleCleanTodoItems]);
 
-  // Handle remove member confirmation
-  const handleRemoveMemberConfirm = () => {
-    if (selectedMemberIdToRemove) {
-      // For prototyping, we'll just filter from the members list
-      // In a real app, this would call a callback prop
-      setSelectedMemberIdToRemove(null);
-    }
-    setRemoveMemberDialogOpen(false);
-  };
-
-  const toggleMemberEditor = (userId: string) => {
-    setEditorIds((prev) => {
-      if (prev.includes(userId)) {
-        return prev.filter((id) => id !== userId);
-      }
-      return [...prev, userId];
-    });
-  };
-
-  // Format date for display
-  const formatDate = (date: Date): string => {
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  // Create member table columns
-  const memberColumns: ColumnDef<Member>[] = useMemo(
-    () => [
-      {
-        accessorKey: "userId",
-        header: "Name",
-        id: "name",
-        sortingFn: "text",
-        meta: {
-          className: "w-full",
-        },
-        cell: (info) => {
-          const userId = info.getValue() as string;
-          const user = getUserById(userId);
-          if (!user) return <DataTable.BasicCellContent label="Unknown" />;
-          return (
-            <DataTable.CellContent>
-              <div className="flex items-center gap-2">
-                <Avatar
-                  name={user.fullName}
-                  visual={user.portrait}
-                  size="xs"
-                  isRounded={true}
-                />
-                <span className="text-sm">{user.fullName}</span>
-              </div>
-            </DataTable.CellContent>
-          );
-        },
-      },
-      {
-        accessorKey: "userId",
-        header: "Email",
-        id: "email",
-        meta: {
-          className: "w-[200px]",
-        },
-        cell: (info) => {
-          const userId = info.getValue() as string;
-          const user = getUserById(userId);
-          if (!user) return <DataTable.BasicCellContent label="Unknown" />;
-          return <DataTable.BasicCellContent label={user.email} />;
-        },
-      },
-      {
-        accessorKey: "userId",
-        header: "Role",
-        id: "role",
-        meta: {
-          className: "w-[120px]",
-        },
-        cell: (info) => {
-          const userId = info.getValue() as string;
-          return editorIds.includes(userId) ? (
-            <DataTable.CellContent>
-              <Chip size="xs" color="success" label="editor" />
-            </DataTable.CellContent>
-          ) : (
-            <DataTable.BasicCellContent label="" />
-          );
-        },
-      },
-      {
-        accessorKey: "joinedAt",
-        header: "Joined at",
-        id: "joinedAt",
-        meta: {
-          className: "w-[140px]",
-        },
-        cell: (info) => {
-          const date = info.getValue() as Date;
-          return <DataTable.BasicCellContent label={formatDate(date)} />;
-        },
-      },
-      {
-        id: "actions",
-        header: "",
-        meta: {
-          className: "w-12",
-        },
-        cell: (info) => (
-          <DataTable.MoreButton
-            menuItems={[
-              {
-                kind: "item",
-                icon: editorIds.includes(info.row.original.userId)
-                  ? XClose
-                  : Check,
-                label: editorIds.includes(info.row.original.userId)
-                  ? "Remove from editors"
-                  : "Set as editor",
-                onClick: () => {
-                  toggleMemberEditor(info.row.original.userId);
-                },
-              },
-              {
-                kind: "item",
-                label: "Remove from the Pod",
-                icon: Trash01,
-                variant: "warning",
-                onClick: () => {
-                  setSelectedMemberIdToRemove(info.row.original.userId);
-                  setRemoveMemberDialogOpen(true);
-                },
-              },
-            ]}
-          />
-        ),
-      },
-    ],
-    [editorIds]
-  );
-
-  // Filter members based on search text
-  const filteredMembers = useMemo(() => {
-    if (!membersSearchText.trim()) {
-      return members;
-    }
-    const searchLower = membersSearchText.toLowerCase();
-    return members.filter((member) => {
-      const user = getUserById(member.userId);
-      if (!user) return false;
-      return (
-        user.fullName.toLowerCase().includes(searchLower) ||
-        user.email.toLowerCase().includes(searchLower)
-      );
-    });
-  }, [members, membersSearchText]);
   const isShowingTodoSuggestions = todoSuggestionStatus !== "idle";
   const showMineGroupAll =
     !hideConversationFilters &&
     (podVariant === "personal" || spaceMemberIds.length > 1);
-  const showTriggeredToggle =
+  const canHideTriggered =
     !hideConversationFilters && podVariant !== "personal";
 
   return (
@@ -3243,58 +3108,40 @@ export function GroupConversationView({
           )}
           {hasHistory && (
             <div className="flex w-full flex-wrap items-center gap-2">
-              {(showMineGroupAll || showTriggeredToggle) && (
+              {showMineGroupAll && (
                 <div className="flex flex-none flex-nowrap items-center gap-2">
-                  {showMineGroupAll && (
-                    <ButtonsSwitchList
-                      defaultValue={goodToKnowFilter}
-                      onValueChange={(value) => {
-                        if (
-                          value === "all" ||
-                          value === "shared" ||
-                          value === "mine"
-                        ) {
-                          setGoodToKnowFilter(value);
-                        }
-                      }}
-                    >
-                      <ButtonsSwitch
-                        value="mine"
-                        label="Mine"
-                        tooltip="Conversations where you have sent a message."
-                      />
-                      <ButtonsSwitch
-                        value="shared"
-                        label="Group"
-                        tooltip="Conversations with more than one person"
-                      />
-                      <ButtonsSwitch
-                        value="all"
-                        label="All"
-                        tooltip="Every conversation in this Pod."
-                      />
-                    </ButtonsSwitchList>
-                  )}
-                  {showTriggeredToggle && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      icon={hideTriggeredConversations ? ZapOff : Zap}
-                      tooltip={
-                        hideTriggeredConversations
-                          ? "Show triggered"
-                          : "Hide triggered"
+                  <ButtonsSwitchList
+                    defaultValue={goodToKnowFilter}
+                    onValueChange={(value) => {
+                      if (
+                        value === "all" ||
+                        value === "shared" ||
+                        value === "mine"
+                      ) {
+                        setGoodToKnowFilter(value);
                       }
-                      className="shrink-0"
-                      onClick={() =>
-                        setHideTriggeredConversations((current) => !current)
-                      }
+                    }}
+                  >
+                    <ButtonsSwitch
+                      value="mine"
+                      label="Mine"
+                      tooltip="Conversations where you have sent a message."
                     />
-                  )}
+                    <ButtonsSwitch
+                      value="shared"
+                      label="Group"
+                      tooltip="Conversations with more than one person"
+                    />
+                    <ButtonsSwitch
+                      value="all"
+                      label="All"
+                      tooltip="Every conversation in this Pod."
+                    />
+                  </ButtonsSwitchList>
                 </div>
               )}
               <div className="flex min-w-[20rem] flex-1 items-center gap-2">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 max-w-80 flex-1">
                   <SearchInputWithPopover
                     name="conversation-search"
                     value={searchText}
@@ -3320,12 +3167,31 @@ export function GroupConversationView({
                     )}
                   />
                 </div>
+                <FilterMenu
+                  filter={conversationFilter}
+                  groups={conversationFilterGroups}
+                  onFilterChange={setConversationFilter}
+                  toggles={
+                    canHideTriggered
+                      ? [
+                          {
+                            id: "hide-triggered",
+                            label: "Hide triggered",
+                            checked: hideTriggeredConversations,
+                            onChange: setHideTriggeredConversations,
+                          },
+                        ]
+                      : []
+                  }
+                  searchName="conversation-filter-search"
+                  searchPlaceholder="Filter by member or agent"
+                />
                 <Button
                   size="sm"
                   variant="outline"
                   icon={CheckDouble}
                   label="Mark all as read"
-                  className="shrink-0"
+                  className="ml-auto shrink-0"
                 />
               </div>
             </div>
@@ -3363,6 +3229,22 @@ export function GroupConversationView({
                             id: baseConversationId,
                           };
 
+                          // The row that opened what is on screen, rather than
+                          // every row of that conversation: the same thread can
+                          // appear more than once in this list.
+                          const isSelected =
+                            selectedConversationRow?.rowId === conversation.id;
+
+                          // Read state belongs to the thread, not to the row
+                          // that shows it, and what the row's menu says of it
+                          // outranks whether anything new came in.
+                          const isForcedUnread =
+                            unreadRowIds?.has(baseConversationId) ?? false;
+                          const isUnread =
+                            isForcedUnread ||
+                            (listItem.unread &&
+                              !readRowIds?.has(baseConversationId));
+
                           return (
                             <div
                               id={getConversationRowDomId(conversation.id)}
@@ -3371,8 +3253,19 @@ export function GroupConversationView({
                               <ConversationListItem
                                 conversation={conversation}
                                 creator={listItem.creator || undefined}
-                                className="border-t-0 border-b-0 rounded-2xl hover:bg-hover"
+                                leadingVisual={
+                                  listItem.trigger ? (
+                                    <TriggerRunAvatar
+                                      trigger={listItem.trigger}
+                                    />
+                                  ) : undefined
+                                }
+                                className={cn(
+                                  "border-t-0 border-b-0 rounded-2xl hover:bg-hover",
+                                  isSelected && "bg-highlight-50"
+                                )}
                                 time={listItem.time}
+                                unread={isUnread}
                                 showFocus={
                                   conversationIdToShowFocus === conversation.id
                                 }
@@ -3380,14 +3273,12 @@ export function GroupConversationView({
                                   <ReplySection
                                     replyCount={listItem.replyCount}
                                     unreadCount={
-                                      bucketKey === "Today"
-                                        ? listItem.messageCount
-                                        : 0
+                                      isUnread ? listItem.messageCount : 0
                                     }
                                     mentionCount={
-                                      bucketKey === "Today"
-                                        ? listItem.mentionCount
-                                        : 0
+                                      listItem.trigger || !isUnread
+                                        ? 0
+                                        : listItem.mentionCount
                                     }
                                     avatars={listItem.avatarProps}
                                     lastMessageBy={
@@ -3395,6 +3286,17 @@ export function GroupConversationView({
                                     }
                                   />
                                 }
+                                menuItems={buildConversationRowMenuItems({
+                                  isUnread,
+                                  onMarkRead: () =>
+                                    onRowsRead?.([baseConversationId]),
+                                  onMarkUnread: () =>
+                                    onRowsUnread?.([baseConversationId]),
+                                  // Leaving takes out the row you clicked, not
+                                  // every row sharing its base conversation.
+                                  onLeave: () =>
+                                    onLeaveConversation?.(conversation.id),
+                                })}
                                 onClick={() => {
                                   setSelectedConversationRow({
                                     rowId: conversation.id,
@@ -3532,7 +3434,7 @@ export function GroupConversationView({
                   value={todoSearchText}
                   onChange={setTodoSearchText}
                   placeholder="Search tasks..."
-                  className="w-full"
+                  className="w-full min-w-0 max-w-80"
                 />
               </div>
               {hasDisplayedTodoItems ? (
@@ -3911,235 +3813,25 @@ export function GroupConversationView({
         )}
 
         {/* Settings Tab */}
-        <GroupConversationTabContent value="settings" contentClassName="gap-8">
-          <div className="flex justify-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" icon={DotsHorizontal} />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {isProjectArchived ? (
-                  <DropdownMenuItem
-                    icon={Upload01}
-                    label="Unarchive project"
-                    onClick={handleUnarchiveProject}
-                  />
-                ) : (
-                  <DropdownMenuItem
-                    icon={Archive}
-                    label="Archive project"
-                    variant="warning"
-                    onClick={handleArchiveProject}
-                  />
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          {isProjectArchived && (
-            <ContentMessage variant="info" size="lg">
-              This project has been archived.
-            </ContentMessage>
-          )}
-          <div className="flex w-full flex-col gap-2">
-            <h3 className="heading-lg">Name</h3>
-            <div className="flex w-full min-w-0 gap-2">
-              <Input
-                value={roomName}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  setRoomName(e.target.value);
-                  setIsEditingName(e.target.value !== space.name);
-                }}
-                placeholder="Enter room name"
-                containerClassName="flex-1"
-                className="has-[input:not(:placeholder-shown)]:border-border-form [&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-background"
-              />
-              {isEditingName && (
-                <>
-                  <Button
-                    label="Save"
-                    variant="highlight"
-                    onClick={() => setShowNameSaveDialog(true)}
-                  />
-                  <Button
-                    label="Cancel"
-                    variant="outline"
-                    onClick={() => {
-                      setRoomName(space.name);
-                      setIsEditingName(false);
-                    }}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-          <div className="flex w-full flex-col gap-2">
-            <h3 className="heading-lg">Description</h3>
-            <div className="flex w-full min-w-0 gap-2">
-              <Input
-                value={roomDescription}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  setRoomDescription(e.target.value);
-                  setIsEditingDescription(
-                    e.target.value !== (space.description ?? "")
-                  );
-                }}
-                placeholder="Enter room description"
-                containerClassName="flex-1"
-                className="has-[input:not(:placeholder-shown)]:border-border-form [&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-background"
-              />
-              {isEditingDescription && (
-                <>
-                  <Button
-                    label="Save"
-                    variant="highlight"
-                    onClick={() => {
-                      setIsEditingDescription(false);
-                    }}
-                  />
-                  <Button
-                    label="Cancel"
-                    variant="outline"
-                    onClick={() => {
-                      setRoomDescription(space.description ?? "");
-                      setIsEditingDescription(false);
-                    }}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-          {/* Open to Everyone Section */}
-
-          <div className="flex w-full flex-col gap-2">
-            <h3 className="heading-lg">Visibility</h3>
-            <div className="flex items-start items-center justify-between gap-4 border-y py-4">
-              <div className="flex flex-col">
-                <div className="heading-sm text-foreground">
-                  Opened to everyone
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Anyone in the workspace can find and join the room.
-                </div>
-              </div>
-              <SliderToggle
-                selected={isPublic}
-                onClick={() => {
-                  const nextValue = !isPublic;
-                  setShowPublicToggleDialog(true);
-                  // Store the intended new value temporarily
-                  setPendingPublicValue(nextValue);
-                }}
-              />
-            </div>
-          </div>
-          {podTabCustomization && (
-            <PodCustomizationSection
-              tabs={podTabCustomization.tabs}
-              addableFiles={podTabCustomization.addableFiles}
-              onReorder={podTabCustomization.onReorder}
-              onChangeIcon={podTabCustomization.onChangeIcon}
-              onRemove={podTabCustomization.onRemove}
-              onAdd={podTabCustomization.onAdd}
-            />
-          )}
-          {/* Members Section */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <h3 className="heading-lg flex-1">Members & Editors</h3>
-              <Button
-                label="Manage"
-                variant="outline"
-                icon={Users01}
-                onClick={() => onInviteMembers?.()}
-              />
-            </div>
-            {members.length === 0 ? (
-              <EmptyCTA
-                message="Feeling lonely? Invite participants!."
-                action={
-                  <EmptyCTAButton
-                    icon={Users01}
-                    label="Invite"
-                    onClick={() => onInviteMembers?.()}
-                  />
-                }
-              />
-            ) : (
-              <>
-                <SearchInput
-                  name="members-search"
-                  value={membersSearchText}
-                  onChange={setMembersSearchText}
-                  placeholder="Search members..."
-                  className="w-full"
-                />
-                <DataTable
-                  columns={memberColumns}
-                  data={filteredMembers}
-                  sorting={[{ id: "name", desc: false }]}
-                />
-              </>
-            )}
-          </div>
-
-          <div className="flex w-full flex-col gap-8 border-t pt-8">
-            <div className="flex w-full flex-col gap-3">
-              <h3 className="heading-lg">Danger Zone</h3>
-              <h4 className="heading-base">Archive</h4>
-              {!isProjectArchived && (
-                <p className="text-sm text-muted-foreground">
-                  This project will be removed from the sidebar. Its data stays
-                  intact and can still be used as a data source.
-                </p>
-              )}
-              {isProjectArchived ? (
-                <div className="flex flex-col gap-3">
-                  {archivedAt && archivedByName && (
-                    <p className="text-sm text-foreground">
-                      Archived on{" "}
-                      <span className="font-medium">
-                        {formatDate(archivedAt)} ·{" "}
-                        {archivedAt.toLocaleTimeString("en-US", {
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
-                      </span>{" "}
-                      by <span className="font-medium">{archivedByName}</span>.
-                    </p>
-                  )}
-                  <div className="flex w-full flex-col items-start">
-                    <Button
-                      icon={Upload01}
-                      variant="outline"
-                      label="Unarchive"
-                      onClick={handleUnarchiveProject}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex w-full flex-col items-start">
-                  <Button
-                    icon={Archive}
-                    variant="warning-secondary"
-                    label="Archive"
-                    onClick={handleArchiveProject}
-                  />
-                </div>
-              )}
-              <h4 className="heading-base">Delete</h4>
-              <p className="text-sm text-muted-foreground">
-                {`This permanently removes all content—conversations, folders, websites, and data sources. Assistants using this project's tools will be impacted. This cannot be undone.`}
-              </p>
-              <div className="flex w-full flex-col items-start">
-                <Button
-                  icon={Trash01}
-                  variant="warning"
-                  label="Delete project"
-                  onClick={() => setShowDeleteProjectDialog(true)}
-                />
-              </div>
-            </div>
-          </div>
+        <GroupConversationTabContent value="settings" fullBleed>
+          <PodSettingsSection
+            key={space.id}
+            space={space}
+            members={members}
+            editorUserIds={editorUserIds}
+            isPublic={
+              spacePublicSettings?.get(space.id) ?? space.isPublic ?? true
+            }
+            notificationCondition={
+              spaceNotificationSettings?.get(space.id) ??
+              DEFAULT_POD_NOTIFICATION_CONDITION
+            }
+            onUpdateSpaceName={onUpdateSpaceName}
+            onUpdateSpacePublic={onUpdateSpacePublic}
+            onUpdateSpaceNotifications={onUpdateSpaceNotifications}
+            onInviteMembers={onInviteMembers}
+            podTabCustomization={podTabCustomization}
+          />
         </GroupConversationTabContent>
       </Tabs>
 
@@ -4163,174 +3855,6 @@ export function GroupConversationView({
           </div>
         </div>
       )}
-
-      {/* Confirmation Dialogs */}
-      {/* Name Save Dialog */}
-      <Dialog
-        open={showNameSaveDialog}
-        onOpenChange={(open: boolean) => {
-          if (!open) {
-            setShowNameSaveDialog(false);
-          }
-        }}
-      >
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Change name to "{roomName}"?</DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            This updates the name for everyone and may impact Agents set to post
-            here.
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => setShowNameSaveDialog(false),
-            }}
-            rightButtonProps={{
-              label: "Rename",
-              variant: "warning",
-              onClick: handleNameSaveConfirm,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete project (playground mockup) */}
-      <Dialog
-        open={showDeleteProjectDialog}
-        onOpenChange={(open: boolean) => {
-          setShowDeleteProjectDialog(open);
-          if (!open) {
-            setDeleteConfirmDraft("");
-          }
-        }}
-      >
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Delete {space.name}?</DialogTitle>
-          </DialogHeader>
-          <DialogContainer className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground">
-              Type <span className="font-semibold text-foreground">delete</span>{" "}
-              below to confirm. This permanently removes all project content and
-              cannot be undone.
-            </p>
-            <Input
-              name="delete-confirm"
-              value={deleteConfirmDraft}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setDeleteConfirmDraft(e.target.value)
-              }
-              placeholder="Type delete to confirm"
-              containerClassName="w-full"
-            />
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => {
-                setShowDeleteProjectDialog(false);
-                setDeleteConfirmDraft("");
-              },
-            }}
-            rightButtonProps={{
-              label: "Delete permanently",
-              variant: "warning",
-              disabled: deleteConfirmDraft.trim().toLowerCase() !== "delete",
-              onClick: () => {
-                setShowDeleteProjectDialog(false);
-                setDeleteConfirmDraft("");
-              },
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Public Toggle Dialog */}
-      <Dialog
-        open={showPublicToggleDialog}
-        onOpenChange={(open: boolean) => {
-          if (!open) {
-            setShowPublicToggleDialog(false);
-            setPendingPublicValue(null);
-          }
-        }}
-      >
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>
-              {pendingPublicValue === true
-                ? "Switch to public?"
-                : "Switch to restricted?"}
-            </DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            {pendingPublicValue === true
-              ? "Everyone in the workspace will be able to see and join this room."
-              : "Access will be limited to invited members only."}
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => {
-                setShowPublicToggleDialog(false);
-                setPendingPublicValue(null);
-              },
-            }}
-            rightButtonProps={{
-              label: "Confirm",
-              variant: "warning",
-              onClick: handlePublicToggleConfirm,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Remove Member Dialog */}
-      <Dialog
-        open={removeMemberDialogOpen}
-        onOpenChange={(open: boolean) => {
-          if (!open) {
-            setRemoveMemberDialogOpen(false);
-            setSelectedMemberIdToRemove(null);
-          }
-        }}
-      >
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Remove member from room?</DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            {selectedMemberIdToRemove && (
-              <div>
-                Are you sure you want to remove "
-                {getUserById(selectedMemberIdToRemove)?.fullName ||
-                  "this member"}
-                " from this room?
-              </div>
-            )}
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => {
-                setRemoveMemberDialogOpen(false);
-                setSelectedMemberIdToRemove(null);
-              },
-            }}
-            rightButtonProps={{
-              label: "Remove",
-              variant: "warning",
-              onClick: handleRemoveMemberConfirm,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
 
       {/* Document View Sheet */}
       <Sheet

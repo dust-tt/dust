@@ -169,7 +169,7 @@ describe("markSandboxFunctionInvocationFailedActivity", () => {
           invocationId: invocation.sId,
         }
       )
-    ).rejects.toThrow(`Pod function not found: ${sandboxFunction.sId}`);
+    ).rejects.toThrow(`Frame function not found: ${sandboxFunction.sId}`);
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,

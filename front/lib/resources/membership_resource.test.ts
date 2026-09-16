@@ -874,6 +874,95 @@ describe("MembershipResource", () => {
     });
   });
 
+  describe("cancelScheduledSeatChange", () => {
+    let workspace: WorkspaceType;
+    let lightWorkspace: LightWorkspaceType;
+    let outerTransaction: Transaction;
+    const scheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    beforeEach(async (ctx) => {
+      outerTransaction = (ctx as any)["transaction"] as Transaction;
+      workspace = await WorkspaceFactory.basic();
+      lightWorkspace = renderLightWorkspaceType({ workspace });
+    });
+
+    async function setupScheduledRemoval() {
+      const user = await UserFactory.basic();
+      await MembershipResource.createMembership({
+        user,
+        workspace: lightWorkspace,
+        role: "user",
+        seatType: "pro",
+        origin: "invited",
+      });
+      const active =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace: lightWorkspace,
+        });
+      if (!active) {
+        throw new Error("Expected an active membership");
+      }
+      await active.scheduleSeatChange({
+        user,
+        workspace: lightWorkspace,
+        newSeatType: "none",
+        scheduledAt,
+        author: "no-author",
+        transaction: outerTransaction,
+      });
+      return { user, active };
+    }
+
+    it("drops the future row and reopens the current seat (lookup path)", async () => {
+      const { user, active } = await setupScheduledRemoval();
+
+      await active.cancelScheduledSeatChange({
+        user,
+        workspace: lightWorkspace,
+        author: "no-author",
+        transaction: outerTransaction,
+      });
+
+      expect(
+        await MembershipResource.getScheduledFutureMemberships({
+          workspace: lightWorkspace,
+        })
+      ).toHaveLength(0);
+      const reopened =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace: lightWorkspace,
+        });
+      expect(reopened?.seatType).toBe("pro");
+      expect(reopened?.endAt).toBeNull();
+    });
+
+    it("drops the future row when given a prefetched scheduled row (batch path, workspace-scoped)", async () => {
+      const { user, active } = await setupScheduledRemoval();
+      const [scheduledRow] =
+        await MembershipResource.getScheduledFutureMemberships({
+          workspace: lightWorkspace,
+        });
+
+      // Regression: the prefetched-row path must scope its DELETE by
+      // workspaceId, or the workspace-aware model rejects the query.
+      await active.cancelScheduledSeatChange({
+        user,
+        workspace: lightWorkspace,
+        author: "no-author",
+        scheduledRow,
+        transaction: outerTransaction,
+      });
+
+      expect(
+        await MembershipResource.getScheduledFutureMemberships({
+          workspace: lightWorkspace,
+        })
+      ).toHaveLength(0);
+    });
+  });
+
   describe("resetAllSeatsToNoneForWorkspace", () => {
     let workspace: WorkspaceType;
     let lightWorkspace: LightWorkspaceType;

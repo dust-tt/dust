@@ -41,11 +41,11 @@ describe("validateFrameFunctionReferences", () => {
   it("accepts every declared reference", () => {
     const result = referencesFor({
       "index.tsx": `
-import { usePodFunction, usePodFunctionMutation } from "@dust/react-hooks";
+import { useFrameFunction, useFrameFunctionMutation } from "@dust/react-hooks";
 
 export default function App() {
-  usePodFunction("list-tasks", {});
-  usePodFunctionMutation("add-task");
+  useFrameFunction("list-tasks", {});
+  useFrameFunctionMutation("add-task");
   return null;
 }
 `,
@@ -57,10 +57,10 @@ export default function App() {
   it("rejects a reference the manifest does not declare", () => {
     const error = referenceError({
       "index.tsx": `
-import { usePodFunction } from "@dust/react-hooks";
+import { useFrameFunction } from "@dust/react-hooks";
 
 export default function App() {
-  usePodFunction("add-tasks", { title: "Typo" });
+  useFrameFunction("add-tasks", { title: "Typo" });
   return null;
 }
 `,
@@ -68,7 +68,7 @@ export default function App() {
 
     expect(error.code).toBe("invalid_function_reference");
     expect(error.message).toContain(
-      "index.tsx:5:18: usePodFunction('add-tasks')"
+      "index.tsx:5:20: useFrameFunction('add-tasks')"
     );
     expect(error.message).toContain(
       "Declared functions: 'add-task', 'list-tasks'."
@@ -78,16 +78,33 @@ export default function App() {
   it("follows an aliased import", () => {
     const error = referenceError({
       "index.tsx": `
-import { usePodFunction as useFrameFunction } from "@dust/react-hooks";
+import { useFrameFunction as useFunction } from "@dust/react-hooks";
 
 export default function App() {
-  useFrameFunction("nope", {});
+  useFunction("nope", {});
+  return null;
+}
+`,
+    });
+
+    expect(error.message).toContain("useFrameFunction('nope')");
+  });
+
+  it("checks the legacy usePodFunction names", () => {
+    const error = referenceError({
+      "index.tsx": `
+import { usePodFunction, usePodFunctionMutation } from "@dust/react-hooks";
+
+export default function App() {
+  usePodFunction("nope", {});
+  usePodFunctionMutation("also-nope");
   return null;
 }
 `,
     });
 
     expect(error.message).toContain("usePodFunction('nope')");
+    expect(error.message).toContain("usePodFunctionMutation('also-nope')");
   });
 
   it("follows a namespace import", () => {
@@ -96,22 +113,22 @@ export default function App() {
 import * as hooks from "@dust/react-hooks";
 
 export default function App() {
-  hooks.usePodFunction("nope", {});
+  hooks.useFrameFunction("nope", {});
   return null;
 }
 `,
     });
 
-    expect(error.message).toContain("usePodFunction('nope')");
+    expect(error.message).toContain("useFrameFunction('nope')");
   });
 
   it("ignores hooks that are not imported from @dust/react-hooks", () => {
     const result = referencesFor({
       "index.tsx": `
-import { usePodFunction } from "./my-hooks";
+import { useFrameFunction } from "./my-hooks";
 
 export default function App() {
-  usePodFunction("nope", {});
+  useFrameFunction("nope", {});
   return null;
 }
 `,
@@ -123,10 +140,10 @@ export default function App() {
   it("accepts a computed reference", () => {
     const result = referencesFor({
       "index.tsx": `
-import { usePodFunction } from "@dust/react-hooks";
+import { useFrameFunction } from "@dust/react-hooks";
 
 export default function App({ name }: { name: string }) {
-  usePodFunction(name, { anything: true });
+  useFrameFunction(name, { anything: true });
   return null;
 }
 `,
@@ -138,10 +155,10 @@ export default function App({ name }: { name: string }) {
   it("rejects a reference from an imported component", () => {
     const error = referenceError({
       "components/TaskList.tsx": `
-import { usePodFunction } from "@dust/react-hooks";
+import { useFrameFunction } from "@dust/react-hooks";
 
 export function TaskList() {
-  usePodFunction("nope", {});
+  useFrameFunction("nope", {});
   return null;
 }
 `,
@@ -159,10 +176,10 @@ export default function App() { return <TaskList />; }
     const error = referenceError(
       {
         "index.tsx": `
-import { usePodFunction } from "@dust/react-hooks";
+import { useFrameFunction } from "@dust/react-hooks";
 
 export default function App() {
-  usePodFunction("add-task", { title: "No manifest entry" });
+  useFrameFunction("add-task", { title: "No manifest entry" });
   return null;
 }
 `,
@@ -178,11 +195,11 @@ export default function App() {
   it("caps the listed references", () => {
     const calls = Array.from(
       { length: 7 },
-      (_, index) => `  usePodFunction("missing-${index}", {});`
+      (_, index) => `  useFrameFunction("missing-${index}", {});`
     ).join("\n");
     const error = referenceError({
       "index.tsx": `
-import { usePodFunction } from "@dust/react-hooks";
+import { useFrameFunction } from "@dust/react-hooks";
 
 export default function App() {
 ${calls}

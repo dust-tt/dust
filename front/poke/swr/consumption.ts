@@ -39,6 +39,7 @@ const CONSUMPTION_TOP_ENDPOINTS = {
   tool: "top-tools",
   skill: "top-skills",
   source: "top-sources",
+  trigger: "top-triggers",
   api_key: "top-api-keys",
 } as const satisfies Record<ConsumptionTopDimension, string>;
 

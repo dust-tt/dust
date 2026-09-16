@@ -2,7 +2,6 @@ import {
   Archive,
   Avatar,
   Bell01,
-  Brackets,
   Breadcrumbs,
   Button,
   CheckDone01,
@@ -27,16 +26,14 @@ import {
   Edit04,
   Eye,
   File02,
-  FolderOpen,
   Heart,
   Icon,
   IntersectDust,
+  LayersThree01,
   Lightbulb04,
   Link01,
   LogOut01,
-  MagicWand02,
   MessageCircle01,
-  MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListCompactLabel,
@@ -45,13 +42,10 @@ import {
   NavTabPill,
   NavTabPillList,
   NavTabPillTrigger,
-  Planet,
   Plus,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  PuzzlePiece01,
-  Robot,
   ScrollArea,
   ScrollBar,
   SearchInput,
@@ -76,6 +70,7 @@ import {
 } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
+import { BuildNav } from "../components/BuildNav";
 import {
   ConversationActions,
   isFileView,
@@ -107,6 +102,7 @@ import {
   type Conversation,
   createConversationsWithMessages,
   createSpace,
+  DEFAULT_POD_NOTIFICATION_CONDITION,
   getAgentById,
   getMembersBySpaceId,
   getRandomAgents,
@@ -116,6 +112,8 @@ import {
   mockAgents,
   mockConversations,
   mockUsers,
+  POD_NOTIFICATION_OPTIONS,
+  type PodNotificationCondition,
   type Space,
   type User,
 } from "../data";
@@ -142,8 +140,6 @@ import TemplateSelection, { type Template } from "./TemplateSelection";
 type Collaborator =
   | { type: "agent"; data: Agent }
   | { type: "person"; data: User };
-
-type SpaceNotificationPreference = "never" | "mentions" | "all";
 
 type PodTabsState = {
   mainTabOrder: string[];
@@ -267,7 +263,7 @@ function Pods() {
   } | null>(null);
 
   // ── Sidebar UI state ──────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
+  const [activeTab, setActiveTab] = useState<"chat" | "build" | "admin">(
     "chat"
   );
   const [searchText, setSearchText] = useState("");
@@ -281,7 +277,16 @@ function Pods() {
   const [isWelcomeToolbarPinned, setIsWelcomeToolbarPinned] = useState(false);
   const [inboxHideTriggered] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
-    useState<Map<string, SpaceNotificationPreference>>(new Map());
+    useState<Map<string, PodNotificationCondition>>(new Map());
+
+  const updateSpaceNotificationPreference = (
+    spaceId: string,
+    condition: PodNotificationCondition
+  ) => {
+    setSpaceNotificationPreferences((prev) =>
+      new Map(prev).set(spaceId, condition)
+    );
+  };
   const [starredSpaceIds, setStarredSpaceIds] = useState<Set<string>>(
     new Set()
   );
@@ -670,6 +675,29 @@ function Pods() {
     [podContext]
   );
 
+  const handlePodTabRename = useCallback(
+    (tabValue: string, title: string) => {
+      if (!podContext) {
+        return;
+      }
+
+      setPodTabsBySpaceId((prev) => {
+        const existing = prev.get(podContext.spaceId);
+        if (!existing) {
+          return prev;
+        }
+
+        return new Map(prev).set(podContext.spaceId, {
+          ...existing,
+          dynamicFileTabs: existing.dynamicFileTabs.map((tab) =>
+            tab.value === tabValue ? { ...tab, label: title } : tab
+          ),
+        });
+      });
+    },
+    [podContext]
+  );
+
   const handleShowFileInFiles = useCallback(
     (tabValue: string) => {
       if (!tabValue.startsWith("file-")) {
@@ -933,25 +961,24 @@ function Pods() {
                 <DropdownMenuSubTrigger label="Notifications" icon={Bell01} />
                 <DropdownMenuSubContent>
                   <DropdownMenuRadioGroup
-                    value={spaceNotificationPreferences.get(space.id) ?? "all"}
+                    value={
+                      spaceNotificationPreferences.get(space.id) ??
+                      DEFAULT_POD_NOTIFICATION_CONDITION
+                    }
                     onValueChange={(v) =>
-                      setSpaceNotificationPreferences((prev) =>
-                        new Map(prev).set(
-                          space.id,
-                          v as SpaceNotificationPreference
-                        )
+                      updateSpaceNotificationPreference(
+                        space.id,
+                        v as PodNotificationCondition
                       )
                     }
                   >
-                    <DropdownMenuRadioItem
-                      value="never"
-                      label="Don't notify me"
-                    />
-                    <DropdownMenuRadioItem
-                      value="mentions"
-                      label="Only when mentioned"
-                    />
-                    <DropdownMenuRadioItem value="all" label="All messages" />
+                    {POD_NOTIFICATION_OPTIONS.map((option) => (
+                      <DropdownMenuRadioItem
+                        key={option.value}
+                        value={option.value}
+                        label={option.label}
+                      />
+                    ))}
                   </DropdownMenuRadioGroup>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
@@ -1093,6 +1120,8 @@ function Pods() {
           onUpdateSpaceName={handleUpdateSpaceName}
           onUpdateSpacePublic={handleUpdateSpacePublic}
           spacePublicSettings={spacePublicSettings}
+          onUpdateSpaceNotifications={updateSpaceNotificationPreference}
+          spaceNotificationSettings={spaceNotificationPreferences}
           activeTab={activePodTab}
           onTabChange={setActivePodTab}
           dynamicFileTabIds={dynamicFileTabIds}
@@ -1114,6 +1143,7 @@ function Pods() {
             addableFiles: addablePodFiles,
             onReorder: handlePodFileReorder,
             onChangeIcon: handlePodTabIconChange,
+            onRename: handlePodTabRename,
             onRemove: handlePodRemoveTab,
             onAdd: (file) => handlePodFileDrop(file.id, { activateTab: false }),
           }}
@@ -1348,16 +1378,25 @@ function Pods() {
             <DropdownMenuSub>
               <DropdownMenuSubTrigger label="Notifications" icon={Bell01} />
               <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup value="all">
-                  <DropdownMenuRadioItem
-                    value="never"
-                    label="Don't notify me"
-                  />
-                  <DropdownMenuRadioItem
-                    value="mentions"
-                    label="Only when mentioned"
-                  />
-                  <DropdownMenuRadioItem value="all" label="All messages" />
+                <DropdownMenuRadioGroup
+                  value={
+                    spaceNotificationPreferences.get(podContext.spaceId) ??
+                    DEFAULT_POD_NOTIFICATION_CONDITION
+                  }
+                  onValueChange={(v) =>
+                    updateSpaceNotificationPreference(
+                      podContext.spaceId,
+                      v as PodNotificationCondition
+                    )
+                  }
+                >
+                  {POD_NOTIFICATION_OPTIONS.map((option) => (
+                    <DropdownMenuRadioItem
+                      key={option.value}
+                      value={option.value}
+                      label={option.label}
+                    />
+                  ))}
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
@@ -1448,14 +1487,14 @@ function Pods() {
   const navTopBar = (
     <NavTabPill
       value={activeTab}
-      onValueChange={(v) => setActiveTab(v as "chat" | "spaces" | "admin")}
+      onValueChange={(v) => setActiveTab(v as "chat" | "build" | "admin")}
     >
       <NavTabPillList>
         <NavTabPillTrigger value="chat" icon={IntersectDust}>
           Work
         </NavTabPillTrigger>
-        <NavTabPillTrigger value="spaces" icon={Planet}>
-          Spaces
+        <NavTabPillTrigger value="build" icon={LayersThree01}>
+          Build
         </NavTabPillTrigger>
         <NavTabPillTrigger value="admin" icon={Settings01}>
           Admin
@@ -1485,7 +1524,7 @@ function Pods() {
                 variant="highlight"
                 tooltip="Create a new conversation"
                 size="sm"
-                icon={MessagePlusCircle}
+                icon={Plus}
                 label="New"
                 className="shrink-0"
                 onClick={() => {
@@ -1495,103 +1534,6 @@ function Pods() {
                 }}
               />
             </div>
-
-            <NavigationList className="mx-sidebar-side-spacing pt-1">
-              <NavigationListItem
-                icon={Robot}
-                label="Agents"
-                keepHoverOnMoreMenu
-                moreMenu={
-                  <div
-                    className={cn(
-                      "absolute right-2 top-1.5",
-                      "transition-opacity",
-                      "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                      "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                      "has-[[data-state=open]]:opacity-100"
-                    )}
-                  >
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="xs"
-                          icon={Plus}
-                          label="New"
-                          variant="ghost-secondary"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        side="bottom"
-                        align="center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <DropdownMenuLabel label="New agent" />
-                        <DropdownMenuItem icon={File02} label="From scratch" />
-                        <DropdownMenuItem
-                          icon={MagicWand02}
-                          label="From template"
-                          onClick={() => {
-                            setP2View({ kind: "templates" });
-                            setP3View(null);
-                          }}
-                        />
-                        <DropdownMenuItem icon={Brackets} label="From YAML" />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                }
-              />
-              <NavigationListItem
-                icon={PuzzlePiece01}
-                label="Skills"
-                keepHoverOnMoreMenu
-                moreMenu={
-                  <div
-                    className={cn(
-                      "absolute right-2 top-1.5",
-                      "transition-opacity",
-                      "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                      "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                      "has-[[data-state=open]]:opacity-100"
-                    )}
-                  >
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="xs"
-                          icon={Plus}
-                          label="New"
-                          variant="ghost-secondary"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        side="bottom"
-                        align="center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <DropdownMenuLabel label="New skill" />
-                        <DropdownMenuItem
-                          icon={PuzzlePiece01}
-                          label="From scratch"
-                        />
-                        <DropdownMenuItem
-                          icon={FolderOpen}
-                          label="From existing"
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                }
-              />
-            </NavigationList>
 
             {inboxConversations.length > 0 && (
               <NavigationListCollapsibleSection
@@ -1895,12 +1837,13 @@ function Pods() {
         </div>
       )}
 
-      {activeTab === "spaces" && (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex flex-1 items-center justify-center text-muted-foreground">
-            Spaces — TBD
-          </div>
-        </div>
+      {activeTab === "build" && (
+        <BuildNav
+          onNewAgentFromTemplate={() => {
+            setP2View({ kind: "templates" });
+            setP3View(null);
+          }}
+        />
       )}
       {activeTab === "admin" && (
         <div className="flex min-h-0 flex-1 flex-col">

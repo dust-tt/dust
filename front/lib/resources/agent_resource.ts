@@ -1,9 +1,6 @@
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentConfigurationModel,
-  AgentModel,
-} from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -17,10 +14,10 @@ import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
 import type {
-  AccessControlList,
   RoleGrant,
   WithAccessControl,
 } from "@app/types/resource_permissions";
+import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -36,7 +33,7 @@ const AGENT_EDITOR_VERBS: GrantVerb[] = ["read", "write", "admin", "use"];
 // Admins do not receive `use` on hidden agents: a hidden agent is usable only by its editors, not by
 // virtue of the workspace admin role.
 const HIDDEN_AGENT_ROLE_GRANTS: RoleGrant[] = [
-  { role: "admin", permissions: ["read", "admin"] },
+  { role: "admin", permissions: ["admin"] },
 ];
 
 // Visible agents are readable by every workspace role and usable by every active role, including
@@ -93,80 +90,48 @@ export class AgentResource implements WithAccessControl {
     );
   }
 
-  static async fetchByAgentConfiguration(
+  /**
+   * Builds the identity resource for a custom agent from an already-loaded configuration.
+   * Pure: the stable `agentModelId` travels on the configuration, so no query is needed. The
+   * workspace comes from `auth` (a configuration always belongs to the authed workspace).
+   */
+  static fromAgentConfiguration(
     auth: Authenticator,
     configuration: Pick<
       LightAgentConfigurationType,
-      "sId" | "scope" | "versionAuthorId"
-    >,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<AgentResource> {
+      "agentModelId" | "sId" | "scope" | "versionAuthorId"
+    >
+  ): AgentResource {
     assert(configuration.scope !== "global");
+    assert(
+      configuration.agentModelId !== null,
+      "Unexpected: custom agent identity is missing"
+    );
     assert(
       configuration.versionAuthorId !== null,
       "Unexpected: custom agent author is missing"
     );
 
-    // agents.sId is unique, so this resolves one stable ID regardless of version count.
-    const agent = await AgentModel.findOne({
-      where: {
-        sId: configuration.sId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      attributes: ["id", "workspaceId"],
-      transaction,
-    });
-    assert(agent, "Unexpected: agent identity is missing");
-
-    return this.fromAgentConfigurationModel({
-      agentId: agent.id,
-      authorId: configuration.versionAuthorId,
-      sId: configuration.sId,
-      scope: configuration.scope,
-      workspaceId: agent.workspaceId,
-    });
+    return new AgentResource(
+      configuration.agentModelId,
+      configuration.sId,
+      auth.getNonNullableWorkspace().id,
+      "custom",
+      configuration.versionAuthorId,
+      configuration.scope
+    );
   }
 
-  static async fetchByAgentConfigurations(
+  static fromAgentConfigurations(
     auth: Authenticator,
     configurations: Pick<
       LightAgentConfigurationType,
-      "sId" | "scope" | "versionAuthorId"
+      "agentModelId" | "sId" | "scope" | "versionAuthorId"
     >[]
-  ): Promise<AgentResource[]> {
-    if (configurations.length === 0) {
-      return [];
-    }
-
-    // agents.sId is unique, so the batch lookup stays indexed and workspace-scoped.
-    const agents = await AgentModel.findAll({
-      where: {
-        sId: configurations.map((configuration) => configuration.sId),
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      attributes: ["id", "sId", "workspaceId"],
-    });
-    const agentById = new Map(agents.map((agent) => [agent.sId, agent]));
-
-    const resources = configurations.map((configuration) => {
-      assert(configuration.scope !== "global");
-      assert(
-        configuration.versionAuthorId !== null,
-        "Unexpected: custom agent author is missing"
-      );
-      const agent = agentById.get(configuration.sId);
-      assert(agent, "Unexpected: agent identity is missing");
-
-      return this.fromAgentConfigurationModel({
-        agentId: agent.id,
-        authorId: configuration.versionAuthorId,
-        sId: agent.sId,
-        scope: configuration.scope,
-        workspaceId: agent.workspaceId,
-      });
-    });
-
-    return resources;
+  ): AgentResource[] {
+    return configurations.map((configuration) =>
+      this.fromAgentConfiguration(auth, configuration)
+    );
   }
 
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
@@ -348,25 +313,26 @@ export class AgentResource implements WithAccessControl {
    * The admin role grants `write` on custom agents to regular API keys only; human and system-key
    * callers receive no agent write access from their role. Global agents remain read-only.
    */
-  getAccessControlLists(auth: Authenticator): AccessControlList[] {
+  /**
+   * @cc [owner:philipperolet,label:security] hidden-agent-content
+   * Admin role alone must not grant `read` on hidden agents, including for regular API keys
+   * with role-based write access. Agent details may separately override admin redaction.
+   */
+  getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     switch (this.kind) {
-      case "global":
+      case "global": {
         assert(isGlobalAgentId(this.sId));
 
-        return [
-          {
-            roles: globalAgentReaderRoles(this.sId).map((role) => ({
-              role,
-              permissions: ["read"],
-            })),
-            workspaceId: this.workspaceId,
-          },
-        ];
+        const roleGrants: RoleGrant[] = globalAgentReaderRoles(this.sId).map(
+          (role) => ({ role, permissions: ["read"] })
+        );
+        return new Set(verbsFromRoleGrants(auth, roleGrants, this.workspaceId));
+      }
       case "custom": {
         assert(this.id !== null);
         assert(this.authorId !== null);
 
-        const grants = auth.getGrantedVerbs("agent", this.id);
+        const grants = auth.getGovernanceGrantVerbs("agent", this.id);
         const isAuthor =
           auth.workspace()?.id === this.workspaceId &&
           auth.user()?.id === this.authorId;
@@ -374,19 +340,15 @@ export class AgentResource implements WithAccessControl {
           this.scope === "visible"
             ? VISIBLE_AGENT_ROLE_GRANTS
             : HIDDEN_AGENT_ROLE_GRANTS;
+        const roleGrants: RoleGrant[] =
+          auth.isKey() && !auth.isSystemKey()
+            ? [...roles, { role: "admin", permissions: ["write"] }]
+            : roles;
 
-        return [
-          {
-            roles:
-              auth.isKey() && !auth.isSystemKey()
-                ? [...roles, { role: "admin", permissions: ["write"] }]
-                : roles,
-            grantedVerbs: isAuthor
-              ? [...new Set([...grants, ...AGENT_EDITOR_VERBS])]
-              : grants,
-            workspaceId: this.workspaceId,
-          },
-        ];
+        return new Set([
+          ...(isAuthor ? [...grants, ...AGENT_EDITOR_VERBS] : grants),
+          ...verbsFromRoleGrants(auth, roleGrants, this.workspaceId),
+        ]);
       }
       default:
         return assertNever(this.kind);

@@ -15,6 +15,7 @@ export type PokeExportAgentConfigurationResponseBody = {
   assistant: Omit<
     AgentConfigurationType,
     | "id"
+    | "agentModelId"
     | "versionCreatedAt"
     | "sId"
     | "version"

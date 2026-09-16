@@ -92,11 +92,10 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
+import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
-import type {
-  AccessControlList,
-  RoleGrant,
-} from "@app/types/resource_permissions";
+import type { RoleGrant } from "@app/types/resource_permissions";
+import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -1944,13 +1943,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         agentLoopData,
         effectiveSpaceIds,
       });
-      const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
-      if (hasSkillFavorites) {
-        favoriteSkills = await this.listFavoritesForCurrentUser(auth, {
-          agentLoopData,
-          effectiveSpaceIds,
-        });
-      }
+      favoriteSkills = await this.listFavoritesForCurrentUser(auth, {
+        agentLoopData,
+        effectiveSpaceIds,
+      });
     }
 
     const sortByName = (a: SkillResource, b: SkillResource) =>
@@ -2269,7 +2265,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Read comes from the role grants and from the groups holding a `read` verb on skills: the
     // global group's workspace-wide `reader` grant (seeded by `seedWorkspaceCapabilities`) and the
-    // editors' own `editor` grant on this skill. `getGrantedVerbs` folds the type-wide grants in.
+    // editors' own `editor` grant on this skill. `getGovernanceGrantVerbs` folds the type-wide
+    // grants in.
     return auth.hasPermission("read", this);
   }
 
@@ -2297,39 +2294,33 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * The skill's access-control list: the code role rules plus the caller's own verbs resolved from
-   * its `group_permissions` grants — for skills, the per-user `editor` grants held by the
-   * regular_auto group (see `grantToUser`).
+   * The verbs the caller holds on this skill: the code role rules unioned with the caller's own
+   * verbs resolved from its `group_permissions` grants — for skills, the per-user `editor` grants
+   * held by the regular_auto group (see `grantToUser`).
    */
-  getAccessControlLists(auth: Authenticator): AccessControlList[] {
+  getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     // Global skills carry no row, so there is no grant to look up (and their synthetic `id` of -1
     // is the type-wide sentinel, which would resolve the workspace-wide capability grants instead).
     if (this.globalSId) {
-      return [
-        {
-          roles: GLOBAL_SKILL_ROLE_GRANTS,
-          workspaceId: this.workspaceId,
-        },
-      ];
+      return new Set(
+        verbsFromRoleGrants(auth, GLOBAL_SKILL_ROLE_GRANTS, this.workspaceId)
+      );
     }
 
-    return SkillResource.customSkillAccessControlLists(auth, this);
+    return SkillResource.customSkillAllowedVerbs(auth, this);
   }
 
-  // The ACL of a custom skill, from its row: what `getAccessControlLists` serves for a fetched
-  // resource, and what `canReadRow` evaluates in the fetch path, which filters rows before it has
-  // resources.
-  private static customSkillAccessControlLists(
+  // The verbs the caller holds on a custom skill, from its row: what `getAllowedVerbs` serves for a
+  // fetched resource, and what `canReadRow` evaluates in the fetch path, which filters rows before
+  // it has resources.
+  private static customSkillAllowedVerbs(
     auth: Authenticator,
     skill: { id: ModelId; workspaceId: ModelId }
-  ): AccessControlList[] {
-    return [
-      {
-        roles: SKILL_ROLE_GRANTS,
-        grantedVerbs: auth.getGrantedVerbs("skill", skill.id),
-        workspaceId: skill.workspaceId,
-      },
-    ];
+  ): Set<GrantVerb> {
+    return new Set([
+      ...auth.getGovernanceGrantVerbs("skill", skill.id),
+      ...verbsFromRoleGrants(auth, SKILL_ROLE_GRANTS, skill.workspaceId),
+    ]);
   }
 
   // `canRead` against a custom skill's row: the fetch path filters before building resources, so a
@@ -2343,10 +2334,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return true;
     }
 
-    return auth.hasPermissionForAcls(
-      "read",
-      this.customSkillAccessControlLists(auth, skill)
-    );
+    return this.customSkillAllowedVerbs(auth, skill).has("read");
   }
 
   private async listActiveAgents(

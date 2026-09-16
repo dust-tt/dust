@@ -472,6 +472,7 @@ export function _getDeepDiveGlobalAgent(
     "status" | "maxStepsPerRun" | "actions"
   > = {
     id: -1,
+    agentModelId: null,
     sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
     version: 0,
     versionCreatedAt: null,
@@ -630,6 +631,7 @@ export function _getDustTaskGlobalAgent(
     "status" | "maxStepsPerRun" | "actions"
   > = {
     id: -1,
+    agentModelId: null,
     sId: GLOBAL_AGENTS_SID.DUST_TASK,
     version: 0,
     versionCreatedAt: null,
@@ -744,6 +746,7 @@ export function _getPlanningAgent(
     "status" | "maxStepsPerRun" | "actions"
   > = {
     id: -1,
+    agentModelId: null,
     sId: GLOBAL_AGENTS_SID.DUST_PLANNING,
     version: 0,
     versionCreatedAt: null,
@@ -799,6 +802,7 @@ export function _getArchivedBrowserSummaryAgent(): AgentConfigurationType {
 
   return {
     id: -1,
+    agentModelId: null,
     sId: GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
     version: 0,
     versionCreatedAt: null,

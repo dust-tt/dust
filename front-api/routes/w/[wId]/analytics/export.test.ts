@@ -107,4 +107,34 @@ describe("GET /api/w/:wId/analytics/export", () => {
     });
     expect(vi.mocked(exportTable)).not.toHaveBeenCalled();
   });
+
+  it("returns 400 for a startDate naming a non-existent calendar day", async () => {
+    const { workspace } = await setupTest();
+
+    const response = await exportRequest(workspace.sId, {
+      ...VALID_QUERY,
+      startDate: "2024-02-30",
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { type: "invalid_request_error" },
+    });
+    expect(vi.mocked(exportTable)).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for an unrecognized timezone", async () => {
+    const { workspace } = await setupTest();
+
+    const response = await exportRequest(workspace.sId, {
+      ...VALID_QUERY,
+      timezone: "Not/AZone",
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { type: "invalid_request_error" },
+    });
+    expect(vi.mocked(exportTable)).not.toHaveBeenCalled();
+  });
 });

@@ -127,7 +127,9 @@ export function InlineActivitySteps({
           <AnimatedText>Writing…</AnimatedText>
         </span>
         {agentMessage.content && (
-          <div className="mt-3">
+          // Streaming answer text: same font as the final answer (not the
+          // chain of thought rendered by renderContentStep below).
+          <div className="mt-3 font-conversation">
             <AgentMessageMarkdown
               content={agentMessage.content}
               owner={owner}
@@ -204,7 +206,7 @@ export function InlineActivitySteps({
 
   const extraBelowCollapse =
     !isDone && agentMessage.content ? (
-      <div className="mt-3">
+      <div className="mt-3 font-conversation">
         <AgentMessageMarkdown
           content={agentMessage.content}
           owner={owner}

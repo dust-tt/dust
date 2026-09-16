@@ -1,10 +1,16 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import { isValidTimezone, timezoneSchema } from "@app/lib/api/timezone";
+import {
+  dayBoundaryInTimezone,
+  isValidTimezone,
+  parseCalendarDate,
+  timezoneSchema,
+} from "@app/lib/api/timezone";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import moment from "moment-timezone";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
+import { formatInTimeZone } from "date-fns-tz";
 import { z } from "zod";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -141,6 +147,10 @@ export const consumptionFilterSchema = {
     .array(z.string())
     .optional()
     .describe("Restrict to these skill sIds."),
+  triggerIds: z
+    .array(z.string())
+    .optional()
+    .describe("Restrict to messages started by these trigger sIds."),
 };
 
 const consumptionFilterInputSchema = z.object(consumptionFilterSchema);
@@ -161,6 +171,7 @@ export function toConsumptionScope(
     groups: input.groupIds,
     tools: input.toolNames,
     skills: input.skillIds,
+    triggers: input.triggerIds,
     tags: input.agentTagIds,
   };
 }
@@ -186,6 +197,10 @@ export type ResolvedTimeWindow = {
   timezone: string;
 };
 
+function firstOfMonth(year: number, month: number): string {
+  return `${year}-${String(month).padStart(2, "0")}-01`;
+}
+
 // Resolves a TimeWindowInput into concrete ISO start/end instants plus a human
 // label. Explicit startDate/endDate take precedence over `period`; when nothing
 // is provided, falls back to `defaultPeriod`.
@@ -204,15 +219,17 @@ export function resolveTimeWindow(
         "Provide both startDate and endDate for a custom range, or neither."
       );
     }
-    const start = moment.tz(input.startDate, "YYYY-MM-DD", true, timezone);
-    const end = moment.tz(input.endDate, "YYYY-MM-DD", true, timezone);
-    if (!start.isValid() || !end.isValid()) {
+    const start = parseCalendarDate(input.startDate);
+    const end = parseCalendarDate(input.endDate);
+    if (!start || !end) {
       return new Err("startDate and endDate must be valid YYYY-MM-DD dates.");
     }
-    if (end.isBefore(start)) {
+    const startDayMs = Date.UTC(start.year, start.month - 1, start.day);
+    const endDayMs = Date.UTC(end.year, end.month - 1, end.day);
+    if (endDayMs < startDayMs) {
       return new Err("endDate must be on or after startDate.");
     }
-    const inclusiveDays = end.diff(start, "days") + 1;
+    const inclusiveDays = (endDayMs - startDayMs) / ONE_DAY_MS + 1;
     if (inclusiveDays > MAX_QUERY_WINDOW_DAYS) {
       return new Err(
         `The query window cannot exceed ${MAX_QUERY_WINDOW_DAYS} days. ` +
@@ -220,37 +237,45 @@ export function resolveTimeWindow(
       );
     }
     return new Ok({
-      startDate: start.startOf("day").toISOString(),
-      endDate: end.endOf("day").toISOString(),
+      startDate: dayBoundaryInTimezone(input.startDate, timezone).toISOString(),
+      endDate: dayBoundaryInTimezone(input.endDate, timezone, {
+        boundary: "end",
+      }).toISOString(),
       label: `${input.startDate} to ${input.endDate}`,
       timezone,
     });
   }
 
   const period = input.period ?? defaultPeriod;
-  const now = moment.tz(timezone);
-  let start: moment.Moment;
+  const now = new Date();
+  // Today's calendar date as seen in `timezone`; every relative window is anchored on it.
+  const today = formatInTimeZone(now, timezone, "yyyy-MM-dd");
+  const [year, month] = today.split("-").map(Number);
+  let start: Date;
   let label: string;
   switch (period) {
     case "this_month":
-      start = now.clone().startOf("month");
-      label = now.format("MMMM YYYY");
+      start = dayBoundaryInTimezone(firstOfMonth(year, month), timezone);
+      label = formatInTimeZone(now, timezone, "MMMM yyyy");
       break;
     case "last_7_days":
-      start = now.clone().subtract(6, "days").startOf("day");
+      start = dayBoundaryInTimezone(today, timezone, { offsetDays: -6 });
       label = "the last 7 days";
       break;
     case "last_30_days":
-      start = now.clone().subtract(29, "days").startOf("day");
+      start = dayBoundaryInTimezone(today, timezone, { offsetDays: -29 });
       label = "the last 30 days";
       break;
     case "last_90_days":
-      start = now.clone().subtract(89, "days").startOf("day");
+      start = dayBoundaryInTimezone(today, timezone, { offsetDays: -89 });
       label = "the last 90 days";
       break;
     case "this_quarter":
-      start = now.clone().startOf("quarter");
-      label = `Q${now.quarter()} ${now.year()}`;
+      start = dayBoundaryInTimezone(
+        firstOfMonth(year, month - ((month - 1) % 3)),
+        timezone
+      );
+      label = formatInTimeZone(now, timezone, "'Q'Q yyyy");
       break;
     default:
       return assertNever(period);

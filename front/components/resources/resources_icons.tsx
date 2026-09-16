@@ -84,6 +84,7 @@ import {
   SlackLogo,
   SnowflakeLogo,
   Avatar as SparkleAvatar,
+  SpendeskLogo,
   StackOneLogo,
   StatuspageLogo,
   StripeLogo,
@@ -105,19 +106,19 @@ import type { ComponentProps, ComponentType } from "react";
 export type {
   CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/components/resources/resources_icon_names";
+} from "@app/types/resources_icon_names";
 export {
   CUSTOM_RESOURCE_ALLOWED,
   INTERNAL_ALLOWED_ICONS,
   isCustomResourceIconType,
   isInternalAllowedIcon,
-} from "@app/components/resources/resources_icon_names";
+} from "@app/types/resources_icon_names";
 
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/components/resources/resources_icon_names";
-import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
+} from "@app/types/resources_icon_names";
+import { isCustomResourceIconType } from "@app/types/resources_icon_names";
 
 interface ResourceAvatarProps extends ComponentProps<typeof Avatar> {}
 
@@ -276,6 +277,7 @@ export const InternalActionIcons = {
   SlabLogo,
   SlackLogo,
   SnowflakeLogo,
+  SpendeskLogo,
   StackOneLogo,
   StatuspageLogo,
   StripeLogo,

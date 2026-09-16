@@ -1,5 +1,6 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { shadowCompare } from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
@@ -123,7 +124,7 @@ async function shadowAgentPermissions(
     legacy: legacyAgents.map((agent) => ({
       agentId: agent.sId,
       agentConfigurationModelId: agent.id,
-      read: agent.canRead || auth.isAdmin(),
+      read: agent.canRead,
       write: agent.canEdit,
       admin: agent.canEdit || auth.isAdmin(),
     })),
@@ -145,7 +146,7 @@ async function shadowAgentPermissions(
           editorIds.has(agent.id) ||
           (!auth.user() && !isRegularApiKey && auth.can("write", resource));
         const read = reverse
-          ? legacyAccess || agent.scope === "visible" || auth.isAdmin()
+          ? legacyAccess || agent.scope === "visible"
           : auth.can("read", resource);
         const write =
           (reverse
@@ -204,8 +205,9 @@ async function shadowAgentPermissions(
  */
 /**
  * @cc [owner:philipperolet,label:security] agent-editability
- * Outside regular API keys, `canEdit` allows legacy authors/editors or user-less
- * callers with agent write permission; workspace admin role alone does not grant it.
+ * Outside regular API keys, `canEdit` uses agent write permission when grants are enabled and
+ * otherwise allows legacy authors/editors or user-less callers with agent write permission;
+ * workspace admin role alone does not grant it.
  */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
@@ -223,9 +225,11 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   const user = auth.user();
   const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
 
-  // Compute editor permissions if not provided
+  const useGrants = !isLegacyAclsEnabled();
+
+  // Compute legacy editor permissions if not provided and grants are not serving reads.
   let editorIds = agentIdsForUserAsEditor;
-  if (!editorIds) {
+  if (!useGrants && !editorIds) {
     const agentIdsForGroups = user
       ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
       : [];
@@ -267,21 +271,24 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
     const isAuthor = agent.authorId === auth.user()?.id;
-    const isMember = editorIds.includes(agent.id);
+    const isMember = editorIds?.includes(agent.id) ?? false;
+    const resource = AgentResource.fromAgentConfigurationModel(agent);
     const canEditWithoutUser =
-      !user &&
-      !isRegularApiKey &&
-      auth.can("write", AgentResource.fromAgentConfigurationModel(agent));
+      !user && !isRegularApiKey && auth.can("write", resource);
 
-    const canRead =
-      isAuthor || isMember || canEditWithoutUser || agent.scope === "visible";
+    const canRead = useGrants
+      ? auth.can("read", resource)
+      : isAuthor || isMember || canEditWithoutUser || agent.scope === "visible";
     const canEdit = isRegularApiKey
-      ? auth.isAdmin() &&
+      ? (useGrants ? auth.can("write", resource) : auth.isAdmin()) &&
         agent.status === "active" &&
         canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
-      : isAuthor || isMember || canEditWithoutUser;
+      : useGrants
+        ? auth.can("write", resource)
+        : isAuthor || isMember || canEditWithoutUser;
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
+      agentModelId: agent.agentId,
       sId: agent.sId,
       versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
@@ -324,7 +331,8 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     auth,
     agentConfigurations,
     agentConfigurationTypes,
-    spaceById
+    spaceById,
+    useGrants
   );
 
   return agentConfigurationTypes;

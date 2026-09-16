@@ -2,7 +2,10 @@ import { FeatureFlagStageChip } from "@app/components/poke/features/stage_chip";
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type { PokeFeatureFlagUsageAllCells } from "@app/hooks/usePokeFeatureFlagUsage";
+import type {
+  PokeFeatureFlagCellStats,
+  PokeFeatureFlagUsageAllCells,
+} from "@app/hooks/usePokeFeatureFlagUsage";
 import { usePokeFeatureFlagUsageAllCells } from "@app/hooks/usePokeFeatureFlagUsage";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
@@ -33,12 +36,25 @@ interface PendingPluginAction {
   pluginId: string;
   flagName: string;
   cell: CellType;
+  candidateCells: PokeFeatureFlagCellStats[];
 }
 
 interface MakeColumnsParams {
-  // Both are `null` when the current user cannot run the corresponding plugin.
-  onDeleteLegacyRows: ((flagName: string, cell: CellType) => void) | null;
-  onEditGlobalRollout: ((flagName: string, cell: CellType) => void) | null;
+  // Both `null` when the current user cannot run the corresponding plugin.
+  onDeleteLegacyRows:
+    | ((
+        flagName: string,
+        cell: CellType,
+        candidateCells: PokeFeatureFlagCellStats[]
+      ) => void)
+    | null;
+  onEditGlobalRollout:
+    | ((
+        flagName: string,
+        cell: CellType,
+        candidateCells: PokeFeatureFlagCellStats[]
+      ) => void)
+    | null;
 }
 
 function makeColumns({
@@ -184,7 +200,7 @@ function makeColumns({
                     icon={Pencil01}
                     label={label}
                     tooltip="Set the global rollout percentage"
-                    onClick={() => onEditGlobalRollout(name, stat.cell)}
+                    onClick={() => onEditGlobalRollout(name, stat.cell, byCell)}
                   />
                 </div>
               );
@@ -240,7 +256,7 @@ function makeColumns({
                   icon={Trash01}
                   label="Delete rows"
                   tooltip="Delete every row for this retired flag"
-                  onClick={() => onDeleteLegacyRows(name, stat.cell)}
+                  onClick={() => onDeleteLegacyRows(name, stat.cell, deletable)}
                 />
               </div>
             ))}
@@ -254,7 +270,7 @@ function makeColumns({
 export function FeatureFlagsPage() {
   usePokePageMetadata({ name: "Feature Flags" });
 
-  const { cells, cellInfo, setCellInfo } = useCellContext();
+  const { cells } = useCellContext();
   const { featureFlags, isLoading, mutate } = usePokeFeatureFlagUsageAllCells();
 
   const { plugins } = usePokeListPluginForResourceType({
@@ -270,38 +286,36 @@ export function FeatureFlagsPage() {
   const [pendingAction, setPendingAction] =
     useState<PendingPluginAction | null>(null);
 
-  const switchToCell = useCallback(
-    (cell: CellType) => {
-      const targetCell = cells.find((c) => c.name === cell);
-      if (targetCell && targetCell.name !== cellInfo.name) {
-        setCellInfo(targetCell);
-      }
-    },
-    [cells, cellInfo, setCellInfo]
-  );
-
   const onEditGlobalRollout = useCallback(
-    (flagName: string, cell: CellType) => {
-      switchToCell(cell);
+    (
+      flagName: string,
+      cell: CellType,
+      candidateCells: PokeFeatureFlagCellStats[]
+    ) => {
       setPendingAction({
         pluginId: TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID,
         flagName,
         cell,
+        candidateCells,
       });
     },
-    [switchToCell]
+    []
   );
 
   const onDeleteLegacyRows = useCallback(
-    (flagName: string, cell: CellType) => {
-      switchToCell(cell);
+    (
+      flagName: string,
+      cell: CellType,
+      candidateCells: PokeFeatureFlagCellStats[]
+    ) => {
       setPendingAction({
         pluginId: DELETE_LEGACY_FLAG_PLUGIN_ID,
         flagName,
         cell,
+        candidateCells,
       });
     },
-    [switchToCell]
+    []
   );
 
   const handlePluginDialogClose = useCallback(() => {
@@ -321,6 +335,19 @@ export function FeatureFlagsPage() {
   const pendingPlugin = pendingAction
     ? plugins.find((plugin) => plugin.id === pendingAction.pluginId)
     : undefined;
+  const pendingCellSelection = useMemo(
+    () =>
+      pendingAction
+        ? {
+            cells: pendingAction.candidateCells.flatMap((stat) => {
+              const cell = cells.find((c) => c.name === stat.cell);
+              return cell ? [cell] : [];
+            }),
+            initiallySelected: [pendingAction.cell],
+          }
+        : undefined,
+    [cells, pendingAction]
+  );
 
   // Most-used flags across all cells come first by default.
   const sortedFeatureFlags = useMemo(
@@ -369,6 +396,7 @@ export function FeatureFlagsPage() {
           onClose={handlePluginDialogClose}
           plugin={pendingPlugin}
           pluginResourceTarget={GLOBAL_PLUGIN_TARGET}
+          cellSelection={pendingCellSelection}
         />
       )}
     </div>

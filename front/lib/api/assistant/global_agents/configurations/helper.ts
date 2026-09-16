@@ -94,6 +94,7 @@ The user you're interacting with is granted with the role ${role}. Their name is
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,

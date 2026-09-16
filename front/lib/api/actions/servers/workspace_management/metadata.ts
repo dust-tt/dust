@@ -4,6 +4,7 @@ import {
   SKILL_AVAILABILITIES,
   SKILL_STATUSES,
 } from "@app/types/assistant/skill_configuration_constants";
+import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { JOB_TYPES } from "@app/types/job_type";
 import { z } from "zod";
 
@@ -15,6 +16,24 @@ export const LIST_SKILLS_TOOL_NAME = "list_skills" as const;
 export const GET_SKILL_DETAILS_TOOL_NAME = "get_skill_details" as const;
 export const LIST_WORKSPACE_MEMBERS_TOOL_NAME =
   "list_workspace_members" as const;
+export const LIST_GROUPS_TOOL_NAME = "list_groups" as const;
+export const GET_GROUP_MEMBERS_TOOL_NAME = "get_group_members" as const;
+export const UPDATE_GROUP_MEMBERS_TOOL_NAME = "update_group_members" as const;
+export const CREATE_GROUP_TOOL_NAME = "create_group" as const;
+
+/**
+ * @cc [owner:fabiencelier,label:security] member-identity-tools-manager-only
+ * Tools that expose other members' identity (names, emails, group membership) MUST be listed here.
+ * Their handlers MUST refuse callers who are not workspace admins or managers, and `createServer`
+ * MUST NOT register them for such callers.
+ */
+export const MANAGER_ONLY_TOOL_NAMES = [
+  LIST_WORKSPACE_MEMBERS_TOOL_NAME,
+  LIST_GROUPS_TOOL_NAME,
+  GET_GROUP_MEMBERS_TOOL_NAME,
+  UPDATE_GROUP_MEMBERS_TOOL_NAME,
+  CREATE_GROUP_TOOL_NAME,
+] as const;
 
 // Member rows are far cheaper than an agent configuration, so this tool pages much wider.
 export const DEFAULT_MEMBERS_PAGE_SIZE = 100;
@@ -90,9 +109,7 @@ const listAgentsSchema = {
 };
 
 const getAgentDetailsSchema = {
-  agentId: z
-    .string()
-    .describe("The agent's id (sId), as returned by list_agents."),
+  agentId: z.string().describe("The agent's id, as returned by list_agents."),
 };
 
 const listSkillsSchema = {
@@ -169,10 +186,76 @@ const listWorkspaceMembersSchema = {
     ),
 };
 
-const getSkillSchema = {
-  skillId: z
+const listGroupsSchema = {
+  kind: z
+    .enum(MANAGEABLE_GROUP_KINDS)
+    .optional()
+    .describe(
+      "Only return groups of this kind. 'provisioned': membership synced from " +
+        "the identity provider (SSO/SCIM). 'regular_manual': members picked " +
+        "one by one in Dust. Omit for both."
+    ),
+  ...paginationSchemaShape,
+};
+
+const getGroupMembersSchema = {
+  groupId: z.string().describe("The group's id, as returned by list_groups."),
+  cursor: z
+    .number()
+    .int()
+    .nonnegative()
+    .optional()
+    .describe(
+      "Pagination offset from a previous call's nextCursor. Omit for the first page."
+    ),
+  limit: z
+    .number()
+    .int()
+    .positive()
+    .max(MAX_MEMBERS_PAGE_SIZE)
+    .optional()
+    .describe(
+      `Members per page. Default ${DEFAULT_MEMBERS_PAGE_SIZE}, max ${MAX_MEMBERS_PAGE_SIZE}.`
+    ),
+};
+
+const updateGroupMembersSchema = {
+  groupId: z
     .string()
-    .describe("The skill's id (sId), as returned by list_skills."),
+    .describe(
+      "The group's id, as returned by list_groups. Must be a " +
+        "regular_manual group; provisioned groups are managed by the identity " +
+        "provider and cannot be edited."
+    ),
+  additions: z
+    .array(z.string())
+    .max(MAX_MEMBERS_PAGE_SIZE)
+    .default([])
+    .describe("User ids of workspace members to add to the group."),
+  removals: z
+    .array(z.string())
+    .max(MAX_MEMBERS_PAGE_SIZE)
+    .default([])
+    .describe("User ids of members to remove from the group."),
+};
+
+const createGroupSchema = {
+  name: z
+    .string()
+    .min(1)
+    .describe("The group's name. Must be unique within the workspace."),
+  memberIds: z
+    .array(z.string())
+    .min(1)
+    .max(MAX_MEMBERS_PAGE_SIZE)
+    .describe(
+      "User ids of the workspace members to add to the group. A group " +
+        "always has at least one member."
+    ),
+};
+
+const getSkillSchema = {
+  skillId: z.string().describe("The skill's id, as returned by list_skills."),
 };
 
 export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
@@ -251,6 +334,69 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     displayLabels: {
       running: "Listing workspace members",
       done: "Workspace members listed",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: LIST_GROUPS_TOOL_NAME,
+    description:
+      "List the workspace's groups with their id, name, kind (provisioned " +
+      "from the identity provider, or manually managed in Dust), member " +
+      "count and the workspace role they grant, if any. Admin and manager only.",
+    schema: listGroupsSchema,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Listing groups",
+      done: "Listed groups",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: GET_GROUP_MEMBERS_TOOL_NAME,
+    description:
+      "List the active members of a group with their user id and name. " +
+      "Admin and manager only.",
+    schema: getGroupMembersSchema,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Listing group members",
+      done: "Listed group members",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: UPDATE_GROUP_MEMBERS_TOOL_NAME,
+    description:
+      "Add and/or remove members of a manually managed group, leaving its " +
+      "other members untouched. Provisioned groups cannot be edited. Admin " +
+      "and manager only; groups that grant the admin role can only be edited " +
+      "by admins.",
+    schema: updateGroupMembersSchema,
+    stake: "high",
+    eager: true,
+    displayLabels: {
+      running: "Updating group members",
+      done: "Updated group members",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: CREATE_GROUP_TOOL_NAME,
+    description:
+      "Create a manually managed group with the given name and initial " +
+      "members. Admin and manager only.",
+    schema: createGroupSchema,
+    stake: "high",
+    eager: true,
+    displayLabels: {
+      running: "Creating group",
+      done: "Created group",
     },
     toolCostCategory: "basic",
     freeUsage: true,

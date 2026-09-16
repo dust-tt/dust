@@ -74,3 +74,23 @@ export function computeSeatUsage({
     isFreeWithBalance,
   };
 }
+
+// Pool headroom above the seat allowance. `effectiveLimit` is the resolved
+// spend cap including the allowance, so a cap at or below the allowance means
+// a seat-only member.
+/**
+ * @cc [owner:avervaet,label:product] null-effective-limit-is-no-pool
+ * A `null` `effectiveLimit` MUST yield a pool limit of 0 (no pool access,
+ * capped at the seat allowance). Unlimited/uncapped is not a supported
+ * product state, so `null` MUST NOT be rendered as unbounded headroom.
+ */
+export function computePoolLimitAwuCredits({
+  memberUsageLimit,
+  effectiveLimit,
+}: {
+  memberUsageLimit: number | null;
+  effectiveLimit: number | null;
+}): number {
+  const allowance = memberUsageLimit ?? 0;
+  return Math.max(0, (effectiveLimit ?? allowance) - allowance);
+}

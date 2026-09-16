@@ -9,6 +9,7 @@ import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 export function _getReinforcementGlobalAgent(): AgentConfigurationType {
   return {
     id: -1,
+    agentModelId: null,
     sId: GLOBAL_AGENTS_SID.REINFORCEMENT,
     version: 0,
     versionCreatedAt: null,

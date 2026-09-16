@@ -4,7 +4,6 @@ import { formatCredits } from "@app/lib/client/credits";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
-import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -559,12 +558,9 @@ export function APIKeysTable({
   const rows = useMemo<APIKeyRowData[]>(
     () =>
       keys.map((key) => {
-        // Every key reaches the global space, but `key.spaces` only echoes the spaces it was
-        // scoped to. The label is added here, as `NewAPIKeyDialog` does with its fixed chip.
-        const spaces = [
-          GLOBAL_SPACE_NAME,
-          ...key.spaces.map((space) => space.name),
-        ];
+        // Only the spaces the key was scoped to (read and write); the open spaces every key
+        // reads through the workspace global group are not listed.
+        const spaces = key.spaces.map((space) => space.name);
         const scope = formatKeyScope(key.role);
         const status = getKeyStatus(key);
         const creator = key.creator ?? "Unknown creator";

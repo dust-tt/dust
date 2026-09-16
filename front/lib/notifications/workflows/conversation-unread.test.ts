@@ -136,6 +136,26 @@ describe("conversation-unread workflow business logic", () => {
       expect(delay).toBe("30_minutes");
     });
 
+    it("should read the user-scoped preference and ignore workspace-scoped rows", async () => {
+      await user.setMetadata(
+        makeNotificationPreferencesUserMetadata("email"),
+        "30_minutes"
+      );
+      await user.setMetadata(
+        makeNotificationPreferencesUserMetadata("email"),
+        "daily",
+        workspace.id
+      );
+
+      const delay = await getUserNotificationDelay({
+        subscriberId: user.sId,
+        workspaceId: workspace.sId,
+        channel: "email",
+      });
+
+      expect(delay).toBe("30_minutes");
+    });
+
     it("should return default when no preference stored", async () => {
       const delay = await getUserNotificationDelay({
         subscriberId: user.sId,
@@ -221,6 +241,28 @@ describe("conversation-unread workflow business logic", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0].sId).toBe(user1.sId);
+    });
+
+    it("should read the user-scoped preference and ignore workspace-scoped rows", async () => {
+      await user1.setMetadata(
+        CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+        "never"
+      );
+      await user1.setMetadata(
+        CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+        "all_messages",
+        workspace.id
+      );
+
+      const result = await filterParticipantsByNotifyCondition({
+        auth,
+        participants: [makeParticipant(user1)],
+        mentionedUserIds: new Set(),
+        totalParticipantCount: 5,
+        spaceModelId: space.id,
+      });
+
+      expect(result).toHaveLength(0);
     });
 
     it("should include mentioned user with 'only_mentions' preference", async () => {

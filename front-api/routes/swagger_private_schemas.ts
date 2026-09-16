@@ -883,6 +883,10 @@
  *       properties:
  *         id:
  *           type: integer
+ *         agentModelId:
+ *           type: integer
+ *           nullable: true
+ *           description: Stable identifier of the agent across versions; null for global agents
  *         sId:
  *           type: string
  *         version:

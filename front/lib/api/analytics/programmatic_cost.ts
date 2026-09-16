@@ -16,7 +16,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
-import { getBillingCycleFromDay } from "@app/lib/client/subscription";
+import { getBillingCycleFromDay } from "@app/lib/plans/billing_cycle";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
