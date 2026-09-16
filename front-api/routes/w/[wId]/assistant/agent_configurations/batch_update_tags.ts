@@ -62,7 +62,6 @@ app.post(
     const editableAgents = await shadowEditableAgents(
       auth,
       agents,
-      agents.filter((agent) => agent.canEdit || auth.isAdmin()),
       "batchUpdateAgentTags"
     );
 
