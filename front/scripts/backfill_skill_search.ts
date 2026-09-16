@@ -35,7 +35,7 @@ async function backfillWorkspace(
       execute,
       workspaceId: workspace.sId,
       candidates: skills.length,
-      enqueued: execute ? skills.length : 0,
+      attempted: execute ? skills.length : 0,
     },
     "[SkillSearchBackfill] Workspace complete"
   );
