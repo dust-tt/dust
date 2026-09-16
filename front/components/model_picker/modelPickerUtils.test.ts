@@ -5,12 +5,12 @@ import {
   getInitialEffort,
   getModelTier,
   getTierLockReason,
+  isDegradedModelFailure,
   isModelHostedInRegion,
   isPremiumModel,
   isTierResolvedModelHostedInRegion,
   materializeSelection,
   PREMIUM_MODEL_LOCKED_TOOLTIP,
-  shouldShowDegradedModelSwitcher,
 } from "@app/components/model_picker/modelPickerUtils";
 import type {
   EnabledModelConfigurationType,
@@ -41,63 +41,45 @@ import { describe, expect, it } from "vitest";
 const GATED = { lockPremiumEfforts: true };
 const UNGATED = { lockPremiumEfforts: false };
 
-describe("shouldShowDegradedModelSwitcher", () => {
+describe("isDegradedModelFailure", () => {
   const degradedModelIds = new Set([CLAUDE_SONNET_5_MODEL_ID]);
 
-  it("requires both a failed direct model and live degradation detection", () => {
-    expect(
-      shouldShowDegradedModelSwitcher({
-        failedModelId: CLAUDE_SONNET_5_MODEL_ID,
-        failedModelResolutionMethod: "user",
-        degradedModelIds,
-      })
-    ).toBe(true);
-    expect(
-      shouldShowDegradedModelSwitcher({
-        failedModelId: CLAUDE_OPUS_4_8_MODEL_ID,
-        failedModelResolutionMethod: "user",
-        degradedModelIds,
-      })
-    ).toBe(false);
-    expect(
-      shouldShowDegradedModelSwitcher({
-        failedModelId: undefined,
-        failedModelResolutionMethod: "user",
-        degradedModelIds,
-      })
-    ).toBe(false);
-  });
-
-  const reResolvingMethods = ["auto", "auto_fast", "auto_complex"] as const;
-  const pinningMethods = ["agent", "user", "fair_use_downgrade", null] as const;
-
-  // The server walks the stream's pool again on a retry that names no model, so
-  // the next attempt already moves off the degraded candidate on its own.
-  for (const failedModelResolutionMethod of reResolvingMethods) {
-    it(`offers no switch when ${failedModelResolutionMethod} resolved it`, () => {
+  for (const errorCategory of [
+    "retryable_model_error",
+    "provider_internal_error",
+    "stream_error",
+    "empty_content",
+  ] as const) {
+    it(`recognizes ${errorCategory}`, () => {
       expect(
-        shouldShowDegradedModelSwitcher({
+        isDegradedModelFailure({
           failedModelId: CLAUDE_SONNET_5_MODEL_ID,
-          failedModelResolutionMethod,
-          degradedModelIds,
-        })
-      ).toBe(false);
-    });
-  }
-
-  // Everything else pins the model that just failed: a plain retry would run
-  // the degraded model again, so the user has to be able to name another one.
-  for (const failedModelResolutionMethod of pinningMethods) {
-    it(`offers the switch when ${failedModelResolutionMethod} resolved it`, () => {
-      expect(
-        shouldShowDegradedModelSwitcher({
-          failedModelId: CLAUDE_SONNET_5_MODEL_ID,
-          failedModelResolutionMethod,
+          errorCategory,
           degradedModelIds,
         })
       ).toBe(true);
     });
   }
+
+  it("rejects non-model errors even if the failed model is degraded", () => {
+    expect(
+      isDegradedModelFailure({
+        failedModelId: CLAUDE_SONNET_5_MODEL_ID,
+        errorCategory: "context_window_exceeded",
+        degradedModelIds,
+      })
+    ).toBe(false);
+  });
+
+  it("requires the failed model to be currently degraded", () => {
+    expect(
+      isDegradedModelFailure({
+        failedModelId: CLAUDE_OPUS_4_8_MODEL_ID,
+        errorCategory: "retryable_model_error",
+        degradedModelIds,
+      })
+    ).toBe(false);
+  });
 });
 
 describe("materializeSelection", () => {

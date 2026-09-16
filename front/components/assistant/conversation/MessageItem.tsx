@@ -398,6 +398,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               additionalMarkdownPlugins={context.additionalMarkdownPlugins}
               isProjectArchived={context.isProjectArchived}
               setLimitReachedCode={context.setLimitReachedCode}
+              canSwitchModel={
+                context.agentBuilderContext?.actionsToShow?.includes(
+                  "model-picker"
+                ) ?? true
+              }
             />
           )}
           {data.visibility !== "deleted" &&

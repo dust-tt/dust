@@ -23,7 +23,6 @@ import type {
   ModelConfigurationType,
   ModelIdType,
   ModelMakerIdType,
-  ModelResolutionMethodType,
   ModelSelectionType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
@@ -49,51 +48,29 @@ export function getDegradedModelTooltip(displayName: string): string {
   return `${displayName} is unstable right now. You may want to select another model.`;
 }
 
-export function getTierFallbackTooltip(
-  tierName: string,
-  replacementModelName: string
-): string {
-  return `${tierName} is temporarily using ${replacementModelName} while its preferred model is unstable.`;
-}
-
-export function isDegradedModelFailure({
-  failedModelId,
-  degradedModelIds,
-}: {
-  failedModelId: string | undefined;
-  degradedModelIds: ReadonlySet<string>;
-}): boolean {
-  return failedModelId !== undefined && degradedModelIds.has(failedModelId);
-}
-
 /**
  * @cc [owner:frankaloia,label:product;error-handling] degraded-retry-offers-a-choice
- * The model switcher MUST be offered exactly when a plain retry would re-run the degraded model
- * that just failed, i.e. when the failed resolution was not one the server re-resolves on retry.
+ * The degraded retry UX MUST only replace a model-related failure while the failed model is
+ * currently degraded. Surfaces with a model picker MUST offer switching and retry with its
+ * displayed selection; surfaces without one MUST preserve the failed message's model.
  */
-export function shouldShowDegradedModelSwitcher({
+export function isDegradedModelFailure({
   failedModelId,
-  failedModelResolutionMethod,
+  errorCategory,
   degradedModelIds,
 }: {
   failedModelId: string | undefined;
-  failedModelResolutionMethod: ModelResolutionMethodType | null | undefined;
+  errorCategory: unknown;
   degradedModelIds: ReadonlySet<string>;
 }): boolean {
-  if (!isDegradedModelFailure({ failedModelId, degradedModelIds })) {
-    return false;
-  }
-
-  // A tier names a stream rather than a model, and the server walks that
-  // stream's candidate pool again on retry, skipping what is now degraded. Any
-  // other resolution pins the model that just failed, so nothing but an
-  // explicit pick moves the next attempt off it.
-  const retryReresolvesTheModel =
-    failedModelResolutionMethod !== null &&
-    failedModelResolutionMethod !== undefined &&
-    isModelStreamId(failedModelResolutionMethod);
-
-  return !retryReresolvesTheModel;
+  return (
+    failedModelId !== undefined &&
+    degradedModelIds.has(failedModelId) &&
+    (errorCategory === "retryable_model_error" ||
+      errorCategory === "provider_internal_error" ||
+      errorCategory === "stream_error" ||
+      errorCategory === "empty_content")
+  );
 }
 
 /**

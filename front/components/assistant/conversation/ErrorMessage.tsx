@@ -1,12 +1,9 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import {
-  isDegradedModelFailure,
-  shouldShowDegradedModelSwitcher,
-} from "@app/components/model_picker/modelPickerUtils";
+import { isDegradedModelFailure } from "@app/components/model_picker/modelPickerUtils";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { useModels, useRevalidateModels } from "@app/lib/swr/models";
+import { useModels } from "@app/lib/swr/models";
 import type { GenericErrorContent } from "@app/types/assistant/agent";
 import { isAgentErrorCategory } from "@app/types/assistant/agent";
 import {
@@ -14,7 +11,6 @@ import {
   getModelMakerDisplayName,
 } from "@app/types/assistant/models/providers";
 import type {
-  ModelResolutionMethodType,
   ModelSelectionType,
   ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
@@ -32,7 +28,7 @@ interface ErrorMessageProps {
   owner: LightWorkspaceType;
   retryHandler: (modelSelection?: ModelSelectionType) => Promise<void>;
   failedModel?: ResolvedRequestedModel;
-  failedModelResolutionMethod?: ModelResolutionMethodType | null;
+  canSwitchModel?: boolean;
 }
 
 export function ErrorMessage({
@@ -40,7 +36,7 @@ export function ErrorMessage({
   owner,
   retryHandler,
   failedModel,
-  failedModelResolutionMethod,
+  canSwitchModel = true,
 }: ErrorMessageProps) {
   const { openModelPickerRef, modelPickerShownModelRef } =
     useContext(InputBarContext);
@@ -51,23 +47,20 @@ export function ErrorMessage({
   const errorIsRetryable =
     isAgentErrorCategory(error.metadata?.category) &&
     (error.metadata?.category === "retryable_model_error" ||
+      error.metadata?.category === "provider_internal_error" ||
       error.metadata?.category === "stream_error" ||
       error.metadata?.category === "empty_content" ||
       error.metadata?.category === "credits_exhausted");
-  const { degradedModelIds } = useModels({
+  const { degradedModelIds, revalidateModels } = useModels({
     owner,
     disabled: !failedModel,
   });
-  const revalidateModels = useRevalidateModels(owner);
   const isDegradedFailure = isDegradedModelFailure({
     failedModelId: failedModel?.modelId,
+    errorCategory: error.metadata?.category,
     degradedModelIds,
   });
-  const showModelSwitcher = shouldShowDegradedModelSwitcher({
-    failedModelId: failedModel?.modelId,
-    failedModelResolutionMethod,
-    degradedModelIds,
-  });
+  const showModelSwitcher = isDegradedFailure && canSwitchModel;
   const failedModelConfig = failedModel
     ? getSupportedModelConfig(failedModel)
     : null;
@@ -81,8 +74,8 @@ export function ErrorMessage({
     }
   }, [failedModel, revalidateModels]);
 
-  // Pinned retry: send the picker's selection, or the server retries the failed
-  // model. Stream retry: send nothing, so the server re-resolves Auto.
+  // A degraded retry follows what the picker displays. Other retries omit the
+  // selection and preserve the original message's resolved model.
   const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
     async () =>
       retryHandler(
@@ -103,10 +96,10 @@ export function ErrorMessage({
     >
       <div className="whitespace-normal break-words">
         {isDegradedFailure
-          ? `Dust has detected degraded performance from ${failedProviderName} over the last few minutes. ${
+          ? `Dust has detected degraded performance from ${failedProviderName} over the last few minutes.${
               showModelSwitcher
-                ? "You may want to switch to another model."
-                : "Retrying will use a different model."
+                ? " Retry will use the model currently selected in the input bar."
+                : ""
             }`
           : error.message}
         {isContextWindowExceeded && (

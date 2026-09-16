@@ -1,6 +1,6 @@
 import { apiError } from "@front-api/middlewares/utils";
 import { zValidator } from "@hono/zod-validator";
-import type { ValidationTargets } from "hono";
+import type { Env, MiddlewareHandler, ValidationTargets } from "hono";
 import type { ZodType } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -32,4 +32,53 @@ export function validate<
       });
     }
   });
+}
+
+// Existing clients POST `Content-Type: application/json` with an empty body.
+// Hono's json validator parses before Zod and 400s on that payload, so empty
+// bodies are normalized to `{}` here, then validated as usual.
+export function validateJsonAllowingEmpty<
+  Schema extends ZodType,
+  E extends Env = Env,
+  P extends string = string,
+>(
+  schema: Schema
+): MiddlewareHandler<
+  E,
+  P,
+  {
+    in: { json: Schema["_input"] };
+    out: { json: Schema["_output"] };
+  }
+> {
+  return async (ctx, next) => {
+    const raw = await ctx.req.text();
+    let parsed: unknown = {};
+    if (raw.trim() !== "") {
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid request body: malformed JSON",
+          },
+        });
+      }
+    }
+    const result = await schema.safeParseAsync(parsed);
+    if (!result.success) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Invalid request body: ${fromError(result.error).toString()}`,
+        },
+      });
+    }
+
+    ctx.req.addValidatedData("json", result.data);
+    await next();
+  };
 }

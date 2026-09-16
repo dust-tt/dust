@@ -1,7 +1,6 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { getWorkspaceLimitFromApiErrorType } from "@app/components/app/ReachedLimitPopup";
 import { clientFetch } from "@app/lib/egress/client";
-import { useRevalidateModels } from "@app/lib/swr/models";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
@@ -10,8 +9,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 
 export function useRetryMessage({ owner }: { owner: LightWorkspaceType }) {
-  const revalidateModels = useRevalidateModels(owner);
-
   return useCallback(
     async ({
       conversationId,
@@ -42,11 +39,9 @@ export function useRetryMessage({ owner }: { owner: LightWorkspaceType }) {
             return new Err(limitCode);
           }
         }
-      } else {
-        await revalidateModels();
       }
       return new Ok(undefined);
     },
-    [owner.sId, revalidateModels]
+    [owner.sId]
   );
 }

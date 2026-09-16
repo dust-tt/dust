@@ -22,7 +22,6 @@ import {
   getModelTier,
   getModelWithReasoningEffortLabel,
   getReasoningEffortLabel,
-  getTierFallbackTooltip,
   getTierLockReason,
   isPremiumModel,
   isSameSelection,
@@ -50,7 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import type { MutableRefObject } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 export interface ModelPickerProps {
   agentModel: AgentModelConfigurationType | null;
@@ -76,7 +75,7 @@ export interface ModelPickerProps {
   // Same pick, but always named: the agent default is materialized instead of
   // left undefined. Retry needs this because an omitted model there means
   // "re-run the model that just failed", not "use the agent's config".
-  shownModelRef?: MutableRefObject<ModelSelectionType | undefined>;
+  onShownModelChange?: (modelSelection: ModelSelectionType) => void;
   // Fired only on intentional user picks / revert — safe to setState.
   onSelectionChange?: (modelSelection: ModelSelectionType | undefined) => void;
   stickyModelOverride?: ModelSelectionType | undefined;
@@ -108,7 +107,7 @@ export function ModelPicker({
   side = "top",
   disabled,
   selectionRef,
-  shownModelRef,
+  onShownModelChange,
   onSelectionChange,
   stickyModelOverride,
   setStickyModelOverride,
@@ -131,7 +130,6 @@ export function ModelPicker({
     streamModels,
     lockPremiumEfforts,
     degradedModelIds,
-    fallbackStreamIds,
   } = useModelPickerModels({ owner, showDegradations });
   const { menuStateProps, resetMenu } = useModelPickerMenuState();
 
@@ -167,10 +165,12 @@ export function ModelPicker({
   if (selectionRef) {
     selectionRef.current = shownModelSelection;
   }
-  if (shownModelRef) {
-    shownModelRef.current =
-      shownModelSelection ?? materializeSelection(shown.display);
-  }
+
+  useLayoutEffect(() => {
+    onShownModelChange?.(
+      shownModelSelection ?? materializeSelection(shown.display)
+    );
+  }, [onShownModelChange, shown.display, shownModelSelection]);
 
   const canRevert = !isSameSelection(shown.display, agentDefault.display);
 
@@ -300,18 +300,6 @@ export function ModelPicker({
     degradedModelIds.has(shown.display.model.modelId)
       ? getDegradedModelTooltip(shown.display.model.displayName)
       : null;
-  const shownTier =
-    shown.display.kind === "tier" ? getModelTier(shown.display.tierId) : null;
-  const fallbackResolution = shownTier
-    ? modelProps.streams?.[shownTier.metaModelId]
-    : null;
-  const tierFallbackTooltip =
-    shownTier &&
-    fallbackResolution &&
-    fallbackStreamIds.has(shownTier.metaModelId)
-      ? getTierFallbackTooltip(shownTier.name, fallbackResolution.displayName)
-      : null;
-  const degradationTooltip = degradedModelTooltip ?? tierFallbackTooltip;
 
   // Model name and reasoning effort read as one string for the tooltip and the
   // accessible name, but the visible trigger splits the effort into its own
@@ -345,7 +333,7 @@ export function ModelPicker({
           variant={buttonVariant}
           size={buttonSize}
           icon={
-            degradationTooltip !== null ? (
+            degradedModelTooltip !== null ? (
               <DegradedModelIcon icon={buttonIcon} surface="composer" />
             ) : (
               buttonIcon
@@ -363,7 +351,7 @@ export function ModelPicker({
           }
           isSelect={showLabel && showDropdownArrow}
           tooltip={
-            degradationTooltip ??
+            degradedModelTooltip ??
             (showLabel ? undefined : `Model picker: ${label}`)
           }
           aria-label={`Model picker: ${label}`}

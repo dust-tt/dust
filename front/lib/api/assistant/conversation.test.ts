@@ -64,7 +64,10 @@ import {
   isRichAgentMention,
   isRichUserMention,
 } from "@app/types/assistant/mentions";
-import { AUTO_FAST_MODEL_ID } from "@app/types/assistant/models/auto";
+import {
+  AUTO_FAST_MODEL_ID,
+  AUTO_MODEL_ID,
+} from "@app/types/assistant/models/auto";
 import {
   GPT_5_6_LUNA_MODEL_ID,
   GPT_5_6_SOL_MODEL_ID,
@@ -350,7 +353,7 @@ describe("retryAgentMessage", () => {
     }
   });
 
-  it("should skip a newly degraded stream candidate without a prior catalog refresh", async () => {
+  it("should refresh degradation before resolving an explicit stream selection", async () => {
     const degradation = {
       modelId: GPT_5_6_LUNA_MODEL_ID,
       providerId: "openai" as const,
@@ -364,19 +367,14 @@ describe("retryAgentMessage", () => {
         { ...degradation, degraded: true },
       ]);
 
-      const resolvedMessage: AgentMessageType = {
-        ...agentMessage,
-        resolvedModel: {
-          providerId: "openai",
-          modelId: GPT_5_6_LUNA_MODEL_ID,
-          reasoningEffort: "high",
-        },
-        modelResolutionMethod: "auto",
-      };
-
       const result = await retryAgentMessage(auth, {
         conversationResource,
-        message: resolvedMessage,
+        message: agentMessage,
+        modelSelection: {
+          providerId: AUTO_MODEL_ID,
+          modelId: AUTO_MODEL_ID,
+          reasoningEffort: "none",
+        },
       });
 
       expect(result.isOk()).toBe(true);
@@ -394,7 +392,7 @@ describe("retryAgentMessage", () => {
     }
   });
 
-  it("should re-resolve an existing stream selection without an override", async () => {
+  it("should preserve an existing stream resolution without an override", async () => {
     const resolvedMessage: AgentMessageType = {
       ...agentMessage,
       resolvedModel: {
@@ -413,9 +411,7 @@ describe("retryAgentMessage", () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.modelResolutionMethod).toBe("auto");
-      expect(result.value.resolvedModel?.modelId).not.toBe(
-        GPT_5_6_SOL_MODEL_ID
-      );
+      expect(result.value.resolvedModel).toEqual(resolvedMessage.resolvedModel);
     }
   });
 

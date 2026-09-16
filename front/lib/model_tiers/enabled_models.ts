@@ -1,4 +1,4 @@
-import { refreshDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
+import { getDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
@@ -287,10 +287,8 @@ export function getFallbackStreamIds(
 export async function getModelsForAuth(
   auth: Authenticator
 ): Promise<GetEnabledModelsResponseType> {
-  const [models, degradedModelIds] = await Promise.all([
-    getEnabledModelsForAuth(auth),
-    refreshDegradedModelIds(),
-  ]);
+  const models = await getEnabledModelsForAuth(auth);
+  const degradedModelIds = getDegradedModelIds();
 
   return {
     models,
