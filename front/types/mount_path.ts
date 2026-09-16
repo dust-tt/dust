@@ -420,6 +420,47 @@ export function isAgentScopedPath(scopedPath: string): boolean {
 }
 
 /**
+ * `path.posix.normalize` for the browser: `path` is a node builtin the SPA
+ * bundle does not ship, so anything reachable from a component must not use it.
+ */
+function normalizePosixPath(rawPath: string): string {
+  const isAbsolute = rawPath.startsWith("/");
+  const hasTrailingSlash = rawPath.endsWith("/") && rawPath.length > 1;
+
+  const segments: string[] = [];
+  for (const segment of rawPath.split("/")) {
+    if (segment === "" || segment === ".") {
+      continue;
+    }
+
+    if (segment === ".." && !isAbsolute) {
+      const previous = segments[segments.length - 1];
+      if (segments.length > 0 && previous !== "..") {
+        segments.pop();
+        continue;
+      }
+
+      segments.push(segment);
+      continue;
+    }
+
+    if (segment === "..") {
+      segments.pop();
+      continue;
+    }
+
+    segments.push(segment);
+  }
+
+  const joined = segments.join("/") + (hasTrailingSlash ? "/" : "");
+  if (isAbsolute) {
+    return `/${joined}`;
+  }
+
+  return joined === "" ? "." : joined;
+}
+
+/**
  * Resolve a legacy scoped path to its canonical form under the frame context.
  * Canonical paths are returned unchanged.
  */
@@ -437,7 +478,7 @@ export function resolveCanonicalScopedPath(
 
   const slashIdx = scopedPath.indexOf("/");
   const prefix = scopedPath.slice(0, slashIdx);
-  const rel = path.posix.normalize(scopedPath.slice(slashIdx + 1));
+  const rel = normalizePosixPath(scopedPath.slice(slashIdx + 1));
 
   if (rel.startsWith("..") || rel.startsWith("/")) {
     return null;
