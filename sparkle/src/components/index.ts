@@ -305,6 +305,8 @@ export type { SpinnerBrandProps } from "./SpinnerBrand";
 export { SpinnerBrand } from "./SpinnerBrand";
 export type { FlexSplitButtonProps } from "./SplitButton";
 export { FlexSplitButton } from "./SplitButton";
+export type { SwatchGroupProps, SwatchOption } from "./SwatchGroup";
+export { SwatchGroup } from "./SwatchGroup";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
 export type { TextCellSkeletonProps } from "./TextCellSkeleton";

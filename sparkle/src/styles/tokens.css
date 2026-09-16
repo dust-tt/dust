@@ -468,6 +468,351 @@
 }
 
 
+/*
+ * Accent color (Settings > Customization). `data-accent` on <html> (set by
+ * AccentColorProvider in front) remaps the highlight scale onto one of the
+ * palette scales. Blue is the default and needs no attribute. Light maps
+ * highlight-N to accent-N; dark mirrors the scale like the base .dark block.
+ * The alias tokens (highlight, -light, -dark, -on) are restated in each block:
+ * a custom property resolves where it is defined, so aliases declared on
+ * <html> would keep pointing at the blue steps for a wrapper-scoped accent.
+ * `.dark [data-accent]` also matches a wrapper below <html>, which Storybook
+ * uses to show several accents side by side.
+ */
+[data-accent="emerald"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-50);
+  --color-highlight-muted: var(--color-emerald-300);
+  --color-highlight-50: var(--color-emerald-50);
+  --color-highlight-100: var(--color-emerald-100);
+  --color-highlight-200: var(--color-emerald-200);
+  --color-highlight-300: var(--color-emerald-300);
+  --color-highlight-400: var(--color-emerald-400);
+  --color-highlight-500: var(--color-emerald-500);
+  --color-highlight-600: var(--color-emerald-600);
+  --color-highlight-700: var(--color-emerald-700);
+  --color-highlight-800: var(--color-emerald-800);
+  --color-highlight-900: var(--color-emerald-900);
+  --color-highlight-950: var(--color-emerald-950);
+}
+.dark[data-accent="emerald"],
+.dark [data-accent="emerald"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-950);
+  --color-highlight-muted: var(--color-emerald-300);
+  --color-highlight-50: var(--color-emerald-950);
+  --color-highlight-100: var(--color-emerald-900);
+  --color-highlight-200: var(--color-emerald-800);
+  --color-highlight-300: var(--color-emerald-700);
+  --color-highlight-400: var(--color-emerald-600);
+  --color-highlight-500: var(--color-emerald-500);
+  --color-highlight-600: var(--color-emerald-400);
+  --color-highlight-700: var(--color-emerald-300);
+  --color-highlight-800: var(--color-emerald-200);
+  --color-highlight-900: var(--color-emerald-100);
+  --color-highlight-950: var(--color-emerald-50);
+}
+[data-accent="green"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-50);
+  --color-highlight-muted: var(--color-green-300);
+  --color-highlight-50: var(--color-green-50);
+  --color-highlight-100: var(--color-green-100);
+  --color-highlight-200: var(--color-green-200);
+  --color-highlight-300: var(--color-green-300);
+  --color-highlight-400: var(--color-green-400);
+  --color-highlight-500: var(--color-green-500);
+  --color-highlight-600: var(--color-green-600);
+  --color-highlight-700: var(--color-green-700);
+  --color-highlight-800: var(--color-green-800);
+  --color-highlight-900: var(--color-green-900);
+  --color-highlight-950: var(--color-green-950);
+}
+.dark[data-accent="green"],
+.dark [data-accent="green"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-950);
+  --color-highlight-muted: var(--color-green-300);
+  --color-highlight-50: var(--color-green-950);
+  --color-highlight-100: var(--color-green-900);
+  --color-highlight-200: var(--color-green-800);
+  --color-highlight-300: var(--color-green-700);
+  --color-highlight-400: var(--color-green-600);
+  --color-highlight-500: var(--color-green-500);
+  --color-highlight-600: var(--color-green-400);
+  --color-highlight-700: var(--color-green-300);
+  --color-highlight-800: var(--color-green-200);
+  --color-highlight-900: var(--color-green-100);
+  --color-highlight-950: var(--color-green-50);
+}
+[data-accent="lime"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-50);
+  --color-highlight-muted: var(--color-lime-300);
+  --color-highlight-50: var(--color-lime-50);
+  --color-highlight-100: var(--color-lime-100);
+  --color-highlight-200: var(--color-lime-200);
+  --color-highlight-300: var(--color-lime-300);
+  --color-highlight-400: var(--color-lime-400);
+  --color-highlight-500: var(--color-lime-500);
+  --color-highlight-600: var(--color-lime-600);
+  --color-highlight-700: var(--color-lime-700);
+  --color-highlight-800: var(--color-lime-800);
+  --color-highlight-900: var(--color-lime-900);
+  --color-highlight-950: var(--color-lime-950);
+}
+.dark[data-accent="lime"],
+.dark [data-accent="lime"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-950);
+  --color-highlight-muted: var(--color-lime-300);
+  --color-highlight-50: var(--color-lime-950);
+  --color-highlight-100: var(--color-lime-900);
+  --color-highlight-200: var(--color-lime-800);
+  --color-highlight-300: var(--color-lime-700);
+  --color-highlight-400: var(--color-lime-600);
+  --color-highlight-500: var(--color-lime-500);
+  --color-highlight-600: var(--color-lime-400);
+  --color-highlight-700: var(--color-lime-300);
+  --color-highlight-800: var(--color-lime-200);
+  --color-highlight-900: var(--color-lime-100);
+  --color-highlight-950: var(--color-lime-50);
+}
+[data-accent="golden"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-50);
+  --color-highlight-muted: var(--color-golden-300);
+  --color-highlight-50: var(--color-golden-50);
+  --color-highlight-100: var(--color-golden-100);
+  --color-highlight-200: var(--color-golden-200);
+  --color-highlight-300: var(--color-golden-300);
+  --color-highlight-400: var(--color-golden-400);
+  --color-highlight-500: var(--color-golden-500);
+  --color-highlight-600: var(--color-golden-600);
+  --color-highlight-700: var(--color-golden-700);
+  --color-highlight-800: var(--color-golden-800);
+  --color-highlight-900: var(--color-golden-900);
+  --color-highlight-950: var(--color-golden-950);
+}
+.dark[data-accent="golden"],
+.dark [data-accent="golden"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-950);
+  --color-highlight-muted: var(--color-golden-300);
+  --color-highlight-50: var(--color-golden-950);
+  --color-highlight-100: var(--color-golden-900);
+  --color-highlight-200: var(--color-golden-800);
+  --color-highlight-300: var(--color-golden-700);
+  --color-highlight-400: var(--color-golden-600);
+  --color-highlight-500: var(--color-golden-500);
+  --color-highlight-600: var(--color-golden-400);
+  --color-highlight-700: var(--color-golden-300);
+  --color-highlight-800: var(--color-golden-200);
+  --color-highlight-900: var(--color-golden-100);
+  --color-highlight-950: var(--color-golden-50);
+}
+[data-accent="orange"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-50);
+  --color-highlight-muted: var(--color-orange-300);
+  --color-highlight-50: var(--color-orange-50);
+  --color-highlight-100: var(--color-orange-100);
+  --color-highlight-200: var(--color-orange-200);
+  --color-highlight-300: var(--color-orange-300);
+  --color-highlight-400: var(--color-orange-400);
+  --color-highlight-500: var(--color-orange-500);
+  --color-highlight-600: var(--color-orange-600);
+  --color-highlight-700: var(--color-orange-700);
+  --color-highlight-800: var(--color-orange-800);
+  --color-highlight-900: var(--color-orange-900);
+  --color-highlight-950: var(--color-orange-950);
+}
+.dark[data-accent="orange"],
+.dark [data-accent="orange"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-950);
+  --color-highlight-muted: var(--color-orange-300);
+  --color-highlight-50: var(--color-orange-950);
+  --color-highlight-100: var(--color-orange-900);
+  --color-highlight-200: var(--color-orange-800);
+  --color-highlight-300: var(--color-orange-700);
+  --color-highlight-400: var(--color-orange-600);
+  --color-highlight-500: var(--color-orange-500);
+  --color-highlight-600: var(--color-orange-400);
+  --color-highlight-700: var(--color-orange-300);
+  --color-highlight-800: var(--color-orange-200);
+  --color-highlight-900: var(--color-orange-100);
+  --color-highlight-950: var(--color-orange-50);
+}
+[data-accent="red"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-50);
+  --color-highlight-muted: var(--color-red-300);
+  --color-highlight-50: var(--color-red-50);
+  --color-highlight-100: var(--color-red-100);
+  --color-highlight-200: var(--color-red-200);
+  --color-highlight-300: var(--color-red-300);
+  --color-highlight-400: var(--color-red-400);
+  --color-highlight-500: var(--color-red-500);
+  --color-highlight-600: var(--color-red-600);
+  --color-highlight-700: var(--color-red-700);
+  --color-highlight-800: var(--color-red-800);
+  --color-highlight-900: var(--color-red-900);
+  --color-highlight-950: var(--color-red-950);
+}
+.dark[data-accent="red"],
+.dark [data-accent="red"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-950);
+  --color-highlight-muted: var(--color-red-300);
+  --color-highlight-50: var(--color-red-950);
+  --color-highlight-100: var(--color-red-900);
+  --color-highlight-200: var(--color-red-800);
+  --color-highlight-300: var(--color-red-700);
+  --color-highlight-400: var(--color-red-600);
+  --color-highlight-500: var(--color-red-500);
+  --color-highlight-600: var(--color-red-400);
+  --color-highlight-700: var(--color-red-300);
+  --color-highlight-800: var(--color-red-200);
+  --color-highlight-900: var(--color-red-100);
+  --color-highlight-950: var(--color-red-50);
+}
+[data-accent="rose"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-50);
+  --color-highlight-muted: var(--color-rose-300);
+  --color-highlight-50: var(--color-rose-50);
+  --color-highlight-100: var(--color-rose-100);
+  --color-highlight-200: var(--color-rose-200);
+  --color-highlight-300: var(--color-rose-300);
+  --color-highlight-400: var(--color-rose-400);
+  --color-highlight-500: var(--color-rose-500);
+  --color-highlight-600: var(--color-rose-600);
+  --color-highlight-700: var(--color-rose-700);
+  --color-highlight-800: var(--color-rose-800);
+  --color-highlight-900: var(--color-rose-900);
+  --color-highlight-950: var(--color-rose-950);
+}
+.dark[data-accent="rose"],
+.dark [data-accent="rose"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-950);
+  --color-highlight-muted: var(--color-rose-300);
+  --color-highlight-50: var(--color-rose-950);
+  --color-highlight-100: var(--color-rose-900);
+  --color-highlight-200: var(--color-rose-800);
+  --color-highlight-300: var(--color-rose-700);
+  --color-highlight-400: var(--color-rose-600);
+  --color-highlight-500: var(--color-rose-500);
+  --color-highlight-600: var(--color-rose-400);
+  --color-highlight-700: var(--color-rose-300);
+  --color-highlight-800: var(--color-rose-200);
+  --color-highlight-900: var(--color-rose-100);
+  --color-highlight-950: var(--color-rose-50);
+}
+[data-accent="pink"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-50);
+  --color-highlight-muted: var(--color-pink-300);
+  --color-highlight-50: var(--color-pink-50);
+  --color-highlight-100: var(--color-pink-100);
+  --color-highlight-200: var(--color-pink-200);
+  --color-highlight-300: var(--color-pink-300);
+  --color-highlight-400: var(--color-pink-400);
+  --color-highlight-500: var(--color-pink-500);
+  --color-highlight-600: var(--color-pink-600);
+  --color-highlight-700: var(--color-pink-700);
+  --color-highlight-800: var(--color-pink-800);
+  --color-highlight-900: var(--color-pink-900);
+  --color-highlight-950: var(--color-pink-950);
+}
+.dark[data-accent="pink"],
+.dark [data-accent="pink"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-950);
+  --color-highlight-muted: var(--color-pink-300);
+  --color-highlight-50: var(--color-pink-950);
+  --color-highlight-100: var(--color-pink-900);
+  --color-highlight-200: var(--color-pink-800);
+  --color-highlight-300: var(--color-pink-700);
+  --color-highlight-400: var(--color-pink-600);
+  --color-highlight-500: var(--color-pink-500);
+  --color-highlight-600: var(--color-pink-400);
+  --color-highlight-700: var(--color-pink-300);
+  --color-highlight-800: var(--color-pink-200);
+  --color-highlight-900: var(--color-pink-100);
+  --color-highlight-950: var(--color-pink-50);
+}
+[data-accent="violet"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-50);
+  --color-highlight-muted: var(--color-violet-300);
+  --color-highlight-50: var(--color-violet-50);
+  --color-highlight-100: var(--color-violet-100);
+  --color-highlight-200: var(--color-violet-200);
+  --color-highlight-300: var(--color-violet-300);
+  --color-highlight-400: var(--color-violet-400);
+  --color-highlight-500: var(--color-violet-500);
+  --color-highlight-600: var(--color-violet-600);
+  --color-highlight-700: var(--color-violet-700);
+  --color-highlight-800: var(--color-violet-800);
+  --color-highlight-900: var(--color-violet-900);
+  --color-highlight-950: var(--color-violet-950);
+}
+.dark[data-accent="violet"],
+.dark [data-accent="violet"] {
+  --color-highlight: var(--color-highlight-500);
+  --color-highlight-light: var(--color-highlight-400);
+  --color-highlight-dark: var(--color-highlight-600);
+  --color-highlight-on: var(--color-highlight-950);
+  --color-highlight-muted: var(--color-violet-300);
+  --color-highlight-50: var(--color-violet-950);
+  --color-highlight-100: var(--color-violet-900);
+  --color-highlight-200: var(--color-violet-800);
+  --color-highlight-300: var(--color-violet-700);
+  --color-highlight-400: var(--color-violet-600);
+  --color-highlight-500: var(--color-violet-500);
+  --color-highlight-600: var(--color-violet-400);
+  --color-highlight-700: var(--color-violet-300);
+  --color-highlight-800: var(--color-violet-200);
+  --color-highlight-900: var(--color-violet-100);
+  --color-highlight-950: var(--color-violet-50);
+}
+
 /* Display utilities for swapping light/dark content without dark: variant */
 .light-only {
   display: block;

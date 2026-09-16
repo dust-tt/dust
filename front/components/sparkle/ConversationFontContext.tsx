@@ -1,16 +1,10 @@
-import { useUserMetadata } from "@app/lib/swr/user";
-import { setUserMetadataFromClient } from "@app/lib/user";
-import logger from "@app/logger/logger";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
-  createContext,
-  memo,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+  applyDocumentAttribute,
+  buildPreferenceInitScript,
+  PreferenceInitScript,
+  usePersistedUserPreference,
+} from "@app/components/sparkle/persistedUserPreference";
+import { createContext, useContext, useMemo } from "react";
 
 /**
  * Font used for agent answers in conversations (Settings > Customization).
@@ -19,10 +13,9 @@ import {
  * - `serif`: Lora.
  * - `dyslexic`: OpenDyslexic.
  *
- * The preference is stored as user metadata so it follows the user across
- * devices, and mirrored in localStorage so the first paint already uses it
- * (see `ConversationFontScript`). It is applied as `data-conversation-font`
- * on <html>; only elements using the `font-conversation` utility react to it.
+ * Stored as user metadata, mirrored in localStorage, and applied as
+ * `data-conversation-font` on <html>; only elements using the
+ * `font-conversation` utility react to it (see persistedUserPreference).
  */
 export const CONVERSATION_FONTS = ["sans", "serif", "dyslexic"] as const;
 export type ConversationFont = (typeof CONVERSATION_FONTS)[number];
@@ -47,28 +40,15 @@ export function isConversationFont(
   );
 }
 
-function getStoredConversationFont(): ConversationFont {
-  if (typeof window === "undefined") {
-    return DEFAULT_CONVERSATION_FONT;
-  }
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return isConversationFont(stored) ? stored : DEFAULT_CONVERSATION_FONT;
-  } catch {
-    return DEFAULT_CONVERSATION_FONT;
-  }
+export function applyConversationFont(font: ConversationFont): void {
+  applyDocumentAttribute(DATA_ATTRIBUTE, font, DEFAULT_CONVERSATION_FONT);
 }
 
-export function applyConversationFont(font: ConversationFont): void {
-  if (typeof document === "undefined") {
-    return;
-  }
-  if (font === DEFAULT_CONVERSATION_FONT) {
-    document.documentElement.removeAttribute(DATA_ATTRIBUTE);
-  } else {
-    document.documentElement.setAttribute(DATA_ATTRIBUTE, font);
-  }
-}
+const initScript = buildPreferenceInitScript({
+  storageKey: STORAGE_KEY,
+  attribute: DATA_ATTRIBUTE,
+  values: CONVERSATION_FONTS.filter((f) => f !== DEFAULT_CONVERSATION_FONT),
+});
 
 interface ConversationFontContextType {
   conversationFont: ConversationFont;
@@ -81,95 +61,28 @@ const ConversationFontContext = createContext<
   ConversationFontContextType | undefined
 >(undefined);
 
-// Runs before React hydration so the first paint already uses the stored
-// font, like ThemeScript does for dark mode. Must not reference module scope.
-const minifiedConversationFontScript = `function(){try{const f=localStorage.getItem("conversationFont");if(f==="serif"||f==="dyslexic"){document.documentElement.setAttribute("data-conversation-font",f)}}catch(e){}}`;
-
-const ConversationFontScript = memo(function ConversationFontInitScript() {
-  return (
-    <script
-      dangerouslySetInnerHTML={{
-        __html: `(${minifiedConversationFontScript})()`,
-      }}
-    />
-  );
-});
-
 export function ConversationFontProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [conversationFont, setConversationFontState] =
-    useState<ConversationFont>(() => getStoredConversationFont());
+  const { value, setValue } = usePersistedUserPreference<ConversationFont>({
+    metadataKey: CONVERSATION_FONT_METADATA_KEY,
+    storageKey: STORAGE_KEY,
+    defaultValue: DEFAULT_CONVERSATION_FONT,
+    isValid: isConversationFont,
+    apply: applyConversationFont,
+    label: "conversation font",
+  });
 
-  // The server value wins over the local mirror whenever it changes (initial
-  // load, or a choice made on another device). Adopting it during render with
-  // the previous-value pattern, rather than in an effect, means a local change
-  // never gets clobbered by a stale server value while its save is in flight.
-  const { metadata, mutateMetadata } = useUserMetadata(
-    CONVERSATION_FONT_METADATA_KEY
-  );
-  const serverFont = metadata?.value;
-  // Starts undefined (not `serverFont`) so a value already present on the
-  // first render, e.g. from the SWR cache, is adopted as well.
-  const [prevServerFont, setPrevServerFont] = useState<string | undefined>(
-    undefined
-  );
-  if (serverFont !== prevServerFont) {
-    setPrevServerFont(serverFont);
-    if (isConversationFont(serverFont)) {
-      setConversationFontState(serverFont);
-    }
-  }
-
-  // Sync the external systems (the <html> attribute and the localStorage
-  // mirror read by the pre-hydration script) from the current value.
-  useEffect(() => {
-    applyConversationFont(conversationFont);
-    try {
-      localStorage.setItem(STORAGE_KEY, conversationFont);
-    } catch {
-      // Storage may be unavailable (private mode); the attribute still applies.
-    }
-  }, [conversationFont]);
-
-  const setConversationFont = useCallback(
-    async (font: ConversationFont) => {
-      setConversationFontState(font);
-
-      try {
-        await setUserMetadataFromClient({
-          key: CONVERSATION_FONT_METADATA_KEY,
-          value: font,
-        });
-      } catch (err) {
-        // The local choice still applies; it just won't follow the user to
-        // other devices until the next successful save.
-        logger.error(
-          { font, err: normalizeError(err) },
-          "Failed to save conversation font preference"
-        );
-        return false;
-      }
-
-      await mutateMetadata(
-        { metadata: { key: CONVERSATION_FONT_METADATA_KEY, value: font } },
-        { revalidate: false }
-      );
-      return true;
-    },
-    [mutateMetadata]
-  );
-
-  const value = useMemo(
-    () => ({ conversationFont, setConversationFont }),
-    [conversationFont, setConversationFont]
+  const contextValue = useMemo(
+    () => ({ conversationFont: value, setConversationFont: setValue }),
+    [value, setValue]
   );
 
   return (
-    <ConversationFontContext.Provider value={value}>
-      <ConversationFontScript />
+    <ConversationFontContext.Provider value={contextValue}>
+      <PreferenceInitScript script={initScript} />
       {children}
     </ConversationFontContext.Provider>
   );

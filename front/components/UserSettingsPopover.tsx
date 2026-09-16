@@ -8,6 +8,12 @@ import {
   SoundNotificationPreferences,
   useSoundNotificationPreferencesForm,
 } from "@app/components/me/SoundNotificationPreferences";
+import type { AccentColor } from "@app/components/sparkle/AccentColorContext";
+import {
+  ACCENT_COLOR_LABELS,
+  ACCENT_COLORS,
+  useAccentColor,
+} from "@app/components/sparkle/AccentColorContext";
 import type { ConversationFont } from "@app/components/sparkle/ConversationFontContext";
 import {
   CONVERSATION_FONT_LABELS,
@@ -45,7 +51,7 @@ import {
   ANONYMOUS_USER_IMAGE_URL,
   areConversationExternalNotificationsEnabled,
 } from "@app/types/user";
-import type { OptionTile } from "@dust-tt/sparkle";
+import type { OptionTile, SwatchOption } from "@dust-tt/sparkle";
 import {
   Avatar,
   Bell01,
@@ -76,6 +82,7 @@ import {
   SliderToggle,
   Spinner,
   Sun,
+  SwatchGroup,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -330,6 +337,28 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
 type ThemeChoice = "light" | "dark" | "system";
 
+// One swatch per palette scale; the 500 step is the scale's anchor color.
+const ACCENT_SWATCH_CLASSES: Record<AccentColor, string> = {
+  blue: "bg-blue-500",
+  violet: "bg-violet-500",
+  pink: "bg-pink-500",
+  rose: "bg-rose-500",
+  red: "bg-red-500",
+  orange: "bg-orange-500",
+  golden: "bg-golden-500",
+  lime: "bg-lime-500",
+  green: "bg-green-500",
+  emerald: "bg-emerald-500",
+};
+
+const ACCENT_COLOR_OPTIONS: SwatchOption<AccentColor>[] = ACCENT_COLORS.map(
+  (color) => ({
+    value: color,
+    label: ACCENT_COLOR_LABELS[color],
+    className: ACCENT_SWATCH_CLASSES[color],
+  })
+);
+
 const THEME_OPTIONS: OptionTile<ThemeChoice>[] = [
   { value: "light", label: "Light", icon: Sun },
   { value: "dark", label: "Dark", icon: Moon01 },
@@ -362,6 +391,9 @@ const CONVERSATION_FONT_OPTIONS: OptionTile<ConversationFont>[] =
 function CustomizationSection() {
   const { theme: currentTheme, setTheme } = useTheme();
   const { conversationFont, setConversationFont } = useConversationFont();
+  const { accentColor, setAccentColor } = useAccentColor();
+  const [localAccentColor, setLocalAccentColor] =
+    useState<AccentColor>(accentColor);
   const sendNotification = useSendNotification();
   const [localConversationFont, setLocalConversationFont] =
     useState<ConversationFont>(conversationFont);
@@ -402,6 +434,7 @@ function CustomizationSection() {
   const isDirty =
     localTheme !== currentTheme ||
     localConversationFont !== conversationFont ||
+    localAccentColor !== accentColor ||
     submitKey !==
       (typeof window !== "undefined"
         ? (localStorage.getItem("submitMessageKey") ?? "enter")
@@ -422,6 +455,24 @@ function CustomizationSection() {
       localStorage.setItem("submitMessageKey", submitKey);
     }
     setAgentsSectionVisible(localAgentsSectionVisible);
+    if (localAccentColor !== accentColor) {
+      trackEvent({
+        area: TRACKING_AREAS.SETTINGS,
+        object: "accent_color",
+        action: TRACKING_ACTIONS.SELECT,
+        extra: { color: localAccentColor },
+      });
+      void setAccentColor(localAccentColor).then((saved) => {
+        if (!saved) {
+          sendNotification({
+            type: "error",
+            title: "Could not save the accent color",
+            description:
+              "It applies on this device, but could not be saved to your account.",
+          });
+        }
+      });
+    }
     if (localConversationFont !== conversationFont) {
       trackEvent({
         area: TRACKING_AREAS.SETTINGS,
@@ -466,6 +517,19 @@ function CustomizationSection() {
               options={THEME_OPTIONS}
               value={localTheme}
               onValueChange={setLocalTheme}
+            />
+          }
+        />
+
+        <SettingsList.Row
+          title="Accent color"
+          description="Used for highlights, selection and links"
+          action={
+            <SwatchGroup
+              ariaLabel="Accent color"
+              options={ACCENT_COLOR_OPTIONS}
+              value={localAccentColor}
+              onValueChange={setLocalAccentColor}
             />
           }
         />

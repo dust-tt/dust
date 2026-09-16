@@ -77,7 +77,9 @@ const buttonVariants = cva(
         highlight: cn(
           OVERLAY,
           "bg-linear-to-b from-highlight-400 to-highlight-500",
-          "dark:from-blue-500 dark:to-blue-600",
+          // Dark mirrors the highlight scale, so 500 -> 400 is the accent's
+          // 500 -> 600; literal blue steps would ignore the user's accent.
+          "dark:from-highlight-500 dark:to-highlight-400",
           "text-white",
           RAISED_SHADOW,
           "dark:shadow-[inset_0_0_1px_0_rgba(255,255,255,0.08),0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.1)]",
