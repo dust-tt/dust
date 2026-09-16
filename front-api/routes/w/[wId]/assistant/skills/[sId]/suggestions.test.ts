@@ -424,7 +424,47 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.message).toContain(
-      "Self-improving skills are not enabled"
+      "One or more skill suggestions are not available."
+    );
+  });
+
+  it("updates a conversational suggestion when the feature flag is on", async () => {
+    const { hasReinforcementEnabled } = await import(
+      "@app/lib/reinforcement/workspace_check"
+    );
+    vi.mocked(hasReinforcementEnabled).mockResolvedValueOnce(false);
+
+    const { workspace, auth, skill } = await setup();
+    await FeatureFlagFactory.basic(auth, "conversational_building");
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      source: "conversational",
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+  });
+
+  it("returns 400 for a conversational suggestion without the feature flag", async () => {
+    const { workspace, auth, skill } = await setup();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      source: "conversational",
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "One or more skill suggestions are not available."
     );
   });
 });

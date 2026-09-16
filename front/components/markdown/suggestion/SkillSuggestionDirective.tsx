@@ -7,12 +7,16 @@
  */
 
 import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
-import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
+import {
+  usePatchSkillSuggestions,
+  useSkillSuggestions,
+} from "@app/hooks/useSkillSuggestions";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { SKIP, visit } from "unist-util-visit";
 
 function toSuggestionProperties(attributes: Record<string, string>) {
@@ -86,15 +90,25 @@ function ConversationSkillSuggestion({
   skillId,
   suggestionId,
 }: ConversationSkillSuggestionProps) {
-  const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
-    skillId,
-    workspaceId: owner.sId,
-    sources: ["conversational"],
-  });
+  const [pendingAction, setPendingAction] = useState<
+    "accept" | "decline" | null
+  >(null);
+
+  const { suggestions, isSuggestionsLoading, mutateSuggestions } =
+    useSkillSuggestions({
+      skillId,
+      workspaceId: owner.sId,
+      sources: ["conversational"],
+    });
 
   const { skill, isSkillLoading } = useSkill({
     workspaceId: owner.sId,
     skillId,
+  });
+
+  const { patchSuggestions } = usePatchSkillSuggestions({
+    skillId,
+    workspaceId: owner.sId,
   });
 
   const getSkillInstructionsHtml = useCallback(
@@ -105,6 +119,34 @@ function ConversationSkillSuggestion({
     () => skill?.agentFacingDescription ?? "",
     [skill]
   );
+
+  // TODO(skill-suggestions): apply the suggestion's edits to the skill and mark it approved.
+  const handleAccept = () => {};
+
+  const handleDecline = async (suggestion: SkillSuggestionType) => {
+    if (pendingAction) {
+      return;
+    }
+    setPendingAction("decline");
+    try {
+      const patched = await patchSuggestions([suggestion.sId], "rejected");
+      const reviewed = patched?.suggestions.find(
+        (p) => p.sId === suggestion.sId
+      );
+      if (reviewed) {
+        void mutateSuggestions(
+          (current) => ({
+            suggestions: (current?.suggestions ?? []).map((s) =>
+              s.sId === reviewed.sId ? reviewed : s
+            ),
+          }),
+          { revalidate: false }
+        );
+      }
+    } finally {
+      setPendingAction(null);
+    }
+  };
 
   if (isSuggestionsLoading || isSkillLoading) {
     return <LoadingBlock className="h-24 w-full" />;
@@ -121,9 +163,14 @@ function ConversationSkillSuggestion({
       return (
         <SkillSuggestionCard
           suggestion={suggestion}
+          onAccept={handleAccept}
+          onDecline={handleDecline}
           getSkillInstructionsHtml={getSkillInstructionsHtml}
           getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
           workspaceId={owner.sId}
+          disabled={pendingAction !== null}
+          isAccepting={pendingAction === "accept"}
+          isDeclining={pendingAction === "decline"}
         />
       );
 
