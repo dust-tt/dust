@@ -2440,6 +2440,67 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("fetchById", () => {
+    it("supports lightweight hydration while preserving the default hydration", async () => {
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const serverView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        testContext.globalSpace
+      );
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        instructions: "Large instructions",
+        instructionsHtml: "<p>Large instructions</p>",
+        mcpServerViews: [serverView],
+      });
+
+      const full = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId
+      );
+      expect(full).toMatchObject({
+        instructions: "Large instructions",
+        instructionsHtml: "<p>Large instructions</p>",
+        mcpServerViews: [expect.objectContaining({ sId: serverView.sId })],
+      });
+
+      const light = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId,
+        {
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+        }
+      );
+      expect(light).toMatchObject({
+        sId: skill.sId,
+        instructions: "",
+        instructionsHtml: null,
+        mcpServerViews: [],
+      });
+    });
+
+    it("forwards the active-only filter without changing the default", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        status: "archived",
+      });
+
+      const unfiltered = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId
+      );
+      expect(unfiltered?.sId).toBe(skill.sId);
+
+      const activeOnly = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId,
+        { onlyActive: true }
+      );
+      expect(activeOnly).toBeNull();
+    });
+  });
+
   describe("fetchByIds", () => {
     it("skips heavy hydration when it is not requested", async () => {
       const server = await RemoteMCPServerFactory.create(testContext.workspace);

@@ -169,6 +169,12 @@ type SkillFetchContext = {
     }
 );
 
+type SkillFetchOptions = SkillFetchContext &
+  Pick<
+    SkillHydrationOptions,
+    "withInstructions" | "withTools" | "withFileAttachments"
+  > & { onlyActive?: boolean };
+
 type SkillResourceConstructorOptions =
   | {
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
@@ -1074,11 +1080,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async fetchById(
     auth: Authenticator,
     sId: string,
-    {
-      permissionFiltering,
-    }: { permissionFiltering?: SkillPermissionFilteringMode } = {}
+    options: SkillFetchOptions = {}
   ): Promise<SkillResource | null> {
-    const [skill] = await this.fetchByIds(auth, [sId], { permissionFiltering });
+    const [skill] = await this.fetchByIds(auth, [sId], options);
 
     return skill ?? null;
   }
@@ -1094,11 +1098,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withInstructions = true,
       withTools = true,
       withFileAttachments = true,
-    }: SkillFetchContext &
-      Pick<
-        SkillConfigurationFindOptions,
-        "withInstructions" | "withTools" | "withFileAttachments"
-      > & { onlyActive?: boolean } = {}
+    }: SkillFetchOptions = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];

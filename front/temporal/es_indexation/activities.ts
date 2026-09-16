@@ -93,7 +93,7 @@ export async function indexSkillSearchActivity({
   skillId: string;
 }): Promise<void> {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const [skill] = await SkillResource.fetchByIds(auth, [skillId], {
+  const skill = await SkillResource.fetchById(auth, skillId, {
     withInstructions: false,
     withTools: true,
     withFileAttachments: false,
