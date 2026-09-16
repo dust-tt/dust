@@ -141,6 +141,7 @@ const app = workspaceApp();
  *                   origin:
  *                     type: string
  *                     nullable: true
+ *                     description: Client surface. Voice marks internal transcript context, omitted from the visible message history.
  *                   clientSideMCPServerIds:
  *                     type: array
  *                     items:

@@ -7,6 +7,7 @@ export type AnalyticsVisibleOrigin = Exclude<
 
 export const SOURCE_ORIGIN_LABELS: Record<AnalyticsVisibleOrigin, string> = {
   web: "Conversation",
+  voice: "Voice",
   extension: "Chrome extension",
   slack: "Slack",
   slack_workflow: "Slack",
@@ -41,6 +42,7 @@ export const PROGRAMMATIC_ORIGIN_TO_SOURCE: Record<
   AnalyticsVisibleOrigin
 > = {
   web: "web",
+  voice: "web",
   extension: "extension",
   slack: "slack",
   slack_workflow: "slack",

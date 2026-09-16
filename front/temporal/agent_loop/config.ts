@@ -71,6 +71,7 @@ export function getQueueForUserMessageOrigin(
     case "slack_workflow":
     case "teams":
     case "web":
+    case "voice":
       return "interactive";
     case "triggered":
     case "wakeup":

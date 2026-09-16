@@ -1,5 +1,7 @@
+import { once } from "node:events";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { isHiddenMessage } from "@app/components/assistant/conversation/types";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -8,16 +10,20 @@ import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { LiveEventSchema } from "@app/types/assistant/live";
 import { isDevelopment } from "@app/types/shared/env";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import messageEvents from "@front-api/routes/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events";
 import agents from "@front-api/routes/w/[wId]/assistant/agent_configurations";
 import live from "@front-api/routes/w/[wId]/assistant/conversations/[cId]/live";
 import messages from "@front-api/routes/w/[wId]/assistant/conversations/[cId]/messages";
+import { serve } from "@hono/node-server";
+import { cors } from "hono/cors";
 import { chromium } from "playwright";
 
 /**
  * @cc [owner:aubin-tchoi,label:security] live-poc-auth-fixture
  * This explicit development-only smoke test MUST keep its authentication fixture
- * inside Playwright request interception. Production authentication is unchanged;
- * voice, message submission, and result polling use the actual route handlers.
+ * inside this script's request interception and loopback streaming server.
+ * Production authentication MUST remain unchanged; voice, message submission,
+ * streaming, and result polling use the actual route handlers.
  */
 makeScript(
   {
@@ -59,6 +65,7 @@ makeScript(
       spaceId: null,
     });
     const app = workspaceApp();
+    app.use("*", cors({ origin: spaUrl, credentials: true }));
     app.use("*", async (ctx, next) => {
       ctx.set("auth", auth);
       await next();
@@ -67,6 +74,22 @@ makeScript(
     app.route(`${base}/conversations/:cId/live`, live);
     app.route(`${base}/conversations/:cId/messages`, messages);
     app.route(`${base}/agent_configurations`, agents);
+    app.route(
+      `/api/sse/w/${workspaceId}/assistant/conversations/:cId/messages/:mId/events`,
+      messageEvents
+    );
+    const fixtureServer = serve({
+      fetch: app.fetch,
+      hostname: "127.0.0.1",
+      port: 0,
+    });
+    await once(fixtureServer, "listening");
+    const address = fixtureServer.address();
+    if (!address || typeof address === "string") {
+      fixtureServer.close();
+      throw new Error("Local streaming fixture did not start.");
+    }
+    const fixtureBase = `http://127.0.0.1:${address.port}`;
     const audio = Array.from(await readFile(audioFile));
     const browser = await chromium.launch({
       headless: true,
@@ -75,15 +98,48 @@ makeScript(
     const page = await browser.newPage({
       viewport: { width: 1280, height: 900 },
     });
+    await page.context().grantPermissions(["local-network-access"], {
+      origin: spaUrl,
+    });
     const events: unknown[] = [];
     const toolResults: unknown[] = [];
     let spokenResult = "";
     let closed = false;
     let toolSucceeded = false;
+    let hiddenVoiceContext = false;
+    let streamedToolProgress = false;
+    const voiceUpdates: unknown[] = [];
     page.on("pageerror", (error) =>
       logger.error({ error: error.message }, "Browser error")
     );
+    page.on("requestfailed", (request) => {
+      // Closing or reconnecting an SSE stream intentionally aborts its request.
+      if (request.failure()?.errorText === "net::ERR_ABORTED") {
+        return;
+      }
+      logger.error(
+        { url: request.url(), error: request.failure()?.errorText },
+        "Browser request failed"
+      );
+    });
     page.on("console", (message) => {
+      if (message.type() === "error") {
+        logger.error({ message: message.text() }, "Browser console error");
+      }
+      if (message.text().startsWith("LIVE_APPEND ")) {
+        const update: { type: string; content: string } = JSON.parse(
+          message.text().slice("LIVE_APPEND ".length)
+        );
+        voiceUpdates.push(update);
+        if (
+          update.type === "session.thinking.append" &&
+          update.content.startsWith("Tool ")
+        ) {
+          streamedToolProgress = true;
+        }
+        logger.info({ update }, "Voice received streamed update");
+        return;
+      }
       if (!message.text().startsWith("LIVE_EVENT ")) {
         return;
       }
@@ -115,12 +171,33 @@ makeScript(
         await route.fallback();
         return;
       }
+      if (url.pathname.startsWith("/api/sse/")) {
+        // Continue the browser request to a loopback server: fulfill() would buffer
+        // the SSE response and defeat the streaming behavior this test exercises.
+        await route.continue({
+          url: `${fixtureBase}${url.pathname}${url.search}`,
+        });
+        return;
+      }
       const response = await app.request(url.pathname + url.search, {
         method: request.method(),
         headers: request.headers(),
         body: request.postData() ?? undefined,
       });
       const body = await response.text();
+      if (
+        url.pathname.endsWith("/messages") &&
+        request.method() === "POST" &&
+        response.ok
+      ) {
+        const posted = JSON.parse(body);
+        hiddenVoiceContext =
+          posted.message.context.origin === "voice" &&
+          isHiddenMessage({
+            ...posted.message,
+            contentFragments: posted.contentFragments,
+          });
+      }
       logger.info(
         {
           method: request.method(),
@@ -198,6 +275,13 @@ makeScript(
           recorder.start(500);
         });
         const channel = original.call(this, label, options);
+        const send = channel.send;
+        channel.send = function (data) {
+          if (typeof data === "string") {
+            console.log(`LIVE_APPEND ${data}`);
+          }
+          Reflect.apply(send, this, [data]);
+        };
         channel.addEventListener("message", async ({ data }) => {
           console.log(`LIVE_EVENT ${data}`);
           if (JSON.parse(data).type === "session.started") {
@@ -237,6 +321,11 @@ makeScript(
       ) {
         throw new Error("Expected a successful math_operation and spoken 391.");
       }
+      if (!hiddenVoiceContext || !streamedToolProgress) {
+        throw new Error(
+          "Expected hidden voice context and live tool progress through the real SSE stream."
+        );
+      }
       await page.getByRole("button", { name: "Mute", exact: true }).click();
       await page.getByText("Microphone muted", { exact: true }).waitFor();
       await page.screenshot({ path: `${outputDir}.png`, timeout: 10_000 });
@@ -258,7 +347,14 @@ makeScript(
       await writeFile(
         `${outputDir}.json`,
         JSON.stringify(
-          { conversationId: conversation.sId, events, toolResults },
+          {
+            conversationId: conversation.sId,
+            events,
+            toolResults,
+            voiceUpdates,
+            hiddenVoiceContext,
+            streamedToolProgress,
+          },
           null,
           2
         )
@@ -270,6 +366,7 @@ makeScript(
         });
       } finally {
         await browser.close();
+        fixtureServer.close();
       }
     }
   }

@@ -7569,6 +7569,125 @@
         }
       }
     },
+    "/api/w/{wId}/assistant/conversations/{cId}/live": {
+      "post": {
+        "summary": "Start a GPT-Live voice session for a conversation",
+        "description": "Feature-gated POC. Exchanges a WebRTC offer for an answer using server-owned credentials and client delegation to the existing Dust agent harness.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "agentId",
+                  "sdp"
+                ],
+                "properties": {
+                  "agentId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sdp": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 65536
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Voice session created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "session",
+                    "transport"
+                  ],
+                  "properties": {
+                    "session": {
+                      "type": "object",
+                      "required": [
+                        "id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "transport": {
+                      "type": "object",
+                      "required": [
+                        "type",
+                        "sdp"
+                      ],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "webrtc"
+                          ]
+                        },
+                        "sdp": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid offer or unavailable configuration"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Voice is not enabled"
+          },
+          "404": {
+            "description": "Conversation or agent not accessible"
+          },
+          "502": {
+            "description": "OpenAI session creation failed"
+          }
+        }
+      }
+    },
     "/api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/actions/{aId}": {
       "get": {
         "summary": "Get a single action",
@@ -8429,7 +8548,8 @@
                       },
                       "origin": {
                         "type": "string",
-                        "nullable": true
+                        "nullable": true,
+                        "description": "Client surface. Voice marks internal transcript context, omitted from the visible message history."
                       },
                       "clientSideMCPServerIds": {
                         "type": "array",
@@ -13224,6 +13344,7 @@
             "type": "string",
             "enum": [
               "web",
+              "voice",
               "project_kickoff",
               "extension",
               "agent_sidekick",
@@ -14650,6 +14771,11 @@
           "timezone"
         ],
         "properties": {
+          "origin": {
+            "type": "string",
+            "nullable": true,
+            "description": "Message source. Voice identifies internal live conversation context."
+          },
           "username": {
             "type": "string",
             "description": "Username in the current context",

@@ -78,6 +78,10 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
   { label: string; color: string }
 > = {
   web: { label: SOURCE_ORIGIN_LABELS.web, color: buildColorClass("blue", 500) },
+  voice: {
+    label: SOURCE_ORIGIN_LABELS.voice,
+    color: buildColorClass("blue", 500),
+  },
   extension: {
     label: SOURCE_ORIGIN_LABELS.extension,
     color: buildColorClass("orange", 500),

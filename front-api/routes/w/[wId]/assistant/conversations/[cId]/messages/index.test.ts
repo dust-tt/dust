@@ -1,3 +1,4 @@
+import { isHiddenMessage } from "@app/components/assistant/conversation/types";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -52,6 +53,35 @@ function getTools(workspace: { sId: string }, conversationId: string) {
 }
 
 describe("POST /api/w/:wId/assistant/conversations/:cId/messages", () => {
+  it("keeps voice handoff context out of visible chat while using the normal agent loop", async () => {
+    const { workspace, auth, user } = await setupTest();
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [],
+    });
+    const response = await postMessage(workspace, conversation.sId, {
+      content: "user: Calculate 17 * 23",
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+      context: {
+        timezone: "Europe/Paris",
+        profilePictureUrl: user.imageUrl,
+        origin: "voice",
+      },
+      skipToolsValidation: false,
+    });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.message.context.origin).toBe("voice");
+    expect(
+      isHiddenMessage({
+        ...body.message,
+        contentFragments: body.contentFragments,
+      })
+    ).toBe(true);
+    expect(body.agentMessages).toHaveLength(1);
+    expect(body.agentMessages[0].parentMessageId).toBe(body.message.sId);
+  });
+
   it("enables MCP server views when selectedMCPServerViewIds are provided", async () => {
     const { workspace, conversation, auth, globalSpace, user } =
       await setupTest("admin");

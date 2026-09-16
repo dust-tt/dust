@@ -164,6 +164,33 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(prompt1).toEqual(prompt2);
   });
 
+  it("keeps voice handoff instructions in the server prompt and leaves typed conversations unchanged", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: withoutModel(agentConfig1),
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
+      hasAvailableActions: true,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+    const typed = constructPromptMultiActions(authenticator1, params);
+    const voice = constructPromptMultiActions(authenticator1, {
+      ...params,
+      userMessage: {
+        ...userMessage1,
+        context: { ...userMessage1.context, origin: "voice" },
+      },
+    });
+    expect(systemPromptToText(typed)).not.toContain("# LIVE VOICE");
+    expect(systemPromptToText(voice)).toContain(
+      "Your public text is streamed into the ongoing voice conversation."
+    );
+    expect(systemPromptToText(voice)).toContain(
+      "Required approvals and questions still use the existing chat cards."
+    );
+  });
+
   it("should always include stable extension tool guidance", () => {
     const baseParams = {
       userMessage: userMessage1,
