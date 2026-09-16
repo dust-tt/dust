@@ -24,6 +24,8 @@ import { WakeUpMessage } from "@app/components/assistant/conversation/WakeUpMess
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { extractKnowledgeTagNodeIds } from "@app/lib/knowledge/format";
+import { isContentNodeContentFragment } from "@app/types/content_fragment";
 import { isSupportedImageContentType } from "@app/types/files";
 import type { UserType } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
@@ -153,9 +155,35 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isSubmittingThumb,
     };
 
+    const visibleContentFragments = useMemo(() => {
+      if (!isUserMessage(data)) {
+        return [];
+      }
+
+      if (!data.contentFragments.some(isContentNodeContentFragment)) {
+        return data.contentFragments;
+      }
+
+      const inlineKnowledgeNodeIds = extractKnowledgeTagNodeIds(data.content);
+
+      if (inlineKnowledgeNodeIds.size === 0) {
+        return data.contentFragments;
+      }
+
+      // no need to show the content fragment card if it's inlined 
+      return data.contentFragments.filter(
+        (fragment) =>
+          !(
+            isContentNodeContentFragment(fragment) &&
+            fragment.nodeId &&
+            inlineKnowledgeNodeIds.has(fragment.nodeId)
+          )
+      );
+    }, [data]);
+
     const hasImageCitation =
       isUserMessage(data) &&
-      data.contentFragments.some((fragment) => {
+      visibleContentFragments.some((fragment) => {
         const attachmentCitation =
           contentFragmentToAttachmentCitation(fragment);
         return (
@@ -165,8 +193,8 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       });
 
     const citations =
-      isUserMessage(data) && data.contentFragments.length > 0
-        ? data.contentFragments.map((contentFragment, index) => {
+      isUserMessage(data) && visibleContentFragments.length > 0
+        ? visibleContentFragments.map((contentFragment, index) => {
             const attachmentCitation =
               contentFragmentToAttachmentCitation(contentFragment);
 
