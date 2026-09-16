@@ -102,14 +102,14 @@ export interface FullAgentResource extends AgentResource {
 /**
  * @cc [owner:tdraier,label:backend] agent-resource-identity
  * The authoritative resolvers `fetchByModelIdWithAuth`/`fetchByModelIds`/`fetchById(s)` MUST resolve
- * a custom agent to a single deterministic configuration version — its active version when it has
- * one, otherwise its latest version regardless of status (see `fetch-latest-active-version`) — so
- * two fetched resources sharing an `id` (= `agentModelId`) are consistent at a given time. The
- * `from*` factories are an unchecked fast path: they build a resource from whatever configuration
- * the caller supplies, and do NOT yet guarantee it is the resolved version — a caller deciding about
- * the agent's current state must pass that version, or use `fetch*`. (`from*` are intended to become
- * private and enforce this.) Global agents are exempt from the `id`-consistency clause: they have no
- * `agent` row, are identified by `sId`, and all share the `id: -1` sentinel.
+ * a custom agent to its current configuration version — the row its `currentVersion` pointer
+ * designates (see `fetch-current-version`) — so two fetched resources sharing an `id`
+ * (= `agentModelId`) are consistent at a given time. The `from*` factories are an unchecked fast
+ * path: they build a resource from whatever configuration the caller supplies, and do NOT yet
+ * guarantee it is the current version — a caller deciding about the agent's current state must pass
+ * that version, or use `fetch*`. (`from*` are intended to become private and enforce this.) Global
+ * agents are exempt from the `id`-consistency clause: they have no `agent` row, are identified by
+ * `sId`, and all share the `id: -1` sentinel.
  */
 export class AgentResource
   extends BaseResource<AgentModel>
@@ -250,22 +250,33 @@ export class AgentResource
 
   // -- Full/light factory --
 
-  // Builds a resource from an already-loaded configuration row: `full` (with `content`) when the
-  // caller can read the agent, `light` otherwise. Read access depends only on core fields, so it is
-  // decided on the light resource and the (larger) content payload is materialized only when needed.
-  static fromAgentConfigurationModel(
-    auth: Authenticator,
+  // Caller-independent: builds the `full` resource (identity + core + `content`) from a configuration
+  // row and, when available, its agent row, with no read-access decision folded in. This is the shape
+  // the cache stores; the downgrade is applied separately at the read boundary (`filterByReadAccess`).
+  // `agent` is null on the `fromAgentConfigurationModel` path, where only a configuration is in hand;
+  // the identity is then derived from the configuration (its `agentId`/`version` match the agent).
+  private static buildResource(
+    agent: AgentModel | null,
     configuration: AgentConfigurationModel
-  ): AgentResource {
+  ): FullAgentResource {
     const resource = new AgentResource(
-      {
-        id: configuration.agentId,
-        workspaceId: configuration.workspaceId,
-        sId: configuration.sId,
-        createdAt: configuration.createdAt,
-        updatedAt: configuration.updatedAt,
-        currentVersion: configuration.version,
-      },
+      agent
+        ? {
+            id: agent.id,
+            workspaceId: agent.workspaceId,
+            sId: agent.sId,
+            createdAt: agent.createdAt,
+            updatedAt: agent.updatedAt,
+            currentVersion: agent.currentVersion,
+          }
+        : {
+            id: configuration.agentId,
+            workspaceId: configuration.workspaceId,
+            sId: configuration.sId,
+            createdAt: configuration.createdAt,
+            updatedAt: configuration.updatedAt,
+            currentVersion: configuration.version,
+          },
       {
         scope: configuration.scope,
         name: configuration.name,
@@ -281,37 +292,62 @@ export class AgentResource
           reasoningEffort: configuration.reasoningEffort ?? undefined,
           responseFormat: configuration.responseFormat,
         },
-        content: null,
+        content: {
+          agentConfigurationModelId: configuration.id,
+          version: configuration.version,
+          instructions: configuration.instructions,
+          instructionsHtml: configuration.instructionsHtml,
+          maxStepsPerRun: configuration.maxStepsPerRun,
+          templateId: configuration.templateId,
+          reinforcement: configuration.reinforcement,
+          lastReinforcementAnalysisAt:
+            configuration.lastReinforcementAnalysisAt,
+          createdAt: configuration.createdAt,
+          updatedAt: configuration.updatedAt,
+        },
       }
     );
 
-    if (auth.can("read", resource)) {
-      resource._content = {
-        agentConfigurationModelId: configuration.id,
-        version: configuration.version,
-        instructions: configuration.instructions,
-        instructionsHtml: configuration.instructionsHtml,
-        maxStepsPerRun: configuration.maxStepsPerRun,
-        templateId: configuration.templateId,
-        reinforcement: configuration.reinforcement,
-        lastReinforcementAnalysisAt: configuration.lastReinforcementAnalysisAt,
-        createdAt: configuration.createdAt,
-        updatedAt: configuration.updatedAt,
-      };
-    }
-
-    return resource;
+    return resource as FullAgentResource;
   }
 
-  // -- Resolvers: latest version, full when readable, light otherwise --
+  // Materialization seam: fold the caller's read access into a `full` resource. When the caller
+  // cannot read the agent, its `content` is stripped in place, yielding a `light` shape.
+  // `getAllowedVerbs` depends only on core fields, so the permission decision is identical on either
+  // shape — the downgrade only hides the heavier payload. `full` is a fresh per-call instance (built
+  // by `buildResource` or `fromSnapshot`), so mutating it here never affects a cached value.
+  private static filterByReadAccess(
+    auth: Authenticator,
+    full: FullAgentResource
+  ): AgentResource {
+    if (!auth.can("read", full)) {
+      full._content = null;
+    }
+
+    return full;
+  }
+
+  // Builds a resource from an already-loaded configuration row: `full` (with `content`) when the
+  // caller can read the agent, `light` otherwise.
+  static fromAgentConfigurationModel(
+    auth: Authenticator,
+    configuration: AgentConfigurationModel
+  ): AgentResource {
+    return this.filterByReadAccess(
+      auth,
+      this.buildResource(null, configuration)
+    );
+  }
+
+  // -- Resolvers: current version, full when readable, light otherwise --
 
   /**
-   * @cc [owner:tdraier,label:backend] fetch-latest-active-version
-   * Resolves each requested custom agent to a single configuration version, scoped to the authed
-   * workspace: its active version when it has one, otherwise its latest version irrespective of
-   * status (archived, draft, or pending). Each is returned as a `full` resource when the caller can
-   * read it, otherwise a `light` resource; a resource the caller cannot fetch at all (holds no verb
-   * on, per `canFetch`) is dropped. An agent with no version yields no resource, and at most one
+   * @cc [owner:tdraier,label:backend] fetch-current-version
+   * Resolves each requested custom agent to its current configuration version — the row whose
+   * `version` equals the agent's `currentVersion` pointer (see `agent-current-version-pointer`) —
+   * scoped to the authed workspace. Each is returned as a `full` resource when the caller can read
+   * it, otherwise a `light` resource; a resource the caller cannot fetch at all (holds no verb on,
+   * per `canFetch`) is dropped. An agent with no configuration yields no resource, and at most one
    * resource is returned per `agentModelId`. `fetchById(s)` additionally resolve global agents by
    * `sId` (they have no configuration rows) via `getGlobalAgents`, gated by the same `canFetch`
    * check; `fetchByModelId(s)` cannot, since global agents have no `agentModelId`.
@@ -324,7 +360,7 @@ export class AgentResource
       return [];
     }
 
-    return this.fetchLatestVersions(auth, { agentId: agentModelIds });
+    return this.fetchCurrentVersions(auth, { id: agentModelIds });
   }
 
   // Named `...WithAuth` because `BaseResource.fetchByModelId` already occupies the bare name with an
@@ -350,7 +386,7 @@ export class AgentResource
 
     const [customResources, globalResources] = await Promise.all([
       customAgentIds.length > 0
-        ? this.fetchLatestVersions(auth, { sId: customAgentIds })
+        ? this.fetchCurrentVersions(auth, { sId: customAgentIds })
         : [],
       this.fetchGlobalAgents(auth, globalAgentIds),
     ]);
@@ -383,48 +419,56 @@ export class AgentResource
     return resource ?? null;
   }
 
-  // Loads the configuration rows of the identified agents, scoped to the authed workspace, ordered
-  // so `buildLatestVersions` keeps the highest version per agent whatever its status. `identityWhere`
-  // selects the agents by their `agentId` (model id) or `sId`.
-  private static async fetchLatestVersions(
-    auth: Authenticator,
-    identityWhere: { agentId: ModelId[] } | { sId: string[] }
-  ): Promise<AgentResource[]> {
-    const configurations = await AgentConfigurationModel.findAll({
+  // Caller-independent query: the current `full` resource of each identified agent — the row whose
+  // `version` equals the agent's `currentVersion` pointer, joined via the unique `(agentId, version)`
+  // index — one per agent, scoped to the workspace. No read-access decision is folded in; that is the
+  // caller's job (see `fetchCurrentVersions`/`fetchById`). Takes a bare `workspaceId` so both the
+  // access-controlled resolvers and the cache seam can share it.
+  private static async loadResource(
+    workspaceId: ModelId,
+    identityWhere: { id: ModelId[] } | { sId: string[] }
+  ): Promise<FullAgentResource[]> {
+    // Driven from `agents` (its unique `sId` / PK index) with the current configuration inner-joined
+    // on `agent_configuration.version = agent.currentVersion`, so the single current row is resolved
+    // through the unique `(agentId, version)` index instead of scanning every version.
+    const agents = await AgentModel.findAll({
       where: {
         ...identityWhere,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId,
       },
-      order: [["version", "DESC"]],
+      include: [
+        {
+          model: AgentConfigurationModel,
+          required: true,
+          where: { version: { [Op.col]: "agent.currentVersion" } },
+        },
+      ],
     });
 
-    return this.buildLatestVersions(auth, configurations);
+    return agents.flatMap((agent) => {
+      // `required: true` + `version = currentVersion` yields exactly one configuration per agent.
+      const configurations = agent.get(
+        "agent_configurations"
+      ) as AgentConfigurationModel[];
+      return configurations.map((configuration) =>
+        this.buildResource(agent, configuration)
+      );
+    });
   }
 
-  // Keeps a single configuration per agent. Rows are ordered version-DESC, so the first seen for an
-  // agent is its highest version; that stands unless a later row reveals the agent's active version
-  // (at most one), which is always preferred. Each chosen row becomes a full or light resource per
-  // the caller's read access (see `fromAgentConfigurationModel`); resources the caller cannot fetch
-  // (holds no verb on) are dropped by the common `canFetch` gate.
-  private static buildLatestVersions(
+  // The access-controlled resolver: each current-version resource, downgraded to `light` when the
+  // caller cannot read it and dropped when the caller holds no verb on it (`canFetch`).
+  private static async fetchCurrentVersions(
     auth: Authenticator,
-    configurations: AgentConfigurationModel[]
-  ): AgentResource[] {
-    const chosenByAgentModelId = new Map<ModelId, AgentConfigurationModel>();
-    for (const configuration of configurations) {
-      const chosen = chosenByAgentModelId.get(configuration.agentId);
-      if (
-        !chosen ||
-        (chosen.status !== "active" && configuration.status === "active")
-      ) {
-        chosenByAgentModelId.set(configuration.agentId, configuration);
-      }
-    }
+    identityWhere: { id: ModelId[] } | { sId: string[] }
+  ): Promise<AgentResource[]> {
+    const fulls = await this.loadResource(
+      auth.getNonNullableWorkspace().id,
+      identityWhere
+    );
 
-    return [...chosenByAgentModelId.values()]
-      .map((configuration) =>
-        this.fromAgentConfigurationModel(auth, configuration)
-      )
+    return fulls
+      .map((full) => this.filterByReadAccess(auth, full))
       .filter((resource) => resource.canFetch(auth));
   }
 
