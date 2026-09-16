@@ -1,5 +1,8 @@
 import { launchEnsureActivationSchedulesWorkflow } from "@app/temporal/activation_scheduler/client";
-import { launchDataRetentionWorkflow } from "@app/temporal/data_retention/client";
+import {
+  createOrUpdateFramesRetentionSchedule,
+  launchDataRetentionWorkflow,
+} from "@app/temporal/data_retention/client";
 import { launchInvitationRemindersWorkflow } from "@app/temporal/invitations/client";
 import { launchEnsureReinforcementSchedulesWorkflow } from "@app/temporal/reinforcement/client";
 import { createRemoteMCPServersSyncSchedule } from "@app/temporal/remote_tools/client";
@@ -17,6 +20,10 @@ const SCHEDULES: {
   start: () => Promise<Result<unknown, Error>>;
 }[] = [
   { name: "data-retention", start: launchDataRetentionWorkflow },
+  {
+    name: "frames-retention",
+    start: createOrUpdateFramesRetentionSchedule,
+  },
   {
     name: "reinforcement-ensure-schedules",
     start: launchEnsureReinforcementSchedulesWorkflow,

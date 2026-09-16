@@ -72,6 +72,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { Attributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -86,6 +87,8 @@ const DSBX_BIN_PATH = "/opt/bin/dsbx";
 // Cap on runner output surfaced in the log fields on failure.
 const SANDBOX_FUNCTION_ERROR_LOG_MAX_CHARS = 16_384;
 const GCS_CONCURRENCY = 4;
+// Workspaces whose expired invocations are deleted in parallel within one retention batch.
+const RETENTION_WORKSPACE_CONCURRENCY = 4;
 const SANDBOX_FUNCTION_INVOCATION_DATA_VERSION = 2;
 const FUNCTION_WARM_ENABLED_ENV = "DUST_FUNCTION_WARM_ENABLED";
 const POD_USER_IDENTITY_ENV = "DUST_POD_USER_IDENTITY";
@@ -1430,6 +1433,112 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     await this.deleteDataFromGcs(gcsPaths);
 
     return deletedCount;
+  }
+
+  /**
+   * @cc [owner:davidebbo,label:performance] retention-sweep-walks-primary-key
+   * The retention sweep MUST select its candidates by ascending `id` from `afterModelId` and
+   * compare `createdAt` in memory. It MUST NOT push a `createdAt` predicate into the query:
+   * there is no index on `createdAt`, so the batch that reaches the retention boundary would
+   * scan every remaining row of the table looking for further matches. Rows are insert-only
+   * with monotonically increasing ids, so primary-key order is creation order.
+   */
+  /**
+   * @cc [owner:davidebbo,label:backend] retention-sweep-deletes-only-expired-rows
+   * Only invocations whose own `createdAt` is strictly before `cutoffDate` MUST be deleted, even
+   * though the batch is selected by id alone. A batch that contains any row at or after
+   * `cutoffDate` MUST report a null `nextAfterModelId`, ending the sweep.
+   */
+  /**
+   * Delete one batch of invocations older than `cutoffDate`, across every workspace: their MCP
+   * actions (rows and output objects) first, since those FK the invocation with `RESTRICT`, then
+   * the invocation rows, then their GCS payloads.
+   *
+   * WORKSPACE_ISOLATION_BYPASS: retention sweeps every workspace. The rows found are regrouped
+   * per workspace and every delete is scoped to one workspace id.
+   */
+  static async dangerouslyDeleteExpiredBatch({
+    afterModelId,
+    batchSize,
+    cutoffDate,
+  }: {
+    afterModelId: ModelId | null;
+    batchSize: number;
+    cutoffDate: Date;
+  }): Promise<{
+    deletedInvocationCount: number;
+    deletedMCPActionCount: number;
+    nextAfterModelId: ModelId | null;
+    scannedCount: number;
+  }> {
+    const rows = await this.model.findAll({
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      attributes: ["id", "workspaceId", "gcsPath", "createdAt"],
+      where: afterModelId ? { id: { [Op.gt]: afterModelId } } : {},
+      order: [["id", "ASC"]],
+      limit: batchSize,
+    });
+
+    const expiredRows = rows.filter((row) => row.createdAt < cutoffDate);
+    // Either the batch ran into rows that must be kept, or the table has no more rows: both end
+    // the sweep. Anything else resumes at the last id this batch looked at.
+    const lastScannedRow = rows.at(-1);
+    const nextAfterModelId =
+      expiredRows.length < rows.length || rows.length < batchSize
+        ? null
+        : (lastScannedRow?.id ?? null);
+
+    const expiredByWorkspace = new Map<
+      ModelId,
+      { gcsPaths: string[]; invocationModelIds: ModelId[] }
+    >();
+    for (const row of expiredRows) {
+      const workspaceBatch = expiredByWorkspace.get(row.workspaceId) ?? {
+        gcsPaths: [],
+        invocationModelIds: [],
+      };
+      workspaceBatch.gcsPaths.push(row.gcsPath);
+      workspaceBatch.invocationModelIds.push(row.id);
+      expiredByWorkspace.set(row.workspaceId, workspaceBatch);
+    }
+
+    const deletedMCPActionCounts = await concurrentExecutor(
+      [...expiredByWorkspace.entries()],
+      async ([workspaceModelId, { gcsPaths, invocationModelIds }]) => {
+        const deletedMCPActionCount = await withTransaction(
+          async (transaction) => {
+            const mcpActionCount =
+              await SandboxFunctionMCPActionResource.deleteAllForInvocationModelIds(
+                { workspaceModelId, invocationModelIds },
+                { transaction }
+              );
+            await this.model.destroy({
+              where: { id: invocationModelIds, workspaceId: workspaceModelId },
+              transaction,
+            });
+
+            return mcpActionCount;
+          }
+        );
+        // After the rows are gone: a crash here leaves orphaned objects the next sweep cannot
+        // find, which is cheaper than rows pointing at payloads that no longer exist.
+        await this.deleteDataFromGcs(gcsPaths);
+
+        return deletedMCPActionCount;
+      },
+      { concurrency: RETENTION_WORKSPACE_CONCURRENCY }
+    );
+
+    return {
+      deletedInvocationCount: expiredRows.length,
+      deletedMCPActionCount: deletedMCPActionCounts.reduce(
+        (total, count) => total + count,
+        0
+      ),
+      nextAfterModelId,
+      scannedCount: rows.length,
+    };
   }
 
   async delete(

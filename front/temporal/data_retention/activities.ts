@@ -2,9 +2,14 @@ import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import {
+  FRAME_FUNCTION_INVOCATION_BATCH_SIZE,
+  FRAME_FUNCTION_INVOCATION_RETENTION_MS,
+} from "@app/temporal/data_retention/config";
 import type { ModelId } from "@app/types/shared/model_id";
 import { heartbeat } from "@temporalio/activity";
 
@@ -196,4 +201,48 @@ export async function purgeAgentConversationsBatchActivity({
     retentionDays,
     nbConversationsDeleted: conversations.length,
   };
+}
+
+export type PurgeExpiredFrameFunctionInvocationsActivityResult = {
+  deletedInvocationCount: number;
+  deletedMCPActionCount: number;
+  nextAfterModelId: ModelId | null;
+  scannedCount: number;
+};
+
+/**
+ * Delete one batch of Frame function invocations past the retention window, resuming after
+ * `afterModelId`. A null `nextAfterModelId` in the result means the sweep has nothing left to do.
+ */
+export async function purgeExpiredFrameFunctionInvocationsActivity({
+  afterModelId,
+}: {
+  afterModelId: ModelId | null;
+}): Promise<PurgeExpiredFrameFunctionInvocationsActivityResult> {
+  const cutoffDate = new Date(
+    Date.now() - FRAME_FUNCTION_INVOCATION_RETENTION_MS
+  );
+
+  const result =
+    await SandboxFunctionInvocationResource.dangerouslyDeleteExpiredBatch({
+      afterModelId,
+      batchSize: FRAME_FUNCTION_INVOCATION_BATCH_SIZE,
+      cutoffDate,
+    });
+
+  heartbeat();
+
+  logger.info(
+    {
+      afterModelId,
+      cutoffDate: cutoffDate.toISOString(),
+      deletedInvocationCount: result.deletedInvocationCount,
+      deletedMCPActionCount: result.deletedMCPActionCount,
+      hasMore: result.nextAfterModelId !== null,
+      scannedCount: result.scannedCount,
+    },
+    "[Frames Retention] Purged a batch of expired Frame function invocations."
+  );
+
+  return result;
 }
