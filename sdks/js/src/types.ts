@@ -117,6 +117,7 @@ export type KnownModelLLMId =
   | "grok-4-fast-reasoning-latest"
   | "grok-4-1-fast-non-reasoning-latest"
   | "grok-4-1-fast-reasoning-latest"
+  | "simulated-failure-model" // Internal synthetic failure model
   | "noop" // Noop
   | "auto" // Auto
   | "auto_fast" // Fast stream tier
@@ -890,6 +891,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "servicenow_tool"
   | "shopify_tool"
   | "show_debug_tools"
+  | "simulated_failure_model_feature"
   | "slack_message_splitting"
   | "stateful_conversation_window"
   | "run_tools_from_prompt"
