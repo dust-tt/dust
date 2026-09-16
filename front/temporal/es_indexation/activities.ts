@@ -3,11 +3,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import {
-  deleteSkillDocument,
-  deleteWorkspaceSkillDocuments,
-  indexSkillDocument,
-} from "@app/lib/skill_search";
+import { indexSkillDocument } from "@app/lib/skill_search";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -87,8 +83,7 @@ export async function indexUserSearchActivity({
 
 /**
  * @cc [owner:aubin-tchoi,label:backend;security] searchable-skill-index-projection
- * Index active or archived custom skills fetched through normal resource permissions;
- * delete documents for missing, unreadable or suggested skills.
+ * Index only active or archived custom skills fetched through normal resource permissions.
  */
 export async function indexSkillSearchActivity({
   workspaceId,
@@ -104,10 +99,6 @@ export async function indexSkillSearchActivity({
     withFileAttachments: false,
   });
   if (!skill || skill.status === "suggested") {
-    const result = await deleteSkillDocument({ workspaceId, skillId });
-    if (result.isErr()) {
-      throw result.error;
-    }
     return;
   }
 
@@ -123,16 +114,5 @@ export async function indexSkillSearchActivity({
   const result = await indexSkillDocument(document);
   if (result.isErr()) {
     throw result.error;
-  }
-}
-
-export async function deleteWorkspaceSkillSearchActivity({
-  workspaceId,
-}: {
-  workspaceId: string;
-}): Promise<void> {
-  const deleteResult = await deleteWorkspaceSkillDocuments({ workspaceId });
-  if (deleteResult.isErr()) {
-    throw deleteResult.error;
   }
 }

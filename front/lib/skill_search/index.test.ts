@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  deleteByQuery: vi.fn(),
   update: vi.fn(),
 }));
 
@@ -22,11 +21,7 @@ vi.mock("@app/lib/api/elasticsearch", async () => {
   };
 });
 
-import {
-  deleteSkillDocument,
-  deleteWorkspaceSkillDocuments,
-  indexSkillDocument,
-} from "@app/lib/skill_search";
+import { indexSkillDocument } from "@app/lib/skill_search";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 
 const document: SkillSearchDocument = {
@@ -50,11 +45,6 @@ const document: SkillSearchDocument = {
 describe("skill search indexing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.deleteByQuery.mockResolvedValue({
-      failures: [],
-      timed_out: false,
-      version_conflicts: 0,
-    });
   });
 
   it("scopes upserts by workspace and preserves existing daily usage", async () => {
@@ -68,50 +58,5 @@ describe("skill search indexing", () => {
       upsert: { ...resourceFields, active_users_count },
       retry_on_conflict: 3,
     });
-  });
-
-  it("scopes single-skill deletion by workspace and skill", async () => {
-    await deleteSkillDocument({
-      workspaceId: "workspace-1",
-      skillId: "skill-1",
-    });
-
-    expect(mocks.deleteByQuery).toHaveBeenCalledWith({
-      index: "front.skills",
-      query: {
-        bool: {
-          filter: [
-            { term: { workspace_id: "workspace-1" } },
-            { term: { skill_id: "skill-1" } },
-          ],
-        },
-      },
-      refresh: false,
-    });
-  });
-
-  it("scopes workspace deletion by workspace", async () => {
-    await deleteWorkspaceSkillDocuments({ workspaceId: "workspace-1" });
-
-    expect(mocks.deleteByQuery).toHaveBeenCalledWith({
-      index: "front.skills",
-      query: { term: { workspace_id: "workspace-1" } },
-      refresh: false,
-    });
-  });
-
-  it("propagates client errors for skill and workspace deletion", async () => {
-    mocks.deleteByQuery.mockRejectedValue(new Error("Deletion failed"));
-
-    const skillResult = await deleteSkillDocument({
-      workspaceId: "workspace-1",
-      skillId: "skill-1",
-    });
-    const workspaceResult = await deleteWorkspaceSkillDocuments({
-      workspaceId: "workspace-1",
-    });
-
-    expect(skillResult.isErr()).toBe(true);
-    expect(workspaceResult.isErr()).toBe(true);
   });
 });
