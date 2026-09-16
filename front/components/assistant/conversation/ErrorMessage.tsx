@@ -38,7 +38,7 @@ export function ErrorMessage({
   failedModel,
   canSwitchModel = true,
 }: ErrorMessageProps) {
-  const { openModelPickerRef, modelPickerShownModelRef } =
+  const { openModelPickerRef, shownModelSelectionRef } =
     useContext(InputBarContext);
   const isContextWindowExceeded =
     isAgentErrorCategory(error.metadata?.category) &&
@@ -51,7 +51,7 @@ export function ErrorMessage({
       error.metadata?.category === "stream_error" ||
       error.metadata?.category === "empty_content" ||
       error.metadata?.category === "credits_exhausted");
-  const { degradedModelIds, revalidateModels } = useModels({
+  const { degradedModelIds, revalidateModels, isModelsLoading } = useModels({
     owner,
     disabled: !failedModel,
   });
@@ -79,7 +79,9 @@ export function ErrorMessage({
   const { submit: retry, isSubmitting: isRetrying } = useSubmitFunction(
     async () =>
       retryHandler(
-        showModelSwitcher ? modelPickerShownModelRef.current : undefined
+        showModelSwitcher
+          ? (shownModelSelectionRef.current ?? undefined)
+          : undefined
       )
   );
 
@@ -132,8 +134,8 @@ export function ErrorMessage({
           icon={RefreshCw02}
           label="Retry"
           onClick={() => void retry()}
-          isLoading={isRetrying}
-          disabled={isRetrying}
+          isLoading={isRetrying || isModelsLoading}
+          disabled={isRetrying || isModelsLoading}
         />
       </div>
     </ContentMessage>

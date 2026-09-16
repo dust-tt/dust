@@ -98,10 +98,9 @@ export const InputBarContext = createContext<{
   // Imperative handle published by the input bar's model picker so components
   // outside the input bar (e.g. the sidebar banner) can open its menu.
   openModelPickerRef: MutableRefObject<(() => void) | null>;
-  // The model the input bar's picker is currently showing, always named (the
-  // agent default included). Read by retry, which must name a model rather than
-  // omit one — omitting re-runs the model that just failed.
-  modelPickerShownModelRef: MutableRefObject<ModelSelectionType | undefined>;
+  // Render-time sink for the picker's currently displayed model. Degraded
+  // retries read it on click so they follow what the input bar is showing.
+  shownModelSelectionRef: MutableRefObject<ModelSelectionType | null>;
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
   // Fired right before submit; the extension uses it to snapshot browser tab state.
@@ -123,7 +122,7 @@ export const InputBarContext = createContext<{
   stickyModelOverride: undefined,
   setStickyModelOverride: () => {},
   openModelPickerRef: { current: null },
-  modelPickerShownModelRef: { current: undefined },
+  shownModelSelectionRef: { current: null },
   fileUploaderService: {
     fileBlobs: [],
     handleFileChange: async () => undefined,
@@ -154,9 +153,7 @@ export function InputBarContextProvider({
 
   // Set by the input bar's model picker while it is mounted; null otherwise.
   const openModelPickerRef = useRef<(() => void) | null>(null);
-  const modelPickerShownModelRef = useRef<ModelSelectionType | undefined>(
-    undefined
-  );
+  const shownModelSelectionRef = useRef<ModelSelectionType | null>(null);
 
   // Useful when a component needs to set the selected agent for the input bar but do not have direct access to the input bar.
   const [selectedAgent, setSelectedAgent] = useState<RichAgentMention | null>(
@@ -274,7 +271,7 @@ export function InputBarContextProvider({
       stickyModelOverride,
       setStickyModelOverride,
       openModelPickerRef,
-      modelPickerShownModelRef,
+      shownModelSelectionRef,
       captureActions,
       fileUploaderService,
       onBeforeSubmit,

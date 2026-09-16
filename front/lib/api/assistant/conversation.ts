@@ -1736,7 +1736,8 @@ export async function createAgentMessageFromText(
 
 /**
  * @cc [owner:frankaloia,label:product;api] retry-model-selection
- * A retry with `modelSelection` MUST resolve that selection for the new agent-message version.
+ * A retry with `modelSelection` MUST resolve it through the agent's existing model policy for the
+ * new agent-message version; agents that disallow user overrides MAY retain their configured model.
  * A retry without it MUST preserve the failed message's resolved model and existing resolution
  * method; legacy messages missing the method default to the agent resolution method.
  * Legacy messages without a resolution MUST continue to resolve the agent's configured model.

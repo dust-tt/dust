@@ -49,7 +49,7 @@ import {
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import type { MutableRefObject } from "react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export interface ModelPickerProps {
   agentModel: AgentModelConfigurationType | null;
@@ -72,10 +72,6 @@ export interface ModelPickerProps {
   // Stays undefined on the untouched agent default, so send omits the model and
   // the agent's own config applies.
   selectionRef?: MutableRefObject<ModelSelectionType | undefined>;
-  // Same pick, but always named: the agent default is materialized instead of
-  // left undefined. Retry needs this because an omitted model there means
-  // "re-run the model that just failed", not "use the agent's config".
-  onShownModelChange?: (modelSelection: ModelSelectionType) => void;
   // Fired only on intentional user picks / revert — safe to setState.
   onSelectionChange?: (modelSelection: ModelSelectionType | undefined) => void;
   stickyModelOverride?: ModelSelectionType | undefined;
@@ -86,6 +82,9 @@ export interface ModelPickerProps {
   commitApiRef?: MutableRefObject<((selection: Selection) => void) | null>;
   // Lets components outside the input bar (e.g. the sidebar banner) open the menu.
   openApiRef?: MutableRefObject<(() => void) | null>;
+  // Read-at-retry sink for the currently displayed model, including the
+  // materialized agent default when toSend is undefined.
+  shownModelSelectionRef?: MutableRefObject<ModelSelectionType | null>;
   // When set, emits `assistant:model_picker:*` analytics tagged with this
   // surface. Consumers that don't pass it (e.g. the agent builder) are not
   // tracked.
@@ -107,12 +106,12 @@ export function ModelPicker({
   side = "top",
   disabled,
   selectionRef,
-  onShownModelChange,
   onSelectionChange,
   stickyModelOverride,
   setStickyModelOverride,
   commitApiRef,
   openApiRef,
+  shownModelSelectionRef,
   trackingSurface,
   showDegradations = true,
 }: ModelPickerProps) {
@@ -165,12 +164,10 @@ export function ModelPicker({
   if (selectionRef) {
     selectionRef.current = shownModelSelection;
   }
-
-  useLayoutEffect(() => {
-    onShownModelChange?.(
-      shownModelSelection ?? materializeSelection(shown.display)
-    );
-  }, [onShownModelChange, shown.display, shownModelSelection]);
+  if (shownModelSelectionRef) {
+    shownModelSelectionRef.current =
+      shownModelSelection ?? materializeSelection(shown.display);
+  }
 
   const canRevert = !isSameSelection(shown.display, agentDefault.display);
 
