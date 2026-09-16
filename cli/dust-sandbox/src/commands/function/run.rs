@@ -40,6 +40,14 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
         deliver_stdout_envelope(ResultEnvelope::stdout_invocation_failed(err.to_string()), 0);
     }
 
+    // Before warm or cold: land this publication's functions.tar locally and
+    // fill the per-sha bundle cache for every slug. Warm importFromCache and
+    // cold resolve then skip gcsfuse; without this, warm falls through to a
+    // fuse ensureBundle that can burn the full first-frame timeout.
+    if let Ok(dir) = functions_dir() {
+        let _ = archive::ensure_functions_archive_extracted(&dir);
+    }
+
     let warm_started = Instant::now();
     if let WarmRun::Outcome(outcome, import_kind, phase) = warm::try_warm_run(name, &input).await {
         let runner_ms = started.elapsed().as_millis() as u64;
@@ -65,8 +73,8 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
     let warm_attempt_ms = warm_started.elapsed().as_millis() as u64;
 
     // Cold path. Prefer the cheapest local materialization available:
-    // 1. per-bundle sha cache from a prior cold of this publish
-    // 2. publication `functions.tar` (one gcsfuse object read + local extract)
+    // 1. per-bundle sha cache (usually filled by the pre-warm archive step)
+    // 2. publication `functions.tar` extract
     // 3. legacy uncached gcsfuse readdir of DUST_FUNCTIONS_DIR
     let stamped_sha256 = stamped_bundle_sha256(&input);
     let resolve_started = Instant::now();

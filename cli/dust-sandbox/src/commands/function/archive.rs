@@ -1,10 +1,11 @@
-//! Cold-path materialization of a publication's `functions.tar`.
+//! Materialization of a publication's `functions.tar` for warm and cold runs.
 //!
 //! New publications upload an uncompressed tar alongside the per-function GCS
-//! objects. On first cold resolve we copy that single object off gcsfuse, extract
-//! into the local warm dir, and resolve from there — avoiding an uncached
-//! functions/ readdir. Older publications without the archive keep using
-//! [`super::resolve_existing`].
+//! objects. Before either path runs we copy that single object off gcsfuse,
+//! extract into the local warm dir, and eagerly fill the per-sha bundle cache
+//! for every slug — so warm `importFromCache` and cold resolve both skip an
+//! uncached functions/ readdir. Older publications without the archive keep
+//! using [`super::resolve_existing`].
 
 use std::fs::File;
 use std::io::{copy, ErrorKind, Read, Write};
@@ -15,7 +16,7 @@ use anyhow::{anyhow, Result};
 use tar::Archive;
 
 use super::is_valid_name;
-use super::warm::ensure_trusted_warm_dir;
+use super::warm::{self, ensure_trusted_warm_dir};
 
 const ARCHIVE_FILE_NAME: &str = "functions.tar";
 const COMPLETE_MARKER: &str = ".complete";
@@ -37,8 +38,9 @@ pub fn try_resolve_from_functions_archive(name: &str, functions_dir: &Path) -> O
 }
 
 /// Copy + extract the publication's `functions.tar` into the local warm
-/// archives dir. Idempotent when an extract already exists. Used by cold
-/// resolve and by the publish-time seed command.
+/// archives dir and eagerly populate the per-sha bundle cache for every
+/// extracted slug. Idempotent when an extract already exists. Used before
+/// warm/cold invoke and by the publish-time seed command.
 pub fn ensure_functions_archive_extracted(functions_dir: &Path) -> Option<PathBuf> {
     let publication_dir = functions_dir.parent()?;
     let publication_key = publication_dir
@@ -49,17 +51,22 @@ pub fn ensure_functions_archive_extracted(functions_dir: &Path) -> Option<PathBu
     // Prefer an existing local extract before any gcsfuse touch: publications
     // are immutable per id, so a completed extract is definitive. Avoids a
     // ~1s metadata probe on every subsequent cold of the same publish.
-    if let Some(extract_dir) = existing_extract_dir(publication_key) {
-        return Some(extract_dir);
-    }
+    let extract_dir = if let Some(extract_dir) = existing_extract_dir(publication_key) {
+        extract_dir
+    } else {
+        let archive_path = publication_dir.join(ARCHIVE_FILE_NAME);
+        // Existence probe: one metadata hit on gcsfuse when the file is remote.
+        // Missing archive (legacy publications) is the common fallback path.
+        if !archive_path.is_file() {
+            return None;
+        }
+        materialize_archive(&archive_path, publication_key)?
+    };
 
-    let archive_path = publication_dir.join(ARCHIVE_FILE_NAME);
-    // Existence probe: one metadata hit on gcsfuse when the file is remote.
-    // Missing archive (legacy publications) is the common fallback path.
-    if !archive_path.is_file() {
-        return None;
-    }
-    materialize_archive(&archive_path, publication_key)
+    // Every slug in the tar → bundles/<content-sha>.js so warm and later
+    // colds of other functions in this publication skip fuse entirely.
+    warm::populate_bundle_caches_from_dir(&extract_dir);
+    Some(extract_dir)
 }
 
 fn existing_extract_dir(publication_key: &str) -> Option<PathBuf> {
@@ -306,6 +313,60 @@ mod tests {
             std::fs::read_to_string(resolved).unwrap(),
             "export default {}"
         );
+    }
+
+    #[test]
+    fn extract_eagerly_populates_sha_cache_for_every_slug() {
+        if rustix::process::geteuid().is_root() {
+            return;
+        }
+        let tmp = TempDir::new().unwrap();
+        let pub_dir = tmp.path().join("pub-eager");
+        let functions_dir = pub_dir.join("functions");
+        std::fs::create_dir_all(&functions_dir).unwrap();
+        let list_src = "export const list = 1";
+        let add_src = "export const add = 2";
+        write_tar(
+            &pub_dir,
+            &[("list-todos.ts", list_src), ("add-todo.ts", add_src)],
+        );
+
+        let home = tmp.path().join("home");
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let original_home = std::env::var_os("HOME");
+        // SAFETY: test-only process env for warm-dir location.
+        unsafe { std::env::set_var("HOME", &home) };
+
+        let extract =
+            ensure_functions_archive_extracted(&functions_dir).expect("archive should materialize");
+        assert!(extract.join(COMPLETE_MARKER).is_file());
+
+        let list_sha = {
+            let digest = ring::digest::digest(&ring::digest::SHA256, list_src.as_bytes());
+            digest
+                .as_ref()
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>()
+        };
+        let add_sha = {
+            let digest = ring::digest::digest(&ring::digest::SHA256, add_src.as_bytes());
+            digest
+                .as_ref()
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>()
+        };
+        let list_cached = warm::cached_bundle_path(&list_sha).expect("list-todos cached");
+        let add_cached = warm::cached_bundle_path(&add_sha).expect("add-todo cached");
+        assert_eq!(std::fs::read_to_string(list_cached).unwrap(), list_src);
+        assert_eq!(std::fs::read_to_string(add_cached).unwrap(), add_src);
+
+        match original_home {
+            Some(v) => unsafe { std::env::set_var("HOME", v) },
+            None => unsafe { std::env::remove_var("HOME") },
+        }
     }
 
     #[test]
