@@ -28,8 +28,8 @@ manifest. Do not store durable application state in memory; use a Frame database
 
 ## Create a Frame
 
-Every Computer command is a round trip that costs the user several seconds. Create, write, and
-publish a new Frame in one Computer command:
+Every Computer command is a round trip of several seconds. Create, write, and publish a new Frame in
+one Computer command:
 
 \`\`\`bash
 FRAME=/files/conversation-<conversationId>/<frame-folder>
@@ -43,11 +43,10 @@ dsbx frame publish "$FRAME/manifest.json"
 \`\`\`
 
 In a Pod, create it under \`/files/pod-<podId>/...\` instead. \`dsbx frame create\` scaffolds a
-placeholder \`manifest.json\` and \`index.tsx\`, then assigns the Frame's stable identity. Do not
-read the scaffolded files back: overwrite \`index.tsx\` with the real component, and write the
-manifest, function, and database files in the same command when the Frame declares any. Do not
-split creating, writing, and publishing across separate commands unless a step needs the output of
-the previous one.
+placeholder \`manifest.json\` and \`index.tsx\` and assigns the Frame's stable identity. Do not read
+the scaffolded files back: overwrite \`index.tsx\` with the real component and, when the Frame
+declares any, write the manifest, function, and database files in the same command. Only use
+separate commands when a step needs the previous one's output.
 
 Always pass canonical \`/files/conversation-<conversationId>/...\` or
 \`/files/pod-<podId>/...\` paths to \`dsbx frame\`. Do not pass the convenience aliases
@@ -341,24 +340,6 @@ loading, empty, and error states for every call. Function failures are
 
 ## Publish a Frame
 
-Before publishing a Frames v2 manifest, validate the current source snapshot:
-
-\`\`\`bash
-dsbx frame validate /files/<scope>/<frame-folder>/manifest.json
-\`\`\`
-
-This runs the manifest, UI, function-build, database-contract, Tailwind, and function-reference
-checks without storing or activating a publication or reconciling Frame-owned databases. Fix every
-error and Tailwind warning before publishing.
-
-A function name passed to \`useFrameFunction\` or \`useFrameFunctionMutation\` as a literal must be a
-bare name declared in this manifest; otherwise validation and \`publish\` fail, listing the declared
-names, where the call would otherwise fail only once a viewer triggers it. A name computed at run
-time is not checked.
-
-Use this command instead of \`bun build\` or an ad hoc regex scan: those do not use the Frame build
-context and report unrelated or noisy failures.
-
 There is no separate v2 function publish. Publish the manifest once; the UI source, all declared
 functions, and all declared database schemas are built or reconciled, stored, and activated
 atomically:
@@ -368,23 +349,21 @@ dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
 
 Publishing runs the manifest, UI, function-build, database-contract, Tailwind, and
-function-reference checks. If any check, function build, or database reconciliation fails, no
-partial publication becomes active: fix the reported error and rerun the command. Do not run a
-separate validation pass before publishing; it repeats the same build and only adds latency.
-
-A successful publish reports Tailwind warnings in its output. Fix every warning and publish again.
+function-reference checks. If any fails, no partial publication becomes active: fix the reported
+error and rerun. A successful publish reports Tailwind warnings in its output; fix them and publish
+again. Do not run a separate validation pass first: it repeats the same build and only adds latency.
 
 To run the same checks without storing or activating a publication or reconciling Frame-owned
-databases, for example while iterating on a Frame whose active publication must keep working, use:
+databases, for example while the active publication must keep working, use:
 
 \`\`\`bash
 dsbx frame validate /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
 
-A function name passed to \`usePodFunction\` or \`usePodFunctionMutation\` as a literal must be a
+A function name passed to \`useFrameFunction\` or \`useFrameFunctionMutation\` as a literal must be a
 bare name declared in this manifest; otherwise \`publish\` and \`validate\` fail, listing the
-declared names, where the call would otherwise fail only once a viewer triggers it. A name computed
-at run time is not checked.
+declared names, instead of the call failing once a viewer triggers it. A name computed at run time
+is not checked.
 
 Use these commands instead of \`bun build\` or an ad hoc regex scan: those do not use the Frame
 build context and report unrelated or noisy failures.
