@@ -39,6 +39,25 @@ export function getFrameDatabaseReplicasBasePath(args: {
   return `${getFrameBasePath(args)}state/databases/`;
 }
 
+/**
+ * Durable folder holding files a Frame's functions create at run time (uploads and anything else
+ * they persist). Frame-owned state, so it sits beside the SQLite replicas under `state/` and is
+ * keyed on the stable Frame identity: it survives re-publishing, and the Frame source never seeds
+ * it. Deleted with the Frame by the wholesale `getFrameBasePath` prefix delete, so it needs no
+ * cleanup of its own.
+ *
+ * Its `state/databases/` sibling is mounted as its own gcsfuse target, and the two must never be
+ * collapsed into one `state/` mount: a mount carries a single uid and mode for its whole tree,
+ * and these two need opposite ones. The replica is mounted as `dust-state` with no `allow_other`
+ * so no other uid can see it, while this folder must be workload-readable and writable.
+ */
+export function getFrameFilesBasePath(args: {
+  workspaceId: string;
+  frameId: string;
+}): string {
+  return `${getFrameBasePath(args)}state/files/`;
+}
+
 export function getFramePublicationsBasePath(args: {
   workspaceId: string;
   frameId: string;
