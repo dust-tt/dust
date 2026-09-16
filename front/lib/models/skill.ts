@@ -22,7 +22,13 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import isNil from "lodash/isNil";
-import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
+import isString from "lodash/isString";
+import type {
+  CreationOptional,
+  ForeignKey,
+  Model,
+  ModelAttributes,
+} from "sequelize";
 
 const SKILL_MODEL_ATTRIBUTES = {
   createdAt: {
@@ -46,10 +52,26 @@ const SKILL_MODEL_ATTRIBUTES = {
   agentFacingDescription: {
     type: DataTypes.STRING(AGENT_FACING_DESCRIPTION_MAX_LENGTH),
     allowNull: false,
+    set(this: Model, value: unknown) {
+      this.setDataValue(
+        "agentFacingDescription",
+        isString(value)
+          ? value.slice(0, AGENT_FACING_DESCRIPTION_MAX_LENGTH)
+          : value
+      );
+    },
   },
   userFacingDescription: {
     type: DataTypes.STRING(USER_FACING_DESCRIPTION_MAX_LENGTH),
     allowNull: true,
+    set(this: Model, value: unknown) {
+      this.setDataValue(
+        "userFacingDescription",
+        isString(value)
+          ? value.slice(0, USER_FACING_DESCRIPTION_MAX_LENGTH)
+          : value
+      );
+    },
   },
   instructions: {
     type: DANGEROUSLY_UNBOUNDED_TEXT,

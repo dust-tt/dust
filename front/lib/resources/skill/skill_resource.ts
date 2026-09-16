@@ -66,10 +66,6 @@ import {
   serializeSkillTag,
   serializeUnavailableSkillTag,
 } from "@app/lib/skills/format";
-import {
-  AGENT_FACING_DESCRIPTION_MAX_LENGTH,
-  USER_FACING_DESCRIPTION_MAX_LENGTH,
-} from "@app/lib/skills/labels";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -507,14 +503,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const skill = await this.model.create(
         {
           ...blob,
-          agentFacingDescription: blob.agentFacingDescription.slice(
-            0,
-            AGENT_FACING_DESCRIPTION_MAX_LENGTH
-          ),
-          userFacingDescription: blob.userFacingDescription?.slice(
-            0,
-            USER_FACING_DESCRIPTION_MAX_LENGTH
-          ),
           instructionsHtml: blob.instructionsHtml ?? null,
           workspaceId: owner.id,
         },
@@ -3283,14 +3271,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await this.update(
         {
           name,
-          agentFacingDescription: agentFacingDescription.slice(
-            0,
-            AGENT_FACING_DESCRIPTION_MAX_LENGTH
-          ),
-          userFacingDescription: userFacingDescription?.slice(
-            0,
-            USER_FACING_DESCRIPTION_MAX_LENGTH
-          ),
+          agentFacingDescription,
+          userFacingDescription,
           instructions,
           ...(instructionsHtml !== undefined ? { instructionsHtml } : {}),
           icon,
@@ -4637,14 +4619,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         version: (maxVersionBySkillId.get(skill.id) ?? 0) + 1,
         status: skill.status,
         name: skill.name,
-        agentFacingDescription: skill.agentFacingDescription.slice(
-          0,
-          AGENT_FACING_DESCRIPTION_MAX_LENGTH
-        ),
-        userFacingDescription: skill.userFacingDescription?.slice(
-          0,
-          USER_FACING_DESCRIPTION_MAX_LENGTH
-        ),
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: skill.userFacingDescription,
         instructions: skill.instructions,
         instructionsHtml: skill.instructionsHtml,
         requestedSpaceIds: skill.requestedSpaceIds,
