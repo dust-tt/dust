@@ -266,6 +266,34 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   /**
+   * One ascending page of Frames v2 files across every workspace, resuming after `afterModelId`.
+   * Used by the publication retention sweep, which has no workspace to scope to.
+   *
+   * WORKSPACE_ISOLATION_BYPASS: retention sweeps every workspace. Callers act on one frame at a
+   * time, with an authenticator built for that frame's own workspace.
+   */
+  static async dangerouslyListFrameV2Batch({
+    afterModelId,
+    batchSize,
+  }: {
+    afterModelId: ModelId | null;
+    batchSize: number;
+  }): Promise<FileResource[]> {
+    const frames = await this.model.findAll({
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      where: {
+        contentType: frameV2ContentType,
+        ...(afterModelId ? { id: { [Op.gt]: afterModelId } } : {}),
+      },
+      order: [["id", "ASC"]],
+      limit: batchSize,
+    });
+
+    return frames.map((frame) => new this(this.model, frame.get()));
+  }
+
+  /**
    * Poke's workspace Frames list. Keyset paginated on `updatedAt` (epoch ms in `lastValue`),
    * backed by the partial index on ("workspaceId", "updatedAt" DESC) for this content type.
    */

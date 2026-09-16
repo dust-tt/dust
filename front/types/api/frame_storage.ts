@@ -6,8 +6,17 @@ export const FRAME_PUBLICATION_FILE = "publication.json";
 /** Uncompressed tar of every published function bundle (`<name>.ts`). */
 export const FRAME_PUBLICATION_FUNCTIONS_ARCHIVE_FILE = "functions.tar";
 
+/**
+ * Whether `value` may be used as a Frame storage path segment. Callers that discover segments
+ * rather than construct them — listing publication directories, say — filter with this instead of
+ * letting the path builders throw on a name the bucket happens to hold.
+ */
+export function isSafeFrameStorageSegment(value: string): boolean {
+  return SAFE_FRAME_STORAGE_SEGMENT.test(value);
+}
+
 function safeSegment(value: string, label: string): string {
-  if (!SAFE_FRAME_STORAGE_SEGMENT.test(value)) {
+  if (!isSafeFrameStorageSegment(value)) {
     throw new Error(`Invalid ${label} for Frame storage.`);
   }
 

@@ -1,7 +1,10 @@
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
+import type { StaleFramePublicationPurgeResult } from "@app/lib/api/frames/publication_retention";
+import { purgeStaleFramePublications } from "@app/lib/api/frames/publication_retention";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -9,6 +12,8 @@ import logger from "@app/logger/logger";
 import {
   FRAME_FUNCTION_INVOCATION_BATCH_SIZE,
   FRAME_FUNCTION_INVOCATION_RETENTION_MS,
+  FRAME_PUBLICATION_BATCH_SIZE,
+  FRAME_PUBLICATION_RETENTION_MS,
 } from "@app/temporal/data_retention/config";
 import type { ModelId } from "@app/types/shared/model_id";
 import { heartbeat } from "@temporalio/activity";
@@ -240,6 +245,114 @@ export async function purgeExpiredFrameFunctionInvocationsActivity({
       scannedCount: result.scannedCount,
     },
     "[Frames Retention] Purged a batch of expired Frame function invocations."
+  );
+
+  return result;
+}
+
+export type PurgeStaleFramePublicationsActivityResult =
+  StaleFramePublicationPurgeResult & {
+    nextAfterModelId: ModelId | null;
+    scannedFrameCount: number;
+  };
+
+const FRAME_PUBLICATION_FRAME_CONCURRENCY = 4;
+
+/**
+ * Purge the superseded publications of one batch of Frames, resuming after `afterModelId`. A null
+ * `nextAfterModelId` in the result means every Frame has been swept.
+ */
+export async function purgeStaleFramePublicationsActivity({
+  afterModelId,
+}: {
+  afterModelId: ModelId | null;
+}): Promise<PurgeStaleFramePublicationsActivityResult> {
+  const frames = await FileResource.dangerouslyListFrameV2Batch({
+    afterModelId,
+    batchSize: FRAME_PUBLICATION_BATCH_SIZE,
+  });
+  if (frames.length === 0) {
+    return {
+      deletedFunctionCount: 0,
+      deletedPublicationCount: 0,
+      keptPublicationCount: 0,
+      nextAfterModelId: null,
+      scannedFrameCount: 0,
+      unreadablePublicationCount: 0,
+    };
+  }
+
+  const workspaces = await WorkspaceResource.fetchByModelIds([
+    ...new Set(frames.map((frame) => frame.workspaceId)),
+  ]);
+  const workspaceById = new Map(
+    workspaces.map((workspace) => [workspace.id, workspace])
+  );
+
+  const results = await concurrentExecutor(
+    frames,
+    async (frame) => {
+      const workspace = workspaceById.get(frame.workspaceId);
+      if (!workspace) {
+        logger.error(
+          { fileId: frame.sId, workspaceModelId: frame.workspaceId },
+          "[Frames Retention] Skipped a Frame whose workspace is missing."
+        );
+
+        return null;
+      }
+
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const result = await purgeStaleFramePublications(auth, {
+        frame,
+        retentionMs: FRAME_PUBLICATION_RETENTION_MS,
+      });
+      heartbeat();
+
+      return result;
+    },
+    { concurrency: FRAME_PUBLICATION_FRAME_CONCURRENCY }
+  );
+
+  const lastScannedFrame = frames.at(-1);
+  const result = results.reduce<PurgeStaleFramePublicationsActivityResult>(
+    (total, frameResult) => ({
+      ...total,
+      deletedFunctionCount:
+        total.deletedFunctionCount + (frameResult?.deletedFunctionCount ?? 0),
+      deletedPublicationCount:
+        total.deletedPublicationCount +
+        (frameResult?.deletedPublicationCount ?? 0),
+      keptPublicationCount:
+        total.keptPublicationCount + (frameResult?.keptPublicationCount ?? 0),
+      unreadablePublicationCount:
+        total.unreadablePublicationCount +
+        (frameResult?.unreadablePublicationCount ?? 0),
+    }),
+    {
+      deletedFunctionCount: 0,
+      deletedPublicationCount: 0,
+      keptPublicationCount: 0,
+      nextAfterModelId:
+        frames.length < FRAME_PUBLICATION_BATCH_SIZE
+          ? null
+          : (lastScannedFrame?.id ?? null),
+      scannedFrameCount: frames.length,
+      unreadablePublicationCount: 0,
+    }
+  );
+
+  logger.info(
+    {
+      afterModelId,
+      deletedFunctionCount: result.deletedFunctionCount,
+      deletedPublicationCount: result.deletedPublicationCount,
+      hasMore: result.nextAfterModelId !== null,
+      keptPublicationCount: result.keptPublicationCount,
+      scannedFrameCount: result.scannedFrameCount,
+      unreadablePublicationCount: result.unreadablePublicationCount,
+    },
+    "[Frames Retention] Swept a batch of Frames for superseded publications."
   );
 
   return result;

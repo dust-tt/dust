@@ -1465,6 +1465,26 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   /**
+   * How many invocations still reference any of `sandboxFunctions`. Retention uses this to tell a
+   * superseded publication that can be dropped from one whose runs are still on record.
+   */
+  static async countForSandboxFunctions(
+    auth: Authenticator,
+    { sandboxFunctions }: { sandboxFunctions: SandboxFunctionResource[] }
+  ): Promise<number> {
+    if (sandboxFunctions.length === 0) {
+      return 0;
+    }
+
+    return this.model.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sandboxFunctionId: sandboxFunctions.map(({ id }) => id),
+      },
+    });
+  }
+
+  /**
    * @cc [owner:davidebbo,label:performance] retention-sweep-walks-primary-key
    * The retention sweep MUST walk candidates in ascending `id` order, resuming after
    * `afterModelId`, and compare `createdAt` in memory. It MUST NOT push a `createdAt` predicate

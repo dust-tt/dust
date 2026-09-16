@@ -527,6 +527,32 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   }
 
   /**
+   * @cc [owner:davidebbo,label:backend] publication-function-rows-deleted-as-a-set
+   * Every function row of `publicationId` MUST be deleted together. A publication serving a
+   * function whose row is gone is not a state any caller can recover from, so retention deletes
+   * the publication's whole set or none of it.
+   */
+  /**
+   * Drop the function rows of one superseded publication. The caller owns the checks that make
+   * this safe: the publication is not the frame's active one, it is past the retention window,
+   * and none of its functions has an invocation left (they FK these rows with `RESTRICT`).
+   */
+  static async deleteAllForFramePublication(
+    auth: Authenticator,
+    { frame, publicationId }: { frame: FileResource; publicationId: string }
+  ): Promise<number> {
+    assert(frame.isFrameV2, "Frame functions require a Frames v2 file.");
+
+    return this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        fileId: frame.id,
+        publicationId,
+      },
+    });
+  }
+
+  /**
    * One grouped count per Frame's *active* publication — the Poke Frames list must not query per
    * row, and must not count functions from publications that are no longer served (a frame keeps
    * every past publication's function rows around, so a plain per-file count would grow with
@@ -694,8 +720,9 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
   /**
    * A Frame function row belongs to its Frame's publication history, not to itself: the Frame file
-   * owns the whole set and deletes it through `deleteFrameFunctionModelIds`. Deleting one on its
-   * own would leave a publication serving a function that no longer exists.
+   * owns the whole set and deletes it through `deleteFrameFunctionModelIds`, and retention drops a
+   * superseded publication's set through `deleteAllForFramePublication`. Deleting one on its own
+   * would leave a publication serving a function that no longer exists.
    */
   async delete(): Promise<Result<undefined, Error>> {
     return new Err(
