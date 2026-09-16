@@ -152,6 +152,9 @@ the Frame: task lists, trackers, backlogs, inventories, logs, notes, comments, f
 anything else users can add, edit, reorder, assign, or delete. Keep only throwaway UI state such as
 the selected tab, filter, or sort order in the React component.
 
+Use the Frame's files folder for unstructured data: uploaded images, generated documents, anything
+that is bytes rather than rows.
+
 ## Authoring a function
 
 Each function is a TypeScript module that:
@@ -194,9 +197,9 @@ not guaranteed at build time.
 ## Persisting state in a Frame database
 
 A Frame owns its SQLite databases independently of its source folder and publications. Publishing
-reconciles the declared schemas but does not replace existing data. The runtime mounts neither the
-Frame source nor a writable data folder; functions access state only through the declared database
-handles.
+reconciles the declared schemas but does not replace existing data. The runtime never mounts the
+Frame source: functions reach structured state only through the declared database handles, and
+bytes only through the files folder below.
 
 Keep one complete Drizzle schema file per database under \`databases/\`. Every function that uses a
 database imports the same table objects from that file and opens the database by its manifest name:
@@ -296,6 +299,49 @@ optional policy when there is no user. Never accept a caller \`userId\` as funct
 can forge it. The frontend's \`useUserIdentity\` hook also returns \`isFrameAuthor\`; use that flag to
 show author-only UI, but enforce every author-only operation with \`frame_author_required\` because
 client-side conditions are not access control.
+
+## Storing files in a Frame
+
+A Frame owns one durable files folder, mounted read-write into its sandbox and kept for the
+lifetime of the Frame. It holds bytes: images and documents a viewer uploads, files a function
+generates. It is not part of the Frame source and never appears in the Frame folder, so its
+contents exist only at run time and you cannot read them while authoring.
+
+Reach it through \`@dust/pod\`. \`filePath()\` resolves a path inside the folder and refuses one
+that would escape it, which matters because a file name often comes from a viewer:
+
+\`\`\`ts
+import { filePath } from "@dust/pod";
+import { readFile, writeFile } from "node:fs/promises";
+
+await writeFile(filePath(\`uploads/\${imageId}.png\`), bytes);
+const stored = await readFile(filePath(\`uploads/\${imageId}.png\`));
+\`\`\`
+
+Never build a path by interpolating into \`filesDir()\`, and never read the folder's location from
+the environment yourself: only \`@dust/pod\` resolves it per invocation, so a fast function that
+reads the environment directly can get another invocation's folder.
+
+The folder holds unstructured data, so organize it with paths. A directory listing is the only
+index it has: when a Frame needs to filter, sort, or join over its files, keep that metadata in a
+Frame database and let the rows name the paths.
+
+For per-user files, derive the path from \`currentUser().sId\` rather than from function input. A
+path a viewer sends proves nothing about who owns the file.
+
+The folder is object storage behind a mount, which sets the rules:
+
+- Write whole files. There are no partial writes, so appending to or seeking within a file
+  rewrites the whole object.
+- Never put a SQLite database in it. Declare a Frame database instead.
+- Keep it to what the Frame needs. Nothing removes files until the Frame is deleted.
+- Stick to \`.png\`, \`.jpeg\`, \`.json\`, \`.txt\`, and \`.csv\`. Nothing validates what gets
+  written, so a name says nothing about the bytes behind it.
+- When a function returns a stored file to the UI, pick the content type from a fixed list in the
+  function. Never derive it from the file name, and never return \`image/svg+xml\` or
+  \`text/html\`: both execute script inside the Frame.
+- A function result is capped at 5 MB, which bounds both the upload a function can accept in one
+  call and the file it can return.
 
 ## Calling a function from the Frame UI
 
