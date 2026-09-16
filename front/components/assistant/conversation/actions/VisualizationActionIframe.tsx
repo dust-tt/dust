@@ -528,7 +528,7 @@ function useVisualizationDataHandler({
       switch (data.command) {
         case "callFunction": {
           // Qualify bare function names in the trusted host. Frames v2 bind to stable identity;
-          // legacy Frames keep their existing Pod app-folder resolution.
+          // a Frame with no v2 identity has nothing to bind against, so its calls are refused.
           const referenceRes = resolveFrameFunctionReference(
             data.params.functionIdOrSlug,
             functionReferenceScope
