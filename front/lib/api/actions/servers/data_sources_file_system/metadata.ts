@@ -7,14 +7,10 @@ import {
   SearchWithNodesInputSchema,
   TagsInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
-import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   FIND_TAGS_BASE_DESCRIPTION,
   findTagsSchema,
 } from "@app/lib/api/actions/tools/find_tags/metadata";
-
-const DATA_SOURCES_FILE_SYSTEM_SERVER_NAME =
-  "data_sources_file_system" as const;
 
 export const FIND_TAGS_TOOL_NAME = "find_tags";
 export const FILESYSTEM_SEARCH_TOOL_NAME = "semantic_search";
@@ -23,16 +19,12 @@ export const FILESYSTEM_FIND_TOOL_NAME = "find";
 export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
 export const FILESYSTEM_LIST_TOOL_NAME = "list";
 
-function filesystemToolName(toolName: string): string {
-  return getPrefixedToolName(DATA_SOURCES_FILE_SYSTEM_SERVER_NAME, toolName);
-}
-
 export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = [
   {
     name: FILESYSTEM_CAT_TOOL_NAME,
     description:
       "Read the full text content of a connected data source document or page by its nodeId (like 'cat' in Unix). " +
-      `Use to open, view, or read a specific data source file after locating it via '${filesystemToolName(FILESYSTEM_FIND_TOOL_NAME)}', '${filesystemToolName(FILESYSTEM_LIST_TOOL_NAME)}', or '${filesystemToolName(FILESYSTEM_SEARCH_TOOL_NAME)}'. ` +
+      `Use to open, view, or read a specific data source file after locating it via '${FILESYSTEM_FIND_TOOL_NAME}', '${FILESYSTEM_LIST_TOOL_NAME}', or '${FILESYSTEM_SEARCH_TOOL_NAME}'. ` +
       "The nodeId is the unique identifier exposed in the output of all navigation and search tools in this server. " +
       "The output reports the document's total size. For large documents, use 'grep' to extract only the relevant " +
       "content rather than paging through the whole document by incrementing 'offset', which exhausts the context window.",
@@ -69,7 +61,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = [
       "Search semantically for information, documents, or content by topic, concept, or meaning within a connected data source. " +
       "Use to find relevant passages, answer questions, look up knowledge, or retrieve content from " +
       "connected data sources. Searches all children of the designated nodeIds. " +
-      `Prefer this over '${filesystemToolName(FILESYSTEM_FIND_TOOL_NAME)}' when you know what you're looking for conceptually but not the exact document title.`,
+      `Prefer this over '${FILESYSTEM_FIND_TOOL_NAME}' when you know what you're looking for conceptually but not the exact document title.`,
     schema: SearchWithNodesInputSchema.shape,
     stake: "never_ask",
     eager: true,
@@ -87,7 +79,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = [
       "Locate a document, page, or folder by searching its title (like 'find' in Unix). " +
       "Use to find a specific file or wiki page by name when you know (part of) its title — partial matches are supported. " +
       "Omit the query to enumerate all nodes under a given root. " +
-      `Prefer '${filesystemToolName(FILESYSTEM_SEARCH_TOOL_NAME)}' when looking for content by topic rather than by exact title.`,
+      `Prefer '${FILESYSTEM_SEARCH_TOOL_NAME}' when looking for content by topic rather than by exact title.`,
     schema: DataSourceFilesystemFindInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
@@ -172,7 +164,7 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_WITH_TAGS_METADATA = [
 
 export const DATA_SOURCES_FILE_SYSTEM_SERVER = {
   serverInfo: {
-    name: DATA_SOURCES_FILE_SYSTEM_SERVER_NAME,
+    name: "data_sources_file_system",
     version: "1.0.0",
     description: "Browse and search content with filesystem-like navigation.",
     authorization: null,

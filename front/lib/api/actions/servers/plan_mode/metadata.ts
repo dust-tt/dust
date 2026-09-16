@@ -1,5 +1,4 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { z } from "zod";
 
 const PLAN_MODE_SKELETON = `# <plan title>
@@ -19,18 +18,14 @@ export const CLOSE_PLAN_TOOL_NAME = "close_plan" as const;
 
 export const PLAN_FILE_NAME = "plan.md" as const;
 
-function planModeToolName(toolName: string): string {
-  return getPrefixedToolName(PLAN_MODE_SERVER_NAME, toolName);
-}
-
 export const PLAN_MODE_TOOLS_METADATA = [
   {
     name: "create_plan",
     description:
       `Create the conversation's \`${PLAN_FILE_NAME}\` with the markdown you pass as \`content\`. Write the ` +
       "full plan directly; do not create an empty plan and then edit it. Exactly one active " +
-      `plan is allowed per conversation; call \`${planModeToolName(CLOSE_PLAN_TOOL_NAME)}\` to retire the current one first if ` +
-      `the user wants a fresh plan. Use \`${planModeToolName(EDIT_PLAN_TOOL_NAME)}\` for subsequent updates.\n\n` +
+      `plan is allowed per conversation; call \`${CLOSE_PLAN_TOOL_NAME}\` to retire the current one first if ` +
+      `the user wants a fresh plan. Use \`${EDIT_PLAN_TOOL_NAME}\` for subsequent updates.\n\n` +
       "Recommended structure:\n\n" +
       "```markdown\n" +
       PLAN_MODE_SKELETON +
@@ -84,9 +79,9 @@ export const PLAN_MODE_TOOLS_METADATA = [
   {
     name: "close_plan",
     description:
-      `Retire the current plan. After ${planModeToolName(CLOSE_PLAN_TOOL_NAME)}, the plan is hidden from the UI and this ` +
-      `skill will not reference it again. You can call \`${planModeToolName(CREATE_PLAN_TOOL_NAME)}\` to start a fresh plan ` +
-      `later. Close is terminal; use \`${planModeToolName(EDIT_PLAN_TOOL_NAME)}\` to iterate on the plan instead of closing it.\n\n` +
+      `Retire the current plan. After ${CLOSE_PLAN_TOOL_NAME}, the plan is hidden from the UI and this ` +
+      `skill will not reference it again. You can call \`${CREATE_PLAN_TOOL_NAME}\` to start a fresh plan ` +
+      `later. Close is terminal; use \`${EDIT_PLAN_TOOL_NAME}\` to iterate on the plan instead of closing it.\n\n` +
       "See skill instructions for when to call this.",
     schema: {
       reason: z

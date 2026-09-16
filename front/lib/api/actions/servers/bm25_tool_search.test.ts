@@ -202,9 +202,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "find the budget file in sharepoint",
     expected: "microsoft_drive.search_drive_items",
-    // Server-prefixed tool names in other servers' descriptions enlarge the corpus, shifting
-    // global IDF and average document length for every query.
-    maxRank: 3,
+    maxRank: 2,
   },
   {
     query: "what does my powerpoint in onedrive say about pricing",
