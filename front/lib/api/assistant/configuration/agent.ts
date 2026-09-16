@@ -1422,17 +1422,20 @@ export async function destroyAgentConfigurationRow(
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
-  // Take the identity row lock before touching the version history: two transactions deleting two
-  // different versions of the same agent would otherwise each pick a replacement from its own
-  // snapshot and commit a `currentVersion` pointing at the row the other one deleted.
-  await AgentModel.findOne({
-    where: { id: agent.id, workspaceId },
-    lock: transaction.LOCK.UPDATE,
+  await AgentConfigurationModel.destroy({
+    where: { id: configurationId, workspaceId },
     transaction,
   });
 
-  await AgentConfigurationModel.destroy({
-    where: { id: configurationId, workspaceId },
+  // Hold the identity row from here to commit: two transactions deleting two different versions of
+  // the same agent would otherwise each pick a replacement from its own snapshot and commit a
+  // `currentVersion` pointing at the row the other one deleted. The lock is taken after the
+  // deletion above, not before: an upgrade locks `agent_configurations` (archiving the previous
+  // versions) before it locks `agents` (the FK check of the new version row, then the pointer
+  // update), so locking `agents` first would invert that order and deadlock.
+  await AgentModel.findOne({
+    where: { id: agent.id, workspaceId },
+    lock: transaction.LOCK.UPDATE,
     transaction,
   });
 
