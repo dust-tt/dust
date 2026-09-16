@@ -288,7 +288,7 @@ describe("skill_search/search", () => {
     expect(mockClientSearch).toHaveBeenCalledOnce();
     expect(mockClientSearch.mock.calls[0][0].query.bool.must[0]).toEqual({
       bool: {
-        must: [{ constant_score: { filter: { match_all: {} }, boost: 1 } }],
+        must: [{ match_all: {} }],
         filter: [
           { term: { workspace_id: workspace.sId } },
           { terms: { status: [status] } },
@@ -468,9 +468,9 @@ describe("skill_search/search", () => {
       ],
     });
     expect(request).not.toHaveProperty("pit");
-    expect(
-      request.query.bool.must[0].bool.must[0].dis_max.queries
-    ).toHaveLength(3);
+    expect(request.query.bool.must[0].bool.must[0]).toMatchObject({
+      multi_match: { query: "summarize", type: "bool_prefix" },
+    });
 
     const filters = request.query.bool.must[0].bool.filter;
     expect(filters).toEqual(
@@ -582,15 +582,9 @@ describe("skill_search/search", () => {
 
     await searchSkillDocuments(auth, { searchTerm: query, limit: 10 });
 
-    const matches =
-      mockClientSearch.mock.calls[0][0].query.bool.must[0].bool.must[0].dis_max
-        .queries;
-    expect(matches).toHaveLength(3);
-    expect(matches[0].constant_score.filter.match.name).toBe(query);
-    expect(matches[1].constant_score.filter.prefix["name.keyword"].value).toBe(
-      query
-    );
-    expect(matches[2].constant_score.filter.multi_match).toEqual({
+    const match =
+      mockClientSearch.mock.calls[0][0].query.bool.must[0].bool.must[0];
+    expect(match.multi_match).toEqual({
       query,
       type: "bool_prefix",
       operator: "and",
@@ -598,9 +592,6 @@ describe("skill_search/search", () => {
         "name.autocomplete",
         "name.autocomplete._2gram",
         "name.autocomplete._3gram",
-        "name.autocomplete_preserved",
-        "name.autocomplete_preserved._2gram",
-        "name.autocomplete_preserved._3gram",
       ],
     });
   });

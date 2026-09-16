@@ -2,19 +2,10 @@ import type { SearchMode } from "@app/types/api/skills";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
-// Fixed scores make indexed and code-defined skills comparable without corpus
-// statistics. Code-defined matching is a lightweight approximation of ES analysis.
-const MATCH_SCORES = {
-  exact: 100,
-  prefix: 80,
-  name: 60,
-  description: 20,
-};
-
 /**
  * @cc [owner:aubin-tchoi,label:product] indexed-skill-name-matching
- * Exact matching folds the whole name; word-prefix matching uses autocomplete
- * fields. The ICU-folded keyword field is the pagination sort key, followed by skill ID.
+ * Name matching uses the autocomplete field and Elasticsearch relevance. The
+ * ICU-folded keyword field is the pagination sort key, followed by skill ID.
  */
 export function buildSkillMatchQuery(
   searchTerm: string,
@@ -22,55 +13,32 @@ export function buildSkillMatchQuery(
 ): estypes.QueryDslQueryContainer {
   const query = searchTerm.trim();
   if (!query) {
-    return { constant_score: { filter: { match_all: {} }, boost: 1 } };
+    return { match_all: {} };
   }
-  const matches: estypes.QueryDslQueryContainer[] = [
-    {
-      constant_score: {
-        filter: {
-          match: { name: query },
-        },
-        boost: MATCH_SCORES.exact,
-      },
+  const nameMatch: estypes.QueryDslQueryContainer = {
+    multi_match: {
+      query,
+      type: "bool_prefix",
+      operator: "and",
+      fields: [
+        "name.autocomplete",
+        "name.autocomplete._2gram",
+        "name.autocomplete._3gram",
+      ],
     },
-    {
-      constant_score: {
-        filter: {
-          prefix: { "name.keyword": { value: query } },
-        },
-        boost: MATCH_SCORES.prefix,
-      },
-    },
-    {
-      constant_score: {
-        filter: {
-          multi_match: {
-            query,
-            type: "bool_prefix",
-            operator: "and",
-            fields: [
-              "name.autocomplete",
-              "name.autocomplete._2gram",
-              "name.autocomplete._3gram",
-              "name.autocomplete_preserved",
-              "name.autocomplete_preserved._2gram",
-              "name.autocomplete_preserved._3gram",
-            ],
-          },
-        },
-        boost: MATCH_SCORES.name,
-      },
-    },
-  ];
-  if (mode !== "autocomplete") {
-    matches.push({
-      constant_score: {
-        filter: { match: { description: { query, operator: "and" } } },
-        boost: MATCH_SCORES.description,
-      },
-    });
+  };
+  if (mode === "autocomplete") {
+    return nameMatch;
   }
-  return { dis_max: { tie_breaker: 0, queries: matches } };
+  return {
+    bool: {
+      should: [
+        nameMatch,
+        { match: { description: { query, operator: "and" } } },
+      ],
+      minimum_should_match: 1,
+    },
+  };
 }
 
 export function applySearchRanking(
