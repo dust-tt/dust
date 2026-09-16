@@ -3,7 +3,7 @@ import {
   DEFAULT_SANDBOX_FUNCTION_STAKE,
   SANDBOX_DATABASE_NAME_REGEX,
   SANDBOX_FUNCTION_EXECUTION_MODES,
-  SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX,
+  SANDBOX_FUNCTION_SLUG_REGEX,
   SANDBOX_FUNCTION_STAKES,
 } from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
@@ -46,7 +46,7 @@ export const FrameFunctionManifestSchema = z.object({
   name: z
     .string()
     .max(MAX_FRAME_FUNCTION_NAME_LENGTH)
-    .regex(SANDBOX_FUNCTION_SLUG_SEGMENT_REGEX, {
+    .regex(SANDBOX_FUNCTION_SLUG_REGEX, {
       message:
         "Function name must be lowercase alphanumeric with single hyphen separators.",
     }),
