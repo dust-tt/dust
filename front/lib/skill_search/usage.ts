@@ -14,7 +14,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { estypes } from "@elastic/elasticsearch";
-import assert from "assert";
 import { z } from "zod";
 
 export const SEARCH_USAGE_WINDOW_DAYS = 30;
@@ -44,8 +43,6 @@ export async function fetchSearchActiveUsers({
   workspaceId: string;
   evaluatedAtMs: number;
 }): Promise<Result<Record<string, number>, ElasticsearchError>> {
-  assert(workspaceId.length > 0);
-  assert(Number.isFinite(evaluatedAtMs));
   const end = new Date(evaluatedAtMs);
   end.setUTCHours(0, 0, 0, 0);
   const start = new Date(end);
