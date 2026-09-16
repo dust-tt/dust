@@ -23,6 +23,7 @@ vi.mock("@app/lib/api/elasticsearch", async () => {
 });
 
 import {
+  deleteSkillDocument,
   deleteWorkspaceSkillDocuments,
   indexSkillDocument,
 } from "@app/lib/skill_search";
@@ -69,6 +70,26 @@ describe("skill search indexing", () => {
     });
   });
 
+  it("scopes single-skill deletion by workspace and skill", async () => {
+    await deleteSkillDocument({
+      workspaceId: "workspace-1",
+      skillId: "skill-1",
+    });
+
+    expect(mocks.deleteByQuery).toHaveBeenCalledWith({
+      index: "front.skills",
+      query: {
+        bool: {
+          filter: [
+            { term: { workspace_id: "workspace-1" } },
+            { term: { skill_id: "skill-1" } },
+          ],
+        },
+      },
+      refresh: false,
+    });
+  });
+
   it("scopes workspace deletion by workspace", async () => {
     await deleteWorkspaceSkillDocuments({ workspaceId: "workspace-1" });
 
@@ -79,13 +100,18 @@ describe("skill search indexing", () => {
     });
   });
 
-  it("propagates client errors for workspace deletion", async () => {
+  it("propagates client errors for skill and workspace deletion", async () => {
     mocks.deleteByQuery.mockRejectedValue(new Error("Deletion failed"));
 
+    const skillResult = await deleteSkillDocument({
+      workspaceId: "workspace-1",
+      skillId: "skill-1",
+    });
     const workspaceResult = await deleteWorkspaceSkillDocuments({
       workspaceId: "workspace-1",
     });
 
+    expect(skillResult.isErr()).toBe(true);
     expect(workspaceResult.isErr()).toBe(true);
   });
 });
