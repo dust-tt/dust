@@ -36,7 +36,7 @@ export function FrameSharingFiles({ viewerFiles }: FrameSharingFilesProps) {
   return (
     <ContentMessage
       title="Files and data are shared too"
-      variant="primary"
+      variant="blue"
       size="sm"
     >
       <p>
