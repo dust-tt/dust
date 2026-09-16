@@ -1050,7 +1050,7 @@ export async function finalizeSkillAggregationActivity({
   if (!skill) {
     throw new Error(`Skill not found: ${skillId}`);
   }
-  await skill.recordReinforcementAnalysisCompletion(auth);
+  await skill.recordReinforcementAnalysisCompletion();
 
   if (suggestionsCreated > 0 && !disableNotifications) {
     const skillType = skill.toJSON(auth);

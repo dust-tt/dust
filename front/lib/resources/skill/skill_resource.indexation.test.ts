@@ -140,11 +140,6 @@ describe("resource-owned skill search indexation", () => {
 
     const mutations = [
       () => SkillResource.updateAvailabilities(auth, [skill], "editors"),
-      () => skill.updateReinforcement(auth, "on"),
-      () => skill.updateSelfImprovementLock(auth, true),
-      () => skill.updateSelfImprovementCostsCap(auth, 100),
-      () => skill.updateSelfImprovementCostsCapAwuCredits(auth, 10),
-      () => skill.recordReinforcementAnalysisCompletion(auth),
       () => skill.setFavorite(auth, true),
       () => skill.archive(auth),
       () => skill.restore(auth),
@@ -167,6 +162,28 @@ describe("resource-owned skill search indexation", () => {
       target
     );
     expect(await SkillResource.fetchById(auth, skill.sId)).toBeNull();
+  });
+
+  it("persists reinforcement settings and analysis completion without reindexing", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const skill = await SkillFactory.create(auth);
+    vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
+
+    await skill.updateReinforcement("on");
+    await skill.updateSelfImprovementLock(true);
+    await skill.updateSelfImprovementCostsCap(100);
+    await skill.updateSelfImprovementCostsCapAwuCredits(10);
+    await skill.recordReinforcementAnalysisCompletion();
+
+    const current = await SkillResource.fetchById(auth, skill.sId);
+    expect(current).toMatchObject({
+      reinforcement: "on",
+      selfImprovementLock: true,
+      selfImprovementCostsCapMicroUsd: 100,
+      selfImprovementCostsCapAwuCredits: 10,
+      lastReinforcementAnalysisAt: expect.any(Date),
+    });
+    expect(launchIndexSkillSearchWorkflow).not.toHaveBeenCalled();
   });
 
   it("does not enqueue workflows for an empty batch", async () => {
