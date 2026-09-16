@@ -66,6 +66,22 @@ import {
 import type { RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+function getDeepLinkErrorReason({
+  isHidden,
+  isNotFound,
+}: {
+  isHidden: boolean;
+  isNotFound: boolean;
+}): SkillLoadErrorReason {
+  if (isHidden) {
+    return "editors_only";
+  }
+  if (isNotFound) {
+    return "not_found";
+  }
+  return "unavailable";
+}
+
 export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
@@ -326,7 +342,7 @@ export function ManageSkillsPage() {
     skillId: skillIdParam ?? null,
     withRelations: true,
     disabled: !skillIdParam || selectedSkill !== null,
-    retryOnError: false,
+    shouldRetryOnError: false,
   });
   // Same rule as the list: unpublished skills stay hidden from non-editors. Admins get them, as
   // they could reveal them with "Show hidden skills" anyway.
@@ -334,12 +350,10 @@ export function ManageSkillsPage() {
     deepLinkedSkill !== null &&
     !canBypassEditorVisibility &&
     isSkillHiddenFromNonEditors(deepLinkedSkill);
-  const deepLinkedSkillErrorReason: SkillLoadErrorReason =
-    isDeepLinkedSkillHidden
-      ? "editors_only"
-      : isDeepLinkedSkillNotFound
-        ? "not_found"
-        : "unavailable";
+  const deepLinkedSkillErrorReason = getDeepLinkErrorReason({
+    isHidden: isDeepLinkedSkillHidden,
+    isNotFound: isDeepLinkedSkillNotFound,
+  });
 
   const handleUsedBySkillSelect = useCallback(
     (skillId: string) => {

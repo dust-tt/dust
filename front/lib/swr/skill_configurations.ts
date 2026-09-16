@@ -42,7 +42,7 @@ export function useSkill(options: {
   skillId: string | null;
   withRelations: true;
   disabled?: boolean;
-  retryOnError?: boolean;
+  shouldRetryOnError?: boolean;
 }): {
   skill: SkillWithRelationsType | null;
   isSkillLoading: boolean;
@@ -57,7 +57,7 @@ export function useSkill(options: {
   skillId: string | null;
   withRelations?: false;
   disabled?: boolean;
-  retryOnError?: boolean;
+  shouldRetryOnError?: boolean;
 }): {
   skill: SkillType | null;
   isSkillLoading: boolean;
@@ -72,14 +72,14 @@ export function useSkill({
   skillId,
   withRelations = false,
   disabled = false,
-  retryOnError = true,
+  shouldRetryOnError = true,
 }: {
   workspaceId: string;
   skillId: string | null;
   withRelations?: boolean;
   disabled?: boolean;
   // Off for fetches where a failure is a normal outcome (deep links to missing skills).
-  retryOnError?: boolean;
+  shouldRetryOnError?: boolean;
 }): {
   skill: SkillType | SkillWithRelationsType | null;
   isSkillLoading: boolean;
@@ -101,7 +101,7 @@ export function useSkill({
   const { data, error, isLoading, mutate, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(url, skillFetcher, {
       disabled,
-      shouldRetryOnError: retryOnError,
+      shouldRetryOnError,
     });
 
   return {
