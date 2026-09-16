@@ -389,10 +389,6 @@ export class AgentResource
    * Each input agent has a map entry: `null` for globals and active workspace members
    * of its editor grant for custom agents, or `[]` when there are none.
    */
-  /**
-   * @cc [owner:philipperolet,label:backend] editor-read-transaction
-   * Editor reads supplied a transaction use it for every lookup.
-   */
   static async batchListEditors(
     auth: Authenticator,
     agents: AgentResource[],
