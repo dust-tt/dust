@@ -10,7 +10,8 @@ export const BUILDING_AGENTS_AND_SKILLS_SERVER_NAME =
 export const DESCRIBE_SKILL_TOOL_NAME = "describe_skill" as const;
 export const SUGGEST_SKILL_UPDATE_TOOL_NAME = "suggest_skill_update" as const;
 export const SUGGEST_SKILL_EDITORS_TOOL_NAME = "suggest_skill_editors" as const;
-export const CREATE_AGENT_TOOL_NAME = "create_agent" as const;
+export const SUGGEST_AGENT_CREATION_TOOL_NAME =
+  "suggest_agent_creation" as const;
 
 // Bounds the O(n²) pairwise conflict check in hasSuggestionSelfConflict; larger rewrites
 // should target the instructions root block instead.
@@ -85,13 +86,12 @@ export type SuggestSkillEditorsArgs = z.infer<
   typeof SUGGEST_SKILL_EDITORS_INPUT_SCHEMA
 >;
 
-export const CREATE_AGENT_DESCRIPTION =
-  "Create a new agent in this workspace: a named assistant with its own instructions. Unlike " +
-  "`suggest_skill_update`, this creates the agent directly, not as a pending suggestion. v1 " +
-  "creates instructions-only agents, private to their creator, using the workspace's default " +
-  "model.";
+export const SUGGEST_AGENT_CREATION_DESCRIPTION =
+  "Suggest creating a new agent in this workspace: a named assistant with its own instructions. " +
+  "Like `suggest_skill_update`, this is not applied directly: it is recorded as a pending " +
+  "suggestion that the creator can review, accept, or reject.";
 
-export const CREATE_AGENT_INPUT_SCHEMA = z.object({
+export const SUGGEST_AGENT_CREATION_INPUT_SCHEMA = z.object({
   name: z
     .string()
     .describe("Unique, human-readable agent name (no leading '@')."),
@@ -103,7 +103,9 @@ export const CREATE_AGENT_INPUT_SCHEMA = z.object({
   instructions: z.string().describe("The agent's instructions, in markdown."),
 });
 
-export type CreateAgentArgs = z.infer<typeof CREATE_AGENT_INPUT_SCHEMA>;
+export type SuggestAgentCreationArgs = z.infer<
+  typeof SUGGEST_AGENT_CREATION_INPUT_SCHEMA
+>;
 
 export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   {
@@ -155,13 +157,13 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     freeUsage: true,
   },
   {
-    name: CREATE_AGENT_TOOL_NAME,
-    description: CREATE_AGENT_DESCRIPTION,
-    schema: CREATE_AGENT_INPUT_SCHEMA.shape,
-    stake: "high",
+    name: SUGGEST_AGENT_CREATION_TOOL_NAME,
+    description: SUGGEST_AGENT_CREATION_DESCRIPTION,
+    schema: SUGGEST_AGENT_CREATION_INPUT_SCHEMA.shape,
+    stake: "never_ask",
     displayLabels: {
-      running: "Creating agent",
-      done: "Create agent",
+      running: "Suggesting a new agent",
+      done: "Suggest new agent",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -173,8 +175,7 @@ export const BUILDING_AGENTS_AND_SKILLS_SERVER = {
     name: BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Build and improve agents and skills from a conversation: create new agents directly, and " +
-      "propose suggestions for existing skills that their editors can review.",
+      "Build and improve agents and skills from a conversation by proposing suggestions their editors can review.",
     authorization: null,
     icon: "ActionListCheckIcon",
     documentationUrl: null,

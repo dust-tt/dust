@@ -1,11 +1,13 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  CREATE_AGENT_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
+  SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -26,6 +28,8 @@ import { TOOLS } from "./index";
 const SKILL_SUGGESTION_DIRECTIVE_REGEX = new RegExp(
   `^:skill_suggestion\\[\\]\\{sId=(\\S+) kind=(${SKILL_SUGGESTION_KINDS.join("|")}) skillId=(\\S+)\\}$`
 );
+const AGENT_CREATE_SUGGESTION_DIRECTIVE_REGEX =
+  /^:agent_suggestion\[\]\{sId=(\S+) kind=create\}$/;
 
 function getTool(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -104,6 +108,14 @@ function expectMcpError(
     throw new Error("Expected an error.");
   }
   expect(result.error.message).toContain(fragment);
+}
+
+function extractAgentCreateSuggestionId(text: string): string {
+  const match = AGENT_CREATE_SUGGESTION_DIRECTIVE_REGEX.exec(text);
+  if (!match) {
+    throw new Error(`Unexpected tool output: ${text}`);
+  }
+  return match[1];
 }
 
 // A non-admin role membership does not grant create/agent by itself — it requires a group grant.
@@ -641,11 +653,11 @@ describe("building_agents_and_skills tools", () => {
     });
   });
 
-  describe(CREATE_AGENT_TOOL_NAME, () => {
-    it("creates a hidden, instructions-only agent with the caller as sole editor", async () => {
+  describe(SUGGEST_AGENT_CREATION_TOOL_NAME, () => {
+    it("records a pending create suggestion against a hidden placeholder agent", async () => {
       const { authenticator, user } = await createAgentAuthorTestContext();
 
-      const result = await getTool(CREATE_AGENT_TOOL_NAME).handler(
+      const result = await getTool(SUGGEST_AGENT_CREATION_TOOL_NAME).handler(
         {
           name: "Incident Helper",
           description: "Helps triage incidents.",
@@ -664,36 +676,48 @@ describe("building_agents_and_skills tools", () => {
       if (output?.type !== "text") {
         throw new Error("Expected text output.");
       }
-      const parsed = JSON.parse(output.text) as {
-        agent: { sId: string; name: string; description: string };
-      };
-      expect(parsed.agent.name).toBe("Incident Helper");
-      expect(parsed.agent.description).toBe("Helps triage incidents.");
+      const suggestionId = extractAgentCreateSuggestionId(output.text);
 
-      const { getAgentConfiguration } = await import(
-        "@app/lib/api/assistant/configuration/agent"
+      const suggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
       );
-      const agent = await getAgentConfiguration(authenticator, {
-        agentId: parsed.agent.sId,
-        variant: "full",
+      expect(suggestion).not.toBeNull();
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.kind).toBe("create");
+      expect(suggestion?.toJSON()).toMatchObject({
+        suggestion: {
+          name: "Incident Helper",
+          description: "Helps triage incidents.",
+          instructions: "Collect impact and timeline.",
+        },
       });
-      expect(agent).not.toBeNull();
-      expect(agent?.scope).toBe("hidden");
-      expect(agent?.status).toBe("active");
-      expect(agent?.instructions).toBe("Collect impact and timeline.");
-      expect(agent?.actions).toHaveLength(0);
+
+      // The suggestion targets a hidden, pending, instructions-less placeholder
+      // agent with the caller as sole editor.
+      const placeholderAgent = await getAgentConfiguration(authenticator, {
+        agentId: suggestion!._agentConfigurationId,
+        variant: "light",
+      });
+      expect(placeholderAgent).not.toBeNull();
+      expect(placeholderAgent?.status).toBe("pending");
+      expect(placeholderAgent?.scope).toBe("hidden");
 
       const { getAgentsEditors } = await import(
         "@app/lib/api/assistant/editors"
       );
-      const editors = await getAgentsEditors(authenticator, [agent!]);
-      expect(editors[agent!.sId]?.map((e) => e.sId)).toEqual([user.sId]);
+      const editors = await getAgentsEditors(authenticator, [
+        placeholderAgent!,
+      ]);
+      expect(editors[placeholderAgent!.sId]?.map((e) => e.sId)).toEqual([
+        user.sId,
+      ]);
     });
 
     it("rejects an empty agent name", async () => {
       const { authenticator } = await createAgentAuthorTestContext();
 
-      const result = await getTool(CREATE_AGENT_TOOL_NAME).handler(
+      const result = await getTool(SUGGEST_AGENT_CREATION_TOOL_NAME).handler(
         { name: "   ", description: "Desc", instructions: "Do things." },
         makeExtra(authenticator)
       );
@@ -711,7 +735,7 @@ describe("building_agents_and_skills tools", () => {
         workspace.sId
       );
 
-      const result = await getTool(CREATE_AGENT_TOOL_NAME).handler(
+      const result = await getTool(SUGGEST_AGENT_CREATION_TOOL_NAME).handler(
         { name: "No User", description: "Desc", instructions: "Do things." },
         makeExtra(nonInteractiveAuth)
       );
@@ -726,7 +750,7 @@ describe("building_agents_and_skills tools", () => {
     it("returns an MCPError for users without the create-agent capability", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
 
-      const result = await getTool(CREATE_AGENT_TOOL_NAME).handler(
+      const result = await getTool(SUGGEST_AGENT_CREATION_TOOL_NAME).handler(
         {
           name: "Restricted",
           description: "Desc",

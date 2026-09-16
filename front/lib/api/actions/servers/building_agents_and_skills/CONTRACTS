@@ -2,7 +2,13 @@
 Tools of the `building_agents_and_skills` MCP server MUST NOT modify an agent or a skill directly.
 Every tool that proposes a change records a `pending` agent or skill suggestion with source `conversational` for the
 editors to review, marks conflicting pending suggestions `outdated`, and returns the suggestion
-`sId` embedded in a directive (`:skill_suggestion[]{sId=... kind=... skillId=...}`) so the conversation UI can render it inline.
+`sId` embedded in a directive (`:agent_suggestion[]{sId=... kind=...}` or
+`:skill_suggestion[]{sId=... kind=... skillId=...}`) so the conversation UI can render it inline.
 
-@cc [owner:avervaet,label:product;security] create-agent-is-direct-and-scoped
-`create_agent` directly creates an `AgentConfiguration`, unlike every other tool in this server. It MUST verify the calling user is an interactive workspace member holding the workspace's `create` `agent` permission before creating anything, and MUST restrict what it creates to what that user could already do unilaterally through the builder: the new agent stays `hidden`, editable only by its creator, and carries no attached actions. Publishing an agent workspace-wide, attaching tools, or adding editors MUST remain separate, explicitly-permissioned actions performed afterward.
+@cc [owner:avervaet,label:product] agent-creation-suggestion-has-no-real-agent-yet
+`suggest_agent_creation` records a `kind: "create"` `AgentSuggestion`, complying with
+`changes-are-suggestions` above: it MUST NOT make the proposed agent usable. The suggestion's
+`agentConfigurationId` points at a placeholder created by `createPendingAgentConfiguration`
+(`status: "pending"`, `scope: "hidden"`, no actions, creator as sole editor) purely to give the
+suggestion a stable, non-null foreign key — that placeholder MUST stay excluded from every agent
+listing until a human reviews the suggestion and turns it into a real agent.
