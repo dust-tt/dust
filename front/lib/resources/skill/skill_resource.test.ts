@@ -17,10 +17,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { serializeSkillTag } from "@app/lib/skills/format";
-import {
-  AGENT_FACING_DESCRIPTION_MAX_LENGTH,
-  USER_FACING_DESCRIPTION_MAX_LENGTH,
-} from "@app/lib/skills/labels";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -56,63 +52,6 @@ describe("SkillResource", () => {
       await config.destroy();
     }
     createdConfigurations.length = 0;
-  });
-
-  describe("description lengths", () => {
-    it.each([
-      0, 1, 100,
-    ])("bounds descriptions on creation and update with %i excess characters", async (excessLength) => {
-      const { authenticator } = testContext;
-      const initialDescription = "a".repeat(USER_FACING_DESCRIPTION_MAX_LENGTH);
-      const initialAgentDescription = "c".repeat(
-        AGENT_FACING_DESCRIPTION_MAX_LENGTH
-      );
-      const skill = await SkillFactory.create(authenticator, {
-        agentFacingDescription:
-          initialAgentDescription + "x".repeat(excessLength),
-        userFacingDescription: initialDescription + "x".repeat(excessLength),
-      });
-
-      const createdSkill = await SkillResource.fetchById(
-        authenticator,
-        skill.sId
-      );
-      expect(createdSkill?.userFacingDescription).toBe(initialDescription);
-      expect(createdSkill?.agentFacingDescription).toBe(
-        initialAgentDescription
-      );
-
-      const updatedDescription = "b".repeat(USER_FACING_DESCRIPTION_MAX_LENGTH);
-      const updatedAgentDescription = "d".repeat(
-        AGENT_FACING_DESCRIPTION_MAX_LENGTH
-      );
-      await skill.updateSkill(authenticator, {
-        name: skill.name,
-        agentFacingDescription:
-          updatedAgentDescription + "x".repeat(excessLength),
-        userFacingDescription: updatedDescription + "x".repeat(excessLength),
-        instructions: skill.instructions,
-        icon: skill.icon,
-        mcpServerViews: [],
-        attachedKnowledge: [],
-        requestedSpaceIds: [],
-        manuallyRequestedSpaceIds: [],
-      });
-
-      const updatedSkill = await SkillResource.fetchById(
-        authenticator,
-        skill.sId
-      );
-      expect(updatedSkill?.userFacingDescription).toBe(updatedDescription);
-      expect(updatedSkill?.agentFacingDescription).toBe(
-        updatedAgentDescription
-      );
-
-      const versions = await skill.listVersions(authenticator);
-      expect(versions).toHaveLength(1);
-      expect(versions[0].userFacingDescription).toBe(initialDescription);
-      expect(versions[0].agentFacingDescription).toBe(initialAgentDescription);
-    });
   });
 
   describe("permissions", () => {

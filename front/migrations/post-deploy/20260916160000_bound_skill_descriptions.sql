@@ -1,5 +1,4 @@
--- Deploy backend truncation, then run 20260916_truncate_skill_descriptions.ts
--- with --execute before narrowing these columns.
+-- Run 20260916_truncate_skill_descriptions.ts with --execute before narrowing these columns.
 SET SESSION lock_timeout = 3000;
 SET SESSION statement_timeout = 0;
 

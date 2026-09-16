@@ -6,7 +6,7 @@ import {
 import { makeScript } from "@app/scripts/helpers";
 import { QueryTypes } from "sequelize";
 
-// Run after deploying backend truncation and before narrowing the SQL columns.
+// Run before narrowing the SQL columns.
 makeScript({}, async ({ execute }, logger) => {
   const replacements = {
     agentMaxLength: AGENT_FACING_DESCRIPTION_MAX_LENGTH,
