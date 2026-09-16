@@ -137,7 +137,7 @@ export function FrameSharingGrants({
       children: (
         <p>
           Remove access for <strong>{label}</strong>? People may still have
-          access through another invitation, domain or the frame's general
+          access through another invitation, domain or the frame’s general
           access setting.
         </p>
       ),
