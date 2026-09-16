@@ -1,11 +1,11 @@
 import type {
+  BaseKnowledgeItem,
   KnowledgeItem,
-  SerializedKnowledgeItem,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import {
   computeHasChildren,
   getItemSourceUrl,
-  isHydratedKnowledgeItem,
+  isFullKnowledgeItem,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import {
   KNOWLEDGE_TAG,
@@ -91,7 +91,7 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
             const id = element.getAttribute("id");
             const title = element.getAttribute("title");
             if (id && title) {
-              const item: SerializedKnowledgeItem = {
+              const item: BaseKnowledgeItem = {
                 dataSourceViewId: element.getAttribute("dsv") ?? "",
                 hasChildren: element.getAttribute("hasChildren") === "true",
                 label: title,
@@ -121,7 +121,7 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
           if (!item) {
             return {};
           }
-          const hasChildren = isHydratedKnowledgeItem(item)
+          const hasChildren = isFullKnowledgeItem(item)
             ? computeHasChildren(item.node)
             : item.hasChildren;
           const sourceUrl = getItemSourceUrl(item);
@@ -194,7 +194,7 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
       const [item] = node.attrs.selectedItems as KnowledgeItem[];
 
       // Compute hasChildren with special logic for Notion if we have full node data.
-      const hasChildren = isHydratedKnowledgeItem(item)
+      const hasChildren = isFullKnowledgeItem(item)
         ? computeHasChildren(item.node)
         : item.hasChildren;
 
@@ -212,7 +212,7 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
   },
 
   parseMarkdown: (token) => {
-    const selectedItem: SerializedKnowledgeItem = {
+    const selectedItem: BaseKnowledgeItem = {
       dataSourceViewId: token.dataSourceViewId,
       hasChildren: token.hasChildren,
       label: token.knowledgeTitle,

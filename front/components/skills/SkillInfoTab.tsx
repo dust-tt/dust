@@ -1,6 +1,6 @@
 import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
-import { isHydratedKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
+import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SkillDescriptionReadOnlyEditor } from "@app/components/editor/SkillDescriptionEditor";
 import { RedactedSkillMessage } from "@app/components/skills/RedactedSkillMessage";
 import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
@@ -165,7 +165,7 @@ export function SkillInfoTab({
         <div className="flex flex-col gap-4">
           <div className="heading-lg text-foreground">Knowledge</div>
           <div className="flex flex-wrap gap-2">
-            {knowledgeItems.filter(isHydratedKnowledgeItem).map((item) => (
+            {knowledgeItems.filter(isFullKnowledgeItem).map((item) => (
               <KnowledgeChip
                 key={item.nodeId}
                 node={item.node}
