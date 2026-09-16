@@ -406,9 +406,6 @@ const InputBarContainer = ({
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
   const attachedNodesRef = useRef(attachedNodes);
   attachedNodesRef.current = attachedNodes;
-  // With inline references the same node can be inserted as many times as the user
-  // wants, so the pickers must not mark or hide already-attached nodes. Only one
-  // content fragment per node is sent: the parent's onNodeSelect dedups attachments.
   const pickerAttachedNodes = isInlineReferenceEnabled
     ? EMPTY_ATTACHED_NODES
     : attachedNodes;
