@@ -42,6 +42,16 @@ export function FilePreviewPanel({
   const { data, closePanel } = useConversationSidePanelContext();
   const { fileId, filePath } = parseFilePreviewData(data);
 
+  const { fileMetadata, isFileMetadataLoading } = useFileMetadata({
+    fileId: fileId ?? null,
+    owner,
+    disabled: !fileId,
+  });
+
+  // Resolve an id-addressed file to its path so every preview goes through the
+  // same endpoint. Files with no mount path have none, and fall back to the id.
+  const path = filePath ?? fileMetadata?.path ?? null;
+
   // The conversion preview is cached (Cache-Control: max-age) per URL, so we
   // bust it with the file's lastModifiedMs. SWR revalidates this list on mount
   // and window focus, so the preview refreshes after the file is touched (and
@@ -50,23 +60,16 @@ export function FilePreviewPanel({
   const { sandboxFiles } = useConversationSandboxFiles({
     conversationId: conversation.sId,
     owner,
-    options: { disabled: !filePath },
+    options: { disabled: !path },
   });
 
-  // Files opened by id are absent from the sandbox listing.
-  const { fileMetadata, isFileMetadataLoading } = useFileMetadata({
-    fileId: fileId ?? null,
-    owner,
-    disabled: !fileId,
-  });
-
-  const fileName = filePath
-    ? (filePath.split("/").pop() ?? filePath)
+  const fileName = path
+    ? (path.split("/").pop() ?? path)
     : (fileMetadata?.fileName ?? "");
-  const urls = filePath
+  const urls = path
     ? {
-        baseUrl: getFilePathViewUrl(owner, filePath),
-        downloadUrl: getFilePathDownloadUrl(owner, filePath),
+        baseUrl: getFilePathViewUrl(owner, path),
+        downloadUrl: getFilePathDownloadUrl(owner, path),
       }
     : fileId
       ? {
@@ -80,9 +83,9 @@ export function FilePreviewPanel({
   // missing from the listing) fall back to a minimal entry derived from the
   // file name — Office documents have no in-browser renderer, so the content
   // type is needed to pick the right preview strategy and icon.
-  const sandboxFile = filePath
+  const sandboxFile = path
     ? sandboxFiles.find(
-        (f): f is FileSystemFileEntry => !f.isDirectory && f.path === filePath
+        (f): f is FileSystemFileEntry => !f.isDirectory && f.path === path
       )
     : undefined;
   const contentType =
@@ -93,12 +96,12 @@ export function FilePreviewPanel({
 
   const entry: FileEntry | null = sandboxFile
     ? { ...sandboxFile, kind: "file" }
-    : filePath || fileMetadata
+    : path || fileMetadata
       ? {
           kind: "file",
           isDirectory: false,
           fileName,
-          path: filePath ?? "",
+          path: path ?? "",
           contentType,
           fileId: fileId ?? null,
           thumbnailUrl: null,
@@ -115,7 +118,7 @@ export function FilePreviewPanel({
 
   const markdown = useMarkdownFileEditor({
     category: preview.category,
-    entryPath: filePath,
+    entryPath: path ?? undefined,
     fileUrl: urls?.baseUrl ?? null,
     isActive: !!entry,
     isContentLoading: preview.isContentLoading,
@@ -124,14 +127,20 @@ export function FilePreviewPanel({
   });
 
   if (!entry || !urls) {
-    return isFileMetadataLoading ? (
+    return (
       <div className="flex h-panel flex-col">
         <ConversationSidePanelHeader onClose={closePanel} />
         <CenteredState>
-          <Spinner />
+          {isFileMetadataLoading ? (
+            <Spinner />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              This file is no longer available.
+            </p>
+          )}
         </CenteredState>
       </div>
-    ) : null;
+    );
   }
 
   const { recordCounts } = preview;

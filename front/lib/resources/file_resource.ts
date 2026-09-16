@@ -2852,6 +2852,7 @@ export class FileResource extends BaseResource<FileModel> {
 
     return {
       ...blob,
+      path: this.toScopedPath(auth),
       useCaseMetadata: this.useCaseMetadata ?? {},
     };
   }
