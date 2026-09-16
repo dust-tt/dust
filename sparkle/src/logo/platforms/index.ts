@@ -80,6 +80,7 @@ export { default as PdfLogo } from "./Pdf";
 export { default as PowerBiLogo } from "./PowerBi";
 export { default as PraizLogo } from "./Praiz";
 export { default as ProductboardLogo } from "./Productboard";
+export { default as QobraLogo } from "./Qobra";
 export { default as ReplicateLogo } from "./Replicate";
 export * from "./registry";
 export { default as SalesforceLogo } from "./Salesforce";
