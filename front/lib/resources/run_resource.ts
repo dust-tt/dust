@@ -128,6 +128,8 @@ export class RunResource extends BaseResource<RunModel> {
           serviceTier: "default",
           usageType: usage.usageType,
           usageState: "pending",
+          // The run records which credentials served it; legacy runs left it null, meaning Dust's.
+          useWorkspaceCredentials: blob.useWorkspaceCredentials ?? false,
         },
         { transaction }
       );
@@ -491,6 +493,7 @@ export class RunResource extends BaseResource<RunModel> {
           serviceTier: serviceTier ?? "default",
           usageType,
           usageState: "reported",
+          useWorkspaceCredentials: this.useWorkspaceCredentials ?? false,
         })
       )
     );
