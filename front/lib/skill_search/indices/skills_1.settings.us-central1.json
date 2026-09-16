@@ -4,19 +4,19 @@
   "refresh_interval": "30s",
   "analysis": {
     "normalizer": {
-      "skill_name_normalizer": {
+      "folding_normalizer": {
         "type": "custom",
         "filter": ["icu_folding"]
       }
     },
     "char_filter": {
-      "skill_name_nfc": {
+      "nfc": {
         "type": "icu_normalizer",
         "name": "nfc"
       }
     },
     "filter": {
-      "skill_name_preserve_words": {
+      "preserve_words": {
         "type": "word_delimiter_graph",
         "split_on_case_change": true,
         "split_on_numerics": false,
@@ -24,17 +24,17 @@
       }
     },
     "analyzer": {
-      "skill_name_exact_analyzer": {
+      "exact_analyzer": {
         "type": "custom",
         "tokenizer": "keyword",
         "filter": ["icu_folding"]
       },
-      "skill_name_analyzer": {
+      "autocomplete_analyzer": {
         "type": "custom",
-        "char_filter": ["skill_name_nfc"],
+        "char_filter": ["nfc"],
         "tokenizer": "icu_tokenizer",
         "filter": [
-          "skill_name_preserve_words",
+          "preserve_words",
           "icu_folding"
         ]
       }

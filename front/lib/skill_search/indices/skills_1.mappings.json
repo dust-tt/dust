@@ -15,15 +15,15 @@
     },
     "name": {
       "type": "text",
-      "analyzer": "skill_name_exact_analyzer",
+      "analyzer": "exact_analyzer",
       "fields": {
         "keyword": {
           "type": "keyword",
-          "normalizer": "skill_name_normalizer"
+          "normalizer": "folding_normalizer"
         },
         "autocomplete": {
           "type": "search_as_you_type",
-          "analyzer": "skill_name_analyzer"
+          "analyzer": "autocomplete_analyzer"
         },
         "autocomplete_preserved": {
           "type": "search_as_you_type",
