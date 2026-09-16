@@ -8,6 +8,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import type { LightAgentConfigurationWithoutModelType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -24,16 +25,25 @@ import type {
 
 // We define a memory limit of 16K characters per user and agent configuration. -> ~4000 tokens.
 // This is not perfect and could be configured according to the model's context window, but it's a good starting point.
-const AGENT_MEMORY_LIMIT = 16 * 1024;
+export const AGENT_MEMORY_LIMIT = 16 * 1024;
 
 type AgentMemoryEdit = {
   index: number;
   content: string;
 };
 
-type AgentMemoryEntry = {
+export type AgentMemoryEntry = {
   lastUpdated: Date;
   content: string;
+};
+
+// The outcome of a write: the memory as it stands afterwards, the entries evicted to keep it within
+// AGENT_MEMORY_LIMIT, and the contents that could never be stored because a single one of them
+// exceeds the limit.
+export type AgentMemoryWriteResult = {
+  entries: AgentMemoryEntry[];
+  evicted: AgentMemoryEntry[];
+  skipped: string[];
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -140,7 +150,10 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
           agentConfigurationId: agentConfiguration.sId,
           userId: user?.id ?? null,
         },
-        order: [["updatedAt", "DESC"]],
+        order: [
+          ["updatedAt", "DESC"],
+          ["id", "DESC"],
+        ],
       },
       transaction
     );
@@ -168,7 +181,10 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
           agentConfigurationId,
           userId,
         },
-        order: [["updatedAt", "DESC"]],
+        order: [
+          ["updatedAt", "DESC"],
+          ["id", "DESC"],
+        ],
       },
       transaction
     );
@@ -205,6 +221,13 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       .sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
   }
 
+  /**
+   * @cc [owner:rfrenoy,label:product] memory-writes-never-fail-on-capacity
+   * Recording entries MUST NOT fail because the memory is full. When the new entries do not fit
+   * within `AGENT_MEMORY_LIMIT`, the least recently updated entries MUST be evicted to make room,
+   * and both the evicted entries and the entries too large to ever be stored MUST be returned to
+   * the caller so it can report them.
+   */
   static async recordEntries(
     auth: Authenticator,
     {
@@ -216,59 +239,92 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       user: UserType | null;
       entries: string[];
     }
-  ): Promise<Result<{ lastUpdated: Date; content: string }[], string>> {
-    const existingMemories = await this.retrieveMemory(auth, {
-      agentConfiguration,
-      user,
-    });
-
-    const validation = this.validateRecordEntries(existingMemories, entries);
-    if (validation.isErr()) {
-      return new Err(validation.error);
-    }
-
-    await concurrentExecutor(
-      entries,
-      async (content) => {
-        await this.makeNew(auth, {
-          agentConfigurationId: agentConfiguration.sId,
-          content: content,
-          userId: user?.id ?? null,
-        });
-      },
-      { concurrency: 4 }
+  ): Promise<AgentMemoryWriteResult> {
+    // An entry longer than the whole budget can never be stored: no amount of eviction makes room
+    // for it.
+    const skipped = entries.filter(
+      (content) => content.length > AGENT_MEMORY_LIMIT
     );
+    const accepted = entries.filter(
+      (content) => content.length <= AGENT_MEMORY_LIMIT
+    );
+
+    const evicted = await withTransaction(async (t) => {
+      await AgentMemoryModel.bulkCreate(
+        accepted.map((content) => ({
+          workspaceId: auth.getNonNullableWorkspace().id,
+          agentConfigurationId: agentConfiguration.sId,
+          content,
+          userId: user?.id ?? null,
+        })),
+        { transaction: t }
+      );
+
+      return this.enforceMemoryLimit(auth, { agentConfiguration, user }, t);
+    });
 
     const memories = await AgentMemoryResource.retrieveMemory(auth, {
       agentConfiguration,
       user,
     });
-    return new Ok(memories);
+    return { entries: memories, evicted, skipped };
   }
 
-  private static validateRecordEntries(
-    existingMemories: AgentMemoryEntry[],
-    newEntries: string[]
-  ): Result<void, string> {
-    const existingCharacterCount = existingMemories.reduce(
-      (acc, entry) => acc + entry.content.length,
-      0
-    );
-    const newEntriesCharacterCount = newEntries.reduce(
-      (acc, entry) => acc + entry.length,
-      0
+  /**
+   * @cc [owner:rfrenoy,label:product] memory-total-within-limit
+   * On return, the total content length of the (user, agent configuration) memory MUST be at most
+   * `AGENT_MEMORY_LIMIT`, achieved by deleting the least recently updated entries. Entries are
+   * considered newest first, so an entry just recorded or edited is never the one evicted.
+   */
+  private static async enforceMemoryLimit(
+    auth: Authenticator,
+    {
+      agentConfiguration,
+      user,
+    }: {
+      agentConfiguration: LightAgentConfigurationWithoutModelType;
+      user: UserType | null;
+    },
+    transaction: Transaction
+  ): Promise<AgentMemoryEntry[]> {
+    const memories = await this.findByAgentConfigurationAndUser(
+      auth,
+      { agentConfiguration, user },
+      transaction
     );
 
-    if (
-      existingCharacterCount + newEntriesCharacterCount >
-      AGENT_MEMORY_LIMIT
-    ) {
-      return new Err(
-        `Cannot add new memory entries. Current memory size (${existingCharacterCount} characters) + new entries size (${newEntriesCharacterCount} characters) exceeds the memory limit of ${AGENT_MEMORY_LIMIT} characters. Please compact or erase some entries before adding new ones.`
-      );
+    let characterCount = 0;
+    const evicted = memories.filter((memory) => {
+      characterCount += memory.content.length;
+      return characterCount > AGENT_MEMORY_LIMIT;
+    });
+
+    if (evicted.length === 0) {
+      return [];
     }
 
-    return new Ok(undefined);
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: evicted.map((memory) => memory.id),
+      },
+      transaction,
+    });
+
+    logger.info(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentConfigurationId: agentConfiguration.sId,
+        userId: user?.sId ?? null,
+        evictedCount: evicted.length,
+      },
+      "Evicted agent memory entries to stay within the memory limit"
+    );
+
+    return evicted.map((memory) => ({
+      lastUpdated: memory.updatedAt,
+      content: memory.content,
+    }));
   }
 
   static async eraseEntries(
@@ -310,6 +366,13 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     });
   }
 
+  /**
+   * @cc [owner:rfrenoy,label:product] memory-writes-never-fail-on-capacity
+   * Editing entries MUST NOT fail because the memory is full. When the edits do not fit within
+   * `AGENT_MEMORY_LIMIT`, the least recently updated entries MUST be evicted to make room, and both
+   * the evicted entries and the edits too large to ever be stored MUST be returned to the caller so
+   * it can report them.
+   */
   static async editEntries(
     auth: Authenticator,
     {
@@ -321,18 +384,15 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       user: UserType | null;
       edits: AgentMemoryEdit[];
     }
-  ): Promise<Result<AgentMemoryEntry[], string>> {
-    const existingMemories = await this.retrieveMemory(auth, {
-      agentConfiguration,
-      user,
-    });
+  ): Promise<AgentMemoryWriteResult> {
+    const skipped = edits
+      .filter(({ content }) => content.length > AGENT_MEMORY_LIMIT)
+      .map(({ content }) => content);
+    const accepted = edits.filter(
+      ({ content }) => content.length <= AGENT_MEMORY_LIMIT
+    );
 
-    const validation = this.validateEditEntries(existingMemories, edits);
-    if (validation.isErr()) {
-      return new Err(validation.error);
-    }
-
-    await withTransaction(async (t) => {
+    const evicted = await withTransaction(async (t) => {
       const memories = (
         await this.findByAgentConfigurationAndUser(
           auth,
@@ -345,7 +405,7 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
       ).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
       await concurrentExecutor(
-        edits,
+        accepted,
         async ({ index, content }) => {
           const m = memories[index];
           if (m) {
@@ -365,39 +425,15 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
         },
         { concurrency: 4 }
       );
+
+      return this.enforceMemoryLimit(auth, { agentConfiguration, user }, t);
     });
 
     const memories = await AgentMemoryResource.retrieveMemory(auth, {
       agentConfiguration,
       user,
     });
-    return new Ok(memories);
-  }
-
-  private static validateEditEntries(
-    existingMemories: AgentMemoryEntry[],
-    edits: AgentMemoryEdit[]
-  ): Result<void, string> {
-    // We want to calculate the total memory length after applying the edits.
-    // For each edit, we will subtract the old length and add the new length based on the index.
-    let newTotalLength = existingMemories.reduce(
-      (acc, entry) => acc + entry.content.length,
-      0
-    );
-    for (const edit of edits) {
-      if (edit.index >= 0 && edit.index < existingMemories.length) {
-        newTotalLength -= existingMemories[edit.index].content.length;
-        newTotalLength += edit.content.length;
-      }
-    }
-
-    if (newTotalLength > AGENT_MEMORY_LIMIT) {
-      return new Err(
-        `Total memory size after edits (${newTotalLength} characters) exceeds the memory limit of ${AGENT_MEMORY_LIMIT} characters. Please compact or erase some entries before editing.`
-      );
-    }
-
-    return new Ok(undefined);
+    return { entries: memories, evicted, skipped };
   }
 
   async delete(

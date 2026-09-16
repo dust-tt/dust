@@ -17,7 +17,14 @@ import {
 } from "@app/lib/api/actions/servers/user_memory/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
-import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import type {
+  AgentMemoryEntry,
+  AgentMemoryWriteResult,
+} from "@app/lib/resources/agent_memory_resource";
+import {
+  AGENT_MEMORY_LIMIT,
+  AgentMemoryResource,
+} from "@app/lib/resources/agent_memory_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -43,22 +50,49 @@ async function agentMemoryWriteDisabledError(
   return null;
 }
 
+const EVICTED_ENTRY_PREVIEW_LENGTH = 100;
+
 const renderMemory = (
-  memory: { lastUpdated: Date; content: string }[]
+  memory: AgentMemoryEntry[],
+  { evicted, skipped }: Omit<AgentMemoryWriteResult, "entries"> = {
+    evicted: [],
+    skipped: [],
+  }
 ): Result<CallToolResult["content"], MCPError> => {
-  if (memory.length === 0) {
-    return new Ok([
-      {
-        type: "text" as const,
-        text: "(memory empty)",
-      },
-    ]);
+  const sections =
+    memory.length === 0
+      ? ["(memory empty)"]
+      : [memory.map((entry, i) => `[${i}] ${entry.content}`).join("\n")];
+
+  // Eviction is silent to the user, so the model is told what it lost and can record again what
+  // still matters.
+  if (evicted.length > 0) {
+    const previews = evicted
+      .map(
+        (entry) =>
+          `- ${entry.content.slice(0, EVICTED_ENTRY_PREVIEW_LENGTH)}${
+            entry.content.length > EVICTED_ENTRY_PREVIEW_LENGTH ? "…" : ""
+          }`
+      )
+      .join("\n");
+    sections.push(
+      `Note: the memory limit of ${AGENT_MEMORY_LIMIT} characters was reached, so the ` +
+        `${evicted.length} least recently updated entries were dropped to make room. Record ` +
+        `again anything below that still matters:\n${previews}`
+    );
+  }
+
+  if (skipped.length > 0) {
+    sections.push(
+      `Note: ${skipped.length} entries were not saved because each one exceeds the ` +
+        `${AGENT_MEMORY_LIMIT} character memory limit on its own. Save a shorter version instead.`
+    );
   }
 
   return new Ok([
     {
       type: "text" as const,
-      text: memory.map((entry, i) => `[${i}] ${entry.content}`).join("\n"),
+      text: sections.join("\n\n"),
     },
   ]);
 };
@@ -105,17 +139,17 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
     const { agentConfiguration } = runContext;
 
-    const result = await AgentMemoryResource.recordEntries(auth, {
+    const {
+      entries: memory,
+      evicted,
+      skipped,
+    } = await AgentMemoryResource.recordEntries(auth, {
       agentConfiguration,
       user: user.toJSON(),
       entries,
     });
 
-    if (result.isErr()) {
-      return new Err(new MCPError(result.error, { tracked: false }));
-    }
-
-    return renderMemory(result.value);
+    return renderMemory(memory, { evicted, skipped });
   },
 
   [AGENT_MEMORY_ERASE_TOOL_NAME]: async ({ indexes }, { auth, runContext }) => {
@@ -157,17 +191,17 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
     const { agentConfiguration } = runContext;
 
-    const result = await AgentMemoryResource.editEntries(auth, {
+    const {
+      entries: memory,
+      evicted,
+      skipped,
+    } = await AgentMemoryResource.editEntries(auth, {
       agentConfiguration,
       user: user.toJSON(),
       edits,
     });
 
-    if (result.isErr()) {
-      return new Err(new MCPError(result.error, { tracked: false }));
-    }
-
-    return renderMemory(result.value);
+    return renderMemory(memory, { evicted, skipped });
   },
 
   [AGENT_MEMORY_COMPACT_TOOL_NAME]: async ({ edits }, { auth, runContext }) => {
@@ -183,21 +217,17 @@ const handlers: ToolHandlers<typeof AGENT_MEMORY_TOOLS_METADATA> = {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
     const { agentConfiguration } = runContext;
 
-    const result = await AgentMemoryResource.editEntries(auth, {
+    const {
+      entries: memory,
+      evicted,
+      skipped,
+    } = await AgentMemoryResource.editEntries(auth, {
       agentConfiguration,
       user: user.toJSON(),
       edits,
     });
 
-    if (result.isErr()) {
-      return new Err(
-        new MCPError(`Cannot compact memory entries. ${result.error}`, {
-          tracked: false,
-        })
-      );
-    }
-
-    return renderMemory(result.value);
+    return renderMemory(memory, { evicted, skipped });
   },
 };
 
