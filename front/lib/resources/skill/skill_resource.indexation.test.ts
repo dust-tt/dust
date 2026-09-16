@@ -1,4 +1,5 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import logger from "@app/logger/logger";
 import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -14,17 +15,25 @@ describe("resource-owned skill search indexation", () => {
     expect(launchIndexSkillSearchWorkflow).not.toHaveBeenCalled();
   });
 
-  it("propagates workflow launch failures", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+  it("logs workflow launch failures without throwing", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
     const skill = await SkillFactory.create(auth);
     const error = new Error("Temporal unavailable");
+    const errorLog = vi.spyOn(logger, "error").mockImplementation(() => {});
     vi.mocked(launchIndexSkillSearchWorkflow).mockResolvedValueOnce(
       new Err(error)
     );
 
     await expect(
       SkillResource.launchSearchIndexation(auth, [skill.sId])
-    ).rejects.toBe(error);
+    ).resolves.toBeUndefined();
+    expect(errorLog).toHaveBeenCalledExactlyOnceWith(
+      { error, workspaceId: workspace.sId, skillIds: [skill.sId] },
+      "Failed to launch skill search indexation"
+    );
+    errorLog.mockRestore();
   });
 
   it("deduplicates the provided skill IDs", async () => {

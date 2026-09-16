@@ -70,6 +70,7 @@ import {
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
   AgentConfigurationWithoutModelType,
@@ -580,6 +581,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   /**
    * @cc [owner:aubin-tchoi,label:backend;concurrency] skill-search-after-commit
    * Skill mutations enqueue workspace-scoped custom IDs after their existing writes.
+   * Failed workflow launch results are logged without failing the mutation.
    */
   static async launchSearchIndexation(
     auth: Authenticator,
@@ -597,7 +599,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
     const failedResult = results.find((result) => result.isErr());
     if (failedResult?.isErr()) {
-      throw failedResult.error;
+      logger.error(
+        { error: failedResult.error, workspaceId: workspace.sId, skillIds },
+        "Failed to launch skill search indexation"
+      );
     }
   }
 
