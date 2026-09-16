@@ -282,11 +282,9 @@ export function ManageSkillsPage() {
     ) => {
       const didUpdate = await updateSkillFavorite(skill, isFavorite);
       if (didUpdate) {
-        setSelectedSkillOverride((currentSkill) =>
-          currentSkill?.sId === skill.sId
-            ? { ...currentSkill, isFavorite }
-            : currentSkill
-        );
+        // The sheet is the only caller, so the skill is the selected one. Overriding also
+        // covers deep-linked skills, whose by-id fetch is not refreshed by the list mutations.
+        setSelectedSkillOverride({ ...skill, isFavorite });
       }
     },
     [updateSkillFavorite]
@@ -405,7 +403,7 @@ export function ManageSkillsPage() {
       <SkillDetailsSheet
         skill={selectedSkill ?? deepLinkedSkill}
         open={!!skillIdParam}
-        isError={selectedSkill === null && isDeepLinkedSkillError}
+        isError={isDeepLinkedSkillError}
         onRetry={retryDeepLinkedSkill}
         onClose={() => handleSkillSelect(null)}
         onFavoriteChange={handleFavoriteChange}
