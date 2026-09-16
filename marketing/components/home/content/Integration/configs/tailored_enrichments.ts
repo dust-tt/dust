@@ -2139,6 +2139,115 @@ export const tailoredEnrichments: Record<
       },
     ],
   },
+  // [generic] Spendesk — 62 real tools
+  spendesk: {
+    chatStoryline: {
+      userPrompt:
+        "Which payables are overdue right now, and do we have enough in the wallet to cover them this week across all entities?",
+      toolCalls: [
+        "get_wallet_summary",
+        "spendesk_get_due_invoices",
+        "get_payables",
+        "get_suppliers",
+      ],
+      completedInSeconds: 12,
+      responseIntro:
+        "Checked your Spendesk wallets against payables due this week across every entity.",
+      responseSections: [
+        {
+          heading: "Overdue & due this week (4)",
+          bullets: [
+            {
+              title: "Nordic Cloud Services — €18,400",
+              body: "6 days overdue on the FR entity. No dispute flagged on the invoice.",
+            },
+            {
+              title: "Atlas Office Supplies — €6,250",
+              body: "Due Friday on the DE entity. Matched to PO-2291, already approved.",
+            },
+            {
+              title: "Vega Logistics — €31,000",
+              body: "Due Thursday on the FR entity — your largest payable this week.",
+            },
+          ],
+        },
+        {
+          heading: "Wallet coverage",
+          bullets: [
+            {
+              title: "FR entity",
+              body: "€142,000 available — covers this week's €49,400 in FR payables with room to spare.",
+            },
+            {
+              title: "DE entity",
+              body: "€8,900 available against €6,250 due — tight, no buffer for surprises.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to pull the full supplier history on Nordic Cloud Services to check if this is a recurring late payer?",
+    },
+    benefits: [
+      {
+        icon: "ActionBankIcon",
+        color: "blue",
+        title: "Know your cash position instantly",
+        description:
+          "Check wallet balances, funding history, and settlements across every legal entity in one prompt — no more switching entities in the Spendesk dashboard to add it up by hand.",
+        toolMatches: [
+          "get_wallet_summary",
+          "get_wallet_loads",
+          "get_settlements",
+          "list_companies",
+        ],
+      },
+      {
+        icon: "ActionClipboardIcon",
+        color: "green",
+        title: "Stay ahead of payables and purchase orders",
+        description:
+          "Surface invoices overdue or due soon, catch duplicates before they're paid twice, and find purchase orders that still don't have a matching invoice — before they become a month-end fire drill.",
+        toolMatches: [
+          "spendesk_get_due_invoices",
+          "get_payables",
+          "get_purchase_orders",
+          "get_invoices",
+        ],
+      },
+      {
+        icon: "ActionPieChartIcon",
+        color: "golden",
+        title: "Break down spend the way Finance thinks",
+        description:
+          "Ask for spend by supplier, cost centre, or expense category and get a straight answer for board decks and budget reviews — without exporting a single CSV.",
+        toolMatches: [
+          "spendesk_analyze_spend",
+          "get_cost_centers",
+          "get_expense_categories",
+          "get_suppliers",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do with Spendesk?",
+        answer:
+          "Dust agents can check wallet balances and funding history, track payables, settlements, and purchase orders, analyze spend by supplier, cost centre, or expense category, and look up suppliers, users, cards, and invoices. They can also perform write actions such as creating or updating suppliers, expense categories, and analytical fields, marking payables as exported or ready, and managing purchase orders and accounting exports.",
+      },
+      {
+        question: "Who can connect Spendesk to Dust?",
+        answer:
+          "Access is restricted to Spendesk Account Owners and Controllers, matching Spendesk's own MCP access policy — regular employees cannot query company-wide financial data through the connector.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "Spendesk uses OAuth with dynamic client registration. You'll be prompted to sign in with your Spendesk account and approve access directly from the Dust chat.",
+      },
+    ],
+    relatedIntegrations: ["netsuite", "stripe", "slack"],
+  },
   // [generic] Statuspage — 6 real tools
   statuspage: {
     chatStoryline: {
