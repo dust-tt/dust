@@ -3,7 +3,6 @@ import { escapeXml } from "@app/types/shared/utils/string_utils";
 export type KnowledgeReference = {
   dataSourceViewId: string | null;
   id: string;
-  sourceUrl: string | null;
   spaceId: string | null;
   title: string;
 };
@@ -36,7 +35,6 @@ export function parseKnowledgeTag(tag: string): KnowledgeReference | null {
   return {
     dataSourceViewId: parseAttribute(attributes, "dsv"),
     id,
-    sourceUrl: parseAttribute(attributes, "url"),
     spaceId: parseAttribute(attributes, "space"),
     title,
   };
