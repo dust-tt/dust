@@ -1,3 +1,4 @@
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
 import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import { Authenticator } from "@app/lib/auth";
@@ -5,6 +6,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import {
   AuthorizedFileAccessModel,
   FileModel,
@@ -36,6 +38,11 @@ import {
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>()),
+  emitAuditLogEvent: vi.fn(),
+}));
 
 async function createFrameWithFunction(
   auth: Authenticator,
@@ -1618,6 +1625,42 @@ describe("FileResource", () => {
       expect(allowlist?.generatedByUserId).toBe(auth.user()!.id);
     });
 
+    it("audits scope changes after commit and omits rollbacks", async () => {
+      const { authenticator: auth, user } = await createResourceTest({});
+      const file = await FileFactory.create(auth, user, {
+        contentType: frameContentType,
+        fileName: "frame.html",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+      });
+      vi.mocked(emitAuditLogEvent).mockClear();
+      await withTransaction(async (parent) => {
+        const committed = await frontSequelize.transaction({
+          transaction: parent,
+        });
+        await file.setShareScope(auth, "emails_only", committed);
+        expect(emitAuditLogEvent).not.toHaveBeenCalled();
+        await committed.commit();
+        expect(emitAuditLogEvent).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({
+            auth,
+            action: "frame.share_scope_updated",
+            metadata: { frame_name: "frame.html", share_scope: "emails_only" },
+          })
+        );
+        vi.mocked(emitAuditLogEvent).mockClear();
+        const rolledBack = await frontSequelize.transaction({
+          transaction: parent,
+        });
+        await file.setShareScope(auth, "public", rolledBack);
+        expect(emitAuditLogEvent).not.toHaveBeenCalled();
+        await rolledBack.rollback();
+        expect(emitAuditLogEvent).not.toHaveBeenCalled();
+        expect(await file.getShareScope()).toBe("emails_only");
+      });
+    });
+
     it("setShareScope updates share scope without recomputing the allowlist", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",
@@ -1637,7 +1680,15 @@ describe("FileResource", () => {
         useCaseMetadata: { conversationId: conversation.sId },
       });
 
+      vi.mocked(emitAuditLogEvent).mockClear();
       await frameFile.setShareScope(auth, "public");
+      expect(emitAuditLogEvent).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          auth,
+          action: "frame.share_scope_updated",
+          metadata: { frame_name: "Frame.tsx", share_scope: "public" },
+        })
+      );
 
       const shareableFile = await FileResource.shareableFileModel.findOne({
         where: { fileId: frameFile.id, workspaceId: frameFile.workspaceId },

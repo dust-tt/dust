@@ -79,6 +79,37 @@ describe("share scope endpoint", () => {
     vi.clearAllMocks();
   });
 
+  it("requires Pod access to read or change sharing scope", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest();
+    const space = await SpaceFactory.project(workspace, user.id);
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameContentType,
+      fileName: "private-frame.tsx",
+      fileSize: 100,
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: space.sId },
+    });
+    const ownerWrite = await postShare(workspace, file.sId, {
+      shareScope: "emails_only",
+    });
+    expect(ownerWrite.status).toBe(200);
+    const ownerRead = await honoApp.request(url(workspace, file.sId));
+    expect(ownerRead.status).toBe(200);
+    mockEmitAuditLogEvent.mockClear();
+
+    const outsider = await createPrivateApiMockRequest({ workspace });
+    expect(outsider.auth.can("read", space)).toBe(false);
+    const read = await honoApp.request(url(workspace, file.sId));
+    expect(read.status).toBe(404);
+    const write = await postShare(workspace, file.sId, {
+      shareScope: "workspace_and_emails",
+    });
+    expect(write.status).toBe(404);
+    expect(await file.getShareScope()).toBe("emails_only");
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
   describe("publish permission (public scope)", () => {
     it("blocks publishing a frame publicly without the publish permission", async () => {
       const { auth, user, workspace } = await createPrivateApiMockRequest({
@@ -272,7 +303,10 @@ describe("share scope endpoint", () => {
       // Opens both gates the refusal could otherwise be attributed to.
       await setSharingPolicy(workspace, "all_scopes");
       await grantPublishToEveryone(workspace);
-      const space = await SpaceFactory.project(workspace);
+      const space = await SpaceFactory.project(
+        workspace,
+        auth.getNonNullableUser().id
+      );
       const { frame } = await createTestFrameFunction(auth, { space });
 
       const response = await postShare(workspace, frame.sId, {
@@ -314,7 +348,10 @@ describe("share scope endpoint", () => {
         role: "user",
       });
       await setSharingPolicy(workspace, "all_scopes");
-      const space = await SpaceFactory.project(workspace);
+      const space = await SpaceFactory.project(
+        workspace,
+        auth.getNonNullableUser().id
+      );
       const { frame } = await createTestFrameFunction(auth, { space });
 
       const response = await postShare(workspace, frame.sId, {
@@ -331,7 +368,10 @@ describe("share scope endpoint", () => {
         role: "user",
       });
       await setSharingPolicy(workspace, "all_scopes");
-      const space = await SpaceFactory.project(workspace);
+      const space = await SpaceFactory.project(
+        workspace,
+        auth.getNonNullableUser().id
+      );
       const { frame } = await createTestFrameFunction(auth, { space });
 
       const response = await postShare(workspace, frame.sId, {

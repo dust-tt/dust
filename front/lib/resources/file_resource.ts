@@ -3,6 +3,11 @@
 
 import path from "node:path";
 
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import {
   SCOPED_PREFIX_CONVERSATION,
@@ -39,6 +44,7 @@ import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { ExternalViewerSessionResource } from "@app/lib/resources/external_viewer_session_resource";
 import type { FileViewerSummary } from "@app/lib/resources/file_viewer_queries";
 import {
   deleteFileViews,
@@ -53,7 +59,6 @@ import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource"
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   AuthorizedFileAccessModel,
-  ExternalViewerSessionModel,
   FileModel,
   ShareableFileModel,
 } from "@app/lib/resources/storage/models/files";
@@ -568,10 +573,7 @@ export class FileResource extends BaseResource<FileModel> {
       where: { workspaceId: workspaceModelId },
     });
 
-    // Delete external viewer sessions before shareable files (FK constraint).
-    await ExternalViewerSessionModel.destroy({
-      where: { workspaceId: workspaceModelId },
-    });
+    await ExternalViewerSessionResource.deleteAllForWorkspace(auth);
 
     // Delete sharing grants before shareable files (FK constraint).
     await SharingGrantResource.deleteAllForWorkspace(auth);
@@ -1995,7 +1997,7 @@ export class FileResource extends BaseResource<FileModel> {
       throw new Error("Only Frame files can be shared");
     }
 
-    await this.ensureShareableFrame(auth);
+    await this.ensureShareableFrame(auth, { transaction });
 
     const user = auth.getNonNullableUser();
 
@@ -2018,6 +2020,27 @@ export class FileResource extends BaseResource<FileModel> {
       },
       { transaction }
     );
+
+    const emit = () => {
+      void emitAuditLogEvent({
+        auth,
+        action: "frame.share_scope_updated",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("frame", {
+            sId: this.sId,
+            name: this.fileName ?? this.sId,
+          }),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: { frame_name: this.fileName ?? this.sId, share_scope: scope },
+      });
+    };
+    if (transaction) {
+      transaction.afterCommit(emit);
+    } else {
+      emit();
+    }
   }
 
   async getShareInfo(): Promise<{

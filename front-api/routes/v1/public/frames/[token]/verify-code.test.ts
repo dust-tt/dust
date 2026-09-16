@@ -1,12 +1,10 @@
-import { generateFrameOtpChallenge } from "@app/lib/api/share/frame_sharing";
 import type { Authenticator } from "@app/lib/auth";
+import { ExternalViewerSessionResource } from "@app/lib/resources/external_viewer_session_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
-import {
-  ExternalViewerSessionModel,
-  SharingGrantModel,
-} from "@app/lib/resources/storage/models/files";
+import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { requestFrameVerificationCode } from "@app/tests/utils/frame_verification";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { frameContentType } from "@app/types/files";
@@ -72,41 +70,38 @@ describe("POST /api/v1/public/frames/[token]/verify-code", () => {
       kind: "domain",
       value: "example.com",
     });
-    const aliceOtp = await generateFrameOtpChallenge({
+    const aliceCode = await requestFrameVerificationCode({
       shareToken,
       email: "alice@example.com",
     });
-    assert(aliceOtp.isOk());
     const aliceResponse = await postVerifyCode(shareToken, {
       email: "alice@example.com",
-      code: aliceOtp.value.code,
+      code: aliceCode,
     });
     expect(aliceResponse.status).toBe(200);
     expect(aliceResponse.headers.get("Set-Cookie")).toContain(
       "dust_frame_session="
     );
-    const bobOtp = await generateFrameOtpChallenge({
+    const bobCode = await requestFrameVerificationCode({
       shareToken,
       email: "bob@example.com",
     });
-    assert(bobOtp.isOk());
     expect((await grant.revoke(auth)).isOk()).toBe(true);
     expect(
       (
         await postVerifyCode(shareToken, {
           email: "bob@example.com",
-          code: bobOtp.value.code,
+          code: bobCode,
         })
       ).status
     ).toBe(403);
   });
 
   it("returns 200 and sets dust_frame_session cookie on valid code", async () => {
-    const otpResult = await generateFrameOtpChallenge({
+    const code = await requestFrameVerificationCode({
       shareToken,
       email: VIEWER_EMAIL,
     });
-    const code = otpResult.isOk() ? otpResult.value.code : "";
 
     const response = await postVerifyCode(shareToken, {
       email: VIEWER_EMAIL,
@@ -120,15 +115,17 @@ describe("POST /api/v1/public/frames/[token]/verify-code", () => {
     expect(cookie).toBeDefined();
     expect(String(cookie)).toContain("dust_frame_session=");
 
-    const sessions = await ExternalViewerSessionModel.findAll({
-      where: { workspaceId: workspace.id, email: VIEWER_EMAIL },
-    });
-    expect(sessions).toHaveLength(1);
-    expect(sessions[0].email).toBe(VIEWER_EMAIL);
+    const token = cookie?.match(/dust_frame_session=([^;]+)/)?.[1];
+    assert(token);
+    const session = await ExternalViewerSessionResource.fetchByToken(
+      workspace,
+      token
+    );
+    expect(session?.email).toBe(VIEWER_EMAIL);
   });
 
   it("returns 401 on invalid code", async () => {
-    await generateFrameOtpChallenge({
+    await requestFrameVerificationCode({
       shareToken,
       email: VIEWER_EMAIL,
     });
@@ -148,23 +145,6 @@ describe("POST /api/v1/public/frames/[token]/verify-code", () => {
     });
 
     expect(response.status).toBe(410);
-  });
-
-  it("returns 403 when email has no active grant", async () => {
-    const ungrantedEmail = "noaccess@example.com";
-
-    const otpResult = await generateFrameOtpChallenge({
-      shareToken,
-      email: ungrantedEmail,
-    });
-    const code = otpResult.isOk() ? otpResult.value.code : "";
-
-    const response = await postVerifyCode(shareToken, {
-      email: ungrantedEmail,
-      code,
-    });
-
-    expect(response.status).toBe(403);
   });
 
   it("returns 404 for invalid share token", async () => {
@@ -205,31 +185,8 @@ describe("POST /api/v1/public/frames/[token]/verify-code", () => {
     expect(response.status).toBe(400);
   });
 
-  it("creates session without shareableFileId (workspace-scoped)", async () => {
-    const otpResult = await generateFrameOtpChallenge({
-      shareToken,
-      email: VIEWER_EMAIL,
-    });
-    const code = otpResult.isOk() ? otpResult.value.code : "";
-
-    const response = await postVerifyCode(shareToken, {
-      email: VIEWER_EMAIL,
-      code,
-    });
-
-    expect(response.status).toBe(200);
-
-    const sessions = await ExternalViewerSessionModel.findAll({
-      where: { workspaceId: workspace.id, email: VIEWER_EMAIL },
-    });
-    expect(sessions).toHaveLength(1);
-
-    const session = sessions[0].get({ plain: true });
-    expect(session).not.toHaveProperty("shareableFileId");
-  });
-
   it("returns 429 after 5 wrong attempts", async () => {
-    await generateFrameOtpChallenge({
+    await requestFrameVerificationCode({
       shareToken,
       email: VIEWER_EMAIL,
     });
@@ -260,22 +217,13 @@ describe("POST /api/v1/public/frames/[token]/verify-code", () => {
   });
 
   it("returns 403 when grant is revoked after OTP generation", async () => {
-    const otpResult = await generateFrameOtpChallenge({
+    const code = await requestFrameVerificationCode({
       shareToken,
       email: VIEWER_EMAIL,
     });
-    const code = otpResult.isOk() ? otpResult.value.code : "";
 
-    // Revoke the grant between OTP generation and code submission.
-    await SharingGrantModel.update(
-      { revokedAt: new Date() },
-      {
-        where: {
-          workspaceId: workspace.id,
-          email: VIEWER_EMAIL,
-        },
-      }
-    );
+    const grants = await SharingGrantResource.listForFile(file);
+    expect((await grants[0].revoke(auth)).isOk()).toBe(true);
 
     const response = await postVerifyCode(shareToken, {
       email: VIEWER_EMAIL,

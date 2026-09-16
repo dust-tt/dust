@@ -1,11 +1,5 @@
 /** @ignoreswagger */
-import {
-  generateFrameOtpChallenge,
-  sendFrameOtpEmail,
-} from "@app/lib/api/share/frame_sharing";
-import { FileResource } from "@app/lib/resources/file_resource";
-import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
-import { auditLog } from "@app/logger/logger";
+import { requestFrameEmailVerification } from "@app/lib/api/share/frame_verification";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -34,36 +28,11 @@ app.post(
   async (ctx): HandlerResult<VerifyEmailResponseBody> => {
     const { token } = ctx.req.valid("param");
     const { email: rawEmail } = ctx.req.valid("json");
-    const email = rawEmail.toLowerCase().trim();
-
-    const result = await FileResource.fetchByShareToken(token);
-    if (result.isErr()) {
-      // Return 200 to prevent enumeration.
-      return ctx.json({ success: true });
-    }
-
-    const { file, shareScope } = result.value;
-
-    // Only email-based scopes require OTP — return 200 to prevent scope enumeration.
-    if (shareScope !== "emails_only" && shareScope !== "workspace_and_emails") {
-      return ctx.json({ success: true });
-    }
-
-    // Check if grant exists. If not, return 200 to prevent enumeration but don't send email.
-    const activeGrant = await SharingGrantResource.findForEmail(file, email);
-    if (!activeGrant) {
-      auditLog(
-        { author: "no-author", email, shareToken: token },
-        "Frame OTP requested for email without active grant"
-      );
-      return ctx.json({ success: true });
-    }
-
-    const otpResult = await generateFrameOtpChallenge({
+    const result = await requestFrameEmailVerification({
       shareToken: token,
-      email,
+      email: rawEmail,
     });
-    if (otpResult.isErr()) {
+    if (result.isErr()) {
       return apiError(ctx, {
         status_code: 429,
         api_error: {
@@ -72,12 +41,6 @@ app.post(
         },
       });
     }
-
-    await sendFrameOtpEmail({
-      to: email,
-      code: otpResult.value.code,
-      sharedByName: activeGrant.grantingUser?.fullName() ?? "Someone",
-    });
 
     return ctx.json({ success: true });
   }

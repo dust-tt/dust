@@ -70,6 +70,10 @@ export type SandboxFrameCtx = SandboxCtx & {
   };
 };
 
+export type FrameCtx = WorkspaceAwareCtx & {
+  Variables: { frame: FileResource };
+};
+
 export type SpaceCtx = WorkspaceAwareCtx & {
   Variables: {
     space: SpaceResource;
