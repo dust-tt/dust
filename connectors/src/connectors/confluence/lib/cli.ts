@@ -341,14 +341,9 @@ export const confluence = async ({
       const spaceKey = spaceKeyMatch[1];
 
       // List all spaces in the connector to find matching space
-      const spacesResult = await listConfluenceSpaces(connector);
-      if (spacesResult.isErr()) {
-        throw new Error(`Failed to list spaces: ${spacesResult.error.message}`);
-      }
+      const spaces = await listConfluenceSpaces(connector);
 
-      const matchingSpace = spacesResult.value.find(
-        (space) => space.key === spaceKey
-      );
+      const matchingSpace = spaces.find((space) => space.key === spaceKey);
       if (!matchingSpace) {
         return {
           found: false,

@@ -29,7 +29,7 @@ async function fetchConfluenceConnector(connectorId: ModelId) {
   return connector;
 }
 
-async function getConfluenceAccessTokenWithThrow(connectionId: string) {
+export async function getConfluenceAccessTokenWithThrow(connectionId: string) {
   const token = await getOAuthConnectionAccessTokenWithThrow({
     logger,
     provider: "confluence",
