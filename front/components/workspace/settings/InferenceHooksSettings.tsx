@@ -9,10 +9,12 @@ import {
 import type {
   InferenceHookEnforcementMode,
   InferenceHookFailMode,
+  InferenceHookProviderId,
 } from "@app/types/inference_hook";
 import {
   INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT,
   INFERENCE_HOOK_FAIL_MODE_DEFAULT,
+  INFERENCE_HOOK_PROVIDER_IDS,
   INFERENCE_HOOK_PROVIDERS,
   INFERENCE_HOOK_TIMEOUT_MS_DEFAULT,
   INFERENCE_HOOK_TIMEOUT_MS_MAX,
@@ -38,32 +40,66 @@ interface InferenceHooksSettingsProps {
   owner: WorkspaceType;
 }
 
-const PROVIDER = INFERENCE_HOOK_PROVIDERS.datadog_ai_guard;
-
 export function InferenceHooksGovernanceSection({
   owner,
 }: InferenceHooksSettingsProps) {
   const { isAdmin } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [sheetProviderId, setSheetProviderId] =
+    useState<InferenceHookProviderId>("generic_http");
+  const { inferenceHook } = useInferenceHook(owner, {
+    disabled: !hasFeature("inference_hooks") || !isAdmin,
+  });
 
   if (!hasFeature("inference_hooks") || !isAdmin) {
     return null;
   }
 
+  const openSheet = (providerId: InferenceHookProviderId) => {
+    setSheetProviderId(providerId);
+    setIsSheetOpen(true);
+  };
+
+  const genericMeta = INFERENCE_HOOK_PROVIDERS.generic_http;
+  const datadogMeta = INFERENCE_HOOK_PROVIDERS.datadog_ai_guard;
+  const isGenericConfigured = inferenceHook?.providerId === "generic_http";
+  const isDatadogConfigured = inferenceHook?.providerId === "datadog_ai_guard";
+
   return (
     <>
-      <GovernanceSettingSection label="Inference security" icon={Lock01}>
+      <GovernanceSettingSection label="Inference Hooks" icon={Lock01}>
         <GovernanceSettingRowLayout
-          label={PROVIDER.displayName}
-          description={PROVIDER.description}
+          label={genericMeta.displayName}
+          description={
+            isGenericConfigured
+              ? `Configured. ${genericMeta.description}`
+              : genericMeta.description
+          }
           action={
             <Button
-              label="Configure"
+              label={isGenericConfigured ? "Manage" : "Set up"}
               size="xs"
               variant="outline"
               icon={Settings01}
-              onClick={() => setIsSheetOpen(true)}
+              onClick={() => openSheet("generic_http")}
+            />
+          }
+        />
+        <GovernanceSettingRowLayout
+          label={datadogMeta.displayName}
+          description={
+            isDatadogConfigured
+              ? `Configured. ${datadogMeta.description}`
+              : datadogMeta.description
+          }
+          action={
+            <Button
+              label={isDatadogConfigured ? "Manage" : "Set up"}
+              size="xs"
+              variant="outline"
+              icon={Settings01}
+              onClick={() => openSheet("datadog_ai_guard")}
             />
           }
         />
@@ -72,6 +108,7 @@ export function InferenceHooksGovernanceSection({
         owner={owner}
         isOpen={isSheetOpen}
         onOpenChange={setIsSheetOpen}
+        initialProviderId={sheetProviderId}
       />
     </>
   );
@@ -81,10 +118,12 @@ function InferenceHooksSettingsSheet({
   owner,
   isOpen,
   onOpenChange,
+  initialProviderId,
 }: {
   owner: WorkspaceType;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  initialProviderId: InferenceHookProviderId;
 }) {
   const { inferenceHook, isInferenceHookLoading } = useInferenceHook(owner, {
     disabled: !isOpen,
@@ -92,6 +131,8 @@ function InferenceHooksSettingsSheet({
   const { upsertInferenceHook } = useUpsertInferenceHook({ owner });
   const { deleteInferenceHook } = useDeleteInferenceHook({ owner });
 
+  const [providerId, setProviderId] =
+    useState<InferenceHookProviderId>(initialProviderId);
   const [endpoint, setEndpoint] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [appKey, setAppKey] = useState("");
@@ -110,27 +151,41 @@ function InferenceHooksSettingsSheet({
 
   useEffect(() => {
     if (isOpen && !wasOpen) {
-      setEndpoint(inferenceHook?.endpoint ?? "");
+      const editingExisting = inferenceHook?.providerId === initialProviderId;
+      setProviderId(initialProviderId);
+      setEndpoint(editingExisting ? (inferenceHook?.endpoint ?? "") : "");
       setApiKey("");
       setAppKey("");
       setEnforcementMode(
-        inferenceHook?.enforcementMode ??
-          INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT
+        editingExisting
+          ? (inferenceHook?.enforcementMode ??
+              INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT)
+          : INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT
       );
-      setFailMode(inferenceHook?.failMode ?? INFERENCE_HOOK_FAIL_MODE_DEFAULT);
+      setFailMode(
+        editingExisting
+          ? (inferenceHook?.failMode ?? INFERENCE_HOOK_FAIL_MODE_DEFAULT)
+          : INFERENCE_HOOK_FAIL_MODE_DEFAULT
+      );
       setTimeoutMs(
-        String(inferenceHook?.timeoutMs ?? INFERENCE_HOOK_TIMEOUT_MS_DEFAULT)
+        String(
+          editingExisting
+            ? (inferenceHook?.timeoutMs ?? INFERENCE_HOOK_TIMEOUT_MS_DEFAULT)
+            : INFERENCE_HOOK_TIMEOUT_MS_DEFAULT
+        )
       );
     }
     setWasOpen(isOpen);
-  }, [isOpen, wasOpen, inferenceHook]);
+  }, [isOpen, wasOpen, inferenceHook, initialProviderId]);
+
+  const providerMeta = INFERENCE_HOOK_PROVIDERS[providerId];
 
   const endpointValidation = useMemo(() => {
     if (!endpoint.trim()) {
       return null;
     }
-    return parseInferenceHookEndpoint(endpoint);
-  }, [endpoint]);
+    return parseInferenceHookEndpoint(endpoint, providerId);
+  }, [endpoint, providerId]);
 
   const timeoutValidation = useMemo(
     () => parseInferenceHookTimeoutMs(timeoutMs),
@@ -140,18 +195,28 @@ function InferenceHooksSettingsSheet({
   const endpointMessage =
     endpointValidation && !endpointValidation.ok
       ? endpointValidation.message
-      : "HTTPS URL ending with /api/v2/ai-guard/evaluate for your Datadog site.";
+      : providerId === "datadog_ai_guard"
+        ? "HTTPS URL ending with /api/v2/ai-guard/evaluate for your Datadog site."
+        : "HTTPS URL for your evaluate webhook (POST, returns ALLOW/DENY/ABORT).";
 
   const timeoutMessage = timeoutValidation.ok
     ? `At most ${INFERENCE_HOOK_TIMEOUT_MS_MAX}ms. Timed-out calls follow fail mode.`
     : timeoutValidation.message;
 
-  const hasKeys =
-    (!!apiKey.trim() && !!appKey.trim()) || !!inferenceHook?.hasCredentials;
+  const keysReady =
+    !!apiKey.trim() ||
+    (!!inferenceHook?.hasCredentials &&
+      inferenceHook.providerId === providerId);
+  const appKeyReady =
+    !providerMeta.requiresAppKey ||
+    !!appKey.trim() ||
+    (!!inferenceHook?.hasCredentials &&
+      inferenceHook.providerId === providerId);
 
   const canSave =
     !!endpoint.trim() &&
-    hasKeys &&
+    keysReady &&
+    appKeyReady &&
     endpointValidation?.ok === true &&
     timeoutValidation.ok &&
     !isSaving;
@@ -167,7 +232,7 @@ function InferenceHooksSettingsSheet({
     }
     setIsSaving(true);
     const ok = await upsertInferenceHook({
-      providerId: "datadog_ai_guard",
+      providerId,
       endpoint: endpointValidation.endpoint,
       apiKey: apiKey.trim() || undefined,
       appKey: appKey.trim() || undefined,
@@ -194,20 +259,46 @@ function InferenceHooksSettingsSheet({
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent size="lg">
         <SheetHeader>
-          <SheetTitle>{PROVIDER.displayName}</SheetTitle>
+          <SheetTitle>Inference Hooks</SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <div className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Dust calls Datadog AI Guard on each agent model step (input and
-              output). Configure your site evaluate endpoint and keys with the
-              ai_guard_evaluate scope. APM sidecars are not used; only the HTTP
-              evaluate API runs from Dust workers.
+              Dust calls your evaluate endpoint on each agent model step (input
+              and output). Pick a generic HTTPS webhook or Datadog AI Guard. APM
+              sidecars are not used.
             </p>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium">Provider</span>
+              <select
+                className="rounded-md border border-border bg-background px-2 py-2"
+                value={providerId}
+                disabled={isInferenceHookLoading || isSaving}
+                onChange={(e) =>
+                  setProviderId(e.target.value as InferenceHookProviderId)
+                }
+              >
+                {INFERENCE_HOOK_PROVIDER_IDS.map((id) => (
+                  <option key={id} value={id}>
+                    {INFERENCE_HOOK_PROVIDERS[id].displayName}
+                    {INFERENCE_HOOK_PROVIDERS[id].cobranded
+                      ? " (co-branded)"
+                      : ""}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-muted-foreground">
+                {providerMeta.description}
+              </span>
+            </label>
             <Input
               label="Evaluate endpoint"
               name="endpoint"
-              placeholder="https://api.datadoghq.com/api/v2/ai-guard/evaluate"
+              placeholder={
+                providerId === "datadog_ai_guard"
+                  ? "https://api.datadoghq.com/api/v2/ai-guard/evaluate"
+                  : "https://hooks.example.com/v1/evaluate"
+              }
               value={endpoint}
               disabled={isInferenceHookLoading || isSaving}
               message={endpointMessage}
@@ -221,27 +312,33 @@ function InferenceHooksSettingsSheet({
               name="apiKey"
               type="password"
               placeholder={
-                inferenceHook?.hasCredentials
+                inferenceHook?.hasCredentials &&
+                inferenceHook.providerId === providerId
                   ? "Enter a new API key to rotate"
-                  : "Datadog API key"
+                  : providerId === "datadog_ai_guard"
+                    ? "Datadog API key"
+                    : "Bearer token / API key"
               }
               value={apiKey}
               disabled={isInferenceHookLoading || isSaving}
               onChange={(e) => setApiKey(e.target.value)}
             />
-            <Input
-              label="Application key"
-              name="appKey"
-              type="password"
-              placeholder={
-                inferenceHook?.hasCredentials
-                  ? "Enter a new App key to rotate"
-                  : "Datadog Application key"
-              }
-              value={appKey}
-              disabled={isInferenceHookLoading || isSaving}
-              onChange={(e) => setAppKey(e.target.value)}
-            />
+            {providerMeta.requiresAppKey && (
+              <Input
+                label="Application key"
+                name="appKey"
+                type="password"
+                placeholder={
+                  inferenceHook?.hasCredentials &&
+                  inferenceHook.providerId === providerId
+                    ? "Enter a new App key to rotate"
+                    : "Datadog Application key"
+                }
+                value={appKey}
+                disabled={isInferenceHookLoading || isSaving}
+                onChange={(e) => setAppKey(e.target.value)}
+              />
+            )}
             <label className="flex flex-col gap-1 text-sm">
               <span className="font-medium">Enforcement mode</span>
               <select

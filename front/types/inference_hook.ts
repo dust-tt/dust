@@ -4,8 +4,14 @@ import { z } from "zod";
 /**
  * Closed provider registry. Add providers here; do not branch on provider id
  * at call sites. Lookup goes through INFERENCE_HOOK_PROVIDERS.
+ *
+ * `generic_http` is the unbranded webhook. `datadog_ai_guard` is the same
+ * enforcement loop with Datadog AI Guard request/response and co-branding.
  */
-export const INFERENCE_HOOK_PROVIDER_IDS = ["datadog_ai_guard"] as const;
+export const INFERENCE_HOOK_PROVIDER_IDS = [
+  "generic_http",
+  "datadog_ai_guard",
+] as const;
 export type InferenceHookProviderId =
   (typeof INFERENCE_HOOK_PROVIDER_IDS)[number];
 
@@ -23,17 +29,30 @@ export type InferenceHookProviderMeta = {
   id: InferenceHookProviderId;
   displayName: string;
   description: string;
+  /** Shown in Governance; Datadog is co-branded under Inference Hooks. */
+  cobranded: boolean;
+  requiresAppKey: boolean;
 };
 
 export const INFERENCE_HOOK_PROVIDERS: Record<
   InferenceHookProviderId,
   InferenceHookProviderMeta
 > = {
+  generic_http: {
+    id: "generic_http",
+    displayName: "Generic HTTP",
+    description:
+      "Call your own HTTPS evaluate endpoint with ALLOW / DENY / ABORT rulings.",
+    cobranded: false,
+    requiresAppKey: false,
+  },
   datadog_ai_guard: {
     id: "datadog_ai_guard",
     displayName: "Datadog AI Guard",
     description:
       "Evaluate agent inputs and outputs for prompt attacks via Datadog AI Guard.",
+    cobranded: true,
+    requiresAppKey: true,
   },
 };
 
@@ -68,7 +87,7 @@ export type InferenceHookEnforcementMode =
 export const InferenceHookFailModes = ["open", "closed"] as const;
 export type InferenceHookFailMode = (typeof InferenceHookFailModes)[number];
 
-/** Hard cap for Datadog evaluate wait. Config cannot exceed this. */
+/** Hard cap for evaluate wait. Config cannot exceed this. */
 export const INFERENCE_HOOK_TIMEOUT_MS_MAX = 1000;
 export const INFERENCE_HOOK_TIMEOUT_MS_DEFAULT = 1000;
 export const INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT: InferenceHookEnforcementMode =
@@ -110,7 +129,7 @@ export function applyHookPolicy({
 
 export const InferenceHookCredentialsSchema = z.object({
   apiKey: z.string().min(1),
-  appKey: z.string().min(1),
+  appKey: z.string().min(1).optional(),
 });
 export type InferenceHookCredentials = z.infer<
   typeof InferenceHookCredentialsSchema
@@ -119,7 +138,8 @@ export type InferenceHookCredentials = z.infer<
 const DATADOG_EVALUATE_PATH = "/api/v2/ai-guard/evaluate";
 
 export function parseInferenceHookEndpoint(
-  raw: string
+  raw: string,
+  providerId: InferenceHookProviderId
 ): { ok: true; endpoint: string } | { ok: false; message: string } {
   let url: URL;
   try {
@@ -130,17 +150,34 @@ export function parseInferenceHookEndpoint(
   if (url.protocol !== "https:") {
     return { ok: false, message: "Endpoint must use HTTPS." };
   }
-  if (url.pathname !== DATADOG_EVALUATE_PATH) {
-    return {
-      ok: false,
-      message: `Endpoint path must be ${DATADOG_EVALUATE_PATH}.`,
-    };
+
+  switch (providerId) {
+    case "datadog_ai_guard": {
+      if (url.pathname !== DATADOG_EVALUATE_PATH) {
+        return {
+          ok: false,
+          message: `Endpoint path must be ${DATADOG_EVALUATE_PATH}.`,
+        };
+      }
+      return {
+        ok: true,
+        endpoint: `${url.origin}${DATADOG_EVALUATE_PATH}`,
+      };
+    }
+    case "generic_http": {
+      if (!url.pathname || url.pathname === "/") {
+        return {
+          ok: false,
+          message: "Generic endpoint must include a path.",
+        };
+      }
+      // Keep path/query; drop hash.
+      url.hash = "";
+      return { ok: true, endpoint: url.toString() };
+    }
+    default:
+      assertNever(providerId);
   }
-  // Strip hash/search; keep origin + required path.
-  return {
-    ok: true,
-    endpoint: `${url.origin}${DATADOG_EVALUATE_PATH}`,
-  };
 }
 
 export function parseInferenceHookTimeoutMs(
@@ -161,6 +198,36 @@ export function parseInferenceHookTimeoutMs(
     };
   }
   return { ok: true, timeoutMs: value };
+}
+
+export function validateInferenceHookCredentials({
+  providerId,
+  apiKey,
+  appKey,
+}: {
+  providerId: InferenceHookProviderId;
+  apiKey: string | undefined;
+  appKey: string | undefined;
+}):
+  | { ok: true; credentials: InferenceHookCredentials }
+  | { ok: false; message: string } {
+  if (!apiKey || apiKey.trim().length === 0) {
+    return { ok: false, message: "API key is required." };
+  }
+  const meta = INFERENCE_HOOK_PROVIDERS[providerId];
+  if (meta.requiresAppKey && (!appKey || appKey.trim().length === 0)) {
+    return {
+      ok: false,
+      message: "Application key is required for Datadog AI Guard.",
+    };
+  }
+  return {
+    ok: true,
+    credentials: {
+      apiKey: apiKey.trim(),
+      ...(appKey && appKey.trim().length > 0 ? { appKey: appKey.trim() } : {}),
+    },
+  };
 }
 
 export const UpsertInferenceHookBodySchema = z.object({

@@ -20,6 +20,7 @@ import {
   isInferenceHookProviderId,
   parseInferenceHookEndpoint,
   parseInferenceHookTimeoutMs,
+  validateInferenceHookCredentials,
 } from "@app/types/inference_hook";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -98,7 +99,10 @@ export class InferenceHookResource extends BaseResource<InferenceHookModel> {
   ): Promise<Result<InferenceHookResource, Error>> {
     const workspace = auth.getNonNullableWorkspace();
 
-    const endpointParsed = parseInferenceHookEndpoint(body.endpoint);
+    const endpointParsed = parseInferenceHookEndpoint(
+      body.endpoint,
+      body.providerId
+    );
     if (!endpointParsed.ok) {
       return new Err(new Error(endpointParsed.message));
     }
@@ -115,23 +119,24 @@ export class InferenceHookResource extends BaseResource<InferenceHookModel> {
       });
 
       let encryptedCredentials: string;
-      if (body.apiKey && body.appKey) {
-        const credentialsParsed = InferenceHookCredentialsSchema.safeParse({
+      if (body.apiKey) {
+        const credentialsParsed = validateInferenceHookCredentials({
+          providerId: body.providerId,
           apiKey: body.apiKey,
           appKey: body.appKey,
         });
-        if (!credentialsParsed.success) {
-          return new Err(new Error("API key and App key are required."));
+        if (!credentialsParsed.ok) {
+          return new Err(new Error(credentialsParsed.message));
         }
         encryptedCredentials = encrypt({
-          text: JSON.stringify(credentialsParsed.data),
+          text: JSON.stringify(credentialsParsed.credentials),
           key: workspace.sId,
           useCase: "developer_secret",
         });
       } else if (existing) {
         encryptedCredentials = existing.encryptedCredentials;
       } else {
-        return new Err(new Error("API key and App key are required."));
+        return new Err(new Error("API key is required."));
       }
 
       const policyFields = {

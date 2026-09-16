@@ -82,9 +82,10 @@ describe("applyHookPolicy", () => {
 });
 
 describe("parseInferenceHookEndpoint", () => {
-  it("accepts https evaluate URLs and normalizes them", () => {
+  it("accepts Datadog evaluate URLs and normalizes them", () => {
     const parsed = parseInferenceHookEndpoint(
-      "https://api.datadoghq.eu/api/v2/ai-guard/evaluate?x=1"
+      "https://api.datadoghq.eu/api/v2/ai-guard/evaluate?x=1",
+      "datadog_ai_guard"
     );
     expect(parsed).toEqual({
       ok: true,
@@ -92,18 +93,40 @@ describe("parseInferenceHookEndpoint", () => {
     });
   });
 
-  it("rejects non-https and wrong paths", () => {
+  it("rejects non-https and wrong Datadog paths", () => {
     expect(
       parseInferenceHookEndpoint(
-        "http://api.datadoghq.com/api/v2/ai-guard/evaluate"
+        "http://api.datadoghq.com/api/v2/ai-guard/evaluate",
+        "datadog_ai_guard"
       ).ok
     ).toBe(false);
     expect(
       parseInferenceHookEndpoint(
-        "https://api.datadoghq.com/api/v1/ai-guard/evaluate"
+        "https://api.datadoghq.com/api/v1/ai-guard/evaluate",
+        "datadog_ai_guard"
       ).ok
     ).toBe(false);
-    expect(parseInferenceHookEndpoint("not-a-url").ok).toBe(false);
+    expect(parseInferenceHookEndpoint("not-a-url", "datadog_ai_guard").ok).toBe(
+      false
+    );
+  });
+
+  it("accepts any https path for generic_http", () => {
+    const parsed = parseInferenceHookEndpoint(
+      "https://hooks.example.com/v1/evaluate?x=1",
+      "generic_http"
+    );
+    expect(parsed).toEqual({
+      ok: true,
+      endpoint: "https://hooks.example.com/v1/evaluate?x=1",
+    });
+  });
+
+  it("rejects root-only generic endpoints", () => {
+    expect(
+      parseInferenceHookEndpoint("https://hooks.example.com/", "generic_http")
+        .ok
+    ).toBe(false);
   });
 });
 

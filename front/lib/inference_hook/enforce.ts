@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { evaluateDatadogAiGuard } from "@app/lib/inference_hook/providers/datadog_ai_guard";
+import { evaluateGenericHttpHook } from "@app/lib/inference_hook/providers/generic_http";
 import { buildInferenceHookTranscript } from "@app/lib/inference_hook/transcript";
 import { InferenceHookResource } from "@app/lib/resources/inference_hook_resource";
 import logger from "@app/logger/logger";
@@ -14,6 +15,7 @@ import {
   enforcementUserFacing,
   toEnforcement,
 } from "@app/types/inference_hook";
+import type { Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export async function enforceInferenceHooks(
@@ -71,28 +73,10 @@ export async function enforceInferenceHooks(
     return { ruling: "proceed" };
   }
 
+  let result: Result<{ action: string; reason: string | null }, Error>;
   switch (providerId) {
     case "datadog_ai_guard": {
-      const result = await evaluateDatadogAiGuard({
-        endpoint: hook.endpoint,
-        apiKey: credentials.apiKey,
-        appKey: credentials.appKey,
-        messages,
-        timeoutMs: policy.timeoutMs,
-      });
-
-      if (result.isErr()) {
-        logger.warn(
-          {
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            phase,
-            providerId,
-            error: result.error.message,
-            failMode: policy.failMode,
-            timeoutMs: policy.timeoutMs,
-          },
-          "Inference hook evaluate failed"
-        );
+      if (!credentials.appKey) {
         return enforcementUserFacing(
           applyHookPolicy({
             providerRuling: "block",
@@ -101,31 +85,70 @@ export async function enforceInferenceHooks(
           })
         );
       }
-
-      const providerRuling = toEnforcement(result.value.action);
-      const ruling = applyHookPolicy({
-        providerRuling,
-        policy,
-        isFailure: false,
+      result = await evaluateDatadogAiGuard({
+        endpoint: hook.endpoint,
+        apiKey: credentials.apiKey,
+        appKey: credentials.appKey,
+        messages,
+        timeoutMs: policy.timeoutMs,
       });
-      logger.info(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          phase,
-          providerId,
-          action: result.value.action,
-          // Reason is audit-only; never forwarded to users/LLM.
-          reason: result.value.reason,
-          providerRuling,
-          ruling,
-          enforcementMode: policy.enforcementMode,
-          failMode: policy.failMode,
-        },
-        "Inference hook evaluation completed"
-      );
-      return enforcementUserFacing(ruling);
+      break;
+    }
+    case "generic_http": {
+      result = await evaluateGenericHttpHook({
+        endpoint: hook.endpoint,
+        apiKey: credentials.apiKey,
+        messages,
+        phase,
+        timeoutMs: policy.timeoutMs,
+      });
+      break;
     }
     default:
       assertNever(providerId);
   }
+
+  if (result.isErr()) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        phase,
+        providerId,
+        error: result.error.message,
+        failMode: policy.failMode,
+        timeoutMs: policy.timeoutMs,
+      },
+      "Inference hook evaluate failed"
+    );
+    return enforcementUserFacing(
+      applyHookPolicy({
+        providerRuling: "block",
+        policy,
+        isFailure: true,
+      })
+    );
+  }
+
+  const providerRuling = toEnforcement(result.value.action);
+  const ruling = applyHookPolicy({
+    providerRuling,
+    policy,
+    isFailure: false,
+  });
+  logger.info(
+    {
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      phase,
+      providerId,
+      action: result.value.action,
+      // Reason is audit-only; never forwarded to users/LLM.
+      reason: result.value.reason,
+      providerRuling,
+      ruling,
+      enforcementMode: policy.enforcementMode,
+      failMode: policy.failMode,
+    },
+    "Inference hook evaluation completed"
+  );
+  return enforcementUserFacing(ruling);
 }
