@@ -72,7 +72,7 @@ export function ShareFramePopover({
         sideOffset={8}
         collisionPadding={8}
         preventAutoFocusOnClose={false}
-        className="flex w-96 max-w-[calc(100vw-1rem)] max-h-[min(42rem,var(--radix-popover-content-available-height))] flex-col overflow-hidden p-0"
+        className="flex w-96 max-w-[calc(100vw-1rem)] max-h-(--radix-popover-content-available-height) flex-col overflow-hidden p-0"
       >
         <ShareFramePopoverContent
           fileId={fileId}
