@@ -141,10 +141,6 @@ function StaticKnowledgeChip({
   );
 }
 
-// Shared shell for the concrete node views: owns the empty-node cleanup and the
-// NodeViewWrapper, and hands the resolved item + remove handler to `children`.
-// The static vs interactive choice is made at registration time via node
-// options (see KnowledgeNodeWithView), not by sniffing the ambient context.
 function KnowledgeNodeViewShell({
   deleteNode,
   editor,
@@ -183,8 +179,6 @@ function KnowledgeNodeViewShell({
   );
 }
 
-// Skill/agent builder view: always mounted inside a SpacesProvider, so it reads
-// the (throwing) context directly and can rehydrate base items into full chips.
 export const InteractiveKnowledgeNodeView: React.FC<NodeViewProps> = (
   props
 ) => {

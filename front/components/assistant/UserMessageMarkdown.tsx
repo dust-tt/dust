@@ -174,8 +174,6 @@ export const UserMessageMarkdown = ({
           const dsvAttribute = knowledge.dataSourceViewId
             ? ` dsv=${knowledge.dataSourceViewId}`
             : "";
-          // Quoted: URLs contain characters an unquoted directive attribute
-          // cannot hold.
           const urlAttribute = knowledge.sourceUrl
             ? ` url="${knowledge.sourceUrl}"`
             : "";

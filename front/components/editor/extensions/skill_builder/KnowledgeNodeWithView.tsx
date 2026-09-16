@@ -27,18 +27,17 @@ const KnowledgeNodeReadOnlyView: React.FC<NodeViewProps> = ({ node }) => {
   );
 };
 
-export const KnowledgeNodeWithView = KnowledgeNode.extend({
+export const SkillBuilderKnowledgeNodeWithView = KnowledgeNode.extend({
   addNodeView() {
     if (this.options.readOnly) {
       return ReactNodeViewRenderer(KnowledgeNodeReadOnlyView);
     }
-    // The interactive view (skill/agent builder) fetches through the
-    // SpacesContext; the default static view (composer) renders items as-is.
-    // See KnowledgeNode for the `hydratesFromSpaces` option.
-    return ReactNodeViewRenderer(
-      this.options.hydratesFromSpaces
-        ? InteractiveKnowledgeNodeView
-        : StaticKnowledgeNodeView
-    );
+    return ReactNodeViewRenderer(InteractiveKnowledgeNodeView);
+  },
+});
+
+export const ComposerKnowledgeNodeWithView = KnowledgeNode.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(StaticKnowledgeNodeView);
   },
 });

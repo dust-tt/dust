@@ -155,9 +155,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isSubmittingThumb,
     };
 
-    // Knowledge nodes referenced inline in the message body already render as
-    // chips there, so their content fragments are not repeated as citation
-    // cards.
     const visibleContentFragments = useMemo(() => {
       if (!isUserMessage(data)) {
         return [];
@@ -173,6 +170,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         return data.contentFragments;
       }
 
+      // no need to show the content fragment card if it's inlined 
       return data.contentFragments.filter(
         (fragment) =>
           !(

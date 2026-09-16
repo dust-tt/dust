@@ -27,17 +27,11 @@ export const KNOWLEDGE_NODE_TYPE = "knowledgeNode";
 
 interface KnowledgeNodeOptions {
   readOnly: boolean;
-  // When true, the node view rehydrates base items into full nodes by fetching
-  // through the SpacesContext (skill/agent builder). When false (the composer
-  // default), the view renders items as-is and never touches the spaces
-  // context. See KnowledgeNodeWithView for how this selects the concrete node
-  // view.
-  hydratesFromSpaces: boolean;
 }
 
 export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
   addOptions() {
-    return { readOnly: false, hydratesFromSpaces: false };
+    return { readOnly: false };
   },
   name: KNOWLEDGE_NODE_TYPE,
 
