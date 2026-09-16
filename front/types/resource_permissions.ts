@@ -56,3 +56,12 @@ export function verbsFromRoleGrants(
     .filter((grant) => grant.role === role)
     .flatMap((grant) => grant.permissions);
 }
+
+export function isWithAccessControl(
+  resource: object
+): resource is WithAccessControl {
+  return (
+    typeof (resource as Partial<WithAccessControl>).getAllowedVerbs ===
+    "function"
+  );
+}
