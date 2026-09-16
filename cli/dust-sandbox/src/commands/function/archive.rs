@@ -26,17 +26,6 @@ const MAX_ARCHIVE_BYTES: u64 = 32 * 1024 * 1024;
 const MAX_ENTRIES: usize = 256;
 const MAX_UNCOMPRESSED_BYTES: u64 = 64 * 1024 * 1024;
 
-/// Resolve `name` from a locally extracted `functions.tar` when one sits next
-/// to `$DUST_FUNCTIONS_DIR`. Returns `None` when the archive is missing or
-/// materialization fails — callers must fall back to gcsfuse resolve.
-pub fn try_resolve_from_functions_archive(name: &str, functions_dir: &Path) -> Option<PathBuf> {
-    if !is_valid_name(name) {
-        return None;
-    }
-    let extract_dir = ensure_functions_archive_extracted(functions_dir)?;
-    resolve_in_dir(name, &extract_dir)
-}
-
 /// Copy + extract the publication's `functions.tar` into the local warm
 /// archives dir and eagerly populate the per-sha bundle cache for every
 /// extracted slug. Idempotent when an extract already exists. Used before
@@ -239,6 +228,7 @@ fn validate_archive_entry_path(path: &Path) -> Result<String> {
     }
 }
 
+#[cfg(test)]
 fn resolve_in_dir(name: &str, dir: &Path) -> Option<PathBuf> {
     let entries = std::fs::read_dir(dir).ok()?;
     let mut matches: Vec<PathBuf> = entries

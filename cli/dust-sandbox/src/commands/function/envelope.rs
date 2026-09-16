@@ -49,8 +49,6 @@ pub enum ImportKind {
 pub enum ResolveKind {
     /// Local `~/.dust-fn/bundles/<sha>.js` hit (skips gcsfuse).
     Cache,
-    /// Local extract of publication `functions.tar` (one gcsfuse object read).
-    Archive,
     /// `$DUST_FUNCTIONS_DIR` readdir + path (typically gcsfuse-backed).
     Gcsfuse,
 }

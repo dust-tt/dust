@@ -72,10 +72,8 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
     }
     let warm_attempt_ms = warm_started.elapsed().as_millis() as u64;
 
-    // Cold path. Prefer the cheapest local materialization available:
-    // 1. per-bundle sha cache (usually filled by the pre-warm archive step)
-    // 2. publication `functions.tar` extract
-    // 3. legacy uncached gcsfuse readdir of DUST_FUNCTIONS_DIR
+    // Cold path: sha cache (filled by the pre-warm archive step) or legacy
+    // gcsfuse readdir of DUST_FUNCTIONS_DIR.
     let stamped_sha256 = stamped_bundle_sha256(&input);
     let resolve_started = Instant::now();
     let (resolved, resolve_kind) = match stamped_sha256
@@ -84,13 +82,7 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
         .and_then(warm::cached_bundle_path)
     {
         Some(cached) => (Ok(cached), ResolveKind::Cache),
-        None => match functions_dir()
-            .ok()
-            .and_then(|dir| archive::try_resolve_from_functions_archive(name, &dir))
-        {
-            Some(from_archive) => (Ok(from_archive), ResolveKind::Archive),
-            None => (resolve_existing(name), ResolveKind::Gcsfuse),
-        },
+        None => (resolve_existing(name), ResolveKind::Gcsfuse),
     };
     let resolve_ms = resolve_started.elapsed().as_millis() as u64;
 
