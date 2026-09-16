@@ -32,24 +32,27 @@ import { useState } from "react";
 // Skill details rendering shared by the surfaces that display a skill: the
 // `SkillDetailsSheet` and the conversation skill side panel.
 
-// Why a skill could not be shown. Only "unavailable" is worth retrying.
+// Why a skill could not be shown.
 export type SkillLoadErrorReason = "not_found" | "editors_only" | "unavailable";
 
-const SKILL_LOAD_ERROR_COPY: Record<
+const SKILL_LOAD_ERRORS: Record<
   SkillLoadErrorReason,
-  { title: string; body: string }
+  { title: string; body: string; canRetry: boolean }
 > = {
   not_found: {
     title: "Skill not found",
     body: "This skill may have been deleted, or the link may be incorrect.",
+    canRetry: false,
   },
   editors_only: {
     title: "Skill not available",
     body: "This skill is currently visible only to its editors. An editor can publish it or share it with you.",
+    canRetry: false,
   },
   unavailable: {
     title: "Unable to load skill",
     body: "The skill could not be loaded. Please try again.",
+    canRetry: true,
   },
 };
 
@@ -62,7 +65,7 @@ export function SkillLoadError({
   reason = "unavailable",
   onRetry,
 }: SkillLoadErrorProps) {
-  const { title, body } = SKILL_LOAD_ERROR_COPY[reason];
+  const { title, body, canRetry } = SKILL_LOAD_ERRORS[reason];
   return (
     <div className="flex h-full w-full items-center justify-center p-4">
       <ContentMessage
@@ -71,7 +74,7 @@ export function SkillLoadError({
         icon={InfoCircle}
         size="lg"
         action={
-          onRetry && reason === "unavailable" ? (
+          onRetry && canRetry ? (
             <ContentMessageAction
               icon={RefreshCw02}
               label="Retry"
