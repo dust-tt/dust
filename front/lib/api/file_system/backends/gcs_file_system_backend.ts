@@ -715,7 +715,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       case "frame_publications":
         return `w/${this.workspaceId}/frames/${mount.frameId}/publications`;
 
-      case "frame_state":
+      case "frame_database_replicas":
         return getFrameDatabaseReplicasBasePath({
           workspaceId: this.workspaceId,
           frameId: mount.frameId,
@@ -733,7 +733,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       case "frame_publications":
         return "frame_publications";
 
-      case "frame_state":
+      case "frame_database_replicas":
         return "sandbox_state_replica";
 
       default:

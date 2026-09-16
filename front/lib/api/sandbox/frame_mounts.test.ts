@@ -11,7 +11,7 @@ describe("frameSandboxOnlyMounts", () => {
         readOnly: true,
       },
       {
-        kind: "frame_state",
+        kind: "frame_database_replicas",
         frameId: "fil_frame",
         sandboxMountPoint: "/sandbox-state/replica",
         readOnly: false,

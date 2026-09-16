@@ -496,7 +496,7 @@ describe("ensureConversationSandboxReady", () => {
           readOnly: true,
         },
         {
-          kind: "frame_state",
+          kind: "frame_database_replicas",
           frameId: frame.sId,
           sandboxMountPoint: "/sandbox-state/replica",
           readOnly: false,
