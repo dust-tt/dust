@@ -1,5 +1,5 @@
 /**
- * Grammar of the references a Frame passes to `usePodFunction`.
+ * Grammar of the references a Frame passes to `useFrameFunction`.
  *
  * **Fully qualified** — `<podId>/<slug>`. Works from any Frame, and is the only form that can name a
  * function in another Pod. The slug half mirrors SANDBOX_FUNCTION_SLUG_REGEX in front
@@ -25,18 +25,18 @@
  */
 const SLUG_SEGMENT = "[a-z0-9]+(?:-[a-z0-9]+)*";
 
-export const POD_FUNCTION_REFERENCE_REGEX = new RegExp(
+export const FRAME_FUNCTION_REFERENCE_REGEX = new RegExp(
   `^[^/]+/${SLUG_SEGMENT}(?:__${SLUG_SEGMENT})?$`
 );
 
-export const POD_FUNCTION_RELATIVE_REFERENCE_REGEX = new RegExp(
+export const FRAME_FUNCTION_RELATIVE_REFERENCE_REGEX = new RegExp(
   `^${SLUG_SEGMENT}$`
 );
 
 /** Whether `reference` is a reference the host can act on, in either form. */
-export function isPodFunctionReference(reference: string): boolean {
+export function isFrameFunctionReference(reference: string): boolean {
   return (
-    POD_FUNCTION_REFERENCE_REGEX.test(reference) ||
-    POD_FUNCTION_RELATIVE_REFERENCE_REGEX.test(reference)
+    FRAME_FUNCTION_REFERENCE_REGEX.test(reference) ||
+    FRAME_FUNCTION_RELATIVE_REFERENCE_REGEX.test(reference)
   );
 }

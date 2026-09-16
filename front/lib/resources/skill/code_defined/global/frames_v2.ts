@@ -289,7 +289,7 @@ client-side conditions are not access control.
 
 ## Calling a function from the Frame UI
 
-Use the historically named \`usePodFunction\` and \`usePodFunctionMutation\` hooks from
+Use the \`useFrameFunction\` and \`useFrameFunctionMutation\` hooks from
 \`@dust/react-hooks\`. Refer to the Frame's own functions by their bare manifest name.
 
 Design contracts around UI interactions rather than database tables:
@@ -299,23 +299,23 @@ Design contracts around UI interactions rather than database tables:
   refetch;
 - writes use a stable idempotency key when repeating an interaction could create duplicates.
 
-Use \`usePodFunction\` for idempotent reads. It caches identical calls, deduplicates in-flight calls,
+Use \`useFrameFunction\` for idempotent reads. It caches identical calls, deduplicates in-flight calls,
 and keeps previous data while revalidating. Pass \`null\` instead of a function name to disable it.
 
 \`\`\`tsx
-import { usePodFunction } from "@dust/react-hooks";
+import { useFrameFunction } from "@dust/react-hooks";
 
-const comments = usePodFunction("list-comments", { threadId });
+const comments = useFrameFunction("list-comments", { threadId });
 \`\`\`
 
-Use \`usePodFunctionMutation\` for writes and other side effects. It runs only when \`trigger\` is
+Use \`useFrameFunctionMutation\` for writes and other side effects. It runs only when \`trigger\` is
 called, is not deduplicated, and does not infer which query caches it affects:
 
 \`\`\`tsx
-import { usePodFunction, usePodFunctionMutation } from "@dust/react-hooks";
+import { useFrameFunction, useFrameFunctionMutation } from "@dust/react-hooks";
 
-const comments = usePodFunction("list-comments", { threadId });
-const postComment = usePodFunctionMutation("post-comment");
+const comments = useFrameFunction("list-comments", { threadId });
+const postComment = useFrameFunctionMutation("post-comment");
 
 async function handleAddComment(body: string) {
   const updatedComments = await postComment.trigger({ threadId, body });
@@ -340,7 +340,7 @@ This runs the manifest, UI, function-build, database-contract, Tailwind, and fun
 checks without storing or activating a publication or reconciling Frame-owned databases. Fix every
 error and Tailwind warning before publishing.
 
-A function name passed to \`usePodFunction\` or \`usePodFunctionMutation\` as a literal must be a
+A function name passed to \`useFrameFunction\` or \`useFrameFunctionMutation\` as a literal must be a
 bare name declared in this manifest; otherwise validation and \`publish\` fail, listing the declared
 names, where the call would otherwise fail only once a viewer triggers it. A name computed at run
 time is not checked.

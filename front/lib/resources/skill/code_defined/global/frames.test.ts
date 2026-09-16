@@ -83,7 +83,7 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain('userIdentity: "workspace_user_required"');
     expect(instructions).toContain("### Fast and durable functions");
     expect(instructions).toContain("dsbx tools --json");
-    expect(instructions).toContain("usePodFunctionMutation");
+    expect(instructions).toContain("useFrameFunctionMutation");
     expect(instructions).toContain("## Persisting state in a Frame database");
     expect(instructions).toContain('db("comments")');
     expect(instructions).toContain("reconciles the declared schemas");
