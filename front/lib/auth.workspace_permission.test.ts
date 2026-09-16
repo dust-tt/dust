@@ -269,7 +269,7 @@ describe("Authenticator.fromKey permission resolution", () => {
           workspaceAuth.getNonNullableWorkspace().id
         ),
       ].sort()
-    ).toEqual(["admin", "create", "publish", "read", "use", "write"]);
+    ).toEqual(["admin", "create", "publish", "read", "write"]);
     expect(
       [
         ...workspaceAuth.getGovernanceGrantVerbs(
@@ -278,7 +278,7 @@ describe("Authenticator.fromKey permission resolution", () => {
           workspaceAuth.getNonNullableWorkspace().id
         ),
       ].sort()
-    ).toEqual(["admin", "create", "publish", "read", "use", "write"]);
+    ).toEqual(["admin", "create", "publish", "read", "write"]);
     expect(
       workspaceAuth.getGovernanceGrantVerbs(
         "space",
@@ -347,7 +347,7 @@ describe("Authenticator.fromKey permission resolution", () => {
           workspaceAuth.getNonNullableWorkspace().id
         ),
       ].sort()
-    ).toEqual(["admin", "read", "use", "write"]);
+    ).toEqual(["admin", "read", "write"]);
     expect(
       workspaceAuth.getGovernanceGrantVerbs(
         "agent",
@@ -460,7 +460,7 @@ describe("Authenticator.refresh permission resolution", () => {
           workspaceAuth.getNonNullableWorkspace().id
         ),
       ].sort()
-    ).toEqual(["admin", "read", "use", "write"]);
+    ).toEqual(["admin", "read", "write"]);
     // It stays scoped to the requested groups: refreshing must not widen it back to everything the
     // system key itself holds.
     expect(

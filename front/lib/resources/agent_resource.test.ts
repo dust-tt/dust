@@ -6,6 +6,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -341,6 +342,86 @@ describe("AgentResource", () => {
     expect(otherAuth.hasPermission("read", resource)).toBe(true);
     expect(otherAuth.hasPermission("write", resource)).toBe(false);
     expect(otherAuth.hasPermission("admin", resource)).toBe(false);
+  });
+
+  it("hides an agent whose requested space the caller cannot read", async () => {
+    const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { scope: "visible", requestedSpaceIds: [restrictedSpace.id] }
+    );
+
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, otherUser, {
+      role: "user",
+    });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      testContext.workspace.sId
+    );
+
+    // A visible agent is normally readable by every member, but this one is backed by a space the
+    // member cannot read, so `read` is denied and it resolves to a light resource.
+    const resource = await AgentResource.fetchById(otherAuth, agent.sId);
+    expect(resource).not.toBeNull();
+    expect(resource?.isFull()).toBe(false);
+  });
+
+  it("resolves an agent to full when all its requested spaces are readable", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      // The global space is readable by every workspace member.
+      { scope: "visible", requestedSpaceIds: [testContext.globalSpace.id] }
+    );
+
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, otherUser, {
+      role: "user",
+    });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      testContext.workspace.sId
+    );
+
+    const resource = await AgentResource.fetchById(otherAuth, agent.sId);
+    expect(resource?.isFull()).toBe(true);
+  });
+
+  it("gates read for system keys by their actual space access, not `isSystemKey()`", async () => {
+    const {
+      auth: fullKeyAuth,
+      workspace,
+      globalGroup,
+      key,
+    } = await createPublicApiMockRequest({ systemKey: true });
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+
+    const author = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, author, { role: "admin" });
+    const authorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      author.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(authorAuth, {
+      scope: "visible",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    // A full system key reads every space via its wildcard grant.
+    const asFullKey = await AgentResource.fetchById(fullKeyAuth, agent.sId);
+    expect(asFullKey?.isFull()).toBe(true);
+
+    // A system key downscoped to the global group only keeps `isSystemKey()` but resolves just those
+    // groups' permissions, so the restricted space is unreadable and the agent is not readable.
+    const downscopedAuth = await Authenticator.fromKey(key, workspace.sId, [
+      globalGroup.sId,
+    ]);
+    expect(downscopedAuth.isSystemKey()).toBe(true);
+    const asDownscoped = await AgentResource.fetchById(
+      downscopedAuth,
+      agent.sId
+    );
+    expect(asDownscoped?.isFull()).toBe(false);
   });
 
   it("keeps code-defined global agents read-only and audience-scoped", async () => {
