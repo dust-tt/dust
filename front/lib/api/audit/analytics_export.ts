@@ -25,13 +25,14 @@ export type AnalyticsExportParams = {
 
 /**
  * @cc [label:audit-logging;security] analytics-export-audited-at-egress
- * Workspace analytics **download / export** handlers (CSV or explicit file/JSON export of a
- * bulk table) MUST call this after the dataset is successfully produced and before returning
- * the response. Interactive JSON chart/API responses that power in-app analytics views are
- * not exports and MUST NOT call it. Personal my-usage downloads and poke/admin export routes
- * are out of scope for this helper. Handlers that only schedule or inspect an export MUST NOT
- * call it; the handler that hands the downloadable dataset (or a signed URL to it) to the
- * caller is the single emit point for that export.
+ * Call sites that download a workspace analytics dataset via this helper's
+ * `AnalyticsExportName` values (`analytics_table`, `automations`, `consumption_lines`,
+ * `credit_usage`, `programmatic_cost`, `workspace_usage_legacy`) MUST invoke this after
+ * the downloadable payload is produced and before the response returns. Interactive
+ * in-app JSON chart/API responses (for example AWU/credit-usage `format=json` and
+ * automations `format=json`) MUST NOT call it. Personal my-usage
+ * (`front-api/routes/w/[wId]/credits/my-usage-analytics.ts`) and poke/admin analytics
+ * export routes MUST NOT call it. Schedule/status-only handlers MUST NOT call it.
  */
 export async function emitAnalyticsExportedEvent(
   auth: Authenticator,
