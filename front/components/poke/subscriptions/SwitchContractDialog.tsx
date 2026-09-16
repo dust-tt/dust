@@ -605,7 +605,10 @@ export default function SwitchContractDialog({
         form.setValue("promoteNoneSeatsTo", template.promoteNoneSeatsTo);
       }
       if (template.initialCredits !== undefined) {
-        form.setValue("initialCredits", template.initialCredits);
+        form.setValue("initialCredits", {
+          ...template.initialCredits,
+          perUser: template.initialCredits.perUser ?? false,
+        });
       }
       if (template.scheduledCharge !== undefined) {
         form.setValue("scheduledCharge", template.scheduledCharge);
@@ -874,6 +877,16 @@ export default function SwitchContractDialog({
   const watchedSeats = form.watch("seats");
   const promoteNoneSeatsTo = form.watch("promoteNoneSeatsTo");
 
+  // Total committed seats across every selected seat type (sum of each seat's
+  // `minSeats` billing floor) — drives the per-user initial-credits preview and
+  // its guard. Recomputed on every render like the other seat-derived values.
+  const committedSeatCount = Object.values(watchedSeats ?? {}).reduce(
+    (sum, seat) =>
+      sum +
+      (seat?.selected && (seat?.minSeats ?? 0) > 0 ? (seat?.minSeats ?? 0) : 0),
+    0
+  );
+
   // "Force seat type" may only promote members onto a seat that is actually
   // entitled (checked) on the contract being created — offering an
   // unentitled seat type would silently fail server-side. Recomputed on
@@ -1029,6 +1042,26 @@ export default function SwitchContractDialog({
       // Initial credits: a contract-level prepaid commit. Only sent when the
       // operator toggled the section on.
       if (values.initialCredits !== undefined) {
+        // A per-user grant multiplies by the committed seat count, so it needs
+        // at least one committed seat to grant anything — reject upfront rather
+        // than silently provisioning nothing.
+        if (values.initialCredits.perUser) {
+          const committed = Object.values(values.seats ?? {}).reduce(
+            (sum, seat) =>
+              sum +
+              (seat?.selected && (seat?.minSeats ?? 0) > 0
+                ? (seat?.minSeats ?? 0)
+                : 0),
+            0
+          );
+          if (committed <= 0) {
+            setError(
+              "Per-user initial credits require at least one committed seat " +
+                "(set a seat commitment above)."
+            );
+            return;
+          }
+        }
         cleaned.initialCredits = values.initialCredits;
       }
       // Scheduled charge: a pure invoice line item, no credit grant. Only
@@ -1865,6 +1898,7 @@ export default function SwitchContractDialog({
                                 : {
                                     amountCredits: 0,
                                     invoiceAmount: 0,
+                                    perUser: false,
                                     paymentSchedule: {
                                       frequency: "one_time",
                                     },
@@ -1892,6 +1926,38 @@ export default function SwitchContractDialog({
                               type="number"
                               placeholder="e.g., 5000"
                             />
+                            <Label className="text-sm">
+                              Per user (× committed seats)
+                            </Label>
+                            <div className="flex flex-col gap-1">
+                              <SliderToggle
+                                className="origin-left scale-75"
+                                selected={initialCredits.perUser === true}
+                                onClick={() =>
+                                  form.setValue(
+                                    "initialCredits.perUser",
+                                    !(initialCredits.perUser === true)
+                                  )
+                                }
+                              />
+                              {initialCredits.perUser === true && (
+                                <span className="text-xs text-muted-foreground">
+                                  {committedSeatCount > 0
+                                    ? `Grants ${(
+                                        (initialCredits.amountCredits ?? 0) *
+                                          committedSeatCount
+                                      ).toLocaleString()} credits${
+                                        (initialCredits.invoiceAmount ?? 0) > 0
+                                          ? `, invoiced ${(
+                                              (initialCredits.invoiceAmount ??
+                                                0) * committedSeatCount
+                                            ).toLocaleString()} ${resolvedCurrency.toUpperCase()}`
+                                          : ""
+                                      } (× ${committedSeatCount} committed seat${committedSeatCount === 1 ? "" : "s"}).`
+                                    : "No committed seats yet — set a seat commitment above, or this grant resolves to nothing."}
+                                </span>
+                              )}
+                            </div>
                             <Label className="text-sm">Payment schedule</Label>
                             <SelectField
                               control={form.control}

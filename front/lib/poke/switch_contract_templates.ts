@@ -66,6 +66,7 @@ export type SwitchContractTemplate = {
   initialCredits?: {
     amountCredits: number;
     invoiceAmount: number;
+    perUser?: boolean;
     paymentSchedule: TemplatePaymentSchedule;
   };
   scheduledCharge?: {
@@ -102,9 +103,9 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
   },
   {
     id: "enterprise-pilot-2m",
-    name: "Pilot — 2 months",
+    name: "Paid pilot",
     description:
-      "Enterprise pooled, 2-month commitment, workspace seats at the standard rate, first 2 weeks free, 10k initial credits.",
+      "Enterprise pooled, 2-month commitment, workspace seats at 600/year, first 2 weeks free, 10k initial credits per committed seat.",
     package: { tier: "enterprise", namePattern: "pooled" },
     planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
     startMode: "select",
@@ -112,13 +113,18 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     defaultPoolCapCredits: 10000,
     // First 2 weeks offered for free.
     offerFreePeriod: { value: 2, unit: "weeks" },
-    // No rate override: keep the package's standard workspace-seat rate.
+    // Override the workspace-seat rate to 600/year (major units). Set the seat
+    // commitment (minSeats) at apply time — the per-user initial credits below
+    // scale with it.
     seats: {
-      workspace_yearly: { selected: true },
+      workspace_yearly: { selected: true, rate: 600 },
     },
+    // 10k credits per committed seat (scaled by the workspace_yearly commitment
+    // the operator enters).
     initialCredits: {
       amountCredits: 10000,
       invoiceAmount: 0,
+      perUser: true,
       paymentSchedule: { frequency: "one_time" },
     },
   },
