@@ -1,5 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
-import { hasReachedCreditSpendCheckpoint } from "@app/lib/api/assistant/credit_check";
+import { hasReachedCreditSpendCheckpoint } from "@app/lib/api/assistant/credit_spend_checkpoint";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";

@@ -1,11 +1,5 @@
-import {
-  checkPoolCreditGate,
-  hasReachedCreditSpendCheckpoint,
-  isCreditSpendCheckpointExempt,
-} from "@app/lib/api/assistant/credit_check";
+import { checkPoolCreditGate } from "@app/lib/api/assistant/credit_check";
 import type { Authenticator } from "@app/lib/auth";
-import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
-import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -159,88 +153,5 @@ describe("checkPoolCreditGate", () => {
     mockIsUserBlocked.mockRejectedValue(new Error("redis unavailable"));
     const auth = makeAuth();
     await expect(callGate(auth)).rejects.toThrow("redis unavailable");
-  });
-});
-
-describe("isCreditSpendCheckpointExempt", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockIsProgrammaticUsage.mockReturnValue(false);
-  });
-
-  it("applies to non-credit-priced plans too, unlike the pool gate", () => {
-    const auth = makeAuth({ isCreditPriced: false, hasUser: true });
-    expect(
-      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: "web" })
-    ).toBe(false);
-  });
-
-  it("applies even when metronomeCustomerId is null, unlike the pool gate", () => {
-    const auth = makeAuth({ metronomeCustomerId: null, hasUser: true });
-    expect(
-      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: "web" })
-    ).toBe(false);
-  });
-
-  it("is exempt when there is no user to answer the pause", () => {
-    const auth = makeAuth({ hasUser: false });
-    expect(
-      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: "web" })
-    ).toBe(true);
-  });
-
-  it("is exempt when the origin is unknown", () => {
-    const auth = makeAuth({ hasUser: true });
-    expect(
-      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: null })
-    ).toBe(true);
-  });
-
-  it.each([
-    "api",
-    "email",
-    "slack",
-    "triggered",
-    "wakeup",
-    "transcript",
-    "zendesk",
-    "project_kickoff",
-    "cli",
-  ] as const)("is exempt for %s: the author cannot resume the pause from a Dust client", (origin) => {
-    const auth = makeAuth({ hasUser: true });
-    expect(
-      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: origin })
-    ).toBe(true);
-  });
-
-  it.each([
-    "web",
-    "extension",
-  ] as const)("is not exempt for %s: the author is in a Dust client UI", (origin) => {
-    const auth = makeAuth({ hasUser: true });
-    expect(
-      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: origin })
-    ).toBe(false);
-  });
-});
-
-describe("hasReachedCreditSpendCheckpoint", () => {
-  const thresholdMicroUsd =
-    CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS *
-    MODEL_COST_MICRO_USD_PER_AWU_CREDIT;
-
-  it("is false while the spend is below the threshold", () => {
-    expect(
-      hasReachedCreditSpendCheckpoint({
-        totalCostMicroUsd:
-          thresholdMicroUsd - MODEL_COST_MICRO_USD_PER_AWU_CREDIT,
-      })
-    ).toBe(false);
-  });
-
-  it("is true once the spend reaches the threshold", () => {
-    expect(
-      hasReachedCreditSpendCheckpoint({ totalCostMicroUsd: thresholdMicroUsd })
-    ).toBe(true);
   });
 });
