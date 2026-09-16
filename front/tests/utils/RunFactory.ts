@@ -41,7 +41,10 @@ export class RunFactory {
         totalTokens: inputTokens + outputTokens,
       },
       modelId,
-      { usageType: usageType ?? USAGE_TYPE_USER }
+      {
+        usageType: usageType ?? USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
+      }
     );
 
     const runUsage = await RunUsageModel.findOne({

@@ -27,7 +27,7 @@ describe("RunResource reasoning token usage", () => {
         totalTokens: 1_300,
       },
       GPT_5_MINI_MODEL_CONFIG.modelId,
-      { usageType: USAGE_TYPE_USER }
+      { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: false }
     );
 
     const usages = await run.listRunUsages(auth);
@@ -57,7 +57,7 @@ describe("RunResource reasoning token usage", () => {
         totalTokens: 1_100,
       },
       GPT_5_MINI_MODEL_CONFIG.modelId,
-      { usageType: USAGE_TYPE_USER }
+      { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: false }
     );
 
     const usages = await run.listRunUsages(auth);
@@ -83,6 +83,7 @@ describe("RunResource service tier usage", () => {
         providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
         region: "global",
         usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
       }
     );
 
@@ -141,7 +142,7 @@ describe("RunResource service tier usage", () => {
         totalTokens: 1_100,
       },
       GPT_5_MINI_MODEL_CONFIG.modelId,
-      { usageType: USAGE_TYPE_USER }
+      { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: false }
     );
 
     const usages = await run.listRunUsages(auth);
@@ -196,6 +197,7 @@ describe("RunResource usage type immutability", () => {
         providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
         region: "global",
         usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
       }
     );
 

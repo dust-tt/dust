@@ -73,6 +73,15 @@ export function dangerouslyGetDustManagedLlmCredentials(): LLMCredentialsType {
 }
 
 /**
+ * Whether `getLlmCredentials(auth)` answers with credentials the workspace provided rather than
+ * Dust's. Recorded per usage row on `run_usages.useWorkspaceCredentials`, so billed usage can be
+ * traced back to whose provider account paid for it.
+ */
+export function usesWorkspaceProvidedCredentials(auth: Authenticator): boolean {
+  return auth.getNonNullablePlan().isByok;
+}
+
+/**
  * Returns LLM credentials for the workspace.
  *
  * - Non-BYOK workspaces: returns Dust-managed keys from environment variables.

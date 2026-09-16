@@ -1,5 +1,6 @@
 import type { InferenceRegionType } from "@app/lib/api/assistant/token_pricing";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
+import { usesWorkspaceProvidedCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import type { UsageType } from "@app/lib/metronome/types";
 import type { Region } from "@app/lib/model_constructors/types/regions";
@@ -53,6 +54,7 @@ export class LLMRunLifecycle {
         providerId: parameters.providerId,
         region: parameters.region,
         usageType: parameters.usageType,
+        useWorkspaceCredentials: usesWorkspaceProvidedCredentials(auth),
       }
     );
 

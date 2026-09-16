@@ -268,23 +268,23 @@ describe("LLMRunLifecycle", () => {
   it.each([
     { isByok: false, useWorkspaceCredentials: false },
     { isByok: true, useWorkspaceCredentials: true },
-  ])(
-    "records useWorkspaceCredentials=$useWorkspaceCredentials on the pending usage for a byok=$isByok workspace",
-    async ({ isByok, useWorkspaceCredentials }) => {
-      const { authenticator: auth } = await createResourceTest({ isByok });
-      const parameters = makeLifecycleParameters();
+  ])("records useWorkspaceCredentials=$useWorkspaceCredentials on the pending usage for a byok=$isByok workspace", async ({
+    isByok,
+    useWorkspaceCredentials,
+  }) => {
+    const { authenticator: auth } = await createResourceTest({ isByok });
+    const parameters = makeLifecycleParameters();
 
-      await LLMRunLifecycle.start(auth, parameters);
+    await LLMRunLifecycle.start(auth, parameters);
 
-      const run = await RunResource.fetchByDustRunId(auth, {
-        dustRunId: parameters.dustRunId,
-      });
-      assert(run, "Expected the LLM run to exist");
-      expect(await run.listRunUsageAttempts(auth)).toMatchObject([
-        { useWorkspaceCredentials },
-      ]);
-    }
-  );
+    const run = await RunResource.fetchByDustRunId(auth, {
+      dustRunId: parameters.dustRunId,
+    });
+    assert(run, "Expected the LLM run to exist");
+    expect(await run.listRunUsageAttempts(auth)).toMatchObject([
+      { useWorkspaceCredentials },
+    ]);
+  });
 
   it("finalizes the pending attempt when the provider reports usage", async () => {
     const { authenticator: auth } = await createResourceTest({});
