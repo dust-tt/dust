@@ -1,6 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
-import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import {
+  CreateSuggestionSchema,
+  INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+} from "@app/types/suggestions/agent_suggestion";
 import { SkillInstructionEditItemSchema } from "@app/types/suggestions/skill_suggestion";
 import { z } from "zod";
 
@@ -91,17 +94,7 @@ export const SUGGEST_AGENT_CREATION_DESCRIPTION =
   "Like `suggest_skill_update`, this is not applied directly: it is recorded as a pending " +
   "suggestion that the creator can review, accept, or reject.";
 
-export const SUGGEST_AGENT_CREATION_INPUT_SCHEMA = z.object({
-  name: z
-    .string()
-    .describe("Unique, human-readable agent name (no leading '@')."),
-  description: z
-    .string()
-    .describe(
-      "Short description of what the agent does, shown to users browsing agents."
-    ),
-  instructions: z.string().describe("The agent's instructions, in markdown."),
-});
+export const SUGGEST_AGENT_CREATION_INPUT_SCHEMA = CreateSuggestionSchema;
 
 export type SuggestAgentCreationArgs = z.infer<
   typeof SUGGEST_AGENT_CREATION_INPUT_SCHEMA

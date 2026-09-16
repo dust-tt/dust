@@ -4,6 +4,7 @@ import type {
   GetSuggestionsResponseBody,
   PatchSuggestionResponseBody,
 } from "@app/types/api/assistant/agent_suggestion";
+import { AGENT_SUGGESTION_KINDS } from "@app/types/suggestions/agent_suggestion";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -24,7 +25,7 @@ const stringOrArrayToArray = z.preprocess(
 
 const GetSuggestionsQuerySchema = z.object({
   states: stringOrArrayToArray.optional(),
-  kind: z.enum(["instructions", "tools", "skills", "model"]).optional(),
+  kind: z.enum(AGENT_SUGGESTION_KINDS).optional(),
   limit: z.string().optional(),
 });
 

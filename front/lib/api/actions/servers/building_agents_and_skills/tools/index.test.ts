@@ -1,11 +1,13 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   DESCRIBE_SKILL_TOOL_NAME,
+  SUGGEST_AGENT_CREATION_INPUT_SCHEMA,
   SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -703,9 +705,6 @@ describe("building_agents_and_skills tools", () => {
       expect(placeholderAgent?.status).toBe("pending");
       expect(placeholderAgent?.scope).toBe("hidden");
 
-      const { getAgentsEditors } = await import(
-        "@app/lib/api/assistant/editors"
-      );
       const editors = await getAgentsEditors(authenticator, [
         placeholderAgent!,
       ]);
@@ -714,19 +713,24 @@ describe("building_agents_and_skills tools", () => {
       ]);
     });
 
-    it("rejects an empty agent name", async () => {
-      const { authenticator } = await createAgentAuthorTestContext();
+    it("rejects blank fields at the input schema level", () => {
+      const valid = {
+        name: " Incident Helper ",
+        description: "Desc",
+        instructions: "Do things.",
+      };
+      const parsed = SUGGEST_AGENT_CREATION_INPUT_SCHEMA.safeParse(valid);
+      expect(parsed.success).toBe(true);
+      expect(parsed.data?.name).toBe("Incident Helper");
 
-      const result = await getTool(SUGGEST_AGENT_CREATION_TOOL_NAME).handler(
-        { name: "   ", description: "Desc", instructions: "Do things." },
-        makeExtra(authenticator)
-      );
-
-      expect(result.isErr()).toBe(true);
-      if (result.isOk()) {
-        throw new Error("Expected an error.");
+      for (const field of ["name", "description", "instructions"] as const) {
+        expect(
+          SUGGEST_AGENT_CREATION_INPUT_SCHEMA.safeParse({
+            ...valid,
+            [field]: "   ",
+          }).success
+        ).toBe(false);
       }
-      expect(result.error.message).toContain("cannot be empty");
     });
 
     it("returns an MCPError without an interactive user", async () => {

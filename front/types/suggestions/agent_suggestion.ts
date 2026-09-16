@@ -77,10 +77,24 @@ const ModelSuggestionSchema = z.object({
   reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
 });
 
-const CreateSuggestionSchema = z.object({
-  name: z.string().describe("Unique, human-readable agent name."),
-  description: z.string().describe("Short description of what the agent does."),
-  instructions: z.string().describe("The agent's instructions, in markdown."),
+export const CreateSuggestionSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("Unique, human-readable agent name (no leading '@')."),
+  description: z
+    .string()
+    .trim()
+    .min(1)
+    .describe(
+      "Short description of what the agent does, shown to users browsing agents."
+    ),
+  instructions: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("The agent's instructions, in markdown."),
 });
 
 const KNOWLEDGE_SUGGESTION_METHODS = ["search", "query_tables"] as const;

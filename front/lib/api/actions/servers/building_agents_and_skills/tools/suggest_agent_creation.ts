@@ -12,19 +12,21 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
  * @cc [owner:avervaet,label:security] requires-interactive-user
- * `suggestAgentCreation` MUST fail with an `MCPError` and record no suggestion unless called with
- * an interactive user context; agent creation still requires the workspace's `create` `agent`
- * permission, enforced by `createPendingAgentConfiguration`.
+ * `suggestAgentCreation` MUST return an `Err` wrapping an `MCPError`, and record nothing, unless
+ * `auth` carries an interactive user. Any failure of the underlying agent or suggestion creation
+ * MUST likewise surface as an `Err` wrapping an `MCPError`, never as a thrown exception.
  */
 /**
  * @cc [owner:avervaet,label:product] no-direct-mutation
- * `suggestAgentCreation` MUST NOT make the proposed agent usable directly: it materializes a
- * `pending`, `hidden` placeholder (via `createPendingAgentConfiguration`, private to the calling
- * user) purely to give the suggestion a stable target, and records a `pending` `create` suggestion
- * against it. Turning that suggestion into a real, usable agent is a separate, human-reviewed step.
+ * `suggestAgentCreation` MUST NOT make the proposed agent usable: the only agent it creates is a
+ * `pending`, `hidden` placeholder editable solely by the caller, and the proposal is recorded as a
+ * `pending` `create` suggestion targeting it. No other suggestion can target that placeholder, so
+ * there are no conflicting suggestions to mark `outdated`. Turning the suggestion into a usable
+ * agent is a separate, human-reviewed step.
  */
 export async function suggestAgentCreation(
   auth: Authenticator,
@@ -39,19 +41,13 @@ export async function suggestAgentCreation(
     );
   }
 
-  const trimmedName = name.trim();
-  if (!trimmedName) {
-    return new Err(new MCPError("Agent name cannot be empty."));
-  }
-
   const pendingResult = await createPendingAgentConfiguration(auth);
   if (pendingResult.isErr()) {
     return new Err(new MCPError(pendingResult.error.message));
   }
 
-  const { sId } = pendingResult.value;
   const pendingAgent = await getAgentConfiguration(auth, {
-    agentId: sId,
+    agentId: pendingResult.value.sId,
     variant: "light",
   });
   if (!pendingAgent) {
@@ -60,23 +56,22 @@ export async function suggestAgentCreation(
     );
   }
 
-  const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
-    auth,
-    pendingAgent,
-    {
-      kind: "create",
-      suggestion: {
-        name: trimmedName,
-        description,
-        instructions,
-      },
-      analysis: null,
-      state: "pending",
-      conversationId: null,
-    }
-  );
-
-  return new Ok(suggestion);
+  try {
+    const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      pendingAgent,
+      {
+        kind: "create",
+        suggestion: { name, description, instructions },
+        analysis: null,
+        state: "pending",
+        conversationId: null,
+      }
+    );
+    return new Ok(suggestion);
+  } catch (error) {
+    return new Err(new MCPError(normalizeError(error).message));
+  }
 }
 
 export async function suggestAgentCreationHandler(
@@ -93,7 +88,7 @@ export async function suggestAgentCreationHandler(
   return new Ok([
     {
       type: "text" as const,
-      text: `:agent_suggestion[]{sId=${suggestion.sId} kind=create}`,
+      text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
     },
   ]);
 }

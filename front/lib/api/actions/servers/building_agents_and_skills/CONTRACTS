@@ -4,11 +4,3 @@ Every tool that proposes a change records a `pending` agent or skill suggestion 
 editors to review, marks conflicting pending suggestions `outdated`, and returns the suggestion
 `sId` embedded in a directive (`:agent_suggestion[]{sId=... kind=...}` or
 `:skill_suggestion[]{sId=... kind=... skillId=...}`) so the conversation UI can render it inline.
-
-@cc [owner:avervaet,label:product] agent-creation-suggestion-has-no-real-agent-yet
-`suggest_agent_creation` records a `kind: "create"` `AgentSuggestion`, complying with
-`changes-are-suggestions` above: it MUST NOT make the proposed agent usable. The suggestion's
-`agentConfigurationId` points at a placeholder created by `createPendingAgentConfiguration`
-(`status: "pending"`, `scope: "hidden"`, no actions, creator as sole editor) purely to give the
-suggestion a stable, non-null foreign key — that placeholder MUST stay excluded from every agent
-listing until a human reviews the suggestion and turns it into a real agent.
