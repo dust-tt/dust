@@ -19,6 +19,7 @@ export type {
 // Re-exported from the leaf module so importers do not have to care which file they live in.
 export {
   DEFAULT_SKILL_AVAILABILITY,
+  isSkillHiddenFromNonEditors,
   SKILL_AVAILABILITIES,
   SKILL_STATUSES,
 } from "@app/types/assistant/skill_configuration_constants";
@@ -43,18 +44,6 @@ export function isDefaultFromAvailability(
     default:
       return assertNever(availability);
   }
-}
-
-// Editors-only skills are unpublished: the skills list shows them only to their editors. Shared by
-// the list route and any client surface that resolves a skill outside that list.
-export function isSkillHiddenFromNonEditors({
-  availability,
-  canWrite,
-}: {
-  availability: SkillAvailability;
-  canWrite: boolean;
-}): boolean {
-  return availability === "editors" && !canWrite;
 }
 
 export const SKILL_SOURCES = [

@@ -18,4 +18,16 @@ export type SkillAvailability = (typeof SKILL_AVAILABILITIES)[number];
 
 export const DEFAULT_SKILL_AVAILABILITY = "editors" satisfies SkillAvailability;
 
+// Editors-only skills are unpublished: they are listed only to their editors (admins can bypass).
+// Shared by every surface that decides whether to show a skill outside that list.
+export function isSkillHiddenFromNonEditors({
+  availability,
+  canWrite,
+}: {
+  availability: SkillAvailability;
+  canWrite: boolean;
+}): boolean {
+  return availability === "editors" && !canWrite;
+}
+
 export const SKILL_NAME_MAX_LENGTH = 256;
