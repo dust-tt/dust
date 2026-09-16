@@ -6,14 +6,11 @@ import {
 import { AttachmentChip, Tooltip } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
-// A type alias rather than an interface: FileCitationCardProps is a union
-// (onClick / href / static), which an interface cannot extend.
 export type AttachmentChipCitationProps = Omit<FileCitationCardProps, "size">;
 
 /**
- * Chip counterpart of FileCitationCard for the composer's attachment row: the
- * same AttachmentChip as inline knowledge links and pasted content. A chip has
- * no body, so the description (or the loading label) goes in the tooltip.
+ * Chip counterpart of FileCitationCard, using the same AttachmentChip as inline
+ * knowledge links. A chip has no body, so the description goes in the tooltip.
  */
 export function AttachmentChipCitation(props: AttachmentChipCitationProps) {
   const {
@@ -26,10 +23,8 @@ export function AttachmentChipCitation(props: AttachmentChipCitationProps) {
     tooltipLabel,
   } = props;
 
-  // AttachmentChip takes an icon component, so a rendered visual is wrapped in
-  // one (as KnowledgeChip does). The wrapper ignores the chip's className, so
-  // the visual keeps its own size; being a new component type on each render
-  // it remounts the (stateless) icon every time, which is fine.
+  // AttachmentChip takes an icon component; rendered visuals are wrapped in one
+  // (as KnowledgeChip does) and keep their own size.
   const iconVisual: ComponentType<{ className?: string }> = isIconComponent(
     icon
   )

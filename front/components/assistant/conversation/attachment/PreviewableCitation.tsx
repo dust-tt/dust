@@ -1,12 +1,9 @@
-import { AttachmentChipCitation } from "@app/components/assistant/conversation/attachment/AttachmentChipCitation";
+import { CitationByVariant } from "@app/components/assistant/conversation/attachment/CitationByVariant";
 import type {
   FileCitationCardIcon,
   FileCitationCardSize,
 } from "@app/components/assistant/conversation/attachment/FileCitationCard";
-import {
-  FileCitationCard,
-  FileCitationTooltipLabel,
-} from "@app/components/assistant/conversation/attachment/FileCitationCard";
+import { FileCitationTooltipLabel } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
@@ -145,23 +142,16 @@ export function PreviewableCitation({
     title,
     description,
     size,
+    variant,
     isLoading,
     loadingLabel,
     onRemove,
     tooltipLabel: tooltipLabel ?? title,
   };
 
-  if (variant === "chip") {
-    return canPreview ? (
-      <AttachmentChipCitation {...cardProps} onClick={handleClick} />
-    ) : (
-      <AttachmentChipCitation {...cardProps} />
-    );
-  }
-
   return canPreview ? (
-    <FileCitationCard {...cardProps} onClick={handleClick} />
+    <CitationByVariant {...cardProps} onClick={handleClick} />
   ) : (
-    <FileCitationCard {...cardProps} />
+    <CitationByVariant {...cardProps} />
   );
 }

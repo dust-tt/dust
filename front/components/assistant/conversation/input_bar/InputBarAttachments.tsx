@@ -28,7 +28,7 @@ import { isSupportedImageContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isFolder, isWebsite } from "@dust-tt/client";
-import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
+import { CitationGrid, cn, DoubleIcon, Icon } from "@dust-tt/sparkle";
 import partition from "lodash/partition";
 import { useCallback, useMemo } from "react";
 
@@ -48,14 +48,14 @@ interface InputBarAttachmentsProps {
   disable?: boolean;
 }
 
-// Cards keep the default icon size; chips need a smaller one.
+const ATTACHMENTS_ROW_CLASS_NAME = "border-b border-separator px-3 pb-3 pt-3";
+
 function getAttachmentIconSize(hasImageAttachment: boolean) {
   return hasImageAttachment ? "md" : "sm";
 }
 
-// Images are shown as previews. The preview URL only arrives once the upload
-// completes, so an uploading image counts as one; once uploaded, the preview
-// also needs the file id to be opened, otherwise the image falls back to a chip.
+// An image is previewable once uploaded (preview URL and file id), and counts
+// as one while uploading so the row does not switch layout mid-upload.
 function isImageAttachment(attachment: FileAttachment): boolean {
   return (
     isSupportedImageContentType(attachment.contentType) &&
@@ -171,7 +171,6 @@ export function InputBarAttachments({
     );
   }, [nodes, spacesMap, disable, hasImageAttachment]);
 
-  // Images first, then the other attachments.
   const allAttachments: Attachment[] = [
     ...imageAttachments,
     ...otherFileAttachments,
@@ -194,11 +193,11 @@ export function InputBarAttachments({
   ));
 
   return hasImageAttachment ? (
-    <CitationGrid className="border-b border-separator px-3 pb-3 pt-3">
+    <CitationGrid className={ATTACHMENTS_ROW_CLASS_NAME}>
       {citations}
     </CitationGrid>
   ) : (
-    <div className="flex flex-wrap gap-2 border-b border-separator px-3 pb-3 pt-3">
+    <div className={cn("flex flex-wrap gap-2", ATTACHMENTS_ROW_CLASS_NAME)}>
       {citations}
     </div>
   );
