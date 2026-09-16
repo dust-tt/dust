@@ -168,6 +168,8 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   // StackOne is a multi-vertical gateway (HR, ATS, CRM, finance, IT) with no
   // single fitting category — "productivity" is the closest general bucket.
   stackone: "productivity",
+  qobra: "crm",
+  "qobra us": "crm",
 };
 
 // Category mapping for connectors
