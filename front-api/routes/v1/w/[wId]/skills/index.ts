@@ -128,7 +128,7 @@ app.route("/:skillId", skill);
  *                 items:
  *                   type: string
  *                   format: binary
- *                 description: Skill files or ZIP archives to import.
+ *                 description: Skill files or ZIP archives to import. Skill names must be at most 256 characters.
  *               names:
  *                 type: array
  *                 items:

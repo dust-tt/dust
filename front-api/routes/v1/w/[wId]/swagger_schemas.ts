@@ -736,6 +736,7 @@
  *           example: "active"
  *         name:
  *           type: string
+ *           maxLength: 256
  *           description: Name of the skill
  *           example: "Customer Support"
  *         agentFacingDescription:
