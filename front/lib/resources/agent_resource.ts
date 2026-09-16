@@ -57,22 +57,6 @@ export class AgentResource implements WithAccessControl {
     private readonly scope: AgentConfigurationScope
   ) {}
 
-  static async fetchLatestMetadataById(
-    auth: Authenticator,
-    agentId: string
-  ): Promise<Pick<LightAgentConfigurationType, "name" | "description"> | null> {
-    const agent = await AgentConfigurationModel.findOne({
-      where: {
-        sId: agentId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      attributes: ["name", "description"],
-      order: [["version", "DESC"]],
-    });
-
-    return agent ? { name: agent.name, description: agent.description } : null;
-  }
-
   static fromAgentConfigurationModel(
     configuration: Pick<
       AgentConfigurationModel,

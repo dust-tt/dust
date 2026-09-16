@@ -53,7 +53,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -791,7 +791,7 @@ function isRunAgentHandoffMode(toolContext?: ToolContext): boolean {
  * leaked to the user which appears as acceptable given the proactive decision of a builder having
  * access to it to refer it from the parent agent more broadly shared.
  *
- * Archived and disabled agents retain their metadata so availability errors can identify them.
+ * Archived agents retain their metadata so availability errors can identify them.
  */
 async function leakyGetAgentNameAndDescriptionForChildAgent(
   auth: Authenticator,
@@ -813,7 +813,26 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
     };
   }
 
-  return AgentResource.fetchLatestMetadataById(auth, agentId);
+  const owner = auth.getNonNullableWorkspace();
+
+  const agentConfiguration = await AgentConfigurationModel.findOne({
+    where: {
+      sId: agentId,
+      workspaceId: owner.id,
+      status: ["active", "archived"],
+    },
+    attributes: ["name", "description"],
+    order: [["version", "DESC"]],
+  });
+
+  if (!agentConfiguration) {
+    return null;
+  }
+
+  return {
+    name: agentConfiguration.name,
+    description: agentConfiguration.description,
+  };
 }
 
 async function createServer(
