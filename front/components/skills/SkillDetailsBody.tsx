@@ -32,20 +32,46 @@ import { useState } from "react";
 // Skill details rendering shared by the surfaces that display a skill: the
 // `SkillDetailsSheet` and the conversation skill side panel.
 
+// Why a skill could not be shown. Only "unavailable" is worth retrying.
+export type SkillLoadErrorReason = "not_found" | "editors_only" | "unavailable";
+
+const SKILL_LOAD_ERROR_COPY: Record<
+  SkillLoadErrorReason,
+  { title: string; body: string }
+> = {
+  not_found: {
+    title: "Skill not found",
+    body: "This skill may have been deleted, or the link may be incorrect.",
+  },
+  editors_only: {
+    title: "Skill not available",
+    body: "This skill is currently visible only to its editors. An editor can publish it or share it with you.",
+  },
+  unavailable: {
+    title: "Unable to load skill",
+    body: "The skill could not be loaded. Please try again.",
+  },
+};
+
 interface SkillLoadErrorProps {
+  reason?: SkillLoadErrorReason;
   onRetry?: () => void;
 }
 
-export function SkillLoadError({ onRetry }: SkillLoadErrorProps) {
+export function SkillLoadError({
+  reason = "unavailable",
+  onRetry,
+}: SkillLoadErrorProps) {
+  const { title, body } = SKILL_LOAD_ERROR_COPY[reason];
   return (
     <div className="flex h-full w-full items-center justify-center p-4">
       <ContentMessage
-        title="Unable to load skill"
+        title={title}
         variant="warning"
         icon={InfoCircle}
         size="lg"
         action={
-          onRetry ? (
+          onRetry && reason === "unavailable" ? (
             <ContentMessageAction
               icon={RefreshCw02}
               label="Retry"
@@ -55,7 +81,7 @@ export function SkillLoadError({ onRetry }: SkillLoadErrorProps) {
           ) : undefined
         }
       >
-        The skill could not be loaded. Please try again.
+        {body}
       </ContentMessage>
     </div>
   );

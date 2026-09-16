@@ -15,6 +15,7 @@ import {
   sortSkillsByName,
 } from "@app/components/pages/builder/skills/utils";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
+import type { SkillLoadErrorReason } from "@app/components/skills/SkillDetailsBody";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
 import { BatchAvailabilityDialog } from "@app/components/skills/SkillsBatchEdit";
@@ -318,12 +319,14 @@ export function ManageSkillsPage() {
   const {
     skill: deepLinkedSkill,
     isSkillError: isDeepLinkedSkillError,
+    isSkillNotFound: isDeepLinkedSkillNotFound,
     mutateSkill: retryDeepLinkedSkill,
   } = useSkill({
     workspaceId: owner.sId,
     skillId: skillIdParam ?? null,
     withRelations: true,
     disabled: !skillIdParam || selectedSkill !== null,
+    retryOnError: false,
   });
   // Same rule as the list: unpublished skills stay hidden from non-editors. Admins get them, as
   // they could reveal them with "Show hidden skills" anyway.
@@ -331,6 +334,12 @@ export function ManageSkillsPage() {
     deepLinkedSkill !== null &&
     !canBypassEditorVisibility &&
     isSkillHiddenFromNonEditors(deepLinkedSkill);
+  const deepLinkedSkillErrorReason: SkillLoadErrorReason =
+    isDeepLinkedSkillHidden
+      ? "editors_only"
+      : isDeepLinkedSkillNotFound
+        ? "not_found"
+        : "unavailable";
 
   const handleUsedBySkillSelect = useCallback(
     (skillId: string) => {
@@ -413,6 +422,7 @@ export function ManageSkillsPage() {
         }
         open={!!skillIdParam}
         isError={isDeepLinkedSkillError || isDeepLinkedSkillHidden}
+        errorReason={deepLinkedSkillErrorReason}
         onRetry={retryDeepLinkedSkill}
         onClose={() => handleSkillSelect(null)}
         onFavoriteChange={handleFavoriteChange}
