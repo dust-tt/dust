@@ -424,11 +424,10 @@ describe("AgentResource", () => {
       testContext.workspace.sId
     );
 
-    // A visible agent is normally readable by every member, but this one is backed by a space the
-    // member cannot read, so `read` is denied and it resolves to a light resource.
-    const resource = await AgentResource.fetchById(otherAuth, agent.sId);
-    expect(resource).not.toBeNull();
-    expect(resource?.isFull()).toBe(false);
+    // A member's only verb on a visible agent is `read`. It is denied because they cannot read one of
+    // the agent's requested spaces, leaving no verb — so the `canFetch` gate drops the agent entirely
+    // (as in "drops the agent from fetchers when the caller holds no verb on it").
+    expect(await AgentResource.fetchById(otherAuth, agent.sId)).toBeNull();
   });
 
   it("resolves an agent to full when all its requested spaces are readable", async () => {
