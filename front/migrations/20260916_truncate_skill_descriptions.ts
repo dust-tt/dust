@@ -1,18 +1,26 @@
 import { frontSequelize } from "@app/lib/resources/storage";
-import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
+import {
+  AGENT_FACING_DESCRIPTION_MAX_LENGTH,
+  USER_FACING_DESCRIPTION_MAX_LENGTH,
+} from "@app/lib/skills/labels";
 import { makeScript } from "@app/scripts/helpers";
 import { QueryTypes } from "sequelize";
 
 // Run after deploying backend truncation and before narrowing the SQL columns.
 makeScript({}, async ({ execute }, logger) => {
-  const replacements = { maxLength: USER_FACING_DESCRIPTION_MAX_LENGTH };
+  const replacements = {
+    agentMaxLength: AGENT_FACING_DESCRIPTION_MAX_LENGTH,
+    userMaxLength: USER_FACING_DESCRIPTION_MAX_LENGTH,
+  };
+  const oversized = `LENGTH("agentFacingDescription") > :agentMaxLength
+                     OR LENGTH("userFacingDescription") > :userMaxLength`;
 
   // This one-off backfill intentionally covers both tables across all workspaces.
   for (const table of ["skill_configurations", "skill_versions"]) {
     if (!execute) {
       const [{ count }] = await frontSequelize.query<{ count: string }>(
         `SELECT COUNT(*) AS count FROM "${table}"
-         WHERE LENGTH("userFacingDescription") > :maxLength`,
+         WHERE ${oversized}`,
         { replacements, type: QueryTypes.SELECT }
       );
       logger.info({ table, count }, "Descriptions to truncate");
@@ -21,8 +29,9 @@ makeScript({}, async ({ execute }, logger) => {
 
     const [, updated] = await frontSequelize.query(
       `UPDATE "${table}"
-       SET "userFacingDescription" = LEFT("userFacingDescription", :maxLength)
-       WHERE LENGTH("userFacingDescription") > :maxLength`,
+       SET "agentFacingDescription" = LEFT("agentFacingDescription", :agentMaxLength),
+           "userFacingDescription" = LEFT("userFacingDescription", :userMaxLength)
+       WHERE ${oversized}`,
       { replacements, type: QueryTypes.UPDATE }
     );
     logger.info({ table, updated }, "Truncated skill descriptions");
