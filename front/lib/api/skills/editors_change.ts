@@ -86,10 +86,11 @@ export async function validateSkillEditorsChange(
     );
   }
 
-  const { missingIds, usersToAdd, usersToRemove } = await resolveUsers({
-    addUserIds,
-    removeUserIds,
-  });
+  const { missingIds, usersToAdd, usersToRemove } =
+    await resolveSkillEditorUsers({
+      addUserIds,
+      removeUserIds,
+    });
   if (missingIds.length > 0) {
     return new Err(
       new SkillEditorsChangeError(
@@ -139,7 +140,7 @@ export async function validateSkillEditorsChange(
   return new Ok({ usersToAdd, usersToRemove });
 }
 
-async function resolveUsers({
+export async function resolveSkillEditorUsers({
   addUserIds,
   removeUserIds,
 }: {
@@ -172,8 +173,9 @@ async function listNonMembers(
   return users.filter((u) => !memberUserModelIds.has(u.id));
 }
 
-// Only the editors being added need checking, as on the manual route.
-async function findAddedEditorsWithoutSpaceAccess(
+// Only the editors being added need checking: the ones already there were validated when they were
+// added or when the skill's spaces last changed.
+export async function findAddedEditorsWithoutSpaceAccess(
   auth: Authenticator,
   skill: SkillResource,
   usersToAdd: UserResource[]

@@ -12,6 +12,10 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { SkillEditSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import {
+  isEditorsSkillSuggestion,
+  isEditSkillSuggestion,
+} from "@app/types/suggestions/skill_suggestion";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const HIERARCHY_HTML = `
@@ -357,32 +361,40 @@ describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", 
     ({ authenticator } = await createResourceTest({ role: "admin" }));
   });
 
+  const createEdit = async (
+    skill: Awaited<ReturnType<typeof SkillFactory.create>>,
+    overrides: Parameters<typeof SkillSuggestionFactory.createEdit>[2]
+  ) => {
+    const created = await SkillSuggestionFactory.createEdit(
+      authenticator,
+      skill,
+      overrides
+    );
+    if (!isEditSkillSuggestion(created)) {
+      throw new Error("The factory did not create an edit suggestion.");
+    }
+
+    return created;
+  };
+
   it("a new description-edit suggestion outdates an older description-edit suggestion", async () => {
     const skill = await SkillFactory.create(authenticator, {
       instructionsHtml: '<p data-block-id="block-1">Content.</p>',
     });
-    const older = await SkillSuggestionFactory.createEdit(
-      authenticator,
-      skill,
-      {
-        suggestion: {
-          agentFacingDescriptionEdit: {
-            content: "First proposed description.",
-          },
+    const older = await createEdit(skill, {
+      suggestion: {
+        agentFacingDescriptionEdit: {
+          content: "First proposed description.",
         },
-      }
-    );
-    const newer = await SkillSuggestionFactory.createEdit(
-      authenticator,
-      skill,
-      {
-        suggestion: {
-          agentFacingDescriptionEdit: {
-            content: "Second proposed description.",
-          },
+      },
+    });
+    const newer = await createEdit(skill, {
+      suggestion: {
+        agentFacingDescriptionEdit: {
+          content: "Second proposed description.",
         },
-      }
-    );
+      },
+    });
 
     await pruneConflictingSkillEditSuggestions(authenticator, skill, newer);
 
@@ -402,24 +414,16 @@ describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", 
     const skill = await SkillFactory.create(authenticator, {
       instructionsHtml: '<p data-block-id="block-1">Content.</p>',
     });
-    const instructionOnly = await SkillSuggestionFactory.createEdit(
-      authenticator,
-      skill,
-      {
-        suggestion: {
-          instructionEdits: [makeInstructionEdit("block-1")],
-        },
-      }
-    );
-    const newer = await SkillSuggestionFactory.createEdit(
-      authenticator,
-      skill,
-      {
-        suggestion: {
-          agentFacingDescriptionEdit: { content: "New description." },
-        },
-      }
-    );
+    const instructionOnly = await createEdit(skill, {
+      suggestion: {
+        instructionEdits: [makeInstructionEdit("block-1")],
+      },
+    });
+    const newer = await createEdit(skill, {
+      suggestion: {
+        agentFacingDescriptionEdit: { content: "New description." },
+      },
+    });
 
     await pruneConflictingSkillEditSuggestions(authenticator, skill, newer);
 
@@ -434,24 +438,16 @@ describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", 
     const skill = await SkillFactory.create(authenticator, {
       instructionsHtml: '<p data-block-id="block-1">Content.</p>',
     });
-    const descriptionOnly = await SkillSuggestionFactory.createEdit(
-      authenticator,
-      skill,
-      {
-        suggestion: {
-          agentFacingDescriptionEdit: { content: "Existing description." },
-        },
-      }
-    );
-    const newer = await SkillSuggestionFactory.createEdit(
-      authenticator,
-      skill,
-      {
-        suggestion: {
-          instructionEdits: [makeInstructionEdit("block-1")],
-        },
-      }
-    );
+    const descriptionOnly = await createEdit(skill, {
+      suggestion: {
+        agentFacingDescriptionEdit: { content: "Existing description." },
+      },
+    });
+    const newer = await createEdit(skill, {
+      suggestion: {
+        instructionEdits: [makeInstructionEdit("block-1")],
+      },
+    });
 
     await pruneConflictingSkillEditSuggestions(authenticator, skill, newer);
 
@@ -472,11 +468,11 @@ describe("pruneConflictingSkillEditorsSuggestions", () => {
     ({ authenticator } = await createResourceTest({ role: "admin" }));
   });
 
-  const createEditors = (
+  const createEditors = async (
     skill: Awaited<ReturnType<typeof SkillFactory.create>>,
     suggestion: { addUserIds?: string[]; removeUserIds?: string[] }
-  ) =>
-    SkillSuggestionFactory.create(authenticator, skill, {
+  ) => {
+    const created = await SkillSuggestionFactory.create(authenticator, skill, {
       kind: "editors",
       suggestion: {
         addUserIds: suggestion.addUserIds ?? [],
@@ -484,6 +480,12 @@ describe("pruneConflictingSkillEditorsSuggestions", () => {
       },
       source: "conversational",
     });
+    if (!isEditorsSkillSuggestion(created)) {
+      throw new Error("The factory did not create an editors suggestion.");
+    }
+
+    return created;
+  };
 
   const stateOf = async (sId: string) =>
     (await SkillSuggestionResource.fetchById(authenticator, sId))?.state;
@@ -529,7 +531,9 @@ describe("pruneConflictingSkillEditorsSuggestions", () => {
 
   it("keeps suggestions about other users and other skills", async () => {
     const skill = await SkillFactory.create(authenticator);
-    const otherSkill = await SkillFactory.create(authenticator);
+    const otherSkill = await SkillFactory.create(authenticator, {
+      name: "Other Test Skill",
+    });
     const otherUser = await createEditors(skill, { addUserIds: ["usr_b"] });
     const sameUserOtherSkill = await createEditors(otherSkill, {
       addUserIds: ["usr_a"],

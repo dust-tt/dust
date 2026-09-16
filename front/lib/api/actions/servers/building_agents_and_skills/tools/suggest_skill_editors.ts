@@ -12,6 +12,7 @@ import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_res
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isEditorsSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 
 export async function suggestSkillEditors(
   auth: Authenticator,
@@ -73,7 +74,9 @@ export async function suggestSkillEditors(
     }
   );
 
-  await pruneConflictingSkillEditorsSuggestions(auth, skill, created);
+  if (isEditorsSkillSuggestion(created)) {
+    await pruneConflictingSkillEditorsSuggestions(auth, skill, created);
+  }
 
   return new Ok(created);
 }

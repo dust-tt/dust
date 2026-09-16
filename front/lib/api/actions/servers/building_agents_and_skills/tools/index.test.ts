@@ -15,13 +15,15 @@ import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory"
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import { SKILL_SUGGESTION_KINDS } from "@app/types/suggestions/skill_suggestion";
 import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
 import { TOOLS } from "./index";
 
-const SKILL_SUGGESTION_DIRECTIVE_REGEX =
-  /^:skill_suggestion\[\]\{sId=(\S+) kind=(edit|editors) skillId=(\S+)\}$/;
+const SKILL_SUGGESTION_DIRECTIVE_REGEX = new RegExp(
+  `^:skill_suggestion\\[\\]\\{sId=(\\S+) kind=(${SKILL_SUGGESTION_KINDS.join("|")}) skillId=(\\S+)\\}$`
+);
 
 function getTool(name: string) {
   const tool = TOOLS.find((t) => t.name === name);

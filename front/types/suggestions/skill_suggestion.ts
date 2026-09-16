@@ -146,6 +146,48 @@ export function parseSkillSuggestionData(data: unknown): SkillSuggestionData {
   return SkillSuggestionDataSchema.parse(data);
 }
 
+export type SkillEditSuggestionData = Extract<
+  SkillSuggestionData,
+  { kind: "edit" }
+>;
+
+export type SkillEditorsSuggestionData = Extract<
+  SkillSuggestionData,
+  { kind: "editors" }
+>;
+
+// `kind` and `suggestion` are separate columns, so narrowing one without the other would lie about
+// the payload. Applies to anything carrying the pair, the resource included.
+function isSkillSuggestionOfKind<
+  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+  K extends SkillSuggestionKind,
+>(
+  carrier: T,
+  kind: K
+): carrier is T & Extract<SkillSuggestionData, { kind: K }> {
+  if (carrier.kind !== kind) {
+    return false;
+  }
+  const { kind: parsedKind } = parseSkillSuggestionData({
+    kind: carrier.kind,
+    suggestion: carrier.suggestion,
+  });
+
+  return parsedKind === kind;
+}
+
+export function isEditSkillSuggestion<
+  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+>(carrier: T): carrier is T & SkillEditSuggestionData {
+  return isSkillSuggestionOfKind(carrier, "edit");
+}
+
+export function isEditorsSkillSuggestion<
+  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+>(carrier: T): carrier is T & SkillEditorsSuggestionData {
+  return isSkillSuggestionOfKind(carrier, "editors");
+}
+
 const SkillSuggestionUpdatedBySchema = z.object({
   sId: z.string(),
   fullName: z.string(),
