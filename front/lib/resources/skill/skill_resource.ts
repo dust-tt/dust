@@ -72,6 +72,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import {
+  launchDeleteSkillSearchWorkflow,
   launchDeleteWorkspaceSkillSearchWorkflow,
   launchIndexSkillSearchWorkflow,
 } from "@app/temporal/es_indexation/client";
@@ -4127,6 +4128,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
     );
 
+    const deleteSearchResult = await launchDeleteSkillSearchWorkflow({
+      workspaceId: workspace.sId,
+      skillId: this.sId,
+    });
+    if (deleteSearchResult.isErr()) {
+      return deleteSearchResult;
+    }
     await SkillResource.launchSearchIndexation(auth, referencingSkillIds);
 
     // Delete files from cloud storage outside the transaction (I/O with GCS).

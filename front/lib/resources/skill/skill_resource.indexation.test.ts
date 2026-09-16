@@ -2,12 +2,15 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import * as skillIndex from "@app/lib/skill_search";
 import logger from "@app/logger/logger";
 import { indexSkillSearchActivity } from "@app/temporal/es_indexation/activities";
-import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
+import {
+  launchDeleteSkillSearchWorkflow,
+  launchIndexSkillSearchWorkflow,
+} from "@app/temporal/es_indexation/client";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
 
@@ -166,8 +169,26 @@ describe("resource-owned skill search indexation", () => {
       favoriteCount: 1,
     });
     vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
+    vi.mocked(launchDeleteSkillSearchWorkflow).mockClear();
     expect((await skill.delete(auth)).isOk()).toBe(true);
     expect(launchIndexSkillSearchWorkflow).not.toHaveBeenCalled();
+    expect(launchDeleteSkillSearchWorkflow).toHaveBeenCalledExactlyOnceWith(
+      target
+    );
+    expect(await SkillResource.fetchById(auth, skill.sId)).toBeNull();
+  });
+
+  it("reports a failed deletion workflow launch after the DB deletion", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const skill = await SkillFactory.create(auth);
+    const error = new Error("Temporal unavailable");
+    vi.mocked(launchDeleteSkillSearchWorkflow).mockResolvedValueOnce(
+      new Err(error)
+    );
+
+    const result = await skill.delete(auth);
+
+    expect(result).toEqual(new Err(error));
     expect(await SkillResource.fetchById(auth, skill.sId)).toBeNull();
   });
 
