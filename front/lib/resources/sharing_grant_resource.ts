@@ -484,6 +484,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
     if (this.email === null) {
       return null;
     }
+
     return {
       id: this.id,
       email: this.email,

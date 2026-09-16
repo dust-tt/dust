@@ -9,7 +9,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isConversationFileUseCase } from "@app/types/files";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { SharingGrantsResponse } from "@app/types/sharing_grants";
 import { addSharingGrantsSchema } from "@app/types/sharing_grants";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -89,7 +89,7 @@ app.delete(
     }
 
     const { grantId } = ctx.req.valid("json");
-    if (typeof grantId === "string") {
+    if (isString(grantId)) {
       const grant = await SharingGrantResource.fetchById(file, grantId);
       if (!grant) {
         return apiError(ctx, {

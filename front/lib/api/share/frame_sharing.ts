@@ -19,7 +19,6 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import crypto from "crypto";
 import { escape } from "html-escaper";
-import { BaseError } from "sequelize";
 
 export interface FrameSharingState {
   grants: SharingGrantResource[];
@@ -120,8 +119,7 @@ export async function addFrameSharingGrants(
 
 /**
  * @cc [owner:flvndvd,label:error-handling] frame-view-recording-failures
- * This boundary may catch Sequelize errors from view recording so analytics cannot deny access.
- * Other exceptions must propagate.
+ * View-recording failures are logged and must not prevent Frame access.
  */
 export async function recordFrameView(
   file: FileResource,
@@ -134,10 +132,8 @@ export async function recordFrameView(
     grant.recordLegacyView({ viewedAt }),
   ]);
   for (const result of results) {
+    // Log but don't fail.
     if (result.status === "rejected") {
-      if (!(result.reason instanceof BaseError)) {
-        throw result.reason;
-      }
       logger.warn(
         { error: result.reason, fileId: file.sId },
         "Failed to record shared file view"
