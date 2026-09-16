@@ -17,10 +17,17 @@ import {
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
-
+import type { AgentResourceCacheKey } from "@app/lib/resources/agent_resource_cache";
+import {
+  AGENT_RESOURCE_CACHE_ID,
+  AGENT_RESOURCE_CACHE_VERSION,
+  agentResourceCacheKey,
+  invalidateAgentResourceCache,
+  invalidateAgentResourceCaches,
+} from "@app/lib/resources/agent_resource_cache";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
-
+import { defineCachedResourceValue } from "@app/lib/resources/cached_resource_store";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -50,6 +57,11 @@ import type {
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
@@ -160,6 +172,51 @@ export interface FullAgentResource extends AgentResource {
   readonly variant: "full";
 }
 
+// JSON-serializable model configuration: the optional `reasoningEffort`/`responseFormat` become
+// `null` (JSON drops `undefined`), everything else is JSON-native.
+type SerializedModelConfiguration = {
+  providerId: ModelProviderIdType;
+  modelId: ModelIdType;
+  temperature: number;
+  reasoningEffort: ReasoningEffort | null;
+  responseFormat: string | null;
+};
+
+// JSON-serializable form of `AgentResourceContent`: Date columns become epoch millis.
+type SerializedAgentResourceContent = Omit<
+  AgentResourceContent,
+  "lastReinforcementAnalysisAt" | "createdAt" | "updatedAt"
+> & {
+  lastReinforcementAnalysisAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+};
+
+// Cached shape of a `full` custom `AgentResource`. Hand-written (the resource spans two tables and
+// reshapes columns), so `AGENT_RESOURCE_CACHE_VERSION` MUST be bumped on any change; a test asserts
+// its `content` stays in sync with `AgentResourceContent`.
+export type AgentResourceSnapshot = {
+  agentModelId: ModelId;
+  agentConfigurationModelId: ModelId;
+  workspaceId: ModelId;
+  sId: string;
+  // The agent row's `createdAt` (epoch millis). Distinct from `content.createdAt`, which is the
+  // configuration version's timestamp — `agents.createdAt` is independent since it is backfilled.
+  createdAt: number;
+  scope: AgentConfigurationScope;
+  name: string;
+  description: string;
+  status: AgentConfigurationStatus;
+  pictureUrl: string;
+  versionAuthorId: ModelId | null;
+  requestedSpaceIds: ModelId[];
+  modelConfiguration: SerializedModelConfiguration;
+  content: SerializedAgentResourceContent;
+};
+
+// Ship the cache dark: wired end to end but touching no Redis. Flip to `false` to turn it on.
+const AGENT_RESOURCE_CACHE_DRY_RUN = true;
+
 // The stable identity of an agent, backed by `AgentModel` (so `id` is the agent's `agentModelId`).
 // It comes in two shapes, discriminated by `variant`:
 // - `light`: identity + `agentConfigurationModelId`/`scope`/`name`/`description`/`status`/
@@ -256,7 +313,7 @@ export class AgentResource
   // (see `fromAgentConfigurationModel`). `variant` is derived from its presence.
   private _content: AgentResourceContent | null;
 
-  // The loading caller's permission context, stamped by `filterByReadAccess` at the per-call read
+  // The loading caller's permission context, stamped by `materializeResource` at the per-call read
   // boundary — NOT on the caller-independent, cacheable `content`.
   private _verbs: Set<GrantVerb> = new Set();
   private _isRegularApiKey = false;
@@ -391,7 +448,7 @@ export class AgentResource
 
   // Caller-independent: builds the `full` resource (identity + core + `content`) from a configuration
   // row and, when available, its agent row, with no read-access decision folded in. This is the shape
-  // the cache stores; the downgrade is applied separately at the read boundary (`filterByReadAccess`).
+  // the cache stores; the downgrade is applied separately at the read boundary (`materializeResource`).
   // `agent` is null on the `fromAgentConfigurationModel` path, where only a configuration is in hand;
   // the identity is then derived from the configuration (its `agentId`/`version` match the agent).
   private static buildResource(
@@ -450,24 +507,22 @@ export class AgentResource
     return resource as FullAgentResource;
   }
 
-  // Materialization seam: fold the caller's read access into a `full` resource. When the caller
-  // cannot read the agent, its `content` is stripped in place, yielding a `light` shape.
-  // `getAllowedVerbs` depends only on core fields, so the permission decision is identical on either
-  // shape — the downgrade only hides the heavier payload. `full` is a fresh per-call instance (built
-  // by `buildResource` or `fromSnapshot`), so mutating it here never affects a cached value.
-  private static filterByReadAccess(
+  // Materializes the caller-dependent state onto a full resource (`_verbs`, `_isRegularApiKey`, and
+  // the read-access downgrade to `light`). The resource is a fresh per-call instance, so mutating it
+  // here never affects a cached value.
+  private static materializeResource(
     auth: Authenticator,
-    full: FullAgentResource
+    cachedResource: FullAgentResource
   ): AgentResource {
-    const verbs = full.getAllowedVerbs(auth);
-    full._verbs = verbs;
-    full._isRegularApiKey = auth.isKey() && !auth.isSystemKey();
+    const verbs = cachedResource.getAllowedVerbs(auth);
+    cachedResource._verbs = verbs;
+    cachedResource._isRegularApiKey = auth.isKey() && !auth.isSystemKey();
 
     if (!verbs.has("read")) {
-      full._content = null;
+      cachedResource._content = null;
     }
 
-    return full;
+    return cachedResource;
   }
 
   // Builds a resource from an already-loaded configuration row: `full` (with `content`) when the
@@ -476,7 +531,7 @@ export class AgentResource
     auth: Authenticator,
     configuration: AgentConfigurationModel
   ): AgentResource {
-    return this.filterByReadAccess(
+    return this.materializeResource(
       auth,
       this.buildResource(null, configuration)
     );
@@ -558,8 +613,25 @@ export class AgentResource
     auth: Authenticator,
     agentId: string
   ): Promise<AgentResource | null> {
-    const [resource] = await this.fetchByIds(auth, [agentId]);
-    return resource ?? null;
+    // Global agents have no configuration rows and are never cached; resolve them through the
+    // uncached global path (`fetchByIds` -> `fetchGlobalAgents`).
+    if (isGlobalAgentId(agentId)) {
+      const [resource] = await this.fetchByIds(auth, [agentId]);
+      return resource ?? null;
+    }
+
+    const cachedResource = await this.cache.fetch({
+      workspaceModelId: auth.getNonNullableWorkspace().id,
+      id: agentId,
+    });
+    if (!cachedResource) {
+      return null;
+    }
+
+    // `canFetch` and the read-access downgrade are caller-dependent, so they run here on a fresh
+    // instance, never cached. A caller holding no verb on the agent gets nothing.
+    const resource = this.materializeResource(auth, cachedResource);
+    return resource.canFetch(auth) ? resource : null;
   }
 
   // Caller-independent query: the current `full` resource of each identified agent — the row whose
@@ -605,14 +677,140 @@ export class AgentResource
     auth: Authenticator,
     identityWhere: { id: ModelId[] } | { sId: string[] }
   ): Promise<AgentResource[]> {
-    const fulls = await this.loadResource(
+    const cachedResources = await this.loadResource(
       auth.getNonNullableWorkspace().id,
       identityWhere
     );
 
-    return fulls
-      .map((full) => this.filterByReadAccess(auth, full))
+    return cachedResources
+      .map((cachedResource) => this.materializeResource(auth, cachedResource))
       .filter((resource) => resource.canFetch(auth));
+  }
+
+  /**
+   * @cc [owner:tdraier,label:backend;performance] agent-resource-cache
+   * The cache holds the caller-independent full resource; the caller-dependent `canFetch` and
+   * `materializeResource` gates MUST run on every read and MUST NOT be cached. Entries have no TTL, so
+   * every write that changes or deletes an agent's cached version MUST invalidate its entry — via
+   * `AgentResource.invalidateCache` here, or the leaf `invalidateAgentResourceCache`/
+   * `invalidateAgentResourceCaches` helpers that lower-level write and deletion paths can import
+   * without forming a cycle back to this resource.
+   */
+  private static readonly cache = defineCachedResourceValue<
+    AgentResourceCacheKey,
+    AgentResourceSnapshot,
+    FullAgentResource
+  >({
+    id: AGENT_RESOURCE_CACHE_ID,
+    version: AGENT_RESOURCE_CACHE_VERSION,
+    key: agentResourceCacheKey,
+    dryRun: AGENT_RESOURCE_CACHE_DRY_RUN,
+    loadFromDatabase: async ({ workspaceModelId, id }) => {
+      const [cachedResource] = await AgentResource.loadResource(
+        workspaceModelId,
+        {
+          sId: [id],
+        }
+      );
+      return cachedResource ?? null;
+    },
+    toSnapshot: (cachedResource) => cachedResource.toSnapshot(),
+    fromSnapshot: (snapshot) => AgentResource.fromSnapshot(snapshot),
+  });
+
+  static async invalidateCache(
+    workspaceId: ModelId,
+    sId: string,
+    transaction?: Transaction
+  ): Promise<void> {
+    await invalidateAgentResourceCache(workspaceId, sId, transaction);
+  }
+
+  // Serializes a resource to its cached JSON snapshot. See `AgentResourceSnapshot`.
+  // Only custom agents' current versions are cached (see `loadResource`); this tripwire refuses to
+  // serialize a global resource even if a future path reaches it off the load path.
+  toSnapshot(): AgentResourceSnapshot {
+    assert(
+      this.scope !== "global",
+      "Unexpected: attempted to cache a global AgentResource"
+    );
+    const { content, modelConfiguration } = this;
+
+    return {
+      agentModelId: this.id,
+      agentConfigurationModelId: this.agentConfigurationModelId,
+      workspaceId: this.workspaceId,
+      sId: this.sId,
+      createdAt: this.createdAt.getTime(),
+      scope: this.scope,
+      name: this.name,
+      description: this.description,
+      status: this.status,
+      pictureUrl: this.pictureUrl,
+      versionAuthorId: this.versionAuthorId,
+      requestedSpaceIds: this.requestedSpaceIds,
+      modelConfiguration: {
+        providerId: modelConfiguration.providerId,
+        modelId: modelConfiguration.modelId,
+        temperature: modelConfiguration.temperature,
+        reasoningEffort: modelConfiguration.reasoningEffort ?? null,
+        responseFormat: modelConfiguration.responseFormat ?? null,
+      },
+      content: {
+        ...content,
+        lastReinforcementAnalysisAt:
+          content.lastReinforcementAnalysisAt?.getTime() ?? null,
+        createdAt: content.createdAt.getTime(),
+        updatedAt: content.updatedAt.getTime(),
+      },
+    };
+  }
+
+  // Rebuilds a `full` resource from a cached snapshot. Inverse of `toSnapshot`.
+  static fromSnapshot(snapshot: AgentResourceSnapshot): FullAgentResource {
+    const { content, modelConfiguration } = snapshot;
+
+    const resource = new AgentResource(
+      {
+        id: snapshot.agentModelId,
+        workspaceId: snapshot.workspaceId,
+        sId: snapshot.sId,
+        // The agent row's own timestamp — NOT the version's (`content.createdAt`).
+        createdAt: new Date(snapshot.createdAt),
+        // `updatedAt` is not surfaced on the resource; the version's stands in harmlessly.
+        updatedAt: new Date(content.updatedAt),
+        // The cached row is the current version, so its version is the agent's `currentVersion`.
+        currentVersion: content.version,
+      },
+      {
+        agentConfigurationModelId: snapshot.agentConfigurationModelId,
+        scope: snapshot.scope,
+        name: snapshot.name,
+        description: snapshot.description,
+        status: snapshot.status,
+        pictureUrl: snapshot.pictureUrl,
+        versionAuthorId: snapshot.versionAuthorId,
+        requestedSpaceIds: snapshot.requestedSpaceIds,
+        modelConfiguration: {
+          providerId: modelConfiguration.providerId,
+          modelId: modelConfiguration.modelId,
+          temperature: modelConfiguration.temperature,
+          reasoningEffort: modelConfiguration.reasoningEffort ?? undefined,
+          responseFormat: modelConfiguration.responseFormat ?? undefined,
+        },
+        content: {
+          ...content,
+          lastReinforcementAnalysisAt:
+            content.lastReinforcementAnalysisAt !== null
+              ? new Date(content.lastReinforcementAnalysisAt)
+              : null,
+          createdAt: new Date(content.createdAt),
+          updatedAt: new Date(content.updatedAt),
+        },
+      }
+    );
+
+    return resource as FullAgentResource;
   }
 
   async listEditors(
@@ -887,6 +1085,13 @@ export class AgentResource
         },
         transaction,
       }
+    );
+
+    // `scope` is a snapshot field, so each updated agent's cached current version changed.
+    await invalidateAgentResourceCaches(
+      workspaceModelId,
+      updatedAgentIds,
+      transaction
     );
 
     // Audit and trigger-disable are post-mutation side effects: they must reflect a durable scope
@@ -1741,6 +1946,11 @@ export class AgentResource
       // Self-owned managed transaction: a throw in `performCreation` auto-rolls-back the whole save
       // before it is converted to an `Err` (see `agent-save-atomic`).
       const agent = await withTransaction(performCreation);
+
+      // The saved version becomes the agent's current version, so any cached resource is now stale
+      // (a no-op for a brand-new agent from `makeNew`). The save above is a self-owned transaction,
+      // already committed here, so invalidate immediately.
+      await AgentResource.invalidateCache(owner.id, agent.sId);
 
       // Resolve the saved agent through the access-controlled resolver. In every real path the caller
       // is the author (or otherwise holds read), so this is the `full` agent they just wrote.

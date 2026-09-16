@@ -1,6 +1,9 @@
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import {
+  AgentConfigurationModel,
+  AgentModel,
+} from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -314,6 +317,235 @@ describe("AgentResource", () => {
     expect(byModelIds.map((resource) => resource.id).sort()).toEqual(
       [firstAgent.agentModelId, secondAgent.agentModelId].sort()
     );
+  });
+
+  it("serializes and restores a full resource without loss", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+
+    const full = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(full?.isFull());
+
+    const restored = AgentResource.fromSnapshot(full.toSnapshot());
+
+    // The restored resource is indistinguishable from the one it was serialized from.
+    expect(restored.isFull()).toBe(true);
+    expect(restored.content).toEqual(full.content);
+    expect(restored.toSnapshot()).toEqual(full.toSnapshot());
+  });
+
+  it("round-trips the agent createdAt distinct from the version createdAt", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+    assert(agent.agentModelId !== null);
+
+    // Set only the `agents` row's `createdAt` (not the configuration's), the way the backfill can —
+    // so the agent's identity date differs from the version's date.
+    const agentCreatedAt = new Date("2020-02-02T00:00:00.000Z");
+    await AgentModel.update(
+      { createdAt: agentCreatedAt },
+      {
+        where: {
+          id: agent.agentModelId,
+          workspaceId: testContext.workspace.id,
+        },
+      }
+    );
+
+    const resource = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(resource?.isFull());
+
+    // The snapshot round-trip must keep the agent row's `createdAt`, not fall back to the version's.
+    expect(resource.createdAt.getTime()).toBe(agentCreatedAt.getTime());
+    expect(resource.content.createdAt.getTime()).not.toBe(
+      agentCreatedAt.getTime()
+    );
+  });
+
+  it("keeps the cached snapshot in sync with the configuration model", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+
+    const full = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(full?.isFull());
+    const snapshot = full.toSnapshot();
+
+    // `content` must carry every `AgentConfigurationModel` column except the ones folded into the
+    // resource's identity/core, or explicitly excluded. When this fails the model changed shape:
+    // reconcile `AgentResourceContent` and bump `AGENT_RESOURCE_CACHE_VERSION`.
+    const foldedIntoIdentityOrCore = new Set([
+      // Carried as the core `agentConfigurationModelId`, not `content`.
+      "id",
+      "agentId",
+      "workspaceId",
+      "sId",
+      "scope",
+      "name",
+      "description",
+      "status",
+      "pictureUrl",
+      "authorId",
+      "requestedSpaceIds",
+      // Carried by the core `modelConfiguration`, not `content`.
+      "providerId",
+      "modelId",
+      "temperature",
+      "reasoningEffort",
+      "responseFormat",
+    ]);
+    // Deliberately not carried by `AgentResource` (deprecated/unused column).
+    const excludedColumns = new Set(["visualizationEnabled"]);
+    const expectedContentColumns = Object.keys(
+      AgentConfigurationModel.getAttributes()
+    )
+      .filter(
+        (column) =>
+          !foldedIntoIdentityOrCore.has(column) && !excludedColumns.has(column)
+      )
+      .sort();
+    const actualContentColumns = Object.keys(snapshot.content).sort();
+
+    expect(actualContentColumns).toEqual(expectedContentColumns);
+  });
+
+  it("serves the same full content from the cache as from the database", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+
+    // First read populates the cache; the second is served from it.
+    await AgentResource.fetchById(testContext.authenticator, agent.sId);
+    const cached = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    const [fromDatabase] = await AgentResource.fetchByIds(
+      testContext.authenticator,
+      [agent.sId]
+    );
+
+    assert(cached?.isFull());
+    assert(fromDatabase?.isFull());
+    expect(cached.toSnapshot()).toEqual(fromDatabase.toSnapshot());
+  });
+
+  it("reflects a fresh archive on the next read", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+
+    // Populate the cache with the active version.
+    const active = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(active?.isFull());
+    expect(active.status).toBe("active");
+
+    await archiveAgentConfiguration(testContext.authenticator, agent.sId);
+
+    // The agent still resolves (its latest version, now archived); invalidation keeps the read fresh.
+    const archived = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(archived?.isFull());
+    expect(archived.status).toBe("archived");
+  });
+
+  it("resolves from the database on every read while the cache ships in dry-run", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { description: "before" }
+    );
+
+    const first = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    expect(first?.description).toBe("before");
+
+    // Mutate the row directly, without calling `invalidateCache`. A live cache would keep serving
+    // the stale value; dry-run reads the database on every call.
+    await AgentConfigurationModel.update(
+      { description: "after" },
+      { where: { sId: agent.sId, workspaceId: testContext.workspace.id } }
+    );
+
+    const second = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    expect(second?.description).toBe("after");
+  });
+
+  it("resolves a global agent by id through the uncached global path", async () => {
+    // Global agents have no configuration rows and are never cached; `fetchById` resolves them via
+    // the global path (`fetchGlobalAgents`), not the cache.
+    const resource = await AgentResource.fetchById(
+      testContext.authenticator,
+      GLOBAL_AGENTS_SID.HELPER
+    );
+
+    expect(resource).not.toBeNull();
+    expect(resource?.sId).toBe(GLOBAL_AGENTS_SID.HELPER);
+    expect(resource?.scope).toBe("global");
+  });
+
+  it("caches the highest version after a new version is created", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { name: "Versioned agent", description: "v0" }
+    );
+
+    // Populate the cache with the first version.
+    const v0 = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(v0?.isFull());
+    expect(v0.description).toBe("v0");
+
+    // A new active version supersedes it; createAgentConfiguration invalidates the cache.
+    await AgentConfigurationFactory.updateTestAgent(
+      testContext.authenticator,
+      agent.sId,
+      { name: "Versioned agent", description: "v1" }
+    );
+
+    const latest = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(latest?.isFull());
+    expect(latest.description).toBe("v1");
+    expect(latest.content.version).toBeGreaterThan(v0.content.version);
+  });
+
+  it("does not serve an agent to a caller from another workspace", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+    // Populate the cache from the owning workspace.
+    await AgentResource.fetchById(testContext.authenticator, agent.sId);
+
+    const otherContext = await createResourceTest({ role: "admin" });
+
+    expect(
+      await AgentResource.fetchById(otherContext.authenticator, agent.sId)
+    ).toBeNull();
   });
 
   it("lists agent editors from grants individually and in batches", async () => {
