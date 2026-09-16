@@ -3489,8 +3489,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * Rewrites inline references to this skill in every parent skill so their tag
-   * availability reflects this skill's current status and requested spaces. Returns
-   * changed parents so callers can refresh their indexed timestamps after committing.
+   * availability reflects this skill's current status and requested spaces.
    */
   /**
    * @cc [owner:aubin-tchoi,label:backend;performance] reference-refresh-targets

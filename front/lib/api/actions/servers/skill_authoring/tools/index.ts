@@ -638,10 +638,9 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
         userFacingDescription ?? skill.userFacingDescription,
     });
 
-    const owner = auth.getNonNullableWorkspace();
-
     await pruneOutdatedSkillEditSuggestions(auth, skill);
 
+    const owner = auth.getNonNullableWorkspace();
     const text = `Updated skill "${skill.name}".`;
 
     return new Ok([
