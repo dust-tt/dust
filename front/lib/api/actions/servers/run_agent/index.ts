@@ -53,7 +53,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -120,6 +120,11 @@ function makeChildAgentUnavailableError(childAgentName: string): MCPError {
   );
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:error-handling] unavailable-child-agent-name
+ * Availability errors must use the fetched agent's name, falling back to the configured
+ * name and then the agent ID when the agent cannot be fetched.
+ */
 async function getRunnableChildAgent(
   auth: Authenticator,
   {
@@ -135,8 +140,20 @@ async function getRunnableChildAgent(
     variant: "extra_light",
   });
 
+  if (childAgent?.status === "archived") {
+    return new Err(
+      new MCPError(
+        `Agent @${childAgent.name} is archived and cannot be run. ` +
+          "Ask a workspace admin to restore the agent or select another agent.",
+        { tracked: false }
+      )
+    );
+  }
+
   if (!childAgent || !canRunChildAgent(childAgent)) {
-    return new Err(makeChildAgentUnavailableError(childAgentName));
+    return new Err(
+      makeChildAgentUnavailableError(childAgent?.name ?? childAgentName)
+    );
   }
 
   return new Ok({
@@ -779,8 +796,7 @@ function isRunAgentHandoffMode(toolContext?: ToolContext): boolean {
  * leaked to the user which appears as acceptable given the proactive decision of a builder having
  * access to it to refer it from the parent agent more broadly shared.
  *
- * If the agent has been archived, this method will return null leading to the tool being displayed
- * to the model as not configured.
+ * Archived and disabled agents retain their metadata so availability errors can identify them.
  */
 async function leakyGetAgentNameAndDescriptionForChildAgent(
   auth: Authenticator,
@@ -802,25 +818,7 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
     };
   }
 
-  const owner = auth.getNonNullableWorkspace();
-
-  const agentConfiguration = await AgentConfigurationModel.findOne({
-    where: {
-      sId: agentId,
-      workspaceId: owner.id,
-      status: "active",
-    },
-    attributes: ["name", "description"],
-  });
-
-  if (!agentConfiguration) {
-    return null;
-  }
-
-  return {
-    name: agentConfiguration.name,
-    description: agentConfiguration.description,
-  };
+  return AgentResource.fetchLatestMetadataById(auth, agentId);
 }
 
 async function createServer(
@@ -860,7 +858,7 @@ async function createServer(
     );
   }
 
-  // If we have no child ID (unexpected) or the child agent was archived, return a dummy server
+  // If we have no child ID (unexpected) or cannot find the child agent, return a dummy server
   // whose tool name and description informs the agent of the situation.
   if (!childAgentBlob) {
     registerTool(
@@ -870,8 +868,8 @@ async function createServer(
       {
         name: "run_agent_tool_not_available",
         description:
-          "No child agent configured for this tool, as the child agent was probably archived. " +
-          "Do not attempt to run the tool and warn the user instead.",
+          "Warn the user that the child agent configured for this tool could not be found. " +
+          "Do not attempt to run the tool.",
         stake: "never_ask",
         displayLabels: {
           running: "No child agent configured",
