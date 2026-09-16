@@ -96,9 +96,6 @@ export const SANDBOX_FUNCTION_SLUG_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 // build_on_sandbox.test.ts.
 export const SANDBOX_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
 
-// Pod databases and Frame databases share the dsbx runtime naming contract.
-export const POD_DATABASE_NAME_REGEX = SANDBOX_DATABASE_NAME_REGEX;
-
 export function isValidSandboxFunctionSlug(value: unknown): value is string {
   return typeof value === "string" && SANDBOX_FUNCTION_SLUG_REGEX.test(value);
 }
