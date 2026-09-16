@@ -7,6 +7,7 @@ import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
+import type * as creditSpendCheckpointActivities from "@app/temporal/agent_loop/activities/credit_spend_checkpoint";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
 import type * as finalizeSandboxChildToolActivities from "@app/temporal/agent_loop/activities/finalize_sandbox_child_tool";
@@ -148,7 +149,7 @@ const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
 // No retries: this is a fail-open check, so a failure should resolve immediately rather than
 // delaying the step with retries.
 const { checkCreditSpendCheckpointActivity } = proxyActivities<
-  typeof creditCheckActivities
+  typeof creditSpendCheckpointActivities
 >({
   startToCloseTimeout: "15 seconds",
   retry: {
