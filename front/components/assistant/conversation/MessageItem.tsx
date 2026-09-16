@@ -168,11 +168,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       }
 
       const inlineKnowledgeNodeIds = extractKnowledgeTagNodeIds(data.content);
-      
+
       if (inlineKnowledgeNodeIds.size === 0) {
         return data.contentFragments;
       }
-      
+
       return data.contentFragments.filter(
         (fragment) =>
           !(

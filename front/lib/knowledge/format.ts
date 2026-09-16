@@ -45,6 +45,17 @@ export function parseKnowledgeTag(tag: string): KnowledgeReference | null {
   };
 }
 
+export function extractKnowledgeTagNodeIds(content: string): Set<string> {
+  const nodeIds = new Set<string>();
+  for (const match of content.matchAll(KNOWLEDGE_TAG_REGEX)) {
+    const knowledge = parseKnowledgeTag(match[0]);
+    if (knowledge?.id) {
+      nodeIds.add(knowledge.id);
+    }
+  }
+  return nodeIds;
+}
+
 /**
  * Strips presentation/internal attributes from inline <knowledge> tags so the
  * model only sees a stable, human-meaningful reference (the title). The document
