@@ -3,6 +3,12 @@
   "number_of_replicas": 1,
   "refresh_interval": "30s",
   "analysis": {
+    "normalizer": {
+      "skill_name_normalizer": {
+        "type": "custom",
+        "filter": ["icu_folding"]
+      }
+    },
     "char_filter": {
       "skill_name_nfc": {
         "type": "icu_normalizer",

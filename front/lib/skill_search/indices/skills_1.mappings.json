@@ -18,7 +18,8 @@
       "analyzer": "skill_name_exact_analyzer",
       "fields": {
         "keyword": {
-          "type": "keyword"
+          "type": "keyword",
+          "normalizer": "skill_name_normalizer"
         },
         "autocomplete": {
           "type": "search_as_you_type",
