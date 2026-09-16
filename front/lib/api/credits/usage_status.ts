@@ -1,4 +1,4 @@
-import type { BillingCycle } from "@app/lib/client/subscription";
+import type { BillingCycle } from "@app/lib/plans/billing_cycle";
 import type {
   CreditUsageStatus,
   CreditUsageTarget,

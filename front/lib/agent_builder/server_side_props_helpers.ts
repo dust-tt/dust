@@ -2,9 +2,9 @@ import type {
   AgentBuilderMCPConfiguration,
   AgentBuilderMCPConfigurationWithId,
 } from "@app/components/agent_builder/types";
-import { getDefaultMCPServerActionConfiguration } from "@app/components/agent_builder/types";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { getDefaultMCPServerActionConfiguration } from "@app/lib/agent_builder/default_action_configuration";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,

@@ -1,7 +1,9 @@
-import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
 import { importSkillsFromGitHub } from "@app/lib/api/skills/detection/github/import_skills";
 import logger from "@app/logger/logger";
-import type { ImportSkillsRequestBody } from "@app/types/api/skills/detection/github/import_skills";
+import type {
+  ImportSkillsRequestBody,
+  ImportSkillsResponseBody,
+} from "@app/types/api/skills/detection/github/import_skills";
 import { ImportSkillsRequestBodySchema } from "@app/types/api/skills/detection/github/import_skills";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";

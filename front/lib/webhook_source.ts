@@ -1,11 +1,11 @@
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/components/resources/resources_icon_names";
+} from "@app/types/resources_icon_names";
 import {
   isCustomResourceIconType,
   isInternalAllowedIcon,
-} from "@app/components/resources/resources_icon_names";
+} from "@app/types/resources_icon_names";
 import type {
   WebhookSourceForAdminType,
   WebhookSourceWithViewsType,

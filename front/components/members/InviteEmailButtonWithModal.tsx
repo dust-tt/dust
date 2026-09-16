@@ -19,12 +19,12 @@ import type {
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import {
-  MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY,
   mutateWorkspaceInvitations,
   sendInvitations,
 } from "@app/lib/invitations";
 import { useSeatPlan } from "@app/lib/swr/credits";
 import { isEmailValid } from "@app/lib/utils";
+import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/types/membership_invitation";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { isMembershipSeatType, toBaseSeatType } from "@app/types/memberships";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";

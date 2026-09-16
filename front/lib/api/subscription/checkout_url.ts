@@ -7,12 +7,6 @@ import { CheckoutSeatTypeSchema } from "@app/lib/api/checkout/types";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  CP_MAX_SEAT_COST_MONTHLY,
-  CP_MAX_SEAT_COST_YEARLY,
-  CP_PRO_SEAT_COST_MONTHLY,
-  CP_PRO_SEAT_COST_YEARLY,
-} from "@app/lib/client/subscription";
-import {
   BUSINESS_USD_PACKAGE_ALIAS,
   LEGACY_BUSINESS_PACKAGE_ALIAS,
   LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
@@ -23,6 +17,12 @@ import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
+import {
+  CP_MAX_SEAT_COST_MONTHLY,
+  CP_MAX_SEAT_COST_YEARLY,
+  CP_PRO_SEAT_COST_MONTHLY,
+  CP_PRO_SEAT_COST_YEARLY,
+} from "@app/lib/plans/pricing";
 import type { SupportedPaymentMethod } from "@app/lib/plans/stripe";
 import {
   createEmbeddedMetronomeSetupCheckoutSession,
