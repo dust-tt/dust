@@ -241,6 +241,45 @@ describe("ensureConversationSandboxReady", () => {
     );
   });
 
+  it("shares one in-flight readiness run between concurrent callers", async () => {
+    let releaseEnsureActive: () => void = () => {};
+    mockEnsureSandboxActive.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseEnsureActive = () =>
+            resolve(
+              new Ok({
+                freshlyCreated: true,
+                sandbox,
+                wokeFromSleep: false,
+                scope: { spaceId: null },
+              })
+            );
+        })
+    );
+
+    const first = ensureConversationSandboxReady(
+      auth as never,
+      conversation as never
+    );
+    const second = ensureConversationSandboxReady(
+      auth as never,
+      conversation as never
+    );
+    releaseEnsureActive();
+    const [firstResult, secondResult] = await Promise.all([first, second]);
+
+    expect(firstResult.isOk()).toBe(true);
+    expect(secondResult.isOk()).toBe(true);
+    expect(mockEnsureSandboxActive).toHaveBeenCalledTimes(1);
+    expect(mockSetupSandboxMount).toHaveBeenCalledTimes(1);
+    expect(mockRefreshSandboxMount).not.toHaveBeenCalled();
+
+    // Once the run settles, the next call starts a fresh one.
+    await ensureConversationSandboxReady(auth as never, conversation as never);
+    expect(mockEnsureSandboxActive).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps conversation-scoped policy with the Pod as an inherited layer", async () => {
     // The adapter resolves the pod association under the lifecycle lock and
     // returns it as the scope; the ready path derives everything from it.
