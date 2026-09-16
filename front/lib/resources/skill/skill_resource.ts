@@ -578,7 +578,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   /**
    * @cc [owner:aubin-tchoi,label:backend;concurrency] skill-search-after-commit
    * Skill mutations enqueue workspace-scoped custom IDs after their existing writes.
-   * Code-defined skills are never indexed.
    */
   static async launchSearchIndexation(
     auth: Authenticator,
