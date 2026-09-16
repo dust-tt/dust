@@ -4,6 +4,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
+  deleteSkillDocument,
   deleteWorkspaceSkillDocuments,
   indexSkillDocument,
 } from "@app/lib/skill_search";
@@ -121,6 +122,19 @@ export async function indexSkillSearchActivity({
   const result = await indexSkillDocument(document);
   if (result.isErr()) {
     throw result.error;
+  }
+}
+
+export async function deleteSkillSearchActivity({
+  workspaceId,
+  skillId,
+}: {
+  workspaceId: string;
+  skillId: string;
+}): Promise<void> {
+  const deleteResult = await deleteSkillDocument({ workspaceId, skillId });
+  if (deleteResult.isErr()) {
+    throw deleteResult.error;
   }
 }
 

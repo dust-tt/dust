@@ -6,6 +6,7 @@ import { indexSkillSearchSignal, indexUserSearchSignal } from "./signals";
 const DEBOUNCE_DELAY_MS = 1_000;
 
 const {
+  deleteSkillSearchActivity,
   deleteWorkspaceSkillSearchActivity,
   indexSkillSearchActivity,
   indexUserSearchActivity,
@@ -60,6 +61,16 @@ export async function indexSkillSearchWorkflow({
 
     await indexSkillSearchActivity({ workspaceId, skillId });
   }
+}
+
+export async function deleteSkillSearchWorkflow({
+  workspaceId,
+  skillId,
+}: {
+  workspaceId: string;
+  skillId: string;
+}): Promise<void> {
+  await deleteSkillSearchActivity({ workspaceId, skillId });
 }
 
 export async function deleteWorkspaceSkillSearchWorkflow({

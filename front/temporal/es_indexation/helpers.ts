@@ -16,6 +16,16 @@ export function makeIndexSkillSearchWorkflowId({
   return `es-indexation-skill-search-${workspaceId}-${skillId}`;
 }
 
+export function makeDeleteSkillSearchWorkflowId({
+  workspaceId,
+  skillId,
+}: {
+  workspaceId: string;
+  skillId: string;
+}): string {
+  return `es-indexation-delete-skill-search-${workspaceId}-${skillId}`;
+}
+
 export function makeDeleteWorkspaceSkillSearchWorkflowId({
   workspaceId,
 }: {
