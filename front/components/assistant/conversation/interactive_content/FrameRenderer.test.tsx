@@ -111,6 +111,11 @@ vi.mock("@app/lib/swr/frames", () => ({
     isFramePermissionsLoading: false,
     isFramePermissionsError: null,
   }),
+  useFrameSource: () => ({
+    frameSource: null,
+    isFrameSourceLoading: false,
+    isFrameSourceError: null,
+  }),
 }));
 vi.mock("@app/lib/swr/pods", () => ({
   usePodFiles: () => ({ files: [] }),

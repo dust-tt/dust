@@ -6,6 +6,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetFramePermissionsResponseBody } from "@app/types/api/frame_permissions";
+import type { GetFrameSourceResponseBody } from "@app/types/api/frame_source";
 import type { EditTextFn } from "@app/types/assistant/visualization";
 import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -38,6 +39,38 @@ export function useFramePermissions({
     isFrameAuthor: data?.isFrameAuthor ?? false,
     isFramePermissionsLoading: !disabled && !data && !error,
     isFramePermissionsError: error,
+  };
+}
+
+export function useFrameSource({
+  owner,
+  frameId,
+  cacheKey,
+  disabled = false,
+}: {
+  owner: LightWorkspaceType;
+  frameId: string;
+  cacheKey?: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const frameSourceFetcher: Fetcher<GetFrameSourceResponseBody> = fetcher;
+  const basePath = `/api/w/${owner.sId}/frames/${encodeURIComponent(frameId)}/source`;
+  const swrKey = disabled
+    ? null
+    : cacheKey
+      ? `${basePath}?v=${cacheKey}`
+      : basePath;
+
+  const { data, error } = useSWRWithDefaults(swrKey, frameSourceFetcher, {
+    disabled,
+    revalidateOnFocus: false,
+  });
+
+  return {
+    frameSource: data ?? null,
+    isFrameSourceLoading: !disabled && !data && !error,
+    isFrameSourceError: error,
   };
 }
 

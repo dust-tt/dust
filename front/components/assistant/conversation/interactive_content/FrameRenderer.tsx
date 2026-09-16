@@ -20,7 +20,11 @@ import {
   useFileMetadata,
   useShareInteractiveContentFile,
 } from "@app/lib/swr/files";
-import { useEditFrameText, useFramePermissions } from "@app/lib/swr/frames";
+import {
+  useEditFrameText,
+  useFramePermissions,
+  useFrameSource,
+} from "@app/lib/swr/frames";
 import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
@@ -162,6 +166,16 @@ export function FrameRenderer({
   });
 
   const [showCode, setShowCode] = React.useState(false);
+
+  // A legacy Frame renders its own source, so `fileContent` is the code. A Frames v2 package
+  // renders a built bundle, so its sources are fetched separately, and only once shown.
+  const { frameSource, isFrameSourceLoading, isFrameSourceError } =
+    useFrameSource({
+      owner,
+      frameId: fileId,
+      cacheKey: contentHash,
+      disabled: renderMode !== "v2" || !showCode,
+    });
 
   const { isFrameAuthor } = useFramePermissions({
     owner,
@@ -346,6 +360,15 @@ export function FrameRenderer({
     sendNotification,
   ]);
 
+  const codeToggleButton = (
+    <Button
+      icon={showCode ? Eye : Terminal}
+      onClick={() => setShowCode(!showCode)}
+      tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
+      variant="ghost"
+    />
+  );
+
   if (error) {
     return (
       <div className="flex h-panel flex-col">
@@ -364,12 +387,7 @@ export function FrameRenderer({
       <ConversationSidePanelHeader onClose={onClosePanel}>
         {renderMode === "legacy" && (
           <div className="flex w-full items-center justify-between">
-            <Button
-              icon={showCode ? Eye : Terminal}
-              onClick={() => setShowCode(!showCode)}
-              tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
-              variant="ghost"
-            />
+            {codeToggleButton}
             <div className="flex items-center">
               <ExportContentDropdown
                 iframeRef={iframeRef}
@@ -433,21 +451,24 @@ export function FrameRenderer({
           </div>
         )}
         {renderMode === "v2" && (
-          <div className="flex w-full justify-end">
-            <ExportContentDropdown
-              iframeRef={iframeRef}
-              owner={owner}
-              fileId={fileId}
-              fileContent={fileContent ?? null}
-              fileName={fileMetadata?.fileName}
-              contentType={fileMetadata?.contentType}
-            />
-            <ShareFramePopover
-              key={contentHash ?? fileId}
-              fileId={fileId}
-              owner={owner}
-              contentHash={contentHash}
-            />
+          <div className="flex w-full items-center justify-between">
+            {codeToggleButton}
+            <div className="flex items-center">
+              <ExportContentDropdown
+                iframeRef={iframeRef}
+                owner={owner}
+                fileId={fileId}
+                fileContent={fileContent ?? null}
+                fileName={fileMetadata?.fileName}
+                contentType={fileMetadata?.contentType}
+              />
+              <ShareFramePopover
+                key={contentHash ?? fileId}
+                fileId={fileId}
+                owner={owner}
+                contentHash={contentHash}
+              />
+            </div>
           </div>
         )}
       </ConversationSidePanelHeader>
@@ -456,11 +477,11 @@ export function FrameRenderer({
         {isLoading ? (
           <Spinner />
         ) : showCode ? (
-          <div className="h-full overflow-auto px-4">
-            <CodeBlock wrapLongLines className="language-tsx">
-              {fileContent}
-            </CodeBlock>
-          </div>
+          <FrameCodeView
+            code={renderMode === "v2" ? frameSource?.content : fileContent}
+            isLoading={renderMode === "v2" && isFrameSourceLoading}
+            hasError={renderMode === "v2" && Boolean(isFrameSourceError)}
+          />
         ) : (
           <div className="h-full">
             <AuthenticatedVisualizationActionIframe
@@ -503,6 +524,38 @@ export function FrameRenderer({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+interface FrameCodeViewProps {
+  code?: string;
+  hasError: boolean;
+  isLoading: boolean;
+}
+
+function FrameCodeView({ code, hasError, isLoading }: FrameCodeViewProps) {
+  if (isLoading) {
+    return (
+      <CenteredState>
+        <Spinner size="sm" />
+      </CenteredState>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <CenteredState>
+        <p className="text-warning-500">Error loading the Frame source.</p>
+      </CenteredState>
+    );
+  }
+
+  return (
+    <div className="h-full overflow-auto px-4">
+      <CodeBlock wrapLongLines className="language-tsx">
+        {code}
+      </CodeBlock>
     </div>
   );
 }
