@@ -14,16 +14,12 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
+  AgentModelConfigurationType,
   AgentReinforcementMode,
   AgentStatus,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
-import type {
-  ModelIdType,
-  ModelProviderIdType,
-  ReasoningEffort,
-} from "@app/types/assistant/models/types";
 import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
 import type {
@@ -67,11 +63,6 @@ export type AgentResourceContent = {
   status: AgentStatus;
   instructions: string | null;
   instructionsHtml: string | null;
-  providerId: ModelProviderIdType;
-  modelId: ModelIdType;
-  temperature: number;
-  reasoningEffort: ReasoningEffort | null;
-  responseFormat: string | undefined;
   pictureUrl: string;
   maxStepsPerRun: number;
   templateId: ModelId | null;
@@ -87,6 +78,7 @@ type AgentResourceExtraBlob = {
   description: string;
   versionAuthorId: ModelId | null;
   requestedSpaceIds: ModelId[];
+  modelConfiguration: AgentModelConfigurationType;
   content: AgentResourceContent | null;
 };
 
@@ -97,8 +89,10 @@ export interface FullAgentResource extends AgentResource {
 
 // The stable identity of an agent, backed by `AgentModel` (so `id` is the agent's `agentModelId`).
 // It comes in two shapes, discriminated by `variant`:
-// - `light`: identity + `scope`/`name`/`description`/`versionAuthorId`/`requestedSpaceIds`, built
-//   without a query from a configuration already in hand. Sufficient for permission decisions.
+// - `light`: identity + `scope`/`name`/`description`/`versionAuthorId`/`requestedSpaceIds`/
+//   `modelConfiguration`, built without a query from a configuration already in hand. These core
+//   fields are not read-gated — they are carried by every resource — and are sufficient for
+//   permission decisions.
 // - `full`: additionally carries `content` (every remaining `AgentConfigurationModel` column of the
 //   latest active version). Produced by the access-controlled `fetch*` resolvers.
 /**
@@ -123,6 +117,7 @@ export class AgentResource
   readonly description: string;
   private readonly versionAuthorId: ModelId | null;
   private readonly requestedSpaceIds: ModelId[];
+  readonly modelConfiguration: AgentModelConfigurationType;
   // Mutable so a light resource can be enriched to full in place once read access is confirmed
   // (see `fromAgentConfigurationModel`). `variant` is derived from its presence.
   private _content: AgentResourceContent | null;
@@ -140,6 +135,7 @@ export class AgentResource
     this.description = extra.description;
     this.versionAuthorId = extra.versionAuthorId;
     this.requestedSpaceIds = extra.requestedSpaceIds;
+    this.modelConfiguration = extra.modelConfiguration;
     this._content = extra.content;
   }
 
@@ -193,6 +189,7 @@ export class AgentResource
         requestedSpaceIds: removeNulls(
           configuration.requestedSpaceIds.map(getResourceIdFromSId)
         ),
+        modelConfiguration: configuration.model,
         content: null,
       }
     );
@@ -230,6 +227,7 @@ export class AgentResource
         description: configuration.description,
         versionAuthorId: null,
         requestedSpaceIds: [],
+        modelConfiguration: configuration.model,
         content: null,
       }
     );
@@ -258,6 +256,13 @@ export class AgentResource
         description: configuration.description,
         versionAuthorId: configuration.authorId,
         requestedSpaceIds: configuration.requestedSpaceIds,
+        modelConfiguration: {
+          providerId: configuration.providerId,
+          modelId: configuration.modelId,
+          temperature: configuration.temperature,
+          reasoningEffort: configuration.reasoningEffort ?? undefined,
+          responseFormat: configuration.responseFormat,
+        },
         content: null,
       }
     );
@@ -269,11 +274,6 @@ export class AgentResource
         status: configuration.status,
         instructions: configuration.instructions,
         instructionsHtml: configuration.instructionsHtml,
-        providerId: configuration.providerId,
-        modelId: configuration.modelId,
-        temperature: configuration.temperature,
-        reasoningEffort: configuration.reasoningEffort,
-        responseFormat: configuration.responseFormat,
         pictureUrl: configuration.pictureUrl,
         maxStepsPerRun: configuration.maxStepsPerRun,
         templateId: configuration.templateId,
