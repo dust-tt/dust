@@ -210,26 +210,26 @@ export function MCPServerDetails({
       permission: string;
     }>
   ) => {
-    // Use batch endpoint for efficiency when updating multiple tools.
-    const response = await clientFetch(
-      `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}/tools`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          tools: toolChanges.map((change) => ({
-            toolName: change.toolName,
+    for (const change of toolChanges) {
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}/tools/${change.toolName}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
             permission: change.permission,
             enabled: change.enabled,
-          })),
-        }),
+          }),
+        }
+      );
+      if (!response.ok) {
+        const body = await response.json();
+        throw new Error(
+          body.error?.message ?? "Failed to update tool settings"
+        );
       }
-    );
-    if (!response.ok) {
-      const body = await response.json();
-      throw new Error(body.error?.message ?? "Failed to update tool settings");
     }
   };
 
