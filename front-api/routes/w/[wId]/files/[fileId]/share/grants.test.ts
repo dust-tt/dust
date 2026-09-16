@@ -1007,6 +1007,46 @@ describe("domain sharing grants", () => {
     ).not.toBeNull();
   });
 
+  it("rejects public domain invitations but accepts individual email invitations", async () => {
+    const { auth, workspace, file } = await setup();
+    await FeatureFlagFactory.basic(auth, "frame_domain_sharing");
+    await grantInviteToEveryone(workspace);
+    mockEmitAuditLogEvent.mockClear();
+
+    const rejected = await postGrants(workspace, file.sId, {
+      emails: ["alice@gmail.com"],
+      domains: ["example.com", " @GMAIL.COM "],
+    });
+    expect(rejected.status).toBe(400);
+    const errorBody = await rejected.json();
+    expect(errorBody.error).toEqual({
+      type: "invalid_request_error",
+      message: expect.stringContaining(
+        "Invite individual email addresses instead."
+      ),
+    });
+    expect(await SharingGrantResource.listForFile(file)).toEqual([]);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+
+    const accepted = await postGrants(workspace, file.sId, {
+      emails: ["alice@gmail.com"],
+      domains: ["example.com"],
+    });
+    expect(accepted.status).toBe(200);
+    const sharing = await accepted.json();
+    expect(sharing.accessGrants).toHaveLength(2);
+    expect(sharing.accessGrants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          target: { kind: "email", value: "alice@gmail.com" },
+        }),
+        expect.objectContaining({
+          target: { kind: "domain", value: "example.com" },
+        }),
+      ])
+    );
+  });
+
   it("requires the flag and invitation permission before creating any target", async () => {
     const { auth, workspace, file } = await setup();
     const body = { emails: ["alice@example.com"], domains: ["example.com"] };

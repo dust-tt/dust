@@ -17,6 +17,7 @@ import { intlFormatDistance } from "date-fns";
 import { useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const recipientsSchema = z
   .string()
@@ -51,7 +52,9 @@ const recipientsSchema = z
       }
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `"${recipient}" is not a valid email address or domain.`,
+        message: fromError(domain.error, {
+          prefix: `"${recipient}"`,
+        }).toString(),
       });
       return z.NEVER;
     }
@@ -201,12 +204,12 @@ export function FrameSharingGrants({
             <p
               id={errorId}
               role="alert"
-              className="text-sm text-foreground px-2"
+              className="text-xs text-foreground px-2"
             >
               {errors.recipients.message}
             </p>
           )}
-          {canGrantDomains && (
+          {canGrantDomains && !errors.recipients && (
             <p className="text-xs text-muted-foreground px-2">
               Invitations are sent to email addresses only. People at an added
               domain can open the link after verifying their email.

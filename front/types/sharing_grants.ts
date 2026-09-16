@@ -1,3 +1,4 @@
+import { isNonBusinessEmailDomain } from "@app/lib/utils/non_business_email_domains";
 import type { FileViewerType } from "@app/types/file_viewers";
 import type { SharingGrantType } from "@app/types/files";
 import { MAX_EMAILS_OR_DOMAINS_PER_INVITE } from "@app/types/files";
@@ -5,6 +6,10 @@ import type { UserType } from "@app/types/user";
 import { z } from "zod";
 
 // Exact DNS name. A leading @ is accepted, but omitted from stored domains.
+/**
+ * @cc [owner:flvndvd,label:product] business-domain-grants
+ * Domain grants must reject domains in the non-business email list.
+ */
 export const sharingDomainSchema = z
   .string()
   .trim()
@@ -18,7 +23,11 @@ export const sharingDomainSchema = z
         /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/,
         "Enter a domain such as example.com"
       )
-  );
+  )
+  .refine((domain) => !isNonBusinessEmailDomain(domain), {
+    message:
+      "Public or disposable email domains are not allowed. Invite individual email addresses instead.",
+  });
 
 export const sharingEmailSchema = z
   .string()
