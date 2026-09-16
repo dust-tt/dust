@@ -1,7 +1,9 @@
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { generateSnippet } from "@app/lib/api/files/snippet";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE } from "@app/lib/workspace_policies";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -110,6 +112,54 @@ describe("maybeUpsertFileAttachment", () => {
       conversationId: conversation.sId,
     });
     expect(reloaded?.snippet).toBe("pasted content");
+  });
+
+  it("refuses audio attachments when voice transcription is disabled", async () => {
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      allowVoiceTranscription: false,
+    });
+    const disabledAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const file = await FileFactory.create(disabledAuth, null, {
+      contentType: "audio/mpeg",
+      fileName: "meeting.mp3",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+    });
+
+    const result = await maybeUpsertFileAttachment(disabledAuth, {
+      contentFragments: [{ fileId: file.sId }],
+      conversation,
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(result.isErr() && result.error.message).toBe(
+      AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE
+    );
+
+    // The file is left untouched: no mount path is resolved for a missing transcript.
+    const reloaded = await FileResource.fetchById(disabledAuth, file.sId);
+    expect(reloaded?.useCaseMetadata?.conversationId).toBeUndefined();
+  });
+
+  it("stamps conversationId on audio attachments when transcription is available", async () => {
+    const file = await FileFactory.create(auth, null, {
+      contentType: "audio/mpeg",
+      fileName: "meeting.mp3",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+    });
+
+    const result = await maybeUpsertFileAttachment(auth, {
+      contentFragments: [{ fileId: file.sId }],
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
   });
 
   it("does not rewrite useCaseMetadata when conversationId is already set", async () => {

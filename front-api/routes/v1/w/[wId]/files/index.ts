@@ -3,10 +3,15 @@ import { buildEffectiveUseCaseMetadata } from "@app/lib/api/files/upload_metadat
 import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import {
+  AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
+  isAudioTranscriptionAvailable,
+} from "@app/lib/workspace_policies";
 import logger from "@app/logger/logger";
 import {
   ensureFileSize,
   isPubliclySupportedUseCase,
+  isSupportedAudioContentType,
   isSupportedFileContentType,
 } from "@app/types/files";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
@@ -140,6 +145,19 @@ app.post(
         api_error: {
           type: "file_type_not_supported",
           message: `Content type "${contentType}" is not supported.`,
+        },
+      });
+    }
+
+    if (
+      isSupportedAudioContentType(contentType) &&
+      !isAudioTranscriptionAvailable({ owner, plan: auth.getNonNullablePlan() })
+    ) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "file_type_not_supported",
+          message: AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
         },
       });
     }

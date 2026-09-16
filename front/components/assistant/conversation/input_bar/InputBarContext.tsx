@@ -120,6 +120,7 @@ export const InputBarContext = createContext<{
   setStickyModelOverride: () => {},
   openModelPickerRef: { current: null },
   fileUploaderService: {
+    acceptedFileExtensions: [],
     fileBlobs: [],
     handleFileChange: async () => undefined,
     removeFile: () => {},
