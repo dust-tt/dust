@@ -17,6 +17,7 @@ import type {
   SkillStatus,
 } from "@app/types/assistant/skill_configuration";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
+import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
 import isNil from "lodash/isNil";
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
 
@@ -140,6 +141,10 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
 SkillConfigurationModel.init(
   {
     ...SKILL_MODEL_ATTRIBUTES,
+    name: {
+      type: DataTypes.STRING(SKILL_NAME_MAX_LENGTH),
+      allowNull: false,
+    },
     favoriteCount: {
       type: DataTypes.INTEGER,
       allowNull: false,
