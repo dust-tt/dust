@@ -14,7 +14,7 @@ const MATCH_SCORES = {
 /**
  * @cc [owner:aubin-tchoi,label:product] indexed-skill-name-matching
  * Exact matching folds the whole name; word-prefix matching uses autocomplete
- * fields. The raw keyword field remains the stable pagination sort key.
+ * fields. The ICU-folded keyword field is the pagination sort key, followed by skill ID.
  */
 export function buildSkillMatchQuery(
   searchTerm: string,
@@ -36,7 +36,7 @@ export function buildSkillMatchQuery(
     {
       constant_score: {
         filter: {
-          prefix: { "name.keyword": { value: query, case_insensitive: true } },
+          prefix: { "name.keyword": { value: query } },
         },
         boost: MATCH_SCORES.prefix,
       },
