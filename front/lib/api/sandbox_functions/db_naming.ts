@@ -1,5 +1,3 @@
-import { SANDBOX_FUNCTION_SLUG_SEPARATOR } from "@app/lib/api/sandbox_functions/slug";
-
 /**
  * App namespacing for pod databases.
  *
@@ -17,16 +15,18 @@ import { SANDBOX_FUNCTION_SLUG_SEPARATOR } from "@app/lib/api/sandbox_functions/
  * falls back to the bare one, so those keep working untouched.
  */
 
-/** The separator between an app prefix and a database name; shared with function slugs. */
-const POD_DATABASE_PREFIX_SEPARATOR = SANDBOX_FUNCTION_SLUG_SEPARATOR;
+// The separator between an app prefix and a database name. Function slugs used to share it; they
+// no longer carry a prefix, but databases created under the old scheme still do, which is what
+// `podDatabaseNameWithoutAppPrefix` strips when copying them to a Frame.
+const POD_DATABASE_PREFIX_SEPARATOR = "__";
 
 /**
  * Convert an app prefix (function-slug form, hyphen-separated) into a pod database prefix,
  * separator included: `my-app` becomes `my_app__`.
  *
  * Hyphens become underscores because database names admit `[a-z0-9_]` only, while slug segments use
- * hyphens. The mapping is injective over the prefixes `deriveAppPrefix` can produce, since it never
- * emits an underscore — so two apps can never normalize onto the same database prefix.
+ * hyphens. The mapping is injective over the prefixes publish could produce, which never contained
+ * an underscore — so two apps can never normalize onto the same database prefix.
  *
  * Returns `null` when the app name cannot start a database name (the contract requires a leading
  * letter, but a folder like `2048Game` normalizes to `2048game`). Such an app falls back to
