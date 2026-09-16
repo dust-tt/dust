@@ -776,8 +776,6 @@ export const InputBar = React.memo(function InputBar({
               owner={owner}
               files={{ service: fileUploaderService }}
               nodes={{
-                // With inline references, attached nodes are represented by chips
-                // inside the editor; they are still submitted as contentNodes.
                 items: isInlineReferenceEnabled ? [] : attachedNodes,
                 onRemove: handleNodesAttachmentRemove,
               }}
