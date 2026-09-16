@@ -443,7 +443,6 @@ function _getDustLikeGlobalAgent(
       "skill-authoring",
       "go-deep",
       "mention_users",
-      "plan_mode",
       "support",
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,

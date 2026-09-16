@@ -64,4 +64,6 @@ export const planModeSkill = {
     const flags = await getFeatureFlags(auth);
     return !flags.includes("plan_mode");
   },
+  // Auto-enabled for every agent loop once the feature flag is on.
+  getAutoEnabledOrEquippedForAgentLoop: () => "enabled",
 } as const satisfies SystemSkillDefinition;
