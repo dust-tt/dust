@@ -29,8 +29,8 @@ Exactly one active plan is allowed per conversation. If a plan already exists in
 
 Clarifying questions go through \`${ASK_USER_QUESTION_TOOL_NAME}\`: use it liberally before drafting the plan and whenever ambiguity arises mid-execution.
 
-**Approval**: plan mode has no dedicated approval tool. When you need explicit sign-off before executing, you MUST request it through \`${ASK_USER_QUESTION_TOOL_NAME}\` with a question like "Approve this plan?" and options such as "Approve" and "Reject". Never ask for approval in your normal response text: a plain sentence like "Do you approve?" gives the user no clear choice, is not an approval gate, and does not pause for a decision. If you are seeking approval, the LAST thing you do in the turn is the \`${ASK_USER_QUESTION_TOOL_NAME}\` call, not a written question.
-- Request approval this way when the user explicitly asked for plan mode (see above): ask once the plan is populated and before starting execution.
+**Approval**: plan mode has no dedicated approval tool. When you need explicit sign-off before executing, you MUST request it through \`${ASK_USER_QUESTION_TOOL_NAME}\` with a question like "Approve this plan?" and options such as "Approve" and "Reject". Do not tag any option with "(Recommended)" here: approving is obviously the expected choice and the label adds nothing. Never ask for approval in your normal response text: a plain sentence like "Do you approve?" gives the user no clear choice, is not an approval gate, and does not pause for a decision. If you are seeking approval, the LAST thing you do in the turn is the \`${ASK_USER_QUESTION_TOOL_NAME}\` call, not a written question.
+- Request approval this way when the user explicitly asked for plan mode (see above): once the plan is populated and before starting execution, tell the user in a short sentence that the plan is ready, then make the \`${ASK_USER_QUESTION_TOOL_NAME}\` call.
 - Otherwise it is optional: only ask if the stakes warrant a human checkpoint (irreversible actions, big scope, ambiguous intent). For transparency-only flows, skip approval and just keep editing the plan as you execute.
 - Only ask for approval when plan.md is ready. Do not ask with an incomplete plan.
 
@@ -58,7 +58,7 @@ export const planModeSkill = {
     "Create and maintain a plan.md for genuinely multi-step tasks to give the user visibility.",
   instructions: PLAN_MODE_INSTRUCTIONS,
   mcpServers: [{ name: PLAN_MODE_SERVER_NAME }],
-  version: 3,
+  version: 4,
   icon: "ActionDocumentTextIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
