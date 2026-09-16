@@ -1,4 +1,3 @@
-import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import { validateFrameFromSource } from "@app/lib/api/frames/publish_from_source";
 import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -17,7 +16,6 @@ const FrameValidateRequestSchema = z.object({
 type FrameValidateResponse = {
   frameId: string;
   manifestPath: string;
-  warnings: ValidationWarning[];
 };
 
 const app = sandboxApp();
@@ -83,7 +81,6 @@ app.post(
       {
         frameId: validation.value.frameId,
         manifestPath: validation.value.sourcePath,
-        warnings: validation.value.warnings,
       },
       200
     );

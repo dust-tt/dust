@@ -1,5 +1,4 @@
 import path from "node:path";
-import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import { validateTailwindCode } from "@app/lib/api/files/content_validation";
 import type {
   FramePublicationFunctionArtifact,
@@ -63,6 +62,13 @@ async function buildFrameUiBundle({
   return new Ok(buildResult.value.code);
 }
 
+/**
+ * @cc [owner:davidebbo,label:product] tailwind-violations-fail-publication
+ * A source file containing a forbidden Tailwind arbitrary value (see `validateTailwindCode`) MUST
+ * fail the build with an `invalid_tailwind` error before any UI or function build runs and before
+ * any artifact is stored or activated, for validation and publication alike. Violations are never
+ * reported as warnings on a success.
+ */
 async function buildFramePublication(
   auth: Authenticator,
   {
@@ -100,6 +106,11 @@ async function buildFramePublication(
   });
   if (references.isErr()) {
     return references;
+  }
+
+  const tailwind = validateFrameTailwind(sourceFiles);
+  if (tailwind.isErr()) {
+    return tailwind;
   }
 
   const uiBundle = await buildFrameUiBundle({ manifest, sourceFiles });
@@ -162,10 +173,10 @@ async function buildFramePublication(
   });
 }
 
-function collectFrameTailwindWarnings(
+function validateFrameTailwind(
   sourceFiles: FramePublicationSourceFile[]
-): ValidationWarning[] {
-  const warnings: ValidationWarning[] = [];
+): Result<undefined, FramePublicationError> {
+  const violations: string[] = [];
   for (const sourceFile of sourceFiles) {
     if (!/\.(?:jsx|tsx)$/.test(sourceFile.relativePath)) {
       continue;
@@ -175,16 +186,26 @@ function collectFrameTailwindWarnings(
       sourceFile.content.toString("utf8")
     );
     if (validation.isErr()) {
-      warnings.push(
-        ...validation.error.map((warning) => ({
-          ...warning,
-          message: `${sourceFile.relativePath}: ${warning.message}`,
-        }))
+      violations.push(
+        ...validation.error.map(
+          (warning) => `${sourceFile.relativePath}: ${warning.message}`
+        )
       );
     }
   }
 
-  return warnings;
+  if (violations.length === 0) {
+    return new Ok(undefined);
+  }
+
+  return new Err(
+    new FramePublicationError(
+      "invalid_tailwind",
+      `Forbidden Tailwind usage in Frame source:\n${violations
+        .map((violation) => `- ${violation}`)
+        .join("\n")}`
+    )
+  );
 }
 
 /**
@@ -201,12 +222,7 @@ export async function validateFramePublication(
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
   }
-): Promise<
-  Result<
-    { warnings: ValidationWarning[] },
-    FramePublicationError | SandboxFunctionError
-  >
-> {
+): Promise<Result<undefined, FramePublicationError | SandboxFunctionError>> {
   const buildResult = await buildFramePublication(auth, {
     conversation,
     manifest,
@@ -225,19 +241,13 @@ export async function validateFramePublication(
     return contracts;
   }
 
-  return new Ok({ warnings: collectFrameTailwindWarnings(sourceFiles) });
+  return new Ok(undefined);
 }
 
 /**
  * Build the UI and every declared function from one captured source snapshot, then atomically
  * publish its artifacts. Function builds stage the snapshot in the invoking conversation's DSBX;
  * source stays in its authoring scope. No publication storage is touched until every build succeeds.
- */
-/**
- * @cc [owner:davidebbo,label:product] publish-reports-tailwind-warnings
- * A successful publication MUST return the Tailwind warnings `validateFramePublication` reports for
- * the same source snapshot. Warnings MUST NOT prevent the publication from being stored and
- * activated: callers do not need a separate validation pass to learn about them.
  */
 export async function buildAndPublishFramePublication(
   auth: Authenticator,
@@ -256,7 +266,7 @@ export async function buildAndPublishFramePublication(
   }
 ): Promise<
   Result<
-    { publicationId: string; warnings: ValidationWarning[] },
+    { publicationId: string },
     FramePublicationError | SandboxFunctionError
   >
 > {
@@ -269,20 +279,12 @@ export async function buildAndPublishFramePublication(
     return buildResult;
   }
 
-  const published = await publishFramePublication(auth, {
+  return publishFramePublication(auth, {
     frame,
     functionArtifacts: buildResult.value.functionArtifacts,
     manifest,
     sourceFiles,
     uiBundleCode: buildResult.value.uiBundleCode,
     publishedByAgentConfigurationId,
-  });
-  if (published.isErr()) {
-    return published;
-  }
-
-  return new Ok({
-    publicationId: published.value.publicationId,
-    warnings: collectFrameTailwindWarnings(sourceFiles),
   });
 }

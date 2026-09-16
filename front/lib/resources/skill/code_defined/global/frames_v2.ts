@@ -350,8 +350,9 @@ dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 
 Publishing runs the manifest, UI, function-build, database-contract, Tailwind, and
 function-reference checks. If any fails, no partial publication becomes active: fix the reported
-error and rerun. A successful publish reports Tailwind warnings in its output; fix them and publish
-again. Do not run a separate validation pass first: it repeats the same build and only adds latency.
+error and rerun. Tailwind arbitrary values such as \`h-[600px]\` are errors, not warnings: use
+predefined classes or the \`style\` prop. Do not run a separate validation pass first: it repeats
+the same build and only adds latency.
 
 To run the same checks without storing or activating a publication or reconciling Frame-owned
 databases, for example while the active publication must keep working, use:

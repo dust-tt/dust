@@ -164,7 +164,7 @@ beforeEach(() => {
 });
 
 describe("buildAndPublishFramePublication", () => {
-  it("validates UI and Tailwind without writing a publication", async () => {
+  it("rejects forbidden Tailwind values without writing a publication", async () => {
     const { auth, conversation, frame } = await setup();
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     await frame.setActiveFramePublication({
@@ -186,13 +186,12 @@ describe("buildAndPublishFramePublication", () => {
       ],
     });
 
-    expect(result.isOk()).toBe(true);
-    expect(result.isOk() && result.value.warnings).toMatchObject([
-      {
-        type: "tailwind",
-        message: expect.stringContaining("index.tsx: Forbidden Tailwind"),
-      },
-    ]);
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "invalid_tailwind",
+      message: expect.stringContaining(
+        "index.tsx: Forbidden Tailwind arbitrary value 'h-[600px]'"
+      ),
+    });
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
     expect(
       (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
@@ -272,10 +271,9 @@ describe("buildAndPublishFramePublication", () => {
     expect(fileStorageMock.getObject(uiBundlePath)).toContain(
       'data-source="index.tsx:'
     );
-    expect(result.value.warnings).toEqual([]);
   });
 
-  it("publishes and reports Tailwind warnings", async () => {
+  it("refuses to publish a UI with forbidden Tailwind values", async () => {
     const { auth, conversation, frame } = await setup();
 
     const result = await buildAndPublishFramePublication(auth, {
@@ -292,20 +290,14 @@ describe("buildAndPublishFramePublication", () => {
       ],
     });
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      return;
-    }
-    expect(result.value.warnings).toMatchObject([
-      {
-        type: "tailwind",
-        message: expect.stringContaining("index.tsx: Forbidden Tailwind"),
-      },
-    ]);
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "invalid_tailwind",
+    });
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
     expect(
       (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
         ?.activePublicationId
-    ).toBe(result.value.publicationId);
+    ).toBeUndefined();
   });
 
   it("builds every declared function before publishing", async () => {
