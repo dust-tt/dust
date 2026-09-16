@@ -219,7 +219,7 @@ mod tests {
     fn classifies_fast_function_called_tools_by_type() {
         let err = DustApiError::from_http_response(
             403,
-            r#"{"error":{"type":"fast_function_called_tools","message":"This Pod function is published as fast and cannot call tools."}}"#,
+            r#"{"error":{"type":"fast_function_called_tools","message":"This Frame function is published as fast and cannot call tools."}}"#,
         );
         assert_eq!(err.code, ApiErrorCode::FastFunctionCalledTools);
         assert!(!err.code.retryable());
@@ -231,7 +231,7 @@ mod tests {
         // Older fronts return the refusal as a generic invalid_request_error.
         let err = DustApiError::from_http_response(
             403,
-            r#"{"error":{"type":"invalid_request_error","message":"This Pod function is published as fast and cannot call tools. Publish it with executionMode `durable` to let it call tools."}}"#,
+            r#"{"error":{"type":"invalid_request_error","message":"This Frame function is published as fast and cannot call tools. Publish it with executionMode `durable` to let it call tools."}}"#,
         );
         assert_eq!(err.code, ApiErrorCode::FastFunctionCalledTools);
     }

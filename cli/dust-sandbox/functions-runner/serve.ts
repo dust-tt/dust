@@ -24,7 +24,7 @@
 // prevent.
 //
 // Duplicate executions are the failure mode this protocol is shaped around:
-// pod functions are arbitrary side-effectful code, and front assumes a failed
+// frame functions are arbitrary side-effectful code, and front assumes a failed
 // start means nothing ran. The worker acks before executing — a synchronous
 // socket write whose failure proves the client is gone — and the client only
 // falls back to the cold path on failures that precede the ack. After the
