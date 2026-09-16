@@ -4,7 +4,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightWorkspaceType } from "@app/types/user";
 
 async function backfillWorkspace(
@@ -24,44 +23,22 @@ async function backfillWorkspace(
     withTools: false,
     withFileAttachments: false,
   });
-  const results = execute
-    ? await concurrentExecutor(
-        skills,
-        async (skill) => {
-          const result = await launchIndexSkillSearchWorkflow({
-            workspaceId: workspace.sId,
-            skillId: skill.sId,
-          });
-          if (result.isErr()) {
-            logger.error(
-              {
-                error: result.error,
-                skillId: skill.sId,
-                workspaceId: workspace.sId,
-              },
-              "[SkillSearchBackfill] Failed to enqueue workflow"
-            );
-          }
-          return result.isOk();
-        },
-        { concurrency }
-      )
-    : [];
-  const enqueued = results.filter(Boolean).length;
-  const failed = results.length - enqueued;
+  if (execute) {
+    await concurrentExecutor(
+      skills,
+      (skill) => SkillResource.launchSearchIndexation(auth, [skill.sId]),
+      { concurrency }
+    );
+  }
   logger.info(
     {
       execute,
       workspaceId: workspace.sId,
       candidates: skills.length,
-      enqueued,
-      failed,
+      enqueued: execute ? skills.length : 0,
     },
     "[SkillSearchBackfill] Workspace complete"
   );
-  if (failed > 0) {
-    throw new Error(`${failed} skill search workflow launches failed`);
-  }
 }
 
 makeScript(
