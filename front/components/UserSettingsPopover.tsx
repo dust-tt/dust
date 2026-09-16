@@ -104,12 +104,6 @@ interface UserSettingsPopoverProps {
 
 // ─── Shared section wrapper ───────────────────────────────────────────────────
 
-// The modal surface (bg-modal-background) is lighter than the default dark
-// border token, so lists inside it use the dialog's stronger dark border, like
-// the sidebar and footer separators below.
-const MODAL_SETTINGS_LIST_CLASSES =
-  "dark:border-border-dark dark:divide-border-dark";
-
 interface SectionContentProps {
   title: string;
   description?: string;
