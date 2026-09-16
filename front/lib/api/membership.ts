@@ -33,6 +33,7 @@ import {
   launchMetronomeSeatCountSyncWorkflow,
   launchUpdateUsageWorkflow,
 } from "@app/temporal/usage_queue/client";
+import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
 import type {
   MembershipOriginType,
   MembershipRoleType,
@@ -332,6 +333,9 @@ export async function createAndTrackMembership({
     );
   }
 
+  // Keep the workspace admins mirrored into WorkOS IT contacts (debounced).
+  await launchSyncWorkOSITContactsWorkflow({ workspaceId: w.sId });
+
   return m;
 }
 
@@ -436,6 +440,9 @@ export async function revokeAndTrackMembership(
         "[Metronome] Failed to remove seat for revoked member"
       );
     }
+
+    // Keep the workspace admins mirrored into WorkOS IT contacts (debounced).
+    await launchSyncWorkOSITContactsWorkflow({ workspaceId: workspace.sId });
   }
 
   return revokeResult;
@@ -533,6 +540,10 @@ export async function updateMembershipRoleAndTrack({
         new_role: updateRes.value.newRole,
       },
     });
+
+    // A role change can add or remove an admin, so keep the workspace admins
+    // mirrored into WorkOS IT contacts (debounced).
+    await launchSyncWorkOSITContactsWorkflow({ workspaceId: workspace.sId });
 
     // If a revoked membership was re-activated, add a Metronome seat and update usage.
     if (wasRevoked) {

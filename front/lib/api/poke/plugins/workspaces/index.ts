@@ -45,6 +45,7 @@ export * from "./set_default_user_credit_limit";
 export * from "./set_web_providers";
 export * from "./soft_delete_conversation";
 export * from "./sync_metronome_seats";
+export * from "./sync_workos_it_contacts";
 export * from "./toggle_auto_create_space";
 export * from "./toggle_disable_manual_invitations";
 export * from "./toggle_feature_flag";
