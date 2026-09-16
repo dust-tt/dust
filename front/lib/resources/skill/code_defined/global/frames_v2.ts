@@ -153,7 +153,11 @@ anything else users can add, edit, reorder, assign, or delete. Keep only throwaw
 the selected tab, filter, or sort order in the React component.
 
 Use the Frame's files folder for unstructured data: uploaded images, generated documents, anything
-that is bytes rather than rows.
+that is bytes rather than rows. Never store file bytes in a database column, base64 included. They
+count against the database's 1 GiB cap, and every read of that table then carries the payload even
+when the caller only wanted the metadata. The folder alone is enough for most Frames; add a
+database only when one has to query over its files, and then store the path in the row rather than
+the contents.
 
 ## Authoring a function
 
@@ -244,7 +248,9 @@ existing objects. In particular:
 - give each table an \`id\` and \`createdAt\`;
 - avoid foreign keys, CHECK constraints, and UNIQUE constraints; enforce integrity in code and use
   \`uniqueIndex()\` only when existing rows are known to satisfy it;
-- change a shape by adding a new column or table and reading with a fallback.
+- change a shape by adding a new column or table and reading with a fallback;
+- store a path into the Frame's files folder for an image or a document, never the bytes
+  themselves: a column holding base64 makes the table unreadable without its payload.
 
 For per-user state, require a caller, store \`currentUser().sId\`, index that column, and filter by it
 on every read and write. Fetching a row by primary key does not prove ownership.
