@@ -16,13 +16,6 @@ import { removeNulls } from "@app/types/shared/utils/general";
 
 // When we send the attachments at the conversation creation, we are missing the useCaseMetadata.
 // We now update the useCaseMetadata (and generate pasted-file snippets when needed).
-/**
- * @cc [owner:Nils-Fedrigo,label:product;error-handling] audio-attachment-requires-transcription
- * When `isAudioTranscriptionAvailable` is false for the workspace, attaching a file whose content
- * type is audio MUST return an `Err` and leave every passed file untouched. Such a file has no
- * transcript stored, so setting its use-case metadata would resolve a mount path and fail on the
- * missing processed object.
- */
 export async function maybeUpsertFileAttachment(
   auth: Authenticator,
   {
