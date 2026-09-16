@@ -8,6 +8,7 @@ import {
 } from "@app/temporal/es_indexation/activities";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,15 +17,21 @@ describe("skill search indexation", () => {
     vi.restoreAllMocks();
   });
 
-  it("refreshes workspace usage including unused skills for zero resets", async () => {
+  it("refreshes workspace usage including restricted and unused skills for zero resets", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
     });
     const skill = await SkillFactory.create(auth);
-    const unused = await SkillFactory.create(auth, { name: "Unused skill" });
+    const space = await SpaceFactory.regular(workspace);
+    const pod = await SpaceFactory.project(workspace);
+    const unused = await SkillFactory.create(auth, {
+      name: "Unused skill",
+      requestedSpaceIds: [space.id],
+    });
     const archived = await SkillFactory.create(auth, {
       name: "Archived skill",
       status: "archived",
+      requestedSpaceIds: [pod.id],
     });
     const usage = vi
       .spyOn(searchUsage, "fetchSearchActiveUsers")
