@@ -71,6 +71,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
+import groupBy from "lodash/groupBy";
+import sum from "lodash/sum";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import { z } from "zod";
@@ -1418,21 +1420,47 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       where,
       transaction,
     });
-    const gcsPaths = invocations.map(({ gcsPath }) => gcsPath);
 
-    // MCP actions FK invocations with RESTRICT: delete them (rows + output GCS objects) first.
-    await SandboxFunctionMCPActionResource.deleteAllForInvocationModelIds(
+    const { deletedInvocationCount } = await this.deleteRowsForWorkspace(
       {
         workspaceModelId,
         invocationModelIds: invocations.map(({ id }) => id),
       },
       { transaction }
     );
+    await this.deleteDataFromGcs(invocations.map(({ gcsPath }) => gcsPath));
 
-    const deletedCount = await this.model.destroy({ where, transaction });
-    await this.deleteDataFromGcs(gcsPaths);
+    return deletedInvocationCount;
+  }
 
-    return deletedCount;
+  /**
+   * Delete invocation rows of one workspace, preceded by the MCP actions (rows and output objects)
+   * that FK them with `RESTRICT`. GCS payloads are left to the caller, once the rows are gone.
+   */
+  private static async deleteRowsForWorkspace(
+    {
+      workspaceModelId,
+      invocationModelIds,
+    }: {
+      workspaceModelId: ModelId;
+      invocationModelIds: ModelId[];
+    },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<{
+    deletedInvocationCount: number;
+    deletedMCPActionCount: number;
+  }> {
+    const deletedMCPActionCount =
+      await SandboxFunctionMCPActionResource.deleteAllForInvocationModelIds(
+        { workspaceModelId, invocationModelIds },
+        { transaction }
+      );
+    const deletedInvocationCount = await this.model.destroy({
+      where: { id: invocationModelIds, workspaceId: workspaceModelId },
+      transaction,
+    });
+
+    return { deletedInvocationCount, deletedMCPActionCount };
   }
 
   /**
@@ -1481,49 +1509,27 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     });
 
     const expiredRows = rows.filter((row) => row.createdAt < cutoffDate);
-    // Either the batch ran into rows that must be kept, or the table has no more rows: both end
-    // the sweep. Anything else resumes at the last id this batch looked at.
-    const lastScannedRow = rows.at(-1);
-    const nextAfterModelId =
-      expiredRows.length < rows.length || rows.length < batchSize
-        ? null
-        : (lastScannedRow?.id ?? null);
-
-    const expiredByWorkspace = new Map<
-      ModelId,
-      { gcsPaths: string[]; invocationModelIds: ModelId[] }
-    >();
-    for (const row of expiredRows) {
-      const workspaceBatch = expiredByWorkspace.get(row.workspaceId) ?? {
-        gcsPaths: [],
-        invocationModelIds: [],
-      };
-      workspaceBatch.gcsPaths.push(row.gcsPath);
-      workspaceBatch.invocationModelIds.push(row.id);
-      expiredByWorkspace.set(row.workspaceId, workspaceBatch);
-    }
+    const isLastBatch =
+      rows.length < batchSize || expiredRows.length < rows.length;
+    const nextAfterModelId = isLastBatch ? null : rows[rows.length - 1].id;
 
     const deletedMCPActionCounts = await concurrentExecutor(
-      [...expiredByWorkspace.entries()],
-      async ([workspaceModelId, { gcsPaths, invocationModelIds }]) => {
-        const deletedMCPActionCount = await withTransaction(
-          async (transaction) => {
-            const mcpActionCount =
-              await SandboxFunctionMCPActionResource.deleteAllForInvocationModelIds(
-                { workspaceModelId, invocationModelIds },
-                { transaction }
-              );
-            await this.model.destroy({
-              where: { id: invocationModelIds, workspaceId: workspaceModelId },
-              transaction,
-            });
-
-            return mcpActionCount;
-          }
+      Object.values(groupBy(expiredRows, (row) => row.workspaceId)),
+      async (workspaceRows) => {
+        const { deletedMCPActionCount } = await withTransaction((transaction) =>
+          this.deleteRowsForWorkspace(
+            {
+              workspaceModelId: workspaceRows[0].workspaceId,
+              invocationModelIds: workspaceRows.map(({ id }) => id),
+            },
+            { transaction }
+          )
         );
         // After the rows are gone: a crash here leaves orphaned objects the next sweep cannot
         // find, which is cheaper than rows pointing at payloads that no longer exist.
-        await this.deleteDataFromGcs(gcsPaths);
+        await this.deleteDataFromGcs(
+          workspaceRows.map(({ gcsPath }) => gcsPath)
+        );
 
         return deletedMCPActionCount;
       },
@@ -1532,10 +1538,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
     return {
       deletedInvocationCount: expiredRows.length,
-      deletedMCPActionCount: deletedMCPActionCounts.reduce(
-        (total, count) => total + count,
-        0
-      ),
+      deletedMCPActionCount: sum(deletedMCPActionCounts),
       nextAfterModelId,
       scannedCount: rows.length,
     };

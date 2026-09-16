@@ -230,8 +230,6 @@ export async function purgeExpiredFrameFunctionInvocationsActivity({
       cutoffDate,
     });
 
-  heartbeat();
-
   logger.info(
     {
       afterModelId,

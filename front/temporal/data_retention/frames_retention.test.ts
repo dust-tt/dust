@@ -7,10 +7,12 @@ import { FRAME_FUNCTION_INVOCATION_RETENTION_MS } from "@app/temporal/data_reten
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ModelId } from "@app/types/shared/model_id";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { purgeExpiredFrameFunctionInvocationsActivity } from "./activities";
@@ -19,47 +21,6 @@ vi.mock("@temporalio/activity", () => ({
   heartbeat: vi.fn(),
 }));
 
-// In-memory GCS mock: writes persist content that reads can return, so a deleted payload is
-// observable as a missing key.
-const gcsStore = new Map<string, Buffer>();
-
-vi.mock("@app/lib/file_storage", async (importOriginal) => {
-  const original =
-    await importOriginal<typeof import("@app/lib/file_storage")>();
-
-  return {
-    ...original,
-    getPrivateUploadBucket: vi.fn(() => ({
-      file: vi.fn((path: string) => ({
-        save: vi.fn(async (data: Buffer) => {
-          gcsStore.set(path, data);
-        }),
-        download: vi.fn(async () => {
-          const buf = gcsStore.get(path);
-          if (!buf) {
-            throw new Error(`GCS file not found: ${path}`);
-          }
-          return [buf];
-        }),
-      })),
-      delete: vi.fn(
-        async (path: string, opts?: { ignoreNotFound?: boolean }) => {
-          if (!gcsStore.has(path) && !opts?.ignoreNotFound) {
-            throw new Error(`GCS file not found: ${path}`);
-          }
-          gcsStore.delete(path);
-        }
-      ),
-      uploadBufferToBucket: vi.fn(
-        async ({ buffer, filePath }: { buffer: Buffer; filePath: string }) => {
-          gcsStore.set(filePath, buffer);
-        }
-      ),
-    })),
-  };
-});
-
-const ONE_DAY_MS = 24 * 60 * 60 * 1_000;
 const RETENTION_DAYS = FRAME_FUNCTION_INVOCATION_RETENTION_MS / ONE_DAY_MS;
 
 async function setupFrameFunction() {
@@ -112,7 +73,7 @@ async function fetchInvocationModelIds(
 
 describe("purgeExpiredFrameFunctionInvocationsActivity", () => {
   beforeEach(() => {
-    gcsStore.clear();
+    fileStorageMock.reset();
   });
 
   it("deletes invocations past the retention window and keeps recent ones", async () => {
@@ -136,8 +97,8 @@ describe("purgeExpiredFrameFunctionInvocationsActivity", () => {
     expect(result.deletedInvocationCount).toBe(1);
     expect(result.nextAfterModelId).toBeNull();
     expect(await fetchInvocationModelIds(workspace.id)).toEqual([recent.id]);
-    expect(gcsStore.has(expired.gcsPath)).toBe(false);
-    expect(gcsStore.has(recent.gcsPath)).toBe(true);
+    expect(fileStorageMock.getObject(expired.gcsPath)).toBeUndefined();
+    expect(fileStorageMock.getObject(recent.gcsPath)).toBeDefined();
   });
 
   it("deletes the MCP actions of an expired invocation", async () => {
@@ -194,7 +155,7 @@ describe("purgeExpiredFrameFunctionInvocationsActivity", () => {
 
 describe("SandboxFunctionInvocationResource.dangerouslyDeleteExpiredBatch", () => {
   beforeEach(() => {
-    gcsStore.clear();
+    fileStorageMock.reset();
   });
 
   it("resumes from the returned cursor across batches", async () => {
@@ -226,7 +187,7 @@ describe("SandboxFunctionInvocationResource.dangerouslyDeleteExpiredBatch", () =
     expect(secondBatch.deletedInvocationCount).toBe(1);
     expect(secondBatch.nextAfterModelId).toBeNull();
     expect(await fetchInvocationModelIds(workspace.id)).toEqual([]);
-    expect(gcsStore.has(first.gcsPath)).toBe(false);
+    expect(fileStorageMock.getObject(first.gcsPath)).toBeUndefined();
   });
 
   it("stops the sweep at the first row inside the retention window", async () => {
@@ -251,8 +212,8 @@ describe("SandboxFunctionInvocationResource.dangerouslyDeleteExpiredBatch", () =
     expect(batch.scannedCount).toBe(3);
     expect(batch.nextAfterModelId).toBeNull();
     expect(await fetchInvocationModelIds(workspace.id)).toEqual([recent.id]);
-    expect(gcsStore.has(expired.gcsPath)).toBe(false);
-    expect(gcsStore.has(olderThanRecent.gcsPath)).toBe(false);
+    expect(fileStorageMock.getObject(expired.gcsPath)).toBeUndefined();
+    expect(fileStorageMock.getObject(olderThanRecent.gcsPath)).toBeUndefined();
   });
 
   it("deletes expired invocations from every workspace in one batch", async () => {

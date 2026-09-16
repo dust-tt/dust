@@ -73,7 +73,6 @@ export async function createOrUpdateFramesRetentionSchedule(): Promise<
     action: {
       type: "startWorkflow" as const,
       workflowType: framesRetentionWorkflow,
-      args: [],
       taskQueue: QUEUE_NAME,
     },
     scheduleId: FRAMES_RETENTION_SCHEDULE_ID,
@@ -83,10 +82,10 @@ export async function createOrUpdateFramesRetentionSchedule(): Promise<
     spec: {
       // Every day at 03:00 UTC, away from the midnight conversation retention run that shares
       // this queue.
-      cronExpressions: ["0 3 * * *"] as string[],
+      cronExpressions: ["0 3 * * *"],
       timezone: "UTC",
     },
-  } as const;
+  };
 
   const existingSchedule = client.schedule.getHandle(
     FRAMES_RETENTION_SCHEDULE_ID

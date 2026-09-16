@@ -52,7 +52,6 @@ const { purgeExpiredFrameFunctionInvocationsActivity } = proxyActivities<
   typeof activities
 >({
   startToCloseTimeout: "10 minutes",
-  heartbeatTimeout: "2 minutes",
 });
 
 /**
