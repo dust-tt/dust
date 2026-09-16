@@ -1,10 +1,14 @@
+import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { frameContentType } from "@app/types/files";
 import { assert, describe, expect, it, vi } from "vitest";
 
@@ -62,6 +66,49 @@ describe("SharingGrantResource", () => {
       await SharingGrantResource.findForEmail(file, "example.com")
     ).toBeNull();
     expect(await SharingGrantResource.listForFile(file)).toHaveLength(1);
+  });
+
+  it("requires Frame invite permission before updating or auditing revocation", async () => {
+    const { authenticator, workspace, file } = await setup();
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+    expect(await memberAuth.hasWorkspacePermission("invite", "frame")).toBe(
+      false
+    );
+    const grant = await SharingGrantFactory.create(authenticator, file, {
+      kind: "domain",
+      value: "example.com",
+    });
+    mockEmitAuditLogEvent.mockClear();
+
+    const denied = await grant.revoke(memberAuth);
+    assert(denied.isErr());
+    expect(denied.error.code).toBe("unauthorized");
+    expect(grant.revokedAt).toBeNull();
+    const unchanged = await SharingGrantResource.fetchById(file, grant.sId);
+    expect(unchanged?.revokedAt).toBeNull();
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+
+    await GroupPermissionResource.setForEverybody(authenticator, {
+      grantType: "invite",
+      resourceType: "frame",
+    });
+    const permittedAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+    expect((await grant.revoke(permittedAuth)).isOk()).toBe(true);
+    expect(grant.revokedAt).not.toBeNull();
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        action: "frame.domain_grant_revoked",
+        auth: permittedAuth,
+      })
+    );
   });
 
   it("revokes overlapping grants independently and preserves viewer history", async () => {

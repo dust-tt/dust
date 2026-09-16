@@ -355,7 +355,8 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
 
   /**
    * @cc [owner:flvndvd,label:security] authorized-grant-revocation
-   * Callers MUST authorize revocation. Keep other grants and viewer history intact.
+   * Callers must authorize Frame access. Revocation requires Frame invite permission.
+   * Keep other grants and viewer history intact.
    */
   async revoke(
     auth: Authenticator,
@@ -365,6 +366,15 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       auth.getNonNullableWorkspace().id === this.workspaceId,
       "Sharing grant workspace mismatch"
     );
+    const canInvite = await auth.hasWorkspacePermission("invite", "frame");
+    if (!canInvite) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to revoke sharing grants for Frames."
+        )
+      );
+    }
     const where: WhereOptions<SharingGrantModel> = {
       workspaceId: this.workspaceId,
       revokedAt: null,
