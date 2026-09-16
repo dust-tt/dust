@@ -3,7 +3,9 @@ import { setUserMaxAllowedTier } from "@app/lib/model_tiers/allowed_tiers";
 import {
   getDefaultModelFromEnabledModels,
   getEnabledModelsForAuth,
+  getFallbackStreamIds,
   resolveStreamModel,
+  resolveStreamModelWithFallback,
   withModelSelectability,
 } from "@app/lib/model_tiers/enabled_models";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -21,6 +23,7 @@ import {
   AUTO_COMPLEX_MODEL_CONFIG,
   AUTO_FAST_MODEL_CONFIG,
   AUTO_MODEL_CONFIG,
+  isModelStreamId,
   MODEL_STREAMS,
 } from "@app/types/assistant/models/auto";
 import { GPT_5_6_LUNA_MODEL_ID } from "@app/types/assistant/models/openai";
@@ -288,6 +291,59 @@ describe("resolveStreamModel", () => {
     expect(resolved.reasoningEffort).toBe("medium");
   });
 
+  it("reports an operational fallback when degradation changes the resolution", async () => {
+    const models = await getEnabledModelsForAuth(adminAuth);
+    const resolved = resolveStreamModelWithFallback(
+      models,
+      "auto",
+      new Set([GPT_5_6_LUNA_MODEL_ID])
+    );
+
+    expect(resolved.didFallback).toBe(true);
+    expect(resolved.model.modelId).toBe(
+      CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId
+    );
+  });
+
+  it("reports every stream whose preferred resolution is degraded", async () => {
+    const models = await getEnabledModelsForAuth(adminAuth);
+
+    expect(
+      getFallbackStreamIds(models, new Set([GPT_5_6_LUNA_MODEL_ID]))
+    ).toEqual(["auto", "auto_fast"]);
+  });
+
+  it("does not report a fallback when the replacement is another stream", async () => {
+    const models = (await getEnabledModelsForAuth(adminAuth)).map((model) => ({
+      ...model,
+      isSelectable:
+        isModelStreamId(model.modelId) ||
+        model.modelId === GPT_5_6_LUNA_MODEL_ID,
+    }));
+    const resolved = resolveStreamModelWithFallback(
+      models,
+      "auto",
+      new Set([GPT_5_6_LUNA_MODEL_ID])
+    );
+
+    expect(isModelStreamId(resolved.model.modelId)).toBe(true);
+    expect(resolved.didFallback).toBe(false);
+    expect(
+      getFallbackStreamIds(models, new Set([GPT_5_6_LUNA_MODEL_ID]))
+    ).toEqual([]);
+  });
+
+  it("does not report a fallback when degradation does not change the resolution", async () => {
+    const models = await getEnabledModelsForAuth(adminAuth);
+    const resolved = resolveStreamModelWithFallback(
+      models,
+      "auto",
+      new Set([CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId])
+    );
+
+    expect(resolved.didFallback).toBe(false);
+    expect(resolved.model.modelId).toBe(GPT_5_6_LUNA_MODEL_ID);
+  });
   it("keeps a degraded model out of the last-resort fallback", async () => {
     const models = await getEnabledModelsForAuth(adminAuth);
     // Luna is the only selectable model, so it is both the stream's first
