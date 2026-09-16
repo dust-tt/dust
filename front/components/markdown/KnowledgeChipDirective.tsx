@@ -13,11 +13,13 @@ export interface KnowledgeChipDirectiveProps {
 
 interface KnowledgeChipDirectiveBlockProps {
   title: string;
+  sourceUrl: string | null;
   nodeData: ContentFragmentNodeData | null;
 }
 
 export function KnowledgeChipDirectiveBlock({
   title,
+  sourceUrl,
   nodeData,
 }: KnowledgeChipDirectiveBlockProps) {
   const icon = nodeData ? getKnowledgeIcon(nodeData) : undefined;
