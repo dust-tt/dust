@@ -64,7 +64,6 @@ export async function updateSkillSearchActiveUsers({
   skillIds: string[];
   activeUsers: Record<string, number>;
 }): Promise<Result<void, ElasticsearchError>> {
-  assert(workspaceId.length > 0 && skillIds.length <= 500);
   return withEs(async (client) => {
     if (skillIds.length === 0) {
       return;
