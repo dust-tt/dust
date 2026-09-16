@@ -3,19 +3,25 @@
  * (agent_message_analytics) and the new consumption analytics index
  * (agent_message_consumption_analytics) for a given workspace and key.
  *
+ * Both implementations are replicated here rather than imported: they mirror
+ * private helpers of `lib/api/programmatic_usage/key_cap.ts` and this
+ * comparison is a one-off migration check.
+ *
  * Read-only.
  *
- *   npx tsx scripts/compare_key_cap_es_indices.ts --workspaceId <wId> --keyId <keyModelId>
+ *   npx tsx scripts/compare_key_cap_es_indices.ts --workspaceId <wId> --keyModelId <keyModelId>
  */
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  searchAnalytics,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import type { UsageAggregations } from "@app/lib/api/programmatic_usage/common";
 import { MARKUP_MULTIPLIER } from "@app/lib/api/programmatic_usage/common";
-import { getLast29DaysKeyUsageMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
+import { USAGE_TYPE_PROGRAMMATIC } from "@app/lib/metronome/constants";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -23,28 +29,21 @@ import type { estypes } from "@elastic/elasticsearch";
 
 import { makeScript } from "./helpers";
 
+const TWENTY_NINE_DAYS_MS = 29 * 24 * 60 * 60 * 1000;
+
 /**
- * Old implementation querying agent_message_analytics index.
- * Kept here for comparison purposes.
+ * Old implementation querying the agent_message_analytics index.
  */
 async function getLast29DaysKeyUsageFromOldESMicroUsd(
-  keyId: ModelId,
+  key: KeyResource,
   workspace: LightWorkspaceType
 ): Promise<Result<number, Error>> {
-  const key = await KeyResource.fetchByWorkspaceAndId({ workspace, id: keyId });
-
-  if (!key || !key.name) {
-    return new Ok(0);
-  }
-
-  const twentyNineDaysAgoMs = Date.now() - 29 * 24 * 60 * 60 * 1000;
-
   const query: estypes.QueryDslQueryContainer = {
     bool: {
       filter: [
         { term: { api_key_name: key.name } },
         { term: { workspace_id: workspace.sId } },
-        { range: { timestamp: { gte: twentyNineDaysAgoMs } } },
+        { range: { timestamp: { gte: Date.now() - TWENTY_NINE_DAYS_MS } } },
         { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
       ],
     },
@@ -61,19 +60,58 @@ async function getLast29DaysKeyUsageFromOldESMicroUsd(
     return new Err(new Error(`ES query failed: ${result.error.message}`));
   }
 
-  const rawCost = result.value.aggregations?.total_cost?.value ?? 0;
-  const costWithMarkup = Math.round(rawCost * MARKUP_MULTIPLIER);
-  return new Ok(costWithMarkup);
+  const rawCostMicroUsd = result.value.aggregations?.total_cost?.value ?? 0;
+  const costWithMarkupMicroUsd = Math.round(
+    rawCostMicroUsd * MARKUP_MULTIPLIER
+  );
+  return new Ok(costWithMarkupMicroUsd);
+}
+
+/**
+ * New implementation querying the agent_message_consumption_analytics index.
+ */
+async function getLast29DaysKeyUsageFromNewESMicroUsd(
+  key: KeyResource,
+  workspace: LightWorkspaceType
+): Promise<Result<number, Error>> {
+  const query: estypes.QueryDslQueryContainer = {
+    bool: {
+      filter: [
+        { term: { api_key_name: key.name } },
+        { term: { workspace_id: workspace.sId } },
+        { range: { completed_at: { gte: Date.now() - TWENTY_NINE_DAYS_MS } } },
+        { term: { usage_type: USAGE_TYPE_PROGRAMMATIC } },
+      ],
+    },
+  };
+
+  const result = await searchConsumptionAnalytics<never, UsageAggregations>(
+    query,
+    {
+      aggregations: {
+        total_cost: { sum: { field: "micro_usd" } },
+      },
+      size: 0,
+    }
+  );
+
+  if (result.isErr()) {
+    return new Err(new Error(`ES query failed: ${result.error.message}`));
+  }
+
+  const rawCostMicroUsd = result.value.aggregations?.total_cost?.value ?? 0;
+  const costWithMarkupMicroUsd = Math.round(
+    rawCostMicroUsd * MARKUP_MULTIPLIER
+  );
+  return new Ok(costWithMarkupMicroUsd);
 }
 
 makeScript(
   {
     workspaceId: { alias: "w", type: "string" as const, demandOption: true },
-    keyId: { alias: "k", type: "number" as const, demandOption: true },
+    keyModelId: { alias: "k", type: "number" as const, demandOption: true },
   },
-  async ({ workspaceId, keyId: rawKeyId }, logger) => {
-    const keyId = rawKeyId as ModelId;
-
+  async ({ workspaceId, keyModelId }, logger) => {
     const workspaceResource = await WorkspaceResource.fetchById(workspaceId);
     if (!workspaceResource) {
       logger.error({ workspaceId }, "Workspace not found");
@@ -83,9 +121,18 @@ makeScript(
       workspace: workspaceResource,
     });
 
+    const key = await KeyResource.fetchByWorkspaceAndId({
+      workspace,
+      id: keyModelId,
+    });
+    if (!key || !key.name) {
+      logger.error({ workspaceId, keyModelId }, "Key not found or unnamed");
+      return;
+    }
+
     const [oldResult, newResult] = await Promise.all([
-      getLast29DaysKeyUsageFromOldESMicroUsd(keyId, workspace),
-      getLast29DaysKeyUsageMicroUsd(keyId, workspace),
+      getLast29DaysKeyUsageFromOldESMicroUsd(key, workspace),
+      getLast29DaysKeyUsageFromNewESMicroUsd(key, workspace),
     ]);
 
     const oldValueMicroUsd = oldResult.isOk() ? oldResult.value : null;
@@ -99,7 +146,7 @@ makeScript(
     logger.info(
       {
         workspaceId,
-        keyId,
+        keyModelId,
         oldIndexMicroUsd: oldValueMicroUsd,
         newIndexMicroUsd: newValueMicroUsd,
         diffMicroUsd,

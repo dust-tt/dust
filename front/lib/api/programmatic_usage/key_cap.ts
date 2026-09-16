@@ -61,7 +61,7 @@ export const invalidateKeyCapCache = invalidateCacheWithRedis(
  * Queries Elasticsearch for messages with this key's name.
  * Today's usage is tracked via Redis increments, so we only fetch 29 days.
  */
-export async function getLast29DaysKeyUsageMicroUsd(
+async function getLast29DaysKeyUsageMicroUsd(
   keyId: ModelId,
   workspace: LightWorkspaceType
 ): Promise<Result<number, Error>> {

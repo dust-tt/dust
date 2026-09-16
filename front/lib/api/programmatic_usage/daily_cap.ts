@@ -73,7 +73,7 @@ async function getEffectiveDailyCapMicroUsd(
  * Today is defined as UTC day.
  * Returns cost WITH markup applied to match Redis increments.
  */
-export async function getTodayUsageFromESMicroUsd(
+async function getTodayUsageFromESMicroUsd(
   auth: Authenticator
 ): Promise<Result<number, Error>> {
   const workspace = auth.getNonNullableWorkspace();
