@@ -1,5 +1,6 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  CREATE_AGENT_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
@@ -10,6 +11,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -102,6 +104,17 @@ function expectMcpError(
     throw new Error("Expected an error.");
   }
   expect(result.error.message).toContain(fragment);
+}
+
+// A non-admin role membership does not grant create/agent by itself — it requires a group grant.
+async function createAgentAuthorTestContext() {
+  const result = await createResourceTest({ role: "user" });
+  await grantWorkspacePermission(result.workspace, result.user, {
+    grantType: "create",
+    resourceType: "agent",
+  });
+  await result.authenticator.refresh();
+  return result;
 }
 
 describe("building_agents_and_skills tools", () => {
@@ -625,6 +638,108 @@ describe("building_agents_and_skills tools", () => {
       );
 
       expectMcpError(result, "do not have access");
+    });
+  });
+
+  describe(CREATE_AGENT_TOOL_NAME, () => {
+    it("creates a hidden, instructions-only agent with the caller as sole editor", async () => {
+      const { authenticator, user } = await createAgentAuthorTestContext();
+
+      const result = await getTool(CREATE_AGENT_TOOL_NAME).handler(
+        {
+          name: "Incident Helper",
+          description: "Helps triage incidents.",
+          instructions: "Collect impact and timeline.",
+        },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+
+      const output = result.value[0];
+      expect(output?.type).toBe("text");
+      if (output?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const parsed = JSON.parse(output.text) as {
+        agent: { sId: string; name: string; description: string };
+      };
+      expect(parsed.agent.name).toBe("Incident Helper");
+      expect(parsed.agent.description).toBe("Helps triage incidents.");
+
+      const { getAgentConfiguration } = await import(
+        "@app/lib/api/assistant/configuration/agent"
+      );
+      const agent = await getAgentConfiguration(authenticator, {
+        agentId: parsed.agent.sId,
+        variant: "full",
+      });
+      expect(agent).not.toBeNull();
+      expect(agent?.scope).toBe("hidden");
+      expect(agent?.status).toBe("active");
+      expect(agent?.instructions).toBe("Collect impact and timeline.");
+      expect(agent?.actions).toHaveLength(0);
+
+      const { getAgentsEditors } = await import(
+        "@app/lib/api/assistant/editors"
+      );
+      const editors = await getAgentsEditors(authenticator, [agent!]);
+      expect(editors[agent!.sId]?.map((e) => e.sId)).toEqual([user.sId]);
+    });
+
+    it("rejects an empty agent name", async () => {
+      const { authenticator } = await createAgentAuthorTestContext();
+
+      const result = await getTool(CREATE_AGENT_TOOL_NAME).handler(
+        { name: "   ", description: "Desc", instructions: "Do things." },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        throw new Error("Expected an error.");
+      }
+      expect(result.error.message).toContain("cannot be empty");
+    });
+
+    it("returns an MCPError without an interactive user", async () => {
+      const { workspace } = await createAgentAuthorTestContext();
+      const nonInteractiveAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const result = await getTool(CREATE_AGENT_TOOL_NAME).handler(
+        { name: "No User", description: "Desc", instructions: "Do things." },
+        makeExtra(nonInteractiveAuth)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        throw new Error("Expected an error.");
+      }
+      expect(result.error.message).toContain("interactive user");
+    });
+
+    it("returns an MCPError for users without the create-agent capability", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await getTool(CREATE_AGENT_TOOL_NAME).handler(
+        {
+          name: "Restricted",
+          description: "Desc",
+          instructions: "Do things.",
+        },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        throw new Error("Expected an error.");
+      }
+      expect(result.error.message).toContain("restricted");
     });
   });
 });

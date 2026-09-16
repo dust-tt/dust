@@ -10,6 +10,7 @@ export const BUILDING_AGENTS_AND_SKILLS_SERVER_NAME =
 export const DESCRIBE_SKILL_TOOL_NAME = "describe_skill" as const;
 export const SUGGEST_SKILL_UPDATE_TOOL_NAME = "suggest_skill_update" as const;
 export const SUGGEST_SKILL_EDITORS_TOOL_NAME = "suggest_skill_editors" as const;
+export const CREATE_AGENT_TOOL_NAME = "create_agent" as const;
 
 // Bounds the O(n²) pairwise conflict check in hasSuggestionSelfConflict; larger rewrites
 // should target the instructions root block instead.
@@ -84,6 +85,26 @@ export type SuggestSkillEditorsArgs = z.infer<
   typeof SUGGEST_SKILL_EDITORS_INPUT_SCHEMA
 >;
 
+export const CREATE_AGENT_DESCRIPTION =
+  "Create a new agent in this workspace: a named assistant with its own instructions. Unlike " +
+  "`suggest_skill_update`, this creates the agent directly, not as a pending suggestion. v1 " +
+  "creates instructions-only agents, private to their creator, using the workspace's default " +
+  "model.";
+
+export const CREATE_AGENT_INPUT_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe("Unique, human-readable agent name (no leading '@')."),
+  description: z
+    .string()
+    .describe(
+      "Short description of what the agent does, shown to users browsing agents."
+    ),
+  instructions: z.string().describe("The agent's instructions, in markdown."),
+});
+
+export type CreateAgentArgs = z.infer<typeof CREATE_AGENT_INPUT_SCHEMA>;
+
 export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   {
     name: DESCRIBE_SKILL_TOOL_NAME,
@@ -133,6 +154,18 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     toolCostCategory: "basic",
     freeUsage: true,
   },
+  {
+    name: CREATE_AGENT_TOOL_NAME,
+    description: CREATE_AGENT_DESCRIPTION,
+    schema: CREATE_AGENT_INPUT_SCHEMA.shape,
+    stake: "high",
+    displayLabels: {
+      running: "Creating agent",
+      done: "Create agent",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
 ] as const;
 
 export const BUILDING_AGENTS_AND_SKILLS_SERVER = {
@@ -140,7 +173,8 @@ export const BUILDING_AGENTS_AND_SKILLS_SERVER = {
     name: BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Build and improve agents and skills from a conversation by proposing suggestions their editors can review.",
+      "Build and improve agents and skills from a conversation: create new agents directly, and " +
+      "propose suggestions for existing skills that their editors can review.",
     authorization: null,
     icon: "ActionListCheckIcon",
     documentationUrl: null,

@@ -32,12 +32,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
-  "agent_authoring": {
-    "create_agent": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-  },
   "agent_delegation": {
     "run_agent": {
       "freeUsage": false,
@@ -227,6 +221,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
     },
   },
   "building_agents_and_skills": {
+    "create_agent": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "describe_skill": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -2727,9 +2725,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "update_recommendation": "never_ask",
     "update_work_area": "never_ask",
   },
-  "agent_authoring": {
-    "create_agent": "high",
-  },
   "agent_delegation": {
     "run_agent": "never_ask",
   },
@@ -2790,6 +2785,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "ask_user_question": "never_ask",
   },
   "building_agents_and_skills": {
+    "create_agent": "high",
     "describe_skill": "never_ask",
     "suggest_skill_editors": "never_ask",
     "suggest_skill_update": "never_ask",

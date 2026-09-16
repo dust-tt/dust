@@ -41,8 +41,7 @@
     { "name": "conversation_side_panel", "id": 1044 },
     { "name": "agent_delegation", "id": 1045 },
     { "name": "workspace_management", "id": 1048 },
-    { "name": "building_agents_and_skills", "id": 1050 },
-    { "name": "agent_authoring", "id": 1051 }
+    { "name": "building_agents_and_skills", "id": 1050 }
   ],
   "manual": [
     { "name": "github", "id": 1 },

@@ -6,7 +6,6 @@ import type {
   ToolMeta,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { ACTIVATION_RECOMMENDATIONS_SERVER } from "@app/lib/api/actions/servers/activation_recommendations/metadata";
-import { AGENT_AUTHORING_SERVER } from "@app/lib/api/actions/servers/agent_authoring/metadata";
 import {
   AGENT_DELEGATION_SERVER,
   AGENT_DELEGATION_SERVER_NAME,
@@ -146,7 +145,6 @@ export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
 export const SKILL_AUTHORING_SERVER_NAME = "skill_authoring";
 export const BUILDING_AGENTS_AND_SKILLS_SERVER_NAME =
   "building_agents_and_skills";
-export const AGENT_AUTHORING_SERVER_NAME = "agent_authoring";
 
 export const GENERATE_IMAGE_TOOL_NAME = "generate_image";
 
@@ -242,7 +240,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   TABLE_QUERY_V2_SERVER_NAME,
   SKILL_AUTHORING_SERVER_NAME,
   BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
-  AGENT_AUTHORING_SERVER_NAME,
   "skill_management",
   "triggers_management",
   "pod_manager",
@@ -988,17 +985,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: SKILL_AUTHORING_SERVER,
-  },
-  [AGENT_AUTHORING_SERVER_NAME]: {
-    id: 1051,
-    availability: "auto_hidden_builder",
-    allowMultipleInstances: false,
-    isPreview: false,
-    isRestricted: undefined,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: AGENT_AUTHORING_SERVER,
   },
   triggers_management: {
     id: 1020,
