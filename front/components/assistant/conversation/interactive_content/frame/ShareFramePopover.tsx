@@ -1,5 +1,6 @@
 import { FrameSharingGrants } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingGrants";
 import { FrameSharingViewers } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingViewers";
+import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
 import { getAvailableScopeOptions } from "@app/components/assistant/conversation/interactive_content/frame/shareFrameScopeOptions";
 import type {
   ShareFrameViewerFile,
@@ -18,8 +19,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Check,
-  Clipboard,
-  ClipboardCheck,
   ContentMessage,
   Cube01,
   File02,
@@ -35,7 +34,6 @@ import {
   Spinner,
   Upload01,
   useCopyToClipboard,
-  XClose,
 } from "@dust-tt/sparkle";
 import { useId, useState } from "react";
 
@@ -72,7 +70,7 @@ export function ShareFramePopover({
         sideOffset={8}
         collisionPadding={8}
         preventAutoFocusOnClose={false}
-        className="flex w-96 max-w-[calc(100vw-1rem)] max-h-(--radix-popover-content-available-height) flex-col overflow-hidden p-0"
+        className="flex w-80 max-h-(--radix-popover-content-available-height) flex-col overflow-hidden p-2"
       >
         <ShareFramePopoverContent
           fileId={fileId}
@@ -103,7 +101,6 @@ function ShareFramePopoverContent({
   const isDomainSharingEnabled = featureFlags.includes("frame_domain_sharing");
   const [shareBlockError, setShareBlockError] = useState<string[] | null>(null);
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
-  const [isCopied, copyToClipboard] = useCopyToClipboard();
 
   const {
     doShare,
@@ -172,31 +169,7 @@ function ShareFramePopoverContent({
 
   return (
     <>
-      <div className="flex shrink-0 items-center justify-between gap-2 p-3">
-        <h2 id={titleId} className="text-sm font-semibold text-foreground">
-          Share this frame
-        </h2>
-        <div className="flex shrink-0 items-center gap-1">
-          <Button
-            variant="ghost"
-            size="xs"
-            icon={isCopied ? ClipboardCheck : Clipboard}
-            label={isCopied ? "Copied!" : "Copy link"}
-            disabled={!shareURL}
-            onClick={async () => {
-              await copyToClipboard(shareURL);
-            }}
-          />
-          <Button
-            icon={XClose}
-            variant="ghost"
-            size="xs"
-            aria-label="Close sharing"
-            onClick={onClose}
-          />
-        </div>
-      </div>
-      <div className="min-h-0 overflow-y-auto px-3 pb-3">
+      <div className="min-h-0 overflow-y-auto">
         {isFileShareLoading ? (
           <div className="flex items-center justify-center py-8">
             <Spinner size="sm" />
@@ -251,78 +224,14 @@ function ShareFramePopoverContent({
                 {shareBlockError.join(", ")}
               </ContentMessage>
             )}
-            <fieldset
-              className="flex flex-col gap-2 border-none p-0"
-              disabled={isUpdatingScope}
-              aria-busy={isUpdatingScope}
-            >
-              <legend className="mb-2 text-sm font-semibold text-foreground">
-                Who has access
-                {isUpdatingScope && (
-                  <span role="status" className="ml-2 inline-flex items-center">
-                    <span aria-hidden="true">
-                      <Spinner size="xs" />
-                    </span>
-                    <span className="sr-only">Updating sharing settings</span>
-                  </span>
-                )}
-              </legend>
-              <ListGroup className="overflow-hidden rounded-xl border-x">
-                {availableScopeOptions.map((option, index) => {
-                  const isSelected = option.value === currentScope;
-                  const isDisabled = option.disabled || isUpdatingScope;
-                  const inputId = `${titleId}-scope-${option.value}`;
-                  return (
-                    <Label
-                      key={option.value}
-                      htmlFor={inputId}
-                      className={`block has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-highlight-300 ${
-                        isDisabled
-                          ? "cursor-not-allowed opacity-60"
-                          : "cursor-pointer hover:bg-muted-background"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        id={inputId}
-                        name={`${titleId}-scope`}
-                        aria-labelledby={`${inputId}-label`}
-                        value={option.value}
-                        checked={isSelected}
-                        disabled={isDisabled}
-                        onChange={() => handleScopeChange(option.value)}
-                        className="sr-only"
-                      />
-                      <ListItem
-                        className="gap-2 px-3 py-2"
-                        itemsAlignment="center"
-                        hasSeparator={index < availableScopeOptions.length - 1}
-                        hasSeparatorIfLast
-                      >
-                        <Icon
-                          visual={option.icon}
-                          size="sm"
-                          className="shrink-0 text-muted-foreground"
-                        />
-                        <span
-                          id={`${inputId}-label`}
-                          className="min-w-0 flex-1 text-sm font-medium text-foreground"
-                        >
-                          {option.label}
-                        </span>
-                        {isSelected && (
-                          <Icon
-                            visual={Check}
-                            size="sm"
-                            className="shrink-0 text-muted-foreground"
-                          />
-                        )}
-                      </ListItem>
-                    </Label>
-                  );
-                })}
-              </ListGroup>
-            </fieldset>
+            <AccessScopeSection
+              titleId={titleId}
+              currentScope={currentScope}
+              availableScopeOptions={availableScopeOptions}
+              isUpdatingScope={isUpdatingScope}
+              onScopeChange={handleScopeChange}
+              shareURL={shareURL}
+            />
 
             {showGrants && (
               <FrameSharingGrants
@@ -354,6 +263,111 @@ function ShareFramePopoverContent({
         )}
       </div>
     </>
+  );
+}
+
+interface AccessScopeSectionProps {
+  titleId: string;
+  currentScope: FileShareScope;
+  availableScopeOptions: ReturnType<typeof getAvailableScopeOptions>;
+  isUpdatingScope: boolean;
+  onScopeChange: (scope: FileShareScope) => void;
+  shareURL: string;
+}
+
+function AccessScopeSection({
+  titleId,
+  currentScope,
+  availableScopeOptions,
+  isUpdatingScope,
+  onScopeChange,
+  shareURL,
+}: AccessScopeSectionProps) {
+  const [isCopied, copyToClipboard] = useCopyToClipboard();
+
+  return (
+    <Section
+      label={
+        <>
+          Who has access
+          {isUpdatingScope && (
+            <span role="status" className="ml-2 inline-flex items-center">
+              <span aria-hidden="true">
+                <Spinner size="xs" />
+              </span>
+              <span className="sr-only">Updating sharing settings</span>
+            </span>
+          )}
+        </>
+      }
+      action={
+        <Button
+          variant="ghost-secondary"
+          size="xs"
+          label={isCopied ? "Copied!" : "Copy link"}
+          disabled={!shareURL}
+          onClick={async () => {
+            await copyToClipboard(shareURL);
+          }}
+        />
+      }
+    >
+      <ListGroup className="overflow-hidden rounded-xl border-x dark:border-border-form">
+        {availableScopeOptions.map((option, index) => {
+          const isSelected = option.value === currentScope;
+          const isDisabled = option.disabled || isUpdatingScope;
+          const inputId = `${titleId}-scope-${option.value}`;
+          return (
+            <Label
+              key={option.value}
+              htmlFor={inputId}
+              className={`block has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-highlight-300 ${
+                isDisabled
+                  ? "cursor-not-allowed opacity-60"
+                  : "cursor-pointer hover:bg-muted-background"
+              }`}
+            >
+              <input
+                type="radio"
+                id={inputId}
+                name={`${titleId}-scope`}
+                aria-labelledby={`${inputId}-label`}
+                value={option.value}
+                checked={isSelected}
+                disabled={isDisabled}
+                onChange={() => onScopeChange(option.value)}
+                className="sr-only"
+              />
+              <ListItem
+                className="gap-2 p-3 dark:border-border-form"
+                itemsAlignment="center"
+                hasSeparator={index < availableScopeOptions.length - 1}
+                hasSeparatorIfLast
+              >
+                <Icon
+                  visual={option.icon}
+                  size="xs"
+                  className="shrink-0 text-faint"
+                />
+                <span
+                  id={`${inputId}-label`}
+                  className="min-w-0 flex-1 label-xs text-muted-foreground"
+                >
+                  {option.label}
+                </span>
+                {isSelected && (
+                  <Icon
+                    visual={Check}
+                    size="xs"
+                    className="shrink-0 text-muted-foreground"
+                  />
+                )}
+              </ListItem>
+            </Label>
+          );
+        })}
+      </ListGroup>
+    </Section>
   );
 }
 
@@ -408,19 +422,15 @@ function ViewerFilesSection({ viewerFiles }: ViewerFilesSectionProps) {
   }
 
   return (
-    <fieldset className="flex flex-col gap-2 border-none p-0">
-      <legend className="text-sm font-semibold text-foreground">
-        Files used
-      </legend>
-      <p className="copy-xs text-muted-foreground">
-        When shared, viewers can only access these files—not the rest of the
-        conversation or pod.
-      </p>
+    <Section
+      label="Files used"
+      description="When shared, viewers can only access these files—not the rest of the conversation or pod."
+    >
       <ul className="flex flex-col gap-0">
         {viewerFiles.map((viewerFile) => (
           <ViewerFileLine key={viewerFile.ref} viewerFile={viewerFile} />
         ))}
       </ul>
-    </fieldset>
+    </Section>
   );
 }

@@ -1,4 +1,5 @@
 import { FrameSharingRow } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingRow";
+import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { MAX_EMAILS_OR_DOMAINS_PER_INVITE } from "@app/types/files";
 import type {
@@ -10,14 +11,7 @@ import {
   sharingDomainSchema,
   sharingEmailSchema,
 } from "@app/types/sharing_grants";
-import {
-  Button,
-  Globe01,
-  Input,
-  Label,
-  ListGroup,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Button, Globe01, Input, ListGroup, Spinner } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { intlFormatDistance } from "date-fns";
 import { useId, useState } from "react";
@@ -159,61 +153,67 @@ export function FrameSharingGrants({
     }
   };
 
+  const inviteLabel = canGrantDomains
+    ? "Add people or domains"
+    : canInviteExternal
+      ? "Invite by email"
+      : "Invite workspace members by email";
+
   return (
     <div className="flex flex-col gap-4">
       <AwaitableDialog />
-      <form
-        className="flex flex-col gap-2"
-        onSubmit={handleSubmit(async ({ recipients }) => {
-          const isAdded = await onAdd(recipients);
-          if (isAdded) {
-            reset();
-          }
-        })}
-      >
-        <div className="flex items-end gap-2">
-          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-            <Label htmlFor={inputId}>
-              {canGrantDomains
-                ? "Add people or domains"
-                : canInviteExternal
-                  ? "Invite by email"
-                  : "Invite workspace members by email"}
-            </Label>
-            <Input
-              id={inputId}
-              placeholder={
-                canGrantDomains
-                  ? "alice@example.com, example.com"
-                  : "Add comma separated emails to invite"
-              }
-              {...register("recipients")}
-              isError={!!errors.recipients}
-              aria-invalid={!!errors.recipients}
-              aria-describedby={errors.recipients ? errorId : undefined}
-              disabled={isLoading || hasError || isSubmitting}
+      <Section label={inviteLabel}>
+        <form
+          className="flex flex-col gap-2"
+          onSubmit={handleSubmit(async ({ recipients }) => {
+            const isAdded = await onAdd(recipients);
+            if (isAdded) {
+              reset();
+            }
+          })}
+        >
+          <div className="flex items-end gap-2">
+            <div className="min-w-0 flex-1">
+              <Input
+                id={inputId}
+                aria-label={inviteLabel}
+                placeholder={
+                  canGrantDomains
+                    ? "alice@example.com, example.com"
+                    : "Add comma separated emails"
+                }
+                {...register("recipients")}
+                isError={!!errors.recipients}
+                aria-invalid={!!errors.recipients}
+                aria-describedby={errors.recipients ? errorId : undefined}
+                disabled={isLoading || hasError || isSubmitting}
+              />
+            </div>
+            <Button
+              variant="primary"
+              label={canGrantDomains ? "Add" : "Invite"}
+              type="submit"
+              isLoading={isSubmitting}
+              disabled={isLoading || hasError}
             />
           </div>
-          <Button
-            variant="primary"
-            label={canGrantDomains ? "Add" : "Invite"}
-            type="submit"
-            isLoading={isSubmitting}
-            disabled={isLoading || hasError}
-          />
-        </div>
-        {errors.recipients && (
-          <p id={errorId} role="alert" className="text-sm text-foreground">
-            {errors.recipients.message}
-          </p>
-        )}
-        {canGrantDomains && (
-          <p className="text-xs text-muted-foreground">
-            Invitations are sent to email addresses only. People at an added
-            domain can open the link after verifying their email.
-          </p>
-        )}
-      </form>
+          {errors.recipients && (
+            <p
+              id={errorId}
+              role="alert"
+              className="text-sm text-foreground px-2"
+            >
+              {errors.recipients.message}
+            </p>
+          )}
+          {canGrantDomains && (
+            <p className="text-xs text-muted-foreground">
+              Invitations are sent to email addresses only. People at an added
+              domain can open the link after verifying their email.
+            </p>
+          )}
+        </form>
+      </Section>
 
       {isLoading ? (
         <div
@@ -233,14 +233,13 @@ export function FrameSharingGrants({
           <Button label="Retry" variant="outline" onClick={onRetry} />
         </div>
       ) : grants.length === 0 ? (
-        <p className="py-2 text-sm text-muted-foreground">
+        <p className="px-2 text-sm text-muted-foreground">
           {canGrantDomains
             ? "No people or domains have been added yet."
             : "No one has been invited yet."}
         </p>
       ) : (
-        <section aria-label="Shared with" className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-foreground">Shared with</h3>
+        <Section label="People with access">
           <ListGroup className="border-0">
             <ul>
               {grants.map((grant) => (
@@ -263,7 +262,7 @@ export function FrameSharingGrants({
               ))}
             </ul>
           </ListGroup>
-        </section>
+        </Section>
       )}
     </div>
   );
