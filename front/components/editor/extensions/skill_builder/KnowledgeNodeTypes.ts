@@ -3,8 +3,9 @@
 // can import them without dragging in the React NodeView chain.
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 
-// Minimal data from serialization.
-export interface BaseKnowledgeItem {
+// The fields we persist in (and parse back from) the document. This is all we
+// have after loading, until the NodeView re-fetches the node.
+export interface SerializedKnowledgeItem {
   dataSourceViewId: string;
   hasChildren: boolean;
   label: string;
@@ -14,11 +15,11 @@ export interface BaseKnowledgeItem {
 }
 
 // Fresh selection from search with complete node data.
-export interface FullKnowledgeItem extends BaseKnowledgeItem {
+export interface HydratedKnowledgeItem extends SerializedKnowledgeItem {
   node: DataSourceViewContentNode;
 }
 
-export type KnowledgeItem = BaseKnowledgeItem | FullKnowledgeItem;
+export type KnowledgeItem = SerializedKnowledgeItem | HydratedKnowledgeItem;
 
 export function getKnowledgeItems(attrs: {
   selectedItems?: unknown;
@@ -32,16 +33,14 @@ export function getFirstKnowledgeItem(attrs: {
   return getKnowledgeItems(attrs)[0];
 }
 
-export function isFullKnowledgeItem(
+export function isHydratedKnowledgeItem(
   item: KnowledgeItem
-): item is FullKnowledgeItem {
+): item is HydratedKnowledgeItem {
   return "node" in item && item.node !== undefined;
 }
 
-// Full items prefer the freshly fetched node's URL: items upgraded from a base
-// item (e.g. re-hydrated in KnowledgeNodeView) keep a stale base sourceUrl.
 export function getItemSourceUrl(item: KnowledgeItem): string | null {
-  return isFullKnowledgeItem(item) ? item.node.sourceUrl : item.sourceUrl;
+  return isHydratedKnowledgeItem(item) ? item.node.sourceUrl : item.sourceUrl;
 }
 
 /**

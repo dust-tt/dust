@@ -5,7 +5,7 @@ import {
 } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeNodeAttributes } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
-import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+import { isHydratedKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceView } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -18,13 +18,13 @@ import { useCallback, useEffect, useLayoutEffect } from "react";
 // Re-exports for existing consumers that import these from KnowledgeNodeView.
 // The canonical home is now KnowledgeNodeTypes.ts (React-free).
 export type {
-  BaseKnowledgeItem,
-  FullKnowledgeItem,
+  HydratedKnowledgeItem,
   KnowledgeItem,
+  SerializedKnowledgeItem,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 export {
   computeHasChildren,
-  isFullKnowledgeItem,
+  isHydratedKnowledgeItem,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 
 interface KnowledgeDisplayProps {
@@ -42,7 +42,7 @@ function KnowledgeDisplayComponent({
   onRemove,
   updateAttributes,
 }: KnowledgeDisplayProps) {
-  const needsFetch = !isFullKnowledgeItem(item);
+  const needsFetch = !isHydratedKnowledgeItem(item);
 
   const { dataSourceView, isDataSourceViewError } = useSpaceDataSourceView({
     dataSourceViewId: item.dataSourceViewId,
@@ -99,7 +99,7 @@ function KnowledgeDisplayComponent({
     );
   }
 
-  if (isFetchingNode || (needsFetch && !isFullKnowledgeItem(item))) {
+  if (isFetchingNode || (needsFetch && !isHydratedKnowledgeItem(item))) {
     return (
       <Chip label={item.label} color="primary" size="xs">
         <Spinner size="xs" />
@@ -116,9 +116,7 @@ function KnowledgeDisplayComponent({
   );
 }
 
-// Rendered in the conversation composer, which has no SpacesProvider: full
-// items already carry their node, base items degrade to a plain chip since the
-// node cannot be fetched without the context.
+// Rendered in the conversation composer, which has no SpacesProvider
 function StaticKnowledgeChip({
   item,
   onRemove,
@@ -126,7 +124,7 @@ function StaticKnowledgeChip({
   item: KnowledgeItem;
   onRemove?: () => void;
 }) {
-  if (isFullKnowledgeItem(item)) {
+  if (isHydratedKnowledgeItem(item)) {
     return (
       <InlineKnowledgeChip
         node={item.node}
