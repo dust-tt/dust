@@ -1,0 +1,109 @@
+// The Frame's durable files folder.
+//
+// A Frame owns one folder that persists across invocations and publications,
+// gcsfuse-mounted read-write into its sandbox. It is the place for bytes a
+// function needs to keep — viewer uploads, generated documents — while the
+// row describing them (who, when, which path) belongs in a Frame database.
+//
+// The path is resolved from the environment front sets per exec and is never
+// hardcoded here (front's `frame-files-dir-single-source` contract). It is
+// read through podEnv() rather than process.env so a resident worker serving
+// two invocations resolves each against its own environment.
+//
+// Two properties of the folder shape how it should be used:
+//
+//  - It is a GCS bucket behind a FUSE mount, so there are no partial writes.
+//    Write whole files; appending to or seeking within one rewrites the whole
+//    object. Never put a SQLite database here — that is what `db()` is for.
+//  - Nothing validates what gets written, so a file's name says nothing about
+//    its bytes. Code that later serves a file MUST choose the content type
+//    from a fixed list rather than from the file name, and must never serve a
+//    type that can execute script (svg, html).
+
+import { isAbsolute, join, resolve, sep } from "node:path";
+
+import { podEnv } from "./context.ts";
+
+/**
+ * Env var carrying the absolute in-sandbox path of the Frame's files folder.
+ * Set per exec by front; no fallback lives below front, so an absent value is
+ * an error rather than a guess at the location.
+ */
+export const FRAME_FILES_DIR_ENV = "DUST_FRAME_FILES_DIR";
+
+export class FrameFilesError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "FrameFilesError";
+  }
+}
+
+export class FrameFilesUnavailableError extends FrameFilesError {
+  constructor() {
+    super(
+      `${FRAME_FILES_DIR_ENV} is not set: the files folder is available to ` +
+        `Frame functions only.`
+    );
+    this.name = "FrameFilesUnavailableError";
+  }
+}
+
+export class FrameFilePathError extends FrameFilesError {
+  constructor(
+    readonly relativePath: string,
+    reason: string
+  ) {
+    super(`Invalid Frame file path ${JSON.stringify(relativePath)}: ${reason}`);
+    this.name = "FrameFilePathError";
+  }
+}
+
+/**
+ * Absolute path of the Frame's files folder. Throws when called outside a
+ * Frame function, where the folder is not mounted.
+ */
+export function filesDir(): string {
+  const dir = podEnv(FRAME_FILES_DIR_ENV);
+  if (dir === undefined || dir === "") {
+    throw new FrameFilesUnavailableError();
+  }
+
+  return dir;
+}
+
+/**
+ * Absolute path of `relativePath` inside the Frame's files folder, for use
+ * with `node:fs`.
+ *
+ * Always build paths with this rather than interpolating into `filesDir()`:
+ * a name that reaches the folder from a viewer can contain `..`, and the
+ * sandbox has writable directories above the mount. A path that would resolve
+ * outside the folder is refused.
+ */
+export function filePath(relativePath: string): string {
+  if (relativePath === "") {
+    throw new FrameFilePathError(relativePath, "the path is empty");
+  }
+  if (isAbsolute(relativePath)) {
+    throw new FrameFilePathError(relativePath, "the path must be relative");
+  }
+  if (relativePath.includes("\0")) {
+    throw new FrameFilePathError(relativePath, "the path contains a null byte");
+  }
+
+  const root = filesDir();
+  const resolved = resolve(root, relativePath);
+  // `resolve` collapses `..`, so comparing afterwards catches every way out of
+  // the folder, including a segment that only escapes once normalized.
+  if (resolved !== root && !resolved.startsWith(join(root, sep))) {
+    throw new FrameFilePathError(
+      relativePath,
+      "the path resolves outside the files folder"
+    );
+  }
+  if (resolved === root) {
+    throw new FrameFilePathError(relativePath, "the path is the folder itself");
+  }
+
+  return resolved;
+}
