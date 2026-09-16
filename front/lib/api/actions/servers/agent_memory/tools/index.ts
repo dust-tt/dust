@@ -50,8 +50,6 @@ async function agentMemoryWriteDisabledError(
   return null;
 }
 
-const EVICTED_ENTRY_PREVIEW_LENGTH = 100;
-
 const renderMemory = (
   memory: AgentMemoryEntry[],
   { evicted, skipped }: Omit<AgentMemoryWriteResult, "entries"> = {
@@ -64,21 +62,16 @@ const renderMemory = (
       ? ["(memory empty)"]
       : [memory.map((entry, i) => `[${i}] ${entry.content}`).join("\n")];
 
-  // Eviction is silent to the user, so the model is told what it lost and can record again what
-  // still matters.
+  // Eviction is silent to the user, so the model is told what it lost. The contents are given in
+  // full, not summarized, so that re-recording one restores it exactly.
   if (evicted.length > 0) {
-    const previews = evicted
-      .map(
-        (entry) =>
-          `- ${entry.content.slice(0, EVICTED_ENTRY_PREVIEW_LENGTH)}${
-            entry.content.length > EVICTED_ENTRY_PREVIEW_LENGTH ? "…" : ""
-          }`
-      )
+    const evictedContents = evicted
+      .map((entry) => `- ${entry.content}`)
       .join("\n");
     sections.push(
       `Note: the memory limit of ${AGENT_MEMORY_LIMIT} characters was reached, so the ` +
         `${evicted.length} least recently updated entries were dropped to make room. Record ` +
-        `again anything below that still matters:\n${previews}`
+        `again anything below that still matters:\n${evictedContents}`
     );
   }
 

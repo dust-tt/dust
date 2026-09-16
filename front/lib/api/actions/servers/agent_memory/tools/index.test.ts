@@ -87,10 +87,15 @@ describe("agent_memory write tools gated by the user_memory feature flag", () =>
     const record = (entries: string[]) =>
       getTool(AGENT_MEMORY_RECORD_TOOL_NAME).handler({ entries }, makeExtra());
 
+    // The marker sits at the end of the entry that gets evicted, so the assertion below only holds
+    // if the evicted content is reported in full rather than previewed.
+    const marker = "the quarterly budget threshold is 40%";
     const half = (label: string) =>
       label.repeat(AGENT_MEMORY_LIMIT / 2 / label.length);
 
-    await record([half("a")]);
+    await record([
+      half("a").slice(0, AGENT_MEMORY_LIMIT / 2 - marker.length) + marker,
+    ]);
     await record([half("b")]);
 
     const result = await record(["the entry that overflows the memory"]);
@@ -103,6 +108,7 @@ describe("agent_memory write tools gated by the user_memory feature flag", () =>
       expect(content.text).toContain(
         "least recently updated entries were dropped"
       );
+      expect(content.text).toContain(marker);
     }
   });
 
