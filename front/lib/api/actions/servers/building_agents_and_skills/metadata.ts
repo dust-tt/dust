@@ -73,11 +73,11 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   },
   {
     name: SUGGEST_SKILL_UPDATE_TOOL_NAME,
+    // TODO(conversational-building): consider splitting this into prompt and description
     description:
       "Suggest an update to an existing custom Skill. The change is not applied directly: it " +
       "is recorded as a pending suggestion that the skill's editors can review, accept, or " +
-      "reject. Call describe_skill first to get the block ids of the current instructions. " +
-      "Provide at least one of `instructionEdits` or `agentFacingDescriptionEdit`.",
+      "reject. Provide at least one of `instructionEdits` or `agentFacingDescriptionEdit`.",
     schema: SUGGEST_SKILL_UPDATE_INPUT_SCHEMA.shape,
     stake: "never_ask",
     displayLabels: {
