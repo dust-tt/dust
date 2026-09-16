@@ -6,7 +6,6 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightWorkspaceType } from "@app/types/user";
-import assert from "assert";
 
 async function backfillWorkspace(
   workspace: LightWorkspaceType,
@@ -81,10 +80,6 @@ makeScript(
     },
   },
   async ({ wId, fromWorkspaceModelId, concurrency, execute }, logger) => {
-    assert(
-      Number.isInteger(concurrency) && concurrency > 0,
-      "--concurrency must be positive"
-    );
     await runOnAllWorkspaces(
       (workspace) =>
         backfillWorkspace(workspace, { concurrency, execute, logger }),
