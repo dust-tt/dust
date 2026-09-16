@@ -108,7 +108,7 @@ describe("useFrameFunction", () => {
     const callFunction = vi.fn().mockResolvedValue([{ id: 1, body: "Hello" }]);
     const dataAPI = makeDataAPI(callFunction);
     const { result } = renderHook(
-      () => useFrameFunction("vlt_123/list-comments", { threadId: "thread-1" }),
+      () => useFrameFunction("list-comments", { threadId: "thread-1" }),
       { wrapper: makeWrapper(dataAPI) }
     );
 
@@ -118,7 +118,7 @@ describe("useFrameFunction", () => {
     await waitFor(() => {
       expect(result.current.data).toEqual([{ id: 1, body: "Hello" }]);
     });
-    expect(callFunction).toHaveBeenCalledWith("vlt_123/list-comments", {
+    expect(callFunction).toHaveBeenCalledWith("list-comments", {
       threadId: "thread-1",
     });
     expect(result.current.isLoading).toBe(false);
@@ -129,11 +129,11 @@ describe("useFrameFunction", () => {
     expect(callFunction).toHaveBeenCalledTimes(1);
   });
 
-  it("calls a slug carrying its app prefix", async () => {
+  it("calls a name with several hyphenated segments", async () => {
     const callFunction = vi.fn().mockResolvedValue([{ id: 1, title: "Task" }]);
     const dataAPI = makeDataAPI(callFunction);
     const { result } = renderHook(
-      () => useFrameFunction("vlt_123/tasklist__list-tasks", { done: false }),
+      () => useFrameFunction("tasklist-list-tasks", { done: false }),
       { wrapper: makeWrapper(dataAPI) }
     );
 
@@ -141,7 +141,7 @@ describe("useFrameFunction", () => {
       expect(result.current.data).toEqual([{ id: 1, title: "Task" }]);
     });
     expect(result.current.error).toBeUndefined();
-    expect(callFunction).toHaveBeenCalledWith("vlt_123/tasklist__list-tasks", {
+    expect(callFunction).toHaveBeenCalledWith("tasklist-list-tasks", {
       done: false,
     });
   });
@@ -165,9 +165,9 @@ describe("useFrameFunction", () => {
     expect(callFunction).not.toHaveBeenCalled();
   });
 
-  it("forwards a bare function name for the host to resolve", async () => {
-    // A Frame inside an app folder names its own functions bare; the host qualifies it against that
-    // folder. viz only decides the reference is well formed and passes it on.
+  it("forwards a bare function name for the host to qualify", async () => {
+    // The host qualifies the name against the calling Frame's own identity. viz only decides the
+    // reference is well formed and passes it on.
     const callFunction = vi.fn().mockResolvedValue({ comments: [] });
     const { result } = renderHook(
       () => useFrameFunction("list-comments", { threadId: "thread-1" }),
@@ -183,18 +183,18 @@ describe("useFrameFunction", () => {
     });
   });
 
-  it("rejects a reference that is neither form", () => {
+  it("rejects a reference that is not a bare name", () => {
     const callFunction = vi.fn();
     const { result } = renderHook(
-      // Prefixed but pod-less: not shorthand, since dropping the prefix is what the bare form is for.
+      // The `<app>__` prefix belonged to Pod functions; the host would refuse it.
       () => useFrameFunction("comments__list", { threadId: "thread-1" }),
       { wrapper: makeWrapper(makeDataAPI(callFunction)) }
     );
 
     expect(result.current.error).toEqual(
       new Error(
-        "Frame Function hooks require a <podId>/<slug> reference, or a bare function name " +
-          "from a Frame that lives in an app folder."
+        "'comments__list' is not a function name: Frame Function hooks take a bare name this " +
+          "Frame's manifest declares, such as 'list-notes'."
       )
     );
     expect(result.current.isLoading).toBe(false);
@@ -206,10 +206,10 @@ describe("useFrameFunction", () => {
     const callFunction = vi.fn().mockReturnValue(request.promise);
     const { result } = renderHook(
       () => ({
-        first: useFrameFunction("vlt_123/list-comments", {
+        first: useFrameFunction("list-comments", {
           filters: { author: "flavien", resolved: false },
         }),
-        second: useFrameFunction("vlt_123/list-comments", {
+        second: useFrameFunction("list-comments", {
           filters: { resolved: false, author: "flavien" },
         }),
       }),
@@ -231,7 +231,7 @@ describe("useFrameFunction", () => {
       .mockResolvedValueOnce([{ id: 1 }])
       .mockReturnValueOnce(revalidation.promise);
     const { result } = renderHook(
-      () => useFrameFunction("vlt_123/list-comments", { threadId: "thread-1" }),
+      () => useFrameFunction("list-comments", { threadId: "thread-1" }),
       { wrapper: makeWrapper(makeDataAPI(callFunction)) }
     );
 
@@ -258,7 +258,7 @@ describe("useFrameFunction", () => {
       .mockReturnValueOnce(nextRequest.promise);
     const { result, rerender } = renderHook(
       ({ page }: { page: number }) =>
-        useFrameFunction("vlt_123/list-comments", { page }),
+        useFrameFunction("list-comments", { page }),
       {
         initialProps: { page: 1 },
         wrapper: makeWrapper(makeDataAPI(callFunction)),
@@ -280,7 +280,7 @@ describe("useFrameFunction", () => {
     const callFunction = vi.fn().mockResolvedValue([]);
     const { result, rerender } = renderHook(
       ({ input }: { input: { page: number } }) =>
-        useFrameFunction("vlt_123/list-comments", input),
+        useFrameFunction("list-comments", input),
       {
         initialProps: { input: { page: 1 } },
         wrapper: makeWrapper(makeDataAPI(callFunction)),
@@ -299,7 +299,7 @@ describe("useFrameFunction", () => {
       ({ slug }: { slug: string | null }) =>
         useFrameFunction(slug, { threadId: "thread-1" }),
       {
-        initialProps: { slug: "vlt_123/list-comments" as string | null },
+        initialProps: { slug: "list-comments" as string | null },
         wrapper: makeWrapper(makeDataAPI(callFunction)),
       }
     );
@@ -307,7 +307,7 @@ describe("useFrameFunction", () => {
     await waitFor(() => expect(result.current.data).toEqual([{ id: 1 }]));
     await new Promise((resolve) => setTimeout(resolve, 0));
     rerender({ slug: null });
-    rerender({ slug: "vlt_123/list-comments" });
+    rerender({ slug: "list-comments" });
 
     expect(result.current.data).toEqual([{ id: 1 }]);
     expect(result.current.isValidating).toBe(false);
@@ -321,7 +321,7 @@ describe("useFrameFunction", () => {
       status: 503,
     });
     const { result } = renderHook(
-      () => useFrameFunction("vlt_123/list-comments", { threadId: "thread-1" }),
+      () => useFrameFunction("list-comments", { threadId: "thread-1" }),
       { wrapper: makeWrapper(makeDataAPI(callFunction)) }
     );
 
@@ -338,11 +338,11 @@ describe("useFrameFunction", () => {
     const firstCall = vi.fn().mockResolvedValue([{ frame: 1 }]);
     const secondCall = vi.fn().mockResolvedValue([{ frame: 2 }]);
     const first = renderHook(
-      () => useFrameFunction("vlt_123/list-comments", { threadId: "same" }),
+      () => useFrameFunction("list-comments", { threadId: "same" }),
       { wrapper: makeWrapper(makeDataAPI(firstCall)) }
     );
     const second = renderHook(
-      () => useFrameFunction("vlt_123/list-comments", { threadId: "same" }),
+      () => useFrameFunction("list-comments", { threadId: "same" }),
       { wrapper: makeWrapper(makeDataAPI(secondCall)) }
     );
 
@@ -366,7 +366,7 @@ describe("useFrameFunctionMutation", () => {
       .mockReturnValueOnce(firstRequest.promise)
       .mockReturnValueOnce(secondRequest.promise);
     const { result } = renderHook(
-      () => useFrameFunctionMutation("vlt_123/post-comment"),
+      () => useFrameFunctionMutation("post-comment"),
       { wrapper: makeWrapper(makeDataAPI(callFunction)) }
     );
 
@@ -379,10 +379,10 @@ describe("useFrameFunctionMutation", () => {
       secondPromise = result.current.trigger({ body: "Second" });
     });
     expect(callFunction).toHaveBeenCalledTimes(2);
-    expect(callFunction).toHaveBeenNthCalledWith(1, "vlt_123/post-comment", {
+    expect(callFunction).toHaveBeenNthCalledWith(1, "post-comment", {
       body: "First",
     });
-    expect(callFunction).toHaveBeenNthCalledWith(2, "vlt_123/post-comment", {
+    expect(callFunction).toHaveBeenNthCalledWith(2, "post-comment", {
       body: "Second",
     });
 
@@ -398,7 +398,7 @@ describe("useFrameFunctionMutation", () => {
   it("normalizes mutation errors", async () => {
     const callFunction = vi.fn().mockRejectedValue(new Error("Write failed"));
     const { result } = renderHook(
-      () => useFrameFunctionMutation("vlt_123/post-comment"),
+      () => useFrameFunctionMutation("post-comment"),
       { wrapper: makeWrapper(makeDataAPI(callFunction)) }
     );
 
@@ -420,7 +420,7 @@ describe("useFrameFunctionMutation", () => {
     const { result, rerender } = renderHook(
       ({ slug }: { slug: string }) => useFrameFunctionMutation(slug),
       {
-        initialProps: { slug: "vlt_123/first-comment" },
+        initialProps: { slug: "first-comment" },
         wrapper: makeWrapper(makeDataAPI(callFunction)),
       }
     );
@@ -429,7 +429,7 @@ describe("useFrameFunctionMutation", () => {
     act(() => {
       firstPromise = result.current.trigger({ body: "First" });
     });
-    rerender({ slug: "vlt_123/second-comment" });
+    rerender({ slug: "second-comment" });
     expect(result.current.data).toBeUndefined();
     expect(result.current.error).toBeUndefined();
 
@@ -448,13 +448,13 @@ describe("useFrameFunctionMutation", () => {
     const { result, rerender } = renderHook(
       ({ slug }: { slug: string | null }) => useFrameFunctionMutation(slug),
       {
-        initialProps: { slug: "vlt_123/post-comment" as string | null },
+        initialProps: { slug: "post-comment" as string | null },
         wrapper: makeWrapper(makeDataAPI(callFunction)),
       }
     );
     const trigger = result.current.trigger;
 
-    rerender({ slug: "vlt_123/post-comment" });
+    rerender({ slug: "post-comment" });
     expect(result.current.trigger).toBe(trigger);
 
     rerender({ slug: null });
@@ -466,17 +466,17 @@ describe("useFrameFunctionMutation", () => {
 
   it("updates query data from a mutation result without revalidating", async () => {
     const callFunction = vi.fn(async (functionId: string) => {
-      if (functionId.endsWith("/post-comment")) {
+      if (functionId === "post-comment") {
         return [{ id: 1 }, { id: 2 }];
       }
       return [{ id: 1 }];
     });
     const { result } = renderHook(
       () => ({
-        list: useFrameFunction("vlt_123/list-comments", {
+        list: useFrameFunction("list-comments", {
           threadId: "thread-1",
         }),
-        post: useFrameFunctionMutation("vlt_123/post-comment"),
+        post: useFrameFunctionMutation("post-comment"),
       }),
       { wrapper: makeWrapper(makeDataAPI(callFunction)) }
     );

@@ -1,42 +1,27 @@
 /**
  * Grammar of the references a Frame passes to `useFrameFunction`.
  *
- * **Fully qualified** — `<podId>/<slug>`. Works from any Frame, and is the only form that can name a
- * function in another Pod. The slug half mirrors SANDBOX_FUNCTION_SLUG_REGEX in front
- * (`front/types/api/sandbox_functions.ts`): one optional `<app>__` prefix that publish derives from
- * the source's app folder, then the function's own name.
+ * A reference is a bare function name, exactly as the Frame's manifest declares it. The host
+ * qualifies it against the calling Frame's trusted identity — `resolveFrameFunctionReference` in
+ * `front/types/api/frame_function_reference.ts` turns `list-notes` into `<frameId>/list-notes` —
+ * so the Frame never names the Frame it is calling into, and cannot name another one.
  *
- * **Relative** — a bare `<name>`, no `/` and no `__` prefix. The host resolves it against the app
- * folder the calling Frame lives in, so `list-notes` inside `pod-x/TaskList/TaskList.tsx` reaches
- * `pod-x/tasklist__list-notes`. This is what lets an app be copied or renamed without editing the
- * Frame's source. Only a Frame inside an app folder has a scope to resolve against; anywhere else the
- * host refuses the call, so a Frame at the Pod root or in a conversation must stay fully qualified.
+ * This deliberately accepts less than front's `SANDBOX_FUNCTION_SLUG_REGEX`, which still admits an
+ * optional `<app>__` prefix. That prefix belonged to the app-folder resolution Pod functions used;
+ * a v2 Frame's slug is its bare manifest name (`createForFramePublication` sets `slug: fn.name`),
+ * and a publish whose UI passes anything else fails `validateFrameFunctionReferences`. Accepting
+ * the wider form here only delayed the refusal until the host rejected the RPC.
  *
- * The two forms are separate patterns on purpose rather than one with an optional `<podId>/`: that
- * would also admit a prefixed-but-podless `tasklist__list-notes`, and dropping the prefix is the whole
- * point of the relative form.
- *
- * `viz` cannot import from front, so equality with front's grammar is asserted from front's side in
- * `front/types/api/sandbox_functions.test.ts` — the same arrangement as the runner protocol in
- * `cli/dust-sandbox/functions-runner/protocol.ts`.
+ * `viz` cannot import from front, so this is checked against front's bare-name regex from front's
+ * side in `front/types/api/sandbox_functions.test.ts` — the same arrangement as the runner protocol
+ * in `cli/dust-sandbox/functions-runner/protocol.ts`.
  *
  * Keeping this in step matters more than it looks: a reference this rejects resolves to a null SWR
  * key, so the Frame silently issues no request at all.
  */
-const SLUG_SEGMENT = "[a-z0-9]+(?:-[a-z0-9]+)*";
+export const FRAME_FUNCTION_REFERENCE_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-export const FRAME_FUNCTION_REFERENCE_REGEX = new RegExp(
-  `^[^/]+/${SLUG_SEGMENT}(?:__${SLUG_SEGMENT})?$`
-);
-
-export const FRAME_FUNCTION_RELATIVE_REFERENCE_REGEX = new RegExp(
-  `^${SLUG_SEGMENT}$`
-);
-
-/** Whether `reference` is a reference the host can act on, in either form. */
+/** Whether `reference` is a bare manifest function name the host can qualify. */
 export function isFrameFunctionReference(reference: string): boolean {
-  return (
-    FRAME_FUNCTION_REFERENCE_REGEX.test(reference) ||
-    FRAME_FUNCTION_RELATIVE_REFERENCE_REGEX.test(reference)
-  );
+  return FRAME_FUNCTION_REFERENCE_REGEX.test(reference);
 }

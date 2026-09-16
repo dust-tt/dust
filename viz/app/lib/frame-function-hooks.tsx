@@ -70,8 +70,8 @@ function resolveFrameFunction(slug: string | null): {
     return {
       functionId: null,
       error: new Error(
-        "Frame Function hooks require a <podId>/<slug> reference, or a bare function name " +
-          "from a Frame that lives in an app folder."
+        `'${slug}' is not a function name: Frame Function hooks take a bare name this ` +
+          "Frame's manifest declares, such as 'list-notes'."
       ),
     };
   }
