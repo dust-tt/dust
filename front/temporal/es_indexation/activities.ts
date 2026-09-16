@@ -98,6 +98,8 @@ export async function indexSkillSearchActivity({
     withTools: true,
     withFileAttachments: false,
   });
+  // Suggested skills are not indexed: they have only been suggested and are not
+  // ready to be used yet.
   if (!skill || skill.status === "suggested") {
     return;
   }
