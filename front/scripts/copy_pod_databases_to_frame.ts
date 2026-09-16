@@ -17,7 +17,6 @@
  *     --execute
  */
 
-import { podDatabaseNameWithoutAppPrefix } from "@app/lib/api/sandbox_functions/db_naming";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
@@ -71,52 +70,30 @@ type PodDatabaseCopySummary = {
   staleDestinationObjectCount: number;
 };
 
-type PodDatabaseReplicaPath = {
-  destinationDatabaseName: string;
-  destinationRelativePath: string;
-  sourceDatabaseName: string;
-};
-
-function parsePodDatabaseReplicaRelativePath(
-  relativePath: string
-): PodDatabaseReplicaPath | null {
+/**
+ * Whether `relativePath` sits under a `{databaseName}.db/` replica directory whose name is a legal
+ * database name. The path is copied verbatim, so this only decides what belongs in the plan.
+ */
+function isPodDatabaseReplicaRelativePath(relativePath: string): boolean {
   const slashIndex = relativePath.indexOf("/");
   if (slashIndex < 0) {
-    return null;
+    return false;
   }
 
   const databaseDirectory = relativePath.slice(0, slashIndex);
   if (!databaseDirectory.endsWith(".db")) {
-    return null;
+    return false;
   }
 
-  const sourceDatabaseName = databaseDirectory.slice(0, -".db".length);
-  if (!POD_DATABASE_NAME_REGEX.test(sourceDatabaseName)) {
-    return null;
-  }
-
-  const destinationDatabaseName =
-    podDatabaseNameWithoutAppPrefix(sourceDatabaseName);
-  if (!POD_DATABASE_NAME_REGEX.test(destinationDatabaseName)) {
-    return null;
-  }
-
-  return {
-    destinationDatabaseName,
-    destinationRelativePath: `${destinationDatabaseName}.db${relativePath.slice(slashIndex)}`,
-    sourceDatabaseName,
-  };
+  return POD_DATABASE_NAME_REGEX.test(
+    databaseDirectory.slice(0, -".db".length)
+  );
 }
 
 /**
- * @cc [owner:davidebbo,label:product] strip-pod-database-app-prefix
- * A Pod replica directory named `{appPrefix}__{databaseName}.db` maps to
- * `{databaseName}.db` in Frame state; an unprefixed directory keeps its name.
- */
-/**
- * @cc [owner:davidebbo,label:error-handling] reject-frame-database-name-collisions
- * Planning fails before GCS mutation when distinct Pod database names map to the same Frame
- * database name.
+ * @cc [owner:davidebbo,label:product] preserve-pod-database-name
+ * A Pod replica directory keeps its name in Frame state: `{databaseName}.db` maps to
+ * `{databaseName}.db`.
  */
 export function planPodDatabaseCopy({
   destinationObjectPaths,
@@ -141,39 +118,21 @@ export function planPodDatabaseCopy({
     throw new Error(`No Pod database replicas found under ${sourcePrefix}`);
   }
 
-  const sourceDatabaseByDestinationName = new Map<string, string>();
   const copies = [...sourceObjectPaths].sort().map((sourcePath) => {
     if (!sourcePath.startsWith(sourcePrefix)) {
       throw new Error(`Object is outside the Pod state prefix: ${sourcePath}`);
     }
 
     const relativePath = sourcePath.slice(sourcePrefix.length);
-    const parsedPath = parsePodDatabaseReplicaRelativePath(relativePath);
-    if (parsedPath === null) {
+    if (!isPodDatabaseReplicaRelativePath(relativePath)) {
       throw new Error(
         `Unexpected object under Pod state prefix: ${sourcePath}`
       );
     }
 
-    const previousSourceDatabaseName = sourceDatabaseByDestinationName.get(
-      parsedPath.destinationDatabaseName
-    );
-    if (
-      previousSourceDatabaseName !== undefined &&
-      previousSourceDatabaseName !== parsedPath.sourceDatabaseName
-    ) {
-      throw new Error(
-        `Pod databases ${previousSourceDatabaseName}.db and ${parsedPath.sourceDatabaseName}.db both map to Frame database ${parsedPath.destinationDatabaseName}.db`
-      );
-    }
-    sourceDatabaseByDestinationName.set(
-      parsedPath.destinationDatabaseName,
-      parsedPath.sourceDatabaseName
-    );
-
     return {
       sourcePath,
-      destinationPath: `${destinationPrefix}${parsedPath.destinationRelativePath}`,
+      destinationPath: `${destinationPrefix}${relativePath}`,
     };
   });
 
