@@ -3610,59 +3610,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async updateReinforcement(
-    auth: Authenticator,
     reinforcement: SkillReinforcementMode
   ): Promise<void> {
-    await this.updateSearchMetadata(auth, { reinforcement });
+    await this.update({ reinforcement });
   }
 
-  async updateSelfImprovementLock(
-    auth: Authenticator,
-    selfImprovementLock: boolean
-  ): Promise<void> {
-    await this.updateSearchMetadata(auth, { selfImprovementLock });
+  async updateSelfImprovementLock(selfImprovementLock: boolean): Promise<void> {
+    await this.update({ selfImprovementLock });
   }
 
   async updateSelfImprovementCostsCap(
-    auth: Authenticator,
     selfImprovementCostsCapMicroUsd: number | null
   ): Promise<void> {
-    await this.updateSearchMetadata(auth, { selfImprovementCostsCapMicroUsd });
+    await this.update({ selfImprovementCostsCapMicroUsd });
   }
 
   async updateSelfImprovementCostsCapAwuCredits(
-    auth: Authenticator,
     selfImprovementCostsCapAwuCredits: number | null
   ): Promise<void> {
-    await this.updateSearchMetadata(auth, {
-      selfImprovementCostsCapAwuCredits,
-    });
+    await this.update({ selfImprovementCostsCapAwuCredits });
   }
 
-  async recordReinforcementAnalysisCompletion(
-    auth: Authenticator
-  ): Promise<void> {
-    await this.updateSearchMetadata(auth, {
-      lastReinforcementAnalysisAt: new Date(),
-    });
-  }
-
-  private async updateSearchMetadata(
-    auth: Authenticator,
-    metadata: Partial<
-      Pick<
-        Attributes<SkillConfigurationModel>,
-        | "reinforcement"
-        | "selfImprovementLock"
-        | "selfImprovementCostsCapMicroUsd"
-        | "selfImprovementCostsCapAwuCredits"
-        | "lastReinforcementAnalysisAt"
-      >
-    >
-  ): Promise<void> {
-    assert(this.workspaceId === auth.getNonNullableWorkspace().id);
-    await this.update(metadata);
-    await SkillResource.launchSearchIndexation(auth, [this.sId]);
+  async recordReinforcementAnalysisCompletion(): Promise<void> {
+    await this.update({ lastReinforcementAnalysisAt: new Date() });
   }
 
   /**
