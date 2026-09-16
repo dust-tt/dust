@@ -9,7 +9,6 @@ export interface BaseKnowledgeItem {
   hasChildren: boolean;
   label: string;
   nodeId: string;
-  sourceUrl: string | null;
   spaceId: string;
 }
 
@@ -36,12 +35,6 @@ export function isFullKnowledgeItem(
   item: KnowledgeItem
 ): item is FullKnowledgeItem {
   return "node" in item && item.node !== undefined;
-}
-
-// Full items prefer the freshly fetched node's URL: items upgraded from a base
-// item (e.g. re-hydrated in KnowledgeNodeView) keep a stale base sourceUrl.
-export function getItemSourceUrl(item: KnowledgeItem): string | null {
-  return isFullKnowledgeItem(item) ? item.node.sourceUrl : item.sourceUrl;
 }
 
 /**
@@ -74,7 +67,6 @@ export function knowledgeNodeToItem(node: DataSourceViewContentNode) {
     label: node.title,
     node,
     nodeId: node.internalId,
-    sourceUrl: node.sourceUrl,
     spaceId: node.dataSourceView.spaceId,
   };
 }
