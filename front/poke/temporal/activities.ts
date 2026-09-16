@@ -43,6 +43,7 @@ import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { InferenceHookResource } from "@app/lib/resources/inference_hook_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -817,6 +818,7 @@ export async function deleteWorkspaceActivity({
   });
   await ExtensionConfigurationResource.deleteForWorkspace(auth, {});
   await ProviderCredentialResource.deleteAllForWorkspace(auth);
+  await InferenceHookResource.deleteAllForWorkspace(auth);
   await DustAppSecretModel.destroy({
     where: {
       workspaceId: workspace.id,

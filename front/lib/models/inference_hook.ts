@@ -4,7 +4,16 @@ import {
   DataTypes,
 } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { InferenceHookProviderId } from "@app/types/inference_hook";
+import type {
+  InferenceHookEnforcementMode,
+  InferenceHookFailMode,
+  InferenceHookProviderId,
+} from "@app/types/inference_hook";
+import {
+  INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT,
+  INFERENCE_HOOK_FAIL_MODE_DEFAULT,
+  INFERENCE_HOOK_TIMEOUT_MS_DEFAULT,
+} from "@app/types/inference_hook";
 import type { CreationOptional } from "sequelize";
 
 export class InferenceHookModel extends WorkspaceAwareModel<InferenceHookModel> {
@@ -14,6 +23,9 @@ export class InferenceHookModel extends WorkspaceAwareModel<InferenceHookModel> 
   declare providerId: InferenceHookProviderId;
   declare endpoint: string;
   declare encryptedCredentials: string;
+  declare enforcementMode: CreationOptional<InferenceHookEnforcementMode>;
+  declare failMode: CreationOptional<InferenceHookFailMode>;
+  declare timeoutMs: CreationOptional<number>;
 }
 
 InferenceHookModel.init(
@@ -39,6 +51,21 @@ InferenceHookModel.init(
     encryptedCredentials: {
       type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
+    },
+    enforcementMode: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT,
+    },
+    failMode: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: INFERENCE_HOOK_FAIL_MODE_DEFAULT,
+    },
+    timeoutMs: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: INFERENCE_HOOK_TIMEOUT_MS_DEFAULT,
     },
   },
   {

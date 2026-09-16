@@ -1,7 +1,9 @@
-import type { Output } from "@app/temporal/agent_loop/lib/types";
 import type {
   AgentContentItemType,
   AgentErrorContentType,
+  AgentFunctionCallContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
 import type {
   AssistantFunctionCallMessageTypeModel,
@@ -125,21 +127,33 @@ export function buildInferenceHookTranscript({
   return messages;
 }
 
+type StepOutputForTranscript = {
+  generation: string | null;
+  contents: Array<
+    | AgentTextContentType
+    | AgentFunctionCallContentType
+    | AgentReasoningContentType
+    | { type: string }
+  >;
+};
+
 /** Convert a model step output into the trailing assistant message for evaluate. */
 export function trailingAssistantFromOutput(
-  output: Output
+  output: StepOutputForTranscript
 ): AssistantFunctionCallMessageTypeModel {
   const functionCalls = output.contents
-    .filter((c) => c.type === "function_call")
+    .filter(
+      (c): c is AgentFunctionCallContentType => c.type === "function_call"
+    )
     .map((c) => c.value);
 
   const contents = output.contents.filter(
     (
       c
-    ): c is Exclude<
-      AgentContentItemType,
-      AgentErrorContentType | { type: "provider_passthrough"; value: unknown }
-    > =>
+    ): c is
+      | AgentTextContentType
+      | AgentFunctionCallContentType
+      | AgentReasoningContentType =>
       c.type === "text_content" ||
       c.type === "function_call" ||
       c.type === "reasoning"
@@ -149,6 +163,6 @@ export function trailingAssistantFromOutput(
     role: "assistant",
     content: output.generation ?? undefined,
     function_calls: functionCalls,
-    contents: contents as AssistantFunctionCallMessageTypeModel["contents"],
+    contents,
   };
 }

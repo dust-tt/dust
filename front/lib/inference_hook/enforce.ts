@@ -10,6 +10,7 @@ import type {
 } from "@app/types/assistant/generation";
 import type { InferenceHookEnforcementResult } from "@app/types/inference_hook";
 import {
+  applyHookPolicy,
   enforcementUserFacing,
   toEnforcement,
 } from "@app/types/inference_hook";
@@ -39,6 +40,7 @@ export async function enforceInferenceHooks(
   }
 
   const providerId = hook.getTypedProviderId();
+  const policy = hook.getPolicy();
   const credentials = hook.getCredentials(auth);
   if (!credentials) {
     logger.warn(
@@ -46,10 +48,17 @@ export async function enforceInferenceHooks(
         workspaceId: auth.getNonNullableWorkspace().sId,
         phase,
         providerId,
+        failMode: policy.failMode,
       },
-      "Inference hook credentials missing or undecryptable; failing closed"
+      "Inference hook credentials missing or undecryptable"
     );
-    return enforcementUserFacing("block");
+    return enforcementUserFacing(
+      applyHookPolicy({
+        providerRuling: "block",
+        policy,
+        isFailure: true,
+      })
+    );
   }
 
   const messages = buildInferenceHookTranscript({
@@ -69,6 +78,7 @@ export async function enforceInferenceHooks(
         apiKey: credentials.apiKey,
         appKey: credentials.appKey,
         messages,
+        timeoutMs: policy.timeoutMs,
       });
 
       if (result.isErr()) {
@@ -78,13 +88,26 @@ export async function enforceInferenceHooks(
             phase,
             providerId,
             error: result.error.message,
+            failMode: policy.failMode,
+            timeoutMs: policy.timeoutMs,
           },
-          "Inference hook evaluate failed; failing closed"
+          "Inference hook evaluate failed"
         );
-        return enforcementUserFacing("block");
+        return enforcementUserFacing(
+          applyHookPolicy({
+            providerRuling: "block",
+            policy,
+            isFailure: true,
+          })
+        );
       }
 
-      const ruling = toEnforcement(result.value.action);
+      const providerRuling = toEnforcement(result.value.action);
+      const ruling = applyHookPolicy({
+        providerRuling,
+        policy,
+        isFailure: false,
+      });
       logger.info(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
@@ -93,7 +116,10 @@ export async function enforceInferenceHooks(
           action: result.value.action,
           // Reason is audit-only; never forwarded to users/LLM.
           reason: result.value.reason,
+          providerRuling,
           ruling,
+          enforcementMode: policy.enforcementMode,
+          failMode: policy.failMode,
         },
         "Inference hook evaluation completed"
       );

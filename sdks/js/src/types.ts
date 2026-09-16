@@ -863,6 +863,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "group_permissions_shadow"
   | "http_client_tool"
   | "index_private_slack_channel"
+  | "inference_hooks"
   | "inline_tool_knowledge_reference"
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"

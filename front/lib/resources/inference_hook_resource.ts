@@ -6,14 +6,20 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { makeSId } from "@app/lib/resources/string_ids";
 import type {
   InferenceHookCredentials,
+  InferenceHookEnforcementMode,
+  InferenceHookFailMode,
+  InferenceHookPolicy,
   InferenceHookProviderId,
   InferenceHookType,
   UpsertInferenceHookBody,
 } from "@app/types/inference_hook";
 import {
   InferenceHookCredentialsSchema,
+  InferenceHookEnforcementModes,
+  InferenceHookFailModes,
   isInferenceHookProviderId,
   parseInferenceHookEndpoint,
+  parseInferenceHookTimeoutMs,
 } from "@app/types/inference_hook";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -51,6 +57,25 @@ export class InferenceHookResource extends BaseResource<InferenceHookModel> {
     return this.providerId;
   }
 
+  getPolicy(): InferenceHookPolicy {
+    const enforcementMode = (
+      InferenceHookEnforcementModes as readonly string[]
+    ).includes(this.enforcementMode)
+      ? (this.enforcementMode as InferenceHookEnforcementMode)
+      : "block";
+    const failMode = (InferenceHookFailModes as readonly string[]).includes(
+      this.failMode
+    )
+      ? (this.failMode as InferenceHookFailMode)
+      : "closed";
+    const timeoutParsed = parseInferenceHookTimeoutMs(this.timeoutMs);
+    return {
+      enforcementMode,
+      failMode,
+      timeoutMs: timeoutParsed.ok ? timeoutParsed.timeoutMs : 1000,
+    };
+  }
+
   static async fetchForWorkspace(
     auth: Authenticator,
     transaction?: Transaction
@@ -78,19 +103,10 @@ export class InferenceHookResource extends BaseResource<InferenceHookModel> {
       return new Err(new Error(endpointParsed.message));
     }
 
-    const credentialsParsed = InferenceHookCredentialsSchema.safeParse({
-      apiKey: body.apiKey,
-      appKey: body.appKey,
-    });
-    if (!credentialsParsed.success) {
-      return new Err(new Error("API key and App key are required."));
+    const timeoutParsed = parseInferenceHookTimeoutMs(body.timeoutMs);
+    if (!timeoutParsed.ok) {
+      return new Err(new Error(timeoutParsed.message));
     }
-
-    const encryptedCredentials = encrypt({
-      text: JSON.stringify(credentialsParsed.data),
-      key: workspace.sId,
-      useCase: "developer_secret",
-    });
 
     try {
       const existing = await InferenceHookModel.findOne({
@@ -98,12 +114,39 @@ export class InferenceHookResource extends BaseResource<InferenceHookModel> {
         transaction,
       });
 
+      let encryptedCredentials: string;
+      if (body.apiKey && body.appKey) {
+        const credentialsParsed = InferenceHookCredentialsSchema.safeParse({
+          apiKey: body.apiKey,
+          appKey: body.appKey,
+        });
+        if (!credentialsParsed.success) {
+          return new Err(new Error("API key and App key are required."));
+        }
+        encryptedCredentials = encrypt({
+          text: JSON.stringify(credentialsParsed.data),
+          key: workspace.sId,
+          useCase: "developer_secret",
+        });
+      } else if (existing) {
+        encryptedCredentials = existing.encryptedCredentials;
+      } else {
+        return new Err(new Error("API key and App key are required."));
+      }
+
+      const policyFields = {
+        enforcementMode: body.enforcementMode,
+        failMode: body.failMode,
+        timeoutMs: timeoutParsed.timeoutMs,
+      };
+
       if (existing) {
         await existing.update(
           {
             providerId: body.providerId,
             endpoint: endpointParsed.endpoint,
             encryptedCredentials,
+            ...policyFields,
           },
           { transaction }
         );
@@ -118,6 +161,7 @@ export class InferenceHookResource extends BaseResource<InferenceHookModel> {
           providerId: body.providerId,
           endpoint: endpointParsed.endpoint,
           encryptedCredentials,
+          ...policyFields,
         },
         { transaction }
       );
@@ -168,12 +212,23 @@ export class InferenceHookResource extends BaseResource<InferenceHookModel> {
     }
   }
 
+  static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    await InferenceHookModel.destroy({
+      where: { workspaceId: workspace.id },
+    });
+  }
+
   toJSON(): InferenceHookType {
+    const policy = this.getPolicy();
     return {
       sId: this.sId,
       providerId: this.getTypedProviderId(),
       endpoint: this.endpoint,
       hasCredentials: this.encryptedCredentials.length > 0,
+      enforcementMode: policy.enforcementMode,
+      failMode: policy.failMode,
+      timeoutMs: policy.timeoutMs,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
     };

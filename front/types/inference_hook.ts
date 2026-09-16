@@ -45,7 +45,8 @@ export function isInferenceHookProviderId(
 
 /**
  * Maps a provider action (or any failure/garbage) to a Dust ruling.
- * Fail-closed: unknown values become block. Only typed ABORT terminates.
+ * Unknown values become block. Only typed ABORT terminates. Workspace
+ * failMode / enforcementMode are applied later via applyHookPolicy.
  */
 export function toEnforcement(action: unknown): EnforcementRuling {
   if (action === "ALLOW") {
@@ -58,6 +59,53 @@ export function toEnforcement(action: unknown): EnforcementRuling {
     return "terminate";
   }
   return "block";
+}
+
+export const InferenceHookEnforcementModes = ["monitor", "block"] as const;
+export type InferenceHookEnforcementMode =
+  (typeof InferenceHookEnforcementModes)[number];
+
+export const InferenceHookFailModes = ["open", "closed"] as const;
+export type InferenceHookFailMode = (typeof InferenceHookFailModes)[number];
+
+/** Hard cap for Datadog evaluate wait. Config cannot exceed this. */
+export const INFERENCE_HOOK_TIMEOUT_MS_MAX = 1000;
+export const INFERENCE_HOOK_TIMEOUT_MS_DEFAULT = 1000;
+export const INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT: InferenceHookEnforcementMode =
+  "block";
+export const INFERENCE_HOOK_FAIL_MODE_DEFAULT: InferenceHookFailMode = "closed";
+
+/**
+ * Workspace-owned enforcement policy. Encoded as columns on the hook row so
+ * monitor vs block and fail-open vs fail-closed are not scattered booleans.
+ */
+export type InferenceHookPolicy = {
+  enforcementMode: InferenceHookEnforcementMode;
+  failMode: InferenceHookFailMode;
+  timeoutMs: number;
+};
+
+/**
+ * Resolve the user-facing ruling from a provider outcome + workspace policy.
+ * Transport/parse failures use failMode. Successful evaluations use
+ * enforcementMode (monitor logs but always proceeds).
+ */
+export function applyHookPolicy({
+  providerRuling,
+  policy,
+  isFailure,
+}: {
+  providerRuling: EnforcementRuling;
+  policy: InferenceHookPolicy;
+  isFailure: boolean;
+}): EnforcementRuling {
+  if (isFailure) {
+    return policy.failMode === "open" ? "proceed" : "block";
+  }
+  if (policy.enforcementMode === "monitor") {
+    return "proceed";
+  }
+  return providerRuling;
 }
 
 export const InferenceHookCredentialsSchema = z.object({
@@ -95,11 +143,34 @@ export function parseInferenceHookEndpoint(
   };
 }
 
+export function parseInferenceHookTimeoutMs(
+  raw: unknown
+): { ok: true; timeoutMs: number } | { ok: false; message: string } {
+  const value =
+    typeof raw === "number" ? raw : typeof raw === "string" ? Number(raw) : NaN;
+  if (!Number.isInteger(value) || value < 1) {
+    return {
+      ok: false,
+      message: "Timeout must be an integer of at least 1ms.",
+    };
+  }
+  if (value > INFERENCE_HOOK_TIMEOUT_MS_MAX) {
+    return {
+      ok: false,
+      message: `Timeout must be at most ${INFERENCE_HOOK_TIMEOUT_MS_MAX}ms.`,
+    };
+  }
+  return { ok: true, timeoutMs: value };
+}
+
 export const UpsertInferenceHookBodySchema = z.object({
   providerId: z.enum(INFERENCE_HOOK_PROVIDER_IDS),
   endpoint: z.string().min(1),
-  apiKey: z.string().min(1),
-  appKey: z.string().min(1),
+  apiKey: z.string().min(1).optional(),
+  appKey: z.string().min(1).optional(),
+  enforcementMode: z.enum(InferenceHookEnforcementModes),
+  failMode: z.enum(InferenceHookFailModes),
+  timeoutMs: z.number().int().min(1).max(INFERENCE_HOOK_TIMEOUT_MS_MAX),
 });
 export type UpsertInferenceHookBody = z.infer<
   typeof UpsertInferenceHookBodySchema
@@ -111,6 +182,9 @@ export type InferenceHookType = {
   providerId: InferenceHookProviderId;
   endpoint: string;
   hasCredentials: boolean;
+  enforcementMode: InferenceHookEnforcementMode;
+  failMode: InferenceHookFailMode;
+  timeoutMs: number;
   createdAt: number;
   updatedAt: number;
 };

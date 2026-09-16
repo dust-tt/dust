@@ -28,15 +28,16 @@ export async function evaluateDatadogAiGuard({
   apiKey,
   appKey,
   messages,
+  timeoutMs,
 }: {
   endpoint: string;
   apiKey: string;
   appKey: string;
   messages: InferenceHookTranscriptMessage[];
+  timeoutMs: number;
 }): Promise<Result<DatadogAiGuardEvaluateSuccess, Error>> {
-  let response: Response;
   try {
-    response = await untrustedFetch(endpoint, {
+    const response = await untrustedFetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -51,38 +52,39 @@ export async function evaluateDatadogAiGuard({
           },
         },
       }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      return new Err(
+        new Error(
+          `AI Guard evaluate returned ${response.status}: ${body.slice(0, 200)}`
+        )
+      );
+    }
+
+    let json: unknown;
+    try {
+      json = await response.json();
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+
+    const parsed = DatadogEvaluateResponseSchema.safeParse(json);
+    if (!parsed.success) {
+      return new Err(
+        new Error(
+          `AI Guard evaluate returned an invalid payload: ${parsed.error.message}`
+        )
+      );
+    }
+
+    return new Ok({
+      action: parsed.data.data.attributes.action,
+      reason: parsed.data.data.attributes.reason ?? null,
     });
   } catch (error) {
     return new Err(normalizeError(error));
   }
-
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    return new Err(
-      new Error(
-        `AI Guard evaluate returned ${response.status}: ${body.slice(0, 200)}`
-      )
-    );
-  }
-
-  let json: unknown;
-  try {
-    json = await response.json();
-  } catch (error) {
-    return new Err(normalizeError(error));
-  }
-
-  const parsed = DatadogEvaluateResponseSchema.safeParse(json);
-  if (!parsed.success) {
-    return new Err(
-      new Error(
-        `AI Guard evaluate returned an invalid payload: ${parsed.error.message}`
-      )
-    );
-  }
-
-  return new Ok({
-    action: parsed.data.data.attributes.action,
-    reason: parsed.data.data.attributes.reason ?? null,
-  });
 }

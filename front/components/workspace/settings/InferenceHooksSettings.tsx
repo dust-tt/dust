@@ -6,9 +6,18 @@ import {
   useInferenceHook,
   useUpsertInferenceHook,
 } from "@app/lib/swr/inference_hooks";
+import type {
+  InferenceHookEnforcementMode,
+  InferenceHookFailMode,
+} from "@app/types/inference_hook";
 import {
+  INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT,
+  INFERENCE_HOOK_FAIL_MODE_DEFAULT,
   INFERENCE_HOOK_PROVIDERS,
+  INFERENCE_HOOK_TIMEOUT_MS_DEFAULT,
+  INFERENCE_HOOK_TIMEOUT_MS_MAX,
   parseInferenceHookEndpoint,
+  parseInferenceHookTimeoutMs,
 } from "@app/types/inference_hook";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -86,6 +95,16 @@ function InferenceHooksSettingsSheet({
   const [endpoint, setEndpoint] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [appKey, setAppKey] = useState("");
+  const [enforcementMode, setEnforcementMode] =
+    useState<InferenceHookEnforcementMode>(
+      INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT
+    );
+  const [failMode, setFailMode] = useState<InferenceHookFailMode>(
+    INFERENCE_HOOK_FAIL_MODE_DEFAULT
+  );
+  const [timeoutMs, setTimeoutMs] = useState(
+    String(INFERENCE_HOOK_TIMEOUT_MS_DEFAULT)
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [wasOpen, setWasOpen] = useState(isOpen);
 
@@ -94,9 +113,17 @@ function InferenceHooksSettingsSheet({
       setEndpoint(inferenceHook?.endpoint ?? "");
       setApiKey("");
       setAppKey("");
+      setEnforcementMode(
+        inferenceHook?.enforcementMode ??
+          INFERENCE_HOOK_ENFORCEMENT_MODE_DEFAULT
+      );
+      setFailMode(inferenceHook?.failMode ?? INFERENCE_HOOK_FAIL_MODE_DEFAULT);
+      setTimeoutMs(
+        String(inferenceHook?.timeoutMs ?? INFERENCE_HOOK_TIMEOUT_MS_DEFAULT)
+      );
     }
     setWasOpen(isOpen);
-  }, [isOpen, wasOpen, inferenceHook?.endpoint]);
+  }, [isOpen, wasOpen, inferenceHook]);
 
   const endpointValidation = useMemo(() => {
     if (!endpoint.trim()) {
@@ -105,28 +132,48 @@ function InferenceHooksSettingsSheet({
     return parseInferenceHookEndpoint(endpoint);
   }, [endpoint]);
 
+  const timeoutValidation = useMemo(
+    () => parseInferenceHookTimeoutMs(timeoutMs),
+    [timeoutMs]
+  );
+
   const endpointMessage =
     endpointValidation && !endpointValidation.ok
       ? endpointValidation.message
       : "HTTPS URL ending with /api/v2/ai-guard/evaluate for your Datadog site.";
 
+  const timeoutMessage = timeoutValidation.ok
+    ? `At most ${INFERENCE_HOOK_TIMEOUT_MS_MAX}ms. Timed-out calls follow fail mode.`
+    : timeoutValidation.message;
+
+  const hasKeys =
+    (!!apiKey.trim() && !!appKey.trim()) || !!inferenceHook?.hasCredentials;
+
   const canSave =
     !!endpoint.trim() &&
-    !!apiKey.trim() &&
-    !!appKey.trim() &&
+    hasKeys &&
     endpointValidation?.ok === true &&
+    timeoutValidation.ok &&
     !isSaving;
 
   const handleSave = async () => {
-    if (!canSave || !endpointValidation || !endpointValidation.ok) {
+    if (
+      !canSave ||
+      !endpointValidation ||
+      !endpointValidation.ok ||
+      !timeoutValidation.ok
+    ) {
       return;
     }
     setIsSaving(true);
     const ok = await upsertInferenceHook({
       providerId: "datadog_ai_guard",
       endpoint: endpointValidation.endpoint,
-      apiKey: apiKey.trim(),
-      appKey: appKey.trim(),
+      apiKey: apiKey.trim() || undefined,
+      appKey: appKey.trim() || undefined,
+      enforcementMode,
+      failMode,
+      timeoutMs: timeoutValidation.timeoutMs,
     });
     setIsSaving(false);
     if (ok) {
@@ -194,6 +241,48 @@ function InferenceHooksSettingsSheet({
               value={appKey}
               disabled={isInferenceHookLoading || isSaving}
               onChange={(e) => setAppKey(e.target.value)}
+            />
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium">Enforcement mode</span>
+              <select
+                className="rounded-md border border-border bg-background px-2 py-2"
+                value={enforcementMode}
+                disabled={isInferenceHookLoading || isSaving}
+                onChange={(e) =>
+                  setEnforcementMode(
+                    e.target.value as InferenceHookEnforcementMode
+                  )
+                }
+              >
+                <option value="block">
+                  Block (DENY/ABORT stop the agent step)
+                </option>
+                <option value="monitor">Monitor (evaluate and log only)</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium">On error / timeout</span>
+              <select
+                className="rounded-md border border-border bg-background px-2 py-2"
+                value={failMode}
+                disabled={isInferenceHookLoading || isSaving}
+                onChange={(e) =>
+                  setFailMode(e.target.value as InferenceHookFailMode)
+                }
+              >
+                <option value="closed">Fail closed (block the step)</option>
+                <option value="open">Fail open (let the step continue)</option>
+              </select>
+            </label>
+            <Input
+              label="Timeout (ms)"
+              name="timeoutMs"
+              inputMode="numeric"
+              value={timeoutMs}
+              disabled={isInferenceHookLoading || isSaving}
+              message={timeoutMessage}
+              messageStatus={timeoutValidation.ok ? "info" : "error"}
+              onChange={(e) => setTimeoutMs(e.target.value)}
             />
           </div>
         </SheetContainer>
