@@ -20,7 +20,7 @@ import { useId, useState } from "react";
 
 const INITIAL_VIEWERS_COUNT = 5;
 const VIEWERS_DESCRIPTION =
-  "People who opened this frame through an email or domain invitation.";
+  "People who accessed this frame through an email or domain invitation.";
 
 interface FrameSharingViewersProps {
   viewers: FileViewerType[] | undefined;
