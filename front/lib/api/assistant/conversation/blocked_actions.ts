@@ -117,7 +117,7 @@ function emitApprovalResolvedAuditEvents(
             id: "agent-message-termination",
             name: "Agent message termination",
           },
-          // The agent travels in metadata: pod function tool calls share this action
+          // The agent travels in metadata: frame function tool calls share this action
           // and have no agent.
           targets: [
             buildAuditLogTarget("workspace", workspace),

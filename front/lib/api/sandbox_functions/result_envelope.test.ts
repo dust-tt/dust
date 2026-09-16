@@ -145,7 +145,7 @@ describe("normalizeSandboxFunctionResult", () => {
       ok: false,
       error: {
         code: "invocation_failed",
-        message: "Unsupported Pod function result protocol version 4.",
+        message: "Unsupported Frame function result protocol version 4.",
       },
     });
   });

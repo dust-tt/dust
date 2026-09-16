@@ -21,7 +21,7 @@ describe("executeQuery", () => {
     vi.restoreAllMocks();
   });
 
-  it("writes query results to the pod function tool outputs folder", async () => {
+  it("writes query results to the frame function tool outputs folder", async () => {
     const {
       auth,
       workspace,

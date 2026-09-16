@@ -107,7 +107,7 @@ export async function runSandboxFunctionToolActivity(
         case "tool_paused":
           break;
         case "tool_success":
-          // Same action as the agent loop emits, with the invoking user as actor and pod function
+          // Same action as the agent loop emits, with the invoking user as actor and frame function
           // identifiers standing in for the conversation ones.
           void emitAuditLogEvent({
             auth,

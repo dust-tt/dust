@@ -1,7 +1,7 @@
 "use client";
 
 import { normalizeSandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
-import { isPodFunctionReference } from "@viz/app/lib/pod-function-slug";
+import { isFrameFunctionReference } from "@viz/app/lib/frame-function-slug";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import type { UserIdentityState } from "@viz/app/types";
 import {
@@ -18,15 +18,15 @@ import {
 import useSWR, { type KeyedMutator, SWRConfig } from "swr";
 import useSWRMutation from "swr/mutation";
 
-interface PodFunctionContextValue {
+interface FrameFunctionContextValue {
   dataAPI: VisualizationDataAPI;
 }
 
-interface PodFunctionHooksProviderProps extends PodFunctionContextValue {
+interface FrameFunctionHooksProviderProps extends FrameFunctionContextValue {
   children?: ReactNode;
 }
 
-export interface UsePodFunctionResult {
+export interface UseFrameFunctionResult {
   data: unknown;
   error: Error | undefined;
   isLoading: boolean;
@@ -34,7 +34,7 @@ export interface UsePodFunctionResult {
   mutate: KeyedMutator<unknown>;
 }
 
-export interface UsePodFunctionMutationResult {
+export interface UseFrameFunctionMutationResult {
   data: unknown;
   error: Error | undefined;
   isMutating: boolean;
@@ -47,28 +47,30 @@ export type UseUserIdentityResult = UserIdentityState & {
   isLoading: boolean;
 };
 
-type PodFunctionQueryKey = readonly ["pod-function", string, unknown];
-type PodFunctionMutationKey = readonly ["pod-function-mutation", string];
-const POD_FUNCTION_QUERY_DEDUPING_INTERVAL_MS = 2_000;
+type FrameFunctionQueryKey = readonly ["frame-function", string, unknown];
+type FrameFunctionMutationKey = readonly ["frame-function-mutation", string];
+const FRAME_FUNCTION_QUERY_DEDUPING_INTERVAL_MS = 2_000;
 
-const PodFunctionContext = createContext<PodFunctionContextValue | null>(null);
+const FrameFunctionContext = createContext<FrameFunctionContextValue | null>(
+  null
+);
 
 async function noopMutate(): Promise<undefined> {
   return undefined;
 }
 
-function resolvePodFunction(slug: string | null): {
+function resolveFrameFunction(slug: string | null): {
   functionId: string | null;
   error?: Error;
 } {
   if (slug === null) {
     return { functionId: null };
   }
-  if (!isPodFunctionReference(slug)) {
+  if (!isFrameFunctionReference(slug)) {
     return {
       functionId: null,
       error: new Error(
-        "Pod Function hooks require a <podId>/<slug> reference, or a bare function name " +
+        "Frame Function hooks require a <podId>/<slug> reference, or a bare function name " +
           "from a Frame that lives in an app folder."
       ),
     };
@@ -77,41 +79,41 @@ function resolvePodFunction(slug: string | null): {
   return { functionId: slug };
 }
 
-export function PodFunctionHooksProvider({
+export function FrameFunctionHooksProvider({
   children,
   dataAPI,
-}: PodFunctionHooksProviderProps) {
+}: FrameFunctionHooksProviderProps) {
   const [cache] = useState(() => new Map());
   const swrConfig = useMemo(() => ({ provider: () => cache }), [cache]);
   const contextValue = useMemo(() => ({ dataAPI }), [dataAPI]);
 
   return createElement(
-    PodFunctionContext.Provider,
+    FrameFunctionContext.Provider,
     { value: contextValue },
     createElement(SWRConfig, { value: swrConfig }, children)
   );
 }
 
-function usePodFunctionContext(): PodFunctionContextValue {
-  const context = useContext(PodFunctionContext);
+function useFrameFunctionContext(): FrameFunctionContextValue {
+  const context = useContext(FrameFunctionContext);
   if (!context) {
-    throw new Error("Pod Function hooks must run inside a Frame wrapper.");
+    throw new Error("Frame Function hooks must run inside a Frame wrapper.");
   }
 
   return context;
 }
 
-export function usePodFunction(
+export function useFrameFunction(
   slug: string | null,
   input: unknown
-): UsePodFunctionResult {
-  const { dataAPI } = usePodFunctionContext();
-  const resolution = useMemo(() => resolvePodFunction(slug), [slug]);
+): UseFrameFunctionResult {
+  const { dataAPI } = useFrameFunctionContext();
+  const resolution = useMemo(() => resolveFrameFunction(slug), [slug]);
   const functionId = resolution.functionId;
-  const key: PodFunctionQueryKey | null = functionId
-    ? ["pod-function", functionId, input]
+  const key: FrameFunctionQueryKey | null = functionId
+    ? ["frame-function", functionId, input]
     : null;
-  const result = useSWR<unknown, Error, PodFunctionQueryKey | null>(
+  const result = useSWR<unknown, Error, FrameFunctionQueryKey | null>(
     key,
     async ([, functionId, functionInput]) => {
       try {
@@ -121,7 +123,7 @@ export function usePodFunction(
       }
     },
     {
-      dedupingInterval: POD_FUNCTION_QUERY_DEDUPING_INTERVAL_MS,
+      dedupingInterval: FRAME_FUNCTION_QUERY_DEDUPING_INTERVAL_MS,
       errorRetryCount: 0,
       keepPreviousData: true,
       refreshInterval: 0,
@@ -143,7 +145,7 @@ export function usePodFunction(
 }
 
 export function useUserIdentity(): UseUserIdentityResult {
-  const { dataAPI } = usePodFunctionContext();
+  const { dataAPI } = useFrameFunctionContext();
   const result = useSWR<UserIdentityState, Error>(
     "workspace-user-identity",
     () => dataAPI.getUserIdentity(),
@@ -176,19 +178,19 @@ export function useUserIdentity(): UseUserIdentityResult {
   };
 }
 
-export function usePodFunctionMutation(
+export function useFrameFunctionMutation(
   slug: string | null
-): UsePodFunctionMutationResult {
-  const { dataAPI } = usePodFunctionContext();
-  const resolution = useMemo(() => resolvePodFunction(slug), [slug]);
+): UseFrameFunctionMutationResult {
+  const { dataAPI } = useFrameFunctionContext();
+  const resolution = useMemo(() => resolveFrameFunction(slug), [slug]);
   const functionId = resolution.functionId;
-  const key: PodFunctionMutationKey | null = functionId
-    ? ["pod-function-mutation", functionId]
+  const key: FrameFunctionMutationKey | null = functionId
+    ? ["frame-function-mutation", functionId]
     : null;
   const result = useSWRMutation<
     unknown,
     Error,
-    PodFunctionMutationKey | null,
+    FrameFunctionMutationKey | null,
     unknown
   >(
     key,
@@ -217,7 +219,7 @@ export function usePodFunctionMutation(
         throw resolution.error;
       }
       if (!resolution.functionId) {
-        throw new Error("Cannot trigger a disabled Pod Function mutation.");
+        throw new Error("Cannot trigger a disabled Frame Function mutation.");
       }
 
       return result.trigger(input);

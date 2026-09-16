@@ -337,7 +337,7 @@ describe("callSandboxFunction", () => {
     }
     expect(result.error).toEqual({
       code: "transport_error",
-      message: "Pod function did not return a result in time.",
+      message: "Frame function did not return a result in time.",
     });
   });
 

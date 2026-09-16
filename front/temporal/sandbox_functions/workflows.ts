@@ -72,7 +72,7 @@ export async function runSandboxFunctionInvocationWorkflow({
   } catch (error) {
     await markSandboxFunctionInvocationFailedActivity(authType, {
       errorMessage:
-        "Pod function execution failed before it could return a result.",
+        "Frame function execution failed before it could return a result.",
       sandboxFunctionId,
       invocationId,
     });

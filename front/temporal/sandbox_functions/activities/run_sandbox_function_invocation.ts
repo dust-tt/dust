@@ -26,7 +26,7 @@ export async function runSandboxFunctionInvocationActivity(
     }
   );
   if (!sandboxFunction) {
-    throw new Error(`Pod function not found: ${sandboxFunctionId}`);
+    throw new Error(`Frame function not found: ${sandboxFunctionId}`);
   }
 
   const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
@@ -35,7 +35,7 @@ export async function runSandboxFunctionInvocationActivity(
     access: "system",
   });
   if (!invocation) {
-    throw new Error(`Pod function invocation not found: ${invocationId}`);
+    throw new Error(`Frame function invocation not found: ${invocationId}`);
   }
 
   const executionResult = await invocation.execute(auth);

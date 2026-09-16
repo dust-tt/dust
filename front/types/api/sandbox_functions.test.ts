@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { RUNNER_ERROR_CODES } from "../../../cli/dust-sandbox/functions-runner/protocol";
-import { POD_FUNCTION_REFERENCE_REGEX } from "../../../viz/app/lib/pod-function-slug";
+import { FRAME_FUNCTION_REFERENCE_REGEX } from "../../../viz/app/lib/frame-function-slug";
 import {
   isValidSandboxFunctionSlug,
   SANDBOX_FUNCTION_RUNNER_ERROR_CODES,
@@ -64,7 +64,7 @@ describe("isValidSandboxFunctionSlug", () => {
     for (const slug of slugs) {
       expect({
         slug,
-        accepted: POD_FUNCTION_REFERENCE_REGEX.test(`vlt_1/${slug}`),
+        accepted: FRAME_FUNCTION_REFERENCE_REGEX.test(`vlt_1/${slug}`),
       }).toEqual({
         slug,
         accepted: isValidSandboxFunctionSlug(slug),

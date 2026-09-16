@@ -227,9 +227,9 @@ describe("buildAndPublishFramePublication", () => {
         {
           ...sourceFiles[0],
           content: Buffer.from(
-            'import { usePodFunction } from "@dust/react-hooks";\n' +
+            'import { useFrameFunction } from "@dust/react-hooks";\n' +
               "export default function App() {\n" +
-              '  usePodFunction("list-tasks", {});\n' +
+              '  useFrameFunction("list-tasks", {});\n' +
               "  return <main>Tasks</main>;\n" +
               "}\n"
           ),
