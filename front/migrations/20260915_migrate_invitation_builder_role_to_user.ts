@@ -10,8 +10,6 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
  * normalizes `builder` to `user` at read time.
  */
 
-// The follow-up PR removes `builder` from the model's `initialRole` typing;
-// the cast keeps this one-off compiling both before and after that removal.
 const LEGACY_BUILDER_ROLE = "builder";
 
 makeScript({}, async ({ execute }, logger) => {
