@@ -111,12 +111,26 @@ export interface FullAgentResource extends AgentResource {
  * agents are exempt from the `id`-consistency clause: they have no `agent` row, are identified by
  * `sId`, and all share the `id: -1` sentinel.
  */
+/**
+ * @cc [owner:sfriquet,label:security] unreadable-agent-is-light
+ * A resource built for a caller who does not hold `read` on the agent (per `getAllowedVerbs`) MUST
+ * be `light`: `content` — instructions, `instructionsHtml`, template, reinforcement and the
+ * version dates — is never materialized for that caller, whatever their role, key type, or
+ * superuser status. This holds for every `fetch*` resolver and for `fromAgentConfigurationModel`,
+ * so a caller allowed to enumerate agents they cannot read (an admin listing hidden agents, a
+ * superuser) sees identity and core fields only. Callers MUST NOT re-attach private fields to a
+ * `light` resource from another read path.
+ */
 export class AgentResource
   extends BaseResource<AgentModel>
   implements WithAccessControl
 {
   readonly sId: string;
   readonly workspaceId: ModelId;
+  // The agent's creation date (its `agents` row, not the current version's). A core field, so it is
+  // carried by `light` resources too. Only `fetch*`-built resources carry the real date: the `from*`
+  // factories have no `agents` row in hand and stamp a placeholder (see `fromAgentConfiguration`).
+  readonly createdAt: Date;
   readonly scope: AgentConfigurationScope;
   readonly name: string;
   readonly description: string;
@@ -137,6 +151,7 @@ export class AgentResource
 
     this.sId = blob.sId;
     this.workspaceId = blob.workspaceId;
+    this.createdAt = blob.createdAt;
     this.scope = extra.scope;
     this.name = extra.name;
     this.description = extra.description;
@@ -166,6 +181,8 @@ export class AgentResource
   }
 
   // -- Light factories (no query; identity + core only) --
+  // Built without the `agents` row, so `createdAt` is a placeholder (`new Date()`): a caller
+  // reasoning about the agent's age must use a `fetch*` resolver.
 
   static fromAgentConfiguration(
     auth: Authenticator,
@@ -565,25 +582,6 @@ export class AgentResource
     }
 
     return result;
-  }
-
-  static async listCreatedAtByAgentId(
-    auth: Authenticator,
-    agentIds: string[]
-  ): Promise<Map<string, Date>> {
-    if (agentIds.length === 0) {
-      return new Map();
-    }
-
-    const agents = await AgentModel.findAll({
-      attributes: ["sId", "createdAt"],
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        sId: { [Op.in]: agentIds },
-      },
-    });
-
-    return new Map(agents.map(({ sId, createdAt }) => [sId, createdAt]));
   }
 
   static async listEditorConfigModelIds(

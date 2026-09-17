@@ -61,7 +61,6 @@ export async function archiveInactiveWorkspaceAgents(
 
   const { eligible, skipped: refused } = await fetchArchivableAgents(auth, {
     cutoffAt,
-    dangerouslySkipPermissionFiltering: true,
   });
 
   const archivedAgentIds: string[] = [];
@@ -72,9 +71,7 @@ export async function archiveInactiveWorkspaceAgents(
     await heartbeat();
 
     // Not a compare-and-set: an agent restored since the read is archived anyway. Reversible.
-    const archived = await archiveAgentConfiguration(auth, agentId, {
-      dangerouslySkipPermissionFiltering: true,
-    });
+    const archived = await archiveAgentConfiguration(auth, agentId);
     if (!archived) {
       skipped.push({ agentId, reason: "archive_raced" });
       continue;

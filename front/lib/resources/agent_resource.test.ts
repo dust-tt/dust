@@ -94,6 +94,40 @@ describe("AgentResource", () => {
     }
   });
 
+  it("carries the agent's creation date on full and light resources alike", async () => {
+    const createdAt = new Date("2025-01-01T00:00:00.000Z");
+    // Hidden, so the non-author admin below gets it light.
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { scope: "hidden" }
+    );
+    await AgentConfigurationFactory.backdate(
+      testContext.authenticator,
+      agent.sId,
+      createdAt
+    );
+
+    const adminUser = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, adminUser, {
+      role: "admin",
+    });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      testContext.workspace.sId
+    );
+
+    const asAuthor = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    const asAdmin = await AgentResource.fetchById(adminAuth, agent.sId);
+
+    expect(asAuthor?.isFull()).toBe(true);
+    expect(asAuthor?.createdAt.getTime()).toBe(createdAt.getTime());
+    expect(asAdmin?.isFull()).toBe(false);
+    expect(asAdmin?.createdAt.getTime()).toBe(createdAt.getTime());
+  });
+
   it("returns a light resource when the caller holds a verb but cannot read the agent", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator,

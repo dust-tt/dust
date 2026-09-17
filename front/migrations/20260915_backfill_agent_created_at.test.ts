@@ -41,12 +41,12 @@ describe("backfillAgentCreatedAt", () => {
       { createdAt: SECOND_VERSION_DATE },
       { where: { sId: lateAgent.sId, workspaceId: workspace.id, version: 1 } }
     );
-    const createdAtBefore = await AgentResource.listCreatedAtByAgentId(
+    const freshBefore = await AgentResource.fetchById(
       authenticator,
-      [freshAgent.sId]
+      freshAgent.sId
     );
-    const freshCreatedAtBefore = createdAtBefore.get(freshAgent.sId);
-    assert(freshCreatedAtBefore);
+    assert(freshBefore);
+    const freshCreatedAtBefore = freshBefore.createdAt;
 
     await expect(
       backfillAgentCreatedAt({ execute: false, logger, workspace })
@@ -56,15 +56,13 @@ describe("backfillAgentCreatedAt", () => {
       backfillAgentCreatedAt({ execute: true, logger, workspace })
     ).resolves.toEqual({ agentsToFix: 1, updated: 1 });
 
-    const createdAtAfter = await AgentResource.listCreatedAtByAgentId(
-      authenticator,
-      [lateAgent.sId, freshAgent.sId]
-    );
-    const lateCreatedAt = createdAtAfter.get(lateAgent.sId);
-    const freshCreatedAt = createdAtAfter.get(freshAgent.sId);
-    assert(lateCreatedAt && freshCreatedAt);
-    expect(lateCreatedAt.getTime()).toBe(FIRST_VERSION_DATE.getTime());
-    expect(freshCreatedAt.getTime()).toBe(freshCreatedAtBefore.getTime());
+    const [lateAfter, freshAfter] = await Promise.all([
+      AgentResource.fetchById(authenticator, lateAgent.sId),
+      AgentResource.fetchById(authenticator, freshAgent.sId),
+    ]);
+    assert(lateAfter && freshAfter);
+    expect(lateAfter.createdAt.getTime()).toBe(FIRST_VERSION_DATE.getTime());
+    expect(freshAfter.createdAt.getTime()).toBe(freshCreatedAtBefore.getTime());
 
     await expect(
       backfillAgentCreatedAt({ execute: true, logger, workspace })
