@@ -34,9 +34,9 @@ export const DEFAULT_FOLDER_EXTRACT_LIMITS: FolderExtractLimits = {
   maxUncompressedSizeBytes: 40 * 1024 * 1024,
 };
 
-// The archive is buffered in memory before it is opened, so the request body is capped well below
-// what a folder download can produce.
-export const MAX_ARCHIVE_UPLOAD_SIZE_BYTES = 50 * 1024 * 1024;
+// The archive is read into memory in full before it is opened (`adm-zip` buffers even when given a
+// path), so the request body cap is what actually bounds peak memory per extract on front-api.
+export const MAX_ARCHIVE_UPLOAD_SIZE_BYTES = 4 * 1024 * 1024;
 
 export type FolderExtractErrorCode =
   | "invalid_archive"
