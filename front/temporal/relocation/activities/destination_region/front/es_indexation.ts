@@ -3,10 +3,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import {
-  deleteWorkspaceSkillDocuments,
-  indexSkillDocument,
-} from "@app/lib/skill_search";
+import { indexSkillDocument } from "@app/lib/skill_search";
 import { indexUserDocument } from "@app/lib/user_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -119,11 +116,6 @@ export async function recreateSkillSearchIndex({
   localLogger.info(
     "[Skill Search] Recreating skill search index for workspace."
   );
-
-  const deleteResult = await deleteWorkspaceSkillDocuments({ workspaceId });
-  if (deleteResult.isErr()) {
-    throw deleteResult.error;
-  }
 
   const skills = await SkillResource.listByWorkspace(auth, {
     permissionFiltering: "redact_unreadable",

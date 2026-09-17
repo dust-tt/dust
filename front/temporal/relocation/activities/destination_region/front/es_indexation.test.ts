@@ -1,8 +1,5 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
-import {
-  deleteWorkspaceSkillDocuments,
-  indexSkillDocument,
-} from "@app/lib/skill_search";
+import { indexSkillDocument } from "@app/lib/skill_search";
 import { recreateSkillSearchIndex } from "@app/temporal/relocation/activities/destination_region/front/es_indexation";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -11,16 +8,12 @@ import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/skill_search", () => ({
-  deleteWorkspaceSkillDocuments: vi.fn(),
   indexSkillDocument: vi.fn(),
 }));
 
 describe("recreateSkillSearchIndex", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(deleteWorkspaceSkillDocuments).mockResolvedValue(
-      new Ok(undefined)
-    );
     vi.mocked(indexSkillDocument).mockResolvedValue(new Ok(undefined));
   });
 
@@ -41,10 +34,6 @@ describe("recreateSkillSearchIndex", () => {
 
     await recreateSkillSearchIndex({ workspaceId: workspace.sId });
 
-    expect(deleteWorkspaceSkillDocuments).toHaveBeenCalledOnce();
-    expect(deleteWorkspaceSkillDocuments).toHaveBeenCalledWith({
-      workspaceId: workspace.sId,
-    });
     expect(indexSkillDocument).toHaveBeenCalledTimes(2);
     expect(indexSkillDocument).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -63,9 +52,6 @@ describe("recreateSkillSearchIndex", () => {
         requested_space_ids: [regularSpace.sId],
       })
     );
-    expect(
-      vi.mocked(deleteWorkspaceSkillDocuments).mock.invocationCallOrder[0]
-    ).toBeLessThan(vi.mocked(indexSkillDocument).mock.invocationCallOrder[0]);
   });
 
   it("throws after an indexing failure so Temporal retries", async () => {
