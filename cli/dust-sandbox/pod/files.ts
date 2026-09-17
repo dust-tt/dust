@@ -6,7 +6,7 @@
 // row describing them (who, when, which path) belongs in a Frame database.
 //
 // The path is resolved from the environment front sets per exec and is never
-// hardcoded here (front's `frame-files-dir-single-source` contract). It is
+// hardcoded here (front's `frame-data-files-dir-single-source` contract). It is
 // read through podEnv() rather than process.env so a resident worker serving
 // two invocations resolves each against its own environment.
 //
@@ -30,7 +30,7 @@ import { podEnv } from "./context.ts";
  * Set per exec by front; no fallback lives below front, so an absent value is
  * an error rather than a guess at the location.
  */
-export const FRAME_FILES_DIR_ENV = "DUST_FRAME_FILES_DIR";
+export const FRAME_DATA_FILES_DIR_ENV = "DUST_FRAME_DATA_FILES_DIR";
 
 export class FrameFilesError extends Error {
   constructor(message: string) {
@@ -42,7 +42,7 @@ export class FrameFilesError extends Error {
 export class FrameFilesUnavailableError extends FrameFilesError {
   constructor() {
     super(
-      `${FRAME_FILES_DIR_ENV} is not set: the files folder is available to ` +
+      `${FRAME_DATA_FILES_DIR_ENV} is not set: the files folder is available to ` +
         `Frame functions only.`
     );
     this.name = "FrameFilesUnavailableError";
@@ -64,7 +64,7 @@ export class FrameFilePathError extends FrameFilesError {
  * Frame function, where the folder is not mounted.
  */
 export function filesDir(): string {
-  const dir = podEnv(FRAME_FILES_DIR_ENV);
+  const dir = podEnv(FRAME_DATA_FILES_DIR_ENV);
   if (dir === undefined || dir === "") {
     throw new FrameFilesUnavailableError();
   }

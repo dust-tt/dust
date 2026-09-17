@@ -132,24 +132,24 @@ export function getFramePublicationDescriptorMountPoint({
 }
 
 /**
- * Read-write mount of the Frame's durable files folder (`getFrameFilesBasePath`), which functions
- * read and write directly. Frame-scoped like the publications root, so the mount point stays
+ * Read-write mount of the Frame's durable files folder (`getFrameDataFilesBasePath`), which
+ * functions read and write directly. Frame-scoped like the publications root, so the mount stays
  * unchanged when a new publication activates and a file one publication's function wrote is
- * still there for the next. See the `frame-files-content-is-untrusted` contract on
+ * still there for the next. See the `frame-data-files-content-is-untrusted` contract on
  * `frameSandboxOnlyMounts` before serving anything read from it.
  */
-export function getFrameFilesMountPoint(frameId: string): string {
+export function getFrameDataFilesMountPoint(frameId: string): string {
   return `/frames/${frameId}/files`;
 }
 
 /**
- * @cc [owner:pmilliotte,label:architecture] frame-files-dir-single-source
+ * @cc [owner:pmilliotte,label:architecture] frame-data-files-dir-single-source
  * The Frame files folder's in-sandbox path MUST be hardcoded only by
- * `getFrameFilesMountPoint` and reach the workload only through this env var, set per exec. No
+ * `getFrameDataFilesMountPoint` and reach the workload only through this env var, set per exec. No
  * layer below front (dsbx, `@dust/pod`, function source) may carry a default or fallback path:
  * a stale copy would silently resolve to a directory that is not this Frame's mount.
  */
-export const FRAME_FILES_DIR_ENV = "DUST_FRAME_FILES_DIR";
+export const FRAME_DATA_FILES_DIR_ENV = "DUST_FRAME_DATA_FILES_DIR";
 
 /**
  * Frame-owned SQLite uses the same isolated local runtime directories as Pod SQLite. A Frame has

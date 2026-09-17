@@ -2,7 +2,7 @@ import {
   getFrameBasePath,
   getFrameDatabaseReplicaBasePath,
   getFrameDatabaseReplicasBasePath,
-  getFrameFilesBasePath,
+  getFrameDataFilesBasePath,
   getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
   getFramePublicationFunctionsArchivePath,
@@ -52,7 +52,7 @@ describe("Frames v2 GCS paths", () => {
   });
 
   it("keeps the durable files folder beside the SQLite replicas", () => {
-    expect(getFrameFilesBasePath(IDS)).toBe(
+    expect(getFrameDataFilesBasePath(IDS)).toBe(
       "w/w_123/frames/fil_456/state/files/"
     );
   });
@@ -75,7 +75,7 @@ describe("Frames v2 GCS paths", () => {
       })
     ).toThrow("Invalid databaseName");
     expect(() =>
-      getFrameFilesBasePath({
+      getFrameDataFilesBasePath({
         workspaceId: IDS.workspaceId,
         frameId: "../other",
       })

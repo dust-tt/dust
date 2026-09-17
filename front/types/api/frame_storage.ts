@@ -51,7 +51,7 @@ export function getFrameDatabaseReplicasBasePath(args: {
  * and these two need opposite ones. The replica is mounted as `dust-state` with no `allow_other`
  * so no other uid can see it, while this folder must be workload-readable and writable.
  */
-export function getFrameFilesBasePath(args: {
+export function getFrameDataFilesBasePath(args: {
   workspaceId: string;
   frameId: string;
 }): string {

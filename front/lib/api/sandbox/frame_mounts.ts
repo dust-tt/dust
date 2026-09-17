@@ -1,7 +1,7 @@
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { SandboxOnlyMount } from "@app/types/file_system";
 import {
-  getFrameFilesMountPoint,
+  getFrameDataFilesMountPoint,
   getFramePublicationsMountPoint,
   SANDBOX_STATE_REPLICA_MOUNT_POINT,
 } from "@app/types/mount_path";
@@ -9,8 +9,8 @@ import {
 type FrameRef = Pick<FileResource, "sId">;
 
 /**
- * @cc [owner:pmilliotte,label:security] frame-files-content-is-untrusted
- * The `frame_files` mount is workload-writable and nothing validates what gets written, so a
+ * @cc [owner:pmilliotte,label:security] frame-data-files-content-is-untrusted
+ * The `frame_data_files` mount is workload-writable and nothing validates what gets written, so a
  * file's name and extension say nothing about its bytes. Code that later serves a file from this
  * folder MUST pick the content type from a fixed allow-list rather than from the file, and MUST
  * NOT serve a type that can execute script in the Frame's origin (svg, html).
@@ -33,9 +33,9 @@ export function frameSandboxOnlyMounts(frame: FrameRef): SandboxOnlyMount[] {
       readOnly: false,
     },
     {
-      kind: "frame_files",
+      kind: "frame_data_files",
       frameId: frame.sId,
-      sandboxMountPoint: getFrameFilesMountPoint(frame.sId),
+      sandboxMountPoint: getFrameDataFilesMountPoint(frame.sId),
       readOnly: false,
     },
   ];

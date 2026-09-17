@@ -17,7 +17,7 @@ describe("frameSandboxOnlyMounts", () => {
         readOnly: false,
       },
       {
-        kind: "frame_files",
+        kind: "frame_data_files",
         frameId: "fil_frame",
         sandboxMountPoint: "/frames/fil_frame/files",
         readOnly: false,

@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  FRAME_FILES_DIR_ENV,
+  FRAME_DATA_FILES_DIR_ENV,
   FrameFilePathError,
   FrameFilesUnavailableError,
   filePath,
@@ -15,7 +15,7 @@ import {
 const FILES_DIR = "/frames/fil_frame/files";
 
 function inFrame<T>(fn: () => T): T {
-  return runWithInvocationEnv({ [FRAME_FILES_DIR_ENV]: FILES_DIR }, fn);
+  return runWithInvocationEnv({ [FRAME_DATA_FILES_DIR_ENV]: FILES_DIR }, fn);
 }
 
 describe("filesDir", () => {
@@ -32,7 +32,7 @@ describe("filesDir", () => {
   test("resolves per invocation so a resident worker cannot cross wires", () => {
     const other = "/frames/fil_other/files";
     expect(
-      runWithInvocationEnv({ [FRAME_FILES_DIR_ENV]: other }, filesDir)
+      runWithInvocationEnv({ [FRAME_DATA_FILES_DIR_ENV]: other }, filesDir)
     ).toBe(other);
     expect(inFrame(filesDir)).toBe(FILES_DIR);
   });
@@ -77,7 +77,7 @@ describe("files", () => {
   function inRealFolder<T>(fn: () => Promise<T>): Promise<T> {
     const root = mkdtempSync(join(tmpdir(), "dust-frame-files-"));
     roots.push(root);
-    return runWithInvocationEnv({ [FRAME_FILES_DIR_ENV]: root }, fn);
+    return runWithInvocationEnv({ [FRAME_DATA_FILES_DIR_ENV]: root }, fn);
   }
 
   afterEach(() => {
@@ -145,11 +145,14 @@ describe("files", () => {
     const outside = join(root, "..", "outside.txt");
     writeFileSync(outside, "original");
 
-    await runWithInvocationEnv({ [FRAME_FILES_DIR_ENV]: root }, async () => {
-      expect(files.write("../outside.txt", "tampered")).rejects.toThrow(
-        FrameFilePathError
-      );
-    });
+    await runWithInvocationEnv(
+      { [FRAME_DATA_FILES_DIR_ENV]: root },
+      async () => {
+        expect(files.write("../outside.txt", "tampered")).rejects.toThrow(
+          FrameFilePathError
+        );
+      }
+    );
 
     expect(readFileSync(outside, "utf-8")).toBe("original");
     rmSync(outside, { force: true });
