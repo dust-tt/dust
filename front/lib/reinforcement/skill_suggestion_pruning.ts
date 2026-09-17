@@ -179,7 +179,7 @@ export async function pruneConflictingSkillEditorsSuggestions(
   const pendingEditorSuggestions = (
     await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
       states: ["pending"],
-      kind: "editors",
+      kinds: ["editors"],
       sources: PRUNED_SOURCES,
     })
   )
