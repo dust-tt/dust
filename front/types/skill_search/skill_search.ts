@@ -17,6 +17,6 @@ export interface SkillSearchDocument extends ElasticsearchBaseDocument {
   mcp_server_view_ids: string[];
   active_users_count: number | null;
   favorite_count: number;
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
 }

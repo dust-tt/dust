@@ -19,7 +19,6 @@ makeScript(
    * failure and exits nonzero.
    */
   async ({ execute }, logger) => {
-    const updatedAt = new Date().toISOString();
     const documents: SkillSearchDocument[] = [
       ...GLOBAL_SKILLS_ARRAY,
       ...SYSTEM_SKILLS_ARRAY,
@@ -39,9 +38,9 @@ makeScript(
       mcp_server_view_ids: [],
       active_users_count: null,
       favorite_count: 0,
-      // Definitions do not have a creation timestamp.
-      created_at: new Date(0).toISOString(),
-      updated_at: updatedAt,
+      // Definitions do not have creation or update timestamps.
+      created_at: null,
+      updated_at: null,
     }));
 
     const skillIds = documents.map((document) => document.skill_id);
