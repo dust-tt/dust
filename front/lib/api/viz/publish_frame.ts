@@ -1,5 +1,6 @@
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import { validateTailwindCode } from "@app/lib/api/files/content_validation";
+import { scheduleFrameOgImageGeneration } from "@app/lib/api/frames/og";
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import type { FrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { buildFrameBundle } from "@app/lib/api/viz/build_frame_bundle";
@@ -163,6 +164,9 @@ export async function publishFrame(
           new PublishFrameError("allowlist_failed", allowlist.error.message)
         );
       }
+
+      // 5. Capture a first-viewport OG preview for Slack/mobile unfurls (async).
+      scheduleFrameOgImageGeneration(auth, file);
 
       return new Ok({ warnings });
     });

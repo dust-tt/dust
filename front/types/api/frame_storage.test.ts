@@ -2,6 +2,7 @@ import {
   getFrameBasePath,
   getFrameDatabaseReplicaBasePath,
   getFrameDatabaseReplicasBasePath,
+  getFrameOgImagePath,
   getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
   getFramePublicationUiBundlePath,
@@ -31,6 +32,10 @@ describe("Frames v2 GCS paths", () => {
     ).toBe(
       "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task.ts"
     );
+  });
+
+  it("stores the OG preview next to the Frame identity", () => {
+    expect(getFrameOgImagePath(IDS)).toBe("w/w_123/frames/fil_456/og.png");
   });
 
   it("keeps SQLite replica state outside publications", () => {
@@ -63,5 +68,8 @@ describe("Frames v2 GCS paths", () => {
         databaseName: "../other",
       })
     ).toThrow("Invalid databaseName");
+    expect(() =>
+      getFrameOgImagePath({ workspaceId: IDS.workspaceId, frameId: "../other" })
+    ).toThrow("Invalid frameId");
   });
 });

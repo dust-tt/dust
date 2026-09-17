@@ -24,7 +24,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { resolveOptionalAuth } from "@front-api/routes/v1/public/frames/shared_auth";
 import { getCookie } from "hono/cookie";
 import { z } from "zod";
-
+import og from "./og";
 import verifyCode from "./verify-code";
 import verifyEmail from "./verify-email";
 
@@ -275,5 +275,6 @@ app.get(
 
 app.route("/verify-code", verifyCode);
 app.route("/verify-email", verifyEmail);
+app.route("/og", og);
 
 export default app;

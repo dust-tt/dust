@@ -95,3 +95,15 @@ export function getFramePublicationFunctionBundlePath(args: {
 }): string {
   return `${getFramePublicationBasePath(args)}functions/${safeSegment(args.functionName, "functionName")}.ts`;
 }
+
+/**
+ * Per-frame Open Graph preview image (1200x630 PNG). Regenerated on each
+ * successful publish/activation so Slack/mobile link unfurls show the first
+ * viewport of the Frame rather than only workspace branding.
+ */
+export function getFrameOgImagePath(args: {
+  workspaceId: string;
+  frameId: string;
+}): string {
+  return `${getFrameBasePath(args)}og.png`;
+}
