@@ -33,10 +33,7 @@ import {
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import {
-  getFirstKnowledgeItem,
-  knowledgeNodeToItem,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+import { knowledgeNodeToItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor, {
@@ -194,8 +191,6 @@ function readDefaultSkillEditorState(editor: Editor): {
   });
   return { skillIds, hasUserContent };
 }
-
-const EMPTY_ATTACHED_NODES: DataSourceViewContentNode[] = [];
 
 function sameSkillIds(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((id, index) => id === b[index]);
@@ -408,11 +403,6 @@ const InputBarContainer = ({
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
   const attachedNodesRef = useRef(attachedNodes);
   attachedNodesRef.current = attachedNodes;
-  const pickerAttachedNodes = isInlineReferenceEnabled
-    ? EMPTY_ATTACHED_NODES
-    : attachedNodes;
-  const pickerAttachedNodesRef = useRef(pickerAttachedNodes);
-  pickerAttachedNodesRef.current = pickerAttachedNodes;
   const selectedMCPServerViewIds = useMemo(
     () =>
       isInlineReferenceEnabled
@@ -721,9 +711,8 @@ const InputBarContainer = ({
   };
 
   const handleNodeSelect = (node: DataSourceViewContentNode) => {
-    onNodeSelect(node);
-
     if (!isInlineReferenceEnabled) {
+      onNodeSelect(node);
       return;
     }
 
@@ -851,7 +840,7 @@ const InputBarContainer = ({
       slashCommandsRef,
       includeAttachKnowledgeRef,
       includePickModelRef,
-      attachedNodesRef: pickerAttachedNodesRef,
+      attachedNodesRef,
       onModelSelectRef,
       onNodeSelectRef,
       spaceIdRef,
@@ -1210,33 +1199,6 @@ const InputBarContainer = ({
             onMCPServerViewDeselect(view);
           }
         }
-        return;
-      }
-
-      if (node.type.name === KNOWLEDGE_NODE_TYPE) {
-        const item = getFirstKnowledgeItem(node.attrs);
-        if (
-          item &&
-          !hasAnotherAttachedNode(currentEditor.state.doc, (n) => {
-            if (n.type.name !== KNOWLEDGE_NODE_TYPE) {
-              return false;
-            }
-            const other = getFirstKnowledgeItem(n.attrs);
-            return (
-              other?.nodeId === item.nodeId &&
-              other.dataSourceViewId === item.dataSourceViewId
-            );
-          })
-        ) {
-          const attachedNode = attachedNodesRef.current.find(
-            (n) =>
-              n.internalId === item.nodeId &&
-              n.dataSourceView.sId === item.dataSourceViewId
-          );
-          if (attachedNode) {
-            onNodeUnselect(attachedNode);
-          }
-        }
       }
     },
     [onNodeUnselect, onMCPServerViewDeselect, selectedMCPServerViews]
@@ -1263,7 +1225,9 @@ const InputBarContainer = ({
     };
   }, [editor, handleEditorUpdate, handleContentDeleted]);
 
-  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
+  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced, {
+    insertKnowledgeNode: isInlineReferenceEnabled,
+  });
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
@@ -1344,7 +1308,9 @@ const InputBarContainer = ({
 
       if (nodes.length > 0) {
         const node = nodes[0];
-        onNodeSelect(node);
+        if (!isInlineReferenceEnabled) {
+          onNodeSelect(node);
+        }
         setSelectedNode(node);
         return;
       }
@@ -1893,7 +1859,7 @@ const InputBarContainer = ({
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}
-                      attachedNodes={pickerAttachedNodes}
+                      attachedNodes={attachedNodes}
                       buttonSize={buttonSize}
                       clientType={clientType}
                       conversation={conversation}
@@ -2036,7 +2002,7 @@ const InputBarContainer = ({
                           isLoading={false}
                           onNodeSelect={handleNodeSelect}
                           onNodeUnselect={onNodeUnselect}
-                          attachedNodes={pickerAttachedNodes}
+                          attachedNodes={attachedNodes}
                           buttonSize={buttonSize}
                           toolFileUpload={{
                             useCase: "conversation",

@@ -255,10 +255,11 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
             mentions: [],
             skills: [],
             tools: [],
+            knowledge: [],
           };
         }
 
-        const { mentions, skills, tools } = extractFromEditorJSON(
+        const { mentions, skills, tools, knowledge } = extractFromEditorJSON(
           editor?.getJSON()
         );
 
@@ -267,6 +268,7 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
           mentions,
           skills,
           tools,
+          knowledge,
         };
       },
 
