@@ -101,17 +101,16 @@ async function findExistingSuggestion(
   skill: SkillResource,
   asset: SkillSuggestionAsset
 ): Promise<SkillSuggestionResource | null> {
-  const existing =
-    await SkillSuggestionResource.listBySkillConfigurationId(
-      ctx.auth,
-      skill.sId,
-      {
-        kinds: [asset.kind],
-        sources: [asset.source],
-        limit: 100,
-        dangerouslyBypassConversationsVisibilityCheck: true,
-      }
-    );
+  const existing = await SkillSuggestionResource.listBySkillConfigurationId(
+    ctx.auth,
+    skill.sId,
+    {
+      kinds: [asset.kind],
+      sources: [asset.source],
+      limit: 100,
+      dangerouslyBypassConversationsVisibilityCheck: true,
+    }
+  );
   return existing.find((s) => s.title === asset.title) ?? null;
 }
 

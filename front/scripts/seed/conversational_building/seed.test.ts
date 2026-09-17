@@ -7,8 +7,8 @@ import logger from "@app/logger/logger";
 import {
   CONVERSATION_SID,
   LUKE_USER_SID,
-  seedConversationalBuilding,
   SKILL_NAME,
+  seedConversationalBuilding,
 } from "@app/scripts/seed/conversational_building/seedConversationalBuilding";
 import type { SeedContext } from "@app/scripts/seed/factories";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";

@@ -70,6 +70,19 @@ Server-side: `PATCH /w/:wId/assistant/skills/:sId/suggestions` with `applyToSkil
 Agents:
 no server-side apply yet; the sidekick patches the builder form client-side.
 
+### Seed example
+
+Add an example of the new kind to the `conversational_building` dev seed
+(`front/scripts/seed/conversational_building/`, see its README) so the card can be checked in a
+real conversation:
+
+- extend `SkillSuggestionAsset` in `front/scripts/seed/factories/types.ts` with the new kind,
+- add a suggestion of that kind in `assets/skill_suggestions.json` (flag it `overwrite` like the
+  others so re-running the seed picks up asset changes),
+- reference it from an agent message in `assets/conversations.json` through a placeholder that
+  `seedConversationalBuilding.ts` resolves to the created suggestion's `sId` in the directive,
+- extend `seed.test.ts` to check it and run the test.
+
 ### Notes and things to be aware
 
 Skills:

@@ -1,7 +1,7 @@
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { makeScript } from "@app/scripts/helpers";
-import { createSeedContext } from "@app/scripts/seed/factories";
 import { seedConversationalBuilding } from "@app/scripts/seed/conversational_building/seedConversationalBuilding";
+import { createSeedContext } from "@app/scripts/seed/factories";
 
 makeScript({}, async ({ execute }, logger) => {
   const ctx = await createSeedContext({ execute, logger });
