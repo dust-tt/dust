@@ -3,10 +3,8 @@ import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import {
-  createTestFrameFile,
-  storeTestFramePublication,
-} from "@app/tests/utils/FrameFunctionFactory";
+import { createTestFrameFile } from "@app/tests/utils/FrameFunctionFactory";
+import { storeTestFramePublication } from "@app/tests/utils/FramePublicationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
