@@ -2742,7 +2742,6 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     connectionInstructions:
       'Siit uses OAuth with dynamic client registration. You will be prompted to sign in with your Siit account. The MCP can only read data you can already see and only perform writes you can already perform in the Siit admin dashboard, so make sure the "Public API" permission is enabled for your role under Settings > Roles & permissions in Siit.',
     authMethod: "oauth-dynamic",
-    supportedOAuthUseCases: ["personal_actions"],
     toolStakes: {
       send_feedback: "low",
       list_approval_policies: "never_ask",
