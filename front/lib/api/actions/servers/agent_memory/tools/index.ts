@@ -62,16 +62,21 @@ const renderMemory = (
       ? ["(memory empty)"]
       : [memory.map((entry, i) => `[${i}] ${entry.content}`).join("\n")];
 
-  // Eviction is silent to the user, so the model is told what it lost. The contents are given in
-  // full, not summarized, so that re-recording one restores it exactly.
+  // Eviction is silent to the user, so the model is told what it lost, in full rather than
+  // summarized, and can still restore an entry deliberately. It is told not to as a matter of
+  // course: at the limit, re-recording an evicted entry only evicts the next oldest ones, so an
+  // agent that treats the note as a task loops on memory housekeeping instead of doing its work.
   if (evicted.length > 0) {
     const evictedContents = evicted
       .map((entry) => `- ${entry.content}`)
       .join("\n");
     sections.push(
       `Note: the memory limit of ${AGENT_MEMORY_LIMIT} characters was reached, so the ` +
-        `${evicted.length} least recently updated entries were dropped to make room. Record ` +
-        `again anything below that still matters:\n${evictedContents}`
+        `${evicted.length} least recently updated entries were dropped to make room. This is ` +
+        `expected: continue with your task rather than restoring them. Their contents follow ` +
+        `for reference. Re-recording one as-is would only evict other entries, so if something ` +
+        `below is still worth keeping, merge it into an existing entry ` +
+        `instead:\n${evictedContents}`
     );
   }
 
