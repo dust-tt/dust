@@ -2,15 +2,15 @@
  * Arm, disarm, or inspect the synthetic failure model used to exercise
  * the model-health breaker.
  *
- *   npx tsx scripts/simulated_failure_model.ts --action status
- *   npx tsx scripts/simulated_failure_model.ts --action enable --ttlSeconds 300 --execute
- *   npx tsx scripts/simulated_failure_model.ts --action disable --execute
+ *   npm run simulated-failure-model -- --action status
+ *   npm run simulated-failure-model -- --action enable --ttlSeconds 300 --execute
+ *   npm run simulated-failure-model -- --action disable --execute
  */
 import {
+  clearSimulatedFailureModelHealthWindow,
   getSimulatedFailureModelStatus,
   SIMULATED_FAILURE_MODEL_MAX_TTL_SECONDS,
   seedSimulatedFailureModelHealthWindow,
-  setSimulatedFailureModelFailure,
 } from "@app/lib/api/llm/simulated_failure_model";
 import { makeScript } from "@app/scripts/helpers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -33,7 +33,7 @@ makeScript(
     ttlSeconds: {
       type: "number" as const,
       default: 5 * 60,
-      describe: "How long the armed failure stays live (enable only)",
+      describe: "How long the seeded window stays live (enable only)",
     },
   },
   async ({ action, ttlSeconds, execute }, logger) => {
@@ -83,13 +83,7 @@ makeScript(
           return;
         }
 
-        // Disarm an earlier incomplete run before replacing its health window.
-        await setSimulatedFailureModelFailure({
-          enabled: false,
-          ttlSeconds: 1,
-        });
-        await seedSimulatedFailureModelHealthWindow();
-        await setSimulatedFailureModelFailure({ enabled: true, ttlSeconds });
+        await seedSimulatedFailureModelHealthWindow(new Date(), ttlSeconds);
         logger.info(
           await getSimulatedFailureModelStatus(),
           "Armed simulated failure model"
@@ -106,10 +100,7 @@ makeScript(
           return;
         }
 
-        await setSimulatedFailureModelFailure({
-          enabled: false,
-          ttlSeconds: 1,
-        });
+        await clearSimulatedFailureModelHealthWindow();
         logger.info(
           await getSimulatedFailureModelStatus(),
           "Disarmed simulated failure model"

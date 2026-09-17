@@ -9,6 +9,7 @@ import {
   PROVIDER_ERRORS_FIELD,
   windowMinuteBuckets,
 } from "@app/lib/api/llm/health/keys";
+import type { ModelHealthWindowType } from "@app/lib/api/llm/health/types";
 import { readEndpointWindow } from "@app/lib/api/llm/health/window";
 import { runOnRedisCache } from "@app/lib/api/redis";
 import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/hosts";
@@ -20,10 +21,7 @@ import {
 } from "@app/types/assistant/models/simulated_failure_model";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-const SIMULATED_FAILURE_MODEL_KEY = "simulated-failure-model:v1:failure";
 export const SIMULATED_FAILURE_MODEL_MAX_TTL_SECONDS = 15 * 60;
-
-type SimulatedFailureModelFailureState = "armed" | "triggered";
 
 export const SIMULATED_FAILURE_MODEL_ENDPOINT = {
   modelId: SIMULATED_FAILURE_MODEL_ID,
@@ -31,50 +29,22 @@ export const SIMULATED_FAILURE_MODEL_ENDPOINT = {
   host: OPENAI_RESPONSES_HOST,
 } as const;
 
-async function readFailureState(): Promise<SimulatedFailureModelFailureState | null> {
-  try {
-    const value = await runOnRedisCache(
-      { origin: "simulated_failure_model" },
-      (redis) => redis.get(SIMULATED_FAILURE_MODEL_KEY)
-    );
-    return value === "armed" || value === "triggered" ? value : null;
-  } catch (err) {
-    logger.error(
-      { err: normalizeError(err), synthetic: true },
-      "Failed to read simulated failure model state"
-    );
-    return null;
-  }
+const SEEDED_WINDOW: ModelHealthWindowType = {
+  attempts: MIN_ATTEMPTS_IN_WINDOW - 1,
+  providerErrors: Math.ceil(MIN_ATTEMPTS_IN_WINDOW * ERROR_RATIO_THRESHOLD) - 1,
+};
+
+function isSeededWindow(window: ModelHealthWindowType): boolean {
+  return (
+    window.attempts === SEEDED_WINDOW.attempts &&
+    window.providerErrors === SEEDED_WINDOW.providerErrors
+  );
 }
 
-/**
- * @cc [owner:frankaloia,label:security;testing] fail-closed-synthetic-model
- * Missing, invalid, expired, stopped, or unreadable Redis state MUST keep the synthetic model
- * healthy. Enabling failure MUST expire within `SIMULATED_FAILURE_MODEL_MAX_TTL_SECONDS`.
- * Disabling failure MUST NOT clear breaker-owned automatic degradation.
- */
-export async function setSimulatedFailureModelFailure({
-  enabled,
-  ttlSeconds,
-}: {
-  enabled: boolean;
-  ttlSeconds: number;
-}): Promise<void> {
-  if (!enabled) {
-    await runOnRedisCache({ origin: "simulated_failure_model" }, (redis) =>
-      redis.del(SIMULATED_FAILURE_MODEL_KEY)
-    );
-    return;
-  }
-
-  const boundedTtlSeconds = Math.max(
+function boundTtlSeconds(ttlSeconds: number): number {
+  return Math.max(
     1,
     Math.min(ttlSeconds, SIMULATED_FAILURE_MODEL_MAX_TTL_SECONDS)
-  );
-  await runOnRedisCache({ origin: "simulated_failure_model" }, (redis) =>
-    redis.set(SIMULATED_FAILURE_MODEL_KEY, "armed", {
-      EX: boundedTtlSeconds,
-    })
   );
 }
 
@@ -85,15 +55,14 @@ export async function setSimulatedFailureModelFailure({
  * crosses the threshold through `recordLLMAttempt`.
  */
 export async function seedSimulatedFailureModelHealthWindow(
-  now: Date = new Date()
+  now: Date = new Date(),
+  ttlSeconds: number = SIMULATED_FAILURE_MODEL_MAX_TTL_SECONDS
 ): Promise<void> {
   const buckets = windowMinuteBuckets(now);
   const currentKey = modelHealthKey(
     SIMULATED_FAILURE_MODEL_ENDPOINT,
     minuteBucket(now)
   );
-  const providerErrorsBeforeBreach =
-    Math.ceil(MIN_ATTEMPTS_IN_WINDOW * ERROR_RATIO_THRESHOLD) - 1;
 
   await runOnRedisCache(
     { origin: "simulated_failure_model" },
@@ -103,75 +72,94 @@ export async function seedSimulatedFailureModelHealthWindow(
         multi.del(modelHealthKey(SIMULATED_FAILURE_MODEL_ENDPOINT, bucket));
       }
       multi.hSet(currentKey, {
-        [ATTEMPTS_FIELD]: String(MIN_ATTEMPTS_IN_WINDOW - 1),
-        [PROVIDER_ERRORS_FIELD]: String(providerErrorsBeforeBreach),
+        [ATTEMPTS_FIELD]: String(SEEDED_WINDOW.attempts),
+        [PROVIDER_ERRORS_FIELD]: String(SEEDED_WINDOW.providerErrors),
       });
-      multi.expire(currentKey, SIMULATED_FAILURE_MODEL_MAX_TTL_SECONDS);
+      multi.expire(currentKey, boundTtlSeconds(ttlSeconds));
       await multi.exec();
     }
   );
 }
 
+export async function clearSimulatedFailureModelHealthWindow(
+  now: Date = new Date()
+): Promise<void> {
+  await runOnRedisCache(
+    { origin: "simulated_failure_model" },
+    async (redis) => {
+      const multi = redis.multi();
+      for (const bucket of windowMinuteBuckets(now)) {
+        multi.del(modelHealthKey(SIMULATED_FAILURE_MODEL_ENDPOINT, bucket));
+      }
+      await multi.exec();
+    }
+  );
+}
+
+async function seedTtlSeconds(now: Date): Promise<number | null> {
+  return runOnRedisCache(
+    { origin: "simulated_failure_model" },
+    async (redis) => {
+      let remaining: number | null = null;
+      for (const bucket of windowMinuteBuckets(now)) {
+        const ttl = await redis.ttl(
+          modelHealthKey(SIMULATED_FAILURE_MODEL_ENDPOINT, bucket)
+        );
+        if (ttl > 0) {
+          remaining = remaining === null ? ttl : Math.max(remaining, ttl);
+        }
+      }
+      return remaining;
+    }
+  );
+}
+
 /**
- * Called by the synthetic endpoint immediately before it emits its injected
- * 503. Degradation is deliberately left to the normal attempt telemetry,
- * detector, and recovery workflow.
+ * @cc [owner:frankaloia,label:security;testing] fail-closed-synthetic-model
+ * Missing, invalid, expired, or unreadable arm state MUST keep the synthetic model healthy.
+ * Arming is seeding this endpoint's breaker window. Injection MUST stop once that window is no
+ * longer the seed or a `model_degradations` row exists, so recovery probes can succeed.
+ * Disabling MUST NOT clear breaker-owned automatic degradation.
  */
 export async function triggerSimulatedFailureModelFailure(): Promise<boolean> {
-  const state = await readFailureState();
-  if (!state) {
+  try {
+    const [degradation, window] = await Promise.all([
+      ModelDegradationResource.fetchByEndpoint(
+        SIMULATED_FAILURE_MODEL_ENDPOINT
+      ),
+      readEndpointWindow(SIMULATED_FAILURE_MODEL_ENDPOINT, new Date()),
+    ]);
+    return !degradation && isSeededWindow(window);
+  } catch (err) {
+    logger.error(
+      { err: normalizeError(err), synthetic: true },
+      "Failed to read simulated failure model state"
+    );
     return false;
   }
-
-  if (state === "armed") {
-    try {
-      await runOnRedisCache({ origin: "simulated_failure_model" }, (redis) =>
-        redis.set(SIMULATED_FAILURE_MODEL_KEY, "triggered", {
-          KEEPTTL: true,
-          XX: true,
-        })
-      );
-    } catch (err) {
-      logger.error(
-        { err: normalizeError(err), synthetic: true },
-        "Failed to mark simulated failure model as triggered"
-      );
-    }
-  }
-
-  return true;
 }
 
 export async function getSimulatedFailureModelStatus(): Promise<{
   failureEnabled: boolean;
-  failureTriggered: boolean;
-  // "lease" while the breaker holds the endpoint out of routing, "permanent"
-  // when an operator row does.
   degradation: "none" | "lease" | "permanent";
   ttlSeconds: number | null;
-  healthWindow: {
-    attempts: number;
-    providerErrors: number;
-  };
+  healthWindow: ModelHealthWindowType;
 }> {
-  const [state, degradation, ttlSeconds, healthWindow] = await Promise.all([
-    readFailureState(),
+  const now = new Date();
+  const [degradation, healthWindow, ttlSeconds] = await Promise.all([
     ModelDegradationResource.fetchByEndpoint(SIMULATED_FAILURE_MODEL_ENDPOINT),
-    runOnRedisCache({ origin: "simulated_failure_model" }, (redis) =>
-      redis.ttl(SIMULATED_FAILURE_MODEL_KEY)
-    ),
-    readEndpointWindow(SIMULATED_FAILURE_MODEL_ENDPOINT, new Date()),
+    readEndpointWindow(SIMULATED_FAILURE_MODEL_ENDPOINT, now),
+    seedTtlSeconds(now),
   ]);
 
   return {
-    failureEnabled: state !== null,
-    failureTriggered: state === "triggered",
+    failureEnabled: isSeededWindow(healthWindow),
     degradation: !degradation
       ? "none"
       : degradation.expiresAt
         ? "lease"
         : "permanent",
-    ttlSeconds: ttlSeconds >= 0 ? ttlSeconds : null,
+    ttlSeconds,
     healthWindow,
   };
 }
