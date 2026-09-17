@@ -15,7 +15,7 @@ import { URLStorageExtension } from "@app/components/editor/extensions/input_bar
 import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import { ComposerKnowledgeNodeWithView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeWithView";
+import { KnowledgeNodeWithView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeWithView";
 import { ToolNodeWithView } from "@app/components/editor/extensions/skill_builder/ToolNodeWithView";
 import { VoicePartialNode } from "@app/components/editor/extensions/VoicePartialExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
@@ -486,7 +486,7 @@ export const buildEditorExtensions = ({
     ToolNodeWithView.configure({
       onToolDetailsById: slashSuggestion?.onToolDetailsById,
     }),
-    ComposerKnowledgeNodeWithView,
+    KnowledgeNodeWithView,
     VoicePartialNode,
     createEmojiExtension({ onActiveChange: notifySuggestionActiveChange }),
     Placeholder.configure({

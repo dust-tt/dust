@@ -1,4 +1,3 @@
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import {
   InlineKnowledgeChip,
   KnowledgeErrorChip,
@@ -31,7 +30,6 @@ export {
 interface HydratingKnowledgeChipProps {
   item: KnowledgeItem;
   owner: LightWorkspaceType;
-  isSpacesLoading?: boolean;
   onRemove?: () => void;
   updateAttributes: (attrs: Partial<KnowledgeNodeAttributes>) => void;
 }
@@ -42,7 +40,6 @@ interface HydratingKnowledgeChipProps {
 function HydratingKnowledgeChip({
   item,
   owner,
-  isSpacesLoading = false,
   onRemove,
   updateAttributes,
 }: HydratingKnowledgeChipProps) {
@@ -50,7 +47,7 @@ function HydratingKnowledgeChip({
 
   const { dataSourceView, isDataSourceViewError } = useSpaceDataSourceView({
     dataSourceViewId: item.dataSourceViewId,
-    disabled: !needsFetch || isSpacesLoading,
+    disabled: !needsFetch,
     owner,
     spaceId: item.spaceId,
   });
@@ -164,29 +161,7 @@ function KnowledgeNodeViewShell({
   );
 }
 
-export const SkillBuilderKnowledgeNodeView: React.FC<NodeViewProps> = (
-  props
-) => {
-  const { owner, isSpacesLoading } = useSpacesContext();
-
-  return (
-    <KnowledgeNodeViewShell {...props}>
-      {(item, onRemove) => (
-        <HydratingKnowledgeChip
-          item={item}
-          owner={owner}
-          isSpacesLoading={isSpacesLoading}
-          onRemove={onRemove}
-          updateAttributes={props.updateAttributes}
-        />
-      )}
-    </KnowledgeNodeViewShell>
-  );
-};
-
-// Composer view: no SpacesProvider here, so the workspace comes from the
-// app-level AuthContext and each chip fetches its own node individually.
-export const ComposerKnowledgeNodeView: React.FC<NodeViewProps> = (props) => {
+export const KnowledgeNodeView: React.FC<NodeViewProps> = (props) => {
   const { workspace } = useAuth();
 
   return (
