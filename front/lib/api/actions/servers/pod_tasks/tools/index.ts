@@ -148,7 +148,7 @@ export async function buildTaskUpdatePayload(
   agentConfigId: string | null
 ): Promise<Result<{ taskUpdates: UpdateBlob }, DustError<"user_not_member">>> {
   const actorUserId = auth.user()?.id ?? null;
-  const workspaceSId = auth.getNonNullableWorkspace().sId;
+  const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const nextStatus: PodTaskStatus = item.doneRationale
     ? "done"
@@ -169,7 +169,7 @@ export async function buildTaskUpdatePayload(
 
   const assignee = await resolveAssigneeUpdate(
     space,
-    workspaceSId,
+    workspaceId,
     item.assigneeUserId
   );
   if (assignee.isErr()) {

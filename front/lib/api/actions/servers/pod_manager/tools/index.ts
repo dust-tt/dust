@@ -89,7 +89,7 @@ const LIST_CONVERSATIONS_DEFAULT_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 
 function formatListedConversationWithoutMessages(
   c: ConversationResource,
-  workspaceSId: string
+  workspaceId: string
 ) {
   const j = c.toJSON();
   return {
@@ -101,7 +101,7 @@ function formatListedConversationWithoutMessages(
     actionRequired: j.actionRequired,
     hasError: j.hasError,
     conversationUrl: getConversationRoute(
-      workspaceSId,
+      workspaceId,
       j.sId,
       undefined,
       config.getAppUrl()
@@ -851,7 +851,7 @@ export function createProjectManagerTools(
     list_pods: async (params) => {
       return withErrorHandling(async () => {
         const owner = auth.getNonNullableWorkspace();
-        const workspaceSId = owner.sId;
+        const workspaceId = owner.sId;
         const { access = "member", q, limit = 20, pageCursor } = params;
 
         const decodedPageOffset = pageCursor
@@ -919,7 +919,7 @@ export function createProjectManagerTools(
           id: pod.sId,
           name: pod.name,
           dustPod: {
-            uri: makePodConfigurationURI(workspaceSId, pod.sId),
+            uri: makePodConfigurationURI(workspaceId, pod.sId),
             mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
           },
         }));
