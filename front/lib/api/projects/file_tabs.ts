@@ -1,7 +1,7 @@
-import { isFilePreviewableContentType } from "@app/components/file_explorer/utils";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { isFilePreviewableContentType } from "@app/types/file_preview";
 import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import type { PodFileTab, PodTabsOrder } from "@app/types/pod_file_tab";
 import {

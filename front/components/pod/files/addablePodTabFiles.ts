@@ -4,9 +4,9 @@ import type {
   FileExplorerEntry,
   FramePackageEntry,
 } from "@app/components/file_explorer/types";
-import { isFilePreviewableContentType } from "@app/components/file_explorer/utils";
 import type { AddablePodTabFile } from "@app/components/pod/settings/AddPodFileMenu";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
+import { isFilePreviewableContentType } from "@app/types/file_preview";
 import { frameV2ContentType } from "@app/types/files";
 
 function isAddablePodTabEntry(

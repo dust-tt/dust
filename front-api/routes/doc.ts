@@ -1,31 +1,33 @@
-import logger from "@app/logger/logger";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
-import { buildSwaggerSpec } from "@front-api/lib/swagger";
+import { apiError } from "@front-api/middlewares/utils";
 
 const app = createHono();
 
-// `buildSwaggerSpec` resolves `apiFolder` against `process.cwd()`. The Hono
-// server runs from `front-api/`, so we scan our own public API routes for the
-// `@swagger` JSDoc annotations (and the shared component schemas defined in
-// `routes/v1/w/[wId]/swagger_schemas.ts`).
-const API_FOLDER = "./routes/v1";
+const SWAGGER_SPEC_PATH = join(process.cwd(), "public", "swagger.json");
 
+let swaggerSpec: string | null = null;
+
+/** @ignoreswagger */
 app.get("/", (ctx) => {
   try {
-    const spec = buildSwaggerSpec({
-      definition: {
-        openapi: "3.0.0",
-        info: {
-          title: "Dust Swagger",
-          version: "0.1.0",
+    swaggerSpec ??= readFileSync(SWAGGER_SPEC_PATH, "utf8");
+    return ctx.body(swaggerSpec, 200, { "content-type": "application/json" });
+  } catch (error) {
+    return apiError(
+      ctx,
+      {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to load API documentation.",
         },
       },
-      apiFolder: API_FOLDER,
-    });
-    return ctx.json(spec);
-  } catch (error) {
-    logger.error({ error }, "Failed to build swagger spec");
-    return ctx.body(null, 400);
+      normalizeError(error)
+    );
   }
 });
 

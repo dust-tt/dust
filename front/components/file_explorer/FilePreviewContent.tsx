@@ -2,11 +2,11 @@ import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
-import type { FilePreviewCategory } from "@app/components/file_explorer/utils";
-import { getFilePreviewConfig } from "@app/components/file_explorer/utils";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
+import type { FilePreviewCategory } from "@app/types/file_preview";
+import { getFilePreviewConfig } from "@app/types/file_preview";
 import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";

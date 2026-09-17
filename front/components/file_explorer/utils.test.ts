@@ -12,13 +12,15 @@ import {
   getExplorerRelativePath,
   getFileExplorerBucket,
   getFileExplorerSearchResultTitle,
-  getFilePreviewConfig,
   getVirtualScopeRootNodes,
   isFileExplorerMovableFile,
-  isFilePreviewableContentType,
   withVirtualExplorerPath,
 } from "@app/components/file_explorer/utils";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
+import {
+  getFilePreviewConfig,
+  isFilePreviewableContentType,
+} from "@app/types/file_preview";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import { describe, expect, it } from "vitest";
 

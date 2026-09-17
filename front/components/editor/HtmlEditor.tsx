@@ -1,8 +1,8 @@
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
+import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
-import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { cn, markdownStyles, Toolbar } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/core";

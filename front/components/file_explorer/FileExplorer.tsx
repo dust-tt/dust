@@ -27,10 +27,10 @@ import {
   getFolderBreadcrumbSegments,
   getScopedRelativePath,
   isFileExplorerMovableFile,
-  isFilePreviewableContentType,
 } from "@app/components/file_explorer/utils";
 import type { FileExplorerScopedPreferences } from "@app/hooks/useScopedUIPreferences";
 import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
+import { isFilePreviewableContentType } from "@app/types/file_preview";
 import { isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
