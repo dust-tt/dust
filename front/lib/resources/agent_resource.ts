@@ -4,6 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
   AgentModel,
+  AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
@@ -35,7 +36,7 @@ import type {
 import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
-import { Err } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
@@ -650,6 +651,27 @@ export class AgentResource
     if (revokeResult.isErr()) {
       throw revokeResult.error;
     }
+  }
+
+  // Sets the requesting user's favorite flag for this agent. Favoriting is a per-user relation keyed
+  // by the agent's stable `sId` (shared across versions), so it needs no `content`. Callers resolve
+  // and read-gate the resource (e.g. `fetchById` + `auth.can("read", ...)`) before calling.
+  async setUserFavorite(
+    auth: Authenticator,
+    favorite: boolean
+  ): Promise<Result<undefined, Error>> {
+    if (this.status !== "active") {
+      return new Err(new Error("Agent is not active"));
+    }
+
+    await AgentUserRelationModel.upsert({
+      userId: auth.getNonNullableUser().id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+      agentConfiguration: this.sId,
+      favorite,
+    });
+
+    return new Ok(undefined);
   }
 
   /**

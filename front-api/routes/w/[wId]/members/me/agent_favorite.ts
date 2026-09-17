@@ -1,5 +1,4 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { PostAgentUserFavoriteResponseBody } from "@app/types/api/assistant/user_relation";
 import { PostAgentUserFavoriteRequestBodySchema } from "@app/types/api/assistant/user_relation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -17,12 +16,9 @@ app.post(
     const auth = ctx.get("auth");
     const { agentId, userFavorite } = ctx.req.valid("json");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, agentId);
 
-    if (!agentConfiguration) {
+    if (!agent || !auth.can("read", agent)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -32,11 +28,7 @@ app.post(
       });
     }
 
-    const result = await setAgentUserFavorite({
-      auth,
-      agentId,
-      userFavorite,
-    });
+    const result = await agent.setUserFavorite(auth, userFavorite);
 
     if (result.isErr()) {
       return apiError(ctx, {
@@ -48,7 +40,10 @@ app.post(
       });
     }
 
-    return ctx.json<PostAgentUserFavoriteResponseBody>(result.value);
+    return ctx.json<PostAgentUserFavoriteResponseBody>({
+      agentId,
+      userFavorite,
+    });
   }
 );
 
