@@ -26,8 +26,8 @@ export const AGENT_SUGGESTION_STATES = [
 
 export type AgentSuggestionState = (typeof AGENT_SUGGESTION_STATES)[number];
 
-// - `sidekick`: proposed by the AgentBuilderSidekick while editing a specific agent.
-// - `conversational`: proposed by an agent during a regular conversation (building_agents_and_skills MCP).
+// - `sidekick`: proposed while editing a specific agent.
+// - `conversational`: proposed by an agent during a regular conversation.
 export const AGENT_SUGGESTION_SOURCES = ["sidekick", "conversational"] as const;
 
 export type AgentSuggestionSource = (typeof AGENT_SUGGESTION_SOURCES)[number];
