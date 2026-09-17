@@ -1276,8 +1276,6 @@ function AgentMessageContent({
         conversationId={conversationId}
         messageId={sId}
         triggeringUser={triggeringUser}
-        // The real, billed cost (persisted by the same finalize activity that paused the
-        // loop), not the fixed threshold it crossed. Null until that finalize activity runs.
         creditsUsed={
           agentMessage.costCredits !== null
             ? agentMessage.costCredits + (agentMessage.subAgentCostCredits ?? 0)
