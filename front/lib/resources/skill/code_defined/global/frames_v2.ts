@@ -152,12 +152,13 @@ the Frame: task lists, trackers, backlogs, inventories, logs, notes, comments, f
 anything else users can add, edit, reorder, assign, or delete. Keep only throwaway UI state such as
 the selected tab, filter, or sort order in the React component.
 
-Use the Frame's files folder for unstructured data: uploaded images, generated documents, anything
-that is bytes rather than rows. Never store file bytes in a database column, base64 included. They
-count against the database's 1 GiB cap, and every read of that table then carries the payload even
-when the caller only wanted the metadata. The folder alone is enough for most Frames; add a
-database only when one has to query over its files, and then store the path in the row rather than
-the contents.
+Use the Frame's files folder for unstructured data: uploaded images, generated documents,
+Markdown notes, anything that is a file rather than a row. Never store file bytes in a database
+column, base64 included. They count against the database's 1 GiB cap, and every read of that table
+then carries the payload even when the caller only wanted the metadata. Most Frames need nothing
+but the folder to hold their files. A Frame database holds rows, files or no files; add a table
+about files only when the Frame must query them by something a path does not carry — owner, upload
+date, a label — and store the path in it, never the contents.
 
 ## Authoring a function
 
@@ -309,7 +310,7 @@ client-side conditions are not access control.
 ## Storing files in a Frame
 
 A Frame owns one durable files folder, mounted read-write into its sandbox and kept for the
-lifetime of the Frame. It holds bytes: images and documents a viewer uploads, files a function
+lifetime of the Frame. It holds files: images and documents a viewer uploads, anything a function
 generates. It is not part of the Frame source and never appears in the Frame folder, so its
 contents exist only at run time and you cannot read them while authoring.
 
