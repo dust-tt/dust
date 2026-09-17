@@ -9,6 +9,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { fn } from "storybook/test";
 
 import {
+  Button,
   DataTable,
   Dialog,
   DialogContainer,
@@ -1013,15 +1014,45 @@ interface UsageRow {
   agent: string;
   runs: number;
   costCents: number;
+  costTrend: "up" | "down" | "flat";
   status: "active" | "paused";
+  owner: string;
   menuItems?: MenuItem[];
 }
 
 const usageRows: UsageRow[] = [
-  { agent: "Sales assistant", runs: 12840, costCents: 41250, status: "active" },
-  { agent: "Support triage", runs: 3391, costCents: 9820, status: "active" },
-  { agent: "Weekly digest", runs: 52, costCents: 1204, status: "paused" },
-  { agent: "Onboarding coach", runs: 987, costCents: 15075, status: "active" },
+  {
+    agent: "Sales assistant",
+    runs: 12840,
+    costCents: 41250,
+    costTrend: "up",
+    status: "active",
+    owner: "Maya Patel",
+  },
+  {
+    agent: "Support triage",
+    runs: 3391,
+    costCents: 9820,
+    costTrend: "down",
+    status: "active",
+    owner: "Noah Garcia",
+  },
+  {
+    agent: "Weekly digest",
+    runs: 52,
+    costCents: 1204,
+    costTrend: "flat",
+    status: "paused",
+    owner: "Olivia Martinez",
+  },
+  {
+    agent: "Onboarding coach",
+    runs: 987,
+    costCents: 15075,
+    costTrend: "up",
+    status: "active",
+    owner: "Paul Kim",
+  },
 ];
 
 const usageColumns: ColumnDef<UsageRow>[] = [
@@ -1040,7 +1071,10 @@ const usageColumns: ColumnDef<UsageRow>[] = [
     header: "Status",
     meta: { type: "status", className: "w-24" },
     cell: (info) => (
-      <DataTable.BasicCellContent label={info.row.original.status} />
+      <DataTable.StatusCellContent
+        label={info.row.original.status === "active" ? "Active" : "Paused"}
+        color={info.row.original.status === "active" ? "success" : "primary"}
+      />
     ),
   },
   {
@@ -1049,8 +1083,9 @@ const usageColumns: ColumnDef<UsageRow>[] = [
     header: "Runs",
     meta: { type: "numeric", className: "w-28" },
     cell: (info) => (
-      <DataTable.BasicCellContent
-        label={info.row.original.runs.toLocaleString("en-US")}
+      <DataTable.NumericCellContent
+        value={info.row.original.runs}
+        locale="en-US"
       />
     ),
   },
@@ -1058,10 +1093,16 @@ const usageColumns: ColumnDef<UsageRow>[] = [
     accessorKey: "costCents",
     id: "cost",
     header: "Cost",
-    meta: { type: "numeric", className: "w-28" },
+    meta: { type: "numeric", className: "w-32" },
     cell: (info) => (
-      <DataTable.BasicCellContent
-        label={`$${(info.row.original.costCents / 100).toFixed(2)}`}
+      <DataTable.NumericCellContent
+        value={info.row.original.costCents / 100}
+        locale="en-US"
+        precision={2}
+        unit="$"
+        unitPosition="prefix"
+        trend={info.row.original.costTrend}
+        upIsPositive={false}
       />
     ),
   },
@@ -1078,11 +1119,13 @@ const usageColumns: ColumnDef<UsageRow>[] = [
 ];
 
 /**
- * Column presets from `meta.type`: `numeric` right-aligns header and cells in
- * tabular figures, `action` fixes the overflow-menu column at 48px and makes
- * it unsortable, `status` keeps labels on one line. `meta.rowHeader` renders
- * the agent cells as row headers for screen readers.
- * @summary Numeric, status and action column presets.
+ * Column presets from `meta.type` paired with their cell helpers: `numeric`
+ * right-aligns header and cells, and `NumericCellContent` formats the value
+ * with a unit and a trend arrow whose colour is paired with the arrow, never
+ * alone; `status` keeps `StatusCellContent` chips on one line; `action` fixes
+ * the overflow-menu column at 48px and makes it unsortable. `meta.rowHeader`
+ * renders the agent cells as row headers for screen readers.
+ * @summary Numeric, status and action column presets with their cell helpers.
  */
 export const ColumnTypes = () => {
   const [sorting, setSorting] = useState<SortingState>([
@@ -1147,6 +1190,205 @@ export const Loading = () => {
         data={usageRows}
         columns={usageColumns}
         isLoading={isLoading}
+      />
+    </div>
+  );
+};
+
+const relaxedColumns: ColumnDef<UsageRow>[] = [
+  {
+    accessorKey: "agent",
+    id: "agent",
+    header: "Agent",
+    meta: { className: "w-full" },
+    cell: (info) => (
+      <DataTable.CellContent
+        avatarUrl="https://avatars.githubusercontent.com/u/1?s=200&v=4"
+        secondaryLine={`Owned by ${info.row.original.owner}`}
+        trailing={
+          <DataTable.StatusCellContent
+            label={info.row.original.status === "active" ? "Active" : "Paused"}
+            color={
+              info.row.original.status === "active" ? "success" : "primary"
+            }
+          />
+        }
+      >
+        {info.row.original.agent}
+      </DataTable.CellContent>
+    ),
+  },
+  ...usageColumns.filter(
+    (column) => column.id === "runs" || column.id === "cost"
+  ),
+];
+
+/**
+ * At `relaxed` density `CellContent` gains a `secondaryLine` under the main
+ * text and a 32px avatar; `trailing` pins content to the end of the cell. The
+ * same columns at `default` density hide the secondary line, so a table can
+ * switch density without changing its column definitions.
+ * @summary Two-line cells with a trailing chip at relaxed density.
+ */
+export const RelaxedSecondaryLine = () => {
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-2">
+        <div className="heading-sm">Relaxed</div>
+        <DataTable
+          data={usageRows}
+          columns={relaxedColumns}
+          density="relaxed"
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <div className="heading-sm">Default (secondary line hidden)</div>
+        <DataTable data={usageRows} columns={relaxedColumns} />
+      </div>
+    </div>
+  );
+};
+
+/**
+ * `SelectionBar` replaces the filter row once rows are selected: it announces
+ * the count, hosts bulk actions, and clears the selection. It renders nothing
+ * at zero, so the caller can keep it mounted.
+ * @summary Bulk action bar driven by row selection.
+ */
+export const SelectionBarExample = () => {
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({
+    "Sales assistant": true,
+    "Weekly digest": true,
+  });
+  const count = Object.values(rowSelection).filter(Boolean).length;
+  const selectionColumns = useMemo(
+    () => [createSelectionColumn<UsageRow>(), ...usageColumns],
+    []
+  );
+
+  return (
+    <div className="flex flex-col gap-2">
+      <DataTable.SelectionBar
+        count={count}
+        itemLabel="agent"
+        onClear={() => setRowSelection({})}
+      >
+        <Button size="xs" variant="outline" label="Pause" onClick={fn()} />
+        <Button size="xs" variant="outline" label="Archive" onClick={fn()} />
+      </DataTable.SelectionBar>
+      <DataTable
+        data={usageRows}
+        columns={selectionColumns}
+        enableRowSelection
+        rowSelection={rowSelection}
+        setRowSelection={setRowSelection}
+        getRowId={(row) => row.agent}
+        getRowLabel={(row) => row.agent}
+      />
+    </div>
+  );
+};
+
+const manyUsageRows: UsageRow[] = Array.from({ length: 40 }, (_, index) => {
+  const base = usageRows[index % usageRows.length];
+  return {
+    ...base,
+    agent: `${base.agent} ${index + 1}`,
+    runs: base.runs + index * 37,
+    costCents: base.costCents + index * 815,
+  };
+});
+
+/**
+ * `stickyHeader` with a `maxHeight` class keeps the column headers in view
+ * while the body scrolls, without virtualizing rows or giving up pagination
+ * and filtering the way ScrollableDataTable does.
+ * @summary Header stays visible while the body scrolls.
+ */
+export const StickyHeader = () => {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  return (
+    <DataTable
+      data={manyUsageRows}
+      columns={usageColumns}
+      sorting={sorting}
+      setSorting={setSorting}
+      stickyHeader
+      maxHeight="max-h-80"
+    />
+  );
+};
+
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+const wideColumns: ColumnDef<UsageRow>[] = [
+  {
+    accessorKey: "agent",
+    id: "agent",
+    header: "Agent",
+    meta: { rowHeader: true, className: "w-56 min-w-56" },
+    cell: (info) => (
+      <DataTable.CellContent>{info.row.original.agent}</DataTable.CellContent>
+    ),
+  },
+  {
+    accessorKey: "status",
+    id: "status",
+    header: "Status",
+    meta: { type: "status" },
+    cell: (info) => (
+      <DataTable.StatusCellContent
+        label={info.row.original.status === "active" ? "Active" : "Paused"}
+        color={info.row.original.status === "active" ? "success" : "primary"}
+      />
+    ),
+  },
+  ...MONTHS.map(
+    (month, monthIndex): ColumnDef<UsageRow> => ({
+      id: month.toLowerCase(),
+      header: month,
+      accessorFn: (row) => Math.round(row.runs * (0.6 + monthIndex * 0.05)),
+      meta: { type: "numeric" },
+      cell: (info) => (
+        <DataTable.NumericCellContent
+          value={info.getValue<number>()}
+          locale="en-US"
+        />
+      ),
+    })
+  ),
+];
+
+/**
+ * Wide tables can scroll horizontally instead of hiding or squeezing columns:
+ * `horizontalScroll` gives every column a 124px minimum and `freezeColumns`
+ * keeps the leading columns pinned while the numbers scroll underneath.
+ * Combine with `stickyHeader` for a spreadsheet-like grid.
+ * @summary Horizontal scroll with two frozen leading columns.
+ */
+export const WideTableFrozenColumns = () => {
+  return (
+    <div className="max-w-3xl">
+      <DataTable
+        data={manyUsageRows.slice(0, 12)}
+        columns={wideColumns}
+        horizontalScroll
+        freezeColumns={2}
+        stickyHeader
+        maxHeight="max-h-96"
       />
     </div>
   );
