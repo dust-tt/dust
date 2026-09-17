@@ -1017,10 +1017,10 @@ export function usePodDefaultSkills({
   });
 
   const defaultSkills = useMemo(() => {
-    const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
+    const skillById = new Map(skills.map((skill) => [skill.sId, skill]));
     // Preserve the stored order.
     return (podMetadata?.defaultSkillIds ?? []).flatMap((skillId) => {
-      const skill = skillBySId.get(skillId);
+      const skill = skillById.get(skillId);
       return skill
         ? [{ sId: skill.sId, name: skill.name, icon: skill.icon }]
         : [];
