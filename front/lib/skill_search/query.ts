@@ -29,8 +29,8 @@ export function getSkillSearchReadableSpaceIds(auth: Authenticator) {
 
 /**
  * @cc [owner:aubin-tchoi,label:security] all-required-spaces
- * Every requested space, including projects, must be readable; an empty requirement
- * matches every caller. Space read grants are resolved by Authenticator, not fetched here.
+ * Every requested space, including projects, must be readable. Custom skills require at least
+ * one space. Space read grants are resolved by Authenticator, not fetched here.
  */
 function buildSpaceAccessFilter(
   readableSpaceIds: string[] | null
@@ -38,28 +38,14 @@ function buildSpaceAccessFilter(
   if (readableSpaceIds === null) {
     return { match_all: {} };
   }
-  const noRequiredSpaces = {
-    bool: { must_not: [{ exists: { field: "requested_space_ids" } }] },
-  };
-  if (readableSpaceIds.length === 0) {
-    return noRequiredSpaces;
-  }
   return {
-    bool: {
-      should: [
-        noRequiredSpaces,
-        {
-          terms_set: {
-            requested_space_ids: {
-              terms: readableSpaceIds,
-              minimum_should_match_script: {
-                source: "doc['requested_space_ids'].size()",
-              },
-            },
-          },
+    terms_set: {
+      requested_space_ids: {
+        terms: readableSpaceIds,
+        minimum_should_match_script: {
+          source: "doc['requested_space_ids'].size()",
         },
-      ],
-      minimum_should_match: 1,
+      },
     },
   };
 }

@@ -125,25 +125,13 @@ describe("custom skill search", () => {
             },
           },
           {
-            bool: {
-              should: [
-                {
-                  bool: {
-                    must_not: [{ exists: { field: "requested_space_ids" } }],
-                  },
+            terms_set: {
+              requested_space_ids: {
+                terms: [globalSpace.sId, conversationsSpace.sId].sort(),
+                minimum_should_match_script: {
+                  source: "doc['requested_space_ids'].size()",
                 },
-                {
-                  terms_set: {
-                    requested_space_ids: {
-                      terms: [globalSpace.sId, conversationsSpace.sId].sort(),
-                      minimum_should_match_script: {
-                        source: "doc['requested_space_ids'].size()",
-                      },
-                    },
-                  },
-                },
-              ],
-              minimum_should_match: 1,
+              },
             },
           },
         ],
@@ -193,6 +181,7 @@ describe("custom skill search", () => {
       workspace,
       user,
       globalGroup,
+      globalSpace,
     } = await createResourceTest({ role });
     const readableSpace = await SpaceFactory.regular(workspace);
     const readablePod = await SpaceFactory.project(workspace);
@@ -206,7 +195,7 @@ describe("custom skill search", () => {
     const extraSpace = await SpaceFactory.regular(workspace);
     await SpaceFactory.attachGroup(extraSpace, globalGroup);
     const spaceCases = [
-      { spaces: [], readable: true },
+      { spaces: [globalSpace], readable: true },
       { spaces: [readableSpace], readable: true },
       { spaces: [readableSpace, extraSpace], readable: true },
       { spaces: [deniedSpace], readable: false },
@@ -258,8 +247,7 @@ describe("custom skill search", () => {
     expect(candidates).toHaveLength(skills.length);
     expect(mockSearch).toHaveBeenCalledOnce();
     const filters = mockSearch.mock.lastCall![0].query.bool.must[0].bool.filter;
-    const terms =
-      filters.at(-1).bool.should[1].terms_set.requested_space_ids.terms;
+    const terms = filters.at(-1).terms_set.requested_space_ids.terms;
     expect(terms).toEqual(
       expect.arrayContaining([
         readableSpace.sId,
@@ -477,7 +465,14 @@ describe("custom skill search", () => {
       resourceIds: [],
     });
     expect(prepareSkillSearchQuery(auth, "").bool?.filter).toContainEqual({
-      bool: { must_not: [{ exists: { field: "requested_space_ids" } }] },
+      terms_set: {
+        requested_space_ids: {
+          terms: [],
+          minimum_should_match_script: {
+            source: "doc['requested_space_ids'].size()",
+          },
+        },
+      },
     });
 
     await grantWorkspacePermission(workspace, user, {
