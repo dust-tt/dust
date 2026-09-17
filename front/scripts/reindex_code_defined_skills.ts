@@ -1,6 +1,7 @@
 import { getClient, SKILL_SEARCH_ALIAS_NAME } from "@app/lib/api/elasticsearch";
 import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import { SYSTEM_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/system";
+import { makeSkillDocumentId } from "@app/lib/skill_search";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
 import { makeScript } from "@app/scripts/helpers";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
@@ -54,7 +55,10 @@ makeScript(
           {
             index: {
               _index: SKILL_SEARCH_ALIAS_NAME,
-              _id: `${document.workspace_id}_${document.skill_id}`,
+              _id: makeSkillDocumentId({
+                workspaceId: document.workspace_id,
+                skillId: document.skill_id,
+              }),
             },
           },
           document,
