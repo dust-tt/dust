@@ -48,6 +48,7 @@ import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
+import uniqWith from "lodash/uniqWith";
 import React, {
   useCallback,
   useContext,
@@ -552,7 +553,12 @@ export const InputBar = React.memo(function InputBar({
 
     onBeforeSubmit?.();
 
-    const { mentions: rawMentions, markdown, tools } = markdownAndMentions;
+    const {
+      mentions: rawMentions,
+      markdown,
+      tools,
+      knowledge,
+    } = markdownAndMentions;
     const shouldInjectSelectedAgent =
       selectedSingleAgent &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);
@@ -572,13 +578,18 @@ export const InputBar = React.memo(function InputBar({
       ? messageTools.map((t) => t.name)
       : selectedMCPServerViews.map((t) => t.server.name);
 
+    const attachedContentNodes = isInlineReferenceEnabled
+      ? uniqWith(knowledge, isEqualNode)
+      : attachedNodes;
+
     trackEvent({
       area: TRACKING_AREAS.CONVERSATION,
       object: "message_send",
       action: "submit",
       extra: {
         conversation_id: conversation?.sId ?? "new",
-        has_attachments: attachedNodes.length > 0 || uploadedFiles.length > 0,
+        has_attachments:
+          attachedContentNodes.length > 0 || uploadedFiles.length > 0,
         has_tools: trackedTools.length > 0,
         has_agents: mentionedAgents.length > 0,
         has_default_agent: mentionedAgents.some((a) => isGlobalAgentId(a.sId)),
@@ -586,7 +597,7 @@ export const InputBar = React.memo(function InputBar({
         is_new_conversation: !conversation,
         agent_count: mentions.length,
         agent_ids: mentionedAgents.map((a) => a.sId).join(","),
-        attachment_count: attachedNodes.length + uploadedFiles.length,
+        attachment_count: attachedContentNodes.length + uploadedFiles.length,
         tool_count: trackedTools.length,
         tool_names: trackedTools.join(","),
         message_length: markdown.length,
@@ -612,7 +623,7 @@ export const InputBar = React.memo(function InputBar({
                 url: cf.sourceUrl,
               };
             }),
-            contentNodes: attachedNodes,
+            contentNodes: attachedContentNodes,
           },
           isInlineReferenceEnabled
             ? toolIdsToAttach
@@ -653,7 +664,7 @@ export const InputBar = React.memo(function InputBar({
                 url: cf.sourceUrl,
               };
             }),
-            contentNodes: attachedNodes,
+            contentNodes: attachedContentNodes,
           },
           toolIdsToAttach.length > 0 ? toolIdsToAttach : undefined,
           selectedSpaceIds,
@@ -677,12 +688,11 @@ export const InputBar = React.memo(function InputBar({
   };
 
   const handleNodesAttachmentSelect = (node: DataSourceViewContentNode) => {
-    const isNodeAlreadyAttached = attachedNodes.some((attachedNode) =>
-      isEqualNode(attachedNode, node)
+    setAttachedNodes((prev) =>
+      prev.some((attachedNode) => isEqualNode(attachedNode, node))
+        ? prev
+        : [...prev, node]
     );
-    if (!isNodeAlreadyAttached) {
-      setAttachedNodes((prev) => [...prev, node]);
-    }
   };
 
   const handleNodesAttachmentRemove = (node: DataSourceViewContentNode) => {

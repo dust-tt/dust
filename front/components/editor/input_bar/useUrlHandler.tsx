@@ -1,3 +1,5 @@
+import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import { knowledgeNodeToItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isUrlCandidate } from "@app/lib/connectors";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
@@ -38,7 +40,11 @@ const useUrlHandler = (
   editor: Editor | null,
   selectedNode: DataSourceViewContentNode | null,
   candidate: UrlCandidate | NodeCandidate | null,
-  onUrlReplaced: () => void
+  onUrlReplaced: () => void,
+  // With inline references enabled, the pasted URL is replaced by a knowledge
+  // node carrying the full node data (read back at submit time) instead of a
+  // dataSourceLink chip mirrored into the attachment state.
+  { insertKnowledgeNode = false }: { insertKnowledgeNode?: boolean } = {}
 ) => {
   const replaceUrl = useCallback(
     async (pendingUrl: URLState, node: DataSourceViewContentNode) => {
@@ -71,19 +77,25 @@ const useUrlHandler = (
           }
 
           // Create the replacement content
+          const chip = insertKnowledgeNode
+            ? {
+                type: KNOWLEDGE_NODE_TYPE,
+                attrs: { selectedItems: [knowledgeNodeToItem(node)] },
+              }
+            : {
+                type: "dataSourceLink",
+                attrs: {
+                  nodeId: node.internalId,
+                  title: node.title,
+                  provider: node.dataSourceView.dataSource.connectorProvider,
+                  spaceId: node.dataSourceView.spaceId,
+                  url: pendingUrl.url,
+                },
+                text: `:content_node_mention[${node.title}]{url=${pendingUrl.url}}`,
+              };
           const content = [
             ...(needsLeadingSpace ? [{ type: "text", text: " " }] : []),
-            {
-              type: "dataSourceLink",
-              attrs: {
-                nodeId: node.internalId,
-                title: node.title,
-                provider: node.dataSourceView.dataSource.connectorProvider,
-                spaceId: node.dataSourceView.spaceId,
-                url: pendingUrl.url,
-              },
-              text: `:content_node_mention[${node.title}]{url=${pendingUrl.url}}`,
-            },
+            chip,
             { type: "text", text: " " },
           ];
 
@@ -114,7 +126,7 @@ const useUrlHandler = (
         }, 0);
       });
     },
-    [editor]
+    [editor, insertKnowledgeNode]
   );
 
   useEffect(() => {
