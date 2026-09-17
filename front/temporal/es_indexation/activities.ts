@@ -181,15 +181,12 @@ export async function refreshWorkspaceSearchUsageActivity({
     withTools: false,
     withFileAttachments: false,
   });
-  // Batch only the Elasticsearch writes; skills with no usage must reset to zero.
-  for (let offset = 0; offset < skills.length; offset += 500) {
-    const updated = await updateSkillSearchActiveUsers({
-      workspaceId,
-      skillIds: skills.slice(offset, offset + 500).map((skill) => skill.sId),
-      activeUsers: activeUsers.value,
-    });
-    if (updated.isErr()) {
-      throw updated.error;
-    }
+  const updated = await updateSkillSearchActiveUsers({
+    workspaceId,
+    skillIds: skills.map((skill) => skill.sId),
+    activeUsers: activeUsers.value,
+  });
+  if (updated.isErr()) {
+    throw updated.error;
   }
 }

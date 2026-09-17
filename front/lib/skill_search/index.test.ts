@@ -107,18 +107,58 @@ describe("skill search indexing", () => {
     });
   });
 
-  it("propagates daily usage bulk failures for retry", async () => {
-    mocks.bulk.mockResolvedValue({
+  it("batches all 600 skill updates without skipping or duplicating documents", async () => {
+    mocks.bulk.mockResolvedValue({ items: [] });
+    const skillIds = Array.from({ length: 600 }, (_, i) => `skill-${i}`);
+    const result = await updateSkillSearchActiveUsers({
+      workspaceId: "workspace-1",
+      skillIds,
+      activeUsers: {},
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(
+      mocks.bulk.mock.calls.map(([{ operations }]) => operations.length)
+    ).toEqual([1_000, 200]);
+    expect(
+      mocks.bulk.mock.calls.flatMap(([{ operations }]) => operations)
+    ).toEqual(
+      skillIds.flatMap((skillId) => [
+        {
+          update: {
+            _index: "front.skills",
+            _id: `workspace-1_${skillId}`,
+            retry_on_conflict: 3,
+          },
+        },
+        { doc: { active_users_count: 0 } },
+      ])
+    );
+  });
+
+  it("skips bulk writes when there are no custom skills", async () => {
+    const result = await updateSkillSearchActiveUsers({
+      workspaceId: "workspace-1",
+      skillIds: [],
+      activeUsers: {},
+    });
+    expect(result.isOk()).toBe(true);
+    expect(mocks.bulk).not.toHaveBeenCalled();
+  });
+
+  it("propagates later-batch usage failures for retry", async () => {
+    mocks.bulk.mockResolvedValueOnce({ items: [] }).mockResolvedValueOnce({
       items: [
         { update: { error: { type: "version_conflict_engine_exception" } } },
       ],
     });
     const result = await updateSkillSearchActiveUsers({
       workspaceId: "workspace-1",
-      skillIds: ["skill-1"],
+      skillIds: Array.from({ length: 600 }, (_, i) => `skill-${i}`),
       activeUsers: {},
     });
     expect(result.isErr()).toBe(true);
+    expect(mocks.bulk).toHaveBeenCalledTimes(2);
   });
 
   it("scopes single-skill deletion by workspace and skill", async () => {
