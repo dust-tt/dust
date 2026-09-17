@@ -898,12 +898,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     { agentMessageModelId }: { agentMessageModelId: ModelId }
   ): Promise<void> {
+    // Guarded in the same statement: a message finalized by another path between the caller's
+    // status read and this write must not end up flagged as waiting for the user.
     await AgentMessageModel.update(
       { creditSpendCheckpointStatus: "paused" },
       {
         where: {
           id: agentMessageModelId,
           workspaceId: auth.getNonNullableWorkspace().id,
+          status: "created",
         },
       }
     );

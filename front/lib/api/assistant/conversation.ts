@@ -3329,6 +3329,20 @@ export async function updateAgentMessageWithFinalStatus(
       };
     }
 
+    // A finalized message is no longer waiting on the user: a stop or cancel landing around a
+    // credit spend checkpoint pause must not leave the pause flagged. An acknowledgement is kept.
+    await AgentMessageModel.update(
+      { creditSpendCheckpointStatus: null },
+      {
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: owner.id,
+          creditSpendCheckpointStatus: "paused",
+        },
+        transaction: t,
+      }
+    );
+
     const deniedActions = UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(status)
       ? await AgentMCPActionResource.denyBlockedActionsForAgentMessage(auth, {
           agentMessageId: agentMessage.agentMessageId,

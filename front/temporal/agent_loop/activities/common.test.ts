@@ -1421,6 +1421,66 @@ describe("finalizeCreditSpendCheckpointPause", () => {
     expect(actionRequired).toBe(true);
   });
 
+  it("clears the pause when a terminal status lands afterwards", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+    const { messageRow: userMessageRow, userMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Hello",
+      });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig,
+        parentMessageModelId: userMessageRow.id,
+        rank: 1,
+      }
+    );
+
+    await finalizeCreditSpendCheckpointPause(auth.toJSON(), {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+      userMessageOrigin: userMessage.context.origin,
+    });
+
+    const where = {
+      id: agentMessage.agentMessageId,
+      workspaceId: workspace.id,
+    };
+    const pausedRow = await AgentMessageModel.findOne({ where });
+    expect(pausedRow?.creditSpendCheckpointStatus).toBe("paused");
+
+    // As finalizeCancellation would after a stop landing around the pause.
+    const result = await updateAgentMessageWithFinalStatus(auth, {
+      conversation,
+      agentMessage,
+      status: "cancelled",
+    });
+    expect(result.applied).toBe(true);
+
+    const cancelledRow = await AgentMessageModel.findOne({ where });
+    expect(cancelledRow?.status).toBe("cancelled");
+    expect(cancelledRow?.creditSpendCheckpointStatus).toBeNull();
+  });
+
   it("leaves a message already finalized by another path untouched", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);

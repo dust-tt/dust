@@ -15,7 +15,7 @@ vi.mock("@app/lib/api/assistant/credit_check", () => ({
 }));
 
 const FAKE_AUTH = {
-  getNonNullableWorkspace: () => ({ sId: "ws_test", id: 1 }),
+  getNonNullableWorkspace: () => ({ sId: "ws_test" }),
 } as never;
 
 describe("checkCreditsActivity (pure decision)", () => {
