@@ -23,12 +23,15 @@ export type FolderExtractLimits = {
   maxUncompressedSizeBytes: number;
 };
 
-// The archive is buffered in memory, so the uncompressed cap sits well below the 1 GB a folder
-// download allows (see DEFAULT_FOLDER_ARCHIVE_LIMITS): a folder that can be downloaded is not
-// necessarily one that can be uploaded back.
+// The archive is buffered in memory and its entries are written one at a time inside a single
+// request, so these sit far below what a folder download allows (see
+// DEFAULT_FOLDER_ARCHIVE_LIMITS: 5,000 entries and 1 GB): a folder that can be downloaded is not
+// necessarily one that can be uploaded back. The uncompressed cap is a zip-bomb guard rather than
+// a size policy — it is generous against the compressed cap so ordinary archives pass, while an
+// archive that expands by orders of magnitude does not.
 export const DEFAULT_FOLDER_EXTRACT_LIMITS: FolderExtractLimits = {
-  maxEntries: 5_000,
-  maxUncompressedSizeBytes: 100 * 1024 * 1024,
+  maxEntries: 1_000,
+  maxUncompressedSizeBytes: 40 * 1024 * 1024,
 };
 
 export type FolderExtractErrorCode =
