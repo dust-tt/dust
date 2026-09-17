@@ -4,16 +4,16 @@ import { InternalMCPBearerTokenForm } from "@app/components/actions/mcp/Internal
 import { MCPServerSettings } from "@app/components/actions/mcp/MCPServerSettings";
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
-import {
-  MCP_TOOL_STAKE_COLORS,
-  MCP_TOOL_STAKE_DESCRIPTIONS,
-  MCP_TOOL_STAKE_SHORT_LABELS,
-} from "@app/components/actions/mcp/tool_stakes";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
 import {
   isRemoteMCPServerType,
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
+import {
+  MCP_TOOL_STAKE_COLORS,
+  MCP_TOOL_STAKE_DESCRIPTIONS,
+  MCP_TOOL_STAKE_SHORT_LABELS,
+} from "@app/lib/actions/tool_stakes_descriptions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -66,7 +66,7 @@ export function MCPServerDetailsInfo({
           );
 
           return (
-            <div key={tool.name} className="flex flex-col gap-1 py-1">
+            <div key={tool.name} className="flex flex-col gap-1 my-1">
               <div className="flex items-center gap-2">
                 <div className="heading-base flex-grow text-foreground">
                   {asDisplayName(tool.name)}

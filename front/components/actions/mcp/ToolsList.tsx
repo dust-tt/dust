@@ -7,13 +7,13 @@ import {
   encodeMCPToolNameForForm,
   getEffectiveToolSettings,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import {
   MCP_TOOL_STAKE_DESCRIPTIONS,
   MCP_TOOL_STAKE_LABELS,
   MCP_TOOL_STAKE_SHORT_LABELS,
-} from "@app/components/actions/mcp/tool_stakes";
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
+} from "@app/lib/actions/tool_stakes_descriptions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
