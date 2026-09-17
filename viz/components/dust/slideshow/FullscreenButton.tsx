@@ -67,7 +67,7 @@ export function FullscreenButton({ containerRef }: FullscreenButtonProps) {
         type="button"
         variant="ghost"
         size="icon"
-        className="h-10 w-10 rounded-2xl px-2.5 py-2 text-muted-foreground hover:bg-black/5 hover:text-foreground dark:hover:bg-white/10"
+        className="h-10 w-10 rounded-2xl px-2.5 py-2 text-muted-foreground transition-colors duration-150 ease-out hover:bg-transparent hover:text-foreground focus-visible:text-foreground focus-visible:ring-inset dark:hover:bg-transparent motion-reduce:transition-none"
         aria-label={label}
         aria-pressed={isFullscreen}
         aria-busy={isPending}
