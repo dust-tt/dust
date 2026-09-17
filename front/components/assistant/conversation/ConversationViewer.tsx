@@ -3,6 +3,11 @@ import { getWorkspaceLimitForSubmitError } from "@app/components/app/ReachedLimi
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import {
+  ConversationScrollFooter,
+  ConversationScrollFooterWrapper,
+  customSmoothScroll,
+} from "@app/components/assistant/conversation/ConversationScrollFooter";
+import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -127,17 +132,6 @@ interface ConversationViewerProps {
   clientSideMCPServerIds?: string[];
   /** Set while the viewer is mounted but not shown, to skip its fetches. */
   disabled?: boolean;
-}
-
-function easeOutQuint(x: number): number {
-  return 1 - Math.pow(1 - x, 5);
-}
-
-function customSmoothScroll() {
-  return {
-    animationFrameCount: 30,
-    easing: easeOutQuint,
-  };
 }
 
 function makeConversationForkNoticeMessage(
@@ -266,6 +260,8 @@ export const ConversationViewer = ({
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
   const isMobile = useIsMobile();
+  const [scrollAnchor, setScrollAnchor] =
+    useState<VirtuosoMessageListContext["scrollAnchor"]>(null);
   const sendNotification = useSendNotification();
   const { incrementPendingSteeringCount } = useGenerationContext();
   const { peekPendingFirstMessage } = useContext(InputBarContext);
@@ -1212,11 +1208,16 @@ export const ConversationViewer = ({
         // agent message is created — stay at the current scroll position.
         const shouldScrollToUserMessage = isMentioningAgent && !hasRunningAgent;
 
-        const nbMessages = virtuosoMessageListRef.current.data.get().length;
+        if (shouldScrollToUserMessage) {
+          setScrollAnchor({
+            rank: placeholderUserMsg.rank,
+            requestId: placeholderUserMsg.sId,
+          });
+        }
         virtuosoMessageListRef.current.data.append(
           [placeholderUserMsg, ...placeholderAgentMessages],
           shouldScrollToUserMessage
-            ? false // Skip append-time scroll; handled by scrollToItem below.
+            ? false // The footer scrolls once the new turn and spacer are measured.
             : (params) => {
                 if (params.scrollLocation.bottomOffset >= 0) {
                   return {
@@ -1229,18 +1230,6 @@ export const ConversationViewer = ({
                 }
               }
         );
-
-        // We use scrollToItem instead of the append callback because
-        // Virtuoso's append callback clamps the scroll target before applying
-        // the bottom padding needed for align:"start" near the end of the
-        // list, causing the scroll to undershoot.
-        if (shouldScrollToUserMessage && virtuosoMessageListRef.current) {
-          virtuosoMessageListRef.current.scrollToItem({
-            index: nbMessages,
-            align: "start",
-            behavior: customSmoothScroll,
-          });
-        }
 
         const result = await submitMessage(messageData);
 
@@ -1265,6 +1254,9 @@ export const ConversationViewer = ({
           virtuosoMessageListRef.current.data.findAndDelete((m) =>
             failedPlaceholderSids.includes(m.sId)
           );
+          if (shouldScrollToUserMessage) {
+            setScrollAnchor(null);
+          }
           logger.error({ err: result.error }, "Failed to post message");
           return new Err({
             code: "internal_error",
@@ -1302,6 +1294,12 @@ export const ConversationViewer = ({
               }
             : m
         );
+        if (shouldScrollToUserMessage) {
+          setScrollAnchor({
+            rank: messageFromBackend.rank,
+            requestId: placeholderUserMsg.sId,
+          });
+        }
 
         // When there are pending user mentions, MentionValidationRequired
         // renders below the user message — scroll to the bottom so the action
@@ -1421,6 +1419,8 @@ export const ConversationViewer = ({
 
   const context: VirtuosoMessageListContext = useMemo(() => {
     return {
+      scrollAnchor,
+      useWindowScroll: isMobile,
       user,
       owner,
       handleSubmit,
@@ -1444,6 +1444,8 @@ export const ConversationViewer = ({
       setLimitReachedCode,
     };
   }, [
+    isMobile,
+    scrollAnchor,
     user,
     owner,
     handleSubmit,
@@ -1490,6 +1492,8 @@ export const ConversationViewer = ({
           }}
           ref={virtuosoMessageListRef}
           ItemContent={MessageItem}
+          Footer={ConversationScrollFooter}
+          FooterWrapper={ConversationScrollFooterWrapper}
           StickyFooter={AgentInputBar}
           // Note: do NOT put any verticalpadding here as it will mess with the auto scroll to bottom.
           className={cn(
@@ -1508,7 +1512,6 @@ export const ConversationViewer = ({
           EmptyPlaceholder={ConversationViewerEmptyState}
           // Large buffer to avoid manipulating the dom too much when the user scrolls a bit.
           increaseViewportBy={8192}
-          enforceStickyFooterAtBottom
         />
       </VirtuosoMessageListLicense>
     </>

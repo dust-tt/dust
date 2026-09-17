@@ -112,6 +112,8 @@ export type VirtuosoMessage =
   | ConversationForkNotice;
 
 export type VirtuosoMessageListContext = {
+  scrollAnchor?: { rank: number; requestId: string } | null;
+  useWindowScroll?: boolean;
   owner: LightWorkspaceType;
   user: UserType;
   isOnboardingConversation: boolean;
