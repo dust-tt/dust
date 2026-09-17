@@ -26,7 +26,6 @@ import {
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -116,8 +115,8 @@ describe("custom skill search", () => {
             bool: {
               should: [
                 {
-                  terms: {
-                    availability: ["workspace_users", "users_and_agents"],
+                  bool: {
+                    must_not: [{ term: { availability: "editors" } }],
                   },
                 },
                 {
@@ -189,45 +188,26 @@ describe("custom skill search", () => {
   });
 
   it.each(
-    (
-      [
-        { role: "user", keyFactory: null, label: "user" },
-        { role: "builder", keyFactory: null, label: "builder" },
-        { role: "manager", keyFactory: null, label: "manager" },
-        { role: "admin", keyFactory: null, label: "admin" },
-        {
-          role: "user",
-          keyFactory: KeyFactory.readOnly,
-          label: "read-only key",
-        },
-        {
-          role: "builder",
-          keyFactory: KeyFactory.regular,
-          label: "builder key",
-        },
-        { role: "admin", keyFactory: KeyFactory.admin, label: "admin key" },
-      ] as const
-    ).flatMap((access) =>
-      (["active", "archived"] as const).map((status) => ({ ...access, status }))
+    (["user", "builder", "manager", "admin"] as const).flatMap((role) =>
+      (["active", "archived"] as const).map((status) => ({ role, status }))
     )
-  )("enforces every space/pod/availability/editor combination for $label / $status", async ({
+  )("enforces every space/pod/availability/editor combination for $role / $status", async ({
     role,
-    keyFactory,
     status,
   }) => {
     const {
-      authenticator: authorAuth,
+      authenticator: auth,
       workspace,
       user,
       globalGroup,
     } = await createResourceTest({ role });
     const readableSpace = await SpaceFactory.regular(workspace);
     const readablePod = await SpaceFactory.project(workspace);
-    const spaceMembers = await readableSpace.fetchManualMemberGroup(authorAuth);
-    const podMembers = await readablePod.fetchManualMemberGroup(authorAuth);
+    const spaceMembers = await readableSpace.fetchManualMemberGroup(auth);
+    const podMembers = await readablePod.fetchManualMemberGroup(auth);
     assert(spaceMembers && podMembers);
-    await GroupFactory.withMembers(authorAuth, spaceMembers, [user]);
-    await GroupFactory.withMembers(authorAuth, podMembers, [user]);
+    await GroupFactory.withMembers(auth, spaceMembers, [user]);
+    await GroupFactory.withMembers(auth, podMembers, [user]);
     const deniedSpace = await SpaceFactory.regular(workspace);
     const deniedPod = await SpaceFactory.project(workspace);
     const extraSpace = await SpaceFactory.regular(workspace);
@@ -251,7 +231,7 @@ describe("custom skill search", () => {
       for (const pod of podCases) {
         for (const availability of SKILL_AVAILABILITIES) {
           for (const isEditor of [false, true]) {
-            const skill = await SkillFactory.create(authorAuth, {
+            const skill = await SkillFactory.create(auth, {
               name: `Matrix skill ${skills.length}`,
               availability,
               status,
@@ -264,7 +244,7 @@ describe("custom skill search", () => {
             if (
               space.readable &&
               pod.readable &&
-              (availability !== "editors" || isEditor || keyFactory)
+              (availability !== "editors" || isEditor)
             ) {
               expectedIds.push(skill.sId);
             }
@@ -272,15 +252,9 @@ describe("custom skill search", () => {
         }
       }
     }
-    const key = keyFactory
-      ? await keyFactory([globalGroup, spaceMembers, podMembers])
-      : null;
-    const auth = key
-      ? await Authenticator.fromKey(key, workspace.sId)
-      : authorAuth;
     await auth.refresh();
     // Include denied hits too: indexed requirements must satisfy the hydrated grants.
-    await mockHits(authorAuth, skills);
+    await mockHits(auth, skills);
     const candidates = await searchCandidates(auth, {
       searchTerm: "",
       filters: { status: [status] },
@@ -302,7 +276,11 @@ describe("custom skill search", () => {
     );
     expect(terms).not.toContain(deniedSpace.sId);
     expect(terms).not.toContain(deniedPod.sId);
-    expect(filters).toHaveLength(key ? 3 : 4);
+    expect(filters).toHaveLength(4);
+    expect(filters[2].bool.should[1].bool.filter).toEqual([
+      { term: { availability: "editors" } },
+      { term: { editor_ids: user.sId } },
+    ]);
   }, 30_000);
 
   it.each([
@@ -540,36 +518,48 @@ describe("custom skill search", () => {
   });
 
   it("handles absent and type-wide space grants without enumerating spaces", async () => {
-    const { workspace, globalGroup } = await createResourceTest({
-      role: "admin",
+    const {
+      authenticator: auth,
+      workspace,
+      user,
+      globalSpace,
+      conversationsSpace,
+    } = await createResourceTest({ role: "user" });
+    await globalSpace.writeGroupPermissions(auth, { members: [], editors: [] });
+    await conversationsSpace.writeGroupPermissions(auth, {
+      members: [],
+      editors: [],
     });
-    const emptyGroup = await GroupFactory.regularManual(workspace, "No grants");
-    const restrictedKey = await KeyFactory.readOnly(emptyGroup);
-    const systemKey = await KeyFactory.system(globalGroup);
-    const restricted = await Authenticator.fromKey(
-      restrictedKey,
-      workspace.sId
-    );
-    const system = await Authenticator.fromKey(systemKey, workspace.sId);
-    expect(prepareSkillSearchQuery(restricted, "").bool?.filter).toEqual([
-      { term: { workspace_id: workspace.sId } },
-      { terms: { status: ["active"] } },
-      { bool: { must_not: [{ exists: { field: "requested_space_ids" } }] } },
-    ]);
-    expect(prepareSkillSearchQuery(system, "").bool?.filter).toEqual([
-      { term: { workspace_id: workspace.sId } },
-      { terms: { status: ["active"] } },
-      { match_all: {} },
-    ]);
+    await auth.refresh();
+    expect(auth.getReadableSpaceModelIds()).toEqual({
+      kind: "ids",
+      resourceIds: [],
+    });
+    expect(prepareSkillSearchQuery(auth, "").bool?.filter).toContainEqual({
+      bool: { must_not: [{ exists: { field: "requested_space_ids" } }] },
+    });
+
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "*",
+      resourceType: "space",
+    });
+    await auth.refresh();
+    expect(auth.getReadableSpaceModelIds()).toEqual({ kind: "all" });
+    expect(prepareSkillSearchQuery(auth, "").bool?.filter).toContainEqual({
+      match_all: {},
+    });
   });
 
-  it("requires a current skill read grant even without required spaces", async () => {
+  it("does not require a separate skill read grant", async () => {
     const { authenticator: auth, globalGroup } = await createResourceTest({
       role: "admin",
     });
-    const own = await SkillFactory.create(auth);
+    const own = await SkillFactory.create(auth, {
+      availability: "workspace_users",
+    });
     const other = await SkillFactory.create(auth, {
       name: "Skill without a read grant",
+      availability: "workspace_users",
       addCurrentUserAsEditor: false,
     });
     await mockHits(auth, [own, other]);
@@ -583,19 +573,19 @@ describe("custom skill search", () => {
     const candidates = await searchCandidates(auth);
     expect(candidates.map(({ skill }) => skill?.sId ?? null)).toEqual([
       own.sId,
-      null,
+      other.sId,
     ]);
-    expect(prepareSkillSearchQuery(auth, "").bool?.filter).toContainEqual({
+    expect(prepareSkillSearchQuery(auth, "").bool?.filter).not.toContainEqual({
       terms: { skill_id: [own.sId] },
     });
     const redacted = await searchCandidates(auth, {
       searchTerm: "",
       permissionFiltering: "redact_unreadable",
     });
-    expect(redacted.map(({ skill }) => skill?.canRead)).toEqual([true, false]);
+    expect(redacted.map(({ skill }) => skill?.canRead)).toEqual([true, true]);
   });
 
-  it("honors type-wide skill editorship", async () => {
+  it("requires indexed editorship even with a type-wide skill grant", async () => {
     const {
       authenticator: auth,
       workspace,
@@ -612,11 +602,16 @@ describe("custom skill search", () => {
     await auth.refresh();
     await mockHits(auth, [skill]);
     const [candidate] = await searchCandidates(auth);
-    expect(candidate.skill?.sId).toBe(skill.sId);
+    expect(candidate.skill).toBeNull();
     expect(
       mockSearch.mock.lastCall![0].query.bool.must[0].bool.filter[2].bool
         .should[1].bool.filter[1]
-    ).toEqual({ match_all: {} });
+    ).toEqual({ term: { editor_ids: user.sId } });
+    expect(
+      prepareSkillSearchQuery(auth, "", "strict", {
+        filters: { editedByMe: true },
+      }).bool?.filter
+    ).toContainEqual({ term: { editor_ids: user.sId } });
   });
 
   it.each([

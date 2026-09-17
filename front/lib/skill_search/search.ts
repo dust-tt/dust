@@ -6,7 +6,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillSearchSort } from "@app/lib/skill_search/query";
 import {
-  getSkillSearchReadPermissions,
+  getSkillSearchReadableSpaceIds,
   SkillSearchSortSchema,
 } from "@app/lib/skill_search/query";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
@@ -95,14 +95,9 @@ export async function searchSkillDocumentCandidates(
       new ElasticsearchError("query_error", "Missing skill search sort values")
     );
   }
-  const readable = getSkillSearchReadPermissions(auth);
-  const readableSpaceIds =
-    readable.spaceIds === null ? null : new Set(readable.spaceIds);
-  const readableSkillIds =
-    readable.skillIds === null ? null : new Set(readable.skillIds);
-  const userId = auth.user()?.sId;
-  const canWriteAllSkills =
-    auth.getResourceIdsWithVerb("skill", "write").kind === "all";
+  const spaceIds = getSkillSearchReadableSpaceIds(auth);
+  const readableSpaceIds = spaceIds === null ? null : new Set(spaceIds);
+  const userId = auth.getNonNullableUser().sId;
   const candidates: SkillSearchCandidate[] = [];
   for (const [index, hit] of hits.entries()) {
     const document = hit._source;
@@ -112,21 +107,17 @@ export async function searchSkillDocumentCandidates(
       );
     }
     const sort = sorts.data[index];
-    const canRead =
-      (readableSkillIds === null || readableSkillIds.has(document.skill_id)) &&
-      document.requested_space_ids.every(
-        (id) => readableSpaceIds === null || readableSpaceIds.has(id)
-      );
+    const canRead = document.requested_space_ids.every(
+      (id) => readableSpaceIds === null || readableSpaceIds.has(id)
+    );
     const visible =
       document.workspace_id === workspaceId &&
       document.skill_id === sort[2] &&
       status.some((value) => value === document.status) &&
       (permissionFiltering === "redact_unreadable" ||
         (canRead &&
-          (auth.isKey() ||
-            document.availability !== "editors" ||
-            (userId &&
-              (canWriteAllSkills || document.editor_ids.includes(userId))))));
+          (document.availability !== "editors" ||
+            document.editor_ids.includes(userId))));
     candidates.push({
       sort,
       skill: visible

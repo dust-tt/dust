@@ -1,5 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { buildSkillMatchQuery } from "@app/lib/skill_search/ranking";
 import type {
@@ -20,24 +19,14 @@ export const SkillSearchSortSchema = z.tuple([
 export type SkillSearchSort = z.infer<typeof SkillSearchSortSchema>;
 
 // Null represents a type-wide read grant; do not enumerate resources in that case.
-export function getSkillSearchReadPermissions(auth: Authenticator) {
+export function getSkillSearchReadableSpaceIds(auth: Authenticator) {
   const workspaceId = auth.getNonNullableWorkspace().id;
-  const spaces = auth.getResourceIdsWithVerb("space", "read");
-  const skills = auth.getResourceIdsWithVerb("skill", "read");
-  return {
-    spaceIds:
-      spaces.kind === "all"
-        ? null
-        : spaces.resourceIds
-            .map((id) => SpaceResource.modelIdToSId({ id, workspaceId }))
-            .sort(),
-    skillIds:
-      auth.isKey() || skills.kind === "all"
-        ? null
-        : skills.resourceIds
-            .map((id) => SkillResource.modelIdToSId({ id, workspaceId }))
-            .sort(),
-  };
+  const spaces = auth.getReadableSpaceModelIds();
+  return spaces.kind === "all"
+    ? null
+    : spaces.resourceIds
+        .map((id) => SpaceResource.modelIdToSId({ id, workspaceId }))
+        .sort();
 }
 
 /**
@@ -79,41 +68,30 @@ function buildSpaceAccessFilter(
 
 /**
  * @cc [owner:aubin-tchoi,label:security] resource-editor-filter
- * Skills require a matching editor user sId or a current type-wide write grant.
+ * Editor-only skills require the current user's sId in the indexed editor IDs.
  */
 function buildEditorFilter(
   auth: Authenticator
 ): estypes.QueryDslQueryContainer {
-  const user = auth.user();
-  if (!user) {
-    return { match_none: {} };
-  }
-  if (auth.getResourceIdsWithVerb("skill", "write").kind === "all") {
-    return { match_all: {} };
-  }
-  return { term: { editor_ids: user.sId } };
+  return { term: { editor_ids: auth.getNonNullableUser().sId } };
 }
 
 function buildAvailabilityFilter(
   auth: Authenticator
 ): estypes.QueryDslQueryContainer {
-  const should: estypes.QueryDslQueryContainer[] = [
-    { terms: { availability: ["workspace_users", "users_and_agents"] } },
-  ];
-  if (auth.user() !== null) {
-    should.push({
-      bool: {
-        filter: [
-          { term: { availability: "editors" } },
-          buildEditorFilter(auth),
-        ],
-      },
-    });
-  }
-
   return {
     bool: {
-      should,
+      should: [
+        { bool: { must_not: [{ term: { availability: "editors" } }] } },
+        {
+          bool: {
+            filter: [
+              { term: { availability: "editors" } },
+              buildEditorFilter(auth),
+            ],
+          },
+        },
+      ],
       minimum_should_match: 1,
     },
   };
@@ -165,7 +143,7 @@ export function prepareSkillSearchQuery(
     permissionFiltering !== "redact_unreadable" || auth.isAdmin(),
     "Only admins can search unreadable skills."
   );
-  const readable = getSkillSearchReadPermissions(auth);
+  const readableSpaceIds = getSkillSearchReadableSpaceIds(auth);
   return {
     bool: {
       filter: [
@@ -177,11 +155,8 @@ export function prepareSkillSearchQuery(
         },
         ...(permissionFiltering === "strict"
           ? [
-              ...(auth.isKey() ? [] : [buildAvailabilityFilter(auth)]),
-              ...(readable.skillIds === null
-                ? []
-                : [{ terms: { skill_id: readable.skillIds } }]),
-              buildSpaceAccessFilter(readable.spaceIds),
+              buildAvailabilityFilter(auth),
+              buildSpaceAccessFilter(readableSpaceIds),
             ]
           : []),
         ...buildSelectionFilters(auth, filters),
