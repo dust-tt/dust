@@ -659,12 +659,6 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
    * Dynamic Client Registration; else (3) fails with a `DustError` directing the
    * caller to Static OAuth. It never performs DCR when CIMD applies.
    */
-  /**
-   * @cc [owner:aubin-tchoi,label:mcp] oauth-registration-auth-method
-   * DCR requests select an advertised method in preference order: `none`,
-   * `client_secret_basic`, `client_secret_post`. If none of these methods is
-   * advertised, retain the provider's method.
-   */
   static async discoverOAuthMetadata({
     serverUrl,
     provider,
