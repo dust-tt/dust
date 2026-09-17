@@ -35,7 +35,6 @@ import {
   ClipboardCheck,
   DotsHorizontal,
   Minus,
-  XClose,
 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import {
@@ -2116,63 +2115,6 @@ DataTable.StatusCellContent = function StatusCellContent({
     <Tooltip tooltipTriggerAsChild trigger={content} label={tooltip} />
   ) : (
     content
-  );
-};
-
-interface SelectionBarProps {
-  /** Number of selected rows; the bar renders nothing at 0. */
-  count: number;
-  /** Shows a "Clear" button that calls it. */
-  onClear?: () => void;
-  /** Bulk actions, typically small Buttons. */
-  children?: ReactNode;
-  /** Noun for the count ("member" → "3 members selected"). Defaults to "row". */
-  itemLabel?: string;
-  /** Plural noun when the default `itemLabel + "s"` is wrong. */
-  itemLabelPlural?: string;
-  className?: string;
-}
-
-/**
- * Bulk action bar for row selection: count, actions, and a Clear button. The
- * caller renders it (above the table, in place of a filter bar) so placement
- * stays free; it disappears when nothing is selected.
- */
-DataTable.SelectionBar = function SelectionBar({
-  count,
-  onClear,
-  children,
-  itemLabel = "row",
-  itemLabelPlural = `${itemLabel}s`,
-  className,
-}: SelectionBarProps) {
-  if (count <= 0) {
-    return null;
-  }
-
-  return (
-    <div
-      role="toolbar"
-      aria-label="Selection actions"
-      className={cn(
-        "flex items-center gap-3 rounded-xl border border-border bg-muted-background px-3 py-2",
-        className
-      )}
-    >
-      <span aria-live="polite" className="text-sm font-medium text-foreground">
-        {count} {count === 1 ? itemLabel : itemLabelPlural} selected
-      </span>
-      <div className="flex flex-1 items-center gap-2">{children}</div>
-      {onClear && (
-        <Button
-          variant="ghost-secondary"
-          size="xs"
-          label="Clear"
-          icon={XClose}
-          onClick={onClear}
-        />
-      )}
-    </div>
   );
 };
 

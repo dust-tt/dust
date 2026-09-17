@@ -9,7 +9,6 @@ import React, { useCallback, useMemo, useState } from "react";
 import { fn } from "storybook/test";
 
 import {
-  Button,
   DataTable,
   Dialog,
   DialogContainer,
@@ -1245,46 +1244,6 @@ export const RelaxedSecondaryLine = () => {
         <div className="heading-sm">Default (secondary line hidden)</div>
         <DataTable data={usageRows} columns={relaxedColumns} />
       </div>
-    </div>
-  );
-};
-
-/**
- * `SelectionBar` replaces the filter row once rows are selected: it announces
- * the count, hosts bulk actions, and clears the selection. It renders nothing
- * at zero, so the caller can keep it mounted.
- * @summary Bulk action bar driven by row selection.
- */
-export const SelectionBarExample = () => {
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({
-    "Sales assistant": true,
-    "Weekly digest": true,
-  });
-  const count = Object.values(rowSelection).filter(Boolean).length;
-  const selectionColumns = useMemo(
-    () => [createSelectionColumn<UsageRow>(), ...usageColumns],
-    []
-  );
-
-  return (
-    <div className="flex flex-col gap-2">
-      <DataTable.SelectionBar
-        count={count}
-        itemLabel="agent"
-        onClear={() => setRowSelection({})}
-      >
-        <Button size="xs" variant="outline" label="Pause" onClick={fn()} />
-        <Button size="xs" variant="outline" label="Archive" onClick={fn()} />
-      </DataTable.SelectionBar>
-      <DataTable
-        data={usageRows}
-        columns={selectionColumns}
-        enableRowSelection
-        rowSelection={rowSelection}
-        setRowSelection={setRowSelection}
-        getRowId={(row) => row.agent}
-        getRowLabel={(row) => row.agent}
-      />
     </div>
   );
 };
