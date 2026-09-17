@@ -3,7 +3,6 @@ import { getEffectiveToolSettings } from "@app/components/actions/mcp/forms/mcpS
 import { InternalMCPBearerTokenForm } from "@app/components/actions/mcp/InternalMCPBearerTokenForm";
 import { MCPServerSettings } from "@app/components/actions/mcp/MCPServerSettings";
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
-import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
 import {
   isRemoteMCPServerType,
@@ -27,23 +26,24 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
-type MCPServerDetailsInfoProps = {
+type MCPServerDetailsGeneralProps = {
   mcpServerView: MCPServerViewType | null;
   owner: LightWorkspaceType;
   readOnly?: boolean;
   sensitivityLabelsController?: SensitivityLabelsController;
-  confirmSkillsRestrictionChange?: (
-    isRestrictedToSkills: boolean
-  ) => Promise<boolean>;
 };
 
-export function MCPServerDetailsInfo({
+/**
+ * Identity and lifecycle for a tool: name, description, then the remote server's
+ * settings and credentials when it has any. The operation list lives in its own
+ * tab, and reach in Availability.
+ */
+export function MCPServerDetailsGeneral({
   mcpServerView,
   owner,
   readOnly = false,
   sensitivityLabelsController,
-  confirmSkillsRestrictionChange,
-}: MCPServerDetailsInfoProps) {
+}: MCPServerDetailsGeneralProps) {
   const editedAt = useMemo(() => {
     const d = new Date(0);
     d.setUTCMilliseconds(mcpServerView?.editedByUser?.editedAt ?? 0);
@@ -113,10 +113,7 @@ export function MCPServerDetailsInfo({
         </div>
       )}
       <Separator />
-      <MCPServerViewForm
-        mcpServerView={mcpServerView}
-        confirmSkillsRestrictionChange={confirmSkillsRestrictionChange}
-      />
+      <MCPServerViewForm mcpServerView={mcpServerView} />
       <Separator />
       {mcpServerView.server.authorization && (
         <MCPServerSettings
@@ -130,9 +127,6 @@ export function MCPServerDetailsInfo({
       ) : requiresBearerToken ? (
         <InternalMCPBearerTokenForm serverName={mcpServerView.server.name} />
       ) : null}
-      <div className="mt-2">
-        <ToolsList owner={owner} mcpServerView={mcpServerView} />
-      </div>
     </div>
   );
 }
