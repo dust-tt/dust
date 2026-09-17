@@ -69,13 +69,13 @@ function viewerFileSourceFromFile(
 
 function viewerFileSource(
   ref: AuthorizedFileRef,
-  fileBySId: Map<string, FileResource>
+  fileById: Map<string, FileResource>
 ): ViewerFileSource {
   if (ref.kind === "canonical_path") {
     return viewerFileSourceFromCanonicalPath(ref.ref);
   }
 
-  return viewerFileSourceFromFile(fileBySId.get(ref.ref));
+  return viewerFileSourceFromFile(fileById.get(ref.ref));
 }
 
 function pathInSourceFromCanonicalRef(
@@ -92,16 +92,16 @@ function pathInSourceFromCanonicalRef(
 
 function viewerFileSourceName(
   source: ViewerFileSource,
-  conversationTitleBySId: Map<string, string>,
-  podNameBySId: Map<string, string>
+  conversationTitleById: Map<string, string>,
+  podNameById: Map<string, string>
 ): string {
   switch (source.kind) {
     case "workspace":
       return "Workspace";
     case "conversation":
-      return conversationTitleBySId.get(source.sId) ?? "Deleted conversation";
+      return conversationTitleById.get(source.sId) ?? "Deleted conversation";
     case "pod":
-      return podNameBySId.get(source.sId) ?? "Deleted pod";
+      return podNameById.get(source.sId) ?? "Deleted pod";
   }
 }
 
@@ -109,8 +109,8 @@ function toShareFrameViewerFile(
   ref: AuthorizedFileRef,
   source: ViewerFileSource,
   file: FileResource | undefined,
-  conversationTitleBySId: Map<string, string>,
-  podNameBySId: Map<string, string>
+  conversationTitleById: Map<string, string>,
+  podNameById: Map<string, string>
 ): ShareFrameViewerFile {
   const name = getAuthorizedFileRefLabel(ref);
   const pathInSource =
@@ -128,8 +128,8 @@ function toShareFrameViewerFile(
     sourceKind: source.kind,
     sourceName: viewerFileSourceName(
       source,
-      conversationTitleBySId,
-      podNameBySId
+      conversationTitleById,
+      podNameById
     ),
     ...(pathInSource ? { pathInSource } : {}),
   };
@@ -182,18 +182,18 @@ export async function getShareFrameViewerFiles(
     .map((ref) => ref.ref);
   const files =
     fileIds.length > 0 ? await FileResource.fetchByIds(auth, fileIds) : [];
-  const fileBySId = new Map(files.map((file) => [file.sId, file]));
+  const fileById = new Map(files.map((file) => [file.sId, file]));
 
-  const sources = refs.map((ref) => viewerFileSource(ref, fileBySId));
+  const sources = refs.map((ref) => viewerFileSource(ref, fileById));
 
-  const conversationSIds = [
+  const conversationIds = [
     ...new Set(
       sources
         .filter((source) => source.kind === "conversation")
         .map((source) => source.sId)
     ),
   ];
-  const podSIds = [
+  const podIds = [
     ...new Set(
       sources
         .filter((source) => source.kind === "pod")
@@ -202,27 +202,27 @@ export async function getShareFrameViewerFiles(
   ];
 
   const [conversations, pods] = await Promise.all([
-    conversationSIds.length > 0
-      ? ConversationResource.fetchByIds(auth, conversationSIds)
+    conversationIds.length > 0
+      ? ConversationResource.fetchByIds(auth, conversationIds)
       : [],
-    podSIds.length > 0 ? SpaceResource.fetchByIds(auth, podSIds) : [],
+    podIds.length > 0 ? SpaceResource.fetchByIds(auth, podIds) : [],
   ]);
 
-  const conversationTitleBySId = new Map(
+  const conversationTitleById = new Map(
     conversations.map((conversation) => [
       conversation.sId,
       getConversationDisplayTitle(conversation.toJSON()),
     ])
   );
-  const podNameBySId = new Map(pods.map((pod) => [pod.sId, pod.name]));
+  const podNameById = new Map(pods.map((pod) => [pod.sId, pod.name]));
 
   return refs.map((ref, index) =>
     toShareFrameViewerFile(
       ref,
       sources[index]!,
-      ref.kind === "file_id" ? fileBySId.get(ref.ref) : undefined,
-      conversationTitleBySId,
-      podNameBySId
+      ref.kind === "file_id" ? fileById.get(ref.ref) : undefined,
+      conversationTitleById,
+      podNameById
     )
   );
 }

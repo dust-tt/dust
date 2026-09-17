@@ -127,7 +127,7 @@ async function resolveConversationModelIds(
       modelIds.push(conversation.id);
     } else {
       ctx.logger.warn(
-        { conversationSId: sId },
+        { conversationId: sId },
         "Conversation not found for skill suggestion source, skipping"
       );
     }
