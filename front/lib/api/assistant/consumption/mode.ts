@@ -8,6 +8,10 @@ export const AGENT_MESSAGE_CONSUMPTION_WRITES_FLAG: WhitelistableFeature =
 export const AGENT_MESSAGE_CONSUMPTION_BILLS_FLAG: WhitelistableFeature =
   "agent_message_consumption_bills";
 
+/**
+ * @cc [owner:id13,label:product;backend] credit-consumption-default-off
+ * Credit consumption MUST remain off unless the writes feature flag is enabled.
+ */
 export function consumptionModeFromFeatureFlags(
   featureFlags: readonly WhitelistableFeature[]
 ): AgentMessageConsumptionMode {

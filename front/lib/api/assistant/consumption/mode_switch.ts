@@ -11,6 +11,11 @@ import logger from "@app/logger/logger";
 
 export { AGENT_MESSAGE_CONSUMPTION_WRITES_FLAG } from "@app/lib/api/assistant/consumption/mode";
 
+/**
+ * @cc [owner:id13,label:product;backend] credit-consumption-mode-switch
+ * The mode switch MUST preserve legacy billing in off and shadow modes; live mode is the only
+ * mode allowed to replace it.
+ */
 export async function getAgentMessageConsumptionMode(
   auth: Authenticator
 ): Promise<AgentMessageConsumptionMode> {

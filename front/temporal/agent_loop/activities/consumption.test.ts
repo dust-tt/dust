@@ -36,11 +36,11 @@ vi.mock("@app/lib/resources/conversation_resource", () => ({
 
 vi.mock("@app/lib/utils/sql_utils", () => ({
   withTransaction: vi.fn(
-    async (callback: (transaction: object) => Promise<unknown>) => callback({}),
+    async (callback: (transaction: object) => Promise<unknown>) => callback({})
   ),
 }));
 
-vi.mock("@app/temporal/consumption/client", () => ({
+vi.mock("@app/temporal/credit_consumption/client", () => ({
   signalConsumptionEventsAppended: mocks.signal,
 }));
 
@@ -80,7 +80,7 @@ describe("consumption execution events", () => {
       async (_auth, { agentMessageId }) => ({
         agentMessageModelId: agentMessageId === "root-message" ? 24 : 42,
         status: "created",
-      }),
+      })
     );
     mocks.getFeatureFlags.mockResolvedValue([
       "agent_message_consumption_writes",
@@ -94,20 +94,17 @@ describe("consumption execution events", () => {
       startStep: 0,
     });
 
-    expect(mocks.append).toHaveBeenCalledWith(
-      auth,
-      {
-        event: {
-          kind: "execution_started",
-          idempotencyKey: "execution:execution:started",
-          runKey: "execution",
-          rootAgentMessageId: 24,
-          agentMessageModelId: 42,
-          consumptionMode: "shadow",
-        },
-        transaction: {},
+    expect(mocks.append).toHaveBeenCalledWith(auth, {
+      event: {
+        kind: "execution_started",
+        idempotencyKey: "execution:execution:started",
+        runKey: "execution",
+        rootAgentMessageId: 24,
+        agentMessageModelId: 42,
+        consumptionMode: "shadow",
       },
-    );
+      transaction: {},
+    });
     expect(mocks.signal).toHaveBeenCalledOnce();
   });
 
@@ -126,7 +123,7 @@ describe("consumption execution events", () => {
       auth,
       expect.objectContaining({
         event: expect.objectContaining({ consumptionMode: "live" }),
-      }),
+      })
     );
     expect(mocks.getOrSetConsumptionMode).toHaveBeenCalledWith(auth, {
       agentMessageId: "root-message",
@@ -150,7 +147,7 @@ describe("consumption execution events", () => {
           consumptionMode: "live",
           idempotencyKey: "execution:execution:started",
         }),
-      }),
+      })
     );
     expect(mocks.signal).toHaveBeenCalledOnce();
   });
@@ -175,21 +172,18 @@ describe("consumption execution events", () => {
   it("closes an execution paused for approval", async () => {
     await recordExecutionFinalized(auth, agentLoopArgs);
 
-    expect(mocks.append).toHaveBeenCalledWith(
-      auth,
-      {
-        event: {
-          kind: "execution_finalized",
-          idempotencyKey: "execution:execution:finalized",
-          runKey: "execution",
-          rootAgentMessageId: 24,
-          agentMessageModelId: 42,
-          consumptionMode: "shadow",
-          status: "created",
-        },
-        transaction: {},
+    expect(mocks.append).toHaveBeenCalledWith(auth, {
+      event: {
+        kind: "execution_finalized",
+        idempotencyKey: "execution:execution:finalized",
+        runKey: "execution",
+        rootAgentMessageId: 24,
+        agentMessageModelId: 42,
+        consumptionMode: "shadow",
+        status: "created",
       },
-    );
+      transaction: {},
+    });
     expect(mocks.signal).toHaveBeenCalledOnce();
   });
 
@@ -198,13 +192,13 @@ describe("consumption execution events", () => {
     mocks.getFeatureFlags.mockResolvedValue([]);
 
     await expect(recordExecutionFinalized(auth, agentLoopArgs)).resolves.toBe(
-      "live",
+      "live"
     );
     expect(mocks.append).toHaveBeenCalledWith(
       auth,
       expect.objectContaining({
         event: expect.objectContaining({ consumptionMode: "live" }),
-      }),
+      })
     );
     expect(mocks.getFeatureFlags).not.toHaveBeenCalled();
   });
@@ -213,7 +207,7 @@ describe("consumption execution events", () => {
     mocks.fetchConsumptionMode.mockResolvedValue("off");
 
     await expect(recordExecutionFinalized(auth, agentLoopArgs)).resolves.toBe(
-      null,
+      null
     );
     expect(mocks.append).not.toHaveBeenCalled();
     expect(mocks.signal).not.toHaveBeenCalled();

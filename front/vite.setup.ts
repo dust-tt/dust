@@ -114,6 +114,7 @@ vi.mock("@app/lib/temporal", () => ({
   getTemporalClientForFrontNamespace: vi.fn().mockResolvedValue({
     workflow: {
       start: vi.fn().mockResolvedValue(undefined),
+      signalWithStart: vi.fn().mockResolvedValue(undefined),
     },
   }),
 }));

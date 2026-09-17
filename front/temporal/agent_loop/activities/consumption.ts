@@ -1,13 +1,13 @@
 import {
   getAgentMessageConsumptionMode,
   resolveAgentMessageConsumptionMode,
-} from "@app/lib/api/assistant/consumption/gate";
+} from "@app/lib/api/assistant/consumption/mode_switch";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import { signalConsumptionEventsAppended } from "@app/temporal/consumption/client";
+import { signalConsumptionEventsAppended } from "@app/temporal/credit_consumption/client";
 import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
