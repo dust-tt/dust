@@ -109,6 +109,17 @@ export function getFramePublicationFunctionsMountPoint({
   return `${getFramePublicationsMountPoint(frameId)}/${publicationId}/functions`;
 }
 
+/** Sibling archive of that functions directory (cold materialization). */
+export function getFramePublicationFunctionsArchiveMountPoint({
+  frameId,
+  publicationId,
+}: {
+  frameId: string;
+  publicationId: string;
+}): string {
+  return `${getFramePublicationsMountPoint(frameId)}/${publicationId}/functions.tar`;
+}
+
 /** Exact immutable publication descriptor selected for one Frame invocation. */
 export function getFramePublicationDescriptorMountPoint({
   frameId,

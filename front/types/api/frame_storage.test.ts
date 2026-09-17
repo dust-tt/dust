@@ -4,6 +4,7 @@ import {
   getFrameDatabaseReplicasBasePath,
   getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
+  getFramePublicationFunctionsArchivePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import { describe, expect, it } from "vitest";
@@ -30,6 +31,9 @@ describe("Frames v2 GCS paths", () => {
       })
     ).toBe(
       "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task.ts"
+    );
+    expect(getFramePublicationFunctionsArchivePath(IDS)).toBe(
+      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions.tar"
     );
   });
 
