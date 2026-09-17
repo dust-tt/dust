@@ -1,5 +1,6 @@
 import { ensureConversationTitleFromAgentLoop } from "@app/lib/api/assistant/conversation/title";
 import type { AuthenticatorType } from "@app/lib/auth";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopRuntimeData } from "@app/types/assistant/agent_run";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -10,16 +11,6 @@ vi.mock("@app/types/assistant/agent_run", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/types/assistant/agent_run")>()),
   getAgentLoopRuntimeData: vi.fn(),
 }));
-
-const authType: AuthenticatorType = {
-  authMethod: "internal",
-  groupIds: [],
-  isByok: false,
-  role: "admin",
-  subscriptionId: null,
-  userId: null,
-  workspaceId: "w123",
-};
 
 function agentLoopArgs(userMessageOrigin: UserMessageOrigin): AgentLoopArgs {
   return {
@@ -34,8 +25,13 @@ function agentLoopArgs(userMessageOrigin: UserMessageOrigin): AgentLoopArgs {
 }
 
 describe("ensureConversationTitleFromAgentLoop", () => {
-  beforeEach(() => {
+  let authType: AuthenticatorType;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
+
+    const { authenticator } = await createResourceTest({});
+    authType = authenticator.toJSON();
   });
 
   it("returns null without loading runtime data for an analytics panel opening message", async () => {
