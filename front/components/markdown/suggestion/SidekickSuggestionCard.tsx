@@ -672,8 +672,6 @@ interface CreateAgentSuggestionCardProps {
   agentSuggestion: AgentCreateSuggestionType;
 }
 
-// Only records state (pending/approved/rejected); applying the suggestion into a
-// pre-filled agent builder is not implemented yet.
 function CreateAgentSuggestionCard({
   agentSuggestion,
 }: CreateAgentSuggestionCardProps) {
