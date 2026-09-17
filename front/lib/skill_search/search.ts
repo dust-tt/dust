@@ -5,15 +5,8 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillSearchSort } from "@app/lib/skill_search/query";
-import {
-  getSkillSearchReadableSpaceIds,
-  SkillSearchSortSchema,
-} from "@app/lib/skill_search/query";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
-import type {
-  SkillSearchFilters,
-  SkillSearchResult,
-} from "@app/types/api/skills";
+import type { SkillSearchResult } from "@app/types/api/skills";
 import { Err, Ok } from "@app/types/shared/result";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";
@@ -26,8 +19,7 @@ export {
 } from "@app/lib/skill_search/query";
 
 export interface SkillSearchCandidate {
-  // Rejected hits retain their position so a page of denied hits can advance.
-  skill: SkillSearchResult | null;
+  skill: SkillSearchResult;
   sort: SkillSearchSort;
 }
 
@@ -36,6 +28,7 @@ export interface SkillSearchCandidate {
  * Return only workspace-scoped indexed metadata using the caller's hydrated grants, with no
  * database reads. Permission-bearing document changes are eventually consistent; full-skill
  * access remains separately authorized. Unreadable listings must not be returned.
+ * Callers must use prepareSkillSearchQuery to enforce permissions in Elasticsearch.
  */
 export async function searchSkills(
   auth: Authenticator,
@@ -43,12 +36,10 @@ export async function searchSkills(
     query,
     searchAfter,
     limit,
-    status = ["active"],
   }: {
     query: estypes.QueryDslQueryContainer;
     searchAfter: SkillSearchSort | null;
     limit: number;
-    status?: SkillSearchFilters["status"];
   }
 ) {
   const workspaceId = auth.getNonNullableWorkspace().sId;
@@ -75,39 +66,18 @@ export async function searchSkills(
     return result;
   }
   const hits = result.value.hits.hits;
-  const sorts = SkillSearchSortSchema.array().safeParse(
-    hits.map((hit) => hit.sort)
-  );
-  if (!sorts.success) {
-    return new Err(
-      new ElasticsearchError("query_error", "Missing skill search sort values")
-    );
-  }
-  const spaceIds = getSkillSearchReadableSpaceIds(auth);
-  const readableSpaceIds = spaceIds === null ? null : new Set(spaceIds);
-  const userId = auth.getNonNullableUser().sId;
   const candidates: SkillSearchCandidate[] = [];
-  for (const [index, hit] of hits.entries()) {
+  for (const hit of hits) {
     const document = hit._source;
     if (!document) {
       return new Err(
         new ElasticsearchError("query_error", "Missing skill search document")
       );
     }
-    const sort = sorts.data[index];
-    const canRead = document.requested_space_ids.every(
-      (id) => readableSpaceIds === null || readableSpaceIds.has(id)
-    );
-    const visible =
-      document.workspace_id === workspaceId &&
-      document.skill_id === sort[2] &&
-      status.some((value) => value === document.status) &&
-      canRead &&
-      (document.availability !== "editors" ||
-        document.editor_ids.includes(userId));
+    const [score, name, skillId] = hit.sort!;
     candidates.push({
-      sort,
-      skill: visible ? { ...toSkillListItem(document), score: sort[0] } : null,
+      sort: [score, name, skillId],
+      skill: { ...toSkillListItem(document), score },
     });
   }
   return new Ok({

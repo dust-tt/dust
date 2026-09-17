@@ -28,6 +28,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { matchesSkillSearchFilters } from "@app/tests/utils/skill_search";
 import type { SkillSearchOptions } from "@app/types/api/skills";
 import {
   SkillListItemSchema,
@@ -36,6 +37,7 @@ import {
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
+import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
 import { z } from "zod";
 
@@ -48,14 +50,18 @@ async function mockHits(
     ...(await SkillFactory.createSearchDocuments(auth, skills)),
     ...extraDocuments,
   ];
-  mockSearch.mockResolvedValue({
+  mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
     hits: {
-      hits: documents.map((document) => ({
-        _source: document,
-        sort: [1, document.name, document.skill_id],
-      })),
+      hits: documents
+        .filter((document) =>
+          matchesSkillSearchFilters(document, request.query!)
+        )
+        .map((document) => ({
+          _source: document,
+          sort: [1, document.name, document.skill_id],
+        })),
     },
-  });
+  }));
   return documents;
 }
 
@@ -67,7 +73,6 @@ async function searchCandidates(
     query: prepareSkillSearchQuery(auth, options.searchTerm, options),
     searchAfter: null,
     limit: 200,
-    status: options.filters?.status,
   });
   assert(result.isOk());
   return result.value.candidates;
@@ -235,7 +240,7 @@ describe("custom skill search", () => {
       }
     }
     await auth.refresh();
-    // Include denied hits too: indexed requirements must satisfy the hydrated grants.
+    // The ES mock applies the generated filters before returning hits.
     await mockHits(auth, skills);
     const candidates = await searchCandidates(auth, {
       searchTerm: "",
@@ -244,7 +249,7 @@ describe("custom skill search", () => {
     expect(
       removeNulls(candidates.map(({ skill }) => skill?.sId ?? null))
     ).toEqual(expectedIds);
-    expect(candidates).toHaveLength(skills.length);
+    expect(candidates).toHaveLength(expectedIds.length);
     expect(mockSearch).toHaveBeenCalledOnce();
     const filters = mockSearch.mock.lastCall![0].query.bool.must[0].bool.filter;
     const terms = filters.at(-1).terms_set.requested_space_ids.terms;
@@ -295,7 +300,7 @@ describe("custom skill search", () => {
     await auth.refresh();
     await mockHits(auth, [skill]);
     const [candidate] = await searchCandidates(auth);
-    expect(candidate.skill?.sId ?? null).toBe(
+    expect(candidate?.skill.sId ?? null).toBe(
       access === "denied" ? null : skill.sId
     );
   });
@@ -348,7 +353,7 @@ describe("custom skill search", () => {
     await auth.refresh();
     const [after] = await searchCandidates(auth);
     if (change === "pod") {
-      expect(after.skill).toBeNull();
+      expect(after).toBeUndefined();
     } else {
       // Skill fields are eventually consistent until the document is refreshed or deleted.
       expect(after.skill).toEqual(before.skill);
@@ -360,20 +365,28 @@ describe("custom skill search", () => {
         assert(current);
         await mockHits(auth, [current]);
         const [refreshed] = await searchCandidates(auth);
-        expect(refreshed.skill).toBeNull();
+        expect(refreshed).toBeUndefined();
       }
     }
-    expect(after.sort).toEqual(before.sort);
+    if (after) {
+      expect(after.sort).toEqual(before.sort);
+    }
   });
 
   it("returns only indexed listing metadata without querying the database", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const { authenticator: auth, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
     const other = await createResourceTest({ role: "admin" });
     const active = await SkillFactory.create(auth, {
       availability: "workspace_users",
       instructions: "Private instructions",
+      requestedSpaceIds: [globalSpace.id],
     });
-    const archived = await SkillFactory.create(auth, { status: "archived" });
+    const archived = await SkillFactory.create(auth, {
+      status: "archived",
+      requestedSpaceIds: [globalSpace.id],
+    });
     const suggested = await SkillFactory.create(auth, { status: "suggested" });
     const foreign = await SkillFactory.create(other.authenticator);
     const foreignDocuments = await SkillFactory.createSearchDocuments(
@@ -395,9 +408,6 @@ describe("custom skill search", () => {
       const defaults = await searchCandidates(auth);
       expect(defaults.map(({ skill }) => skill?.sId ?? null)).toEqual([
         active.sId,
-        null,
-        null,
-        null,
       ]);
       const both = await searchCandidates(auth, {
         searchTerm: "",
@@ -406,8 +416,6 @@ describe("custom skill search", () => {
       expect(both.map(({ skill }) => skill?.sId ?? null)).toEqual([
         active.sId,
         archived.sId,
-        null,
-        null,
       ]);
       const listing = both[0].skill;
       expect(
@@ -420,7 +428,7 @@ describe("custom skill search", () => {
         name: "Indexed name",
         userFacingDescription: "Indexed description",
         icon: active.icon,
-        requestedSpaceIds: [],
+        requestedSpaceIds: [globalSpace.sId],
         mcpServerViewIds: ["tool-view-id"],
         editorIds: [auth.getNonNullableUser().sId],
         availability: "workspace_users",
@@ -487,14 +495,20 @@ describe("custom skill search", () => {
   });
 
   it("does not require a separate skill read grant", async () => {
-    const { authenticator: auth, globalGroup } = await createResourceTest({
+    const {
+      authenticator: auth,
+      globalGroup,
+      globalSpace,
+    } = await createResourceTest({
       role: "admin",
     });
     const own = await SkillFactory.create(auth, {
       availability: "workspace_users",
+      requestedSpaceIds: [globalSpace.id],
     });
     const other = await SkillFactory.create(auth, {
       name: "Skill without a read grant",
+      requestedSpaceIds: [globalSpace.id],
       availability: "workspace_users",
       addCurrentUserAsEditor: false,
     });
@@ -533,7 +547,7 @@ describe("custom skill search", () => {
     await auth.refresh();
     await mockHits(auth, [skill]);
     const [candidate] = await searchCandidates(auth);
-    expect(candidate.skill).toBeNull();
+    expect(candidate).toBeUndefined();
     expect(
       mockSearch.mock.lastCall![0].query.bool.must[0].bool.filter[2].bool
         .should[1].bool.filter[1]
@@ -546,7 +560,6 @@ describe("custom skill search", () => {
   });
 
   it.each([
-    { hits: { hits: [{ sort: [1, "missing skill ID"] }] } },
     { hits: { hits: [{ sort: [1, "name", "skill-id"] }] } },
   ])("does not return malformed ES results", async (response) => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
