@@ -59,7 +59,7 @@ it("cancels the message when the agent becomes unreadable before launch", async 
   });
   assert(returnedAgentMessage);
   expect(returnedAgentMessage.status).toBe("cancelled");
-  expect(returnedAgentMessage.completedAt).toBeInstanceOf(Date);
+  expect(returnedAgentMessage.completedTs).toEqual(expect.any(Number));
 
   const updatedConversation = await ConversationResource.fetchById(
     authorAuth,

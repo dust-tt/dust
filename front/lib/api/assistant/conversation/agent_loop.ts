@@ -39,7 +39,11 @@ export const runAgentLoopWorkflow = async ({
             agentMessageVersion: agentMessage.version,
           });
         return completedAt
-          ? { ...agentMessage, status: "cancelled" as const, completedAt }
+          ? {
+              ...agentMessage,
+              status: "cancelled" as const,
+              completedTs: completedAt.getTime(),
+            }
           : agentMessage;
       }
 
