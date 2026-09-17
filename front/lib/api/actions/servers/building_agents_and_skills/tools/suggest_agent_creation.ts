@@ -12,7 +12,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
  * @cc [owner:avervaet,label:product] no-direct-mutation
@@ -54,22 +53,18 @@ export async function suggestAgentCreation(
     );
   }
 
-  try {
-    const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
-      auth,
-      pendingAgent,
-      {
-        kind: "create",
-        suggestion: { name, description, instructions },
-        analysis: null,
-        state: "pending",
-        conversationId: null,
-      }
-    );
-    return new Ok(suggestion);
-  } catch (error) {
-    return new Err(new MCPError(normalizeError(error).message));
-  }
+  const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
+    auth,
+    pendingAgent,
+    {
+      kind: "create",
+      suggestion: { name, description, instructions },
+      analysis: null,
+      state: "pending",
+      conversationId: null,
+    }
+  );
+  return new Ok(suggestion);
 }
 
 export async function suggestAgentCreationHandler(
@@ -86,7 +81,9 @@ export async function suggestAgentCreationHandler(
   return new Ok([
     {
       type: "text" as const,
-      text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
+      text:
+        `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind} ` +
+        `agentId=${suggestion._agentConfigurationId}}`,
     },
   ]);
 }

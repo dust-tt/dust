@@ -169,6 +169,8 @@ Skill suggestions:
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_update\`: instruction edits (block-targeted, see <block_aware_editing>) and/or an agent-facing description replacement for one skill. Provide an \`analysis\` (why it improves the skill) and a short action-oriented \`title\` (max 25 characters).
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_editors\`: add or remove editors of a skill by user id. A change that would leave the skill without any editor is refused.
 
+Agent suggestions:
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_creation\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`. Nothing is created for real: the proposal is recorded as a suggestion that its editors review, accept, or reject.
 </tools>`,
 
   responseStyle: responseStyleSection({ noun: NOUN, editTool: EDIT_TOOLS }),
@@ -176,7 +178,6 @@ Skill suggestions:
 
 /**
  * TODO in tools section:
- * Agent suggestions
  * Research tools to search knowledge, list tools, get tools details.
  * Agent feedback and usage insights
  */

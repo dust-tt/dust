@@ -7,10 +7,15 @@
 
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import {
+  mapSuggestionStateToCardState,
   SidekickSuggestionCard,
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/SidekickSuggestionCard";
+import { getIcon } from "@app/components/resources/resources_icons";
+import { useAgentSuggestions } from "@app/lib/swr/agent_suggestions";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
+import type { LightWorkspaceType } from "@app/types/user";
+import { ActionCardBlock, Avatar } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 import { SKIP, visit } from "unist-util-visit";
 
@@ -30,6 +35,7 @@ export function sidekickSuggestionDirective() {
         data.hProperties = {
           sId: node.attributes.sId,
           kind: node.attributes.kind,
+          agentId: node.attributes.agentId,
         };
       }
     });
@@ -131,4 +137,83 @@ export function getSidekickSuggestionPlugin() {
   };
 
   return SidekickSuggestionPlugin;
+}
+
+interface ConversationAgentSuggestionProps {
+  owner: LightWorkspaceType;
+  agentId: string;
+  sId: string;
+}
+
+/**
+ * Renders a `create`-kind suggestion outside the agent builder sidekick, where there is no
+ * `SidekickSuggestionsProvider` scoped to the placeholder agent it targets. It fetches the
+ * suggestion directly by the placeholder agent's id and, since it's still pending, renders it
+ * read-only: reviewing (accept/reject) happens by opening that agent in the builder, where the
+ * sidekick resolves the same suggestion against its own `useSidekickSuggestions` context.
+ */
+function ConversationAgentSuggestion({
+  owner,
+  agentId,
+  sId,
+}: ConversationAgentSuggestionProps) {
+  const { suggestions, isSuggestionsLoading } = useAgentSuggestions({
+    agentConfigurationId: agentId,
+    workspaceId: owner.sId,
+  });
+
+  if (isSuggestionsLoading) {
+    return <SuggestionCardSkeleton kind="create" />;
+  }
+
+  const suggestion = suggestions.find((s) => s.sId === sId);
+  if (!suggestion || suggestion.kind !== "create") {
+    return null;
+  }
+
+  const cardState =
+    suggestion.state === "pending"
+      ? "disabled"
+      : mapSuggestionStateToCardState(suggestion.state);
+
+  return (
+    <div data-suggestion-s-id={sId}>
+      <ActionCardBlock
+        title={`Create "${suggestion.suggestion.name}" agent`}
+        applyLabel="Accept"
+        acceptedTitle={`"${suggestion.suggestion.name}" agent creation accepted`}
+        rejectedTitle={`"${suggestion.suggestion.name}" agent creation rejected`}
+        visual={<Avatar icon={getIcon("ActionRobotIcon")} size="sm" />}
+        description={suggestion.analysis ?? suggestion.suggestion.description}
+        state={cardState}
+        actionsPosition="header"
+      />
+    </div>
+  );
+}
+
+interface ConversationAgentSuggestionPluginProps {
+  sId?: string;
+  kind?: AgentSuggestionKind;
+  agentId?: string;
+}
+
+/**
+ * Creates the `agent_suggestion` markdown component registered for ordinary conversations (see
+ * `AgentMessageMarkdown`). Only `create`-kind suggestions can appear there today, since every
+ * other kind is produced within the agent builder sidekick itself.
+ */
+export function getConversationAgentSuggestionPlugin(
+  owner: LightWorkspaceType
+) {
+  const ConversationAgentSuggestionPlugin = ({
+    sId,
+    kind,
+    agentId,
+  }: ConversationAgentSuggestionPluginProps) =>
+    sId && kind === "create" && agentId ? (
+      <ConversationAgentSuggestion owner={owner} agentId={agentId} sId={sId} />
+    ) : null;
+
+  return ConversationAgentSuggestionPlugin;
 }

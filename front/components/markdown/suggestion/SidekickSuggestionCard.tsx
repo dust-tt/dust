@@ -49,7 +49,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { memo, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
-function mapSuggestionStateToCardState(
+export function mapSuggestionStateToCardState(
   state: AgentSuggestionState
 ): ActionCardState {
   switch (state) {

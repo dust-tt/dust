@@ -31,7 +31,7 @@ const SKILL_SUGGESTION_DIRECTIVE_REGEX = new RegExp(
   `^:skill_suggestion\\[\\]\\{sId=(\\S+) kind=(${SKILL_SUGGESTION_KINDS.join("|")}) skillId=(\\S+)\\}$`
 );
 const AGENT_CREATE_SUGGESTION_DIRECTIVE_REGEX =
-  /^:agent_suggestion\[\]\{sId=(\S+) kind=create\}$/;
+  /^:agent_suggestion\[\]\{sId=(\S+) kind=create agentId=(\S+)\}$/;
 
 function getTool(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -112,12 +112,15 @@ function expectMcpError(
   expect(result.error.message).toContain(fragment);
 }
 
-function extractAgentCreateSuggestionId(text: string): string {
+function extractAgentCreateSuggestionDirective(text: string): {
+  suggestionId: string;
+  agentId: string;
+} {
   const match = AGENT_CREATE_SUGGESTION_DIRECTIVE_REGEX.exec(text);
   if (!match) {
     throw new Error(`Unexpected tool output: ${text}`);
   }
-  return match[1];
+  return { suggestionId: match[1], agentId: match[2] };
 }
 
 // A non-admin role membership does not grant create/agent by itself — it requires a group grant.
@@ -678,7 +681,9 @@ describe("building_agents_and_skills tools", () => {
       if (output?.type !== "text") {
         throw new Error("Expected text output.");
       }
-      const suggestionId = extractAgentCreateSuggestionId(output.text);
+      const { suggestionId, agentId } = extractAgentCreateSuggestionDirective(
+        output.text
+      );
 
       const suggestion = await AgentSuggestionResource.fetchById(
         authenticator,
@@ -687,6 +692,7 @@ describe("building_agents_and_skills tools", () => {
       expect(suggestion).not.toBeNull();
       expect(suggestion?.state).toBe("pending");
       expect(suggestion?.kind).toBe("create");
+      expect(suggestion?._agentConfigurationId).toBe(agentId);
       expect(suggestion?.toJSON()).toMatchObject({
         suggestion: {
           name: "Incident Helper",
