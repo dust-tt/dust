@@ -7,6 +7,7 @@ import { healthLogger } from "@app/lib/api/llm/health/logger";
 import { logModelHealthTransition } from "@app/lib/api/llm/health/transitions";
 import type { ModelHealthWindowType } from "@app/lib/api/llm/health/types";
 import { readEndpointWindow } from "@app/lib/api/llm/health/window";
+import type { Authenticator } from "@app/lib/auth";
 import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
 import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import { launchModelHealthRecovery } from "@app/temporal/model_health/client";
@@ -37,6 +38,7 @@ export type EndpointEvaluationType =
 
 export async function evaluateEndpoint(
   endpoint: DegradedModelEndpointType,
+  auth: Authenticator,
   now: Date = new Date()
 ): Promise<EndpointEvaluationType> {
   const window = await readEndpointWindow(endpoint, now);
@@ -44,7 +46,13 @@ export async function evaluateEndpoint(
     return { outcome: "not_breaching" };
   }
 
-  const launchRes = await launchModelHealthRecovery(endpoint);
+  const persistDegradation = await auth.hasFeatureFlag(
+    "automatic_model_health_routing"
+  );
+  const launchRes = await launchModelHealthRecovery(
+    endpoint,
+    persistDegradation
+  );
   if (launchRes.isErr()) {
     healthLogger.error(
       {
@@ -58,10 +66,14 @@ export async function evaluateEndpoint(
     return { outcome: "launch_failed" };
   }
 
-  const expiresAt = new Date(now.getTime() + DEGRADATION_LEASE_MS);
-  await ModelDegradationResource.updateDegradedEndpoints([
-    { ...endpoint, degraded: true, expiresAt },
-  ]);
+  const expiresAt = persistDegradation
+    ? new Date(now.getTime() + DEGRADATION_LEASE_MS)
+    : undefined;
+  if (expiresAt) {
+    await ModelDegradationResource.updateDegradedEndpoints([
+      { ...endpoint, degraded: true, expiresAt },
+    ]);
+  }
 
   switch (launchRes.value.outcome) {
     case "started": {

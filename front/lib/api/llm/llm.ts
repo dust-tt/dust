@@ -44,7 +44,6 @@ import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
 import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
 import { usesWorkspaceProvidedCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
@@ -213,11 +212,7 @@ export abstract class LLM<
         host: this.host,
       },
       outcome: outcomeTelemetry,
-      // Every workspace's traffic feeds the counters, but during rollout only a
-      // breach seen from a flagged workspace may degrade the endpoint. Once one
-      // does, every workspace routes around it: the outage is provider-side.
-      canDegrade: () =>
-        hasFeatureFlag(this.authenticator, "automatic_model_health_routing"),
+      auth: this.authenticator,
     });
 
     switch (outcomeTelemetry.outcome) {

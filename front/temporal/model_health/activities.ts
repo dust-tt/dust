@@ -13,13 +13,17 @@ export async function probeEndpointActivity(
 export async function logModelHealthRecoveryActivity({
   endpoint,
   degradedForMs,
+  persistDegradation,
 }: {
   endpoint: DegradedModelEndpointType;
   degradedForMs: number;
+  persistDegradation: boolean;
 }): Promise<void> {
-  await ModelDegradationResource.updateDegradedEndpoints([
-    { ...endpoint, degraded: false },
-  ]);
+  if (persistDegradation) {
+    await ModelDegradationResource.updateDegradedEndpoints([
+      { ...endpoint, degraded: false },
+    ]);
+  }
   logModelHealthTransition({
     endpoint,
     transition: "recovered",
@@ -30,14 +34,20 @@ export async function logModelHealthRecoveryActivity({
 export async function logModelHealthProbeFailedActivity({
   endpoint,
   degradedForMs,
+  persistDegradation,
 }: {
   endpoint: DegradedModelEndpointType;
   degradedForMs: number;
+  persistDegradation: boolean;
 }): Promise<void> {
-  const expiresAt = new Date(Date.now() + DEGRADATION_LEASE_MS);
-  await ModelDegradationResource.updateDegradedEndpoints([
-    { ...endpoint, degraded: true, expiresAt },
-  ]);
+  const expiresAt = persistDegradation
+    ? new Date(Date.now() + DEGRADATION_LEASE_MS)
+    : undefined;
+  if (expiresAt) {
+    await ModelDegradationResource.updateDegradedEndpoints([
+      { ...endpoint, degraded: true, expiresAt },
+    ]);
+  }
   logModelHealthTransition({
     endpoint,
     transition: "probe_failed",

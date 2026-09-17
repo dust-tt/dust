@@ -28,6 +28,7 @@ describe("model health recovery activities", () => {
     await logModelHealthProbeFailedActivity({
       endpoint: ENDPOINT,
       degradedForMs: 10,
+      persistDegradation: true,
     });
 
     expect(
@@ -55,6 +56,7 @@ describe("model health recovery activities", () => {
     await logModelHealthRecoveryActivity({
       endpoint: ENDPOINT,
       degradedForMs: 10,
+      persistDegradation: true,
     });
 
     expect(
@@ -64,6 +66,24 @@ describe("model health recovery activities", () => {
       endpoint: ENDPOINT,
       transition: "recovered",
       degradedForMs: 10,
+    });
+  });
+
+  it("logs without writing when degradation persistence is disabled", async () => {
+    await logModelHealthProbeFailedActivity({
+      endpoint: ENDPOINT,
+      degradedForMs: 10,
+      persistDegradation: false,
+    });
+
+    expect(
+      await ModelDegradationResource.listDegradedEndpoints()
+    ).not.toContainEqual(ENDPOINT);
+    expect(logModelHealthTransition).toHaveBeenCalledWith({
+      endpoint: ENDPOINT,
+      transition: "probe_failed",
+      degradedForMs: 10,
+      expiresAt: undefined,
     });
   });
 });

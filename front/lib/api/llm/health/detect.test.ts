@@ -10,6 +10,7 @@ import {
   PROVIDER_ERRORS_FIELD,
 } from "@app/lib/api/llm/health/keys";
 import { logModelHealthTransition } from "@app/lib/api/llm/health/transitions";
+import type { Authenticator } from "@app/lib/auth";
 import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import { launchModelHealthRecovery } from "@app/temporal/model_health/client";
 import { redisMock } from "@app/tests/utils/mocks/redis";
@@ -37,6 +38,9 @@ const BREACHING_ERRORS = Math.ceil(ATTEMPTS * ERROR_RATIO_THRESHOLD);
 
 const NOW = new Date();
 const DEGRADED_SINCE_MS = NOW.getTime();
+const AUTH = {
+  hasFeatureFlag: vi.fn().mockResolvedValue(true),
+} as unknown as Authenticator;
 
 async function seedWindow({
   attempts,
@@ -105,16 +109,38 @@ describe("evaluateEndpoint", () => {
   it("declares a breaching endpoint degraded", async () => {
     await seedWindow({ attempts: ATTEMPTS, providerErrors: BREACHING_ERRORS });
 
-    expect(await evaluateEndpoint(ENDPOINT, NOW)).toEqual({
+    expect(await evaluateEndpoint(ENDPOINT, AUTH, NOW)).toEqual({
       outcome: "recovery_started",
       degradedSinceMs: DEGRADED_SINCE_MS,
     });
 
-    expect(launchModelHealthRecovery).toHaveBeenCalledWith(ENDPOINT);
+    expect(launchModelHealthRecovery).toHaveBeenCalledWith(ENDPOINT, true);
     expect(await isEndpointDegraded()).toBe(true);
     expect(logModelHealthTransition).toHaveBeenCalledWith(
       expect.objectContaining({ endpoint: ENDPOINT, transition: "degraded" })
     );
+  });
+
+  it("detects a breach without persisting it when routing is disabled", async () => {
+    vi.mocked(AUTH.hasFeatureFlag).mockResolvedValueOnce(false);
+    await seedWindow({ attempts: ATTEMPTS, providerErrors: BREACHING_ERRORS });
+
+    expect(await evaluateEndpoint(ENDPOINT, AUTH, NOW)).toEqual({
+      outcome: "recovery_started",
+      degradedSinceMs: DEGRADED_SINCE_MS,
+    });
+
+    expect(launchModelHealthRecovery).toHaveBeenCalledWith(ENDPOINT, false);
+    expect(await isEndpointDegraded()).toBe(false);
+    expect(logModelHealthTransition).toHaveBeenCalledWith({
+      endpoint: ENDPOINT,
+      transition: "degraded",
+      window: {
+        attempts: ATTEMPTS,
+        providerErrors: BREACHING_ERRORS,
+      },
+      expiresAt: undefined,
+    });
   });
 
   it("leaves a healthy endpoint alone", async () => {
@@ -123,7 +149,7 @@ describe("evaluateEndpoint", () => {
       providerErrors: BREACHING_ERRORS - 1,
     });
 
-    expect(await evaluateEndpoint(ENDPOINT, NOW)).toEqual({
+    expect(await evaluateEndpoint(ENDPOINT, AUTH, NOW)).toEqual({
       outcome: "not_breaching",
     });
 
@@ -142,7 +168,7 @@ describe("evaluateEndpoint", () => {
     );
     await seedWindow({ attempts: ATTEMPTS, providerErrors: BREACHING_ERRORS });
 
-    expect(await evaluateEndpoint(ENDPOINT, NOW)).toEqual({
+    expect(await evaluateEndpoint(ENDPOINT, AUTH, NOW)).toEqual({
       outcome: "already_degraded",
       degradedSinceMs: DEGRADED_SINCE_MS,
     });
@@ -158,7 +184,7 @@ describe("evaluateEndpoint", () => {
     );
     await seedWindow({ attempts: ATTEMPTS, providerErrors: BREACHING_ERRORS });
 
-    expect(await evaluateEndpoint(ENDPOINT, NOW)).toEqual({
+    expect(await evaluateEndpoint(ENDPOINT, AUTH, NOW)).toEqual({
       outcome: "launch_failed",
     });
 

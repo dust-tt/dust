@@ -2,13 +2,14 @@ import {
   MIN_DEGRADED_DURATION_MS,
   MIN_EVALUATION_INTERVAL_MS,
 } from "@app/lib/api/llm/health/config";
-import { recordLLMAttempt } from "@app/lib/api/llm/health/counters";
+import { recordLLMAttempt as recordLLMAttemptImpl } from "@app/lib/api/llm/health/counters";
 import { evaluateEndpoint } from "@app/lib/api/llm/health/detect";
 import { modelHealthKey } from "@app/lib/api/llm/health/keys";
 import { isModelHealthDetectionPaused } from "@app/lib/api/llm/health/kill_switch";
 import type { LLMAttemptOutcomeTelemetry } from "@app/lib/api/llm/telemetry";
 import type { LLMErrorType } from "@app/lib/api/llm/types/errors";
 import { runOnRedisCache } from "@app/lib/api/redis";
+import type { Authenticator } from "@app/lib/auth";
 import { redisMock } from "@app/tests/utils/mocks/redis";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -38,6 +39,13 @@ function providerError(errorType: LLMErrorType) {
 
 const NOW = new Date("2026-09-03T14:32:10Z");
 const KEY = modelHealthKey(ENDPOINT, "202609031432");
+const AUTH = {} as Authenticator;
+
+function recordLLMAttempt(
+  args: Omit<Parameters<typeof recordLLMAttemptImpl>[0], "auth">
+): Promise<void> {
+  return recordLLMAttemptImpl({ ...args, auth: AUTH });
+}
 
 async function record(outcome: LLMAttemptOutcomeTelemetry): Promise<void> {
   await recordLLMAttempt({ endpoint: ENDPOINT, outcome, now: NOW });
@@ -154,7 +162,7 @@ describe("model health counters", () => {
       outcome: providerError("overloaded_error"),
       now: NOW,
     });
-    expect(evaluateEndpoint).toHaveBeenCalledWith(endpoint, NOW);
+    expect(evaluateEndpoint).toHaveBeenCalledWith(endpoint, AUTH, NOW);
   });
 
   it("evaluates one endpoint at most once per interval", async () => {
@@ -250,37 +258,6 @@ describe("model health counters", () => {
 
     // Nothing holds the endpoint, so the next window is still worth a look.
     expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
-  });
-
-  it("still records when canDegrade is false, and does not consume the evaluation slot", async () => {
-    const endpoint = {
-      ...ENDPOINT,
-      modelId: "claude-3-opus-20240229",
-    } as const;
-    const error = providerError("overloaded_error");
-
-    await recordLLMAttempt({
-      endpoint,
-      outcome: error,
-      now: NOW,
-      canDegrade: async () => false,
-    });
-    expect(
-      (
-        await redisMock.cacheClient.hGetAll(
-          modelHealthKey(endpoint, "202609031432")
-        )
-      ).attempts
-    ).toBe("1");
-    expect(evaluateEndpoint).not.toHaveBeenCalled();
-
-    await recordLLMAttempt({
-      endpoint,
-      outcome: error,
-      now: NOW,
-      canDegrade: async () => true,
-    });
-    expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
   });
 
   it("does not evaluate when the write failed", async () => {

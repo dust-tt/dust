@@ -38,7 +38,8 @@ const {
  * re-detected from the counters and opens a fresh run.
  */
 export async function modelHealthRecoveryWorkflow(
-  endpoint: DegradedModelEndpointType
+  endpoint: DegradedModelEndpointType,
+  persistDegradation: boolean
 ): Promise<void> {
   const startedAtMs = Date.now();
 
@@ -49,10 +50,18 @@ export async function modelHealthRecoveryWorkflow(
     const degradedForMs = Date.now() - startedAtMs;
 
     if (healthy) {
-      await logModelHealthRecoveryActivity({ endpoint, degradedForMs });
+      await logModelHealthRecoveryActivity({
+        endpoint,
+        degradedForMs,
+        persistDegradation,
+      });
       return;
     }
 
-    await logModelHealthProbeFailedActivity({ endpoint, degradedForMs });
+    await logModelHealthProbeFailedActivity({
+      endpoint,
+      degradedForMs,
+      persistDegradation,
+    });
   }
 }
