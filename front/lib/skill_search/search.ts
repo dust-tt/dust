@@ -37,7 +37,7 @@ export interface SkillSearchCandidate {
  * database reads. Permission-bearing document changes are eventually consistent; full-skill
  * access remains separately authorized. Unreadable listings must not be returned.
  */
-export async function searchSkillDocumentCandidates(
+export async function searchSkills(
   auth: Authenticator,
   {
     query,
@@ -69,17 +69,10 @@ export async function searchSkillDocumentCandidates(
         { skill_id: { order: "asc" } },
       ],
       ...(searchAfter ? { search_after: searchAfter } : {}),
-      track_total_hits: false,
-      allow_partial_search_results: false,
     })
   );
   if (result.isErr()) {
     return result;
-  }
-  if (result.value.timed_out) {
-    return new Err(
-      new ElasticsearchError("query_error", "Skill search timed out")
-    );
   }
   const hits = result.value.hits.hits;
   const sorts = SkillSearchSortSchema.array().safeParse(

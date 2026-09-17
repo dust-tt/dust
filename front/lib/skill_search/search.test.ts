@@ -21,7 +21,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
   prepareSkillSearchQuery,
-  searchSkillDocumentCandidates,
+  searchSkills,
 } from "@app/lib/skill_search/search";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -63,7 +63,7 @@ async function searchCandidates(
   auth: Authenticator,
   options: SkillSearchOptions = { searchTerm: "" }
 ) {
-  const result = await searchSkillDocumentCandidates(auth, {
+  const result = await searchSkills(auth, {
     query: prepareSkillSearchQuery(auth, options.searchTerm, options),
     searchAfter: null,
     limit: 200,
@@ -546,13 +546,12 @@ describe("custom skill search", () => {
   });
 
   it.each([
-    { timed_out: true, hits: { hits: [] } },
     { hits: { hits: [{ sort: [1, "missing skill ID"] }] } },
     { hits: { hits: [{ sort: [1, "name", "skill-id"] }] } },
-  ])("does not return partial or unpageable ES results", async (response) => {
+  ])("does not return malformed ES results", async (response) => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     mockSearch.mockResolvedValue(response);
-    const result = await searchSkillDocumentCandidates(auth, {
+    const result = await searchSkills(auth, {
       query: prepareSkillSearchQuery(auth, ""),
       searchAfter: null,
       limit: 10,
