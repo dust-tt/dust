@@ -731,7 +731,7 @@ export function ToolDetailsSheet({ toolId, onClose }: ToolDetailsSheetProps) {
             {tool?.name ?? "Tool"} details
           </SheetTitle>
           <SheetDescription className="sr-only">
-            Settings, usage, availability and stakes for this tool.
+            Settings, availability and stakes for this tool.
           </SheetDescription>
           {tool && (
             <DetailHeader
@@ -756,7 +756,6 @@ export function ToolDetailsSheet({ toolId, onClose }: ToolDetailsSheetProps) {
                 <TabsList>
                   <TabsTrigger value="general" label="General" />
                   <TabsTrigger value="stakes" label="Tools & Stakes" />
-                  <TabsTrigger value="insight" label="Insight" />
                   <TabsTrigger value="availability" label="Availability" />
                 </TabsList>
                 <TabsContent
@@ -783,12 +782,6 @@ export function ToolDetailsSheet({ toolId, onClose }: ToolDetailsSheetProps) {
                     onSelectedNamesChange={setSelectedOperations}
                     onOperationsChange={(operations) => patch({ operations })}
                   />
-                </TabsContent>
-                <TabsContent
-                  value="insight"
-                  className="flex flex-col gap-5 pt-4"
-                >
-                  <ToolInsightTab tool={tool} />
                 </TabsContent>
                 <TabsContent
                   value="availability"
@@ -983,26 +976,6 @@ function ToolServerFields({
           </PopoverContent>
         </PopoverRoot>
       </div>
-    </Section>
-  );
-}
-
-/** Who reaches for the tool, as the Tools table counts it in its own column. */
-function ToolInsightTab({ tool }: { tool: MockTool }) {
-  return (
-    <Section title="Used by">
-      {tool.usedByAgentIds.length === 0 ? (
-        <EmptySectionNote>No agent calls it yet.</EmptySectionNote>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {tool.usedByAgentIds.flatMap((agentId) => {
-            const agent = getManagedAgentById(agentId);
-            return agent
-              ? [<Chip key={agent.id} size="xs" label={agent.name} />]
-              : [];
-          })}
-        </div>
-      )}
     </Section>
   );
 }
