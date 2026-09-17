@@ -4,10 +4,8 @@ import { buildSkillMatchQuery } from "@app/lib/skill_search/ranking";
 import type {
   SkillSearchFilters,
   SkillSearchOptions,
-  SkillSearchPermissionFiltering,
 } from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
-import assert from "assert";
 import { z } from "zod";
 
 export const MAX_SKILL_SEARCH_RESULTS = 150;
@@ -130,19 +128,14 @@ function buildSelectionFilters(
 
 /**
  * @cc [owner:aubin-tchoi,label:security] workspace-scoped-skill-search
- * Every query is workspace- and lifecycle-scoped, defaulting to active skills. Strict mode requires every requested
- * space and editor visibility; only admins may omit those gates for metadata redaction.
+ * Every query is workspace- and lifecycle-scoped, defaulting to active skills, and requires
+ * every requested space and editor visibility.
  */
 export function prepareSkillSearchQuery(
   auth: Authenticator,
   searchTerm: string,
-  permissionFiltering: SkillSearchPermissionFiltering = "strict",
   { filters = {} }: Pick<SkillSearchOptions, "filters"> = {}
 ): estypes.QueryDslQueryContainer {
-  assert(
-    permissionFiltering !== "redact_unreadable" || auth.isAdmin(),
-    "Only admins can search unreadable skills."
-  );
   const readableSpaceIds = getSkillSearchReadableSpaceIds(auth);
   return {
     bool: {
@@ -153,12 +146,8 @@ export function prepareSkillSearchQuery(
             status: [...new Set(filters.status ?? ["active"])].sort(),
           },
         },
-        ...(permissionFiltering === "strict"
-          ? [
-              buildAvailabilityFilter(auth),
-              buildSpaceAccessFilter(readableSpaceIds),
-            ]
-          : []),
+        buildAvailabilityFilter(auth),
+        buildSpaceAccessFilter(readableSpaceIds),
         ...buildSelectionFilters(auth, filters),
       ],
       must: [buildSkillMatchQuery(searchTerm)],

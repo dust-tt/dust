@@ -1,4 +1,3 @@
-import type { SkillPermissionFilteringMode } from "@app/lib/resources/skill/skill_resource";
 import type {
   SkillAvailability,
   SkillListItemType,
@@ -16,14 +15,7 @@ export type GetSkillsResponseBody = {
 
 export type SkillSearchResult = SkillListItemType & {
   score: number;
-  // Readability of the indexed requirements, not an authorization for full-skill access.
-  canRead: boolean;
 };
-
-export type SkillSearchPermissionFiltering = Exclude<
-  SkillPermissionFilteringMode,
-  "dangerously_skip"
->;
 
 // OR within a dimension, AND across dimensions. Selection never replaces ACLs.
 export interface SkillSearchFilters {
@@ -39,7 +31,6 @@ export interface SkillSearchFilters {
 export interface SkillSearchOptions {
   searchTerm: string;
   filters?: SkillSearchFilters;
-  permissionFiltering?: SkillSearchPermissionFiltering;
 }
 
 /**

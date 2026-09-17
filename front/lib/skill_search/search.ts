@@ -12,13 +12,11 @@ import {
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import type {
   SkillSearchFilters,
-  SkillSearchPermissionFiltering,
   SkillSearchResult,
 } from "@app/types/api/skills";
 import { Err, Ok } from "@app/types/shared/result";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";
-import assert from "assert";
 
 export type { SkillSearchSort } from "@app/lib/skill_search/query";
 export {
@@ -37,7 +35,7 @@ export interface SkillSearchCandidate {
  * @cc [owner:aubin-tchoi,label:security;performance] indexed-skill-search-listings
  * Return only workspace-scoped indexed metadata using the caller's hydrated grants, with no
  * database reads. Permission-bearing document changes are eventually consistent; full-skill
- * access remains separately authorized. Only admins may retain unreadable listings.
+ * access remains separately authorized. Unreadable listings must not be returned.
  */
 export async function searchSkillDocumentCandidates(
   auth: Authenticator,
@@ -45,17 +43,14 @@ export async function searchSkillDocumentCandidates(
     query,
     searchAfter,
     limit,
-    permissionFiltering = "strict",
     status = ["active"],
   }: {
     query: estypes.QueryDslQueryContainer;
     searchAfter: SkillSearchSort | null;
     limit: number;
-    permissionFiltering?: SkillSearchPermissionFiltering;
     status?: SkillSearchFilters["status"];
   }
 ) {
-  assert(permissionFiltering !== "redact_unreadable" || auth.isAdmin());
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const result = await withEs((client) =>
     client.search<SkillSearchDocument>({
@@ -114,15 +109,12 @@ export async function searchSkillDocumentCandidates(
       document.workspace_id === workspaceId &&
       document.skill_id === sort[2] &&
       status.some((value) => value === document.status) &&
-      (permissionFiltering === "redact_unreadable" ||
-        (canRead &&
-          (document.availability !== "editors" ||
-            document.editor_ids.includes(userId))));
+      canRead &&
+      (document.availability !== "editors" ||
+        document.editor_ids.includes(userId));
     candidates.push({
       sort,
-      skill: visible
-        ? { ...toSkillListItem(document), score: sort[0], canRead }
-        : null,
+      skill: visible ? { ...toSkillListItem(document), score: sort[0] } : null,
     });
   }
   return new Ok({

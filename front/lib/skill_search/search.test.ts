@@ -23,7 +23,6 @@ import {
   prepareSkillSearchQuery,
   searchSkillDocumentCandidates,
 } from "@app/lib/skill_search/search";
-import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
@@ -65,15 +64,9 @@ async function searchCandidates(
   options: SkillSearchOptions = { searchTerm: "" }
 ) {
   const result = await searchSkillDocumentCandidates(auth, {
-    query: prepareSkillSearchQuery(
-      auth,
-      options.searchTerm,
-      options.permissionFiltering,
-      options
-    ),
+    query: prepareSkillSearchQuery(auth, options.searchTerm, options),
     searchAfter: null,
     limit: 200,
-    permissionFiltering: options.permissionFiltering,
     status: options.filters?.status,
   });
   assert(result.isOk());
@@ -164,7 +157,7 @@ describe("custom skill search", () => {
   ])("adds selection filters without replacing ACLs (isDefault=%s)", async (isDefault) => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     const base = prepareSkillSearchQuery(auth, "");
-    const query = prepareSkillSearchQuery(auth, "", "strict", {
+    const query = prepareSkillSearchQuery(auth, "", {
       filters: {
         toolIds: ["view-2", "view-1", "view-2"],
         spaceIds: ["space-1"],
@@ -430,7 +423,7 @@ describe("custom skill search", () => {
       ]);
       const listing = both[0].skill;
       expect(
-        SkillListItemSchema.extend({ score: z.number(), canRead: z.boolean() })
+        SkillListItemSchema.extend({ score: z.number() })
           .strict()
           .parse(listing)
       ).toEqual({
@@ -445,7 +438,6 @@ describe("custom skill search", () => {
         availability: "workspace_users",
         activeUsersCount: null,
         updatedAt: active.updatedAt.getTime(),
-        canRead: true,
         score: 1,
       });
       expect(SkillSchema.safeParse(listing).success).toBe(false);
@@ -464,57 +456,6 @@ describe("custom skill search", () => {
     } finally {
       frontSequelize.removeHook("afterQuery", "skill-search-no-db");
     }
-  });
-
-  it.each([
-    "regular",
-    "project",
-  ] as const)("marks unreadable %s listings for admins without hydration", async (kind) => {
-    const { authenticator: auth, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const space =
-      kind === "regular"
-        ? await SpaceFactory.regular(workspace)
-        : await SpaceFactory.project(workspace);
-    const skill = await SkillFactory.create(auth, {
-      requestedSpaceIds: [space.id],
-      manuallyRequestedSpaceIds: [space.id],
-    });
-    const [document] = await mockHits(auth, [skill]);
-    const [strict] = await searchCandidates(auth);
-    expect(strict.skill).toBeNull();
-    const [redacted] = await searchCandidates(auth, {
-      searchTerm: "",
-      permissionFiltering: "redact_unreadable",
-    });
-    expect(redacted.skill).toEqual({
-      ...toSkillListItem(document),
-      score: 1,
-      canRead: false,
-    });
-    expect(redacted.skill?.canRead).toBe(false);
-    expect(mockSearch.mock.lastCall![0].query.bool.must[0].bool.filter).toEqual(
-      [
-        { term: { workspace_id: workspace.sId } },
-        { terms: { status: ["active"] } },
-      ]
-    );
-  });
-
-  it.each([
-    "user",
-    "builder",
-    "manager",
-  ] as const)("refuses admin redaction for a %s", async (role) => {
-    const { authenticator: auth } = await createResourceTest({ role });
-    await expect(
-      searchCandidates(auth, {
-        searchTerm: "",
-        permissionFiltering: "redact_unreadable",
-      })
-    ).rejects.toThrow("Only admins");
-    expect(mockSearch).not.toHaveBeenCalled();
   });
 
   it("handles absent and type-wide space grants without enumerating spaces", async () => {
@@ -578,11 +519,6 @@ describe("custom skill search", () => {
     expect(prepareSkillSearchQuery(auth, "").bool?.filter).not.toContainEqual({
       terms: { skill_id: [own.sId] },
     });
-    const redacted = await searchCandidates(auth, {
-      searchTerm: "",
-      permissionFiltering: "redact_unreadable",
-    });
-    expect(redacted.map(({ skill }) => skill?.canRead)).toEqual([true, true]);
   });
 
   it("requires indexed editorship even with a type-wide skill grant", async () => {
@@ -608,7 +544,7 @@ describe("custom skill search", () => {
         .should[1].bool.filter[1]
     ).toEqual({ term: { editor_ids: user.sId } });
     expect(
-      prepareSkillSearchQuery(auth, "", "strict", {
+      prepareSkillSearchQuery(auth, "", {
         filters: { editedByMe: true },
       }).bool?.filter
     ).toContainEqual({ term: { editor_ids: user.sId } });
