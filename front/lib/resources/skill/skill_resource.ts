@@ -90,7 +90,6 @@ import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
   AgentSkillType,
   SkillAvailability,
-  SkillListItemType,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
@@ -4622,30 +4621,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       favorite_count: this.favoriteCount,
       created_at: this.createdAt.toISOString(),
       updated_at: this.updatedAt.toISOString(),
-    };
-  }
-
-  /**
-   * @cc [owner:aubin-tchoi,label:security] skill-listing-redaction
-   * Listing serialization exposes only display fields and the canonical canRead
-   * flag, never instructions, tools, file attachments, or editor grants.
-   */
-  toSearchJSON(
-    auth: Authenticator,
-    score: number
-  ): SkillListItemType & { score: number } {
-    return {
-      editedBy: this.globalSId ? null : this.editedBy,
-      icon: this.icon ?? null,
-      name: this.name,
-      requestedSpaceIds: this.requestedSpaceIds.map((id) =>
-        SpaceResource.modelIdToSId({ id, workspaceId: this.workspaceId })
-      ),
-      sId: this.sId,
-      userFacingDescription: this.userFacingDescription ?? "",
-      status: this.status,
-      canRead: this.canRead(auth),
-      score,
     };
   }
 

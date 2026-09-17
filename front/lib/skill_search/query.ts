@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   applySearchRanking,
@@ -21,25 +22,44 @@ export const SkillSearchSortSchema = z.tuple([
 ]);
 export type SkillSearchSort = z.infer<typeof SkillSearchSortSchema>;
 
+// Null represents a type-wide read grant; do not enumerate resources in that case.
+export function getSkillSearchReadPermissions(auth: Authenticator) {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const spaces = auth.getResourceIdsWithVerb("space", "read");
+  const skills = auth.getResourceIdsWithVerb("skill", "read");
+  return {
+    spaceIds:
+      spaces.kind === "all"
+        ? null
+        : spaces.resourceIds
+            .map((id) => SpaceResource.modelIdToSId({ id, workspaceId }))
+            .sort(),
+    skillIds:
+      auth.isKey() || skills.kind === "all"
+        ? null
+        : skills.resourceIds
+            .map((id) => SkillResource.modelIdToSId({ id, workspaceId }))
+            .sort(),
+  };
+}
+
 /**
  * @cc [owner:aubin-tchoi,label:security] all-required-spaces
  * Every requested space, including projects, must be readable; an empty requirement
  * matches every caller. Space read grants are resolved by Authenticator, not fetched here.
  */
 function buildSpaceAccessFilter(
-  auth: Authenticator
+  readableSpaceIds: string[] | null
 ): estypes.QueryDslQueryContainer {
-  const readable = auth.getResourceIdsWithVerb("space", "read");
-  if (readable.kind === "all") {
+  if (readableSpaceIds === null) {
     return { match_all: {} };
   }
   const noRequiredSpaces = {
     bool: { must_not: [{ exists: { field: "requested_space_ids" } }] },
   };
-  if (readable.resourceIds.length === 0) {
+  if (readableSpaceIds.length === 0) {
     return noRequiredSpaces;
   }
-  const workspace = auth.getNonNullableWorkspace();
   return {
     bool: {
       should: [
@@ -47,11 +67,7 @@ function buildSpaceAccessFilter(
         {
           terms_set: {
             requested_space_ids: {
-              terms: readable.resourceIds
-                .map((id) =>
-                  SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
-                )
-                .sort(),
+              terms: readableSpaceIds,
               minimum_should_match_script: {
                 source: "doc['requested_space_ids'].size()",
               },
@@ -155,6 +171,7 @@ export function prepareSkillSearchQuery(
     permissionFiltering !== "redact_unreadable" || auth.isAdmin(),
     "Only admins can search unreadable skills."
   );
+  const readable = getSkillSearchReadPermissions(auth);
   return applySearchRanking(
     {
       bool: {
@@ -168,7 +185,10 @@ export function prepareSkillSearchQuery(
           ...(permissionFiltering === "strict"
             ? [
                 ...(auth.isKey() ? [] : [buildAvailabilityFilter(auth)]),
-                buildSpaceAccessFilter(auth),
+                ...(readable.skillIds === null
+                  ? []
+                  : [{ terms: { skill_id: readable.skillIds } }]),
+                buildSpaceAccessFilter(readable.spaceIds),
               ]
             : []),
           ...buildSelectionFilters(auth, filters),

@@ -14,16 +14,10 @@ export type GetSkillsResponseBody = {
   })[];
 };
 
-export type SkillSearchResult = Omit<
-  SkillListItemType,
-  "status" | "canRead"
-> & {
-  // Optional for clients talking to an older server that only searched active skills.
-  status?: SkillListItemType["status"];
-  // Fixed relevance score shared with code-defined skills. Older clients may ignore it.
-  score?: number;
-  // False for an unreadable result retained by admin-only redact_unreadable search.
-  canRead?: boolean;
+export type SkillSearchResult = SkillListItemType & {
+  score: number;
+  // Readability of the indexed requirements, not an authorization for full-skill access.
+  canRead: boolean;
 };
 
 export type SkillSearchPermissionFiltering = Exclude<

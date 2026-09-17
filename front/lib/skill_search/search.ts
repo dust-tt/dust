@@ -4,15 +4,19 @@ import {
   withEs,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillSearchSort } from "@app/lib/skill_search/query";
-import { SkillSearchSortSchema } from "@app/lib/skill_search/query";
+import {
+  getSkillSearchReadPermissions,
+  SkillSearchSortSchema,
+} from "@app/lib/skill_search/query";
+import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import type {
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
+  SkillSearchResult,
 } from "@app/types/api/skills";
-import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import { Err, Ok } from "@app/types/shared/result";
+import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
 
@@ -25,15 +29,15 @@ export {
 
 export interface SkillSearchCandidate {
   // Rejected hits retain their position so a page of denied hits can advance.
-  skill: (SkillListItemType & { score: number }) | null;
+  skill: SkillSearchResult | null;
   sort: SkillSearchSort;
 }
 
 /**
- * @cc [owner:aubin-tchoi,label:security] canonical-skill-search-authorization
- * Results must come from the workspace-scoped resource fetch, match the requested statuses,
- * and, in strict mode, pass current row, space and editor permissions. Only admins may
- * retain unreadable listings through canonical metadata redaction; ES supplies no display data.
+ * @cc [owner:aubin-tchoi,label:security;performance] indexed-skill-search-listings
+ * Return only workspace-scoped indexed metadata using the caller's hydrated grants, with no
+ * database reads. Permission-bearing document changes are eventually consistent; full-skill
+ * access remains separately authorized. Only admins may retain unreadable listings.
  */
 export async function searchSkillDocumentCandidates(
   auth: Authenticator,
@@ -54,9 +58,9 @@ export async function searchSkillDocumentCandidates(
   assert(permissionFiltering !== "redact_unreadable" || auth.isAdmin());
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const result = await withEs((client) =>
-    client.search({
+    client.search<SkillSearchDocument>({
       index: SKILL_SEARCH_ALIAS_NAME,
-      _source: false,
+      _source: true,
       query: {
         bool: {
           filter: [{ term: { workspace_id: workspaceId } }],
@@ -91,31 +95,45 @@ export async function searchSkillDocumentCandidates(
       new ElasticsearchError("query_error", "Missing skill search sort values")
     );
   }
-  const skills = await SkillResource.fetchByIds(
-    auth,
-    sorts.data.map(([, , skillId]) => skillId),
-    {
-      permissionFiltering,
-      withInstructions: false,
-      withTools: false,
-      withFileAttachments: false,
+  const readable = getSkillSearchReadPermissions(auth);
+  const readableSpaceIds =
+    readable.spaceIds === null ? null : new Set(readable.spaceIds);
+  const readableSkillIds =
+    readable.skillIds === null ? null : new Set(readable.skillIds);
+  const userId = auth.user()?.sId;
+  const canWriteAllSkills =
+    auth.getResourceIdsWithVerb("skill", "write").kind === "all";
+  const candidates: SkillSearchCandidate[] = [];
+  for (const [index, hit] of hits.entries()) {
+    const document = hit._source;
+    if (!document) {
+      return new Err(
+        new ElasticsearchError("query_error", "Missing skill search document")
+      );
     }
-  );
-  const skillById = new Map(skills.map((skill) => [skill.sId, skill]));
-  const candidates: SkillSearchCandidate[] = sorts.data.map((sort) => {
-    const [score, , skillId] = sort;
-    const skill = skillById.get(skillId);
+    const sort = sorts.data[index];
+    const canRead =
+      (readableSkillIds === null || readableSkillIds.has(document.skill_id)) &&
+      document.requested_space_ids.every(
+        (id) => readableSpaceIds === null || readableSpaceIds.has(id)
+      );
     const visible =
-      skill &&
-      status.some((value) => value === skill.status) &&
+      document.workspace_id === workspaceId &&
+      document.skill_id === sort[2] &&
+      status.some((value) => value === document.status) &&
       (permissionFiltering === "redact_unreadable" ||
-        skill.availability !== "editors" ||
-        skill.canWrite(auth));
-    return {
+        (canRead &&
+          (auth.isKey() ||
+            document.availability !== "editors" ||
+            (userId &&
+              (canWriteAllSkills || document.editor_ids.includes(userId))))));
+    candidates.push({
       sort,
-      skill: visible ? skill.toSearchJSON(auth, score) : null,
-    };
-  });
+      skill: visible
+        ? { ...toSkillListItem(document), score: sort[0], canRead }
+        : null,
+    });
+  }
   return new Ok({
     candidates,
     exhausted: hits.length < limit,

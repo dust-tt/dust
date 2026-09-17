@@ -16,11 +16,14 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
 });
 
 import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import {
   prepareSkillSearchQuery,
   searchSkillDocumentCandidates,
 } from "@app/lib/skill_search/search";
+import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
@@ -34,15 +37,28 @@ import {
 } from "@app/types/assistant/skill_configuration";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import assert from "assert";
 import { z } from "zod";
 
-function mockHits(skills: SkillResource[]) {
+async function mockHits(
+  auth: Authenticator,
+  skills: SkillResource[],
+  extraDocuments: SkillSearchDocument[] = []
+) {
+  const documents = [
+    ...(await SkillFactory.createSearchDocuments(auth, skills)),
+    ...extraDocuments,
+  ];
   mockSearch.mockResolvedValue({
     hits: {
-      hits: skills.map((skill) => ({ sort: [1, skill.name, skill.sId] })),
+      hits: documents.map((document) => ({
+        _source: document,
+        sort: [1, document.name, document.skill_id],
+      })),
     },
   });
+  return documents;
 }
 
 async function searchCandidates(
@@ -263,8 +279,8 @@ describe("custom skill search", () => {
       ? await Authenticator.fromKey(key, workspace.sId)
       : authorAuth;
     await auth.refresh();
-    // Include denied hits too: stale ES candidates must never bypass the live resource ACL.
-    mockHits(skills);
+    // Include denied hits too: indexed requirements must satisfy the hydrated grants.
+    await mockHits(authorAuth, skills);
     const candidates = await searchCandidates(auth, {
       searchTerm: "",
       filters: { status: [status] },
@@ -318,7 +334,7 @@ describe("custom skill search", () => {
       requestedSpaceIds: [pod.id],
     });
     await auth.refresh();
-    mockHits([skill]);
+    await mockHits(auth, [skill]);
     const [candidate] = await searchCandidates(auth);
     expect(candidate.skill?.sId ?? null).toBe(
       access === "denied" ? null : skill.sId
@@ -331,7 +347,7 @@ describe("custom skill search", () => {
     "availability",
     "archive",
     "delete",
-  ] as const)("rechecks a stale hit after a change to %s", async (change) => {
+  ] as const)("uses current grants but indexed skill metadata after a change to %s", async (change) => {
     const {
       authenticator: auth,
       workspace,
@@ -346,7 +362,7 @@ describe("custom skill search", () => {
     if (change === "availability") {
       expect((await skill.removeEditors(auth, [user])).isOk()).toBe(true);
     }
-    mockHits([skill]);
+    await mockHits(auth, [skill]);
     const [before] = await searchCandidates(auth);
     expect(before.skill?.sId).toBe(skill.sId);
     switch (change) {
@@ -372,11 +388,26 @@ describe("custom skill search", () => {
     }
     await auth.refresh();
     const [after] = await searchCandidates(auth);
-    expect(after.skill).toBeNull();
+    if (change === "pod") {
+      expect(after.skill).toBeNull();
+    } else {
+      // Skill fields are eventually consistent until the document is refreshed or deleted.
+      expect(after.skill).toEqual(before.skill);
+      if (change === "delete") {
+        await mockHits(auth, []);
+        expect(await searchCandidates(auth)).toEqual([]);
+      } else {
+        const current = await SkillResource.fetchById(auth, skill.sId);
+        assert(current);
+        await mockHits(auth, [current]);
+        const [refreshed] = await searchCandidates(auth);
+        expect(refreshed.skill).toBeNull();
+      }
+    }
     expect(after.sort).toEqual(before.sort);
   });
 
-  it("uses current listing metadata and filters foreign, suggested and unrequested statuses", async () => {
+  it("returns only indexed listing metadata without querying the database", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
     const other = await createResourceTest({ role: "admin" });
     const active = await SkillFactory.create(auth, {
@@ -386,46 +417,81 @@ describe("custom skill search", () => {
     const archived = await SkillFactory.create(auth, { status: "archived" });
     const suggested = await SkillFactory.create(auth, { status: "suggested" });
     const foreign = await SkillFactory.create(other.authenticator);
-    mockHits([active, archived, suggested, foreign]);
-    const defaults = await searchCandidates(auth);
-    expect(defaults.map(({ skill }) => skill?.sId ?? null)).toEqual([
-      active.sId,
-      null,
-      null,
-      null,
-    ]);
-    const both = await searchCandidates(auth, {
-      searchTerm: "",
-      filters: { status: ["active", "archived"] },
-    });
-    expect(both.map(({ skill }) => skill?.sId ?? null)).toEqual([
-      active.sId,
-      archived.sId,
-      null,
-      null,
-    ]);
-    const listing = both[0].skill;
-    expect(
-      SkillListItemSchema.extend({ score: z.number() }).strict().parse(listing)
-    ).toEqual(active.toSearchJSON(auth, 1));
-    expect(SkillSchema.safeParse(listing).success).toBe(false);
-    expect(mockSearch.mock.lastCall![0]).toMatchObject({
-      index: "front.skills",
-      _source: false,
-      query: {
-        bool: {
-          filter: [
-            { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
-          ],
+    const foreignDocuments = await SkillFactory.createSearchDocuments(
+      other.authenticator,
+      [foreign]
+    );
+    const documents = await mockHits(
+      auth,
+      [active, archived, suggested],
+      foreignDocuments
+    );
+    documents[0].name = "Indexed name";
+    documents[0].description = "Indexed description";
+    documents[0].active_users_count = null;
+    documents[0].mcp_server_view_ids = ["tool-view-id"];
+    const onQuery = vi.fn();
+    frontSequelize.addHook("afterQuery", "skill-search-no-db", onQuery);
+    try {
+      const defaults = await searchCandidates(auth);
+      expect(defaults.map(({ skill }) => skill?.sId ?? null)).toEqual([
+        active.sId,
+        null,
+        null,
+        null,
+      ]);
+      const both = await searchCandidates(auth, {
+        searchTerm: "",
+        filters: { status: ["active", "archived"] },
+      });
+      expect(both.map(({ skill }) => skill?.sId ?? null)).toEqual([
+        active.sId,
+        archived.sId,
+        null,
+        null,
+      ]);
+      const listing = both[0].skill;
+      expect(
+        SkillListItemSchema.extend({ score: z.number(), canRead: z.boolean() })
+          .strict()
+          .parse(listing)
+      ).toEqual({
+        sId: active.sId,
+        status: "active",
+        name: "Indexed name",
+        userFacingDescription: "Indexed description",
+        icon: active.icon,
+        requestedSpaceIds: [],
+        mcpServerViewIds: ["tool-view-id"],
+        editorIds: [auth.getNonNullableUser().sId],
+        availability: "workspace_users",
+        activeUsersCount: null,
+        updatedAt: active.updatedAt.getTime(),
+        canRead: true,
+        score: 1,
+      });
+      expect(SkillSchema.safeParse(listing).success).toBe(false);
+      expect(mockSearch.mock.lastCall![0]).toMatchObject({
+        index: "front.skills",
+        _source: true,
+        query: {
+          bool: {
+            filter: [
+              { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
+            ],
+          },
         },
-      },
-    });
+      });
+      expect(onQuery).not.toHaveBeenCalled();
+    } finally {
+      frontSequelize.removeHook("afterQuery", "skill-search-no-db");
+    }
   });
 
   it.each([
     "regular",
     "project",
-  ] as const)("uses canonical admin redaction for an unreadable %s space", async (kind) => {
+  ] as const)("marks unreadable %s listings for admins without hydration", async (kind) => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -437,18 +503,18 @@ describe("custom skill search", () => {
       requestedSpaceIds: [space.id],
       manuallyRequestedSpaceIds: [space.id],
     });
-    mockHits([skill]);
+    const [document] = await mockHits(auth, [skill]);
     const [strict] = await searchCandidates(auth);
     expect(strict.skill).toBeNull();
     const [redacted] = await searchCandidates(auth, {
       searchTerm: "",
       permissionFiltering: "redact_unreadable",
     });
-    const canonical = await SkillResource.fetchById(auth, skill.sId, {
-      permissionFiltering: "redact_unreadable",
+    expect(redacted.skill).toEqual({
+      ...toSkillListItem(document),
+      score: 1,
+      canRead: false,
     });
-    assert(canonical);
-    expect(redacted.skill).toEqual(canonical.toSearchJSON(auth, 1));
     expect(redacted.skill?.canRead).toBe(false);
     expect(mockSearch.mock.lastCall![0].query.bool.must[0].bool.filter).toEqual(
       [
@@ -497,6 +563,38 @@ describe("custom skill search", () => {
     ]);
   });
 
+  it("requires a current skill read grant even without required spaces", async () => {
+    const { authenticator: auth, globalGroup } = await createResourceTest({
+      role: "admin",
+    });
+    const own = await SkillFactory.create(auth);
+    const other = await SkillFactory.create(auth, {
+      name: "Skill without a read grant",
+      addCurrentUserAsEditor: false,
+    });
+    await mockHits(auth, [own, other]);
+    await GroupPermissionResource.revokeTypeWide(auth, {
+      group: globalGroup,
+      grantType: "reader",
+      resourceType: "skill",
+    });
+    await auth.refresh();
+
+    const candidates = await searchCandidates(auth);
+    expect(candidates.map(({ skill }) => skill?.sId ?? null)).toEqual([
+      own.sId,
+      null,
+    ]);
+    expect(prepareSkillSearchQuery(auth, "").bool?.filter).toContainEqual({
+      terms: { skill_id: [own.sId] },
+    });
+    const redacted = await searchCandidates(auth, {
+      searchTerm: "",
+      permissionFiltering: "redact_unreadable",
+    });
+    expect(redacted.map(({ skill }) => skill?.canRead)).toEqual([true, false]);
+  });
+
   it("honors type-wide skill editorship", async () => {
     const {
       authenticator: auth,
@@ -512,7 +610,7 @@ describe("custom skill search", () => {
       resourceType: "skill",
     });
     await auth.refresh();
-    mockHits([skill]);
+    await mockHits(auth, [skill]);
     const [candidate] = await searchCandidates(auth);
     expect(candidate.skill?.sId).toBe(skill.sId);
     expect(
@@ -524,6 +622,7 @@ describe("custom skill search", () => {
   it.each([
     { timed_out: true, hits: { hits: [] } },
     { hits: { hits: [{ sort: [1, "missing skill ID"] }] } },
+    { hits: { hits: [{ sort: [1, "name", "skill-id"] }] } },
   ])("does not return partial or unpageable ES results", async (response) => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     mockSearch.mockResolvedValue(response);

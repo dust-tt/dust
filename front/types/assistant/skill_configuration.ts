@@ -103,18 +103,21 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
 
 /**
  * @cc [owner:aubin-tchoi,label:security] skill-list-item
- * Listings expose only identity, display fields, space requirements, status and readability;
- * they never require execution, builder, source or reinforcement data.
+ * Search listings contain indexed metadata and relationship IDs, never full resources,
+ * instructions, tool configurations, attachments, source or reinforcement data.
  */
-export const SkillListItemSchema = SkillWithoutInstructionsAndToolsSchema.pick({
-  sId: true,
-  editedBy: true,
-  status: true,
-  name: true,
-  userFacingDescription: true,
-  icon: true,
-  requestedSpaceIds: true,
-  canRead: true,
+export const SkillListItemSchema = z.object({
+  sId: z.string(),
+  status: z.enum(SKILL_STATUSES),
+  name: z.string(),
+  userFacingDescription: z.string(),
+  icon: z.string().nullable(),
+  requestedSpaceIds: z.array(z.string()),
+  mcpServerViewIds: z.array(z.string()),
+  editorIds: z.array(z.string()),
+  availability: z.enum(SKILL_AVAILABILITIES),
+  activeUsersCount: z.number().nullable(),
+  updatedAt: z.number(),
 });
 
 export type SkillListItemType = z.infer<typeof SkillListItemSchema>;
