@@ -3,8 +3,6 @@ import { SKILL_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 
-const SKILL_USAGE_BATCH_SIZE = 500;
-
 export function makeSkillDocumentId({
   workspaceId,
   skillId,
@@ -80,34 +78,30 @@ export async function updateSkillSearchActiveUsers({
   activeUsers: Record<string, number>;
 }): Promise<Result<void, ElasticsearchError>> {
   return withEs(async (client) => {
-    for (
-      let offset = 0;
-      offset < skillIds.length;
-      offset += SKILL_USAGE_BATCH_SIZE
-    ) {
-      const operations = skillIds
-        .slice(offset, offset + SKILL_USAGE_BATCH_SIZE)
-        .flatMap((skillId) => [
-          {
-            update: {
-              _index: SKILL_SEARCH_ALIAS_NAME,
-              _id: makeSkillDocumentId({ workspaceId, skillId }),
-              retry_on_conflict: 3,
-            },
-          },
-          { doc: { active_users_count: activeUsers[skillId] ?? 0 } },
-        ]);
-      const result = await client.bulk({ operations });
-      const failures = result.items.filter(
-        (item) =>
-          item.update?.error &&
-          item.update.error.type !== "document_missing_exception"
+    if (skillIds.length === 0) {
+      return;
+    }
+
+    const operations = skillIds.flatMap((skillId) => [
+      {
+        update: {
+          _index: SKILL_SEARCH_ALIAS_NAME,
+          _id: makeSkillDocumentId({ workspaceId, skillId }),
+          retry_on_conflict: 3,
+        },
+      },
+      { doc: { active_users_count: activeUsers[skillId] ?? 0 } },
+    ]);
+    const result = await client.bulk({ operations });
+    const failures = result.items.filter(
+      (item) =>
+        item.update?.error &&
+        item.update.error.type !== "document_missing_exception"
+    );
+    if (failures.length > 0) {
+      throw new Error(
+        `Failed to update ${failures.length} skill usage snapshots`
       );
-      if (failures.length > 0) {
-        throw new Error(
-          `Failed to update ${failures.length} skill usage snapshots`
-        );
-      }
     }
   });
 }

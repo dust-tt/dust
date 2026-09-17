@@ -72,7 +72,7 @@ describe("skill search indexing", () => {
     });
   });
 
-  it("updates daily usage in batches, resets unused skills, and never upserts", async () => {
+  it("updates daily usage, resets unused skills, and never upserts", async () => {
     mocks.bulk.mockResolvedValue({
       items: [
         { update: { status: 200 } },
@@ -107,7 +107,7 @@ describe("skill search indexing", () => {
     });
   });
 
-  it("batches all 600 skill updates without skipping or duplicating documents", async () => {
+  it("updates all 600 skills in one bulk request", async () => {
     mocks.bulk.mockResolvedValue({ items: [] });
     const skillIds = Array.from({ length: 600 }, (_, i) => `skill-${i}`);
     const result = await updateSkillSearchActiveUsers({
@@ -117,13 +117,9 @@ describe("skill search indexing", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(
-      mocks.bulk.mock.calls.map(([{ operations }]) => operations.length)
-    ).toEqual([1_000, 200]);
-    expect(
-      mocks.bulk.mock.calls.flatMap(([{ operations }]) => operations)
-    ).toEqual(
-      skillIds.flatMap((skillId) => [
+    expect(mocks.bulk).toHaveBeenCalledTimes(1);
+    expect(mocks.bulk).toHaveBeenCalledWith({
+      operations: skillIds.flatMap((skillId) => [
         {
           update: {
             _index: "front.skills",
@@ -132,8 +128,8 @@ describe("skill search indexing", () => {
           },
         },
         { doc: { active_users_count: 0 } },
-      ])
-    );
+      ]),
+    });
   });
 
   it("skips bulk writes when there are no custom skills", async () => {
@@ -146,19 +142,20 @@ describe("skill search indexing", () => {
     expect(mocks.bulk).not.toHaveBeenCalled();
   });
 
-  it("propagates later-batch usage failures for retry", async () => {
-    mocks.bulk.mockResolvedValueOnce({ items: [] }).mockResolvedValueOnce({
+  it("propagates usage failures for retry", async () => {
+    mocks.bulk.mockResolvedValueOnce({
       items: [
+        { update: { status: 200 } },
         { update: { error: { type: "version_conflict_engine_exception" } } },
       ],
     });
     const result = await updateSkillSearchActiveUsers({
       workspaceId: "workspace-1",
-      skillIds: Array.from({ length: 600 }, (_, i) => `skill-${i}`),
+      skillIds: ["skill-1", "skill-2"],
       activeUsers: {},
     });
     expect(result.isErr()).toBe(true);
-    expect(mocks.bulk).toHaveBeenCalledTimes(2);
+    expect(mocks.bulk).toHaveBeenCalledTimes(1);
   });
 
   it("scopes single-skill deletion by workspace and skill", async () => {
