@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -6,9 +7,11 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { SkillSuggestionState } from "@app/types/suggestions/skill_suggestion";
+import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/reinforcement/workspace_check", () => ({
@@ -737,5 +740,255 @@ describe("skill suggestion sources", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+});
+
+describe("PATCH with applyToSkill (editors)", () => {
+  async function addMember(workspace: WorkspaceType) {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    return user;
+  }
+
+  // Editors suggestions are recorded from a conversation, and the route only reviews
+  // `conversational` rows when the flag that produces them is on.
+  async function setupWithFlag() {
+    const context = await setup();
+    await FeatureFlagFactory.basic(context.auth, "conversational_building");
+
+    return context;
+  }
+
+  async function editorsSuggestion(
+    auth: Authenticator,
+    skill: SkillResource,
+    suggestion: { addUserIds?: string[]; removeUserIds?: string[] }
+  ) {
+    return SkillSuggestionFactory.create(auth, skill, {
+      kind: "editors",
+      source: "conversational",
+      state: "pending",
+      suggestion: {
+        addUserIds: suggestion.addUserIds ?? [],
+        removeUserIds: suggestion.removeUserIds ?? [],
+      },
+    });
+  }
+
+  async function listEditorIds(auth: Authenticator, skill: SkillResource) {
+    const editors = (await skill.listEditors(auth)) ?? [];
+
+    return editors.map((editor) => editor.sId).sort();
+  }
+
+  it("adds and removes editors", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const added = await addMember(workspace);
+    const removed = await addMember(workspace);
+    expect((await skill.addEditors(auth, [removed])).isOk()).toBe(true);
+
+    const suggestion = await editorsSuggestion(auth, skill, {
+      addUserIds: [added.sId],
+      removeUserIds: [removed.sId],
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    expect(await listEditorIds(auth, skill)).toEqual(
+      [auth.getNonNullableUser().sId, added.sId].sort()
+    );
+  });
+
+  it("does not save a skill version when only the editors change", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const added = await addMember(workspace);
+    const suggestion = await editorsSuggestion(auth, skill, {
+      addUserIds: [added.sId],
+    });
+    const versionsBefore = (await skill.listVersions(auth)).length;
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await skill.listVersions(auth)).length).toBe(versionsBefore);
+  });
+
+  it("rejects an added editor who left the workspace since the suggestion was recorded", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const departed = await addMember(workspace);
+    const suggestion = await editorsSuggestion(auth, skill, {
+      addUserIds: [departed.sId],
+    });
+    await MembershipResource.revokeMembership({ user: departed, workspace });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "not active members"
+    );
+
+    const reloaded = await SkillSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(reloaded?.state).toBe("pending");
+    expect(await listEditorIds(auth, skill)).toEqual([
+      auth.getNonNullableUser().sId,
+    ]);
+  });
+
+  it("rejects an added editor without access to the skill's requested spaces", async () => {
+    const { workspace, auth } = await setupWithFlag();
+    // Restricted: no global group is associated with it.
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await restrictedSpace.addMembers(adminAuth, {
+      userIds: [auth.getNonNullableUser().sId],
+    });
+    await auth.refresh();
+    const skill = await SkillFactory.create(auth, {
+      name: "Restricted",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    await auth.refresh();
+    const outsider = await addMember(workspace);
+    const suggestion = await editorsSuggestion(auth, skill, {
+      addUserIds: [outsider.sId],
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "do not have access"
+    );
+    expect(await listEditorIds(auth, skill)).toEqual([
+      auth.getNonNullableUser().sId,
+    ]);
+  });
+
+  it("rejects a batch that both adds and removes the same user", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const contested = await addMember(workspace);
+    expect((await skill.addEditors(auth, [contested])).isOk()).toBe(true);
+
+    const adding = await editorsSuggestion(auth, skill, {
+      addUserIds: [contested.sId],
+    });
+    const removing = await editorsSuggestion(auth, skill, {
+      removeUserIds: [contested.sId],
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [adding.sId, removing.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "both added and removed"
+    );
+    expect(await listEditorIds(auth, skill)).toEqual(
+      [auth.getNonNullableUser().sId, contested.sId].sort()
+    );
+  });
+
+  it("rejects a change that would leave the skill without an editor", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const suggestion = await editorsSuggestion(auth, skill, {
+      removeUserIds: [auth.getNonNullableUser().sId],
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "without any editor"
+    );
+    expect(await listEditorIds(auth, skill)).toEqual([
+      auth.getNonNullableUser().sId,
+    ]);
+  });
+
+  it("outdates the conflicting pending suggestions only", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const added = await addMember(workspace);
+    const unrelated = await addMember(workspace);
+
+    const approved = await editorsSuggestion(auth, skill, {
+      addUserIds: [added.sId],
+    });
+    const conflicting = await editorsSuggestion(auth, skill, {
+      addUserIds: [added.sId],
+    });
+    const nonConflicting = await editorsSuggestion(auth, skill, {
+      addUserIds: [unrelated.sId],
+    });
+    const edit = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [approved.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const states = await Promise.all(
+      [conflicting, nonConflicting, edit].map(
+        async (suggestion) =>
+          (await SkillSuggestionResource.fetchById(auth, suggestion.sId))?.state
+      )
+    );
+    expect(states).toEqual(["outdated", "pending", "pending"]);
+  });
+
+  it("leaves the editors untouched when applyToSkill is not set", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const added = await addMember(workspace);
+    const suggestion = await editorsSuggestion(auth, skill, {
+      addUserIds: [added.sId],
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+    expect(await listEditorIds(auth, skill)).toEqual([
+      auth.getNonNullableUser().sId,
+    ]);
   });
 });

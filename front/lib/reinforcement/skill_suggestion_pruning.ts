@@ -167,9 +167,10 @@ export async function pruneConflictingSkillEditSuggestions(
 
 /**
  * @cc [owner:achilleburah,label:product] prune-conflicting-editors-suggestions
- * Creating a pending `editors` suggestion MUST mark every other pending `editors` suggestion for
- * the same skill `outdated` when both add the same user or both remove the same user. Adding a
- * user in one and removing them in the other is not a conflict: both stay pending for review.
+ * Creating or approving a pending `editors` suggestion MUST mark every other pending `editors`
+ * suggestion for the same skill `outdated` when both add the same user or both remove the same
+ * user. Adding a user in one and removing them in the other is not a conflict: both stay pending
+ * for review.
  */
 export async function pruneConflictingSkillEditorsSuggestions(
   auth: Authenticator,
@@ -179,7 +180,7 @@ export async function pruneConflictingSkillEditorsSuggestions(
   const pendingEditorSuggestions = (
     await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
       states: ["pending"],
-      kind: "editors",
+      kinds: ["editors"],
       sources: PRUNED_SOURCES,
     })
   )
