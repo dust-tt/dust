@@ -1,11 +1,12 @@
 //! Materialization of a publication's `functions.tar` for warm and cold runs.
 //!
-//! New publications upload an uncompressed tar alongside the per-function GCS
-//! objects. Before either path runs we copy that single object off gcsfuse,
-//! extract into the local warm dir, and eagerly fill the per-sha bundle cache
-//! for every slug — so warm `importFromCache` and cold resolve both skip an
-//! uncached functions/ readdir. Older publications without the archive keep
-//! using [`super::resolve_existing`].
+//! New publications upload an unpacked (ustar, not gzip) tar alongside the
+//! per-function GCS objects. Before either path runs we extract that single
+//! object from the gcsfuse mount into the local warm dir
+//! (`$HOME/.dust-fn/archives/<publication_id>/`) and eagerly fill the per-sha
+//! bundle cache for every slug — so warm `importFromCache` and cold resolve
+//! both skip an uncached functions/ readdir. Older publications without the
+//! archive keep using [`super::resolve_existing`].
 
 use std::fs::File;
 use std::io::{copy, ErrorKind, Read, Write};
@@ -24,23 +25,26 @@ const COMPLETE_MARKER: &str = ".complete";
 /// Hard caps so a hostile or corrupt archive cannot fill the sandbox disk.
 const MAX_ARCHIVE_BYTES: u64 = 32 * 1024 * 1024;
 const MAX_ENTRIES: usize = 256;
-const MAX_UNCOMPRESSED_BYTES: u64 = 64 * 1024 * 1024;
+const MAX_UNPACKED_BYTES: u64 = 64 * 1024 * 1024;
 
-/// Copy + extract the publication's `functions.tar` into the local warm
-/// archives dir and eagerly populate the per-sha bundle cache for every
-/// extracted slug. Idempotent when an extract already exists. Used before
-/// warm/cold invoke and by the publish-time seed command.
+/// Extract the publication's `functions.tar` into
+/// `$HOME/.dust-fn/archives/<publication_id>/` and eagerly populate the
+/// per-sha bundle cache for every extracted slug. Idempotent when an extract
+/// already exists. Used before warm/cold invoke and by the publish-time seed
+/// command.
 pub fn ensure_functions_archive_extracted(functions_dir: &Path) -> Option<PathBuf> {
     let publication_dir = functions_dir.parent()?;
-    let publication_key = publication_dir
+    // Directory name under the Frame publications mount — same id as the
+    // publication row / GCS path segment (not a function sId).
+    let publication_id = publication_dir
         .file_name()
         .and_then(|s| s.to_str())
-        .filter(|s| is_safe_publication_key(s))?;
+        .filter(|s| is_safe_publication_id(s))?;
 
     // Prefer an existing local extract before any gcsfuse touch: publications
     // are immutable per id, so a completed extract is definitive. Avoids a
     // ~1s metadata probe on every subsequent cold of the same publish.
-    let extract_dir = if let Some(extract_dir) = existing_extract_dir(publication_key) {
+    let extract_dir = if let Some(extract_dir) = existing_extract_dir(publication_id) {
         extract_dir
     } else {
         let archive_path = publication_dir.join(ARCHIVE_FILE_NAME);
@@ -49,7 +53,7 @@ pub fn ensure_functions_archive_extracted(functions_dir: &Path) -> Option<PathBu
         if !archive_path.is_file() {
             return None;
         }
-        materialize_archive(&archive_path, publication_key)?
+        materialize_archive(&archive_path, publication_id)?
     };
 
     // Every slug in the tar → bundles/<content-sha>.js so warm and later
@@ -58,8 +62,8 @@ pub fn ensure_functions_archive_extracted(functions_dir: &Path) -> Option<PathBu
     Some(extract_dir)
 }
 
-fn existing_extract_dir(publication_key: &str) -> Option<PathBuf> {
-    let extract_dir = archives_root()?.join(publication_key);
+fn existing_extract_dir(publication_id: &str) -> Option<PathBuf> {
+    let extract_dir = archives_root()?.join(publication_id);
     if extract_dir.join(COMPLETE_MARKER).is_file() {
         Some(extract_dir)
     } else {
@@ -67,17 +71,19 @@ fn existing_extract_dir(publication_key: &str) -> Option<PathBuf> {
     }
 }
 
-fn is_safe_publication_key(key: &str) -> bool {
-    !key.is_empty()
-        && key.len() <= 128
-        && key
+fn is_safe_publication_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 128
+        && id
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }
 
+/// `$HOME/.dust-fn/archives` — local extract trees keyed by publication id.
 fn archives_root() -> Option<PathBuf> {
     let dir = ensure_trusted_warm_dir()?.join("archives");
     let mut builder = std::fs::DirBuilder::new();
+    // Owner-only (rwx------): only the agent uid that owns the warm dir.
     builder.mode(0o700);
     match builder.create(&dir) {
         Ok(()) => {}
@@ -87,9 +93,9 @@ fn archives_root() -> Option<PathBuf> {
     Some(dir)
 }
 
-fn materialize_archive(archive_path: &Path, publication_key: &str) -> Option<PathBuf> {
+fn materialize_archive(archive_path: &Path, publication_id: &str) -> Option<PathBuf> {
     let root = archives_root()?;
-    let extract_dir = root.join(publication_key);
+    let extract_dir = root.join(publication_id);
     let marker = extract_dir.join(COMPLETE_MARKER);
     if marker.is_file() {
         return Some(extract_dir);
@@ -97,9 +103,10 @@ fn materialize_archive(archive_path: &Path, publication_key: &str) -> Option<Pat
     // Incomplete leftover from a crashed extract — start clean.
     let _ = std::fs::remove_dir_all(&extract_dir);
 
-    let tmp_dir = root.join(format!("{publication_key}.tmp-{}", std::process::id()));
+    let tmp_dir = root.join(format!("{publication_id}.tmp-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&tmp_dir);
     let mut builder = std::fs::DirBuilder::new();
+    // Owner-only (rwx------): staging dir under the trusted warm tree.
     builder.mode(0o700);
     builder.create(&tmp_dir).ok()?;
 
@@ -134,33 +141,20 @@ fn materialize_archive(archive_path: &Path, publication_key: &str) -> Option<Pat
     }
 }
 
+/// Extract `archive_path` into `dest`, enforcing hard caps on archive size,
+/// entry count, and total unpacked payload (`MAX_*` above).
 fn extract_archive_limited(archive_path: &Path, dest: &Path) -> Result<()> {
     let meta = std::fs::metadata(archive_path)?;
     if meta.len() > MAX_ARCHIVE_BYTES {
         return Err(anyhow!("functions.tar too large ({} bytes)", meta.len()));
     }
 
-    // Copy off the mount first so extract reads local bytes only (one GCS
-    // object read through gcsfuse, then pure local I/O).
-    let local_tar = dest.join(ARCHIVE_FILE_NAME);
-    {
-        let mut src = File::open(archive_path)?;
-        let mut dst = std::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .mode(0o600)
-            .open(&local_tar)?;
-        let copied = copy(&mut src, &mut dst)?;
-        if copied > MAX_ARCHIVE_BYTES {
-            return Err(anyhow!("functions.tar copy exceeded size cap"));
-        }
-        dst.flush()?;
-    }
-
-    let file = File::open(&local_tar)?;
+    // Read entries straight from the gcsfuse path: one object read either way,
+    // so a local tar copy would only add disk + an extra open.
+    let file = File::open(archive_path)?;
     let mut archive = Archive::new(file);
     let mut entries = 0usize;
-    let mut uncompressed: u64 = 0;
+    let mut unpacked: u64 = 0;
 
     for entry in archive.entries()? {
         let entry = entry?;
@@ -172,9 +166,9 @@ fn extract_archive_limited(archive_path: &Path, dest: &Path) -> Result<()> {
         let path = entry.path()?.into_owned();
         let name = validate_archive_entry_path(&path)?;
         let size = entry.size();
-        uncompressed = uncompressed.saturating_add(size);
-        if uncompressed > MAX_UNCOMPRESSED_BYTES {
-            return Err(anyhow!("functions.tar uncompressed size too large"));
+        unpacked = unpacked.saturating_add(size);
+        if unpacked > MAX_UNPACKED_BYTES {
+            return Err(anyhow!("functions.tar unpacked size too large"));
         }
 
         let out_path = dest.join(name);
@@ -192,8 +186,6 @@ fn extract_archive_limited(archive_path: &Path, dest: &Path) -> Result<()> {
         out.flush()?;
     }
 
-    // Drop the local copy of the tar; extracted files are enough.
-    let _ = std::fs::remove_file(&local_tar);
     Ok(())
 }
 
