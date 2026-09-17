@@ -93,9 +93,9 @@ function learningSpaceNameForCreator(
   return `${label}${suffix}`;
 }
 
-function cohortBucket(workspaceSId: string, userId: string): number {
+function cohortBucket(workspaceId: string, userId: string): number {
   const digest = createHash("sha256")
-    .update(`${workspaceSId}:${userId}`)
+    .update(`${workspaceId}:${userId}`)
     .digest();
   return digest.readUInt32BE(0) % 100;
 }

@@ -2,8 +2,8 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
-async function postFile(workspaceSId: string, body: Record<string, unknown>) {
-  return honoApp.request(`/api/w/${workspaceSId}/files`, {
+async function postFile(workspaceId: string, body: Record<string, unknown>) {
+  return honoApp.request(`/api/w/${workspaceId}/files`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
