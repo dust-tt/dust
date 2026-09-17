@@ -182,9 +182,7 @@ function KnowledgeNodeViewShell({
   );
 }
 
-export const InteractiveKnowledgeNodeView: React.FC<NodeViewProps> = (
-  props
-) => {
+export const KnowledgeNodeView: React.FC<NodeViewProps> = (props) => {
   const { owner, isSpacesLoading } = useSpacesContext();
 
   return (

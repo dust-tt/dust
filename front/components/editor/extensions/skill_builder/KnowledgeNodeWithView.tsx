@@ -1,7 +1,7 @@
 import { KnowledgeNode } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import {
-  InteractiveKnowledgeNodeView,
+  KnowledgeNodeView,
   StaticKnowledgeNodeView,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import type { NodeViewProps } from "@tiptap/react";
@@ -32,7 +32,7 @@ export const SkillBuilderKnowledgeNodeWithView = KnowledgeNode.extend({
     if (this.options.readOnly) {
       return ReactNodeViewRenderer(KnowledgeNodeReadOnlyView);
     }
-    return ReactNodeViewRenderer(InteractiveKnowledgeNodeView);
+    return ReactNodeViewRenderer(KnowledgeNodeView);
   },
 });
 

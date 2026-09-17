@@ -1217,12 +1217,16 @@ const InputBarContainer = ({
         const item = getFirstKnowledgeItem(node.attrs);
         if (
           item &&
-          !hasAnotherAttachedNode(
-            currentEditor,
-            (n) =>
-              n.type.name === KNOWLEDGE_NODE_TYPE &&
-              getFirstKnowledgeItem(n.attrs)?.nodeId === item.nodeId
-          )
+          !hasAnotherAttachedNode(currentEditor, (n) => {
+            if (n.type.name !== KNOWLEDGE_NODE_TYPE) {
+              return false;
+            }
+            const other = getFirstKnowledgeItem(n.attrs);
+            return (
+              other?.nodeId === item.nodeId &&
+              other.dataSourceViewId === item.dataSourceViewId
+            );
+          })
         ) {
           const attachedNode = attachedNodesRef.current.find(
             (n) =>
