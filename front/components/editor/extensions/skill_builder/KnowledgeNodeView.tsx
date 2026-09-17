@@ -27,7 +27,7 @@ export {
   isFullKnowledgeItem,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 
-interface KnowledgeDisplayProps {
+interface SkillBuilderKnowledgeChipProps {
   item: KnowledgeItem;
   owner: LightWorkspaceType;
   isSpacesLoading?: boolean;
@@ -35,13 +35,13 @@ interface KnowledgeDisplayProps {
   updateAttributes: (attrs: Partial<KnowledgeNodeAttributes>) => void;
 }
 
-function KnowledgeDisplayComponent({
+function SkillBuilderKnowledgeChip({
   item,
   owner,
   isSpacesLoading = false,
   onRemove,
   updateAttributes,
-}: KnowledgeDisplayProps) {
+}: SkillBuilderKnowledgeChipProps) {
   const needsFetch = !isFullKnowledgeItem(item);
 
   const { dataSourceView, isDataSourceViewError } = useSpaceDataSourceView({
@@ -119,7 +119,7 @@ function KnowledgeDisplayComponent({
 // Rendered in the conversation composer, which has no SpacesProvider: full
 // items already carry their node, base items degrade to a plain chip since the
 // node cannot be fetched without the context.
-function StaticKnowledgeChip({
+function ComposerKnowledgeChip({
   item,
   onRemove,
 }: {
@@ -182,13 +182,15 @@ function KnowledgeNodeViewShell({
   );
 }
 
-export const KnowledgeNodeView: React.FC<NodeViewProps> = (props) => {
+export const SkillBuilderKnowledgeNodeView: React.FC<NodeViewProps> = (
+  props
+) => {
   const { owner, isSpacesLoading } = useSpacesContext();
 
   return (
     <KnowledgeNodeViewShell {...props}>
       {(item, onRemove) => (
-        <KnowledgeDisplayComponent
+        <SkillBuilderKnowledgeChip
           item={item}
           owner={owner}
           isSpacesLoading={isSpacesLoading}
@@ -201,10 +203,10 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = (props) => {
 };
 
 // Composer view: no SpacesProvider, renders whatever the item already carries.
-export const StaticKnowledgeNodeView: React.FC<NodeViewProps> = (props) => (
+export const ComposerKnowledgeNodeView: React.FC<NodeViewProps> = (props) => (
   <KnowledgeNodeViewShell {...props}>
     {(item, onRemove) => (
-      <StaticKnowledgeChip item={item} onRemove={onRemove} />
+      <ComposerKnowledgeChip item={item} onRemove={onRemove} />
     )}
   </KnowledgeNodeViewShell>
 );
