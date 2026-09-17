@@ -61,6 +61,31 @@ interface RoleDefinition {
  * (`auth.can(verb, resource)`, `auth.hasWorkspacePermission(verb, resourceType)`), never by
  * comparing a grant type.
  */
+/**
+ * @cc [owner:zmarouf,label:security;product] billing-admin-verb
+ * `admin` on `billing` means managing what the workspace pays for: plan and subscription, checkout,
+ * invoices, payment methods and coupons. A route or function that shows or changes these MUST
+ * require `hasWorkspacePermission("admin", "billing")`.
+ */
+/**
+ * @cc [owner:zmarouf,label:security;product] security-admin-verb
+ * `admin` on `security` means managing how people get into the workspace: SSO, directory sync,
+ * verified and workspace domains, and the audit-log portal. A route or function that shows or
+ * changes these MUST require `hasWorkspacePermission("admin", "security")`.
+ */
+/**
+ * @cc [owner:flvndvd,label:security;product] frame-publish-capability
+ * `publish` on the `frame` type means creating a public link. Setting a frame's share scope to
+ * `public` MUST require `hasWorkspacePermission("publish", "frame")` (see
+ * `checkFrameShareScopePermission`), on top of the workspace sharing policy allowing all scopes
+ * and the frame having no active functions. Other scopes need no capability.
+ */
+/**
+ * @cc [owner:flvndvd,label:security;product] frame-invite-capability
+ * `invite` on the `frame` type means inviting people from outside the workspace to a frame, by
+ * email or by domain (see `checkFrameEmailGrantPermission`). A caller without it MUST only be able
+ * to invite active workspace members.
+ */
 export const ROLE_REGISTRY: Record<
   ConcreteResourceType,
   Partial<Record<ConcreteGrantType, RoleDefinition>>
