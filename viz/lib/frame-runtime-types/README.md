@@ -3,6 +3,10 @@
 `npm run build:runtime-types` generates the declarations for the libraries exposed to Frame UI
 source. Viz runs it before production builds and when starting the development server.
 
+`build.ts` coordinates the pipeline. `runtime.ts` inspects the shared import factory,
+`dependencies.ts` collects existing declarations, and `bundle.ts` runs tsup. `config.ts` creates
+consumer configuration, while `archive.ts` writes the archive and manifest.
+
 The public entry point is `/frame-runtime/manifest.json`. It identifies a compressed archive
 by checksum, records the TypeScript version used to emit the declarations, and lists the public
 runtime module names. `id` hashes the extracted files and remains stable across identical builds.
