@@ -1,5 +1,6 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import * as skillIndex from "@app/lib/skill_search";
 import * as searchUsage from "@app/lib/skill_search/usage";
 import {
@@ -11,6 +12,7 @@ import {
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -19,13 +21,15 @@ describe("skill search indexation", () => {
     vi.restoreAllMocks();
   });
 
-  it("lists all workspace IDs even when they have no skills", async () => {
-    const first = await createResourceTest({ role: "admin" });
-    const second = await createResourceTest({ role: "admin" });
+  it("lists only workspaces with active subscriptions, even when they have no skills", async () => {
+    const first = await WorkspaceFactory.basic();
+    const ended = await WorkspaceFactory.basic();
+    const second = await WorkspaceFactory.creditPricedFree();
+    await SubscriptionResource.endActiveSubscription(ended);
 
     const workspaceIds = await listWorkspaceIdsActivity();
 
-    expect(workspaceIds).toEqual([first.workspace.sId, second.workspace.sId]);
+    expect(workspaceIds).toEqual([first.sId, second.sId]);
   });
 
   it("propagates a workspace refresh failure so Temporal retries", async () => {

@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
@@ -153,7 +154,13 @@ export async function deleteWorkspaceSkillSearchActivity({
 
 export async function listWorkspaceIdsActivity(): Promise<string[]> {
   const workspaces = await WorkspaceResource.listAll("ASC");
-  return workspaces.map((workspace) => workspace.sId);
+  const subscriptions =
+    await SubscriptionResource.fetchActiveByWorkspacesModelId(
+      workspaces.map((workspace) => workspace.id)
+    );
+  return workspaces
+    .filter((workspace) => subscriptions[workspace.id].status === "active")
+    .map((workspace) => workspace.sId);
 }
 
 export async function refreshWorkspaceSearchUsageActivity({
