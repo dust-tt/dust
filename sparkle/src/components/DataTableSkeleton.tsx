@@ -1,4 +1,5 @@
 import {
+  DATA_TABLE_HEADER_HEIGHT_PX,
   DATA_TABLE_ROW_HEIGHT_PX,
   type DataTableDensity,
   getDataTableColumnPresets,
@@ -85,8 +86,9 @@ export function DataTableSkeleton<
                 <th
                   key={header.id}
                   scope="col"
+                  style={{ height: DATA_TABLE_HEADER_HEIGHT_PX[density] }}
                   className={cn(
-                    "heading-xs px-2 py-2 capitalize text-foreground",
+                    "heading-xs px-2 capitalize text-foreground",
                     presets.headerAlign === "right"
                       ? "text-right"
                       : presets.headerAlign === "center"

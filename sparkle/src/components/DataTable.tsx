@@ -88,6 +88,20 @@ const DENSITY_ROW_HEIGHT_CLASS: Record<DataTableDensity, string> = {
   relaxed: "h-16",
 };
 
+// Header rows scale with density too (eBay keeps header and body rows the
+// same height; we keep the header one step shorter so it reads as a header).
+export const DATA_TABLE_HEADER_HEIGHT_PX: Record<DataTableDensity, number> = {
+  compact: 36,
+  default: 40,
+  relaxed: 48,
+};
+
+const DENSITY_HEADER_HEIGHT_CLASS: Record<DataTableDensity, string> = {
+  compact: "h-9",
+  default: "h-10",
+  relaxed: "h-12",
+};
+
 // Column minimum when the table scrolls horizontally, so columns do not
 // collapse to unreadable widths. Matches the eBay table spec (124px).
 const SCROLL_COLUMN_MIN_WIDTH_CLASS = "min-w-31";
@@ -1329,7 +1343,8 @@ DataTable.Head = function Head({
           : undefined
       }
       className={cn(
-        "heading-xs py-2 px-2 capitalize",
+        "heading-xs px-2 capitalize",
+        DENSITY_HEADER_HEIGHT_CLASS[layout.density],
         ALIGN_TEXT_CLASS[presets.headerAlign],
         "text-foreground",
         layout.enforceColumnMinWidth &&
