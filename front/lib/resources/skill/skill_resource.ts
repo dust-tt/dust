@@ -71,7 +71,11 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
+import {
+  launchDeleteSkillSearchWorkflow,
+  launchDeleteWorkspaceSkillSearchWorkflow,
+  launchIndexSkillSearchWorkflow,
+} from "@app/temporal/es_indexation/client";
 import type {
   AgentConfigurationWithoutModelType,
   LightAgentConfigurationType,
@@ -104,7 +108,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -574,6 +577,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // construction are now stale and the caller would not be an editor of the skill they just
     // created. Refresh the snapshot now that the write has committed, as space creation does.
     await auth.refresh();
+    await this.launchSearchIndexation(auth, [skillResource.sId]);
 
     return skillResource;
   }
@@ -1435,6 +1439,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           workspaceId: workspace.id,
         },
       });
+      await SkillResource.launchSearchIndexation(auth, [this.sId]);
     }
 
     return new Ok(undefined);
@@ -2724,7 +2729,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    return this.writeEditorUserGrants(auth, users, "grant");
+    const result = await this.writeEditorUserGrants(auth, users, "grant");
+    // Earlier editor updates may have succeeded even if a later one failed.
+    await SkillResource.launchSearchIndexation(auth, [this.sId]);
+    return result;
   }
 
   /**
@@ -2748,7 +2756,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    return this.writeEditorUserGrants(auth, users, "revoke");
+    const result = await this.writeEditorUserGrants(auth, users, "revoke");
+    // Earlier editor updates may have succeeded even if a later one failed.
+    await SkillResource.launchSearchIndexation(auth, [this.sId]);
+    return result;
   }
 
   // Editors are per-user grants: `grantToUser` holds them in one regular_auto group per skill, and
@@ -3117,65 +3128,86 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const workspace = auth.getNonNullableWorkspace();
 
-    const affectedCount = await withTransaction(async (transaction) => {
-      // Rename any existing archived skill with the same name to avoid unique constraint violation.
-      const existingArchivedSkill = await this.model.findOne({
-        where: {
-          workspaceId: workspace.id,
-          name: this.name,
-          status: "archived",
-        },
-        transaction,
-      });
-
-      if (existingArchivedSkill) {
-        const timestamp = formatTimestampToFriendlyDate(
-          existingArchivedSkill.updatedAt.getTime(),
-          "long"
-        );
-        const suffix = ` (archived on ${timestamp}, ${SkillResource.modelIdToSId(existingArchivedSkill)})`;
-        const name = existingArchivedSkill.name.slice(
-          0,
-          SKILL_NAME_MAX_LENGTH - suffix.length
-        );
-        await existingArchivedSkill.update(
-          { name: `${name}${suffix}` },
-          { transaction }
-        );
-      }
-
-      // We preserve AgentSkillModel, ConversationSkillModel, and
-      // SkillReferenceModel relationships so they can be restored when the skill
-      // is unarchived.
-      const [count] = await this.update({ status: "archived" }, transaction);
-
-      if (count > 0) {
-        // The skill no longer contributes any space requirement: drop its
-        // spaces from the agents using it (unless another active capability
-        // still requires them).
-        await this.updateActiveAgentsRequirements(
-          auth,
-          {
-            previousRequestedSpaceIds: this.requestedSpaceIds,
-            newRequestedSpaceIds: [],
-          },
-          { transaction }
-        );
-
-        await this.propagateReferenceUpdatesToParentSkills(
-          auth,
-          {
-            icon: this.icon,
+    const { affectedCount, referencingSkillIds, renamedSkillId } =
+      await withTransaction(async (transaction) => {
+        // Rename any existing archived skill with the same name to avoid unique constraint violation.
+        const existingArchivedSkill = await this.model.findOne({
+          where: {
+            workspaceId: workspace.id,
             name: this.name,
-            requestedSpaceIds: this.requestedSpaceIds,
             status: "archived",
           },
-          { transaction }
-        );
-      }
+          transaction,
+        });
 
-      return count;
-    });
+        if (existingArchivedSkill) {
+          const timestamp = formatTimestampToFriendlyDate(
+            existingArchivedSkill.updatedAt.getTime(),
+            "long"
+          );
+          const suffix = ` (archived on ${timestamp}, ${SkillResource.modelIdToSId(existingArchivedSkill)})`;
+          const name = existingArchivedSkill.name.slice(
+            0,
+            SKILL_NAME_MAX_LENGTH - suffix.length
+          );
+          await existingArchivedSkill.update(
+            { name: `${name}${suffix}` },
+            { transaction }
+          );
+        }
+
+        // We preserve AgentSkillModel, ConversationSkillModel, and
+        // SkillReferenceModel relationships so they can be restored when the skill
+        // is unarchived.
+        const [count] = await this.update({ status: "archived" }, transaction);
+
+        let referencingSkillIds: string[] = [];
+
+        if (count > 0) {
+          // The skill no longer contributes any space requirement: drop its
+          // spaces from the agents using it (unless another active capability
+          // still requires them).
+          await this.updateActiveAgentsRequirements(
+            auth,
+            {
+              previousRequestedSpaceIds: this.requestedSpaceIds,
+              newRequestedSpaceIds: [],
+            },
+            { transaction }
+          );
+
+          referencingSkillIds =
+            await this.propagateReferenceUpdatesToParentSkills(
+              auth,
+              {
+                icon: this.icon,
+                name: this.name,
+                requestedSpaceIds: this.requestedSpaceIds,
+                status: "archived",
+              },
+              { transaction }
+            );
+        }
+
+        return {
+          affectedCount: count,
+          referencingSkillIds,
+          renamedSkillId: existingArchivedSkill
+            ? SkillResource.modelIdToSId({
+                id: existingArchivedSkill.id,
+                workspaceId: workspace.id,
+              })
+            : null,
+        };
+      });
+
+    if (affectedCount > 0) {
+      await SkillResource.launchSearchIndexation(auth, [
+        this.sId,
+        ...referencingSkillIds,
+        ...(renamedSkillId ? [renamedSkillId] : []),
+      ]);
+    }
 
     return { affectedCount };
   }
@@ -3186,35 +3218,47 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       "User is not authorized to restore this skill"
     );
 
-    const affectedCount = await withTransaction(async (transaction) => {
-      const [count] = await this.update({ status: "active" }, transaction);
+    const { affectedCount, referencingSkillIds } = await withTransaction(
+      async (transaction) => {
+        const [count] = await this.update({ status: "active" }, transaction);
 
-      if (count > 0) {
-        // The skill contributes its space requirements again: add them back to
-        // the agents using it.
-        await this.updateActiveAgentsRequirements(
-          auth,
-          {
-            previousRequestedSpaceIds: [],
-            newRequestedSpaceIds: this.requestedSpaceIds,
-          },
-          { transaction }
-        );
+        let referencingSkillIds: string[] = [];
 
-        await this.propagateReferenceUpdatesToParentSkills(
-          auth,
-          {
-            icon: this.icon,
-            name: this.name,
-            requestedSpaceIds: this.requestedSpaceIds,
-            status: "active",
-          },
-          { transaction }
-        );
+        if (count > 0) {
+          // The skill contributes its space requirements again: add them back to
+          // the agents using it.
+          await this.updateActiveAgentsRequirements(
+            auth,
+            {
+              previousRequestedSpaceIds: [],
+              newRequestedSpaceIds: this.requestedSpaceIds,
+            },
+            { transaction }
+          );
+
+          referencingSkillIds =
+            await this.propagateReferenceUpdatesToParentSkills(
+              auth,
+              {
+                icon: this.icon,
+                name: this.name,
+                requestedSpaceIds: this.requestedSpaceIds,
+                status: "active",
+              },
+              { transaction }
+            );
+        }
+
+        return { affectedCount: count, referencingSkillIds };
       }
+    );
 
-      return count;
-    });
+    if (affectedCount > 0) {
+      await SkillResource.launchSearchIndexation(auth, [
+        this.sId,
+        ...referencingSkillIds,
+      ]);
+    }
 
     return { affectedCount };
   }
@@ -3292,7 +3336,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const previousIcon = this.icon;
     const previousStatus = this.status;
 
-    await withTransaction(async (transaction) => {
+    const referencingSkillIds = await withTransaction(async (transaction) => {
       // Save the current version before updating.
       await this.saveVersion(auth, { transaction });
 
@@ -3330,22 +3374,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await this.normalizeSkillReferenceTags(auth, { transaction });
       await this.syncSkillReferences(auth, { transaction });
 
+      let referencingSkillIds: string[] = [];
       if (
         name !== previousName ||
         icon !== previousIcon ||
         requestedSpaceIdsChanged ||
         statusChanged
       ) {
-        await this.propagateReferenceUpdatesToParentSkills(
-          auth,
-          {
-            icon,
-            name,
-            requestedSpaceIds,
-            status: status ?? this.status,
-          },
-          { transaction }
-        );
+        referencingSkillIds =
+          await this.propagateReferenceUpdatesToParentSkills(
+            auth,
+            {
+              icon,
+              name,
+              requestedSpaceIds,
+              status: status ?? this.status,
+            },
+            { transaction }
+          );
       }
 
       await this.updateMCPServerViews(auth, mcpServerViews, { transaction });
@@ -3363,6 +3409,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { previousRequestedSpaceIds },
         { transaction }
       );
+      return referencingSkillIds;
     });
 
     if (fileAttachments) {
@@ -3370,6 +3417,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     await this.upsertCurrentUserAsEditor(auth);
+    await SkillResource.launchSearchIndexation(auth, [
+      this.sId,
+      ...referencingSkillIds,
+    ]);
   }
 
   /**
@@ -3428,11 +3479,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       );
     });
+    await this.launchSearchIndexation(
+      auth,
+      changedSkills.map((skill) => skill.sId)
+    );
   }
 
   /**
    * Rewrites inline references to this skill in every parent skill so their tag
    * availability reflects this skill's current status and requested spaces.
+   */
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;performance] reference-refresh-targets
+   * Parent-reference rewrites preserve the existing writes and return every changed
+   * parent ID so callers can enqueue those parents after their transaction commits.
    */
   private async propagateReferenceUpdatesToParentSkills(
     auth: Authenticator,
@@ -3448,7 +3508,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       status: SkillStatus;
     },
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
+  ): Promise<string[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const references = await SkillReferenceModel.findAll({
@@ -3464,7 +3524,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     if (referencingSkillIds.length === 0) {
-      return;
+      return [];
     }
 
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
@@ -3492,6 +3552,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
     });
 
+    const changedSkillIds: string[] = [];
     // Each update carries distinct instructions content so it cannot be
     // batched. Bounded by the number of skills referencing this one.
     for (const referencingSkill of referencingSkills) {
@@ -3536,7 +3597,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { instructions, instructionsHtml },
         { transaction }
       );
+      changedSkillIds.push(
+        SkillResource.modelIdToSId({
+          id: referencingSkill.id,
+          workspaceId: workspace.id,
+        })
+      );
     }
+    return changedSkillIds;
   }
 
   async updateReinforcement(
@@ -3919,48 +3987,50 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async delete(auth: Authenticator): Promise<Result<number, Error>> {
-    try {
-      assert(
-        this.canAdministrate(auth),
-        "User does not have permission to delete this skill."
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new Error("User does not have permission to delete this skill.")
       );
+    }
 
-      const workspace = auth.getNonNullableWorkspace();
+    const workspace = auth.getNonNullableWorkspace();
 
-      const whereWorkspaceIdAndSkillId = {
-        skillConfigurationId: this.id,
-        workspaceId: workspace.id,
-      };
+    const whereWorkspaceIdAndSkillId = {
+      skillConfigurationId: this.id,
+      workspaceId: workspace.id,
+    };
 
-      // Collect file IDs from current attachments and all version snapshots.
-      const fileAttachmentRows = await SkillFileAttachmentModel.findAll({
-        where: whereWorkspaceIdAndSkillId,
-      });
-      const currentFileIds = fileAttachmentRows.map((a) => a.fileId);
+    // Collect file IDs from current attachments and all version snapshots.
+    const fileAttachmentRows = await SkillFileAttachmentModel.findAll({
+      where: whereWorkspaceIdAndSkillId,
+    });
+    const currentFileIds = fileAttachmentRows.map((a) => a.fileId);
 
-      const versionRows = await SkillVersionModel.findAll({
-        where: whereWorkspaceIdAndSkillId,
-        attributes: ["fileAttachmentIds"],
-      });
-      const versionFileIds = versionRows.flatMap((v) => v.fileAttachmentIds);
+    const versionRows = await SkillVersionModel.findAll({
+      where: whereWorkspaceIdAndSkillId,
+      attributes: ["fileAttachmentIds"],
+    });
+    const versionFileIds = versionRows.flatMap((v) => v.fileAttachmentIds);
 
-      const allFileIds = [...new Set([...currentFileIds, ...versionFileIds])];
-      const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
-        auth,
-        allFileIds
-      );
+    const allFileIds = [...new Set([...currentFileIds, ...versionFileIds])];
+    const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
+      auth,
+      allFileIds
+    );
 
-      const affectedCount = await withTransaction(async (transaction) => {
-        await this.propagateReferenceUpdatesToParentSkills(
-          auth,
-          {
-            icon: this.icon,
-            name: this.name,
-            requestedSpaceIds: this.requestedSpaceIds,
-            status: "archived",
-          },
-          { transaction }
-        );
+    const { affectedCount, referencingSkillIds } = await withTransaction(
+      async (transaction) => {
+        const referencingSkillIds =
+          await this.propagateReferenceUpdatesToParentSkills(
+            auth,
+            {
+              icon: this.icon,
+              name: this.name,
+              requestedSpaceIds: this.requestedSpaceIds,
+              status: "archived",
+            },
+            { transaction }
+          );
 
         // Delete agent-skill associations.
         await AgentSkillModel.destroy({
@@ -4041,27 +4111,38 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-        return this.model.destroy({
+        const affectedCount = await this.model.destroy({
           where: {
             id: this.id,
             workspaceId: workspace.id,
           },
           transaction,
         });
-      });
-
-      // Delete files from cloud storage outside the transaction (I/O with GCS).
-      for (const file of filesToDelete) {
-        const res = await file.delete(auth);
-        if (res.isErr()) {
-          return res;
-        }
+        return {
+          affectedCount,
+          referencingSkillIds,
+        };
       }
+    );
 
-      return new Ok(affectedCount);
-    } catch (error) {
-      return new Err(normalizeError(error));
+    const deleteSearchResult = await launchDeleteSkillSearchWorkflow({
+      workspaceId: workspace.sId,
+      skillId: this.sId,
+    });
+    if (deleteSearchResult.isErr()) {
+      return deleteSearchResult;
     }
+    await SkillResource.launchSearchIndexation(auth, referencingSkillIds);
+
+    // Delete files from cloud storage outside the transaction (I/O with GCS).
+    for (const file of filesToDelete) {
+      const res = await file.delete(auth);
+      if (res.isErr()) {
+        return res;
+      }
+    }
+
+    return new Ok(affectedCount);
   }
 
   async addToAgent(
@@ -4359,6 +4440,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     await this.model.destroy({
       where: { workspaceId },
+    });
+    await launchDeleteWorkspaceSkillSearchWorkflow({
+      workspaceId: auth.getNonNullableWorkspace().sId,
     });
   }
 
