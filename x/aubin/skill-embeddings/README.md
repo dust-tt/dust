@@ -98,21 +98,14 @@ of skills; exact SVD and multiple clustering runs can take longer for large
 workspaces. Saved vectors remain usable in a notebook for UMAP, density-based
 clustering, or other experiments.
 
-## Demo and validation
+## Demo
 
 ```sh
 node --import tsx x/aubin/skill-embeddings/demo.ts
-node --import tsx --test x/aubin/skill-embeddings/experiment.test.ts
-node --import tsx --test x/aubin/skill-embeddings/browser.test.ts
-npx tsgo --project x/aubin/skill-embeddings/tsconfig.json
 ```
 
 The demo writes to `output/synthetic-demo`. Its vectors are synthetic, deliberately
 grouped fixtures, **not actual model embeddings**. It demonstrates the viewer and
-analysis workflow, not embedding quality. The tests cover the HTTP fetch,
-redaction/credential handling, checkpoint recovery and cache invalidation, PCA
-geometry, degenerate inputs, known clusters, and safe HTML generation.
-The separate browser test uses Playwright's Chromium to check the offline report's
-interactions, JSON export, and mobile layout.
+analysis workflow, not embedding quality.
 
 Numerical implementation: [ml-matrix SVD](https://mljs.github.io/matrix/classes/SingularValueDecomposition.html).
