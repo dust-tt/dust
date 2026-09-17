@@ -1,9 +1,8 @@
-import { CitationByVariant } from "@app/components/assistant/conversation/attachment/CitationByVariant";
 import type {
   FileCitationCardIcon,
   FileCitationCardSize,
 } from "@app/components/assistant/conversation/attachment/FileCitationCard";
-import { FileCitationTooltipLabel } from "@app/components/assistant/conversation/attachment/FileCitationCard";
+import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
@@ -75,7 +74,10 @@ export function PreviewableCitation({
     const inlineTooltipLabel =
       tooltipLabel ??
       (description ? (
-        <FileCitationTooltipLabel title={title} description={description} />
+        <div className="flex flex-col gap-0.5">
+          <div>{title}</div>
+          <div className="text-sm text-muted-foreground">{description}</div>
+        </div>
       ) : (
         title
       ));
@@ -150,8 +152,8 @@ export function PreviewableCitation({
   };
 
   return canPreview ? (
-    <CitationByVariant {...cardProps} onClick={handleClick} />
+    <FileCitationCard {...cardProps} onClick={handleClick} />
   ) : (
-    <CitationByVariant {...cardProps} />
+    <FileCitationCard {...cardProps} />
   );
 }

@@ -1,6 +1,8 @@
-import type { AttachmentCitationVariant } from "@app/components/assistant/conversation/attachment/CitationByVariant";
-import { CitationByVariant } from "@app/components/assistant/conversation/attachment/CitationByVariant";
-import type { FileCitationCardSize } from "@app/components/assistant/conversation/attachment/FileCitationCard";
+import type {
+  FileCitationCardSize,
+  FileCitationCardVariant,
+} from "@app/components/assistant/conversation/attachment/FileCitationCard";
+import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
 import type { AttachmentCitation } from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
@@ -11,7 +13,7 @@ import { Icon, useTranscribingProgress } from "@dust-tt/sparkle";
 interface AttachmentCitationProps {
   attachmentCitation: AttachmentCitation;
   size?: FileCitationCardSize;
-  variant?: AttachmentCitationVariant;
+  variant?: FileCitationCardVariant;
 }
 
 export function AttachmentCitation({
@@ -69,9 +71,9 @@ export function AttachmentCitation({
       tooltipLabel: tooltipContent,
     };
     return nodeUrl ? (
-      <CitationByVariant {...nodeBase} href={nodeUrl} />
+      <FileCitationCard {...nodeBase} href={nodeUrl} />
     ) : (
-      <CitationByVariant {...nodeBase} />
+      <FileCitationCard {...nodeBase} />
     );
   }
 
@@ -81,7 +83,7 @@ export function AttachmentCitation({
 
   if (fileId && !isLoading && isFrameContentType(contentType)) {
     return (
-      <CitationByVariant
+      <FileCitationCard
         icon={attachmentCitation.visual}
         title={title}
         description={attachmentCitation.description}
@@ -128,8 +130,8 @@ export function AttachmentCitation({
     tooltipLabel: title,
   };
   return sourceUrl ? (
-    <CitationByVariant {...fallbackBase} href={sourceUrl} />
+    <FileCitationCard {...fallbackBase} href={sourceUrl} />
   ) : (
-    <CitationByVariant {...fallbackBase} />
+    <FileCitationCard {...fallbackBase} />
   );
 }
