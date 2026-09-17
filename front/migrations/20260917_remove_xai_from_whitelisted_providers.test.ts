@@ -1,8 +1,13 @@
 import assert from "node:assert";
+import { Authenticator } from "@app/lib/auth";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import baseLogger from "@app/logger/logger";
-import { removeXaiFromWhitelistedProviders } from "@app/migrations/20260917_remove_xai_from_whitelisted_providers";
+import {
+  XAI_EXEMPTION_FEATURE_FLAG,
+  removeXaiFromWhitelistedProviders,
+} from "@app/migrations/20260917_remove_xai_from_whitelisted_providers";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -158,6 +163,23 @@ describe("removeXaiFromWhitelistedProviders", () => {
     expect(updated.map((c) => c.workspaceId)).not.toContain(retired.sId);
     expect(await readStoredProviders(retired)).toEqual(["togetherai", "xai"]);
     expect(await readStoredProviders(healthy)).toEqual(["openai"]);
+  });
+
+  it("exempts a workspace holding the xai feature flag without exempting the others", async () => {
+    const exempt = await makeWorkspaceLastEditedYesterday(["openai", "xai"]);
+    const auth = await Authenticator.internalAdminForWorkspace(exempt.sId);
+    await FeatureFlagFactory.legacy(auth, XAI_EXEMPTION_FEATURE_FLAG);
+    const stripped = await makeWorkspaceLastEditedYesterday(["openai", "xai"]);
+
+    const { updated } = await removeXaiFromWhitelistedProviders({
+      execute: true,
+      logger,
+    });
+
+    expect(updated.map((c) => c.workspaceId)).toContain(stripped.sId);
+    expect(updated.map((c) => c.workspaceId)).not.toContain(exempt.sId);
+    expect(await readStoredProviders(exempt)).toEqual(["openai", "xai"]);
+    expect(await readStoredProviders(stripped)).toEqual(["openai"]);
   });
 
   it("reports the planned change without writing it when not executing", async () => {
