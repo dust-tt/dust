@@ -674,6 +674,48 @@ export class AgentResource
     return new Ok(undefined);
   }
 
+  // Sets `scope` on the identified agents' current configuration rows (scope lives on the row).
+  // Self-authorizing per the scope-change policy: admins may (un)publish any agent of the workspace
+  // — including ones built on spaces they cannot read (the "Show hidden agents" manage page) — while
+  // other callers may only change scope on agents they can `write`. The batch flow still checks
+  // publish permission and emits audit / disables triggers around this call; keeping that
+  // orchestration in the API layer avoids a config-layer import cycle.
+  static async bulkUpdateScope(
+    auth: Authenticator,
+    agentIds: string[],
+    scope: Exclude<AgentConfigurationScope, "global">,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (agentIds.length === 0) {
+      return;
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    // Resolve the current-version rows for all requested agents, then keep only those the caller may
+    // (re)scope: anyone with `write` on the agent, plus admins who may (un)publish any agent via
+    // `admin` — including ones built on spaces they cannot read. `loadResource` (not `fetchByIds`) is
+    // required because those admin-only agents come back read-gated to `light` with no `content`.
+    const resources = (
+      await this.loadResource(workspaceId, { sId: agentIds })
+    ).filter((r) => auth.can("write", r) || auth.can("admin", r));
+    if (resources.length === 0) {
+      return;
+    }
+
+    await AgentConfigurationModel.update(
+      { scope },
+      {
+        where: {
+          id: {
+            [Op.in]: resources.map((r) => r.content.agentConfigurationModelId),
+          },
+          workspaceId,
+        },
+        transaction,
+      }
+    );
+  }
+
   /**
    * Makes `configuration`, one of the agent's own rows, the current one. Called by every path
    * that inserts a configuration row or deletes the current one (see

@@ -1933,13 +1933,10 @@ export async function updateAgentConfigurationsScope(
     editableAgents.map((a) => [a.sId, a.scope])
   );
 
-  await AgentConfigurationModel.update(
-    { scope },
-    {
-      where: {
-        id: { [Op.in]: editableAgents.map((a) => a.id) },
-      },
-    }
+  await AgentResource.bulkUpdateScope(
+    auth,
+    editableAgents.map((a) => a.sId),
+    scope
   );
 
   for (const agentConfig of editableAgents) {
