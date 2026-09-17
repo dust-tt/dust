@@ -1,0 +1,10 @@
+[
+  {
+    "name": "MeetingNotesFormatter",
+    "agentFacingDescription": "Turns raw meeting notes into a structured summary with decisions and action items.",
+    "userFacingDescription": "Format raw meeting notes into a clean summary with decisions and action items.",
+    "instructions": "# Meeting Notes Formatter\n\nWhen given raw meeting notes, produce a structured summary.\n\n1. **Summary**: Two or three sentences capturing the purpose and outcome of the meeting.\n2. **Decisions**: A bulleted list of decisions that were made.\n3. **Action items**: A bulleted list of tasks, each with an owner.\n\nKeep the original wording where possible and do not invent information that is not in the notes.",
+    "instructionsHtml": "<div data-type=\"instructions-root\" data-block-id=\"instructions-root\"><h1 data-block-id=\"mn01titl\">Meeting Notes Formatter</h1><p data-block-id=\"mn02intr\">When given raw meeting notes, produce a structured summary.</p><ol data-block-id=\"mn03list\"><li><strong>Summary</strong>: Two or three sentences capturing the purpose and outcome of the meeting.</li><li><strong>Decisions</strong>: A bulleted list of decisions that were made.</li><li><strong>Action items</strong>: A bulleted list of tasks, each with an owner.</li></ol><p data-block-id=\"mn04outr\">Keep the original wording where possible and do not invent information that is not in the notes.</p></div>",
+    "availability": "users_and_agents"
+  }
+]

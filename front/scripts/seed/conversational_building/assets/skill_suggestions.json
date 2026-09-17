@@ -1,0 +1,50 @@
+[
+  {
+    "id": "skillEditInstructions",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "edit",
+    "title": "Add due dates to action items",
+    "analysis": "Action items are more useful when they carry a due date. The skill should ask for one when it is missing from the notes instead of leaving it out.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "instructionEdits": [
+        {
+          "targetBlockId": "mn03list",
+          "content": "<ol><li><strong>Summary</strong>: Two or three sentences capturing the purpose and outcome of the meeting.</li><li><strong>Decisions</strong>: A bulleted list of decisions that were made.</li><li><strong>Action items</strong>: A bulleted list of tasks, each with an owner and a due date. If the notes do not mention a due date, mark it as <em>TBD</em> and ask the user for it.</li></ol>",
+          "type": "replace"
+        }
+      ]
+    }
+  },
+  {
+    "id": "skillEditDescription",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "edit",
+    "title": "Clarify when to use the skill",
+    "analysis": "The agent-facing description should tell agents that the skill also handles call transcripts and Slack threads, so it gets picked up in those situations.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "agentFacingDescriptionEdit": {
+        "content": "Turns raw meeting notes, call transcripts or Slack threads into a structured summary with decisions and action items (with owners and due dates)."
+      }
+    }
+  },
+  {
+    "id": "skillEditors",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "editors",
+    "title": "Hand over skill maintenance to Leila",
+    "analysis": "Leila now runs the weekly team meetings and should be able to maintain the skill. Luke no longer attends them and asked to be removed.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "addUserIds": ["SeedUserLeila"],
+      "removeUserIds": ["SeedUserLuke"]
+    }
+  }
+]

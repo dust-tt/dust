@@ -9,6 +9,12 @@ import type {
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import type { AgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
+import type {
+  SkillEditorsSuggestionType,
+  SkillEditSuggestionType,
+  SkillSuggestionSource,
+  SkillSuggestionState,
+} from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 
 // Seed context shared across all seed functions
@@ -41,6 +47,8 @@ export type AgentAssetModel =
   | { providerId: ModelProviderIdType; modelId: ModelIdType };
 
 export interface UserAsset {
+  // Used as the created user's sId, so other assets (e.g. skill editors suggestions) can
+  // reference the user directly.
   sId: string;
   username: string;
   email: string;
@@ -58,22 +66,35 @@ export interface SkillAsset {
   availability?: SkillAvailability;
 }
 
-export interface SkillSuggestionAsset {
+interface BaseSkillSuggestionAsset {
+  // Optional key used to reference the created suggestion from other assets (e.g. conversation
+  // placeholders). Must be unique within a seed.
+  id?: string;
   skillName: string;
-  kind: "edit";
+  // When true, an existing suggestion with the same kind, source and title is deleted and
+  // recreated on re-runs so the seeded data always reflects the asset. Defaults to false.
+  overwrite?: boolean;
   title?: string;
   analysis: string | null;
-  state: "pending" | "approved" | "rejected" | "outdated";
-  source: "reinforcement" | "synthetic";
+  state: SkillSuggestionState;
+  source: SkillSuggestionSource;
   sourceConversationIds?: string[];
-  suggestion: {
-    instructionEdits?: {
-      targetBlockId: string;
-      content: string;
-      type: "replace";
-    }[];
-  };
 }
+
+export interface SkillEditSuggestionAsset extends BaseSkillSuggestionAsset {
+  kind: "edit";
+  suggestion: SkillEditSuggestionType;
+}
+
+export interface SkillEditorsSuggestionAsset extends BaseSkillSuggestionAsset {
+  kind: "editors";
+  // User sIds; seeded users have the sId of their `UserAsset`.
+  suggestion: SkillEditorsSuggestionType;
+}
+
+export type SkillSuggestionAsset =
+  | SkillEditSuggestionAsset
+  | SkillEditorsSuggestionAsset;
 
 export interface SuggestedSkillAsset {
   name: string;
@@ -97,6 +118,9 @@ export interface ConversationAsset {
   title: string;
   agentName?: string;
   userId: string;
+  // When true, an existing conversation with the same sId is deleted and recreated on re-runs so
+  // the seeded messages always reflect the asset. Defaults to false (existing is kept).
+  overwrite?: boolean;
   exchanges: Exchange[];
 }
 

@@ -1,0 +1,30 @@
+[
+  {
+    "sId": "ConvBuildingConv01",
+    "title": "Improve MeetingNotesFormatter",
+    "agentName": "Dust",
+    "overwrite": true,
+    "exchanges": [
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg01",
+          "content": ":mention[Dust]{sId=dust} Can you review the MeetingNotesFormatter skill? Action items keep coming back without dates, and agents don't pick the skill up when I paste a call transcript."
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg01",
+          "content": "I reviewed the **MeetingNotesFormatter** skill and I have two edits to propose.\n\nFirst, the action items step never asks for a due date. Here is an update to the instructions that adds one to each action item and asks the user when it is missing:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_INSTRUCTIONS_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nSecond, the agent-facing description only mentions meeting notes, so agents do not consider the skill for call transcripts or Slack threads. Here is a clearer description:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_DESCRIPTION_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nLet me know if you want me to adjust either of these before you accept them."
+        }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg02",
+          "content": "Looks good. Also, Leila now runs the weekly meetings and should be able to maintain this skill, and Luke asked to be removed since he no longer attends."
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg02",
+          "content": "Here is the editors change: it adds **Leila Organa** as an editor of the skill and removes **Luke Skyward**.\n\n:skill_suggestion[]{sId=__SKILL_EDITORS_SUGGESTION_SID__ kind=editors skillId=__MEETING_NOTES_SKILL_SID__}\n\nOnce accepted, Leila will be able to edit the skill's instructions and description, and Luke will no longer see it in his skills to maintain."
+        }
+      }
+    ]
+  }
+]

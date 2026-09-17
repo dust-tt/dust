@@ -1,0 +1,16 @@
+[
+  {
+    "sId": "SeedUserLuke",
+    "username": "luke",
+    "email": "luke@example.com",
+    "firstName": "Luke",
+    "lastName": "Skyward"
+  },
+  {
+    "sId": "SeedUserLeila",
+    "username": "leila",
+    "email": "leila@example.com",
+    "firstName": "Leila",
+    "lastName": "Organa"
+  }
+]
