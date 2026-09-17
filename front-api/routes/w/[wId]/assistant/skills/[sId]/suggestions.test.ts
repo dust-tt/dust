@@ -423,8 +423,8 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     });
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.message).toContain(
-      "One or more skill suggestions are not available."
+    expect((await response.json()).error.message).toBe(
+      `The following skill suggestions are not available: ${suggestion.sId}.`
     );
   });
 
@@ -463,8 +463,8 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     });
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.message).toContain(
-      "One or more skill suggestions are not available."
+    expect((await response.json()).error.message).toBe(
+      `The following skill suggestions are not available: ${suggestion.sId}.`
     );
   });
 });

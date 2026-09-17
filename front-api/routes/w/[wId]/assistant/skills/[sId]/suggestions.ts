@@ -138,15 +138,15 @@ app.patch(
     }
 
     const enabledSources = await listEnabledSources(auth);
-    const unavailableSuggestion = suggestions.find(
-      (suggestion) => !enabledSources.has(suggestion.source)
-    );
-    if (unavailableSuggestion) {
+    const unavailableSuggestionIds = suggestions
+      .filter((suggestion) => !enabledSources.has(suggestion.source))
+      .map((suggestion) => suggestion.sId);
+    if (unavailableSuggestionIds.length > 0) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "One or more skill suggestions are not available.",
+          message: `The following skill suggestions are not available: ${unavailableSuggestionIds.join(", ")}.`,
         },
       });
     }
