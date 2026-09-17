@@ -29,6 +29,13 @@ interface ModelWithSpace extends ResourceWithId {
   space: NonAttribute<SpaceModel>;
 }
 
+/**
+ * @cc [owner:tdraier,label:security;backend] space-verbs-inherited
+ * A resource living in a space (data source, data source view, app, MCP or webhook server view)
+ * holds exactly the verbs the caller holds on its space (see `space-verbs` on `SpaceResource`):
+ * `read`, `write` and `admin` on the resource are `read`, `write` and `admin` on its space. A
+ * subclass MUST NOT add or remove verbs of its own.
+ */
 export abstract class ResourceWithSpace<
   M extends SoftDeletableWorkspaceAwareModel & ModelWithSpace,
 > extends BaseResource<M> {

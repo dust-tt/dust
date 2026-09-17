@@ -53,6 +53,14 @@ interface RoleDefinition {
   levels: GrantLevel[];
 }
 
+/**
+ * @cc [owner:philipperolet,label:security;backend] roles-bundle-verbs
+ * A higher-level notion of access (a space member, an agent editor, a skill reader) MUST be a role
+ * in this registry: a grant type bundling one or more verbs, and the only thing a
+ * `group_permissions` row stores. A permission check MUST be asked in verbs
+ * (`auth.can(verb, resource)`, `auth.hasWorkspacePermission(verb, resourceType)`), never by
+ * comparing a grant type.
+ */
 export const ROLE_REGISTRY: Record<
   ConcreteResourceType,
   Partial<Record<ConcreteGrantType, RoleDefinition>>
