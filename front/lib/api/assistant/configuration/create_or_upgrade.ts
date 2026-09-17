@@ -6,7 +6,6 @@ import type {
 import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
-  createAgentConfiguration,
   restoreAgentConfiguration,
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
@@ -14,6 +13,7 @@ import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -189,7 +189,7 @@ export async function createOrUpgradeAgentConfiguration({
     return new Err(new Error(accessError.message));
   }
 
-  const agentConfigurationRes = await createAgentConfiguration(auth, {
+  const saveParams = {
     name: assistant.name,
     description: assistant.description,
     instructions: assistant.instructions ?? null,
@@ -198,13 +198,20 @@ export async function createOrUpgradeAgentConfiguration({
     status: assistant.status,
     scope: assistant.scope,
     model: assistant.model,
-    agentConfigurationId,
     templateId: assistant.templateId ?? null,
     requestedSpaceIds: allRequestedSpaceIds,
     tags: assistant.tags,
     editors,
     authorId: resolvedAuthorId,
-  });
+  };
+
+  const agentConfigurationRes = agentConfigurationId
+    ? await AgentResource.updateConfiguration(
+        auth,
+        agentConfigurationId,
+        saveParams
+      )
+    : await AgentResource.makeNew(auth, saveParams);
 
   if (agentConfigurationRes.isErr()) {
     return agentConfigurationRes;

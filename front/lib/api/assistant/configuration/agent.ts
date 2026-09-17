@@ -2,12 +2,10 @@ import { filterEditableAgents } from "@app/lib/api/assistant/agent_permissions";
 import {
   enrichAgentConfigurations,
   getModelForAgentConfiguration,
-  isSelfHostedImageWithValidContentType,
   redactPrivateAgentConfigurationFields,
 } from "@app/lib/api/assistant/configuration/helpers";
 import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
-import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -26,7 +24,6 @@ import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/a
 import {
   AgentConfigurationModel,
   AgentModel,
-  AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
@@ -41,8 +38,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { TagResource } from "@app/lib/resources/tags_resource";
-import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
@@ -55,33 +50,22 @@ import type {
   AgentConfigurationType,
   AgentFetchVariant,
   AgentModelConfigurationType,
-  AgentReinforcementMode,
-  AgentStatus,
   GlobalAgentContext,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
-import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import {
   GLOBAL_AGENTS_SID,
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
-import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
 import assert from "assert";
 import type { Transaction } from "sequelize";
-import {
-  Op,
-  QueryTypes,
-  UniqueConstraintError,
-  ValidationError,
-} from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 // Placeholder constants for pending agents
 const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
@@ -561,555 +545,6 @@ export async function resolveAgentConfigurationIdByName(
   return exactMatch?.sId ?? matches[0].sId;
 }
 
-export async function createAgentConfiguration(
-  auth: Authenticator,
-  {
-    name,
-    description,
-    instructions,
-    instructionsHtml,
-    pictureUrl,
-    status,
-    scope,
-    model,
-    agentConfigurationId,
-    templateId,
-    requestedSpaceIds,
-    tags,
-    editors,
-    authorId,
-    reinforcement,
-  }: {
-    name: string;
-    description: string;
-    instructions: string | null;
-    instructionsHtml: string | null;
-    pictureUrl: string;
-    status: AgentStatus;
-    scope: Exclude<AgentConfigurationScope, "global">;
-    model: AgentModelConfigurationType;
-    agentConfigurationId?: string;
-    templateId: string | null;
-    requestedSpaceIds: number[];
-    tags: TagType[];
-    editors: UserType[];
-    authorId: ModelId;
-    reinforcement?: AgentReinforcementMode;
-  },
-  transaction?: Transaction
-): Promise<Result<LightAgentConfigurationType, Error>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-
-  const isValidPictureUrl =
-    await isSelfHostedImageWithValidContentType(pictureUrl);
-  if (!isValidPictureUrl) {
-    return new Err(new Error("Invalid picture url."));
-  }
-
-  if (model.responseFormat) {
-    const formatValidation = validateResponseFormat(model.responseFormat);
-    if (!formatValidation.isValid) {
-      return new Err(
-        new Error(`Invalid response format: ${formatValidation.errorMessage}`)
-      );
-    }
-  }
-
-  let version = 0;
-
-  let userFavorite = false;
-
-  // Track removed editors so their triggers can be disabled if this save leaves the agent hidden.
-  let removedEditors: UserType[] = [];
-  // The scope the agent has before this write. A new agent starts hidden, so saving it
-  // visible counts as publishing.
-  let currentScope: AgentConfigurationScope = "hidden";
-  if (agentConfigurationId) {
-    const existingAgent = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
-    if (existingAgent) {
-      currentScope = existingAgent.scope;
-    }
-  }
-
-  if (
-    needsPublishPermission({
-      currentScope,
-      newScope: scope,
-      isActive: status === "active",
-    })
-  ) {
-    const { canPublish, message } = await canPublishAgent(auth);
-    if (!canPublish) {
-      return new Err(
-        new Error(message ?? "You don't have permission to publish agents.")
-      );
-    }
-  }
-
-  try {
-    let template: TemplateResource | null = null;
-    if (templateId) {
-      template = await TemplateResource.fetchByExternalId(templateId);
-    }
-    const performCreation = async (
-      t: Transaction
-    ): Promise<AgentConfigurationModel> => {
-      let existingAgent = null;
-
-      if (agentConfigurationId) {
-        const [agentConfiguration, userRelation] = await Promise.all([
-          AgentConfigurationModel.findOne({
-            where: {
-              sId: agentConfigurationId,
-              workspaceId: owner.id,
-            },
-            attributes: [
-              "agentId",
-              "scope",
-              "version",
-              "id",
-              "sId",
-              "status",
-              "authorId",
-              "workspaceId",
-              "createdAt",
-              "reinforcement",
-            ],
-            order: [["version", "DESC"]],
-            transaction: t,
-            limit: 1,
-          }),
-          AgentUserRelationModel.findOne({
-            where: {
-              workspaceId: owner.id,
-              agentConfiguration: agentConfigurationId,
-              userId: authorId,
-            },
-            transaction: t,
-          }),
-        ]);
-
-        existingAgent = agentConfiguration;
-
-        if (existingAgent) {
-          if (existingAgent.status === "archived") {
-            throw new Error(
-              "An archived agent cannot be updated. Restore it first."
-            );
-          }
-
-          // Handle pending agent: update in place (don't bump version, preserve id for FK relationships)
-          // Otherwise: archive old versions and bump version
-          if (existingAgent.status === "pending") {
-            if (existingAgent.authorId === authorId) {
-              const timeToCreationMs =
-                Date.now() - existingAgent.createdAt.getTime();
-              logger.info(
-                {
-                  agentId: existingAgent.sId,
-                  workspaceId: owner.sId,
-                  timeToCreationMs,
-                },
-                "Agent created from pending status"
-              );
-            } else {
-              throw new Error(
-                "Cannot update a pending agent owned by another user."
-              );
-            }
-          } else {
-            // Regular update: bump version and archive old versions
-            version = existingAgent.version + 1;
-            await AgentConfigurationModel.update(
-              { status: "archived" },
-              {
-                where: {
-                  sId: agentConfigurationId,
-                  workspaceId: owner.id,
-                },
-                transaction: t,
-              }
-            );
-          }
-        }
-
-        userFavorite = userRelation?.favorite ?? false;
-      }
-
-      // `existingAgent` is null both when no `agentConfigurationId` was given and when one was
-      // given but didn't match a real row — the latter would otherwise let a caller bypass the
-      // capability check by passing a nonexistent id and taking the "create new" branch below.
-      if (!existingAgent) {
-        const canCreate = await auth.hasWorkspacePermission("create", "agent");
-        if (!canCreate) {
-          throw new Error("Creating agents is restricted.");
-        }
-      }
-
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const sId = agentConfigurationId || generateRandomModelSId();
-      let agentModelId = existingAgent?.agentId;
-      if (!agentModelId) {
-        const [agentIdentity] = await AgentModel.findOrCreate({
-          where: { sId, workspaceId: owner.id },
-          defaults: { sId, workspaceId: owner.id },
-          transaction: t,
-        });
-        agentModelId = agentIdentity.id;
-        await AgentConfigurationModel.update(
-          { agentId: agentModelId },
-          {
-            where: { sId, workspaceId: owner.id },
-            transaction: t,
-          }
-        );
-      }
-
-      // Create or update Agent config.
-      let agentConfigurationInstance: AgentConfigurationModel;
-
-      if (existingAgent && existingAgent.status === "pending") {
-        // Update pending agent in place to preserve id (and FK relationships like suggestions)
-        await AgentConfigurationModel.update(
-          {
-            version,
-            status,
-            scope,
-            name,
-            description,
-            instructions,
-            instructionsHtml,
-            providerId: model.providerId,
-            modelId: model.modelId,
-            temperature: model.temperature,
-            reasoningEffort: model.reasoningEffort,
-            maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-            pictureUrl,
-            authorId,
-            templateId: template?.id,
-            requestedSpaceIds: requestedSpaceIds,
-            responseFormat: model.responseFormat,
-            reinforcement:
-              reinforcement ?? existingAgent.reinforcement ?? "auto",
-          },
-          {
-            where: {
-              id: existingAgent.id,
-              workspaceId: owner.id,
-            },
-            transaction: t,
-          }
-        );
-        // Reload the updated instance
-        const updatedAgent = await AgentConfigurationModel.findOne({
-          where: {
-            id: existingAgent.id,
-            workspaceId: owner.id,
-          },
-          transaction: t,
-        });
-        if (!updatedAgent) {
-          throw new Error("Failed to reload updated agent configuration");
-        }
-        agentConfigurationInstance = updatedAgent;
-      } else {
-        // Create new agent config
-        agentConfigurationInstance = await AgentConfigurationModel.create(
-          {
-            sId,
-            agentId: agentModelId,
-            version,
-            status,
-            scope,
-            name,
-            description,
-            instructions,
-            instructionsHtml,
-            providerId: model.providerId,
-            modelId: model.modelId,
-            temperature: model.temperature,
-            reasoningEffort: model.reasoningEffort,
-            maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-            pictureUrl,
-            workspaceId: owner.id,
-            authorId,
-            templateId: template?.id,
-            requestedSpaceIds: requestedSpaceIds,
-            responseFormat: model.responseFormat,
-            reinforcement:
-              reinforcement ?? existingAgent?.reinforcement ?? "auto",
-          },
-          {
-            transaction: t,
-          }
-        );
-      }
-
-      // A brand-new agent already starts at version 0; an upgrade moves the pointer.
-      if (agentConfigurationInstance.version !== 0) {
-        await AgentResource.fromAgentConfigurationModel(
-          auth,
-          agentConfigurationInstance
-        ).setCurrentConfiguration(auth, agentConfigurationInstance, {
-          transaction: t,
-        });
-      }
-
-      const canManageProtectedTags = await auth.hasWorkspacePermission(
-        "publish",
-        "agent"
-      );
-
-      const existingTags = existingAgent
-        ? await TagResource.listForAgent(auth, existingAgent.id)
-        : [];
-      const existingReservedTags = existingTags
-        .filter((t) => t.kind === "protected")
-        .map((t) => t.sId);
-      if (
-        !canManageProtectedTags &&
-        !existingReservedTags.every((reservedTagId) =>
-          tags.some((tag) => tag.sId === reservedTagId)
-        )
-      ) {
-        throw new Error("Cannot remove reserved tag from agent");
-      }
-
-      if (status === "active") {
-        const tagResources = await TagResource.fetchByIds(
-          auth,
-          tags.map((tag) => tag.sId)
-        );
-        const tagResourceById = new Map(
-          tagResources.map((tagResource) => [tagResource.sId, tagResource])
-        );
-
-        for (const tag of tags) {
-          const tagResource = tagResourceById.get(tag.sId);
-          if (tagResource) {
-            if (
-              !canManageProtectedTags &&
-              tagResource.kind === "protected" &&
-              !existingReservedTags.includes(tagResource.sId)
-            ) {
-              throw new Error("Cannot add reserved tag to agent");
-            }
-            await TagAgentModel.create(
-              {
-                workspaceId: owner.id,
-                tagId: tagResource.id,
-                agentConfigurationId: agentConfigurationInstance.id,
-              },
-              { transaction: t }
-            );
-          }
-        }
-
-        assert(
-          editors.some((e) => e.id === authorId) || isAdmin(owner),
-          "Unexpected: author must be in editor group or admin"
-        );
-        if (!existingAgent) {
-          const group = await GroupResource.makeNewAgentEditorsGroup(
-            auth,
-            agentConfigurationInstance,
-            { transaction: t, authorId }
-          );
-          await auth.refresh({ transaction: t });
-          // No need to check on permission here since it was done a few lines above.
-          const setMembersRes = await group.dangerouslySetMembers(auth, {
-            users: editors,
-            transaction: t,
-          });
-          if (setMembersRes.isErr()) {
-            throw setMembersRes.error;
-          }
-        } else {
-          const group = await GroupResource.fetchByAgentConfiguration({
-            auth,
-            agentConfiguration: existingAgent,
-          });
-          if (!group) {
-            throw new Error(
-              "Unexpected: agent should have exactly one editor group."
-            );
-          }
-          // For pending agents updated in place, the group is already linked to the same agent ID
-          // For regular updates, we need to link the group to the new agent configuration
-          if (existingAgent.id !== agentConfigurationInstance.id) {
-            const result = await group.addGroupToAgentConfiguration({
-              auth,
-              agentConfiguration: agentConfigurationInstance,
-              transaction: t,
-            });
-            if (result.isErr()) {
-              logger.error(
-                {
-                  workspaceId: owner.sId,
-                  agentConfigurationId: existingAgent.sId,
-                },
-                `Error adding group to agent ${existingAgent.sId}: ${result.error}`
-              );
-              throw result.error;
-            }
-          }
-
-          // Authorization is enforced by the `editors.some(...) || isAdmin(owner)`
-          // assertion earlier in this transaction; no need to re-check here.
-          const setMembersRes = await group.dangerouslySetMembers(auth, {
-            users: editors,
-            transaction: t,
-          });
-          if (setMembersRes.isErr()) {
-            logger.error(
-              {
-                workspaceId: owner.sId,
-                agentConfigurationId: existingAgent.sId,
-              },
-              `Error setting members to agent ${existingAgent.sId}: ${setMembersRes.error}`
-            );
-            throw setMembersRes.error;
-          }
-          removedEditors = setMembersRes.value.removedUsers;
-        }
-
-        const agentResource = AgentResource.fromAgentConfigurationModel(
-          auth,
-          agentConfigurationInstance
-        );
-        await agentResource.grantEditors(auth, { editors, transaction: t });
-        if (!isLegacyAclsEnabled()) {
-          const currentEditors = await agentResource.listEditors(auth, {
-            transaction: t,
-          });
-          assert(currentEditors !== null);
-          const editorIds = new Set(editors.map((editor) => editor.id));
-          removedEditors = currentEditors
-            .filter((editor) => !editorIds.has(editor.id))
-            .map((editor) => editor.toJSON());
-        }
-        await agentResource.revokeEditors(auth, {
-          editors: removedEditors,
-          transaction: t,
-        });
-      }
-
-      return agentConfigurationInstance;
-    };
-
-    const agent = await withTransaction(performCreation, transaction);
-
-    /*
-     * Final rendering.
-     */
-    const agentConfiguration: LightAgentConfigurationType = {
-      id: agent.id,
-      agentModelId: agent.agentId,
-      sId: agent.sId,
-      versionCreatedAt: agent.createdAt.toISOString(),
-      version: agent.version,
-      versionAuthorId: agent.authorId,
-      scope: agent.scope,
-      name: agent.name,
-      description: agent.description,
-      instructions: agent.instructions,
-      userFavorite,
-      model: {
-        providerId: agent.providerId,
-        modelId: agent.modelId,
-        temperature: agent.temperature,
-        responseFormat: agent.responseFormat,
-      },
-      pictureUrl: agent.pictureUrl,
-      status: agent.status,
-      maxStepsPerRun: agent.maxStepsPerRun,
-      templateId: template?.sId ?? null,
-      requestedGroupIds: [],
-      requestedSpaceIds: agent.requestedSpaceIds.map((spaceId) =>
-        SpaceResource.modelIdToSId({ id: spaceId, workspaceId: owner.id })
-      ),
-      tags,
-      reinforcement: reinforcement ?? "auto",
-      canRead: true,
-      canEdit: true,
-    };
-
-    await agentConfigurationWasUpdatedBy({
-      agent: agentConfiguration,
-      auth,
-    });
-
-    // Disable triggers for editors who were removed from a hidden agent.
-    if (removedEditors.length > 0 && scope === "hidden") {
-      const triggersToDisableRes =
-        await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
-          agentConfigurationId: agent.sId,
-          editorIds: removedEditors.map((editor) => editor.id),
-        });
-      if (triggersToDisableRes.isOk()) {
-        for (const trigger of triggersToDisableRes.value) {
-          const disableResult = await trigger.disable(auth);
-          if (disableResult.isErr()) {
-            logger.error(
-              {
-                workspaceId: owner.sId,
-                agentConfigurationId: agent.sId,
-                triggerId: trigger.sId,
-                error: disableResult.error,
-              },
-              `Failed to disable trigger ${trigger.sId} when removing editor from agent ${agent.sId}`
-            );
-          }
-        }
-      }
-    }
-
-    if (agentConfiguration.status === "active") {
-      const isCreate =
-        !agentConfigurationId || agentConfiguration.version === 0;
-      void emitAuditLogEvent({
-        auth,
-        action: isCreate ? "agent.created" : "agent.updated",
-        targets: [
-          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-          buildAuditLogTarget("agent", agentConfiguration),
-        ],
-        context: getAuditLogContext(auth),
-        metadata: {
-          agent_name: agentConfiguration.name,
-          scope: scope,
-          model: `${model.providerId}/${model.modelId}`,
-        },
-      });
-    }
-
-    return new Ok(agentConfiguration);
-  } catch (error) {
-    if (error instanceof UniqueConstraintError) {
-      return new Err(new Error("An agent with this name already exists."));
-    }
-    if (error instanceof ValidationError) {
-      return new Err(new Error(error.message));
-    }
-    if (error instanceof SyntaxError) {
-      return new Err(new Error(error.message));
-    }
-    if (error instanceof DustError) {
-      return new Err(error);
-    }
-    if (error instanceof Error) {
-      return new Err(error);
-    }
-    throw error;
-  }
-}
-
 // Cancels every still-scheduled wake-up targeting the given agent, deleting the
 // backing Temporal schedule (cron) or pending workflow (one-shot). Errors are
 // logged but do not abort the caller.
@@ -1241,13 +676,10 @@ export async function restoreAgentConfiguration(
 
   // Check publishing restrictions: restoring a visible agent is equivalent to publishing it.
   if (latestConfig.scope === "visible") {
-    const { canPublish, message } = await canPublishAgent(auth);
+    const canPublish = await auth.hasWorkspacePermission("publish", "agent");
     if (!canPublish) {
       return new Err(
-        new DustError(
-          "unauthorized",
-          message ?? "Publishing agents is restricted."
-        )
+        new DustError("unauthorized", "Publishing agents is restricted.")
       );
     }
   }
@@ -1826,41 +1258,6 @@ export async function updateAgentPermissions(
     // Catch errors thrown from within the transaction
     return new Err(normalizeAsInternalDustError(error));
   }
-}
-
-async function canPublishAgent(auth: Authenticator): Promise<{
-  canPublish: boolean;
-  message: string | null;
-}> {
-  const canPublish = await auth.hasWorkspacePermission("publish", "agent");
-  if (canPublish) {
-    return { canPublish: true, message: null };
-  }
-  return {
-    canPublish: false,
-    message: "You don't have permission to publish agents.",
-  };
-}
-
-// Does changing an agent's scope publish or unpublish it? Both require the workspace "publish
-// agents" permission. Publishing means an active agent becomes visible; unpublishing means an
-// active visible agent becomes hidden. A pure edit, or any change on a non-active
-// (draft/pending/archived) agent, needs no publish permission.
-function needsPublishPermission({
-  currentScope,
-  newScope,
-  isActive,
-}: {
-  currentScope: AgentConfigurationScope;
-  newScope: AgentConfigurationScope;
-  isActive: boolean;
-}): boolean {
-  if (!isActive) {
-    return false;
-  }
-  const publishes = currentScope !== "visible" && newScope === "visible";
-  const unpublishes = currentScope === "visible" && newScope === "hidden";
-  return publishes || unpublishes;
 }
 
 export async function updateAgentConfigurationsScope(

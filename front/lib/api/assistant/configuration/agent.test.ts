@@ -1,7 +1,6 @@
 import {
   archiveAgentConfiguration,
   cleanupAgentScopedResourcesForHardDeletion,
-  createAgentConfiguration,
   createPendingAgentConfiguration,
   getAgentConfiguration,
   getAgentConfigurations,
@@ -39,6 +38,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
@@ -425,7 +425,7 @@ describe("stable agent identities", () => {
   });
 });
 
-describe("createAgentConfiguration with pending agent", () => {
+describe("saveAgentConfiguration with pending agent", () => {
   it("converts pending agent to active when agentConfigurationId points to a pending agent", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",
@@ -474,7 +474,7 @@ describe("createAgentConfiguration with pending agent", () => {
     ).toEqual([user.sId]);
 
     // Convert the pending agent to active by passing its sId as agentConfigurationId
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "My New Agent",
       description: "A test agent",
       instructions: "Test instructions",
@@ -537,7 +537,7 @@ describe("createAgentConfiguration with pending agent", () => {
 
     const nonExistentId = generateRandomModelSId();
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Fallback Agent",
       description: "Test",
       instructions: null,
@@ -593,7 +593,7 @@ describe("createAgentConfiguration with pending agent", () => {
     const { sId: pendingId } = otherPendingAgentRes.value;
 
     // Should return an error because pending agents owned by other users cannot be updated
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "My Agent",
       description: "Test",
       instructions: null,
@@ -631,7 +631,7 @@ describe("createAgentConfiguration with pending agent", () => {
     const existingAgent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Updated Agent",
       description: "Test",
       instructions: null,
@@ -693,7 +693,7 @@ describe("createAgentConfiguration with pending agent", () => {
       }
     );
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Agent From Pending With Suggestions",
       description: "Test agent",
       instructions: "Test instructions",
@@ -754,7 +754,7 @@ describe("create agent capability", () => {
     const { workspace } = await createResourceTest({ role: "admin" });
     const { authenticator, user } = await memberAuthInGroup(workspace);
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Unauthorized Agent",
       description: "Test",
       instructions: null,
@@ -784,7 +784,7 @@ describe("create agent capability", () => {
     const { workspace } = await createResourceTest({ role: "admin" });
     const { authenticator, user } = await memberAuthInGroup(workspace);
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Unauthorized Agent",
       description: "Test",
       instructions: null,
@@ -824,7 +824,7 @@ describe("create agent capability", () => {
     });
     const { authenticator, user } = await memberAuthInGroup(workspace, group);
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Authorized Agent",
       description: "Test",
       instructions: null,
@@ -867,7 +867,7 @@ describe("create agent capability", () => {
     await GroupFactory.withMembers(adminAuth, editorGroupRes.value, [user]);
     await authenticator.refresh();
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Updated Agent",
       description: "Test",
       instructions: null,
@@ -1462,7 +1462,7 @@ describe("publish agent capability", () => {
     user: Awaited<ReturnType<typeof UserFactory.basic>>,
     scope: "hidden" | "visible"
   ) {
-    return createAgentConfiguration(auth, {
+    return saveAgentConfiguration(auth, {
       name: agent.name,
       description: "Test",
       instructions: null,

@@ -1,9 +1,9 @@
-import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ModelIdType,
@@ -48,7 +48,7 @@ export class AgentConfigurationFactory {
       workspace.sId
     );
 
-    const result = await createAgentConfiguration(internalAuth, {
+    const result = await AgentResource.makeNew(internalAuth, {
       name,
       description,
       instructions: "Test Instructions",
@@ -100,7 +100,7 @@ export class AgentConfigurationFactory {
     const user = auth.user();
     assert(user, "User is required");
 
-    const result = await createAgentConfiguration(auth, {
+    const result = await AgentResource.updateConfiguration(auth, agentId, {
       name: overrides.name ?? "Test Agent",
       description: overrides.description ?? "Test Agent Description",
       instructions: overrides.instructions ?? "Updated Test Instructions",
@@ -117,7 +117,6 @@ export class AgentConfigurationFactory {
       tags: [],
       editors: [user.toJSON()],
       authorId: user.id,
-      agentConfigurationId: agentId,
       requestedSpaceIds: overrides.requestedSpaceIds ?? [],
     });
 

@@ -1,7 +1,6 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import type { Authenticator } from "@app/lib/auth";
-import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -58,30 +57,6 @@ export function getModelForAgentConfiguration(
   }
 
   return model;
-}
-
-export async function isSelfHostedImageWithValidContentType(
-  pictureUrl: string
-) {
-  // Accept static Dust avatars.
-  if (pictureUrl.startsWith("https://dust.tt/static/")) {
-    return true;
-  }
-
-  const filename = pictureUrl.split("/").at(-1);
-  if (!filename) {
-    return false;
-  }
-
-  // Attempt to decode the URL, since Google Cloud Storage URL encodes the filename.
-  const contentTypeResult = await getPublicUploadBucket().getFileContentType(
-    decodeURIComponent(filename)
-  );
-  if (contentTypeResult.isErr() || !contentTypeResult.value) {
-    return false;
-  }
-
-  return contentTypeResult.value.includes("image");
 }
 
 export async function getAgentIdFromName(
