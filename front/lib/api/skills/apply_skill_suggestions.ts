@@ -1,3 +1,8 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import type { SkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import type { Authenticator } from "@app/lib/auth";
@@ -59,32 +64,23 @@ function editsForSuggestion(
  * skill version.
  */
 function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
-  return edits.reduce<SkillEdits>(
-    (merged, next) => ({
-      agentFacingDescription:
-        next.agentFacingDescription ?? merged.agentFacingDescription,
-      // Unioned rather than overwritten: a batch asks for every editor change it carries. A user
-      // added by one suggestion and removed by another ends up in both lists, which
-      // `validateSkillEditorsChange` then rejects as ambiguous.
-      editors: mergeEditorsEdits(merged.editors, next.editors),
-    }),
-    {}
+  const agentFacingDescription = edits.reduce<string | undefined>(
+    (merged, next) => next.agentFacingDescription ?? merged,
+    undefined
   );
-}
 
-function mergeEditorsEdits(
-  merged: SkillEdits["editors"],
-  next: SkillEdits["editors"]
-): SkillEdits["editors"] {
-  if (!merged || !next) {
-    return next ?? merged;
+  // Union, not last-wins: approving two suggestions must apply both editor changes.
+  const editorsEdits = edits.flatMap((e) => e.editors ?? []);
+  if (editorsEdits.length === 0) {
+    return { agentFacingDescription };
   }
 
   return {
-    addUserIds: [...new Set([...merged.addUserIds, ...next.addUserIds])],
-    removeUserIds: [
-      ...new Set([...merged.removeUserIds, ...next.removeUserIds]),
-    ],
+    agentFacingDescription,
+    editors: {
+      addUserIds: [...new Set(editorsEdits.flatMap((e) => e.addUserIds))],
+      removeUserIds: [...new Set(editorsEdits.flatMap((e) => e.removeUserIds))],
+    },
   };
 }
 
@@ -136,6 +132,24 @@ async function applyEditorsChange(
     );
   }
 
+  void emitAuditLogEvent({
+    auth,
+    action: "skill.editors_updated",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      { type: "skill", id: skill.sId, name: skill.name },
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      skill_name: skill.name,
+      added_editor_ids: usersToAdd.map((u) => u.sId).join(","),
+      removed_editor_ids: usersToRemove.map((u) => u.sId).join(","),
+      actor_added_self: String(
+        usersToAdd.some((u) => u.sId === auth.user()?.sId)
+      ),
+    },
+  });
+
   return new Ok(undefined);
 }
 
@@ -159,8 +173,6 @@ export async function applySkillSuggestions(
 
   const edits = mergeSkillEdits(perSuggestionEdits);
 
-  // Everything is validated before anything is written: an editor change recorded days ago is only
-  // as good as the workspace it lands in.
   let editorsChange: SkillEditorsChange | null = null;
   if (edits.editors) {
     const validation = await validateSkillEditorsChange(
@@ -177,6 +189,9 @@ export async function applySkillSuggestions(
     editorsChange = validation.value;
   }
 
+  // TODO(achilleburah): make the editor change and skill update atomic so if editors changes fails,
+  //  the skill update is rolled back.
+
   // `updateSkill` saves a version, so a batch that only moves editors must not call it.
   if (hasSkillFieldEdits(edits)) {
     await updateSkill(auth, skill, edits);
@@ -188,9 +203,11 @@ export async function applySkillSuggestions(
       return applyRes;
     }
 
-    for (const suggestion of suggestions.filter(isEditorsSkillSuggestion)) {
-      await pruneConflictingSkillEditorsSuggestions(auth, skill, suggestion);
-    }
+    await pruneConflictingSkillEditorsSuggestions(
+      auth,
+      skill,
+      suggestions.filter(isEditorsSkillSuggestion)
+    );
   }
 
   return new Ok(undefined);
