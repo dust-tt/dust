@@ -1,31 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  mockLaunchAgentLoopWorkflow,
-  mockUpdateResourceAndPublishEvent,
-  mockGenerateSmoothShutdownSummary,
-} = vi.hoisted(() => ({
+const { mockLaunchAgentLoopWorkflow } = vi.hoisted(() => ({
   mockLaunchAgentLoopWorkflow: vi.fn(),
-  mockUpdateResourceAndPublishEvent: vi.fn(),
-  mockGenerateSmoothShutdownSummary: vi.fn(),
 }));
 
 vi.mock("@app/temporal/agent_loop/client", () => ({
   launchAgentLoopWorkflow: mockLaunchAgentLoopWorkflow,
-}));
-
-vi.mock(
-  "@app/temporal/agent_loop/activities/common",
-  async (importOriginal) => ({
-    ...(await importOriginal<
-      typeof import("@app/temporal/agent_loop/activities/common")
-    >()),
-    updateResourceAndPublishEvent: mockUpdateResourceAndPublishEvent,
-  })
-);
-
-vi.mock("@app/lib/api/assistant/conversation/smooth_shutdown_summary", () => ({
-  generateSmoothShutdownSummary: mockGenerateSmoothShutdownSummary,
 }));
 
 import {
@@ -33,7 +13,6 @@ import {
   declineCreditSpendCheckpointPause,
 } from "@app/lib/api/assistant/conversation/credit_spend_checkpoint_pause";
 import { Authenticator } from "@app/lib/auth";
-import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -42,7 +21,6 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { ConversationType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -51,7 +29,6 @@ describe("credit spend checkpoint pause resolution", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
   let conversation: ConversationResource;
-  let conversationType: ConversationType;
   let agentMessageSId: string;
   let agentMessageModelId: ModelId;
 
@@ -65,10 +42,6 @@ describe("credit spend checkpoint pause resolution", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     mockLaunchAgentLoopWorkflow.mockResolvedValue(new Ok(undefined));
-    mockUpdateResourceAndPublishEvent.mockResolvedValue(undefined);
-    mockGenerateSmoothShutdownSummary.mockResolvedValue(
-      new Ok("Progress so far.")
-    );
 
     const setup = await createResourceTest({ role: "admin" });
     workspace = setup.workspace;
@@ -125,7 +98,6 @@ describe("credit spend checkpoint pause resolution", () => {
       throw new Error("conversation not found");
     }
     conversation = fetched;
-    conversationType = created;
   });
 
   it("rejects a message that is not paused", async () => {
@@ -177,6 +149,7 @@ describe("credit spend checkpoint pause resolution", () => {
     expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
         startStep: 3,
+        startAsToolFreeGracefulStop: false,
         waitForCompletion: true,
         agentLoopArgs: expect.objectContaining({
           agentMessageId: agentMessageSId,
@@ -196,7 +169,6 @@ describe("credit spend checkpoint pause resolution", () => {
 
     expect(second.isErr()).toBe(true);
     expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(mockUpdateResourceAndPublishEvent).not.toHaveBeenCalled();
     expect(await getStatus()).toBe("acknowledged");
   });
 
@@ -213,11 +185,7 @@ describe("credit spend checkpoint pause resolution", () => {
     expect(await getStatus()).toBe("paused");
   });
 
-  it("decline clears the pause, the action-required flag, writes a recap and stops gracefully", async () => {
-    await ConversationResource.markAsActionRequired(auth, {
-      conversation: conversationType,
-    });
-
+  it("decline clears the pause and relaunches the loop as a tool-free graceful stop", async () => {
     const res = await declineCreditSpendCheckpointPause(auth, conversation, {
       messageId: agentMessageSId,
     });
@@ -225,37 +193,30 @@ describe("credit spend checkpoint pause resolution", () => {
     expect(res.isOk()).toBe(true);
     expect(await getStatus()).toBeNull();
 
-    const { actionRequired } =
-      await ConversationResource.getActionRequiredAndLastReadAtForUser(
-        auth,
-        conversation.id
-      );
-    expect(actionRequired).toBe(false);
-
-    expect(mockGenerateSmoothShutdownSummary).toHaveBeenCalledTimes(1);
-    const recap = await AgentStepContentModel.findOne({
-      where: {
-        agentMessageId: agentMessageModelId,
-        step: 3,
-        workspaceId: workspace.id,
-      },
-    });
-    expect(recap?.value).toEqual({
-      type: "text_content",
-      value: "Progress so far.",
-    });
-
-    expect(mockUpdateResourceAndPublishEvent).toHaveBeenCalledTimes(1);
-    expect(mockUpdateResourceAndPublishEvent).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+    expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
-        step: 3,
-        event: expect.objectContaining({
-          type: "agent_message_gracefully_stopped",
-          messageId: agentMessageSId,
+        startStep: 3,
+        startAsToolFreeGracefulStop: true,
+        waitForCompletion: true,
+        agentLoopArgs: expect.objectContaining({
+          agentMessageId: agentMessageSId,
+          conversationId: conversation.sId,
         }),
       })
     );
-    expect(mockLaunchAgentLoopWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("decline puts the message back to paused when the launch fails", async () => {
+    mockLaunchAgentLoopWorkflow.mockResolvedValue(
+      new Err(new Error("temporal unavailable"))
+    );
+
+    const res = await declineCreditSpendCheckpointPause(auth, conversation, {
+      messageId: agentMessageSId,
+    });
+
+    expect(res.isErr()).toBe(true);
+    expect(await getStatus()).toBe("paused");
   });
 });

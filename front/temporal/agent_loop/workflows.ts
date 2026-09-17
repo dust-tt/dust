@@ -240,11 +240,13 @@ export async function agentLoopWorkflow({
   initialStartTime,
   agentLoopArgs,
   startStep,
+  startAsToolFreeGracefulStop,
 }: {
   authType: AuthenticatorType;
   initialStartTime: number;
   agentLoopArgs: AgentLoopArgs;
   startStep: number;
+  startAsToolFreeGracefulStop?: boolean;
 }) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
@@ -267,8 +269,9 @@ export async function agentLoopWorkflow({
   });
 
   // Graceful stop: let the current step finish, then exit the loop at the next step boundary.
-  // Unlike cancellation, in-flight activities are not killed.
-  let gracefulStopRequested = false;
+  // Unlike cancellation, in-flight activities are not killed. A resumed run can also start
+  // already in this state (see `startAsToolFreeGracefulStop`), with no signal involved.
+  let gracefulStopRequested = startAsToolFreeGracefulStop ?? false;
 
   setHandler(gracefullyStopAgentLoopSignal, () => {
     gracefulStopRequested = true;
@@ -303,8 +306,9 @@ export async function agentLoopWorkflow({
       const syncStartTime = Date.now();
       let currentStep = startStep;
       // Set when the previous step returned nothing at all: the next step runs with tool use
-      // disabled to force a final answer.
-      let forceDisableToolUse = false;
+      // disabled to force a final answer. Also seeded true for a run that must produce its
+      // answer in a single tool-free step (see `startAsToolFreeGracefulStop`).
+      let forceDisableToolUse = startAsToolFreeGracefulStop ?? false;
       let childWorkflowHandle: ChildWorkflowHandle<
         typeof agentLoopConversationTitleWorkflow
       > | null = null;

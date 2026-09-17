@@ -1,12 +1,9 @@
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
-import { generateSmoothShutdownSummary } from "@app/lib/api/assistant/conversation/smooth_shutdown_summary";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getFullAgentLoopDataWithAuth } from "@app/types/assistant/agent_run";
@@ -14,6 +11,7 @@ import type {
   AgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import maxBy from "lodash/maxBy";
@@ -105,32 +103,35 @@ function nextStep(agentMessage: AgentMessageType): number {
  * @cc [owner:avervaet,label:backend;concurrency] checkpoint-single-resolution
  * A pause MUST be resolved at most once: the `paused` status is transitioned with a conditional
  * update and, when another resolution already applied, the call MUST return `Ok` without
- * relaunching or finalizing anything.
+ * relaunching anything.
  */
 /**
  * @cc [owner:avervaet,label:backend] checkpoint-resume-next-step
- * Continuing MUST relaunch the loop at the step after the message's highest persisted step
- * content, marking the message `acknowledged` first. If the launch fails, the message MUST be
- * put back to `paused` so the user can retry.
+ * Resolving a pause MUST relaunch the loop at the step after the message's highest persisted
+ * step content, transitioning the message off `paused` first. If the launch fails, the message
+ * MUST be put back to `paused` so the user can retry.
  */
-export async function continueCreditSpendCheckpointPause(
+async function relaunchAfterCheckpointResolution(
   auth: Authenticator,
   conversation: ConversationResource,
-  { messageId }: { messageId: string }
-): Promise<Result<void, DustError | Error>> {
-  const foundRes = await findPausedAgentMessage(auth, conversation, {
-    messageId,
-  });
-  if (foundRes.isErr()) {
-    return foundRes;
+  {
+    agentLoopArgs,
+    agentMessage,
+    resolvedStatus,
+    startAsToolFreeGracefulStop,
+  }: {
+    agentLoopArgs: AgentLoopArgs;
+    agentMessage: AgentMessageType;
+    resolvedStatus: "acknowledged" | null;
+    startAsToolFreeGracefulStop: boolean;
   }
-  const { agentLoopArgs, agentMessage } = foundRes.value;
-  const agentMessageModelId = agentMessage.agentMessageId;
+): Promise<Result<void, DustError | Error>> {
+  const agentMessageModelId: ModelId = agentMessage.agentMessageId;
 
   const { applied } =
     await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
       auth,
-      { agentMessageModelId, from: "paused", to: "acknowledged" }
+      { agentMessageModelId, from: "paused", to: resolvedStatus }
     );
   if (!applied) {
     logger.info(
@@ -144,16 +145,17 @@ export async function continueCreditSpendCheckpointPause(
     auth,
     agentLoopArgs,
     startStep: nextStep(agentMessage),
+    startAsToolFreeGracefulStop,
     // Avoid racing with the workflow that just paused: wait for its run to be reported done
     // before starting the resumed one.
     waitForCompletion: true,
   });
   if (launchRes.isErr()) {
-    // Without a running workflow an acknowledged message would be stuck, so put it back in its
-    // paused state and let the user retry.
+    // Without a running workflow the message would be stuck off `paused` with nothing to clear
+    // it, so put it back in its paused state and let the user retry.
     await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
       auth,
-      { agentMessageModelId, from: "acknowledged", to: "paused" }
+      { agentMessageModelId, from: resolvedStatus, to: "paused" }
     );
     return new Err(launchRes.error);
   }
@@ -161,106 +163,46 @@ export async function continueCreditSpendCheckpointPause(
   return new Ok(undefined);
 }
 
-async function writeSmoothShutdownRecap(
-  auth: Authenticator,
-  {
-    agentMessage,
-    conversation,
-    step,
-  }: {
-    agentMessage: AgentMessageType;
-    conversation: ConversationType;
-    step: number;
-  }
-): Promise<void> {
-  const summaryRes = await generateSmoothShutdownSummary(auth, conversation);
-  if (summaryRes.isErr()) {
-    logger.warn(
-      {
-        agentMessageId: agentMessage.sId,
-        conversationId: conversation.sId,
-        error: summaryRes.error,
-      },
-      "[SmoothShutdown] Failed to generate progress summary; stopping without one"
-    );
-    return;
-  }
-
-  await AgentStepContentResource.createNewVersion({
-    workspaceId: auth.getNonNullableWorkspace().id,
-    agentMessageId: agentMessage.agentMessageId,
-    step,
-    index: 0,
-    type: "text_content",
-    value: { type: "text_content", value: summaryRes.value },
-  });
-}
-
-/**
- * @cc [owner:avervaet,label:backend] checkpoint-decline-no-refinalize
- * Declining MUST only write the recap, clear the action-required flag and mark the message
- * `gracefully_stopped` through the terminal-event path. It MUST NOT re-run the finalize side
- * effects (analytics, consumption attribution, usage tracking, Metronome events): the paused
- * finalize already ran them for this execution.
- */
-export async function declineCreditSpendCheckpointPause(
+export async function continueCreditSpendCheckpointPause(
   auth: Authenticator,
   conversation: ConversationResource,
   { messageId }: { messageId: string }
-): Promise<Result<void, DustError>> {
+): Promise<Result<void, DustError | Error>> {
   const foundRes = await findPausedAgentMessage(auth, conversation, {
     messageId,
   });
   if (foundRes.isErr()) {
     return foundRes;
   }
-  const { agentMessage } = foundRes.value;
 
-  const { applied } =
-    await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
-      auth,
-      {
-        agentMessageModelId: agentMessage.agentMessageId,
-        from: "paused",
-        to: null,
-      }
-    );
-  if (!applied) {
-    logger.info(
-      { agentMessageId: agentMessage.sId, conversationId: conversation.sId },
-      "Spend checkpoint pause already resolved"
-    );
-    return new Ok(undefined);
+  return relaunchAfterCheckpointResolution(auth, conversation, {
+    ...foundRes.value,
+    resolvedStatus: "acknowledged",
+    startAsToolFreeGracefulStop: false,
+  });
+}
+
+/**
+ * @cc [owner:avervaet,label:backend;product] checkpoint-decline-wrap-up
+ * Declining MUST produce the wrap-up recap through the loop's own tool-free graceful-stop step
+ * (see `tool-free-graceful-stop-start`) rather than a bespoke LLM call, so it goes through the
+ * loop's normal persistence, streaming, and per-execution-scoped finalize side effects.
+ */
+export async function declineCreditSpendCheckpointPause(
+  auth: Authenticator,
+  conversation: ConversationResource,
+  { messageId }: { messageId: string }
+): Promise<Result<void, DustError | Error>> {
+  const foundRes = await findPausedAgentMessage(auth, conversation, {
+    messageId,
+  });
+  if (foundRes.isErr()) {
+    return foundRes;
   }
 
-  // The pause was the only pending action; nothing relaunches the loop to clear it.
-  await ConversationResource.clearActionRequiredForConversation(
-    auth,
-    conversation
-  );
-
-  const step = nextStep(agentMessage);
-  await writeSmoothShutdownRecap(auth, {
-    agentMessage,
-    conversation: foundRes.value.conversation,
-    step,
+  return relaunchAfterCheckpointResolution(auth, conversation, {
+    ...foundRes.value,
+    resolvedStatus: null,
+    startAsToolFreeGracefulStop: true,
   });
-
-  // Same terminal path as a graceful stop signalled to a running loop: persists the status and
-  // publishes the event with the server-rendered content view, which now includes the recap.
-  await updateResourceAndPublishEvent(auth, {
-    event: {
-      type: "agent_message_gracefully_stopped",
-      created: Date.now(),
-      configurationId: agentMessage.configuration.sId,
-      messageId: agentMessage.sId,
-      message: agentMessage,
-      runIds: [],
-    },
-    agentMessage,
-    conversation: foundRes.value.conversation,
-    step,
-  });
-
-  return new Ok(undefined);
 }
