@@ -43,11 +43,14 @@ makeScript(
       created_at: new Date(0).toISOString(),
       updated_at: updatedAt,
     }));
+
     const skillIds = documents.map((document) => document.skill_id);
     logger.info({ execute, skillIds }, "Reindexing code-defined skills");
+
     if (!execute) {
       return;
     }
+
     const client = await getClient();
     if (documents.length > 0) {
       const result = await client.bulk({
@@ -65,12 +68,14 @@ makeScript(
         ]),
         refresh: "wait_for",
       });
+
       if (result.errors) {
         throw new Error(
           "Failed to index code-defined skills; obsolete documents were not deleted."
         );
       }
     }
+
     const deleted = await client.deleteByQuery({
       index: SKILL_SEARCH_ALIAS_NAME,
       query: {
@@ -83,11 +88,13 @@ makeScript(
       },
       refresh: true,
     });
+
     if (deleted.timed_out || deleted.failures?.length) {
       throw new Error(
         "Failed to remove obsolete code-defined skill documents."
       );
     }
+
     logger.info(
       { indexed: documents.length, deleted: deleted.deleted },
       "Code-defined skill search index refreshed"
