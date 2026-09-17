@@ -1,5 +1,11 @@
 import { MOTION_EASINGS } from "@dust-tt/sparkle";
-import { type CSSProperties, useEffect, useState } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 // ── Hero entrance (front/components/assistant/conversation/ConversationContainer.tsx)
 // Shared "fade + rise + blur" entrance for the empty-state hero: the greeting
@@ -114,4 +120,74 @@ export function usePrefersReducedMotion(): boolean {
   }, []);
 
   return reduced;
+}
+
+// ── Typewriter ──────────────────────────────────────────────────────────────
+// Types a string into a controlled input over a short burst: the run eases in
+// and out so it reads as one confident keystroke sequence rather than a
+// constant tick. Driven by elapsed time, not per-character timers, so dropped
+// frames shorten nothing. Reduced motion places the text at once.
+
+const TYPEWRITER_MIN_MS = 400;
+const TYPEWRITER_MAX_MS = 900;
+const TYPEWRITER_MS_PER_CHAR = 3.5;
+
+function easeInOutCubic(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+}
+
+export function useTypewriter(onChange: (value: string) => void): {
+  type: (text: string) => void;
+  cancel: () => void;
+} {
+  const frameRef = useRef<number | null>(null);
+  const fallbackRef = useRef<number | null>(null);
+  const reducedMotion = usePrefersReducedMotion();
+
+  const cancel = useCallback(() => {
+    if (frameRef.current !== null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+    if (fallbackRef.current !== null) {
+      window.clearTimeout(fallbackRef.current);
+      fallbackRef.current = null;
+    }
+  }, []);
+
+  const type = useCallback(
+    (text: string) => {
+      cancel();
+      if (reducedMotion) {
+        onChange(text);
+        return;
+      }
+      const duration = Math.min(
+        TYPEWRITER_MAX_MS,
+        Math.max(TYPEWRITER_MIN_MS, text.length * TYPEWRITER_MS_PER_CHAR)
+      );
+      const start = performance.now();
+      const step = (now: number) => {
+        const t = Math.min(1, (now - start) / duration);
+        const shown = Math.round(easeInOutCubic(t) * text.length);
+        onChange(text.slice(0, shown));
+        if (t < 1) {
+          frameRef.current = requestAnimationFrame(step);
+        } else {
+          cancel();
+        }
+      };
+      frameRef.current = requestAnimationFrame(step);
+      // Frames stop in a background tab; the text must still land in full.
+      fallbackRef.current = window.setTimeout(() => {
+        cancel();
+        onChange(text);
+      }, duration + 100);
+    },
+    [cancel, onChange, reducedMotion]
+  );
+
+  useEffect(() => cancel, [cancel]);
+
+  return { type, cancel };
 }

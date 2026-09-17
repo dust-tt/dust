@@ -1,9 +1,15 @@
 import {
   Avatar,
   Button,
-  ChevronRight,
   Chip,
   cn,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -25,7 +31,7 @@ import {
 } from "@dust-tt/sparkle";
 import { forwardRef, useEffect, useMemo, useState } from "react";
 
-import type { Agent, Skill, User } from "../data";
+import { type Agent, mockSpaces, type Skill, type User } from "../data";
 import {
   asAvatarBackgroundColor,
   ALL_CATALOG_ITEMS,
@@ -89,13 +95,10 @@ export const DiscoverAgentDiscoverPage = forwardRef<
   // from their context menu.
   const [featuredItems, setFeaturedItems] =
     useState<DiscoverFeatured[]>(DISCOVER_FEATURED);
-  const [featuredStart, setFeaturedStart] = useState(0);
-  // Right-click target and pointer position for the row context menu.
-  const [contextMenu, setContextMenu] = useState<{
-    item: DiscoverItem;
-    x: number;
-    y: number;
-  } | null>(null);
+  // Bumped on each pin so the trio remounts and replays its entrance.
+  const [featuredVersion, setFeaturedVersion] = useState(0);
+  // Row being pinned to Featured, while the pin dialog is open.
+  const [pinTarget, setPinTarget] = useState<DiscoverItem | null>(null);
   // The pair being replaced, kept for one exit window so it can fade under
   // the incoming pair instead of vanishing.
   const [leavingFeatured, setLeavingFeatured] = useState<
@@ -114,19 +117,12 @@ export const DiscoverAgentDiscoverPage = forwardRef<
     return () => window.clearTimeout(timer);
   }, [leavingFeatured]);
 
-  // Pages of two; an odd count leaves a single card on the last page rather
-  // than wrapping around to repeat the first.
-  const featured = useMemo(
-    () => featuredItems.slice(featuredStart, featuredStart + 2),
-    [featuredItems, featuredStart]
-  );
+  // The first three featured entries; pins reorder them.
+  const featured = useMemo(() => featuredItems.slice(0, 3), [featuredItems]);
 
-  const showNextFeatured = () => {
-    setLeavingFeatured(featured);
-    setFeaturedStart((s) => (s + 2 >= featuredItems.length ? 0 : s + 2));
-  };
-
-  const pinFeatured = (item: DiscoverItem, position: "first" | "last") => {
+  // Places the item in one of the three Featured slots (0-based), removing
+  // any earlier copy of it first.
+  const pinFeatured = (item: DiscoverItem, slot: number, audience: string) => {
     const entry: DiscoverFeatured =
       item.kind === "agent"
         ? {
@@ -145,17 +141,16 @@ export const DiscoverAgentDiscoverPage = forwardRef<
           };
     const id = getDiscoverItemId(item);
     const rest = featuredItems.filter((f) => getFeaturedId(f) !== id);
-    const next = position === "first" ? [entry, ...rest] : [...rest, entry];
-    // Land on the page that shows the pinned card.
-    const lastPageStart = Math.floor((next.length - 1) / 2) * 2;
+    const next = [...rest];
+    next.splice(Math.min(slot, next.length), 0, entry);
     setLeavingFeatured(featured);
     setFeaturedItems(next);
-    setFeaturedStart(position === "first" ? 0 : lastPageStart);
-    setContextMenu(null);
+    setFeaturedVersion((v) => v + 1);
+    setPinTarget(null);
     sendNotification({
       type: "success",
-      title: position === "first" ? "Pinned first" : "Pinned last",
-      description: `${getDiscoverItemName(item)} is now featured.`,
+      title: `Pinned in position ${slot + 1}`,
+      description: `${getDiscoverItemName(item)} is now featured for ${audience}.`,
     });
   };
 
@@ -237,24 +232,13 @@ export const DiscoverAgentDiscoverPage = forwardRef<
         {/* Featured */}
         {tab === "Discover" && !search && (
           <section className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <h2 className="heading-lg text-foreground">Featured</h2>
-              <Button
-                variant="ghost"
-                size="xs"
-                icon={ChevronRight}
-                isRounded
-                aria-label="Next featured agents"
-                disabled={featuredItems.length <= 2}
-                onClick={showNextFeatured}
-              />
-            </div>
+            <h2 className="heading-lg text-foreground">Featured</h2>
             <div className="relative">
               {/* Keyed on the page so both cards remount and replay their
                   entrance: a short slide from the right, 40ms apart. */}
               <div
-                key={featuredStart}
-                className="grid grid-cols-1 gap-4 md:grid-cols-2"
+                key={featuredVersion}
+                className="grid grid-cols-1 gap-4 md:grid-cols-3"
               >
                 {featured.map((f, index) => (
                   <div
@@ -284,7 +268,7 @@ export const DiscoverAgentDiscoverPage = forwardRef<
                 <div
                   aria-hidden
                   className={cn(
-                    "pointer-events-none absolute inset-0 grid grid-cols-1 gap-4 md:grid-cols-2",
+                    "pointer-events-none absolute inset-0 grid grid-cols-1 gap-4 md:grid-cols-3",
                     "opacity-0 transition-opacity duration-(--transition-duration-exit) ease-enter starting:opacity-100"
                   )}
                 >
@@ -315,7 +299,7 @@ export const DiscoverAgentDiscoverPage = forwardRef<
               }
               items={forYou}
               onUse={handleUse}
-              onContextMenu={(item, x, y) => setContextMenu({ item, x, y })}
+              onPin={setPinTarget}
             />
             <DiscoverSection
               title="Trending in the workspace"
@@ -329,7 +313,7 @@ export const DiscoverAgentDiscoverPage = forwardRef<
               }
               items={trending}
               onUse={handleUse}
-              onContextMenu={(item, x, y) => setContextMenu({ item, x, y })}
+              onPin={setPinTarget}
             />
           </>
         )}
@@ -347,46 +331,18 @@ export const DiscoverAgentDiscoverPage = forwardRef<
             <DiscoverSection
               items={catalog}
               onUse={handleUse}
-              onContextMenu={(item, x, y) => setContextMenu({ item, x, y })}
+              onPin={setPinTarget}
             />
           </div>
         )}
       </div>
 
-      {/* Row context menu, anchored to the pointer through a zero-size fixed
-          trigger (the same approach as the product's agent details menu). */}
-      {contextMenu && (
-        <DropdownMenu
-          open
-          onOpenChange={(open) => !open && setContextMenu(null)}
-          modal={false}
-        >
-          <DropdownMenuTrigger asChild>
-            <div
-              style={{
-                position: "fixed",
-                left: contextMenu.x,
-                top: contextMenu.y,
-                width: 0,
-                height: 0,
-                pointerEvents: "none",
-              }}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuLabel label="Featured" />
-            <DropdownMenuItem
-              icon={Pin02}
-              label="Pin first"
-              onClick={() => pinFeatured(contextMenu.item, "first")}
-            />
-            <DropdownMenuItem
-              icon={Pin02}
-              label="Pin last"
-              onClick={() => pinFeatured(contextMenu.item, "last")}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
+      {pinTarget && (
+        <PinDialog
+          item={pinTarget}
+          onClose={() => setPinTarget(null)}
+          onPin={(slot, audience) => pinFeatured(pinTarget, slot, audience)}
+        />
       )}
     </div>
   );
@@ -419,7 +375,7 @@ function FeaturedCard({
         getAgentImageUrl(featured.agent) ? (
           // The picture sits centered at the emoji's size; a blurred,
           // faded copy fills the cover behind it so the card keeps a tint.
-          <div className="relative flex h-40 w-full items-center justify-center overflow-hidden bg-muted-background">
+          <div className="relative flex h-32 w-full items-center justify-center overflow-hidden bg-muted-background">
             <img
               src={getAgentImageUrl(featured.agent)}
               alt=""
@@ -435,7 +391,7 @@ function FeaturedCard({
         ) : (
           <div
             className={cn(
-              "flex h-40 w-full items-center justify-center",
+              "flex h-32 w-full items-center justify-center",
               asAvatarBackgroundColor(featured.agent.backgroundColor),
               "dark:brightness-[0.35] dark:saturate-[0.6]"
             )}
@@ -448,7 +404,7 @@ function FeaturedCard({
       ) : (
         <div
           className={cn(
-            "flex h-40 w-full items-center justify-center",
+            "flex h-32 w-full items-center justify-center",
             SKILL_TILE_BACKGROUND
           )}
         >
@@ -567,14 +523,14 @@ function DiscoverSection({
   action,
   items,
   onUse,
-  onContextMenu,
+  onPin,
 }: {
   title?: string;
   // Right-aligned control in the header row, e.g. "Find more".
   action?: React.ReactNode;
   items: DiscoverItem[];
   onUse: (item: DiscoverItem) => void;
-  onContextMenu: (item: DiscoverItem, x: number, y: number) => void;
+  onPin: (item: DiscoverItem) => void;
 }) {
   return (
     <section className="flex min-w-0 flex-col gap-3">
@@ -595,7 +551,7 @@ function DiscoverSection({
               key={getDiscoverItemId(item)}
               item={item}
               onUse={() => onUse(item)}
-              onContextMenu={(x, y) => onContextMenu(item, x, y)}
+              onPin={() => onPin(item)}
             />
           ))}
         </div>
@@ -607,21 +563,15 @@ function DiscoverSection({
 function DiscoverRow({
   item,
   onUse,
-  onContextMenu,
+  onPin,
 }: {
   item: DiscoverItem;
   onUse: () => void;
-  onContextMenu: (x: number, y: number) => void;
+  onPin: () => void;
 }) {
   const name = getDiscoverItemName(item);
   return (
-    <div
-      className="flex items-center gap-4 border-b border-separator py-4 last:border-b-0"
-      onContextMenu={(e) => {
-        e.preventDefault();
-        onContextMenu(e.clientX, e.clientY);
-      }}
-    >
+    <div className="group flex items-center gap-4 border-b border-separator py-4 last:border-b-0">
       {item.kind === "agent" ? (
         <Avatar
           size="lg"
@@ -657,7 +607,21 @@ function DiscoverRow({
           {getDiscoverItemDescription(item)}
         </p>
       </div>
-      <div className="flex shrink-0 items-center">
+      <div className="flex shrink-0 items-center gap-1">
+        {/* Revealed on hover (and on keyboard focus) next to the CTA. */}
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={Pin02}
+          tooltip="Pin to Featured"
+          aria-label={`Pin ${name} to Featured`}
+          onClick={onPin}
+          className={cn(
+            "transition-opacity duration-150 motion-reduce:transition-none",
+            "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+            "group-hover:opacity-100 focus-visible:opacity-100"
+          )}
+        />
         <Button
           variant="outline"
           size="sm"
@@ -717,6 +681,113 @@ function AuthorsLine({
         </span>
       )}
     </div>
+  );
+}
+
+// ── Pin dialog ──────────────────────────────────────────────────────────────
+// Who sees the pin (everyone or one pod), then which of the three Featured
+// slots it takes.
+
+const PIN_AUDIENCES = [
+  "Everyone",
+  ...mockSpaces.slice(0, 5).map((s) => s.name),
+];
+
+function PinDialog({
+  item,
+  onClose,
+  onPin,
+}: {
+  item: DiscoverItem;
+  onClose: () => void;
+  onPin: (slot: number, audience: string) => void;
+}) {
+  const [audience, setAudience] = useState(PIN_AUDIENCES[0]);
+  const [slot, setSlot] = useState(0);
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Pin to Featured</DialogTitle>
+          <DialogDescription>
+            {capitalize(getDiscoverItemName(item))} will show at the top of
+            Discover.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-2">
+              <span className="heading-sm text-foreground">Show to</span>
+              {/* Modal, like the dialog around it: a non-modal menu inside a
+                  modal dialog is dismissed by the dialog's own outside-press
+                  handling as soon as it opens. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    label={audience}
+                    isSelect
+                    className="w-fit"
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel label="Audience" />
+                  {PIN_AUDIENCES.map((a) => (
+                    <DropdownMenuItem
+                      key={a}
+                      label={a}
+                      onClick={() => setAudience(a)}
+                    />
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="heading-sm text-foreground">Position</span>
+              <div
+                role="radiogroup"
+                aria-label="Position in Featured"
+                className="grid grid-cols-3 gap-3"
+              >
+                {[0, 1, 2].map((i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    role="radio"
+                    aria-checked={slot === i}
+                    onClick={() => setSlot(i)}
+                    className={cn(
+                      "flex h-16 items-center justify-center rounded-xl border heading-lg",
+                      "transition-[color,background-color,border-color,scale] duration-150 ease-emphasized",
+                      "active:scale-[0.97] motion-reduce:active:scale-100",
+                      slot === i
+                        ? "border-highlight-500 bg-highlight-50 text-highlight-700"
+                        : "border-border bg-background text-muted-foreground hover:bg-hover"
+                    )}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+            onClick: onClose,
+          }}
+          rightButtonProps={{
+            label: "Pin",
+            variant: "highlight",
+            onClick: () => onPin(slot, audience),
+          }}
+        />
+      </DialogContent>
+    </Dialog>
   );
 }
 

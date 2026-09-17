@@ -1,9 +1,5 @@
-import {
-  BarChart01,
-  Calendar,
-  Inbox01,
-  PresentationChart01,
-} from "@dust-tt/sparkle";
+import { BarChart01, Calendar, PresentationChart01 } from "@dust-tt/sparkle";
+import { GmailLogo } from "@dust-tt/sparkle/logo/platforms";
 import data from "@emoji-mart/data";
 import type { EmojiData } from "@sparkle/lib/avatar/types";
 
@@ -374,7 +370,8 @@ const PROMPT_SKILLS = {
     id: "skill-inbox",
     name: "Inbox",
     description: "Search your messages and threads.",
-    icon: Inbox01,
+    // The brand mark keeps its own colors on the blue tile.
+    icon: GmailLogo,
   },
   dashboards: {
     id: "skill-dashboards",
@@ -392,29 +389,44 @@ const PROMPT_SKILLS = {
 
 export interface SuggestedPrompt {
   id: string;
+  // Short label shown in the list.
   text: string;
+  // The fuller request placed in the composer when picked.
+  draft: string;
   skill: Skill;
+  // Brand marks carry their own colors, so they sit on a neutral tile rather
+  // than the blue skill tile.
+  iconIsLogo?: boolean;
 }
 
 export const SUGGESTED_PROMPTS: SuggestedPrompt[] = [
   {
     id: "prompt-meeting",
     text: "Get me ready for my next meeting",
+    draft:
+      "Get me ready for my next meeting: who is attending, what we discussed last time, open action items on our side, and two or three points I should raise. Keep it to one page.",
     skill: PROMPT_SKILLS.calendar,
   },
   {
     id: "prompt-messages",
     text: "Find important messages I haven't answered",
+    draft:
+      "Go through my inbox from the last 7 days and list the messages I have not replied to that need an answer from me. Group them by urgency, say who is waiting and since when, and suggest a one-line reply for each.",
     skill: PROMPT_SKILLS.inbox,
+    iconIsLogo: true,
   },
   {
     id: "prompt-dashboard",
     text: "Build a dashboard of our team's performance",
+    draft:
+      "Build a dashboard of our team's performance for this quarter: shipped work per week, cycle time, open bugs by severity, and on-call load. Compare against last quarter and call out the two trends that deserve attention.",
     skill: PROMPT_SKILLS.dashboards,
   },
   {
     id: "prompt-presentation",
     text: "Create a presentation about what our company does",
+    draft:
+      "Create a 10-slide presentation about what our company does for a new hire's first day: the problem we solve, who our customers are, how the product works, how the teams are organised, and what we are focused on this year. Use our own docs as the source.",
     skill: PROMPT_SKILLS.slides,
   },
 ];

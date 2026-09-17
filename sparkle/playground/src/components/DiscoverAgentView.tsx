@@ -25,6 +25,7 @@ import {
   greetingWordStyle,
   heroEntranceStyle,
   usePrefersReducedMotion,
+  useTypewriter,
 } from "./discoverAgentMotion";
 
 // ── Scroll-to-fill ──────────────────────────────────────────────────────────
@@ -75,6 +76,15 @@ function DiscoverAgentPage() {
   );
   const [selectedSkills, setSelectedSkills] = useState<Skill[]>([]);
   const [draft, setDraft] = useState("");
+  // Picking a suggestion types its draft in; any keystroke takes over.
+  const typewriter = useTypewriter(setDraft);
+  const handleDraftChange = useCallback(
+    (value: string) => {
+      typewriter.cancel();
+      setDraft(value);
+    },
+    [typewriter]
+  );
   // Bumped by "New" so the hero remounts and replays its entrance, the way a
   // fresh navigation to /conversation/new does.
   const [heroKey, setHeroKey] = useState(0);
@@ -294,7 +304,8 @@ function DiscoverAgentPage() {
               <NewConversationHome
                 key={heroKey}
                 draft={draft}
-                onDraftChange={setDraft}
+                onDraftChange={handleDraftChange}
+                onTypeDraft={typewriter.type}
                 selectedAgent={selectedAgent}
                 onSelectAgent={setSelectedAgent}
                 selectedSkills={selectedSkills}
@@ -321,6 +332,7 @@ function DiscoverAgentPage() {
 function NewConversationHome({
   draft,
   onDraftChange,
+  onTypeDraft,
   selectedAgent,
   onSelectAgent,
   selectedSkills,
@@ -331,6 +343,7 @@ function NewConversationHome({
 }: {
   draft: string;
   onDraftChange: (draft: string) => void;
+  onTypeDraft: (draft: string) => void;
   selectedAgent: Agent | null;
   onSelectAgent: (agent: Agent | null) => void;
   selectedSkills: Skill[];
@@ -396,7 +409,7 @@ function NewConversationHome({
         <SuggestedPrompts
           hidden={draft.trim().length > 0}
           onPick={(prompt) => {
-            onDraftChange(prompt.text);
+            onTypeDraft(prompt.draft);
             onSelectedSkillsChange([prompt.skill]);
           }}
           style={reducedMotion ? undefined : promptsEntranceStyle}
@@ -475,7 +488,12 @@ function SuggestedPrompts({
             >
               <span
                 aria-hidden
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-highlight-50 text-highlight-500"
+                className={cn(
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                  prompt.iconIsLogo
+                    ? "bg-muted-background"
+                    : "bg-highlight-50 text-highlight-500"
+                )}
               >
                 <Icon visual={prompt.skill.icon} size="sm" />
               </span>
