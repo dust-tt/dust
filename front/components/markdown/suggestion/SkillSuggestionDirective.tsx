@@ -13,7 +13,6 @@ import {
 } from "@app/hooks/useSkillSuggestions";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { PatchSkillSuggestionResponseBody } from "@app/types/api/assistant/skills/suggestions";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
@@ -183,30 +182,19 @@ function ConversationSkillSuggestion({
     return null;
   }
 
-  const { kind } = suggestion;
-  switch (kind) {
-    case "edit":
-      return (
-        <SkillSuggestionCard
-          suggestion={suggestion}
-          onAccept={handleAccept}
-          onDecline={handleDecline}
-          getSkillInstructionsHtml={getSkillInstructionsHtml}
-          getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
-          workspaceId={owner.sId}
-          disabled={pendingAction !== null}
-          isAccepting={pendingAction === "accept"}
-          isDeclining={pendingAction === "decline"}
-        />
-      );
-
-    case "editors":
-      return null;
-
-    default:
-      assertNeverAndIgnore(kind);
-      return null;
-  }
+  return (
+    <SkillSuggestionCard
+      suggestion={suggestion}
+      onAccept={handleAccept}
+      onDecline={handleDecline}
+      getSkillInstructionsHtml={getSkillInstructionsHtml}
+      getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
+      workspaceId={owner.sId}
+      disabled={pendingAction !== null}
+      isAccepting={pendingAction === "accept"}
+      isDeclining={pendingAction === "decline"}
+    />
+  );
 }
 
 interface SkillSuggestionPluginProps {
