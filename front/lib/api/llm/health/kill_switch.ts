@@ -16,10 +16,8 @@ const isDetectionPaused = makeCachedKillSwitch("pause_model_health_detection", {
  * consulting Redis to decide whether to write to Redis would be self-defeating
  * on the one failure this path most needs to survive.
  *
- * Recovery workflows already running are not affected: they keep probing and
- * renewing their lease until the endpoint recovers or they end on their own.
- * To also release the endpoint back into routing, clear its degradation row
- * from Poke; the paused detection will not re-create it.
+ * Recovery workflows already running are not affected: they only probe and log,
+ * and they end on their own.
  */
 export function isModelHealthDetectionPaused(): boolean {
   return isDetectionPaused();

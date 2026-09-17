@@ -252,6 +252,34 @@ describe("model health counters", () => {
     expect(evaluateEndpoint).toHaveBeenCalledTimes(2);
   });
 
+  it("still records when canDegrade is false, and does not consume the evaluation slot", async () => {
+    const endpoint = { ...ENDPOINT, modelId: "claude-haiku-4-5" } as const;
+    const error = providerError("overloaded_error");
+
+    await recordLLMAttempt({
+      endpoint,
+      outcome: error,
+      now: NOW,
+      canDegrade: async () => false,
+    });
+    expect(
+      (
+        await redisMock.cacheClient.hGetAll(
+          modelHealthKey(endpoint, "202609031432")
+        )
+      ).attempts
+    ).toBe("1");
+    expect(evaluateEndpoint).not.toHaveBeenCalled();
+
+    await recordLLMAttempt({
+      endpoint,
+      outcome: error,
+      now: NOW,
+      canDegrade: async () => true,
+    });
+    expect(evaluateEndpoint).toHaveBeenCalledTimes(1);
+  });
+
   it("does not evaluate when the write failed", async () => {
     const endpoint = {
       ...ENDPOINT,

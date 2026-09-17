@@ -202,7 +202,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   automatic_model_health_routing: {
     description:
-      "Feed the model-health breaker from this workspace's traffic",
+      "Let a model-health breach seen on this workspace's traffic degrade the endpoint",
     stage: "dust_only",
     owner: "frankaloia",
   },
