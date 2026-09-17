@@ -1,12 +1,14 @@
 import { once } from "node:events";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { isHiddenMessage } from "@app/components/assistant/conversation/types";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { Authenticator } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { makeScript } from "@app/scripts/helpers";
-import { isAgentMessageType } from "@app/types/assistant/conversation";
+import {
+  isAgentMessageType,
+  isHiddenMessageOrigin,
+} from "@app/types/assistant/conversation";
 import { LiveEventSchema } from "@app/types/assistant/live";
 import { isDevelopment } from "@app/types/shared/env";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -193,10 +195,7 @@ makeScript(
         const posted = JSON.parse(body);
         hiddenVoiceContext =
           posted.message.context.origin === "voice" &&
-          isHiddenMessage({
-            ...posted.message,
-            contentFragments: posted.contentFragments,
-          });
+          isHiddenMessageOrigin(posted.message.context.origin);
       }
       logger.info(
         {
