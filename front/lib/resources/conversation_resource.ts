@@ -837,13 +837,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
-  static async fetchCreditSpendCheckpointStateForAgentMessage(
+  /**
+   * Loads the agent message's credit spend checkpoint status. Returns null when the message
+   * cannot be found (the caller must then not pause).
+   */
+  static async fetchAgentMessageCreditSpendCheckpointStatus(
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: string }
-  ): Promise<{
-    status: AgentMessageModel["creditSpendCheckpointStatus"];
-  } | null> {
-    const messageRow = await MessageModel.findOne({
+  ): Promise<AgentMessageModel["creditSpendCheckpointStatus"] | null> {
+    const agentMessageRow = await MessageModel.findOne({
       where: {
         sId: agentMessageId,
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -859,30 +861,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ],
     });
 
-    const agentMessage = messageRow?.agentMessage;
-    if (!agentMessage) {
-      return null;
-    }
-
-    return {
-      status: agentMessage.creditSpendCheckpointStatus,
-    };
-  }
-
-  /**
-   * Loads the agent message's credit spend checkpoint status. Returns null when the message
-   * cannot be found (the caller must then not pause).
-   */
-  static async fetchAgentMessageCreditSpendCheckpointStatus(
-    auth: Authenticator,
-    { agentMessageId }: { agentMessageId: string }
-  ): Promise<AgentMessageModel["creditSpendCheckpointStatus"] | null> {
-    const state = await this.fetchCreditSpendCheckpointStateForAgentMessage(
-      auth,
-      { agentMessageId }
-    );
-
-    return state?.status ?? null;
+    return agentMessageRow?.agentMessage?.creditSpendCheckpointStatus ?? null;
   }
 
   static async markAgentMessageCreditSpendCheckpointPaused(
