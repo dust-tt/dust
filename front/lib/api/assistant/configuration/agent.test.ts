@@ -161,6 +161,47 @@ describe.each([
     );
   });
 
+  it("does not report the space read gate for a scoped system key without the admin role", async () => {
+    const { authenticator, workspace, systemGroup } = await createResourceTest({
+      role: "admin",
+    });
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { scope: "hidden", requestedSpaceIds: [restrictedSpace.id] }
+    );
+    const group = await GroupFactory.regularManual(workspace, "Agent editors");
+    const resource = AgentResource.fromAgentConfiguration(authenticator, agent);
+    assert(resource.id !== null);
+    await GroupPermissionResource.grant(authenticator, {
+      group,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: resource.id,
+    });
+    await FeatureFlagFactory.basic(authenticator, "group_permissions_shadow");
+    const auth = await Authenticator.fromKey(
+      await KeyFactory.system(systemGroup),
+      workspace.sId,
+      [group.sId],
+      "user"
+    );
+    const warn = vi.spyOn(logger, "warn");
+
+    const configuration = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+      dangerouslySkipPermissionFiltering: true,
+    });
+
+    expect(configuration).toMatchObject({ canRead: false, canEdit: false });
+    expect(warn).not.toHaveBeenCalledWith(
+      expect.objectContaining({ check: "agent_permissions" }),
+      "group_permissions_shadow_mismatch"
+    );
+  });
+
   it("respects the agent grants of a scoped system key", async () => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",

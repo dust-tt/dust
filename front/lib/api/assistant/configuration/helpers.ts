@@ -126,6 +126,14 @@ async function shadowAgentPermissions(
   reverse = false
 ): Promise<void> {
   const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
+  // User-less callers other than regular keys take legacy access from the grant ACL, whose `write`
+  // the space gate drops; their editor grant is the ungated equivalent.
+  const hasUserlessEditorGrant = (resource: AgentResource) =>
+    !auth.user() &&
+    !isRegularApiKey &&
+    auth
+      .getGovernanceGrantVerbs("agent", resource.id, resource.workspaceId)
+      .includes("write");
   await shadowCompare({
     auth,
     reverse,
@@ -139,10 +147,10 @@ async function shadowAgentPermissions(
         read: agent.canRead && spacesReadable,
         write: agent.canEdit && spacesReadable,
         // Served grants keep `admin` on agents whose spaces the editor cannot read, so `canEdit`
-        // only stands for `admin` on the legacy source.
+        // only stands for `admin` on the legacy source, before the gate.
         admin: reverse
           ? auth.can("admin", resource)
-          : agent.canEdit || auth.isAdmin(),
+          : agent.canEdit || hasUserlessEditorGrant(resource) || auth.isAdmin(),
       };
     }),
     candidate: async () => {
@@ -162,7 +170,7 @@ async function shadowAgentPermissions(
         const legacyAccess =
           agent.authorId === auth.user()?.id ||
           editorIds.has(agent.id) ||
-          (!auth.user() && !isRegularApiKey && auth.can("write", resource));
+          hasUserlessEditorGrant(resource);
         const legacyWrite = isRegularApiKey ? auth.isAdmin() : legacyAccess;
         const read = reverse
           ? (legacyAccess || agent.scope === "visible") && spacesReadable
