@@ -46,7 +46,6 @@ import type { GetPendingInvitationsLookupResponseBody } from "@app/types/api/inv
 import type {
   GetCheckoutStatusResponseBody,
   GetSubscriptionsResponseBody,
-  GetSubscriptionTrialInfoResponseBody,
   PostSubscriptionResponseBody,
 } from "@app/types/api/subscription";
 import type { CellInfo } from "@app/types/cell";
@@ -538,30 +537,6 @@ export function useWorkspaceVerifiedDomains({
     isVerifiedDomainsLoading: !error && !data && !disabled,
     isVerifiedDomainsError: error,
     mutateVerifiedDomains: mutate,
-  };
-}
-
-export function useSubscriptionTrialInfo({
-  workspaceId,
-  disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const trialInfoFetcher: Fetcher<GetSubscriptionTrialInfoResponseBody> =
-    fetcher;
-
-  const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/subscriptions/trial-info`,
-    trialInfoFetcher,
-    { disabled }
-  );
-
-  return {
-    trialDaysRemaining: data?.trialDaysRemaining ?? null,
-    isTrialInfoLoading: !error && !data && !disabled,
-    isTrialInfoError: error,
   };
 }
 

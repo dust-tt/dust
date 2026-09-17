@@ -74,7 +74,6 @@ app.post(
       maxFreeUsersInWorkspace: body.limits.users.maxFreeUsers,
       maxLifetimeFreeUsersInWorkspace: body.limits.users.maxLifetimeFreeUsers,
       maxVaultsInWorkspace: body.limits.vaults.maxVaults,
-      trialPeriodDays: body.trialPeriodDays,
       canUseProduct: body.limits.canUseProduct,
       isByok: body.isByok,
       hasAdvancedModelAccess: body.hasAdvancedModelAccess,

@@ -623,7 +623,6 @@ async function handleStripeCheckoutCompleted({
           workspaceId: workspace.id,
           planId: plan.id,
           status: "active",
-          trialing: checkoutStripeSubscription.status === "trialing",
           startDate: now,
           stripeSubscriptionId,
         },
@@ -1235,48 +1234,6 @@ export async function processStripeWebhookEvent({
         }
       }
 
-      if (stripeSubscription.status === "trialing") {
-        // We check if the trialing subscription is being canceled.
-        if (
-          stripeSubscription.cancel_at_period_end &&
-          stripeSubscription.cancel_at
-        ) {
-          const endDate = new Date(stripeSubscription.cancel_at * 1000);
-          const subscription = await SubscriptionResource.fetchByStripeId(
-            stripeSubscription.id
-          );
-          if (!subscription) {
-            logger.warn(
-              {
-                event,
-                stripeSubscriptionId: stripeSubscription.id,
-              },
-              "[Stripe Webhook] Subscription not found."
-            );
-            // We return a 200 here to handle multiple regions, DD will watch
-            // the warnings and create an alert if this log appears in all regions.
-            return new Ok(undefined);
-          }
-          await subscription.markAsCanceled({
-            endDate,
-          });
-
-          // Schedule the Metronome contract end (always shadow-billed here).
-          if (subscription.metronomeContractId) {
-            const trialingWorkspace = await WorkspaceResource.fetchByModelId(
-              subscription.workspaceId
-            );
-            if (trialingWorkspace?.metronomeCustomerId) {
-              void scheduleMetronomeContractEnd({
-                metronomeCustomerId: trialingWorkspace.metronomeCustomerId,
-                contractId: subscription.metronomeContractId,
-                endingBefore: endDate,
-              });
-            }
-          }
-        }
-      }
-
       if (
         // The subscription is canceled (but not yet ended) or reactivated
         stripeSubscription.status === "active" &&
@@ -1417,9 +1374,6 @@ export async function processStripeWebhookEvent({
           // We return a 200 here to handle multiple regions, DD will watch
           // the warnings and create an alert if this log appears in all regions
           return new Ok(undefined);
-        }
-        if (subscription.trialing) {
-          await subscription.markAsActive({ trialing: false });
         }
       }
 
@@ -1594,41 +1548,6 @@ export async function processStripeWebhookEvent({
         default:
           assertNever(matchingSubscription.status);
       }
-
-      break;
-
-    case "customer.subscription.trial_will_end":
-      logger.info(
-        { event },
-        "[Stripe Webhook] Received customer.subscription.trial_will_end."
-      );
-      stripeSubscription = event.data.object as Stripe.Subscription;
-
-      const trialingSubscription = await SubscriptionResource.fetchByStripeId(
-        stripeSubscription.id
-      );
-      if (!trialingSubscription) {
-        logger.warn(
-          {
-            event,
-            stripeSubscriptionId: stripeSubscription.id,
-          },
-          "[Stripe Webhook] Subscription not found."
-        );
-        // We return a 200 here to handle multiple regions, DD will watch
-        // the warnings and create an alert if this log appears in all regions
-        return new Ok(undefined);
-      }
-
-      const w = await WorkspaceResource.fetchByModelId(
-        trialingSubscription.workspaceId
-      );
-      assert(w, "Workspace not found for ending trial subscription.");
-
-      await SubscriptionResource.maybeCancelInactiveTrials(
-        await Authenticator.internalAdminForWorkspace(w.sId),
-        stripeSubscription
-      );
 
       break;
 

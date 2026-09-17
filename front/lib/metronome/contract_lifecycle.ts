@@ -26,12 +26,6 @@ export async function cancelWorkspaceContractAtPeriodEnd(
   if (!subscription) {
     return new Err({ kind: "invalid_state", message: "No subscription." });
   }
-  if (subscription.trialing) {
-    return new Err({
-      kind: "invalid_state",
-      message: "Use cancel_free_trial to cancel a trialing subscription.",
-    });
-  }
 
   if (!isSubscriptionMetronomeBilled(subscription)) {
     return new Err({

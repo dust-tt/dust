@@ -3,9 +3,7 @@ import config from "@app/lib/api/config";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { CONTRACT_CREDIT_TYPE_POOL } from "@app/lib/metronome/constants";
-import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
-import { isOldFreePlan } from "@app/lib/plans/plan_codes";
-import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial/constants";
+import { PlanModel } from "@app/lib/models/plan";
 import {
   isEnterpriseReportUsage,
   isMauReportUsage,
@@ -211,23 +209,6 @@ export const createStripeSubscriptionCheckoutSession = async ({
     );
   }
 
-  // Determine if Stripe trial is allowed.
-  // When phone trial is enabled, we don't offer Stripe trials (users get phone trial instead).
-  // When phone trial is disabled, we allow Stripe trial only if the workspace never had a
-  // subscription before (except for the grandfathered old free plan).
-  let stripeTrialDays: number | undefined = undefined;
-  if (!PHONE_TRIAL_ENABLED && plan.trialPeriodDays) {
-    const existingSubscription = await SubscriptionModel.findOne({
-      where: { workspaceId: owner.id },
-      include: [PlanModel],
-    });
-    const trialAllowed =
-      !existingSubscription || isOldFreePlan(existingSubscription.plan.code);
-    if (trialAllowed) {
-      stripeTrialDays = plan.trialPeriodDays;
-    }
-  }
-
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     client_reference_id: owner.sId,
@@ -238,7 +219,6 @@ export const createStripeSubscriptionCheckoutSession = async ({
         planCode: planCode,
         workspaceId: owner.sId,
       },
-      trial_period_days: stripeTrialDays,
     },
     metadata: {
       planCode: planCode,
@@ -659,35 +639,6 @@ export async function getSubscriptionInvoices({
   );
 }
 
-const DAY_IN_SECONDS = 24 * 60 * 60;
-
-export const extendStripeSubscriptionTrial = async (
-  stripeSubscriptionId: string,
-  { days }: { days: number }
-): Promise<Result<{ trialEnd: number | null }, Error>> => {
-  const stripe = getStripeClient();
-  const subscription = await getStripeSubscription(stripeSubscriptionId);
-  if (!subscription) {
-    return new Err(new Error("The subscription does not exist."));
-  }
-
-  if (!subscription.trial_end) {
-    return new Err(new Error("The subscription is not in trial."));
-  }
-
-  const newTrialEnd = Math.floor(Date.now() / 1000) + days * DAY_IN_SECONDS;
-
-  const updatedSubscription = await stripe.subscriptions.update(
-    stripeSubscriptionId,
-    {
-      trial_end: newTrialEnd,
-      proration_behavior: "none",
-    }
-  );
-
-  return new Ok({ trialEnd: updatedSubscription.trial_end });
-};
-
 /**
  * Calls the Stripe API to update the quantity of a subscription. Used for
  * subscription items with prices of type "licensed" (that is, per seat).
@@ -726,22 +677,6 @@ export async function updateStripeActiveUsersForSubscriptionItem(
     // We use action = "set" to override the previous usage (as opposed to "increment")
     action: "set",
     quantity,
-  });
-}
-
-/**
- *
- * Move a subscription from a free trial state to a paying state,
- * immediately charging the customer.
- */
-export async function skipSubscriptionFreeTrial({
-  stripeSubscriptionId,
-}: {
-  stripeSubscriptionId: string;
-}) {
-  const stripe = getStripeClient();
-  return stripe.subscriptions.update(stripeSubscriptionId, {
-    trial_end: "now",
   });
 }
 

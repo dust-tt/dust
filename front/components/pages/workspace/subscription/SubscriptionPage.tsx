@@ -27,16 +27,11 @@ import {
 import { LinkWrapper, useAppRouter, useSearchParam } from "@app/lib/platform";
 import {
   usePerSeatPricing,
-  useSubscriptionTrialInfo,
   useWorkspaceSeatsCount,
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { PatchSubscriptionRequestBody } from "@app/types/api/subscription";
-import type {
-  BillingPeriod,
-  SubscriptionPerSeatPricing,
-  SubscriptionType,
-} from "@app/types/plan";
+import type { BillingPeriod } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
 import {
   Button,
@@ -55,148 +50,6 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useEffect, useState } from "react";
 import type { z } from "zod";
-
-interface SkipFreeTrialDialogProps {
-  show: boolean;
-  onClose: () => void;
-  onValidate: () => void;
-  workspaceSeats: number;
-  perSeatPricing: SubscriptionPerSeatPricing;
-  isSaving: boolean;
-  plan: SubscriptionType["plan"];
-}
-
-function SkipFreeTrialDialog({
-  show,
-  onClose,
-  onValidate,
-  workspaceSeats,
-  perSeatPricing,
-  isSaving,
-  plan,
-}: SkipFreeTrialDialogProps) {
-  return (
-    <Dialog
-      open={show}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
-      <DialogContent size="md">
-        <DialogHeader>
-          <DialogTitle>End trial</DialogTitle>
-          <DialogDescription>
-            Ending your trial will allow you to invite more than{" "}
-            {plan.limits.users.maxUsers} members to your workspace.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogContainer>
-          {isSaving ? (
-            <div className="flex justify-center py-8">
-              <Spinner variant="dark" size="md" />
-            </div>
-          ) : (
-            (() => {
-              if (workspaceSeats === 1) {
-                return (
-                  <>
-                    Billing will start immediately for your workspace. <br />
-                    Currently: {workspaceSeats} member,{" "}
-                    {getPriceAsString({
-                      currency: perSeatPricing.seatCurrency,
-                      priceInCents: perSeatPricing.seatPrice,
-                    })}
-                    monthly (excluding taxes).
-                  </>
-                );
-              }
-              return (
-                <>
-                  Billing will start immediately for your workspace:.
-                  <br />
-                  Currently: {workspaceSeats} members,{" "}
-                  {getPriceAsString({
-                    currency: perSeatPricing.seatCurrency,
-                    priceInCents: perSeatPricing.seatPrice,
-                  })}
-                  monthly (excluding taxes).
-                </>
-              );
-            })()
-          )}
-        </DialogContainer>
-        <DialogFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-          }}
-          rightButtonProps={{
-            label: "End trial & get full access",
-            variant: "primary",
-            onClick: onValidate,
-          }}
-        />
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-interface CancelFreeTrialDialogProps {
-  show: boolean;
-  onClose: () => void;
-  onValidate: () => Promise<void>;
-  isSaving: boolean;
-}
-
-function CancelFreeTrialDialog({
-  show,
-  onClose,
-  onValidate,
-  isSaving,
-}: CancelFreeTrialDialogProps) {
-  return (
-    <Dialog
-      open={show}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
-      <DialogContent size="md">
-        <DialogHeader>
-          <DialogTitle>Cancel subscription</DialogTitle>
-          <DialogDescription>
-            All your workspace data will be deleted and you will lose access to
-            your Dust workspace.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogContainer>
-          {isSaving ? (
-            <div className="flex justify-center py-8">
-              <Spinner variant="dark" size="md" />
-            </div>
-          ) : (
-            <div className="font-bold">Are you sure you want to proceed?</div>
-          )}
-        </DialogContainer>
-        <DialogFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-          }}
-          rightButtonProps={{
-            label: "Yes, cancel subscription",
-            variant: "warning",
-            onClick: onValidate,
-          }}
-        />
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 interface CancelSubscriptionDialogProps {
   show: boolean;
@@ -265,23 +118,16 @@ export function SubscriptionPage() {
     React.useState<boolean>(false);
 
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
-  const [showSkipFreeTrialDialog, setShowSkipFreeTrialDialog] = useState(false);
-  const [showCancelFreeTrialDialog, setShowCancelFreeTrialDialog] =
-    useState(false);
   const [showCancelSubscriptionDialog, setShowCancelSubscriptionDialog] =
     useState(false);
 
-  const { trialDaysRemaining, isTrialInfoLoading } = useSubscriptionTrialInfo({
-    workspaceId: owner.sId,
-  });
   const { seatsCount: workspaceSeats, isSeatsCountLoading } =
     useWorkspaceSeatsCount({ workspaceId: owner.sId });
   const { perSeatPricing, isPerSeatPricingLoading } = usePerSeatPricing({
     workspaceId: owner.sId,
   });
 
-  const isLoading =
-    isTrialInfoLoading || isSeatsCountLoading || isPerSeatPricingLoading;
+  const isLoading = isSeatsCountLoading || isPerSeatPricingLoading;
 
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
   useEffect(() => {
@@ -376,69 +222,6 @@ export function SubscriptionPage() {
     }
   });
 
-  const { submit: skipFreeTrial, isSubmitting: skipFreeTrialIsSubmitting } =
-    useSubmitFunction(async () => {
-      try {
-        const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "pay_now",
-          } satisfies z.infer<typeof PatchSubscriptionRequestBody>),
-        });
-        if (!res.ok) {
-          sendNotification({
-            type: "error",
-            title: "Transition to paid plan failed",
-            description: "Failed to transition to paid plan.",
-          });
-        } else {
-          sendNotification({
-            type: "success",
-            title: "Upgrade successful",
-            description: "Redirecting...",
-          });
-          await new Promise((resolve) => setTimeout(resolve, 3000));
-          router.reload();
-        }
-      } finally {
-        setShowSkipFreeTrialDialog(false);
-      }
-    });
-
-  const { submit: cancelFreeTrial, isSubmitting: cancelFreeTrialSubmitting } =
-    useSubmitFunction(async () => {
-      try {
-        const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "cancel_free_trial",
-          } satisfies z.infer<typeof PatchSubscriptionRequestBody>),
-        });
-        if (!res.ok) {
-          sendNotification({
-            type: "error",
-            title: "Failed to open billing dashboard",
-            description: "Failed to open billing dashboard.",
-          });
-        } else {
-          sendNotification({
-            type: "success",
-            title: "Free trial cancelled",
-            description: "Redirecting...",
-          });
-          await router.push(`/w/${owner.sId}/subscription`);
-        }
-      } finally {
-        setShowCancelFreeTrialDialog(false);
-      }
-    });
-
   const plan = subscription.plan;
   const isWorkspaceOnProOrBusinessPlan = isProOrBusinessPlanCode(plan);
 
@@ -462,11 +245,10 @@ export function SubscriptionPage() {
   // Cancelled (churning at the end date).
   const isCancelled = subscription.endDate !== null;
 
-  // A Stripe-billed Pro or Business workspace (not trialing) can cancel while
-  // active. Not when already cancelled (→ Resume).
+  // A Stripe-billed Pro or Business workspace can cancel while active. Not when
+  // already cancelled (→ Resume).
   const canCancelSubscription =
     isWorkspaceOnProOrBusinessPlan &&
-    !subscription.trialing &&
     subscription.stripeSubscriptionId !== null &&
     !isCancelled;
   // Cancelled but not yet ended — resume clears the scheduled cancellation.
@@ -495,10 +277,7 @@ export function SubscriptionPage() {
 
   const chipColor = !isUpgraded(plan) ? "success" : "highlight";
 
-  const planLabel =
-    trialDaysRemaining === null
-      ? plan.name
-      : `${plan.name}: ${trialDaysRemaining} days of trial remaining`;
+  const planLabel = plan.name;
 
   const displayPricingTable = subscription.stripeSubscriptionId === null;
 
@@ -529,33 +308,12 @@ export function SubscriptionPage() {
           </div>
         )}
         {perSeatPricing && (
-          <>
-            <CancelFreeTrialDialog
-              show={showCancelFreeTrialDialog}
-              onClose={() => setShowCancelFreeTrialDialog(false)}
-              onValidate={cancelFreeTrial}
-              isSaving={cancelFreeTrialSubmitting}
-            />
-
-            <CancelSubscriptionDialog
-              show={showCancelSubscriptionDialog}
-              onClose={() => setShowCancelSubscriptionDialog(false)}
-              onValidate={handleCancelSubscription}
-              isSaving={isCancellingSubscription}
-            />
-
-            <SkipFreeTrialDialog
-              plan={subscription.plan}
-              show={showSkipFreeTrialDialog}
-              onClose={() => {
-                setShowSkipFreeTrialDialog(false);
-              }}
-              onValidate={skipFreeTrial}
-              workspaceSeats={workspaceSeats}
-              perSeatPricing={perSeatPricing}
-              isSaving={skipFreeTrialIsSubmitting}
-            />
-          </>
+          <CancelSubscriptionDialog
+            show={showCancelSubscriptionDialog}
+            onClose={() => setShowCancelSubscriptionDialog(false)}
+            onValidate={handleCancelSubscription}
+            isSaving={isCancellingSubscription}
+          />
         )}
 
         <Page.Vertical gap="xl" align="stretch">
@@ -621,33 +379,6 @@ export function SubscriptionPage() {
                   </>
                 )}
               </div>
-              {perSeatPricing && subscription.trialing && (
-                <Page.Vertical>
-                  <Page.Horizontal gap="sm">
-                    <Button
-                      onClick={withTracking(
-                        TRACKING_AREAS.AUTH,
-                        "subscription_skip_trial",
-                        () => {
-                          setShowSkipFreeTrialDialog(true);
-                        }
-                      )}
-                      label="End trial & get full access"
-                    />
-                    <Button
-                      label="Cancel subscription"
-                      variant="ghost"
-                      onClick={withTracking(
-                        TRACKING_AREAS.AUTH,
-                        "subscription_cancel_trial",
-                        () => {
-                          setShowCancelFreeTrialDialog(true);
-                        }
-                      )}
-                    />
-                  </Page.Horizontal>
-                </Page.Vertical>
-              )}
               {subscription.stripeSubscriptionId && (
                 <Page.Vertical gap="sm">
                   <Page.H variant="h5">Billing</Page.H>

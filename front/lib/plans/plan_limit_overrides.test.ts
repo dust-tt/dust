@@ -98,13 +98,13 @@ describe("applyPlanLimitOverrides", () => {
     expect(PLAN.maxUsersInWorkspace).toBe(10);
   });
 
-  it("overrides the trial limits, since it is applied last", () => {
-    // `getTrialVersionForPlan` caps maxUsersInWorkspace at 5; the override is
-    // merged on top of that result.
-    const trialPlan = { ...PLAN, maxUsersInWorkspace: 5 };
+  it("overrides a lower base limit, since it is applied last", () => {
+    // The base plan caps maxUsersInWorkspace at 5; the override is merged on
+    // top of that result.
+    const basePlan = { ...PLAN, maxUsersInWorkspace: 5 };
 
     expect(
-      applyPlanLimitOverrides(trialPlan, override({ maxUsersInWorkspace: 50 }))
+      applyPlanLimitOverrides(basePlan, override({ maxUsersInWorkspace: 50 }))
         .maxUsersInWorkspace
     ).toBe(50);
   });
