@@ -1,7 +1,6 @@
 import type * as activities from "@app/temporal/es_indexation/activities";
 import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
-import { concurrentExecutor } from "../workflow_utils";
 import { indexSkillSearchSignal, indexUserSearchSignal } from "./signals";
 
 const DEBOUNCE_DELAY_MS = 1_000;
@@ -99,11 +98,9 @@ export async function refreshSearchUsageWorkflow(): Promise<void> {
     if (workspaces.length === 0) {
       return;
     }
-    await concurrentExecutor(
-      workspaces,
-      ({ workspaceId }) => refreshWorkspaceSearchUsageActivity({ workspaceId }),
-      { concurrency: 5 }
-    );
+    for (const { workspaceId } of workspaces) {
+      await refreshWorkspaceSearchUsageActivity({ workspaceId });
+    }
     afterWorkspaceModelId = workspaces[workspaces.length - 1].workspaceModelId;
   }
 }

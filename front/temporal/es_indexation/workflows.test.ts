@@ -51,15 +51,21 @@ describe("refreshSearchUsageWorkflow", () => {
     expect(mocks.refreshWorkspaceSearchUsageActivity).not.toHaveBeenCalled();
   });
 
-  it("does not advance the cursor when a workspace refresh fails", async () => {
+  it("does not start the next workspace or advance the cursor when a refresh fails", async () => {
     mocks.listSearchUsageWorkspacesActivity.mockResolvedValueOnce([
       { workspaceModelId: 4, workspaceId: "workspace-4" },
+      { workspaceModelId: 12, workspaceId: "workspace-12" },
     ]);
     const error = new Error("Usage refresh failed");
     mocks.refreshWorkspaceSearchUsageActivity.mockRejectedValueOnce(error);
 
     await expect(refreshSearchUsageWorkflow()).rejects.toBe(error);
 
+    expect(
+      mocks.refreshWorkspaceSearchUsageActivity
+    ).toHaveBeenCalledExactlyOnceWith({
+      workspaceId: "workspace-4",
+    });
     expect(
       mocks.listSearchUsageWorkspacesActivity
     ).toHaveBeenCalledExactlyOnceWith(0);
