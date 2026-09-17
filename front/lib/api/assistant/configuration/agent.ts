@@ -1881,9 +1881,10 @@ export async function updateAgentConfigurationsScope(
     return new Ok(undefined);
   }
 
-  // Admins may publish or unpublish any agent of the workspace, including the ones built on
-  // spaces they cannot read (the manage agents page lists those behind "Show hidden agents").
-  // Changing the scope touches nothing the spaces protect.
+  // Publishing/unpublishing needs the workspace `publish` capability (checked below) plus edit
+  // rights on each agent. Admins may additionally act on agents built on spaces they cannot read
+  // (the manage agents page lists those behind "Show hidden agents"); changing the scope touches
+  // nothing the spaces protect.
   const agentConfigs = await getAgentConfigurations(auth, {
     agentIds,
     variant: "light",
@@ -1910,22 +1911,9 @@ export async function updateAgentConfigurationsScope(
     return new Ok(undefined);
   }
 
-  const batchNeedsPublishPermission = editableAgents.some((a) =>
-    needsPublishPermission({
-      currentScope: a.scope,
-      newScope: scope,
-      isActive: a.status === "active",
-    })
-  );
-  if (batchNeedsPublishPermission) {
-    const { canPublish, message } = await canPublishAgent(auth);
-    if (!canPublish) {
-      return new Err(
-        new Error(message ?? "You don't have permission to publish agents.")
-      );
-    }
-  }
-
+  // Authorization for the scope write — the `publish` capability plus `write`/`admin` on each agent
+  // — is enforced inside `AgentResource.bulkUpdateScope` (see the `scope-change-requires-edit-and-
+  // publish` contract), which skips any agent the caller is not allowed to (un)publish.
   await AgentResource.bulkUpdateScope(
     auth,
     editableAgents.map((a) => a.sId),

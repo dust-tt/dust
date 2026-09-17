@@ -97,6 +97,14 @@ type AgentResourceExtraBlob = {
   content: AgentResourceContent | null;
 };
 
+// The outcome of a bulk in-place mutation (`bulkUpdateScope`/`bulkUpdateModel`): the agents whose
+// current version was written, and the requested ids that were skipped (not resolvable, not
+// editable by the caller, or archived). Reported back so callers can tell the UI what was applied.
+export type BulkAgentUpdateResult = {
+  updatedAgentIds: string[];
+  skippedAgentIds: string[];
+};
+
 // A `full` resource always exposes its `content`.
 export interface FullAgentResource extends AgentResource {
   readonly variant: "full";
@@ -681,15 +689,19 @@ export class AgentResource
     return new Ok(undefined);
   }
 
-  // Rescopes the agents the caller may `publish`, emits the `agent.scope_changed` audit event, and on
-  // hide disables the triggers of non-editors. `loadResource` resolves rows caller-independently so a
-  // publisher is not blocked on agents backed by spaces they cannot read ("Show hidden agents").
+  // Rescopes the agents the caller is allowed to (un)publish, emits the `agent.scope_changed` audit
+  // event, and on hide disables the triggers of non-editors. `loadResource` resolves rows
+  // caller-independently so an editor/admin is not blocked on agents backed by spaces they cannot
+  // read ("Show hidden agents").
   /**
-   * @cc [owner:tdraier,label:security;product] scope-change-requires-publish
-   * Only callers who hold `publish` on an agent (per `getAllowedVerbs`) may change its scope: the
-   * loaded rows MUST be filtered by `auth.can("publish", r)` and the scope of any agent the caller
-   * cannot publish MUST NOT be written. Widening the filter to `write`/`admin`, or dropping it, is a
-   * violation.
+   * @cc [owner:tdraier,label:security;product] scope-change-requires-edit-and-publish
+   * (Un)publishing an agent — changing its scope — requires BOTH the `publish` agent capability AND
+   * `write` or `admin` on the agent. Both MUST be enforced here, on the resource, and are the sole
+   * authorization for a scope write: the loaded rows MUST be filtered by
+   * `auth.can("publish", r) && (auth.can("write", r) || auth.can("admin", r))`, and the scope of an
+   * agent the caller does not fully satisfy MUST NOT be written. `publish` is a workspace-wide
+   * capability that `getGovernanceGrantVerbs` folds into every instance's verbs, so it resolves
+   * per-resource via `auth.can("publish", r)` (it is grant-backed, never role-derived).
    */
   /**
    * @cc [owner:tdraier,label:security] hide-disables-non-editor-triggers
@@ -702,17 +714,23 @@ export class AgentResource
     agentIds: string[],
     scope: Exclude<AgentConfigurationScope, "global">,
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
+  ): Promise<BulkAgentUpdateResult> {
     if (agentIds.length === 0) {
-      return;
+      return { updatedAgentIds: [], skippedAgentIds: [] };
     }
 
     const workspaceModelId = auth.getNonNullableWorkspace().id;
     const resources = (
       await this.loadResource(workspaceModelId, { sId: agentIds })
-    ).filter((r) => auth.can("publish", r));
+    ).filter(
+      (r) =>
+        auth.can("publish", r) && (auth.can("write", r) || auth.can("admin", r))
+    );
+    const updatedAgentIds = resources.map((r) => r.sId);
+    const updatedIdSet = new Set(updatedAgentIds);
+    const skippedAgentIds = agentIds.filter((id) => !updatedIdSet.has(id));
     if (resources.length === 0) {
-      return;
+      return { updatedAgentIds, skippedAgentIds };
     }
 
     // Snapshot previous scopes before the bulk UPDATE: the static Sequelize update does not touch the
@@ -771,6 +789,8 @@ export class AgentResource
     } else {
       await applySideEffects();
     }
+
+    return { updatedAgentIds, skippedAgentIds };
   }
 
   private static async disableTriggersForNonEditors(

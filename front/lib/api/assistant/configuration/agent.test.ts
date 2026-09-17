@@ -1607,7 +1607,7 @@ describe("publish agent capability", () => {
     expect(result.isOk()).toBe(true);
   });
 
-  it("rejects a bulk scope change to visible without the publish capability", async () => {
+  it("skips a bulk scope change to visible without the publish capability", async () => {
     const { workspace, authenticator: adminAuth } = await createResourceTest({
       role: "admin",
     });
@@ -1616,20 +1616,22 @@ describe("publish agent capability", () => {
     });
     const { authenticator } = await editorAuthFor(workspace, agent);
 
+    // The editor can edit the agent but lacks the publish capability, so the resource skips it and
+    // the scope is left unchanged.
     const result = await updateAgentConfigurationsScope(
       authenticator,
       [agent.sId],
       "visible"
     );
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.message).toBe(
-        "You don't have permission to publish agents."
-      );
-    }
+    expect(result.isOk()).toBe(true);
+
+    const row = await AgentConfigurationModel.findOne({
+      where: { sId: agent.sId, workspaceId: workspace.id },
+    });
+    expect(row!.scope).toBe("hidden");
   });
 
-  it("rejects a bulk scope change to hidden without the publish capability", async () => {
+  it("skips a bulk scope change to hidden without the publish capability", async () => {
     const { workspace, authenticator: adminAuth } = await createResourceTest({
       role: "admin",
     });
@@ -1638,17 +1640,19 @@ describe("publish agent capability", () => {
     });
     const { authenticator } = await editorAuthFor(workspace, agent);
 
+    // The editor can edit the agent but lacks the publish capability, so the resource skips it and
+    // the scope is left unchanged.
     const result = await updateAgentConfigurationsScope(
       authenticator,
       [agent.sId],
       "hidden"
     );
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.message).toBe(
-        "You don't have permission to publish agents."
-      );
-    }
+    expect(result.isOk()).toBe(true);
+
+    const row = await AgentConfigurationModel.findOne({
+      where: { sId: agent.sId, workspaceId: workspace.id },
+    });
+    expect(row!.scope).toBe("visible");
   });
 
   it("allows a bulk scope change for an editor granted the publish capability", async () => {

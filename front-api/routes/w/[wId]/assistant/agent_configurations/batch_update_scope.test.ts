@@ -77,18 +77,61 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_scope", (
     expect(updatedAgent?.scope).toBe("hidden");
   });
 
-  it("returns 403 for non-admins", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+  it("does not (un)publish for a caller without the publish capability", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
     });
+    // The caller edits the agent (they authored it) but the harness grants no publish capability, so
+    // the resource skips it: (un)publishing requires the publish capability on top of edit rights.
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      scope: "visible",
+    });
 
     const response = await batchUpdateScope(workspace, {
-      agentIds: [],
+      agentIds: [agent.sId],
       scope: "hidden",
     });
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
+
+    const unchanged = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(unchanged?.scope).toBe("visible");
+  });
+
+  it("lets a non-admin editor with the publish capability unpublish their agent", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+    // Seed the "publish agents" capability to everybody (as production does), via an admin.
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await GroupPermissionResource.setForEverybody(adminAuth, {
+      grantType: "publish",
+      resourceType: "agent",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      scope: "visible",
+    });
+
+    const response = await batchUpdateScope(workspace, {
+      agentIds: [agent.sId],
+      scope: "hidden",
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true });
+
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(updated?.scope).toBe("hidden");
   });
 
   it("rejects a batch containing an archived agent", async () => {
