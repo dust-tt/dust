@@ -1,7 +1,4 @@
-import {
-  AGENT_SUGGESTION_KINDS,
-  AgentSuggestionSchema,
-} from "@app/types/suggestions/agent_suggestion";
+import { AgentSuggestionSchema } from "@app/types/suggestions/agent_suggestion";
 import { z } from "zod";
 
 export const PatchSuggestionRequestBodySchema = z.object({
@@ -30,7 +27,7 @@ const stringOrArrayToArray = z.preprocess(
 
 export const GetSuggestionsQuerySchema = z.object({
   states: stringOrArrayToArray.optional(),
-  kind: z.enum(AGENT_SUGGESTION_KINDS).optional(),
+  kind: z.enum(["instructions", "tools", "skills", "model"]).optional(),
   limit: z.string().optional(),
 });
 
