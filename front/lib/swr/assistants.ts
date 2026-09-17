@@ -1151,23 +1151,23 @@ export function useMemberDetails({
       key: string
     ): Promise<
       | { kind: "single"; member: GetMemberResponseBody["member"] }
-      | { kind: "batch"; membersBySId: Record<string, MemberDisplayInfo> }
+      | { kind: "batch"; membersById: Record<string, MemberDisplayInfo> }
     > => {
       if (key.includes("/members/batch?")) {
         const url = new URL(key, "https://dust.local");
         const sIdsParam = url.searchParams.get("sIds");
         if (!sIdsParam) {
-          return { kind: "batch", membersBySId: {} };
+          return { kind: "batch", membersById: {} };
         }
 
-        const membersBySId: Record<string, MemberDisplayInfo> = {};
-        for (const memberSId of sIdsParam.split(",")) {
+        const membersById: Record<string, MemberDisplayInfo> = {};
+        for (const memberId of sIdsParam.split(",")) {
           try {
             const response = (await fetcher(
-              `/api/w/${workspaceId}/members/${memberSId}`
+              `/api/w/${workspaceId}/members/${memberId}`
             )) as GetMemberResponseBody;
 
-            membersBySId[memberSId] = {
+            membersById[memberId] = {
               fullName: response.member.fullName,
               email: response.member.email,
               image: response.member.image,
@@ -1177,7 +1177,7 @@ export function useMemberDetails({
           }
         }
 
-        return { kind: "batch", membersBySId };
+        return { kind: "batch", membersById };
       }
 
       const response = (await fetcher(key)) as GetMemberResponseBody;
@@ -1192,9 +1192,9 @@ export function useMemberDetails({
   );
 
   const userDetails = data?.kind === "single" ? data.member : undefined;
-  const membersBySId =
+  const membersById =
     data?.kind === "batch"
-      ? data.membersBySId
+      ? data.membersById
       : userDetails
         ? {
             [userDetails.id]: {
@@ -1207,7 +1207,7 @@ export function useMemberDetails({
 
   return {
     userDetails,
-    membersBySId,
+    membersById,
     isMembersLoading: !error && isLoading && !!swrKey,
     isMembersError: error,
     isMembersValidating: isValidating,

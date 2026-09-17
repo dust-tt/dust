@@ -20,11 +20,11 @@ import { buildPodSearchDataSources } from "@app/lib/api/actions/servers/pod_mana
 import {
   buildProjectRetrieveDataSources,
   getPod,
-  getPodMemberAndEditorSIds,
+  getPodMemberAndEditorIds,
   getWritablePodContext,
   makeSuccessResponse,
   partitionMembersToRemove,
-  resolvePodUserRolesBySId,
+  resolvePodUserRolesById,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import {
@@ -311,7 +311,7 @@ export function createProjectManagerTools(
           const newIsRestricted = access !== "open";
           const currentlyRestricted = await pod.isRestricted(auth);
           if (newIsRestricted !== currentlyRestricted) {
-            const { editorIds, memberIds } = await getPodMemberAndEditorSIds(
+            const { editorIds, memberIds } = await getPodMemberAndEditorIds(
               auth,
               pod
             );
@@ -522,9 +522,9 @@ export function createProjectManagerTools(
           );
         }
 
-        const roleByUserSId = await resolvePodUserRolesBySId(auth, pod);
+        const roleByUserId = await resolvePodUserRolesById(auth, pod);
         const { editorIds: removeEditorIds, memberIds: removeMemberIds } =
-          partitionMembersToRemove(membersToRemove, roleByUserSId);
+          partitionMembersToRemove(membersToRemove, roleByUserId);
 
         const addedMembers: string[] = [];
         const removedMembers: string[] = [];

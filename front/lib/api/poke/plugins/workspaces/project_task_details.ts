@@ -35,17 +35,17 @@ export const projectTodoDetailsPlugin = createPlugin({
       return new Err(new Error(`Project Task not found: ${args.taskId}`));
     }
 
-    const taskSId = task.sId;
+    const taskId = task.sId;
 
     const [sourcesMap, conversationsMap] = await Promise.all([
-      ProjectTaskResource.fetchSourcesForTaskIds(auth, { sIds: [taskSId] }),
+      ProjectTaskResource.fetchSourcesForTaskIds(auth, { sIds: [taskId] }),
       ProjectTaskResource.fetchConversationIdsForTaskIds(auth, {
-        sIds: [taskSId],
+        sIds: [taskId],
       }),
     ]);
 
-    const sources = sourcesMap.get(taskSId) ?? [];
-    const conversationId = conversationsMap.get(taskSId) ?? null;
+    const sources = sourcesMap.get(taskId) ?? [];
+    const conversationId = conversationsMap.get(taskId) ?? null;
 
     const statusEmoji: Record<string, string> = {
       todo: "⬜",

@@ -27,10 +27,10 @@ interface ChangeRowProps {
 }
 
 interface AssigneeChangeRowProps {
-  currentAssigneeSId: string | null;
-  nextAssigneeSId: string | null;
-  currentUserSId: string;
-  memberDisplayBySId: Record<string, MemberDisplayInfo>;
+  currentAssigneeId: string | null;
+  nextAssigneeId: string | null;
+  currentUserId: string;
+  memberDisplayById: Record<string, MemberDisplayInfo>;
   isMembersLoading: boolean;
 }
 
@@ -42,8 +42,8 @@ interface TaskUpdateRowProps {
 
 interface FormatAssigneeLabelParams {
   userId: string | null | undefined;
-  currentUserSId: string;
-  memberDisplayBySId: Record<string, { fullName: string }>;
+  currentUserId: string;
+  memberDisplayById: Record<string, { fullName: string }>;
   isMembersLoading: boolean;
 }
 
@@ -77,17 +77,17 @@ function normalizeAssigneeUserId(
 
 function formatAssigneeLabel({
   userId,
-  currentUserSId,
-  memberDisplayBySId,
+  currentUserId,
+  memberDisplayById,
   isMembersLoading,
 }: FormatAssigneeLabelParams): string {
   if (userId === null || userId === undefined) {
     return POD_TASK_NO_ASSIGNEE_LABEL;
   }
-  if (userId === currentUserSId) {
+  if (userId === currentUserId) {
     return "You";
   }
-  const member = memberDisplayBySId[userId];
+  const member = memberDisplayById[userId];
   if (member) {
     return member.fullName;
   }
@@ -111,28 +111,28 @@ function ChangeRow({ label, before, after }: ChangeRowProps) {
 }
 
 function AssigneeChangeRow({
-  currentAssigneeSId,
-  nextAssigneeSId,
-  currentUserSId,
-  memberDisplayBySId,
+  currentAssigneeId,
+  nextAssigneeId,
+  currentUserId,
+  memberDisplayById,
   isMembersLoading,
 }: AssigneeChangeRowProps) {
   const beforeLabel = formatAssigneeLabel({
-    userId: currentAssigneeSId,
-    currentUserSId,
-    memberDisplayBySId,
+    userId: currentAssigneeId,
+    currentUserId,
+    memberDisplayById,
     isMembersLoading,
   });
   const afterLabel = formatAssigneeLabel({
-    userId: nextAssigneeSId,
-    currentUserSId,
-    memberDisplayBySId,
+    userId: nextAssigneeId,
+    currentUserId,
+    memberDisplayById,
     isMembersLoading,
   });
-  const currentMember = currentAssigneeSId
-    ? memberDisplayBySId[currentAssigneeSId]
+  const currentMember = currentAssigneeId
+    ? memberDisplayById[currentAssigneeId]
     : null;
-  const isUnassigning = nextAssigneeSId === null && currentAssigneeSId !== null;
+  const isUnassigning = nextAssigneeId === null && currentAssigneeId !== null;
 
   if (isUnassigning) {
     return (
@@ -168,42 +168,42 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
     taskId: taskInput.taskId,
   });
 
-  const memberSIds = useMemo(() => {
+  const memberIds = useMemo(() => {
     const ids = new Set<string>();
     if (currentTask?.user?.sId) {
       ids.add(currentTask.user.sId);
     }
     if (taskInput.assigneeUserId !== undefined) {
-      const normalizedNextAssigneeSId = normalizeAssigneeUserId(
+      const normalizedNextAssigneeId = normalizeAssigneeUserId(
         taskInput.assigneeUserId
       );
-      if (normalizedNextAssigneeSId) {
-        ids.add(normalizedNextAssigneeSId);
+      if (normalizedNextAssigneeId) {
+        ids.add(normalizedNextAssigneeId);
       }
     }
     return [...ids];
   }, [currentTask?.user?.sId, taskInput.assigneeUserId]);
 
-  const { membersBySId, isMembersLoading } = useMemberDetails({
+  const { membersById, isMembersLoading } = useMemberDetails({
     workspaceId,
-    userIds: memberSIds,
+    userIds: memberIds,
   });
 
   const effectiveStatus: PodTaskStatus = taskInput.doneRationale
     ? "done"
     : (taskInput.status ?? currentTask?.status ?? "todo");
 
-  const currentAssigneeSId = currentTask?.user?.sId ?? null;
-  const nextAssigneeSId =
+  const currentAssigneeId = currentTask?.user?.sId ?? null;
+  const nextAssigneeId =
     taskInput.assigneeUserId !== undefined
       ? normalizeAssigneeUserId(taskInput.assigneeUserId)
-      : currentAssigneeSId;
+      : currentAssigneeId;
 
   const textChange =
     taskInput.text !== undefined && taskInput.text !== currentTask?.text;
   const assigneeChange =
     taskInput.assigneeUserId !== undefined &&
-    nextAssigneeSId !== currentAssigneeSId;
+    nextAssigneeId !== currentAssigneeId;
   const currentStatus = currentTask?.status;
   const statusChange =
     currentStatus !== undefined && effectiveStatus !== currentStatus;
@@ -242,10 +242,10 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
             )}
             {assigneeChange && (
               <AssigneeChangeRow
-                currentAssigneeSId={currentAssigneeSId}
-                nextAssigneeSId={nextAssigneeSId}
-                currentUserSId={user.sId}
-                memberDisplayBySId={membersBySId}
+                currentAssigneeId={currentAssigneeId}
+                nextAssigneeId={nextAssigneeId}
+                currentUserId={user.sId}
+                memberDisplayById={membersById}
                 isMembersLoading={isMembersLoading}
               />
             )}
@@ -304,8 +304,8 @@ function TaskUpdateRow({ workspaceId, taskInput, user }: TaskUpdateRowProps) {
                   before="—"
                   after={formatAssigneeLabel({
                     userId: normalizeAssigneeUserId(taskInput.assigneeUserId),
-                    currentUserSId: user.sId,
-                    memberDisplayBySId: membersBySId,
+                    currentUserId: user.sId,
+                    memberDisplayById: membersById,
                     isMembersLoading,
                   })}
                 />

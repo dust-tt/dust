@@ -4,11 +4,11 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
-function taskUrl(wId: string, taskSId: string) {
-  return `/api/w/${wId}/project_tasks/${taskSId}`;
+function taskUrl(wId: string, taskId: string) {
+  return `/api/w/${wId}/project_tasks/${taskId}`;
 }
 
-describe("GET /api/w/[wId]/project_tasks/[taskSId]", () => {
+describe("GET /api/w/[wId]/project_tasks/[taskId]", () => {
   it("returns the todo and project space id", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "GET",
