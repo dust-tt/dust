@@ -25,11 +25,17 @@ export const INDEX_REGISTRY: Record<
   string,
   { directory: string; version: number }
 > = {
-  agent_document_outputs: { directory: "lib/analytics/indices", version: 1 },
+  agent_document_outputs: {
+    directory: "lib/api/analytics/indices",
+    version: 1,
+  },
   agents: { directory: "lib/agent_search/indices", version: 1 },
-  agent_message_analytics: { directory: "lib/analytics/indices", version: 2 },
+  agent_message_analytics: {
+    directory: "lib/api/analytics/indices",
+    version: 2,
+  },
   agent_message_consumption_analytics: {
-    directory: "lib/analytics/indices",
+    directory: "lib/api/analytics/indices",
     version: 1,
   },
   skills: { directory: "lib/skill_search/indices", version: 1 },
@@ -55,7 +61,7 @@ export class ElasticsearchError extends Error {
     type: ElasticSearchErrorType,
     message: string,
     statusCode?: number,
-    options?: ErrorOptions
+    options?: ErrorOptions,
   ) {
     super(message, options);
     this.name = "ElasticsearchError";
@@ -68,7 +74,7 @@ type SearchParams = estypes.SearchRequest;
 
 function hasProp<K extends string>(
   obj: unknown,
-  key: K
+  key: K,
 ): obj is Record<K, unknown> {
   return typeof obj === "object" && obj !== null && key in obj;
 }
@@ -97,7 +103,7 @@ function toElasticsearchError(err: unknown): ElasticsearchError {
       "connection_error",
       "Failed to connect to Elasticsearch",
       undefined,
-      { cause: err }
+      { cause: err },
     );
   }
   const error = normalizeError(err);
@@ -107,7 +113,7 @@ function toElasticsearchError(err: unknown): ElasticsearchError {
 }
 
 export async function withEs<T>(
-  fn: (client: Client) => Promise<T>
+  fn: (client: Client) => Promise<T>,
 ): Promise<Result<T, ElasticsearchError>> {
   const client = await getClient();
   try {
@@ -140,19 +146,19 @@ async function esSearch<
   TDocument extends ElasticsearchBaseDocument,
   TAggregations = unknown,
 >(
-  params: SearchParams
+  params: SearchParams,
 ): Promise<
   Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
 > {
   return withEs((client) =>
     client.search<TDocument, TAggregations>({
       ...params,
-    })
+    }),
   );
 }
 
 export function bucketsToArray<TBucket>(
-  buckets?: estypes.AggregationsMultiBucketAggregateBase<TBucket>["buckets"]
+  buckets?: estypes.AggregationsMultiBucketAggregateBase<TBucket>["buckets"],
 ): TBucket[] {
   if (!buckets) {
     return [];
@@ -176,7 +182,7 @@ export function ensureAtMostNGroups<
 >(
   groups: Array<{ groupKey: string; points: T[] }>,
   max: number = 5,
-  valueKey: keyof T
+  valueKey: keyof T,
 ): Array<{ groupKey: string; points: T[] }> {
   if (groups.length <= max) {
     return groups;
@@ -238,7 +244,7 @@ export async function searchAnalytics<
     from?: number;
     sort?: estypes.Sort;
     search_after?: estypes.SortResults;
-  }
+  },
 ): Promise<
   Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
 > {
@@ -270,7 +276,7 @@ export async function searchConsumptionAnalytics<
     sort?: estypes.Sort;
     search_after?: estypes.SortResults;
     allow_partial_search_results?: boolean;
-  }
+  },
 ): Promise<
   Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
 > {

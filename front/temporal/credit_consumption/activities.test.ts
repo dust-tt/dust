@@ -26,7 +26,7 @@ vi.mock("@app/lib/auth", () => ({
   },
 }));
 
-vi.mock("@app/lib/analytics/agent_message_consumption", () => ({
+vi.mock("@app/lib/api/analytics/agent_message_consumption", () => ({
   indexAgentMessageConsumptionSnapshot: mocks.indexConsumption,
 }));
 
