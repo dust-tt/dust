@@ -174,10 +174,7 @@ export async function finalizeCreditSpendCheckpointPausedAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const res = await finalizeCreditSpendCheckpointPause(authType, agentLoopArgs);
-  if (res.isErr()) {
-    throw res.error;
-  }
+  await finalizeCreditSpendCheckpointPause(authType, agentLoopArgs);
   await launchStoppedLoopSideEffects(authType, agentLoopArgs);
 }
 

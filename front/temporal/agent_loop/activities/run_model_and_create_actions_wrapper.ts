@@ -250,7 +250,8 @@ async function _runModelAndCreateActionsActivity({
     totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
   });
 
-  // Tool test run: bypass LLM and directly execute tool commands.
+  // Tool test run: bypass LLM and directly execute tool commands. The command result does not
+  // carry the checkpoint flag: a test run never pauses.
   if (featureFlags.includes("run_tools_from_prompt")) {
     const result = await handlePromptCommand(auth, runAgentData, step, runIds);
     if (result !== "not_a_command") {
