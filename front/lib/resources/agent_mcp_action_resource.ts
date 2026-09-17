@@ -1595,9 +1595,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
-   * Atomically blocks a running sandbox parent. Multiple children may block concurrently, so the
-   * target status is idempotent. Every other source status is an invariant violation: in
-   * particular, a late sandbox child must never rewind a final parent into a resumable state.
+   * Atomically blocks a sandbox parent that has not run to completion. Multiple children may block
+   * concurrently, so the target status is idempotent. The parent is accepted while still `ready_*`
+   * too: on a resume the loop dispatches the parent and its approved children in parallel, so a
+   * child can block before the parent's own activity flips it to `running`. Only a final parent is
+   * an invariant violation: a late sandbox child must never rewind it into a resumable state.
    */
   async blockForSandboxChild(auth: Authenticator): Promise<void> {
     await withTransaction(async (transaction) => {
@@ -1616,7 +1618,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         return;
       }
       assert(
-        action.status === "running",
+        action.status === "running" ||
+          action.status === "ready_allowed_explicitly" ||
+          action.status === "ready_allowed_implicitly",
         `Sandbox parent action ${this.sId} cannot transition from ${action.status} to blocked_child_action_input_required.`
       );
 
