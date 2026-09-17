@@ -1,9 +1,13 @@
 import { fetchArchivableAgents } from "@app/lib/api/assistant/inactivity/fetch_inactive_agents";
 import { ONE_DAY_MS } from "@app/lib/api/assistant/inactivity/policy";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { MentionFactory } from "@app/tests/utils/MentionFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { LightWorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
 const CUTOFF_AT = new Date("2026-07-19T00:00:00.000Z");
@@ -25,6 +29,17 @@ async function createAgedAgent(
   await AgentConfigurationFactory.backdate(auth, agent.sId, createdAt);
 
   return agent;
+}
+
+/** Another member of the same workspace, so visibility comes from the role and grants alone. */
+async function otherMemberAuth(
+  workspace: LightWorkspaceType,
+  role: "admin" | "user"
+): Promise<Authenticator> {
+  const user = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, user, { role });
+
+  return Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId);
 }
 
 describe("fetchArchivableAgents", () => {
@@ -188,6 +203,63 @@ describe("fetchArchivableAgents", () => {
     });
 
     expect(page.eligible.map(({ agentId }) => agentId)).toEqual([agent.sId]);
+  });
+
+  it("evaluates an agent the admin cannot read, without a bypass", async () => {
+    // Hidden, authored by someone else, and built on a space the admin is not a member of: the
+    // admin holds `admin` but not `read` on it, so it comes back as a light resource, which carries
+    // everything the rules need.
+    const { authenticator, workspace } = await createResourceTest({
+      role: "user",
+    });
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Someone else's",
+        scope: "hidden",
+        requestedSpaceIds: [restrictedSpace.id],
+      }
+    );
+    await AgentConfigurationFactory.backdate(
+      authenticator,
+      agent.sId,
+      daysBeforeCutoff(90)
+    );
+    const adminAuth = await otherMemberAuth(workspace, "admin");
+
+    const page = await fetchArchivableAgents(adminAuth, {
+      cutoffAt: CUTOFF_AT,
+    });
+
+    expect(page.eligible).toHaveLength(1);
+    expect(page.eligible[0]).toMatchObject({ agentId: agent.sId });
+    expect(page.skipped).toEqual([]);
+  });
+
+  it("reports an agent the caller holds no verb on as not found", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "user",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Invisible to members", scope: "hidden" }
+    );
+    await AgentConfigurationFactory.backdate(
+      authenticator,
+      agent.sId,
+      daysBeforeCutoff(90)
+    );
+    const memberAuth = await otherMemberAuth(workspace, "user");
+
+    const page = await fetchArchivableAgents(memberAuth, {
+      cutoffAt: CUTOFF_AT,
+    });
+
+    expect(page.eligible).toEqual([]);
+    expect(page.skipped).toEqual([
+      { agentId: agent.sId, reason: "agent_not_found" },
+    ]);
   });
 
   it("does not return another workspace's agents", async () => {

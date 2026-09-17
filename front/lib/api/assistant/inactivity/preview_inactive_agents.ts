@@ -62,7 +62,6 @@ export async function previewInactiveAgents(
 
   const { eligible, skipped } = await fetchArchivableAgents(auth, {
     cutoffAt,
-    dangerouslySkipPermissionFiltering: true,
   });
 
   const eligibleAgentIds = eligible.map(({ agentId }) => agentId);

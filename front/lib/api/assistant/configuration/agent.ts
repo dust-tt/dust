@@ -1147,27 +1147,18 @@ async function cancelWakeUpsForAgent(
   );
 }
 
-type ArchiveAgentConfigurationOptions = {
-  dangerouslySkipPermissionFiltering?: boolean;
-};
-
 export async function archiveAgentConfiguration(
   auth: Authenticator,
-  agentConfigurationId: string,
-  { dangerouslySkipPermissionFiltering }: ArchiveAgentConfigurationOptions = {}
+  agentConfigurationId: string
 ): Promise<boolean> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  const agentConfig = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
-    variant: "light",
-    dangerouslySkipPermissionFiltering,
-  });
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-  if (!agentConfig) {
+  if (!agent) {
     throw new Error(`Could not find agent ${agentConfigurationId}`);
   }
 
@@ -1209,11 +1200,11 @@ export async function archiveAgentConfiguration(
       action: "agent.archived",
       targets: [
         buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        buildAuditLogTarget("agent", agentConfig),
+        buildAuditLogTarget("agent", agent),
       ],
       context: getAuditLogContext(auth),
       metadata: {
-        agent_name: agentConfig.name,
+        agent_name: agent.name,
       },
     });
   }
