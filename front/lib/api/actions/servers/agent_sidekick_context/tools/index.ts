@@ -285,6 +285,7 @@ async function createInstructionSuggestions({
         suggestion: suggestionData,
         analysis: analysis ?? null,
         state: "pending",
+        source: "sidekick",
         conversationId: conversation?.id ?? null,
       }
     );
@@ -434,6 +435,7 @@ async function createToolsSuggestions({
         suggestion,
         analysis: analysis ?? null,
         state: "pending",
+        source: "sidekick",
         conversationId: conversation?.id ?? null,
       }
     );
@@ -537,6 +539,7 @@ async function createSkillsSuggestions({
         suggestion: { action, skillId },
         analysis: analysis ?? null,
         state: "pending",
+        source: "sidekick",
         conversationId: conversation?.id ?? null,
       }
     );
@@ -1095,6 +1098,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
             suggestion,
             analysis: params.analysis ?? null,
             state: "pending",
+            source: "sidekick",
           }
         );
 
@@ -1226,6 +1230,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
           suggestion: params.suggestion,
           analysis: params.analysis ?? null,
           state: "pending",
+          source: "sidekick",
         }
       );
 
@@ -1454,6 +1459,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
             suggestion,
             analysis: params.analysis ?? null,
             state: "pending",
+            source: "sidekick",
           }
         );
 
