@@ -146,13 +146,6 @@ interface ConversationAgentSuggestionProps {
   sId: string;
 }
 
-/**
- * Renders a `create`-kind suggestion outside the agent builder sidekick, where there is no
- * `SidekickSuggestionsProvider` scoped to the placeholder agent it targets. It fetches the
- * suggestion directly by the placeholder agent's id and, since it's still pending, renders it
- * read-only: reviewing (accept/reject) happens by opening that agent in the builder, where the
- * sidekick resolves the same suggestion against its own `useSidekickSuggestions` context.
- */
 function ConversationAgentSuggestion({
   owner,
   agentId,
@@ -199,11 +192,6 @@ interface ConversationAgentSuggestionPluginProps {
   agentId?: string;
 }
 
-/**
- * Creates the `agent_suggestion` markdown component registered for ordinary conversations (see
- * `AgentMessageMarkdown`). Only `create`-kind suggestions can appear there today, since every
- * other kind is produced within the agent builder sidekick itself.
- */
 export function getConversationAgentSuggestionPlugin(
   owner: LightWorkspaceType
 ) {
