@@ -88,7 +88,7 @@ export function DataTableSkeleton<
                   scope="col"
                   style={{ height: DATA_TABLE_HEADER_HEIGHT_PX[density] }}
                   className={cn(
-                    "heading-xs px-2 capitalize text-foreground",
+                    "heading-sm px-2 capitalize text-foreground",
                     presets.headerAlign === "right"
                       ? "text-right"
                       : presets.headerAlign === "center"
