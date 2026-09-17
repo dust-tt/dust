@@ -50,6 +50,17 @@ export class FolderExtractError extends Error {
   }
 }
 
+/**
+ * Narrows an extraction failure, which may also carry a `DustFileSystemError` from storage.
+ * Mirrors `isFolderArchiveError` and `isDustFileSystemError`.
+ */
+export function isFolderExtractError(
+  error: unknown,
+  code?: FolderExtractErrorCode
+): error is FolderExtractError {
+  return error instanceof FolderExtractError && (!code || error.code === code);
+}
+
 export type FolderExtractResult = {
   directoriesCreated: number;
   filesWritten: number;

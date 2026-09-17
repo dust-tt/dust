@@ -1,9 +1,10 @@
 // @vitest-environment node: adm-zip requires Node builtins (Buffer, zlib).
 
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import type { FolderExtractErrorCode } from "@app/lib/api/files/folder_extract";
 import {
   extractArchiveToFolder,
-  FolderExtractError,
+  isFolderExtractError,
 } from "@app/lib/api/files/folder_extract";
 import { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -84,10 +85,9 @@ function makeArchiveWithUnsafeEntry(
 
 function expectExtractError(
   error: unknown,
-  code: FolderExtractError["code"]
+  code: FolderExtractErrorCode
 ): void {
-  assert(error instanceof FolderExtractError);
-  expect(error.code).toBe(code);
+  assert(isFolderExtractError(error, code));
 }
 
 describe("extractArchiveToFolder", () => {
