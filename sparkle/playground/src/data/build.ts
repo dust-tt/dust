@@ -188,8 +188,14 @@ const TOOL_SEEDS: {
     account: "Personal",
     scopes: ["Read messages", "Post messages", "List channels"],
     operations: [
-      ["search_messages", "Search messages across the channels you can read."],
-      ["post_message", "Post a message to a channel or a thread."],
+      [
+        "search_messages",
+        "Search messages across every channel the connected account can read, including private channels it belongs to and its own direct messages. The query accepts Slack's own search modifiers, so an agent can narrow by author, channel or date range rather than reading a whole channel. Results come back newest first with a permalink per message, and messages the account cannot see are filtered out server-side rather than returned as errors.",
+      ],
+      [
+        "post_message",
+        "Post a message to a channel or as a reply in a thread, as the connected account rather than as a bot. The message is visible to everyone in the channel and cannot be unsent, only edited or deleted afterwards, which is why it sits behind a confirmation by default.",
+      ],
       ["list_channels", "List the channels of the workspace."],
     ],
   },
@@ -216,7 +222,10 @@ const TOOL_SEEDS: {
     scopes: ["Read repositories", "Read issues", "Write comments"],
     operations: [
       ["list_issues", "List the issues of a repository."],
-      ["get_pull_request", "Read a pull request and its diff."],
+      [
+        "get_pull_request",
+        "Read a pull request: its title and body, the commits it carries, the review comments left on it, the state of its checks and the full diff. Large diffs are truncated per file so a single pull request cannot fill the whole context window, and generated files matched by the repository's attributes are returned as a summary line instead of a patch.",
+      ],
       ["create_comment", "Comment on an issue or a pull request."],
     ],
   },
@@ -305,9 +314,20 @@ const TOOL_SEEDS: {
     account: "Shared",
     scopes: ["Read schema", "Run read-only queries"],
     operations: [
+      ["list_schemas", "List the schemas the warehouse exposes."],
       ["list_tables", "List the tables of a schema."],
       ["describe_table", "Read the columns of a table."],
-      ["run_query", "Run a read-only query."],
+      ["preview_table", "Read the first rows of a table."],
+      [
+        "run_query",
+        "Run a read-only SQL query against the analytics warehouse and return the rows as a table. The query runs under a role that cannot write, so any statement other than SELECT or WITH is rejected before it reaches the warehouse. Results are capped at ten thousand rows and queries are cancelled after sixty seconds, which keeps an agent from holding a warehouse slot open while it reasons about what to ask next.",
+      ],
+      ["explain_query", "Read the plan a query would run under."],
+      ["list_saved_queries", "List the queries the team has saved."],
+      ["get_saved_query", "Read a saved query and its parameters."],
+      ["run_saved_query", "Run a saved query with the given parameters."],
+      ["get_column_stats", "Read the distribution of a column."],
+      ["list_query_history", "List the queries run against a table."],
     ],
   },
   {
@@ -320,8 +340,24 @@ const TOOL_SEEDS: {
     iconName: "ActionCubeIcon",
     operations: [
       ["get_customer", "Read a customer by id."],
+      ["search_customers", "Search customers by name, email or domain."],
+      ["get_subscription", "Read the plan and seats a customer is on."],
       ["list_invoices", "List the invoices of a customer."],
-      ["refund", "Issue a refund on an invoice."],
+      ["get_invoice", "Read an invoice and its line items."],
+      [
+        "refund",
+        "Issue a refund against a paid invoice, in full or for a partial amount. The refund goes back to the original payment method and cannot be reversed once the processor has accepted it, so the agent has to pass the invoice id, the amount in cents and a reason code that the finance team reads in the monthly reconciliation. Refunds above five thousand euros are rejected and have to go through the finance approval flow instead.",
+      ],
+      [
+        "void_invoice",
+        "Void an invoice that has not been paid yet, which removes it from the customer's balance and from the dunning sequence. Voiding is preferred over deleting: the invoice stays on the account for auditing, marked as void with the actor who voided it. An invoice that has already been paid cannot be voided and needs a refund instead.",
+      ],
+      ["issue_credit_note", "Credit a customer against a future invoice."],
+      ["update_billing_address", "Change the address invoices are cut to."],
+      ["list_payment_methods", "List the cards and mandates on file."],
+      ["delete_payment_method", "Remove a card or mandate from the account."],
+      ["send_invoice_email", "Email an invoice to the billing contact."],
+      ["get_audit_trail", "Read what changed on an account, and by whom."],
     ],
   },
   {
@@ -334,7 +370,14 @@ const TOOL_SEEDS: {
     iconName: "ActionServerIcon",
     operations: [
       ["list_runbooks", "List the runbooks available."],
-      ["run_runbook", "Execute a runbook end to end."],
+      ["get_runbook", "Read the steps a runbook would run."],
+      [
+        "run_runbook",
+        "Execute a runbook end to end against the environment it targets, streaming each step's output back as it goes. Steps run in order and the run stops at the first failure, leaving the environment part-way through, so a runbook that restarts services or rotates credentials should only be run by someone who can finish the job by hand if it stops. Every run is recorded with its actor, its arguments and its output.",
+      ],
+      ["restart_service", "Restart a service in a given environment."],
+      ["rotate_credentials", "Rotate the credentials of a service account."],
+      ["get_run_log", "Read the output of a past runbook run."],
     ],
   },
 ];
@@ -343,13 +386,15 @@ const TOOL_SEEDS: {
 // seed puts the ones that write behind a question.
 function defaultStakeFor(operationName: string): ToolStake {
   if (
-    /^(create|update|post|add|transition|refund|run_runbook)/.test(
+    /^(create|update|post|add|transition|refund|void|issue|send|delete|restart|rotate|run_runbook)/.test(
       operationName
     )
   ) {
     return "high";
   }
-  if (/^(run_query|run_soql|browse)/.test(operationName)) {
+  if (
+    /^(run_query|run_saved_query|run_soql|browse|explain)/.test(operationName)
+  ) {
     return "medium";
   }
   return "never_ask";

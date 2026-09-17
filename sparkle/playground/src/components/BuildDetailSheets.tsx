@@ -2,14 +2,12 @@ import {
   ActionIcons,
   Avatar,
   Button,
-  Card,
+  Check,
   Checkbox,
   Chip,
   ClipboardCheck,
   CloudArrowLeftRight,
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+  cn,
   ContentMessage,
   DataTable,
   Dialog,
@@ -22,12 +20,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   Edit04,
   Heart,
   IconPicker,
   InfoCircle,
   Input,
+  Label,
+  ListGroup,
+  ListItem,
   LogIn01,
   MessageCircle01,
   PopoverContent,
@@ -55,7 +57,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type { ComponentType, ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {
   AGENT_SCOPE_INFO,
@@ -75,6 +77,7 @@ import {
 } from "../data/build";
 import { getCompanySpaceById, mockCompanySpaces } from "../data/companySpaces";
 import { getUserById } from "../data/users";
+import { BulkSelectionBar } from "./BulkSelectionBar";
 
 // The sheets behind the three Build tables. Each one opens on a row and reads
 // the item back: nothing here saves, so every button is an affordance and the
@@ -673,16 +676,52 @@ export function ToolDetailsSheet({ toolId, onClose }: ToolDetailsSheetProps) {
   const [tab, setTab] = useState("general");
   const [form, setForm] = useState<ToolForm>(() => formFor(tool));
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [stakesSearch, setStakesSearch] = useState("");
+  const [selectedOperations, setSelectedOperations] = useState<string[]>([]);
 
   // The form is seeded from the tool each time one opens, so cancelling is
   // nothing more than closing.
   useEffect(() => {
     setTab("general");
     setForm(formFor(tool));
+    setStakesSearch("");
   }, [toolId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // An operation that drops out of view drops out of the selection with it, so
+  // the bar never acts on something nobody can see.
+  useEffect(() => {
+    setSelectedOperations([]);
+  }, [toolId, tab, stakesSearch]);
 
   const patch = (changes: Partial<ToolForm>) =>
     setForm((previous) => ({ ...previous, ...changes }));
+
+  const visibleOperations = useMemo(() => {
+    const needle = stakesSearch.trim().toLowerCase();
+
+    return form.operations.filter(
+      (operation) =>
+        needle === "" ||
+        operation.name.toLowerCase().includes(needle) ||
+        operation.description.toLowerCase().includes(needle)
+    );
+  }, [form.operations, stakesSearch]);
+
+  const applyToSelectedOperations = (
+    patchOperation: Partial<ToolOperation>
+  ) => {
+    const names = new Set(selectedOperations);
+
+    setForm((previous) => ({
+      ...previous,
+      operations: previous.operations.map((operation) =>
+        names.has(operation.name)
+          ? { ...operation, ...patchOperation }
+          : operation
+      ),
+    }));
+    setSelectedOperations([]);
+  };
 
   return (
     <Sheet open={tool != null} onOpenChange={(open) => !open && onClose()}>
@@ -737,6 +776,11 @@ export function ToolDetailsSheet({ toolId, onClose }: ToolDetailsSheetProps) {
                 >
                   <ToolStakesTab
                     operations={form.operations}
+                    visibleOperations={visibleOperations}
+                    search={stakesSearch}
+                    onSearchChange={setStakesSearch}
+                    selectedNames={selectedOperations}
+                    onSelectedNamesChange={setSelectedOperations}
                     onOperationsChange={(operations) => patch({ operations })}
                   />
                 </TabsContent>
@@ -754,6 +798,18 @@ export function ToolDetailsSheet({ toolId, onClose }: ToolDetailsSheetProps) {
                 </TabsContent>
               </Tabs>
             </SheetContainer>
+            {/* Outside the container: the body scrolls inside a ScrollArea,
+                where nothing can stick to the bottom of the sheet. */}
+            {tab === "stakes" && (
+              <div className="px-5">
+                <ToolStakesBatchBar
+                  selectedNames={selectedOperations}
+                  visibleCount={visibleOperations.length}
+                  onClear={() => setSelectedOperations([])}
+                  onApply={applyToSelectedOperations}
+                />
+              </div>
+            )}
             <SheetFooter
               leftButtonProps={{ label: "Cancel", variant: "outline" }}
               rightButtonProps={{ label: "Save", variant: "highlight" }}
@@ -1007,13 +1063,26 @@ function ToolAuthSections({
 
 /**
  * Every operation the server exposes, each one switchable and carrying the
- * stake level that decides whether Dust asks before running it.
+ * stake level that decides whether Dust asks before running it. A real server
+ * declares dozens, hence the search and the selection: the batch bar itself
+ * lives up in the sheet, which is the only place it can float over the footer.
  */
 function ToolStakesTab({
   operations,
+  visibleOperations,
+  search,
+  onSearchChange,
+  selectedNames,
+  onSelectedNamesChange,
   onOperationsChange,
 }: {
   operations: ToolOperation[];
+  /** What the search leaves, and the only thing the list renders. */
+  visibleOperations: ToolOperation[];
+  search: string;
+  onSearchChange: (search: string) => void;
+  selectedNames: string[];
+  onSelectedNamesChange: (names: string[]) => void;
   onOperationsChange: (operations: ToolOperation[]) => void;
 }) {
   const update = (name: string, patch: Partial<ToolOperation>) =>
@@ -1021,13 +1090,27 @@ function ToolStakesTab({
       operations.map((op) => (op.name === name ? { ...op, ...patch } : op))
     );
 
-  const setAll = (patch: Partial<ToolOperation>) =>
-    onOperationsChange(operations.map((op) => ({ ...op, ...patch })));
+  const selected = new Set(selectedNames);
+
+  const toggleSelected = (name: string) =>
+    onSelectedNamesChange(
+      selected.has(name)
+        ? selectedNames.filter((selectedName) => selectedName !== name)
+        : [...selectedNames, name]
+    );
+
+  // "Select all" only ever reaches what the search left, which is also all the
+  // button has to check before it turns into "Deselect all".
+  const allVisibleSelected =
+    visibleOperations.length > 0 &&
+    visibleOperations.every((operation) => selected.has(operation.name));
 
   return (
     <>
-      <div className="heading-lg text-foreground">
-        Available Tools ({operations.length})
+      <div className="heading-base text-foreground">
+        {visibleOperations.length === operations.length
+          ? `${operations.length} tools available`
+          : `${visibleOperations.length} of ${operations.length} tools available`}
       </div>
 
       <ContentMessage
@@ -1055,109 +1138,236 @@ function ToolStakesTab({
         </ul>
       </ContentMessage>
 
-      {operations.length > 1 && (
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Batch actions:</span>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                label="Set all stakes to..."
-                isSelect
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {TOOL_STAKES.map((stake) => (
-                <DropdownMenuItem
-                  key={stake}
-                  label={TOOL_STAKE_LEVELS[stake].label}
-                  onClick={() => setAll({ stake })}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                label="Toggle all..."
-                isSelect
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                label="Enable all"
-                onClick={() => setAll({ enabled: true })}
-              />
-              <DropdownMenuItem
-                label="Disable all"
-                onClick={() => setAll({ enabled: false })}
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      )}
-
-      <div className="flex flex-col gap-4">
-        {operations.map((operation) => (
-          <div key={operation.name} className="flex flex-col gap-1 pb-2">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                checked={operation.enabled}
-                aria-label={
-                  operation.enabled
-                    ? `Disable ${operation.name}`
-                    : `Enable ${operation.name}`
-                }
-                onCheckedChange={(checked) =>
-                  update(operation.name, { enabled: checked === true })
-                }
-              />
-              <h4 className="heading-base grow text-foreground">
-                {operation.name}
-              </h4>
-            </div>
-            <Collapsible>
-              <CollapsibleTrigger label="Description" variant="secondary" />
-              <CollapsibleContent>
-                <p className="break-words pt-1 text-sm text-muted-foreground">
-                  {operation.description}
-                </p>
-              </CollapsibleContent>
-            </Collapsible>
-            {operation.enabled && (
-              <Card variant="primary" className="flex-col">
-                <div className="heading-sm text-muted-foreground">
-                  Tool stake setting
-                </div>
-                <div className="flex justify-end">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        label={TOOL_STAKE_LEVELS[operation.stake].longLabel}
-                        isSelect
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {TOOL_STAKES.map((stake) => (
-                        <DropdownMenuItem
-                          key={stake}
-                          label={TOOL_STAKE_LEVELS[stake].longLabel}
-                          onClick={() => update(operation.name, { stake })}
-                        />
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </Card>
-            )}
-          </div>
-        ))}
+      <div className="flex items-center gap-2">
+        <SearchInput
+          name="operation-filter"
+          placeholder="Search tools"
+          className="grow"
+          value={search}
+          onChange={onSearchChange}
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          label={allVisibleSelected ? "Deselect all" : "Select all"}
+          disabled={visibleOperations.length === 0}
+          onClick={() =>
+            onSelectedNamesChange(
+              allVisibleSelected
+                ? []
+                : visibleOperations.map((operation) => operation.name)
+            )
+          }
+        />
       </div>
+
+      {visibleOperations.length === 0 ? (
+        <EmptySectionNote>No tool matches that search.</EmptySectionNote>
+      ) : (
+        <ListGroup>
+          {visibleOperations.map((operation) => (
+            <ToolOperationRow
+              key={operation.name}
+              operation={operation}
+              isSelected={selected.has(operation.name)}
+              onSelectedChange={() => toggleSelected(operation.name)}
+              onPatch={(patch) => update(operation.name, patch)}
+            />
+          ))}
+        </ListGroup>
+      )}
     </>
+  );
+}
+
+/**
+ * One operation: ticked to put it in the batch, switched off to take it away
+ * from every agent, and carrying both its stake and the description the server
+ * declared for it. Turning it off leaves the stake visible but out of reach,
+ * since a disabled operation has nothing to ask about.
+ */
+function ToolOperationRow({
+  operation,
+  isSelected,
+  onSelectedChange,
+  onPatch,
+}: {
+  operation: ToolOperation;
+  isSelected: boolean;
+  onSelectedChange: () => void;
+  onPatch: (patch: Partial<ToolOperation>) => void;
+}) {
+  const checkboxId = `select-operation-${operation.name}`;
+
+  return (
+    <ListItem className="flex-col gap-2">
+      <div className="flex w-full items-center gap-2">
+        {/* The label makes the name a hit target for the checkbox too. */}
+        <Label
+          htmlFor={checkboxId}
+          className="flex grow cursor-pointer items-center gap-2"
+        >
+          <Checkbox
+            id={checkboxId}
+            checked={isSelected}
+            aria-label={
+              isSelected
+                ? `Deselect ${operation.name}`
+                : `Select ${operation.name}`
+            }
+            onCheckedChange={onSelectedChange}
+          />
+          <span className="heading-base text-foreground">{operation.name}</span>
+        </Label>
+        <SliderToggle
+          selected={operation.enabled}
+          onClick={() => onPatch({ enabled: !operation.enabled })}
+        />
+      </div>
+
+      {/* pl-6 clears the checkbox and its gap, so everything below the name
+          lines up with the name rather than with the tick. */}
+      <ClampedDescription className="pl-6">
+        {operation.description}
+      </ClampedDescription>
+
+      <div className="flex w-full items-center justify-between gap-2 pl-6">
+        <Label>Stake</Label>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!operation.enabled}
+              label={TOOL_STAKE_LEVELS[operation.stake].longLabel}
+              isSelect
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {TOOL_STAKES.map((stake) => (
+              <DropdownMenuItem
+                key={stake}
+                label={TOOL_STAKE_LEVELS[stake].longLabel}
+                onClick={() => onPatch({ stake })}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </ListItem>
+  );
+}
+
+/**
+ * The description a server declares for one of its tools, kept to two lines.
+ * These run to a paragraph in the wild, and thirty paragraphs would bury the
+ * list they are meant to explain.
+ */
+function ClampedDescription({
+  children,
+  className,
+}: {
+  children: string;
+  className?: string;
+}) {
+  const textRef = useRef<HTMLParagraphElement>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+
+  // Measured while clamped, so the toggle only shows up on text that really
+  // runs past two lines. Expanding lifts the clamp and would measure equal,
+  // which is why `isExpanded` is deliberately not a dependency.
+  useLayoutEffect(() => {
+    const element = textRef.current;
+    if (element) {
+      setOverflows(element.scrollHeight > element.clientHeight + 1);
+    }
+  }, [children]);
+
+  return (
+    <div className={cn("flex flex-col items-start gap-1", className)}>
+      <p
+        ref={textRef}
+        className={cn(
+          "break-words text-sm italic text-muted-foreground",
+          !isExpanded && "line-clamp-2"
+        )}
+      >
+        {children}
+      </p>
+      {overflows && (
+        <Button
+          size="xs"
+          variant="ghost-secondary"
+          label={isExpanded ? "Show less" : "Show more"}
+          onClick={() => setIsExpanded(!isExpanded)}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * The batch actions for the operation list, in the same bar the Agents and
+ * Skills tables raise once rows are ticked. Nothing here is destructive and
+ * the footer's Cancel still throws the lot away, so none of it asks twice.
+ */
+function ToolStakesBatchBar({
+  selectedNames,
+  visibleCount,
+  onClear,
+  onApply,
+}: {
+  selectedNames: string[];
+  visibleCount: number;
+  onClear: () => void;
+  onApply: (patch: Partial<ToolOperation>) => void;
+}) {
+  return (
+    <BulkSelectionBar
+      selectedCount={selectedNames.length}
+      totalCount={visibleCount}
+      itemLabel="tool"
+      // The list carries its own "Select all" next to the search, so the bar
+      // does not offer a second one.
+      canSelectAll={false}
+      onSelectAll={() => {}}
+      onClear={onClear}
+    >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="primary" isSelect label="Set stake" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel label="Set stake" />
+          {TOOL_STAKES.map((stake) => (
+            <DropdownMenuItem
+              key={stake}
+              label={TOOL_STAKE_LEVELS[stake].longLabel}
+              onClick={() => onApply({ stake })}
+            />
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="primary" isSelect label="State" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel label="State" />
+          <DropdownMenuItem
+            icon={Check}
+            label="Enable"
+            onClick={() => onApply({ enabled: true })}
+          />
+          <DropdownMenuItem
+            icon={XClose}
+            label="Disable"
+            onClick={() => onApply({ enabled: false })}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </BulkSelectionBar>
   );
 }
 
