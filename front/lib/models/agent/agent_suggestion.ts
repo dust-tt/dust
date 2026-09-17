@@ -8,6 +8,7 @@ import {
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AgentSuggestionKind,
+  AgentSuggestionSource,
   AgentSuggestionState,
   SuggestionPayload,
 } from "@app/types/suggestions/agent_suggestion";
@@ -24,6 +25,7 @@ export class AgentSuggestionModel extends WorkspaceAwareModel<AgentSuggestionMod
   declare analysis: string | null;
 
   declare state: AgentSuggestionState;
+  declare source: CreationOptional<AgentSuggestionSource>;
   declare conversationId: ForeignKey<ConversationModel["id"]> | null;
 
   declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
@@ -69,6 +71,14 @@ AgentSuggestionModel.init(
       allowNull: false,
       comment:
         "Current state of the suggestion (e.g., pending, accepted, rejected...)",
+    },
+    source: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "sidekick",
+      comment:
+        "Provenance of the suggestion (e.g., sidekick, conversational). Defaults to " +
+        "'sidekick', the only source until callers started passing it explicitly.",
     },
     conversationId: {
       type: DataTypes.BIGINT,
