@@ -90,18 +90,14 @@ const {
 });
 
 export async function refreshSearchUsageWorkflow(): Promise<void> {
-  let afterWorkspaceModelId = 0;
-  while (true) {
-    const workspaces = await listSearchUsageWorkspacesActivity(
-      afterWorkspaceModelId
-    );
-    if (workspaces.length === 0) {
-      return;
-    }
+  let workspaces = await listSearchUsageWorkspacesActivity(0);
+  while (workspaces.length > 0) {
     for (const { workspaceId } of workspaces) {
       await refreshWorkspaceSearchUsageActivity({ workspaceId });
     }
-    afterWorkspaceModelId = workspaces[workspaces.length - 1].workspaceModelId;
+    workspaces = await listSearchUsageWorkspacesActivity(
+      workspaces[workspaces.length - 1].workspaceModelId
+    );
   }
 }
 
