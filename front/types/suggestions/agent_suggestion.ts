@@ -94,7 +94,7 @@ const CreateSuggestionSchema = z.object({
     .string()
     .trim()
     .min(1)
-    .describe("The agent's instructions, in markdown."),
+    .describe("The agent's instructions, as HTML."),
 });
 
 const KNOWLEDGE_SUGGESTION_METHODS = ["search", "query_tables"] as const;

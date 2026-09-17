@@ -108,7 +108,7 @@ export const SUGGEST_AGENT_CREATION_INPUT_SCHEMA = z.object({
     .string()
     .trim()
     .min(1)
-    .describe("The agent's instructions, in markdown."),
+    .describe("The agent's instructions, as HTML."),
 });
 
 export type SuggestAgentCreationArgs = z.infer<

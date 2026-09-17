@@ -1,8 +1,9 @@
 /**
- * Markdown directive plugin for sidekick suggestions.
+ * Markdown directive plugin for agent suggestions.
  *
  * This module provides remark-directive plugins for parsing and rendering
- * suggestion directives in markdown content, enabling the :agent_suggestion[]{sId=xxx kind=yyy} syntax.
+ * suggestion directives in markdown content, enabling the
+ * :agent_suggestion[]{sId=xxx kind=yyy agentId=zzz} syntax.
  */
 
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
@@ -20,9 +21,9 @@ import { useEffect } from "react";
 import { SKIP, visit } from "unist-util-visit";
 
 /**
- * Remark directive plugin for parsing sidekick suggestion directives.
+ * Remark directive plugin for parsing agent suggestion directives.
  *
- * Transforms `:agent_suggestion[]{sId=xxx kind=yyy}` into a custom HTML element
+ * Transforms `:agent_suggestion[]{sId=xxx kind=yyy agentId=zzz}` into a custom HTML element
  * that can be rendered by the suggestion card component.
  */
 export function sidekickSuggestionDirective() {
