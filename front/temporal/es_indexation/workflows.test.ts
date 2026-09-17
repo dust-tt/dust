@@ -5,7 +5,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  refreshSearchUsageActivity: vi.fn(),
+  listWorkspaceIdsActivity: vi.fn(),
   refreshWorkspaceSearchUsageActivity: vi.fn(),
 }));
 
@@ -17,15 +17,51 @@ vi.mock("@temporalio/workflow", () => ({
 describe("refreshSearchUsageWorkflow", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mocks.refreshSearchUsageActivity.mockResolvedValue(undefined);
+    mocks.listWorkspaceIdsActivity.mockResolvedValue([
+      "workspace-1",
+      "workspace-2",
+    ]);
     mocks.refreshWorkspaceSearchUsageActivity.mockResolvedValue(undefined);
   });
 
-  it("refreshes all workspaces through one activity", async () => {
+  it("refreshes each workspace sequentially", async () => {
+    const events: string[] = [];
+    mocks.refreshWorkspaceSearchUsageActivity.mockImplementation(
+      async ({ workspaceId }) => {
+        events.push(`start:${workspaceId}`);
+        await Promise.resolve();
+        events.push(`end:${workspaceId}`);
+      }
+    );
+
     await refreshSearchUsageWorkflow();
 
-    expect(mocks.refreshSearchUsageActivity).toHaveBeenCalledExactlyOnceWith();
+    expect(mocks.listWorkspaceIdsActivity).toHaveBeenCalledExactlyOnceWith();
+    expect(events).toEqual([
+      "start:workspace-1",
+      "end:workspace-1",
+      "start:workspace-2",
+      "end:workspace-2",
+    ]);
+  });
+
+  it("does nothing when there are no workspaces", async () => {
+    mocks.listWorkspaceIdsActivity.mockResolvedValue([]);
+
+    await refreshSearchUsageWorkflow();
+
     expect(mocks.refreshWorkspaceSearchUsageActivity).not.toHaveBeenCalled();
+  });
+
+  it("stops when a workspace refresh fails", async () => {
+    const error = new Error("Usage refresh failed");
+    mocks.refreshWorkspaceSearchUsageActivity.mockRejectedValue(error);
+
+    await expect(refreshSearchUsageWorkflow()).rejects.toBe(error);
+
+    expect(
+      mocks.refreshWorkspaceSearchUsageActivity
+    ).toHaveBeenCalledExactlyOnceWith({ workspaceId: "workspace-1" });
   });
 
   it("refreshes a selected workspace", async () => {
@@ -36,6 +72,6 @@ describe("refreshSearchUsageWorkflow", () => {
     ).toHaveBeenCalledExactlyOnceWith({
       workspaceId: "workspace-4",
     });
-    expect(mocks.refreshSearchUsageActivity).not.toHaveBeenCalled();
+    expect(mocks.listWorkspaceIdsActivity).not.toHaveBeenCalled();
   });
 });
