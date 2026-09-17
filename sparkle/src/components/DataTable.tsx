@@ -87,19 +87,10 @@ const DENSITY_ROW_HEIGHT_CLASS: Record<DataTableDensity, string> = {
   relaxed: "h-16",
 };
 
-// Header rows scale with density too (eBay keeps header and body rows the
-// same height; we keep the header one step shorter so it reads as a header).
-export const DATA_TABLE_HEADER_HEIGHT_PX: Record<DataTableDensity, number> = {
-  compact: 36,
-  default: 40,
-  relaxed: 48,
-};
+// Header rows match body rows 1:1, like eBay's table.
+export const DATA_TABLE_HEADER_HEIGHT_PX = DATA_TABLE_ROW_HEIGHT_PX;
 
-const DENSITY_HEADER_HEIGHT_CLASS: Record<DataTableDensity, string> = {
-  compact: "h-9",
-  default: "h-10",
-  relaxed: "h-12",
-};
+const DENSITY_HEADER_HEIGHT_CLASS = DENSITY_ROW_HEIGHT_CLASS;
 
 // Column minimum when the table scrolls horizontally, so columns do not
 // collapse to unreadable widths. Matches the eBay table spec (124px).
