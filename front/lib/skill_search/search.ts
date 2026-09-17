@@ -1,9 +1,15 @@
 import { SKILL_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
+import {
+  buildSkillSearchQuery,
+  getSkillSearchReadableSpaceIds,
+} from "@app/lib/skill_search/query";
 import { buildSkillDefaultSort } from "@app/lib/skill_search/ranking";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
-import type { SkillSearchFilters } from "@app/types/api/skills";
+import type {
+  SkillSearchFilters,
+  SkillSearchPermissionFiltering,
+} from "@app/types/api/skills";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
@@ -17,7 +23,7 @@ export {
  * @cc [owner:aubin-tchoi,label:security;performance] indexed-skill-search-listings
  * Return only workspace-scoped indexed metadata using the caller's hydrated grants, with no
  * database reads. Permission-bearing document changes are eventually consistent; full-skill
- * access remains separately authorized. Unreadable listings must not be returned.
+ * access remains separately authorized. Only admins may retain unreadable listings.
  * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
  * Preserve Elasticsearch hit order without exposing scores in skill listings.
  * Request _source and omit hits without source documents.
@@ -28,17 +34,25 @@ export async function searchSkills(
     searchTerm,
     filters,
     limit,
+    permissionFiltering = "strict",
   }: {
     searchTerm: string;
     filters?: SkillSearchFilters;
     limit: number;
+    permissionFiltering?: SkillSearchPermissionFiltering;
   }
 ) {
+  const query = buildSkillSearchQuery(auth, {
+    searchTerm,
+    filters,
+    permissionFiltering,
+  });
+
   const result = await withEs((client) =>
     client.search<SkillSearchDocument>({
       index: SKILL_SEARCH_ALIAS_NAME,
       _source: true,
-      query: buildSkillSearchQuery(auth, { searchTerm, filters }),
+      query,
       size: limit,
       sort: buildSkillDefaultSort(),
     })
@@ -48,10 +62,18 @@ export async function searchSkills(
   }
 
   const { hits } = result.value.hits;
+  const spaceIds =
+    permissionFiltering === "redact_unreadable"
+      ? getSkillSearchReadableSpaceIds(auth)
+      : null;
+  const readableSpaceIds = spaceIds === null ? null : new Set(spaceIds);
 
   return new Ok(
-    removeNulls(hits.map((hit) => hit._source)).map((document) =>
-      toSkillListItem(document)
-    )
+    removeNulls(hits.map((hit) => hit._source)).map((document) => ({
+      ...toSkillListItem(document),
+      canRead:
+        readableSpaceIds === null ||
+        document.requested_space_ids.every((id) => readableSpaceIds.has(id)),
+    }))
   );
 }
