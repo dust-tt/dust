@@ -189,6 +189,24 @@ export function isLiveLogoListRegion(region: LogoListRegion): boolean {
   return LIVE_LOGO_LIST_REGIONS.includes(region);
 }
 
+// A region that borrows another region's list until it has one of its own.
+//
+// EU is the only case today: its own list isn't built yet, and the alternative
+// while it waits is the hardcoded fallback — which, for the homepage bar, is
+// the *US* lineup (`fallbackHomeTrustedGeo` returns "default" for EU). Serving
+// EU-27 the French list is closer to what those visitors should see than a
+// homepage full of US companies, so EU points at FR for now.
+//
+// This is a stopgap with a clear exit: when EU's own list is ready, add "EU" to
+// LIVE_LOGO_LIST_REGIONS and the published list wins on its own — `useLogoBar`
+// only consults the alias when the region itself has no list. The entry below
+// is then inert and should be deleted.
+export const LOGO_LIST_REGION_ALIASES: Partial<
+  Record<LogoListRegion, LogoListRegion>
+> = {
+  EU: "FR",
+};
+
 export function toLogoListRegion(
   countryCode: string | null | undefined
 ): LogoListRegion {
