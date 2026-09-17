@@ -143,8 +143,8 @@ const codeStyle = {
   },
 };
 
-// Mirrors `codeStyle.hljs` (padding, font-size, colors) so while we are loading 
-// syntax hightligter we can reserve the similar height 
+// Mirrors `codeStyle.hljs` (padding, font-size, colors) so while we are loading
+// syntax hightligter we can reserve the similar height
 const codeBlockFallbackStyle: React.CSSProperties = {
   display: "block",
   overflowX: "auto",
