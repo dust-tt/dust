@@ -537,6 +537,10 @@
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/PrivateRichMentionWithStatus'
+ *         pausedAtCreditSpendCheckpoint:
+ *           type: boolean
+ *           nullable: true
+ *           description: Set while the loop waits for the user to continue past the credit spend checkpoint.
  *         completionDurationMs:
  *           type: integer
  *           nullable: true
@@ -666,6 +670,10 @@
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/PrivateRichMentionWithStatus'
+ *         pausedAtCreditSpendCheckpoint:
+ *           type: boolean
+ *           nullable: true
+ *           description: Set while the loop waits for the user to continue past the credit spend checkpoint.
  *         completionDurationMs:
  *           type: integer
  *           nullable: true
