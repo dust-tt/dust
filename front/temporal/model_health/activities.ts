@@ -40,10 +40,9 @@ export async function logModelHealthProbeFailedActivity({
   degradedForMs: number;
   persistDegradation: boolean;
 }): Promise<void> {
-  const expiresAt = persistDegradation
-    ? new Date(Date.now() + DEGRADATION_LEASE_MS)
-    : undefined;
-  if (expiresAt) {
+  let expiresAt: Date | undefined;
+  if (persistDegradation) {
+    expiresAt = new Date(Date.now() + DEGRADATION_LEASE_MS);
     await ModelDegradationResource.updateDegradedEndpoints([
       { ...endpoint, degraded: true, expiresAt },
     ]);

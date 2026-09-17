@@ -66,10 +66,9 @@ export async function evaluateEndpoint(
     return { outcome: "launch_failed" };
   }
 
-  const expiresAt = persistDegradation
-    ? new Date(now.getTime() + DEGRADATION_LEASE_MS)
-    : undefined;
-  if (expiresAt) {
+  let expiresAt: Date | undefined;
+  if (persistDegradation) {
+    expiresAt = new Date(now.getTime() + DEGRADATION_LEASE_MS);
     await ModelDegradationResource.updateDegradedEndpoints([
       { ...endpoint, degraded: true, expiresAt },
     ]);
