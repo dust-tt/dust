@@ -21,7 +21,6 @@ export type SkillSearchResult = SkillListItemType & {
 export interface SkillSearchFilters {
   // Omitted means active only. Suggested skills are never searchable.
   status?: ("active" | "archived")[];
-  spaceIds?: string[];
   toolIds?: string[];
   editedByMe?: boolean;
   availability?: SkillAvailability[];

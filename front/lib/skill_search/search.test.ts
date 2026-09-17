@@ -146,7 +146,6 @@ describe("custom skill search", () => {
     const query = prepareSkillSearchQuery(auth, "", {
       filters: {
         toolIds: ["view-2", "view-1", "view-2"],
-        spaceIds: ["space-1"],
         availability: ["users_and_agents"],
         editedByMe: isDefault,
         isDefault,
@@ -158,7 +157,6 @@ describe("custom skill search", () => {
       expect.arrayContaining([
         ...[base.bool?.filter].flat(),
         { terms: { mcp_server_view_ids: ["view-1", "view-2"] } },
-        { terms: { requested_space_ids: ["space-1"] } },
         { terms: { availability: ["users_and_agents"] } },
         isDefault ? editor : { bool: { must_not: [editor] } },
         isDefault ? defaultFilter : { bool: { must_not: [defaultFilter] } },
