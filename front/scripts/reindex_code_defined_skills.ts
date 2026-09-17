@@ -65,7 +65,6 @@ makeScript(
           },
           document,
         ]),
-        refresh: "wait_for",
       });
 
       if (result.errors) {
@@ -85,7 +84,6 @@ makeScript(
           must_not: [{ terms: { skill_id: skillIds } }],
         },
       },
-      refresh: true,
     });
 
     if (deleted.timed_out || deleted.failures?.length) {
@@ -96,7 +94,7 @@ makeScript(
 
     logger.info(
       { indexed: documents.length, deleted: deleted.deleted },
-      "Code-defined skill search index refreshed"
+      "Code-defined skill search index updated"
     );
   }
 );
