@@ -60,7 +60,7 @@ describe("SkillResource", () => {
       const skill = await SkillFactory.create(testContext.authenticator);
       // Keys have no editor-group assignment mechanism, so even the least-privileged key
       // role ("user") must be allowed here — there is no role distinction left to gate on.
-      const key = await KeyFactory.readOnly(testContext.globalGroup);
+      const key = await KeyFactory.regular(testContext.globalGroup);
 
       const auth = await Authenticator.fromKey(key, testContext.workspace.sId);
 
@@ -2368,7 +2368,7 @@ describe("SkillResource", () => {
       const { skill } = await createRestrictedSkill();
       const builder = await UserFactory.basic();
       await MembershipFactory.associate(testContext.workspace, builder, {
-        role: "builder",
+        role: "user",
       });
       const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
         builder.sId,

@@ -8,7 +8,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
-async function setupTest({ role }: { role: "user" | "builder" | "admin" }) {
+async function setupTest({ role }: { role: "user" | "admin" }) {
   const { workspace, key } = await createPublicApiMockRequest({ role });
   await SpaceFactory.defaults(
     await Authenticator.internalAdminForWorkspace(workspace.sId)

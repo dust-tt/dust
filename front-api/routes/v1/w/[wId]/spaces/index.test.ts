@@ -25,7 +25,7 @@ describe("GET /api/v1/w/:wId/spaces", () => {
     const { workspace, globalGroup, key } = await createPublicApiMockRequest();
 
     const globalSpace = await SpaceFactory.global(workspace);
-    await SpaceFactory.system(workspace); // Not returned: public API keys are builders, not admins.
+    await SpaceFactory.system(workspace); // Not returned: this public API key has the user role, not admin.
     const regularSpace1 = await SpaceFactory.regular(workspace);
     const regularSpace2 = await SpaceFactory.regular(workspace);
     await SpaceFactory.regular(workspace); // Distractor: not associated with the global group.

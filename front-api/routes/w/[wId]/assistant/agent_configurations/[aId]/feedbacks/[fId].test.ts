@@ -107,8 +107,8 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/feedbacks/:fId",
       method: "PATCH",
     });
 
-    // The agent is owned by a different builder, so the request user is not an
-    // editor even though they have the builder role.
+    // The agent is owned by a different user, so the request user is not an
+    // editor.
     const agentOwner: UserResource = await UserFactory.basic();
     await MembershipFactory.associate(workspace, agentOwner, {
       role: "user",

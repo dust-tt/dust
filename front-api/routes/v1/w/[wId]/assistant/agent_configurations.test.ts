@@ -93,7 +93,6 @@ describe.each([
 ])("GET /api/v1/w/[wId]/assistant/agent_configurations (grants: %s)", (grants) => {
   it.each([
     "admin",
-    "builder",
     "user",
   ] as const)("reports edit permissions for a %s key", async (role) => {
     const { workspace, key } = await createPublicApiMockRequest({ role });

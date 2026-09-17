@@ -170,7 +170,7 @@ describe("POST /api/w/:wId/invitations", () => {
     expect(data.every((r: { success: boolean }) => r.success)).toBe(true);
   });
 
-  it("rejects an invitation with the deprecated builder role", async () => {
+  it("rejects an invitation with an unknown role", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -179,9 +179,7 @@ describe("POST /api/w/:wId/invitations", () => {
     const response = await honoApp.request(invitationsUrl(workspace.sId), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify([
-        { email: "new-builder@example.com", role: "builder" },
-      ]),
+      body: JSON.stringify([{ email: "new-user@example.com", role: "owner" }]),
     });
 
     expect(response.status).toBe(400);

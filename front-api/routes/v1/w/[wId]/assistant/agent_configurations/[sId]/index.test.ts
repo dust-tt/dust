@@ -34,7 +34,7 @@ afterEach(() => {
 });
 
 async function setupTest(
-  role: "admin" | "builder" | "user" = "admin",
+  role: "admin" | "user" = "admin",
   grants = false
 ) {
   const { workspace, key } = await createPublicApiMockRequest({ role });
@@ -186,7 +186,6 @@ describe.each([
 
   it.each([
     "admin",
-    "builder",
     "user",
   ] as const)("reports edit permissions for a %s key on a published agent", async (role) => {
     const { workspace, key, agentConfig } = await setupTest(role, grants);
@@ -211,7 +210,7 @@ describe.each([
 
   it.each([
     "admin",
-    "builder",
+    "user",
   ] as const)("only allows an admin key to access an unpublished agent (%s)", async (role) => {
     const { workspace, key, auth } = await setupTest(role, grants);
     const agent = await AgentConfigurationFactory.createTestAgent(auth, {
@@ -268,7 +267,7 @@ describe.each([
   });
 
   it("returns 404 for a retired global agent (e.g. gpt-4)", async () => {
-    const { workspace, key } = await setupTest("builder", grants);
+    const { workspace, key } = await setupTest("user", grants);
 
     const response = await getAgentConfiguration(workspace, key, "gpt-4");
 

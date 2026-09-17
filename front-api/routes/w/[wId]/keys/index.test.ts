@@ -87,13 +87,13 @@ describe("GET /api/w/:wId/keys — secret visibility", () => {
 });
 
 describe("POST /api/w/:wId/keys — role restrictions", () => {
-  it("rejects role: 'builder' — builder keys can no longer be created", async () => {
+  it("rejects a role outside user/admin", async () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
 
     const res = await honoApp.request(`/api/w/${workspace.sId}/keys`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "builder-key", role: "builder" }),
+      body: JSON.stringify({ name: "manager-key", role: "manager" }),
     });
     expect(res.status).toBe(400);
   });
