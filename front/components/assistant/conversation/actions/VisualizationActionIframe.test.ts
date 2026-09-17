@@ -191,6 +191,10 @@ describe("VisualizationActionIframe", () => {
     if (!iframe?.contentWindow) {
       throw new Error("Expected the visualization iframe to be mounted.");
     }
+    expect(iframe.allowFullscreen).toBe(true);
+    expect(iframe.getAttribute("sandbox")).toBe(
+      "allow-scripts allow-popups allow-popups-to-escape-sandbox"
+    );
     const postMessage = vi
       .spyOn(iframe.contentWindow, "postMessage")
       .mockImplementation(() => {});
