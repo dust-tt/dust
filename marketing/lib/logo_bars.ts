@@ -179,7 +179,7 @@ export const LOGO_LIST_REGIONS = ["US", "EU", "UK", "FR"] as const;
 // somebody hits Publish on an entry they were only using to test. To launch a
 // market, add it here; to hand it back, remove it and that region falls
 // straight back to its hardcoded lineup.
-export const LIVE_LOGO_LIST_REGIONS: readonly LogoListRegion[] = ["FR"];
+export const LIVE_LOGO_LIST_REGIONS: readonly LogoListRegion[] = ["FR", "UK"];
 
 export function isLiveLogoListRegion(region: LogoListRegion): boolean {
   return LIVE_LOGO_LIST_REGIONS.includes(region);
