@@ -117,17 +117,13 @@ function HydratingKnowledgeChip({
   );
 }
 
-interface KnowledgeNodeViewShellProps
-  extends Pick<NodeViewProps, "deleteNode" | "editor" | "node"> {
-  children: (item: KnowledgeItem, onRemove?: () => void) => React.ReactNode;
-}
-
-function KnowledgeNodeViewShell({
+export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
   deleteNode,
   editor,
   node,
-  children,
-}: KnowledgeNodeViewShellProps) {
+  updateAttributes,
+}) => {
+  const { workspace } = useAuth();
   const { selectedItems } = node.attrs as KnowledgeNodeAttributes;
 
   const handleRemove = useCallback(
@@ -151,29 +147,14 @@ function KnowledgeNodeViewShell({
     return null;
   }
 
-  const item = selectedItems[0];
-  const onRemove = editor.isEditable ? handleRemove : undefined;
-
   return (
     <NodeViewWrapper className="inline-flex align-middle" data-drag-handle="">
-      {children(item, onRemove)}
+      <HydratingKnowledgeChip
+        item={selectedItems[0]}
+        owner={workspace}
+        onRemove={editor.isEditable ? handleRemove : undefined}
+        updateAttributes={updateAttributes}
+      />
     </NodeViewWrapper>
-  );
-}
-
-export const KnowledgeNodeView: React.FC<NodeViewProps> = (props) => {
-  const { workspace } = useAuth();
-
-  return (
-    <KnowledgeNodeViewShell {...props}>
-      {(item, onRemove) => (
-        <HydratingKnowledgeChip
-          item={item}
-          owner={workspace}
-          onRemove={onRemove}
-          updateAttributes={props.updateAttributes}
-        />
-      )}
-    </KnowledgeNodeViewShell>
   );
 };
