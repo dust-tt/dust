@@ -125,7 +125,7 @@ makeScript(
         // Try relative to migrations directory
         const migrationsPath = path.resolve(
           __dirname,
-          "../lib/analytics/migrations",
+          "../lib/api/analytics/migrations",
           file
         );
         if (fs.existsSync(migrationsPath)) {

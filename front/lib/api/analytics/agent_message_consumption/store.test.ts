@@ -1,7 +1,7 @@
 import {
   upsertAgentMessageConsumptionAnalyticsDocuments,
   upsertVersionedShadowAgentMessageConsumptionAnalyticsDocuments,
-} from "@app/lib/analytics/agent_message_consumption/store";
+} from "@app/lib/api/analytics/agent_message_consumption/store";
 import {
   CONSUMPTION_ANALYTICS_ALIAS_NAME,
   CONSUMPTION_ANALYTICS_SHADOW_ALIAS_NAME,

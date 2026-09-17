@@ -1,5 +1,5 @@
-import { buildLlmConsumptionDocuments } from "@app/lib/analytics/agent_message_consumption/llm_documents";
-import { loadLegacySettledConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
+import { buildLlmConsumptionDocuments } from "@app/lib/api/analytics/agent_message_consumption/llm_documents";
+import { loadLegacySettledConsumptionAnalyticsInput } from "@app/lib/api/analytics/agent_message_consumption/load";
 import { buildLatestMessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
@@ -24,7 +24,7 @@ describe("buildLlmConsumptionDocuments", () => {
     });
     const conversation = await ConversationResource.fetchById(
       auth,
-      conversationType.sId
+      conversationType.sId,
     );
     if (!conversation) {
       throw new Error("Conversation was not created");
@@ -70,7 +70,7 @@ describe("buildLlmConsumptionDocuments", () => {
         runIds: [run.dustRunId],
         status: "succeeded",
       },
-      { where: { id: agentMessageModelId, workspaceId: workspace.id } }
+      { where: { id: agentMessageModelId, workspaceId: workspace.id } },
     );
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
@@ -121,7 +121,7 @@ describe("buildLlmConsumptionDocuments", () => {
     });
     if (allocationResult.isErr()) {
       throw new Error(
-        `Consumption allocation was not built: ${allocationResult.error.code}`
+        `Consumption allocation was not built: ${allocationResult.error.code}`,
       );
     }
     const allocation = allocationResult.value;

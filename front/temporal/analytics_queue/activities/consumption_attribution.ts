@@ -1,4 +1,4 @@
-import { indexAgentMessageConsumptionAnalytics } from "@app/lib/analytics/agent_message_consumption";
+import { indexAgentMessageConsumptionAnalytics } from "@app/lib/api/analytics/agent_message_consumption";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";

@@ -1,4 +1,4 @@
-import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
+import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/api/analytics/agent_message_consumption/store";
 import { listConsumptionFacetCatalog } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { normalizeOrigin } from "@app/lib/api/analytics/source_labels";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";

@@ -1,4 +1,4 @@
-import { indexAgentMessageConsumptionSnapshot } from "@app/lib/analytics/agent_message_consumption";
+import { indexAgentMessageConsumptionSnapshot } from "@app/lib/api/analytics/agent_message_consumption";
 import { billExecution } from "@app/lib/api/assistant/consumption/bill";
 import { emitAgentMessageUsageEvent } from "@app/lib/api/assistant/consumption/usage_event";
 import { recordAgentMessageCreditCounters } from "@app/lib/api/assistant/credit_counters";

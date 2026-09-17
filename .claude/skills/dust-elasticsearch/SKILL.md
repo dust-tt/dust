@@ -88,7 +88,7 @@ The general pattern is:
 
 - `front/lib/user_search/indices/`
 - `front/lib/user_search/index.ts`
-- `front/lib/analytics/indices/`
+- `front/lib/api/analytics/indices/`
 - `core/src/search_stores/indices/data_sources_nodes_4.*`
 
 ## Validation
