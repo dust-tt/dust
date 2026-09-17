@@ -11,7 +11,6 @@ import {
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getEditors } from "@app/lib/api/assistant/editors";
-import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -1068,11 +1067,14 @@ describe("cleanupAgentScopedResourcesForHardDeletion", () => {
       reason: "Daily wake-up",
     });
 
-    const favoriteResult = await setAgentUserFavorite({
-      auth: authenticator,
-      agentId: agent.sId,
-      userFavorite: true,
-    });
+    const favoriteResource = AgentResource.fromAgentConfiguration(
+      authenticator,
+      agent
+    );
+    const favoriteResult = await favoriteResource.setUserFavorite(
+      authenticator,
+      true
+    );
     expect(favoriteResult.isOk()).toBe(true);
 
     await cleanupAgentScopedResourcesForHardDeletion(authenticator, agent.sId);
