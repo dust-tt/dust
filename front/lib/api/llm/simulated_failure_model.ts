@@ -65,7 +65,7 @@ export async function seedSimulatedFailureModelHealthWindow(
   );
 
   await runOnRedisCache(
-    { origin: "simulated_failure_model" },
+    { origin: "model_health" },
     async (redis) => {
       const multi = redis.multi();
       for (const bucket of buckets) {
@@ -85,7 +85,7 @@ export async function clearSimulatedFailureModelHealthWindow(
   now: Date = new Date()
 ): Promise<void> {
   await runOnRedisCache(
-    { origin: "simulated_failure_model" },
+    { origin: "model_health" },
     async (redis) => {
       const multi = redis.multi();
       for (const bucket of windowMinuteBuckets(now)) {
@@ -98,7 +98,7 @@ export async function clearSimulatedFailureModelHealthWindow(
 
 async function seedTtlSeconds(now: Date): Promise<number | null> {
   return runOnRedisCache(
-    { origin: "simulated_failure_model" },
+    { origin: "model_health" },
     async (redis) => {
       let remaining: number | null = null;
       for (const bucket of windowMinuteBuckets(now)) {

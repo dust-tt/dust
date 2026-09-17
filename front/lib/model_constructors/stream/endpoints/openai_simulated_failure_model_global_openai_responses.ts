@@ -36,6 +36,9 @@ export class OpenAISimulatedFailureModelGlobalOpenAIResponsesStream extends Open
 
   protected readonly baseUrl = OPENAI_GLOBAL_BASE_URL;
 
+  // Mini rejects explicit breakpoints; they start at GPT-5.6.
+  promptCacheBreakpointFor = () => ({});
+
   override buildRequestPayload(
     payload: Payload,
     config: DelegateConfig
