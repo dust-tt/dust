@@ -1,8 +1,8 @@
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import type { CreditSpendCheckpointDecision } from "@app/lib/api/assistant/conversation/credit_spend_checkpoint_pause";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { formatCredits } from "@app/lib/client/credits";
-import { useValidateAction } from "@app/lib/swr/tool_actions";
+import { formatCreditValue } from "@app/lib/client/credits";
+import { useResolveCreditSpendCheckpoint } from "@app/lib/swr/tool_actions";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Avatar,
@@ -19,14 +19,9 @@ interface CreditSpendCheckpointPausedCardProps {
   conversationId: string;
   messageId: string;
   triggeringUser: UserType | null;
-  // The message's real, billed cost (LLM + tools, including sub-agents) as of the pause,
-  // computed by the same finalize activity that recorded it. Null until that finalize activity
-  // has run (briefly, right when the live event first arrives).
+  // The message's billed cost as of the pause, not the threshold it crossed. Null until the
+  // attribution has been persisted, briefly, right when the live event first arrives.
   creditsUsed: number | null;
-  reloadMessage: (params: {
-    conversationId: string;
-    messageId: string;
-  }) => Promise<void>;
 }
 
 export function CreditSpendCheckpointPausedCard({
@@ -35,15 +30,13 @@ export function CreditSpendCheckpointPausedCard({
   messageId,
   triggeringUser,
   creditsUsed,
-  reloadMessage,
 }: CreditSpendCheckpointPausedCardProps) {
   const { user } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submittingDecision, setSubmittingDecision] =
     useState<CreditSpendCheckpointDecision | null>(null);
-  const [resolved, setResolved] = useState(false);
 
-  const { validateAction } = useValidateAction({
+  const { resolveCreditSpendCheckpoint } = useResolveCreditSpendCheckpoint({
     owner,
     onError: setErrorMessage,
   });
@@ -53,25 +46,20 @@ export function CreditSpendCheckpointPausedCard({
     currentUserId: user?.sId,
   });
 
+  // On success the card stays in its submitting state until the stream reports the resolution
+  // and the parent unmounts it, so the buttons cannot be clicked twice.
   const handleDecision = async (decision: CreditSpendCheckpointDecision) => {
     setErrorMessage(null);
     setSubmittingDecision(decision);
-    const { success } = await validateAction({
-      contextType: "credit_spend_checkpoint",
+    const { success } = await resolveCreditSpendCheckpoint({
       conversationId,
       messageId,
       decision,
     });
-    setSubmittingDecision(null);
-    if (success) {
-      setResolved(true);
-      await reloadMessage({ conversationId, messageId });
+    if (!success) {
+      setSubmittingDecision(null);
     }
   };
-
-  if (resolved) {
-    return null;
-  }
 
   return (
     <Card
@@ -86,7 +74,7 @@ export function CreditSpendCheckpointPausedCard({
 
       <div className="text-base text-muted-foreground">
         {creditsUsed !== null
-          ? `This task has used ${formatCredits(creditsUsed)} credits so far and is paused. Continue running it?`
+          ? `This task has used ${formatCreditValue(creditsUsed)} so far and is paused. Continue running it?`
           : "This task is paused because it has used a lot of credits. Continue running it?"}
       </div>
 

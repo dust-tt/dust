@@ -864,15 +864,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return agentMessageRow?.agentMessage?.creditSpendCheckpointStatus ?? null;
   }
 
+  // Conditional on the message still running: a terminal status that landed in between wins.
   static async markAgentMessageCreditSpendCheckpointPaused(
     auth: Authenticator,
     { agentMessage }: { agentMessage: AgentMessageType }
-  ): Promise<void> {
+  ): Promise<{ applied: boolean }> {
     if (agentMessage.status !== "created") {
-      return;
+      return { applied: false };
     }
 
-    await AgentMessageModel.update(
+    const [updatedCount] = await AgentMessageModel.update(
       { creditSpendCheckpointStatus: "paused" },
       {
         where: {
@@ -882,6 +883,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       }
     );
+
+    return { applied: updatedCount > 0 };
   }
 
   // Conditional so concurrent resolutions of the same pause cannot both apply.

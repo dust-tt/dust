@@ -471,7 +471,7 @@ export function AgentMessage({
           case "tool_notification":
           case "tool_params":
           case "agent_context_pruned":
-          case "agent_credit_spend_checkpoint_reached":
+          case "agent_credit_spend_checkpoint_updated":
             break;
           default:
             assertNeverAndIgnore(eventPayload.data);
@@ -1276,7 +1276,6 @@ function AgentMessageContent({
             ? agentMessage.costCredits + (agentMessage.subAgentCostCredits ?? 0)
             : null
         }
-        reloadMessage={reloadMessage}
       />
     ) : null;
 

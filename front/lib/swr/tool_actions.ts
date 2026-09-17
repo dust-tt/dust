@@ -54,19 +54,10 @@ type ResolveAuthenticationRequest =
       outcome: ResolveAuthenticationOutcome;
     };
 
-type ValidateActionRequest =
-  | (ToolActionContext & {
-      actionId: string;
-      approved: MCPValidationOutputType;
-    })
-  // Not a tool call, but resolved through the same request flow: the loop is paused on the
-  // message until the user decides.
-  | {
-      contextType: "credit_spend_checkpoint";
-      conversationId: string;
-      messageId: string;
-      decision: CreditSpendCheckpointDecision;
-    };
+type ValidateActionRequest = ToolActionContext & {
+  actionId: string;
+  approved: MCPValidationOutputType;
+};
 
 interface ToolActionMutationRequest {
   url: string;
@@ -128,11 +119,6 @@ function getValidateActionRequest(
       return {
         url: `/api/w/${workspaceId}/sandbox-functions/${request.sandboxFunctionId}/invocations/${request.invocationId}/actions/${request.actionId}/validate-action`,
         body: { approved: request.approved },
-      };
-    case "credit_spend_checkpoint":
-      return {
-        url: `/api/w/${workspaceId}/assistant/conversations/${request.conversationId}/messages/${request.messageId}/credit-spend-checkpoint`,
-        body: { decision: request.decision },
       };
     default:
       assertNeverAndIgnore(request);
@@ -228,4 +214,53 @@ export function useValidateAction({ owner, onError }: UseValidateActionParams) {
   );
 
   return { validateAction, isValidating };
+}
+
+interface UseResolveCreditSpendCheckpointParams {
+  owner: LightWorkspaceType;
+  onError: (errorMessage: string) => void;
+}
+
+// Not a tool action: the whole loop is paused on the message until the user decides.
+export function useResolveCreditSpendCheckpoint({
+  owner,
+  onError,
+}: UseResolveCreditSpendCheckpointParams) {
+  const { fetcher } = useFetcher();
+  const [isResolving, setIsResolving] = useState(false);
+
+  const resolveCreditSpendCheckpoint = useCallback(
+    async ({
+      conversationId,
+      messageId,
+      decision,
+    }: {
+      conversationId: string;
+      messageId: string;
+      decision: CreditSpendCheckpointDecision;
+    }) => {
+      setIsResolving(true);
+
+      try {
+        await fetcher(
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/credit-spend-checkpoint`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ decision }),
+          }
+        );
+
+        return { success: true };
+      } catch {
+        onError("Failed to record your decision. Please try again.");
+        return { success: false };
+      } finally {
+        setIsResolving(false);
+      }
+    },
+    [owner.sId, onError, fetcher]
+  );
+
+  return { resolveCreditSpendCheckpoint, isResolving };
 }
