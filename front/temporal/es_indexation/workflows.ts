@@ -1,10 +1,5 @@
 import type * as activities from "@app/temporal/es_indexation/activities";
-import {
-  continueAsNew,
-  proxyActivities,
-  setHandler,
-  sleep,
-} from "@temporalio/workflow";
+import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
 import { concurrentExecutor } from "../workflow_utils";
 import { indexSkillSearchSignal, indexUserSearchSignal } from "./signals";
@@ -95,23 +90,21 @@ const {
   retry: { maximumAttempts: 3 },
 });
 
-export async function refreshSearchUsageWorkflow({
-  afterWorkspaceModelId = 0,
-}: {
-  afterWorkspaceModelId?: number;
-} = {}): Promise<void> {
-  const workspaces = await listSearchUsageWorkspacesActivity(
-    afterWorkspaceModelId
-  );
-  await concurrentExecutor(
-    workspaces,
-    ({ workspaceId }) => refreshWorkspaceSearchUsageActivity({ workspaceId }),
-    { concurrency: 5 }
-  );
-  if (workspaces.length === 50) {
-    await continueAsNew<typeof refreshSearchUsageWorkflow>({
-      afterWorkspaceModelId: workspaces[workspaces.length - 1].workspaceModelId,
-    });
+export async function refreshSearchUsageWorkflow(): Promise<void> {
+  let afterWorkspaceModelId = 0;
+  while (true) {
+    const workspaces = await listSearchUsageWorkspacesActivity(
+      afterWorkspaceModelId
+    );
+    if (workspaces.length === 0) {
+      return;
+    }
+    await concurrentExecutor(
+      workspaces,
+      ({ workspaceId }) => refreshWorkspaceSearchUsageActivity({ workspaceId }),
+      { concurrency: 5 }
+    );
+    afterWorkspaceModelId = workspaces[workspaces.length - 1].workspaceModelId;
   }
 }
 
