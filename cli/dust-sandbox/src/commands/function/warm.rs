@@ -168,7 +168,7 @@ fn warm_dir() -> Option<PathBuf> {
 /// Creates the warm dir if needed and verifies it is exactly ours: a real
 /// directory (not a symlink), owned by our euid, mode 0700. Returns None —
 /// meaning "stay cold" — on any deviation.
-fn ensure_trusted_warm_dir() -> Option<PathBuf> {
+pub(crate) fn ensure_trusted_warm_dir() -> Option<PathBuf> {
     let dir = warm_dir()?;
     let mut builder = std::fs::DirBuilder::new();
     builder.mode(0o700);
@@ -308,13 +308,6 @@ pub fn populate_bundle_cache(handler: &Path, sha256: &str) {
     if !is_valid_bundle_sha256(sha256) {
         return;
     }
-    let Some(dir) = bundle_cache_dir() else {
-        return;
-    };
-    let target = dir.join(format!("{sha256}.js"));
-    if std::fs::metadata(&target).is_ok() {
-        return;
-    }
     let Ok(bytes) = std::fs::read(handler) else {
         return;
     };
@@ -323,16 +316,76 @@ pub fn populate_bundle_cache(handler: &Path, sha256: &str) {
     if actual != sha256 {
         return;
     }
+    if write_bundle_cache_entry(&bytes, sha256) {
+        if let Some(dir) = bundle_cache_dir() {
+            prune_bundle_cache(&dir, BUNDLE_CACHE_MAX_AGE);
+        }
+    }
+}
+
+/// Eagerly hash every function bundle under `dir` into the content-addressed
+/// cache (keyed by content sha256). Used after extracting a publication's
+/// `functions.tar` so every slug is warm/cold-ready without a per-function
+/// fuse touch. Best-effort and idempotent.
+pub fn populate_bundle_caches_from_dir(dir: &Path) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let mut wrote_any = false;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        // Skip markers / junk; archive entries are `<slug>.{ts,js,...}`.
+        if name.starts_with('.') {
+            continue;
+        }
+        let Ok(bytes) = std::fs::read(&path) else {
+            continue;
+        };
+        let digest = ring::digest::digest(&ring::digest::SHA256, &bytes);
+        let sha256: String = digest.as_ref().iter().map(|b| format!("{b:02x}")).collect();
+        if write_bundle_cache_entry(&bytes, &sha256) {
+            wrote_any = true;
+        }
+    }
+    if wrote_any {
+        if let Some(cache_dir) = bundle_cache_dir() {
+            prune_bundle_cache(&cache_dir, BUNDLE_CACHE_MAX_AGE);
+        }
+    }
+}
+
+/// Write `bytes` under `bundles/<sha256>.js`. Returns whether a new entry was
+/// created. Caller must have verified `sha256` matches `bytes`.
+fn write_bundle_cache_entry(bytes: &[u8], sha256: &str) -> bool {
+    if !is_valid_bundle_sha256(sha256) {
+        return false;
+    }
+    let Some(dir) = bundle_cache_dir() else {
+        return false;
+    };
+    let target = dir.join(format!("{sha256}.js"));
+    if std::fs::metadata(&target).is_ok() {
+        return false;
+    }
     // Write-then-rename so a concurrent dsbx never observes (or imports) a
     // half-written bundle.
     let tmp = dir.join(format!("{sha256}.js.tmp-{}", std::process::id()));
-    if std::fs::write(&tmp, &bytes).is_err() {
-        return;
+    if std::fs::write(&tmp, bytes).is_err() {
+        return false;
     }
-    let _ = std::fs::rename(&tmp, &target);
-    // A populate happens once per publish per sandbox: cheap enough a spot
-    // to keep the cache bounded.
-    prune_bundle_cache(&dir, BUNDLE_CACHE_MAX_AGE);
+    match std::fs::rename(&tmp, &target) {
+        Ok(()) => true,
+        Err(_) => {
+            let _ = std::fs::remove_file(&tmp);
+            false
+        }
+    }
 }
 
 /// Removes cache entries whose mtime is older than `max_age`. Best-effort.

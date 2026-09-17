@@ -3,9 +3,10 @@ use std::time::Instant;
 use anyhow::{anyhow, Result};
 use tokio::io::AsyncReadExt as _;
 
+use super::archive;
 use super::envelope::{ResolveKind, ResultEnvelope, RunnerKind, TimingsMs};
 use super::warm::{self, WarmRun};
-use super::{emit_error, resolve_existing, spawn_function_at};
+use super::{emit_error, functions_dir, resolve_existing, spawn_function_at};
 
 const NON_JSON_SNIPPET_MAX_CHARS: usize = 512;
 /// Sidecar the Bun runner stamps on its stdout JSON; lifted into the outer
@@ -39,6 +40,14 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
         deliver_stdout_envelope(ResultEnvelope::stdout_invocation_failed(err.to_string()), 0);
     }
 
+    // Before warm or cold: land this publication's functions.tar locally and
+    // fill the per-sha bundle cache for every slug. Warm importFromCache and
+    // cold resolve then skip gcsfuse; without this, warm falls through to a
+    // fuse ensureBundle that can burn the full first-frame timeout.
+    if let Ok(dir) = functions_dir() {
+        let _ = archive::ensure_functions_archive_extracted(&dir);
+    }
+
     let warm_started = Instant::now();
     if let WarmRun::Outcome(outcome, import_kind, phase) = warm::try_warm_run(name, &input).await {
         let runner_ms = started.elapsed().as_millis() as u64;
@@ -63,7 +72,8 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
     }
     let warm_attempt_ms = warm_started.elapsed().as_millis() as u64;
 
-    // Cold path. Prefer the local sha cache, else gcsfuse readdir of DUST_FUNCTIONS_DIR.
+    // Cold path: sha cache (filled by the pre-warm archive step) or legacy
+    // gcsfuse readdir of DUST_FUNCTIONS_DIR.
     let stamped_sha256 = stamped_bundle_sha256(&input);
     let resolve_started = Instant::now();
     let (resolved, resolve_kind) = match stamped_sha256
