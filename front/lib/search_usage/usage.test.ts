@@ -12,7 +12,7 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
 
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
-import { fetchSearchActiveUsers } from "@app/lib/skill_search/usage";
+import { fetchSearchActiveUsers } from "@app/lib/search_usage/usage";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -23,7 +23,8 @@ describe("search usage snapshots", () => {
 
   it.each([
     ["skill", "tool.attributed_skill_ids"],
-  ] as const)("paginates distinct active users for %s using a fixed UTC window", async (_resourceType, field) => {
+    ["agent", "agent.attributed_id"],
+  ] as const)("paginates distinct active users for %s using a fixed UTC window", async (dimension, field) => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -52,6 +53,7 @@ describe("search usage snapshots", () => {
         })
       );
     const result = await fetchSearchActiveUsers(auth, {
+      dimension,
       evaluatedAtMs: Date.parse("2026-09-08T13:00:00Z"),
     });
     expect(result.isOk() && result.value).toEqual({ first: 3, second: 2 });
@@ -99,6 +101,7 @@ describe("search usage snapshots", () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
     search.mockResolvedValue(new Ok(response));
     const result = await fetchSearchActiveUsers(auth, {
+      dimension: "skill",
       evaluatedAtMs: Date.now(),
     });
     expect(result.isErr()).toBe(true);
@@ -119,6 +122,7 @@ describe("search usage snapshots", () => {
       })
     );
     const result = await fetchSearchActiveUsers(auth, {
+      dimension: "skill",
       evaluatedAtMs: Date.now(),
     });
     expect(result.isErr()).toBe(true);
@@ -131,6 +135,7 @@ describe("search usage snapshots", () => {
     search.mockResolvedValue(new Err(error));
 
     const result = await fetchSearchActiveUsers(auth, {
+      dimension: "skill",
       evaluatedAtMs: Date.now(),
     });
 

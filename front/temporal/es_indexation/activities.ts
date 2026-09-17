@@ -4,13 +4,13 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { fetchSearchActiveUsers } from "@app/lib/search_usage/usage";
 import {
   deleteSkillDocument,
   deleteWorkspaceSkillDocuments,
   indexSkillDocument,
   updateSkillSearchActiveUsers,
 } from "@app/lib/skill_search";
-import { fetchSearchActiveUsers } from "@app/lib/skill_search/usage";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -170,6 +170,7 @@ export async function refreshWorkspaceSearchUsageActivity({
 }): Promise<void> {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const activeUsers = await fetchSearchActiveUsers(auth, {
+    dimension: "skill",
     evaluatedAtMs: Date.now(),
   });
   if (activeUsers.isErr()) {

@@ -15,6 +15,9 @@ import { Err, Ok } from "@app/types/shared/result";
 export const SEARCH_USAGE_WINDOW_DAYS = 30;
 const USAGE_BUCKET_PAGE_SIZE = 500;
 
+// The search indices that maintain an `active_users_count` refreshed by the usage snapshot job.
+export type SearchUsageDimension = "agent" | "skill";
+
 type UsageAggregations = {
   resources: {
     after_key?: { resource_id: string };
@@ -27,12 +30,15 @@ type UsageAggregations = {
 
 /**
  * @cc [owner:aubin-tchoi,label:backend;performance] search-usage-snapshot
- * Counts distinct human users over the previous 30 complete UTC days using the
- * consumption attribution dimensions; every composite page is workspace-scoped.
+ * Counts distinct human users over the previous 30 complete UTC days, keyed by the consumption
+ * attribution dimension requested by the caller; every composite page is workspace-scoped.
  */
 export async function fetchSearchActiveUsers(
   auth: Authenticator,
-  { evaluatedAtMs }: { evaluatedAtMs: number }
+  {
+    dimension,
+    evaluatedAtMs,
+  }: { dimension: SearchUsageDimension; evaluatedAtMs: number }
 ): Promise<Result<Record<string, number>, ElasticsearchError>> {
   const end = new Date(evaluatedAtMs);
   end.setUTCHours(0, 0, 0, 0);
@@ -63,7 +69,7 @@ export async function fetchSearchActiveUsers(
                 {
                   resource_id: {
                     terms: {
-                      field: CONSUMPTION_DIMENSION_FIELDS.skill,
+                      field: CONSUMPTION_DIMENSION_FIELDS[dimension],
                     },
                   },
                 },
