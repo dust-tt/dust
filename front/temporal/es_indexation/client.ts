@@ -161,7 +161,7 @@ export async function launchSearchUsageSchedule(): Promise<
         taskQueue: QUEUE_NAME,
       },
       spec: { calendars: [{ hour: 3, minute: 0 }], timezone: "UTC" },
-      policies: { overlap: ScheduleOverlapPolicy.SKIP },
+      policies: { overlap: ScheduleOverlapPolicy.BUFFER_ONE },
     });
   } catch (error) {
     if (!(error instanceof ScheduleAlreadyRunning)) {
