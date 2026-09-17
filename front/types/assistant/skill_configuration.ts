@@ -19,6 +19,7 @@ export type {
 // Re-exported from the leaf module so importers do not have to care which file they live in.
 export {
   DEFAULT_SKILL_AVAILABILITY,
+  isSkillVisibleToViewer,
   SKILL_AVAILABILITIES,
   SKILL_STATUSES,
 } from "@app/types/assistant/skill_configuration_constants";

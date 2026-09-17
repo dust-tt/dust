@@ -31,6 +31,7 @@ import {
   SKILL_AVATAR_ICON_COLOR,
 } from "@app/lib/skill";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
+import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
 import {
   ActionCard,
@@ -243,7 +244,12 @@ export function AgentBuilderCapabilitiesBlock({
   // one will not find it in the capabilities picker anymore, so make the removal explicit.
   const handleRemoveSkill = useCallback(
     async (index: number, skill: AgentBuilderSkillsType) => {
-      if (skill.availability === "editors" && !skill.canWrite) {
+      if (
+        !isSkillVisibleToViewer({
+          availability: skill.availability,
+          viewerCanWrite: skill.canWrite,
+        })
+      ) {
         const confirmed = await confirm({
           title: `Remove ${skill.name}?`,
           message:
