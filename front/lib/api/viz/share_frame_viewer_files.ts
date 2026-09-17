@@ -12,9 +12,11 @@ import {
   getAuthorizedFileRefLabel,
 } from "@app/types/files";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import path from "path";
 
 export type ShareFrameViewerFileSourceKind =
+  | "frame"
   | "conversation"
   | "pod"
   | "workspace";
@@ -29,6 +31,7 @@ export type ShareFrameViewerFile = {
 };
 
 type ViewerFileSource =
+  | { kind: "frame" }
   | { kind: "workspace" }
   | { kind: "conversation"; sId: string }
   | { kind: "pod"; sId: string };
@@ -71,11 +74,16 @@ function viewerFileSource(
   ref: AuthorizedFileRef,
   fileById: Map<string, FileResource>
 ): ViewerFileSource {
-  if (ref.kind === "canonical_path") {
-    return viewerFileSourceFromCanonicalPath(ref.ref);
+  switch (ref.kind) {
+    case "canonical_path":
+      return viewerFileSourceFromCanonicalPath(ref.ref);
+    case "frame_relative_path":
+      return { kind: "frame" };
+    case "file_id":
+      return viewerFileSourceFromFile(fileById.get(ref.ref));
+    default:
+      return assertNever(ref);
   }
-
-  return viewerFileSourceFromFile(fileById.get(ref.ref));
 }
 
 function pathInSourceFromCanonicalRef(
@@ -96,6 +104,8 @@ function viewerFileSourceName(
   podNameById: Map<string, string>
 ): string {
   switch (source.kind) {
+    case "frame":
+      return "the Frame's bundle";
     case "workspace":
       return "Workspace";
     case "conversation":
@@ -113,10 +123,22 @@ function toShareFrameViewerFile(
   podNameById: Map<string, string>
 ): ShareFrameViewerFile {
   const name = getAuthorizedFileRefLabel(ref);
-  const pathInSource =
-    ref.kind === "canonical_path"
-      ? pathInSourceFromCanonicalRef(ref.ref)
-      : undefined;
+  let pathInSource: string | undefined;
+  switch (ref.kind) {
+    case "canonical_path":
+      pathInSource = pathInSourceFromCanonicalRef(ref.ref);
+      break;
+    case "frame_relative_path": {
+      const relative = ref.ref.startsWith("./") ? ref.ref.slice(2) : ref.ref;
+      const dir = path.posix.dirname(relative);
+      pathInSource = dir === "." ? undefined : dir;
+      break;
+    }
+    case "file_id":
+      break;
+    default:
+      assertNever(ref);
+  }
 
   return {
     ref: ref.ref,

@@ -175,6 +175,7 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await validateFramePublication(auth, {
       conversation,
+      frameRoot: "conversation-test/MyFrame",
       manifest: uiOnlyManifest,
       sourceFiles: [
         {
@@ -204,6 +205,7 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await validateFramePublication(auth, {
       conversation,
+      frameRoot: "conversation-test/MyFrame",
       manifest: databaseManifest,
       sourceFiles: sourceFiles.slice(0, 1),
     });
@@ -220,6 +222,7 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,
+      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest: uiOnlyManifest,
       sourceFiles: [
@@ -253,6 +256,7 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,
+      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest: uiOnlyManifest,
       sourceFiles: sourceFiles.slice(0, 1),
@@ -278,6 +282,7 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,
+      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest: uiOnlyManifest,
       sourceFiles: [
@@ -329,6 +334,7 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,
+      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest,
       sourceFiles,
@@ -420,6 +426,7 @@ describe("buildAndPublishFramePublication", () => {
 
     const failed = await buildAndPublishFramePublication(auth, {
       conversation,
+      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest,
       sourceFiles,
@@ -447,6 +454,7 @@ describe("buildAndPublishFramePublication", () => {
 
     const published = await buildAndPublishFramePublication(auth, {
       conversation,
+      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest,
       sourceFiles,
@@ -473,6 +481,7 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,
+      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest,
       sourceFiles,
@@ -508,6 +517,7 @@ describe("buildAndPublishFramePublication", () => {
       conversation,
       frame,
       manifest,
+      frameRoot: "conversation-test/MyFrame",
       sourceFiles: [
         {
           ...sourceFiles[0],
@@ -535,6 +545,7 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,
+      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest,
       sourceFiles: [
