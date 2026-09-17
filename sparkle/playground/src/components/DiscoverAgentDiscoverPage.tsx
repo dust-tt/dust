@@ -357,13 +357,23 @@ export const DiscoverAgentDiscoverPage = forwardRef<
 
 // ── Featured card ───────────────────────────────────────────────────────────
 
+// Every Featured slot, filled or empty, has this exact footprint. The height
+// fits the 128px cover plus a footer of one name line and two description
+// lines (16px/1.5 + 2 × 14px/1.43 + 24px padding = 92px), so the trio stays
+// level whatever the description lengths, and pinning into an empty slot
+// does not reflow the row.
+const FEATURED_SLOT_CLASSES = "h-56 rounded-2xl border";
+
 // An empty Featured slot: the same footprint as a card, drawn as a dashed
 // outline on a light stone field.
 function FeaturedSlotPlaceholder() {
   return (
     <div
       aria-hidden
-      className="h-56 rounded-2xl border border-dashed border-border-dark bg-muted-background"
+      className={cn(
+        FEATURED_SLOT_CLASSES,
+        "border-dashed border-border-dark bg-muted-background"
+      )}
     />
   );
 }
@@ -383,17 +393,19 @@ function FeaturedCard({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-background text-left",
+        FEATURED_SLOT_CLASSES,
+        "flex w-full flex-col overflow-hidden border-border bg-background text-left",
         "transition-transform duration-200 ease-emphasized hover:-translate-y-0.5"
       )}
     >
       {/* Cover: the agent's color with its emoji, or a neutral field with
-          the skill's icon, as the artwork. */}
+          the skill's icon, as the artwork. Fixed height; `shrink-0` keeps it
+          from giving way to a footer that would otherwise overflow. */}
       {featured.kind === "agent" ? (
         getAgentImageUrl(featured.agent) ? (
           // The picture sits centered at the emoji's size; a blurred,
           // faded copy fills the cover behind it so the card keeps a tint.
-          <div className="relative flex h-32 w-full items-center justify-center overflow-hidden bg-muted-background">
+          <div className="relative flex h-32 w-full shrink-0 items-center justify-center overflow-hidden bg-muted-background">
             <img
               src={getAgentImageUrl(featured.agent)}
               alt=""
@@ -409,7 +421,7 @@ function FeaturedCard({
         ) : (
           <div
             className={cn(
-              "flex h-32 w-full items-center justify-center",
+              "flex h-32 w-full shrink-0 items-center justify-center",
               asAvatarBackgroundColor(featured.agent.backgroundColor),
               "dark:brightness-[0.35] dark:saturate-[0.6]"
             )}
@@ -422,7 +434,7 @@ function FeaturedCard({
       ) : (
         <div
           className={cn(
-            "flex h-32 w-full items-center justify-center",
+            "flex h-32 w-full shrink-0 items-center justify-center",
             SKILL_TILE_BACKGROUND
           )}
         >
@@ -433,8 +445,9 @@ function FeaturedCard({
           />
         </div>
       )}
-      {/* Footer: name with the author inline, then the description. */}
-      <div className="flex items-start gap-3 px-4 py-3">
+      {/* Footer: name with the author inline, then the description, which is
+          clamped to the two lines the fixed card height reserves for it. */}
+      <div className="flex min-h-0 flex-1 items-start gap-3 px-4 py-3">
         <div className="flex min-w-0 flex-col gap-1">
           <span className="flex items-baseline gap-1.5 truncate">
             <span className="heading-base notranslate text-foreground">
