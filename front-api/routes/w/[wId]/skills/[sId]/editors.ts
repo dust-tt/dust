@@ -1,7 +1,8 @@
-import { findSkillEditorsWithoutSpaceAccess } from "@app/lib/api/skills/space_requirements";
+import {
+  findAddedEditorsWithoutSpaceAccess,
+  resolveSkillEditorUsers,
+} from "@app/lib/api/skills/editors_change";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   PatchSkillEditorsRequestBody,
   SkillEditorsResponseBody,
@@ -112,42 +113,26 @@ app.patch(
 
     const { addEditorIds = [], removeEditorIds = [] } = ctx.req.valid("json");
 
-    const usersToAddResources = await UserResource.fetchByIds(addEditorIds);
-    const usersToRemoveResources =
-      await UserResource.fetchByIds(removeEditorIds);
-
-    if (
-      usersToAddResources.length !== addEditorIds.length ||
-      usersToRemoveResources.length !== removeEditorIds.length
-    ) {
-      const foundAddIds = new Set(usersToAddResources.map((u) => u.sId));
-      const missingAddIds = addEditorIds.filter((id) => !foundAddIds.has(id));
-      const foundRemoveIds = new Set(usersToRemoveResources.map((u) => u.sId));
-      const missingRemoveIds = removeEditorIds.filter(
-        (id) => !foundRemoveIds.has(id)
-      );
-      const missingIds = [...missingAddIds, ...missingRemoveIds];
-
-      if (missingIds.length > 0) {
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "user_not_found",
-            message: `Some users were not found: ${missingIds.join(", ")}`,
-          },
-        });
-      }
+    const { missingIds, usersToAdd, usersToRemove } =
+      await resolveSkillEditorUsers({
+        addUserIds: addEditorIds,
+        removeUserIds: removeEditorIds,
+      });
+    if (missingIds.length > 0) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "user_not_found",
+          message: `Some users were not found: ${missingIds.join(", ")}`,
+        },
+      });
     }
 
-    // Only the editors being added need checking: the ones already there were validated when they
-    // were added or when the skill's spaces last changed.
-    const requestedSpaces = await SpaceResource.fetchByModelIds(auth, [
-      ...skillRes.requestedSpaceIds,
-    ]);
-    const editorsAccessError = await findSkillEditorsWithoutSpaceAccess(auth, {
-      editors: usersToAddResources,
-      requestedSpaces,
-    });
+    const editorsAccessError = await findAddedEditorsWithoutSpaceAccess(
+      auth,
+      skillRes,
+      usersToAdd
+    );
     if (editorsAccessError) {
       return apiError(ctx, {
         status_code: 400,
@@ -159,7 +144,7 @@ app.patch(
     }
 
     // Editors are per-user grants on the skill (`grantToUser`), not group memberships.
-    const addRes = await skillRes.addEditors(auth, usersToAddResources);
+    const addRes = await skillRes.addEditors(auth, usersToAdd);
     if (addRes.isErr()) {
       switch (addRes.error.code) {
         case "unauthorized":
@@ -183,10 +168,7 @@ app.patch(
       }
     }
 
-    const removeRes = await skillRes.removeEditors(
-      auth,
-      usersToRemoveResources
-    );
+    const removeRes = await skillRes.removeEditors(auth, usersToRemove);
     if (removeRes.isErr()) {
       switch (removeRes.error.code) {
         case "unauthorized":

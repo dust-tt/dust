@@ -1,8 +1,16 @@
 import { escapeXml } from "@app/types/shared/utils/string_utils";
 
+export type KnowledgeReference = {
+  dataSourceViewId: string | null;
+  id: string;
+  spaceId: string | null;
+  title: string;
+};
+
 export const KNOWLEDGE_TAG_NAME = "knowledge";
 
-const KNOWLEDGE_TAG_REGEX = /<knowledge\s+([^>]*?)\s*\/>/g;
+export const KNOWLEDGE_TAG_REGEX = /<knowledge\s+([^>]*?)\s*\/>/g;
+const KNOWLEDGE_TAG_REGEX_BEGINNING = /^<knowledge\s+([^>]*?)\s*\/>/;
 
 function parseAttribute(attributes: string, name: string): string | null {
   const value = new RegExp(`(?:^|\\s)${name}="([^"]*)"`).exec(attributes)?.[1];
@@ -10,6 +18,39 @@ function parseAttribute(attributes: string, name: string): string | null {
     return null;
   }
   return value;
+}
+
+export function parseKnowledgeTag(tag: string): KnowledgeReference | null {
+  const attributes = KNOWLEDGE_TAG_REGEX_BEGINNING.exec(tag)?.[1];
+  if (!attributes) {
+    return null;
+  }
+
+  const id = parseAttribute(attributes, "id");
+  const title = parseAttribute(attributes, "title");
+  if (!id || !title) {
+    return null;
+  }
+
+  return {
+    dataSourceViewId: parseAttribute(attributes, "dsv"),
+    id,
+    spaceId: parseAttribute(attributes, "space"),
+    title,
+  };
+}
+
+export function extractKnowledgeTagReferences(
+  content: string
+): KnowledgeReference[] {
+  const references: KnowledgeReference[] = [];
+  for (const match of content.matchAll(KNOWLEDGE_TAG_REGEX)) {
+    const knowledge = parseKnowledgeTag(match[0]);
+    if (knowledge) {
+      references.push(knowledge);
+    }
+  }
+  return references;
 }
 
 /**

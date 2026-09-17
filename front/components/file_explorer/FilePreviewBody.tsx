@@ -3,7 +3,7 @@ import { FilePreviewContent } from "@app/components/file_explorer/FilePreviewCon
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import type { MarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
-import type { FilePreviewCategory } from "@app/components/file_explorer/utils";
+import type { FilePreviewCategory } from "@app/types/file_preview";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export function filePreviewLayoutClassName(

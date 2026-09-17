@@ -1,8 +1,7 @@
 "use client";
 
 import { useVizContext } from "@viz/app/components/VizContext";
-import { ArrowLeftIcon } from "@viz/components/dust/slideshow/v2/icons/ArrowLeftIcon";
-import { ArrowRightIcon } from "@viz/components/dust/slideshow/v2/icons/ArrowRightIcon";
+import { SlideshowControls } from "@viz/components/dust/slideshow/SlideshowControls";
 import { cn } from "@viz/lib/utils";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -31,13 +30,20 @@ export function Slide({ children, className }: SlideProps) {
 const NAVIGATION_HIDE_DELAY_MS = 3_000;
 
 interface NavigationProps {
+  slideshowRef: React.RefObject<HTMLElement>;
   activeIndex: number;
   onNext: () => void;
   onPrev: () => void;
   total: number;
 }
 
-function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
+function Navigation({
+  slideshowRef,
+  activeIndex,
+  onNext,
+  onPrev,
+  total,
+}: NavigationProps) {
   const [isVisible, setIsVisible] = useState(true);
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -66,10 +72,19 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
   }, [activeIndex, resetHideTimer]);
 
   useEffect(() => {
+    /**
+     * @cc [owner:spolu,label:product] keyboard-navigation
+     * ArrowLeft, ArrowUp, and PageUp MUST invoke the previous-slide action. ArrowRight, ArrowDown,
+     * and PageDown MUST invoke the next-slide action. Other keys MUST NOT trigger slide navigation.
+     */
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp") {
         onPrev();
-      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      } else if (
+        e.key === "ArrowRight" ||
+        e.key === "ArrowDown" ||
+        e.key === "PageDown"
+      ) {
         onNext();
       }
     };
@@ -88,44 +103,17 @@ function Navigation({ activeIndex, onNext, onPrev, total }: NavigationProps) {
   return (
     <div
       className={cn(
-        "absolute bottom-6 left-1/2 -translate-x-1/2 transition-opacity duration-300",
+        "absolute bottom-6 left-1/2 -translate-x-1/2 transition-opacity duration-300 focus-within:opacity-100 focus-within:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto",
         isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
       )}
     >
-      <div
-        className={cn(
-          "box-content w-36 h-7 inline-flex justify-between items-center overflow-hidden rounded-2xl bg-card",
-          "p-1.5 border border-border-bottom border-gray-100"
-        )}
-        style={{
-          boxShadow:
-            "0px 1px 3px 0px rgba(0, 0, 0, 0.1), 0px 1px 1px -1px rgba(0, 0, 0, 0.1)",
-        }}
-      >
-        <button
-          onClick={onPrev}
-          disabled={activeIndex === 0}
-          className="disabled:opacity-40 px-2 transition-opacity"
-          title="Previous"
-          aria-label="Previous slide"
-        >
-          <ArrowLeftIcon className="h-5 w-5" />
-        </button>
-
-        <span className="text-center justify-center copy-lg">
-          {activeIndex + 1} of {total}
-        </span>
-
-        <button
-          onClick={onNext}
-          disabled={activeIndex === total - 1}
-          className="disabled:opacity-40 px-2 transition-opacity"
-          title="Next"
-          aria-label="Next slide"
-        >
-          <ArrowRightIcon className="h-5 w-5" />
-        </button>
-      </div>
+      <SlideshowControls
+        activeIndex={activeIndex}
+        total={total}
+        onPrevious={onPrev}
+        onNext={onNext}
+        slideshowRef={slideshowRef}
+      />
     </div>
   );
 }
@@ -183,6 +171,7 @@ function InteractiveSlideshow({
   className,
 }: InteractiveSlideshowProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const slideshowRef = useRef<HTMLDivElement>(null);
 
   const onPrev = useCallback(() => {
     setActiveIndex((i) => Math.max(i - 1, 0));
@@ -198,18 +187,21 @@ function InteractiveSlideshow({
 
   return (
     <div
-      className={cn("relative h-screen w-full overflow-hidden", className)}
+      ref={slideshowRef}
+      className={cn(
+        "relative h-screen w-full overflow-hidden [&:fullscreen]:bg-background",
+        className
+      )}
       aria-label="Slideshow"
     >
       {children[activeIndex]}
-      {children.length > 1 && (
-        <Navigation
-          activeIndex={activeIndex}
-          onNext={onNext}
-          onPrev={onPrev}
-          total={children.length}
-        />
-      )}
+      <Navigation
+        activeIndex={activeIndex}
+        onNext={onNext}
+        onPrev={onPrev}
+        total={children.length}
+        slideshowRef={slideshowRef}
+      />
     </div>
   );
 }

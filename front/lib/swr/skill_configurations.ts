@@ -42,10 +42,12 @@ export function useSkill(options: {
   skillId: string | null;
   withRelations: true;
   disabled?: boolean;
+  shouldRetryOnError?: boolean;
 }): {
   skill: SkillWithRelationsType | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
+  isSkillNotFound: boolean;
   mutateSkill: () => void;
   // Also refreshes the other variants of the skill fetch (with/without relations).
   mutateSkillRegardlessOfQueryParams: () => void;
@@ -55,10 +57,12 @@ export function useSkill(options: {
   skillId: string | null;
   withRelations?: false;
   disabled?: boolean;
+  shouldRetryOnError?: boolean;
 }): {
   skill: SkillType | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
+  isSkillNotFound: boolean;
   mutateSkill: () => void;
   // Also refreshes the other variants of the skill fetch (with/without relations).
   mutateSkillRegardlessOfQueryParams: () => void;
@@ -68,15 +72,19 @@ export function useSkill({
   skillId,
   withRelations = false,
   disabled = false,
+  shouldRetryOnError = true,
 }: {
   workspaceId: string;
   skillId: string | null;
   withRelations?: boolean;
   disabled?: boolean;
+  // Off for fetches where a failure is a normal outcome (deep links to missing skills).
+  shouldRetryOnError?: boolean;
 }): {
   skill: SkillType | SkillWithRelationsType | null;
   isSkillLoading: boolean;
   isSkillError: boolean;
+  isSkillNotFound: boolean;
   mutateSkill: () => void;
   // Also refreshes the other variants of the skill fetch (with/without relations).
   mutateSkillRegardlessOfQueryParams: () => void;
@@ -91,12 +99,17 @@ export function useSkill({
     : null;
 
   const { data, error, isLoading, mutate, mutateRegardlessOfQueryParams } =
-    useSWRWithDefaults(url, skillFetcher, { disabled });
+    useSWRWithDefaults(url, skillFetcher, {
+      disabled,
+      shouldRetryOnError,
+    });
 
   return {
     skill: data?.skill ?? null,
     isSkillLoading: isLoading,
     isSkillError: !!error,
+    isSkillNotFound:
+      isAPIErrorResponse(error) && error.error.type === "skill_not_found",
     mutateSkill: mutate,
     mutateSkillRegardlessOfQueryParams: mutateRegardlessOfQueryParams,
   };

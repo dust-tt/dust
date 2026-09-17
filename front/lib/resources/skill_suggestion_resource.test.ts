@@ -162,14 +162,14 @@ describe("SkillSuggestionResource", () => {
       expect(pendingSuggestions[0].state).toBe("pending");
     });
 
-    it("should filter by kind", async () => {
+    it("should filter by kinds", async () => {
       await SkillSuggestionFactory.create(authenticator, skill);
 
       const editSuggestions =
         await SkillSuggestionResource.listBySkillConfigurationId(
           authenticator,
           skill.sId,
-          { kind: "edit" }
+          { kinds: ["edit"] }
         );
 
       expect(editSuggestions).toHaveLength(1);

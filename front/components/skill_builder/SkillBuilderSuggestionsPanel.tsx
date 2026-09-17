@@ -5,6 +5,7 @@ import {
   usePatchSkillSuggestions,
   useSkillSuggestions,
 } from "@app/hooks/useSkillSuggestions";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { Lightbulb04, ScrollArea, Spinner } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
@@ -54,6 +55,15 @@ export function SkillBuilderSuggestionsPanel({
 
   const applyAgentFacingDescriptionEdit = useCallback(
     (suggestion: SkillSuggestionType) => {
+      switch (suggestion.kind) {
+        case "edit":
+          break;
+        case "editors":
+          return;
+        default:
+          assertNeverAndIgnore(suggestion);
+          return;
+      }
       const { agentFacingDescriptionEdit } = suggestion.suggestion;
       if (!agentFacingDescriptionEdit) {
         return;

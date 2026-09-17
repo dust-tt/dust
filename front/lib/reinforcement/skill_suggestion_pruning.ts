@@ -8,11 +8,17 @@ import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type {
+  SkillEditorsSuggestionData,
+  SkillEditSuggestionData,
   SkillEditSuggestionType,
   SkillInstructionEditItemType,
   SkillSuggestionSource,
 } from "@app/types/suggestions/skill_suggestion";
-import { REVIEWABLE_SKILL_SUGGESTION_SOURCES } from "@app/types/suggestions/skill_suggestion";
+import {
+  isEditorsSkillSuggestion,
+  isEditSkillSuggestion,
+  REVIEWABLE_SKILL_SUGGESTION_SOURCES,
+} from "@app/types/suggestions/skill_suggestion";
 
 // Reviewable suggestions: pruning applies to every source a user may accept or reject, whether
 // it is surfaced in the builder (`reinforcement`) or inline in a conversation (`conversational`).
@@ -88,19 +94,17 @@ export function hasSuggestionSelfConflict(
 export async function pruneConflictingSkillEditSuggestions(
   auth: Authenticator,
   skill: SkillResource,
-  newSuggestion: SkillSuggestionResource
+  newSuggestion: SkillSuggestionResource & SkillEditSuggestionData
 ): Promise<void> {
-  const allPending = await SkillSuggestionResource.listBySkillConfigurationId(
-    auth,
-    skill.sId,
-    {
+  const existingPending = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
       states: ["pending"],
-      kind: "edit",
+      kinds: ["edit"],
       sources: PRUNED_SOURCES,
-    }
-  );
-
-  const existingPending = allPending.filter((s) => s.sId !== newSuggestion.sId);
+    })
+  )
+    .filter(isEditSkillSuggestion)
+    .filter((s) => s.sId !== newSuggestion.sId);
   if (existingPending.length === 0) {
     return;
   }
@@ -162,6 +166,48 @@ export async function pruneConflictingSkillEditSuggestions(
 }
 
 /**
+ * @cc [owner:achilleburah,label:product] prune-conflicting-editors-suggestions
+ * Creating a pending `editors` suggestion MUST mark every other pending `editors` suggestion for
+ * the same skill `outdated` when both add the same user or both remove the same user. Adding a
+ * user in one and removing them in the other is not a conflict: both stay pending for review.
+ */
+export async function pruneConflictingSkillEditorsSuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  newSuggestion: SkillSuggestionResource & SkillEditorsSuggestionData
+): Promise<void> {
+  const pendingEditorSuggestions = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
+      states: ["pending"],
+      kind: "editors",
+      sources: PRUNED_SOURCES,
+    })
+  )
+    .filter(isEditorsSkillSuggestion)
+    .filter((s) => s.sId !== newSuggestion.sId);
+  if (pendingEditorSuggestions.length === 0) {
+    return;
+  }
+
+  const newAddUserIds = new Set(newSuggestion.suggestion.addUserIds);
+  const newRemoveUserIds = new Set(newSuggestion.suggestion.removeUserIds);
+
+  const toMarkOutdated = pendingEditorSuggestions.filter((row) => {
+    const editors = row.suggestion;
+    return (
+      editors.addUserIds.some((id) => newAddUserIds.has(id)) ||
+      editors.removeUserIds.some((id) => newRemoveUserIds.has(id))
+    );
+  });
+
+  await SkillSuggestionResource.bulkUpdateState(
+    auth,
+    toMarkOutdated,
+    "outdated"
+  );
+}
+
+/**
  * @cc [owner:fabiencelier,label:product] outdate-all-reviewable-sources
  * After a skill edit, pending `edit` suggestions from every reviewable source (`reinforcement` and
  * `conversational`) whose target block no longer exists MUST be marked `outdated`.
@@ -170,11 +216,13 @@ export async function pruneOutdatedSkillEditSuggestions(
   auth: Authenticator,
   skill: SkillResource
 ): Promise<void> {
-  const pending = await SkillSuggestionResource.listBySkillConfigurationId(
-    auth,
-    skill.sId,
-    { states: ["pending"], kind: "edit", sources: PRUNED_SOURCES }
-  );
+  const pending = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
+      states: ["pending"],
+      kinds: ["edit"],
+      sources: PRUNED_SOURCES,
+    })
+  ).filter(isEditSkillSuggestion);
   if (pending.length === 0) {
     return;
   }

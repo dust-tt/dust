@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -423,8 +424,124 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     });
 
     expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toBe(
+      `The following skill suggestions are not available: ${suggestion.sId}.`
+    );
+  });
+
+  it("updates a conversational suggestion when the feature flag is on", async () => {
+    const { hasReinforcementEnabled } = await import(
+      "@app/lib/reinforcement/workspace_check"
+    );
+    vi.mocked(hasReinforcementEnabled).mockResolvedValueOnce(false);
+
+    const { workspace, auth, skill } = await setup();
+    await FeatureFlagFactory.basic(auth, "conversational_building");
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      source: "conversational",
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+  });
+
+  it("returns 400 for a conversational suggestion without the feature flag", async () => {
+    const { workspace, auth, skill } = await setup();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      source: "conversational",
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toBe(
+      `The following skill suggestions are not available: ${suggestion.sId}.`
+    );
+  });
+});
+
+describe("PATCH with applyToSkill", () => {
+  it("applies an agent-facing description edit", async () => {
+    const { workspace, auth, skill } = await setup();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      suggestion: {
+        agentFacingDescriptionEdit: { content: "A better description" },
+      },
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.agentFacingDescription).toBe("A better description");
+  });
+
+  it("returns 403 when an admin is not an editor of the skill", async () => {
+    const { workspace, skill, suggestion } =
+      await setupAdminWithOtherBuilderSkill();
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(403);
     expect((await response.json()).error.message).toContain(
-      "Self-improving skills are not enabled"
+      "Only editors can modify this skill"
+    );
+  });
+
+  it("rejects applying with a state other than approved", async () => {
+    const { workspace, auth, skill } = await setup();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "rejected",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "Only an approved suggestion can be applied"
+    );
+  });
+
+  it("rejects applying a suggestion that was already reviewed", async () => {
+    const { workspace, auth, skill } = await setup();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      state: "approved",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "already been reviewed"
     );
   });
 });

@@ -8,7 +8,7 @@ import { registerSlackWebhookRouterEntry } from "@app/lib/api/data_sources";
 import { deleteNovuSlackChannelSetup } from "@app/lib/notifications";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
-import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
+import { isNonBusinessEmailDomain } from "@app/lib/utils/non_business_email_domains";
 import logger from "@app/logger/logger";
 import {
   ConnectorsAPI,
@@ -89,7 +89,7 @@ app.post(
       connectionId: body.connectionId,
     });
     const email = user.email;
-    if (email && !isDisposableEmailDomain(email)) {
+    if (email && !isNonBusinessEmailDomain(email)) {
       void sendUserOperationMessage({
         logger,
         message:

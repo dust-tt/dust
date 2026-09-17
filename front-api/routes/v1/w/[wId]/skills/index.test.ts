@@ -313,6 +313,57 @@ describe("GET /api/v1/w/[wId]/skills", () => {
 });
 
 describe("POST /api/v1/w/[wId]/skills", () => {
+  it.each([
+    "error",
+    "skip",
+    "override",
+  ] as const)("rejects overlong skill names before importing any skills with onConflict=%s", async (onConflict) => {
+    const { workspace } = await createPublicApiMockRequest();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const validFile = await makeSkillZipFile({
+      name: "Valid Skill",
+      instructions: "Instructions",
+    });
+    const invalidFile = await makeSkillZipFile({
+      name: "a".repeat(257),
+      instructions: "Instructions",
+    });
+
+    const result = await importSkillsFromFiles(auth, {
+      uploadedFiles: [validFile, invalidFile],
+      source: "api",
+      onConflict,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("at most 256 characters");
+    }
+    const skills = await SkillResource.fetchByNames(auth, [
+      "Valid Skill",
+      "a".repeat(257),
+    ]);
+    expect(skills).toHaveLength(0);
+  });
+
+  it("imports a skill with a 256-character name", async () => {
+    const { workspace } = await createPublicApiMockRequest();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await SpaceFactory.defaults(auth);
+    const name = "a".repeat(256);
+    const file = await makeSkillZipFile({ name, instructions: "Instructions" });
+
+    const result = await importSkillsFromFiles(auth, {
+      uploadedFiles: [file],
+      source: "api",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.imported[0]?.name).toBe(name);
+    }
+  });
+
   it("sets availability when creating and updating imported skills", async () => {
     const { key, workspace } = await createPublicApiMockRequest();
     const adminAuth = await Authenticator.internalAdminForWorkspace(

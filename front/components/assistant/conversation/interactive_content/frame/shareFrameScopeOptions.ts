@@ -6,7 +6,6 @@ import { Globe01, Lock01, Users01 } from "@dust-tt/sparkle";
 interface ScopeOption {
   icon: typeof Lock01;
   label: string;
-  description: string;
   value: FileShareScope;
 }
 
@@ -31,9 +30,6 @@ function getScopeOptions(canInviteExternal: boolean): ScopeOption[] {
       label: canInviteExternal
         ? "Invite only"
         : "Invited workspace members only",
-      description: canInviteExternal
-        ? "Only the people you invite"
-        : "Only the workspace members you invite",
       value: "emails_only",
     },
     {
@@ -41,15 +37,11 @@ function getScopeOptions(canInviteExternal: boolean): ScopeOption[] {
       label: canInviteExternal
         ? "All workspace members + invites"
         : "All workspace members",
-      description: canInviteExternal
-        ? "Everyone in your workspace, plus anyone you invite"
-        : "Everyone in your workspace",
       value: "workspace_and_emails",
     },
     {
       icon: Globe01,
       label: "Anyone with the link",
-      description: "No sign-in required",
       value: "public",
     },
   ];

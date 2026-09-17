@@ -6,7 +6,7 @@ import {
   mockConversation,
   mockUserMessage,
 } from "@app/tests/utils/conversation_test_factories";
-import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import type { ReinforcementSkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 
 interface MockMcpToolInput {
   name: string;
@@ -143,10 +143,10 @@ export interface AnalysisTestCase extends BaseTestCase {
 export interface AggregationTestCase extends BaseTestCase {
   type: "aggregation";
   skillConfig: MockSkillConfig;
-  syntheticSuggestions: SkillSuggestionType[];
+  syntheticSuggestions: ReinforcementSkillSuggestionType[];
   existingSuggestions?: {
-    pending: SkillSuggestionType[];
-    rejected: SkillSuggestionType[];
+    pending: ReinforcementSkillSuggestionType[];
+    rejected: ReinforcementSkillSuggestionType[];
   };
 }
 

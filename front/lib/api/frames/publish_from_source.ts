@@ -76,7 +76,6 @@ export type PublishFrameFromSourceResult =
 export type ValidateFrameFromSourceResult = {
   frameId: string;
   sourcePath: string;
-  warnings: ValidationWarning[];
 };
 
 async function resolveFrameFromSource(
@@ -233,7 +232,6 @@ export async function validateFrameFromSource(
   return new Ok({
     frameId: frame.sId,
     sourcePath: normalizedPath,
-    warnings: validation.value.warnings,
   });
 }
 
@@ -653,12 +651,7 @@ export async function validateFrameV2FromSource(
     frame: FileResource;
     manifestPath: string;
   }
-): Promise<
-  Result<
-    { warnings: ValidationWarning[] },
-    FramePublicationError | SandboxFunctionError
-  >
-> {
+): Promise<Result<undefined, FramePublicationError | SandboxFunctionError>> {
   if (!frame.isFrameV2) {
     return frameError(
       "invalid_frame",

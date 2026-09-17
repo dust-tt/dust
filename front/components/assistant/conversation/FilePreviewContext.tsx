@@ -1,11 +1,11 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { isFilePreviewableContentType } from "@app/components/file_explorer/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   fetchFileIdFromPath,
   getFileDownloadUrl,
   getFilePathDownloadUrl,
 } from "@app/lib/swr/files";
+import { isFilePreviewableContentType } from "@app/types/file_preview";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
 import { createContext, useCallback, useContext, useMemo } from "react";

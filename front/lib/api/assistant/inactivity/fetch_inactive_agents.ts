@@ -1,4 +1,3 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type {
   AgentArchivalExclusionReason,
   AgentInactivitySnapshot,
@@ -9,7 +8,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { MentionResource } from "@app/lib/resources/mention_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import type { AgentConfigurationStatus } from "@app/types/assistant/agent";
 
 /**
  * A workspace's agents the rules clear for archival: candidates from the mentions query, rules
@@ -40,7 +38,6 @@ export interface AgentArchivalSkip {
 
 export interface ArchivableAgentsFetchInput {
   cutoffAt: Date;
-  dangerouslySkipPermissionFiltering?: boolean;
 }
 
 export interface ArchivableAgents {
@@ -61,25 +58,13 @@ export function countSkipsByReason(
   return counts;
 }
 
-interface AgentStatusAndTriggers {
-  status: AgentConfigurationStatus;
-  triggers: AgentTriggerSnapshot[];
-}
-
-async function fetchStatusAndTriggers(
+async function listTriggersByAgentId(
   auth: Authenticator,
-  agentIds: string[],
-  dangerouslySkipPermissionFiltering?: boolean
-): Promise<Map<string, AgentStatusAndTriggers>> {
+  agentIds: string[]
+): Promise<Map<string, AgentTriggerSnapshot[]>> {
   if (agentIds.length === 0) {
     return new Map();
   }
-
-  const configurations = await getAgentConfigurations(auth, {
-    agentIds,
-    variant: "light",
-    dangerouslySkipPermissionFiltering,
-  });
 
   const triggers = await TriggerResource.listByAgentConfigurationIds(
     auth,
@@ -93,48 +78,44 @@ async function fetchStatusAndTriggers(
     triggersByAgentId.set(agentConfigurationId, agentTriggers);
   }
 
-  return new Map(
-    configurations.map(({ sId, status }) => [
-      sId,
-      { status, triggers: triggersByAgentId.get(sId) ?? [] },
-    ])
-  );
+  return triggersByAgentId;
 }
 
 export async function fetchArchivableAgents(
   auth: Authenticator,
-  { cutoffAt, dangerouslySkipPermissionFiltering }: ArchivableAgentsFetchInput
+  { cutoffAt }: ArchivableAgentsFetchInput
 ): Promise<ArchivableAgents> {
   const idleAgents = await MentionResource.listAgentsNotMentionedSince(auth, {
     notMentionedSince: cutoffAt,
   });
 
   const agentIds = idleAgents.map(({ agentId }) => agentId);
-  const createdAtByAgentId = await AgentResource.listCreatedAtByAgentId(
-    auth,
-    agentIds
-  );
-  const statusAndTriggersByAgentId = await fetchStatusAndTriggers(
-    auth,
-    agentIds,
-    dangerouslySkipPermissionFiltering
-  );
+  const [agents, triggersByAgentId] = await Promise.all([
+    AgentResource.fetchByIds(auth, agentIds),
+    listTriggersByAgentId(auth, agentIds),
+  ]);
+  const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
 
   const eligible: ArchivableAgent[] = [];
   const skipped: AgentArchivalSkip[] = [];
 
   for (const { agentId, lastMentionedAt } of idleAgents) {
-    const createdAt = createdAtByAgentId.get(agentId);
-    const statusAndTriggers = statusAndTriggersByAgentId.get(agentId);
-    // No first version either means the agent is unreadable, or that we could not establish the
-    // date the age rule needs. Both are reasons not to archive it.
-    if (!createdAt || !statusAndTriggers) {
+    const agent = agentsById.get(agentId);
+    // Either gone since the mentions read, or the caller holds no verb on it. Both are reasons not
+    // to archive it.
+    if (!agent) {
       skipped.push({ agentId, reason: "agent_not_found" });
       continue;
     }
 
     const eligibility = evaluateAgentArchivalEligibility({
-      agent: { agentId, createdAt, lastMentionedAt, ...statusAndTriggers },
+      agent: {
+        agentId,
+        createdAt: agent.createdAt,
+        lastMentionedAt,
+        status: agent.status,
+        triggers: triggersByAgentId.get(agentId) ?? [],
+      },
       cutoffAt,
     });
 
@@ -143,7 +124,7 @@ export async function fetchArchivableAgents(
       continue;
     }
 
-    eligible.push({ agentId, createdAt, lastMentionedAt });
+    eligible.push({ agentId, createdAt: agent.createdAt, lastMentionedAt });
   }
 
   return { eligible, skipped };

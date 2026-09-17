@@ -94,6 +94,40 @@ describe("AgentResource", () => {
     }
   });
 
+  it("carries the agent's creation date on full and light resources alike", async () => {
+    const createdAt = new Date("2025-01-01T00:00:00.000Z");
+    // Hidden, so the non-author admin below gets it light.
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { scope: "hidden" }
+    );
+    await AgentConfigurationFactory.backdate(
+      testContext.authenticator,
+      agent.sId,
+      createdAt
+    );
+
+    const adminUser = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, adminUser, {
+      role: "admin",
+    });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      testContext.workspace.sId
+    );
+
+    const asAuthor = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    const asAdmin = await AgentResource.fetchById(adminAuth, agent.sId);
+
+    expect(asAuthor?.isFull()).toBe(true);
+    expect(asAuthor?.createdAt.getTime()).toBe(createdAt.getTime());
+    expect(asAdmin?.isFull()).toBe(false);
+    expect(asAdmin?.createdAt.getTime()).toBe(createdAt.getTime());
+  });
+
   it("returns a light resource when the caller holds a verb but cannot read the agent", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator,
@@ -171,27 +205,27 @@ describe("AgentResource", () => {
     }
   });
 
-  it("prefers the active version over a higher-version non-active one", async () => {
+  it("resolves the version the currentVersion pointer designates, ignoring stray higher rows", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator
     );
     assert(agent.agentModelId !== null);
 
-    const activeConfig = await AgentConfigurationModel.findOne({
+    const currentConfig = await AgentConfigurationModel.findOne({
       where: {
         sId: agent.sId,
         status: "active",
         workspaceId: testContext.workspace.id,
       },
     });
-    assert(activeConfig !== null);
+    assert(currentConfig !== null);
 
-    // A later draft (e.g. the builder "try" state) can carry a higher version than the active one;
-    // fetchers must still resolve the active version.
-    const { id: _id, ...activeAttributes } = activeConfig.get();
+    // Insert a higher-version row without advancing `currentVersion` (e.g. a leftover builder "try"
+    // draft). The resolver joins on `currentVersion`, so it follows the pointer and ignores this row.
+    const { id: _id, ...currentAttributes } = currentConfig.get();
     await AgentConfigurationModel.create({
-      ...activeAttributes,
-      version: activeConfig.version + 1,
+      ...currentAttributes,
+      version: currentConfig.version + 1,
       status: "draft",
     });
 
@@ -203,7 +237,7 @@ describe("AgentResource", () => {
     expect(resource).not.toBeNull();
     expect(resource?.id).toBe(agent.agentModelId);
     expect(resource?.status).toBe("active");
-    expect(resource?.content.version).toBe(activeConfig.version);
+    expect(resource?.content.version).toBe(currentConfig.version);
   });
 
   it("returns one resource per agent when fetching in batches", async () => {

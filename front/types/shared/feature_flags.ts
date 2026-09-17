@@ -1,9 +1,4 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
-  frame_domain_sharing: {
-    description: "Allow sharing Frames with an email domain",
-    stage: "dust_only",
-    owner: "flvndvd",
-  },
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
@@ -32,12 +27,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable Frames v2",
     stage: "self_serve",
     owner: "fontanierh",
-  },
-  analytics_conversation_panel: {
-    description:
-      "Enable the Ask @analyst conversation panel on the Analytics page",
-    stage: "dust_only",
-    owner: "achilleburah",
   },
   advanced_notion_management: {
     description:
@@ -200,11 +189,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "API for accessing usage data (Means that any builder with an API key can access usage data of the workspace from API)",
     stage: "self_serve",
     owner: "flvndvd",
-  },
-  xai_feature: {
-    description: "Access to xAI models in the agent builder",
-    stage: "self_serve",
-    owner: "fontanierh",
   },
   noop_model_feature: {
     description: "Access to noop model in the agent builder",

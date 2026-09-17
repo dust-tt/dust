@@ -114,6 +114,16 @@
     },
     {
       "includes": [
+        "front-api/**/*.ts",
+        "front/lib/api/**/*.ts",
+        "front/types/**/*.ts",
+        "front/temporal/**/*.ts",
+        "!**/*.{test,spec}.{ts,tsx}"
+      ],
+      "plugins": ["./.grit/patterns/noClientImportsInServer.grit"]
+    },
+    {
+      "includes": [
         "front/components/**/*.{js,jsx,ts,tsx}",
         "front/lib/**/*.tsx",
         "front-spa/**/*.{js,jsx,ts,tsx}",

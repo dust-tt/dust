@@ -8,8 +8,21 @@ import logger from "@app/logger/logger";
 import type { SeedContext } from "@app/scripts/seed/factories";
 import { seedReinforcement } from "@app/scripts/seed/reinforcement/seedReinforcement";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
+
+function instructionEditsOf(suggestion: SkillSuggestionResource) {
+  const json = suggestion.toJSON();
+  switch (json.kind) {
+    case "edit":
+      return json.suggestion.instructionEdits;
+    case "editors":
+      return undefined;
+    default:
+      assertNever(json);
+  }
+}
 
 describe("reinforcement seed script integration test", () => {
   let workspace: LightWorkspaceType;
@@ -145,30 +158,24 @@ describe("reinforcement seed script integration test", () => {
     expect(allReinforcement).toBe(true);
 
     // First suggestion includes an inline tool reference in its instruction edit.
-    const withInlineToolReference = skillSuggestions.find((s) => {
-      const json = s.toJSON();
-      return json.suggestion.instructionEdits?.some(
+    const withInlineToolReference = skillSuggestions.find((s) =>
+      instructionEditsOf(s)?.some(
         (edit) =>
           edit.content.includes("<tool") &&
           edit.content.includes('name="Web Search"')
-      );
-    });
+      )
+    );
     expect(withInlineToolReference).toBeDefined();
 
     // Second suggestion has 2 instruction edits
-    const withOnlyInstructionEdits = skillSuggestions.find((s) => {
-      const json = s.toJSON();
-      return (
-        json.suggestion.instructionEdits &&
-        json.suggestion.instructionEdits.length === 2
-      );
-    });
+    const withOnlyInstructionEdits = skillSuggestions.find(
+      (s) => instructionEditsOf(s)?.length === 2
+    );
     expect(withOnlyInstructionEdits).toBeDefined();
 
     // Fourth suggestion (MeetingNotesFormatter) has a multi-block replacement
     const multiBlockSuggestion = skillSuggestions.find((s) => {
-      const json = s.toJSON();
-      const edits = json.suggestion.instructionEdits;
+      const edits = instructionEditsOf(s);
       return (
         edits && edits.length === 1 && edits[0].content.includes("</p><p>")
       );

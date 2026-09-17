@@ -28,7 +28,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
-import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
+import { isNonBusinessEmailDomain } from "@app/lib/utils/non_business_email_domains";
 import logger from "@app/logger/logger";
 import type {
   PostDataSourceRequestBody,
@@ -620,7 +620,7 @@ async function handleDataSourceWithProvider({
     });
 
     const email = auth.user()?.email;
-    if (email && !isDisposableEmailDomain(email)) {
+    if (email && !isNonBusinessEmailDomain(email)) {
       void sendUserOperationMessage({
         logger,
         message: `${email} \`${dataSource.name}\`  for workspace \`${

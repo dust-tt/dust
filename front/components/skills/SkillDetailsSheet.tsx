@@ -1,3 +1,4 @@
+import type { SkillLoadErrorReason } from "@app/components/skills/SkillDetailsBody";
 import {
   SkillDetailsContent,
   SkillDetailsHeader,
@@ -20,6 +21,7 @@ type SkillDetailsProps = {
   skill: GetSkillsWithRelationsResponseBody["skills"][number] | null;
   open?: boolean;
   isError?: boolean;
+  errorReason?: SkillLoadErrorReason;
   onRetry?: () => void;
   onClose: () => void;
   onFavoriteChange?: (
@@ -35,6 +37,7 @@ export function SkillDetailsSheet({
   skill,
   open,
   isError = false,
+  errorReason,
   onRetry,
   onClose,
   onFavoriteChange,
@@ -91,7 +94,7 @@ export function SkillDetailsSheet({
             </SheetContainer>
           </>
         ) : isError ? (
-          <SkillLoadError onRetry={onRetry} />
+          <SkillLoadError reason={errorReason} onRetry={onRetry} />
         ) : isOpen ? (
           <div className="flex h-full w-full items-center justify-center">
             <Spinner size="lg" />

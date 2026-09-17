@@ -15,6 +15,7 @@ import {
   sortSkillsByName,
 } from "@app/components/pages/builder/skills/utils";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
+import type { SkillLoadErrorReason } from "@app/components/skills/SkillDetailsBody";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
 import { BatchAvailabilityDialog } from "@app/components/skills/SkillsBatchEdit";
@@ -33,6 +34,7 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
+  useSkill,
   useSkillsWithRelations,
   useUpdateSkillFavorite,
   useUpdateSkillsAvailability,
@@ -40,6 +42,7 @@ import {
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
+import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
   Button,
@@ -62,6 +65,22 @@ import {
 } from "@dust-tt/sparkle";
 import type { RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+function getDeepLinkErrorReason({
+  isHidden,
+  isNotFound,
+}: {
+  isHidden: boolean;
+  isNotFound: boolean;
+}): SkillLoadErrorReason {
+  if (isHidden) {
+    return "editors_only";
+  }
+  if (isNotFound) {
+    return "not_found";
+  }
+  return "unavailable";
+}
 
 export function ManageSkillsPage() {
   const owner = useWorkspace();
@@ -281,11 +300,9 @@ export function ManageSkillsPage() {
     ) => {
       const didUpdate = await updateSkillFavorite(skill, isFavorite);
       if (didUpdate) {
-        setSelectedSkillOverride((currentSkill) =>
-          currentSkill?.sId === skill.sId
-            ? { ...currentSkill, isFavorite }
-            : currentSkill
-        );
+        // The sheet is the only caller, so the skill is the selected one. Overriding also
+        // covers deep-linked skills, whose by-id fetch is not refreshed by the list mutations.
+        setSelectedSkillOverride({ ...skill, isFavorite });
       }
     },
     [updateSkillFavorite]
@@ -312,6 +329,34 @@ export function ManageSkillsPage() {
 
     return knownSkillsById.get(skillIdParam) ?? null;
   }, [skillIdParam, knownSkillsById, selectedSkillOverride]);
+
+  // Deep links can point at a skill outside the loaded lists (hidden without "Show hidden
+  // skills", archived while on another tab), so resolve the hash id on its own.
+  const {
+    skill: deepLinkedSkill,
+    isSkillError: isDeepLinkedSkillError,
+    isSkillNotFound: isDeepLinkedSkillNotFound,
+    mutateSkill: retryDeepLinkedSkill,
+  } = useSkill({
+    workspaceId: owner.sId,
+    skillId: skillIdParam ?? null,
+    withRelations: true,
+    disabled: !skillIdParam || selectedSkill !== null,
+    shouldRetryOnError: false,
+  });
+  // Same rule as the list: unpublished skills stay hidden from non-editors. Admins get them, as
+  // they could reveal them with "Show hidden skills" anyway.
+  const isDeepLinkedSkillHidden =
+    deepLinkedSkill !== null &&
+    !canBypassEditorVisibility &&
+    !isSkillVisibleToViewer({
+      availability: deepLinkedSkill.availability,
+      viewerCanWrite: deepLinkedSkill.canWrite,
+    });
+  const deepLinkedSkillErrorReason = getDeepLinkErrorReason({
+    isHidden: isDeepLinkedSkillHidden,
+    isNotFound: isDeepLinkedSkillNotFound,
+  });
 
   const handleUsedBySkillSelect = useCallback(
     (skillId: string) => {
@@ -389,7 +434,13 @@ export function ManageSkillsPage() {
   return (
     <>
       <SkillDetailsSheet
-        skill={selectedSkill}
+        skill={
+          selectedSkill ?? (isDeepLinkedSkillHidden ? null : deepLinkedSkill)
+        }
+        open={!!skillIdParam}
+        isError={isDeepLinkedSkillError || isDeepLinkedSkillHidden}
+        errorReason={deepLinkedSkillErrorReason}
+        onRetry={retryDeepLinkedSkill}
         onClose={() => handleSkillSelect(null)}
         onFavoriteChange={handleFavoriteChange}
         user={user}

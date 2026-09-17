@@ -15,9 +15,13 @@ import type {
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { DataSourceType } from "@app/types/data_source";
 import type { APIError } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
+import useSWRMutation from "swr/mutation";
 
 interface UseConnectorPermissionsReturn<T extends ConnectorPermission | null> {
   resources: T extends ConnectorPermission
@@ -26,6 +30,29 @@ interface UseConnectorPermissionsReturn<T extends ConnectorPermission | null> {
   isResourcesLoading: boolean;
   isResourcesError: boolean;
   resourcesError: APIError | null;
+}
+
+function getConnectorPermissionsUrl({
+  owner,
+  dataSource,
+  parentId,
+  filterPermission,
+  viewType,
+}: {
+  owner: LightWorkspaceType;
+  dataSource: DataSourceType;
+  parentId: string | null;
+  filterPermission?: ConnectorPermission | null;
+  viewType?: ContentNodesViewType;
+}): string {
+  let url = `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions?viewType=${viewType}`;
+  if (parentId) {
+    url += `&parentId=${parentId}`;
+  }
+  if (filterPermission) {
+    url += `&filterPermission=${filterPermission}`;
+  }
+  return url;
 }
 
 export function useConnectorPermissions<T extends ConnectorPermission | null>({
@@ -51,13 +78,13 @@ export function useConnectorPermissions<T extends ConnectorPermission | null>({
       : GetDataSourcePermissionsResponseBody
   > = fetcher;
 
-  let url = `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions?viewType=${viewType}`;
-  if (parentId) {
-    url += `&parentId=${parentId}`;
-  }
-  if (filterPermission) {
-    url += `&filterPermission=${filterPermission}`;
-  }
+  const url = getConnectorPermissionsUrl({
+    owner,
+    dataSource,
+    parentId,
+    filterPermission,
+    viewType,
+  });
 
   const { data, error } = useSWRWithDefaults(url, permissionsFetcher, {
     disabled,
@@ -79,6 +106,50 @@ export function useConnectorPermissions<T extends ConnectorPermission | null>({
     isResourcesError: error,
     resourcesError: error ? (error.error as APIError) : null,
   } as UseConnectorPermissionsReturn<T>;
+}
+
+export function useFetchConnectorPermissions({
+  owner,
+  dataSource,
+  viewType = "all",
+}: {
+  owner: LightWorkspaceType;
+  dataSource: DataSourceType;
+  viewType?: ContentNodesViewType;
+}): (parentId: string) => Promise<Result<ContentNode[], Error>> {
+  const { fetcher } = useFetcher();
+  const { featureFlags } = useFeatureFlags();
+  const { trigger } = useSWRMutation(
+    getConnectorPermissionsUrl({
+      owner,
+      dataSource,
+      parentId: null,
+      viewType,
+    }),
+    async (_key: string, { arg: parentId }: { arg: string }) => {
+      try {
+        const data: GetDataSourcePermissionsResponseBody = await fetcher(
+          getConnectorPermissionsUrl({
+            owner,
+            dataSource,
+            parentId,
+            viewType,
+          })
+        );
+        return new Ok(
+          data.resources.filter(
+            (resource) =>
+              resource.providerVisibility !== "private" ||
+              featureFlags.includes("index_private_slack_channel")
+          )
+        );
+      } catch (error) {
+        return new Err(normalizeError(error));
+      }
+    }
+  );
+
+  return useCallback(async (parentId: string) => trigger(parentId), [trigger]);
 }
 
 export function useConnectorConfig({

@@ -48,9 +48,27 @@ export const REVIEWABLE_SKILL_SUGGESTION_SOURCES = [
 export type ReviewableSkillSuggestionSource =
   (typeof REVIEWABLE_SKILL_SUGGESTION_SOURCES)[number];
 
-export const SKILL_SUGGESTION_KINDS = ["edit"] as const;
+export const SKILL_SUGGESTION_KINDS = ["edit", "editors"] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
+
+// Kinds the reinforcement workflow produces (synthetic analysis) and consumes (aggregation).
+// Reinforcement code MUST filter on these kinds when fetching suggestions so it never has to
+// handle other kinds.
+export const REINFORCEMENT_SKILL_SUGGESTION_KINDS = [
+  "edit",
+] as const satisfies readonly SkillSuggestionKind[];
+
+export type ReinforcementSkillSuggestionKind =
+  (typeof REINFORCEMENT_SKILL_SUGGESTION_KINDS)[number];
+
+export function isReinforcementSkillSuggestionKind(
+  kind: SkillSuggestionKind
+): kind is ReinforcementSkillSuggestionKind {
+  return REINFORCEMENT_SKILL_SUGGESTION_KINDS.includes(
+    kind as ReinforcementSkillSuggestionKind
+  );
+}
 
 export const SkillInstructionEditItemSchema = z.object({
   targetBlockId: z
@@ -103,17 +121,89 @@ export const SkillEditSuggestionSchema = z
 
 export type SkillEditSuggestionType = z.infer<typeof SkillEditSuggestionSchema>;
 
-export type SkillSuggestionPayload = SkillEditSuggestionType;
+export const SkillEditorsSuggestionSchema = z
+  .object({
+    addUserIds: z
+      .array(z.string())
+      .describe("sIds of the workspace members to add as editors."),
+    removeUserIds: z
+      .array(z.string())
+      .describe("sIds of the current editors to remove."),
+  })
+  .refine(
+    (d) => d.addUserIds.length > 0 || d.removeUserIds.length > 0,
+    "At least one of addUserIds or removeUserIds must be non-empty."
+  );
 
-const SkillSuggestionDataSchema = z.object({
+export type SkillEditorsSuggestionType = z.infer<
+  typeof SkillEditorsSuggestionSchema
+>;
+
+export type SkillSuggestionPayload =
+  | SkillEditSuggestionType
+  | SkillEditorsSuggestionType;
+
+const SkillEditSuggestionDataSchema = z.object({
   kind: z.literal("edit"),
   suggestion: SkillEditSuggestionSchema,
 });
+
+const SkillEditorsSuggestionDataSchema = z.object({
+  kind: z.literal("editors"),
+  suggestion: SkillEditorsSuggestionSchema,
+});
+
+const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
+  SkillEditSuggestionDataSchema,
+  SkillEditorsSuggestionDataSchema,
+]);
 
 type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
 
 export function parseSkillSuggestionData(data: unknown): SkillSuggestionData {
   return SkillSuggestionDataSchema.parse(data);
+}
+
+export type SkillEditSuggestionData = Extract<
+  SkillSuggestionData,
+  { kind: "edit" }
+>;
+
+export type SkillEditorsSuggestionData = Extract<
+  SkillSuggestionData,
+  { kind: "editors" }
+>;
+
+// `kind` and `suggestion` are separate columns, so narrowing one without the other would lie about
+// the payload. Applies to anything carrying the pair, the resource included.
+function isSkillSuggestionOfKind<
+  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+  K extends SkillSuggestionKind,
+>(
+  carrier: T,
+  kind: K
+): carrier is T & Extract<SkillSuggestionData, { kind: K }> {
+  if (carrier.kind !== kind) {
+    return false;
+  }
+  const { kind: parsedKind } = parseSkillSuggestionData({
+    kind: carrier.kind,
+    suggestion: carrier.suggestion,
+  });
+
+  return parsedKind === kind;
+}
+
+export function isEditSkillSuggestion<
+  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+>(carrier: T): carrier is T & SkillEditSuggestionData {
+  return isSkillSuggestionOfKind(carrier, "edit");
+}
+
+export function isEditorsSkillSuggestion<
+  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+>(carrier: T): carrier is T & SkillEditorsSuggestionData {
+  return isSkillSuggestionOfKind(carrier, "editors");
 }
 
 const SkillSuggestionUpdatedBySchema = z.object({
@@ -146,3 +236,14 @@ export const SkillSuggestionSchema = BaseSkillSuggestionSchema.and(
 );
 
 export type SkillSuggestionType = z.infer<typeof SkillSuggestionSchema>;
+
+export type ReinforcementSkillSuggestionType = Extract<
+  SkillSuggestionType,
+  { kind: ReinforcementSkillSuggestionKind }
+>;
+
+export function isReinforcementSkillSuggestion(
+  suggestion: SkillSuggestionType
+): suggestion is ReinforcementSkillSuggestionType {
+  return isReinforcementSkillSuggestionKind(suggestion.kind);
+}

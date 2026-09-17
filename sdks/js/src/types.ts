@@ -832,7 +832,6 @@ export type RetrievalDocumentPublicType = z.infer<
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "activation_force_nudge"
   | "advanced_notion_management"
-  | "analytics_conversation_panel"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "archive_inactive_agents"
@@ -856,7 +855,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_lean_agent"
   | "dust_pod_goal"
   | "fireworks_new_model_feature"
-  | "frame_domain_sharing"
   | "frames_v2"
   | "google_sheets_tool"
   | "gpt_5_6_terra_long_context"
@@ -898,7 +896,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "pricing_groups"
   | "workspace_analytics"
-  | "xai_feature"
   | "conversations_slack_notifications"
   | "collapsible_messages"
   | "consumption_export_api"

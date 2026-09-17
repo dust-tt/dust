@@ -327,6 +327,7 @@ type SlideshowProps = PropsWithChildren<{
 
 function SlideshowRoot({ children, className }: SlideshowProps) {
   const slides = validateSlideChildren(children);
+  const slideshowRef = React.useRef<HTMLElement>(null);
 
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [isNavigationVisible, setIsNavigationVisible] = React.useState(true);
@@ -399,12 +400,14 @@ function SlideshowRoot({ children, className }: SlideshowProps) {
         </div>
         <SidebarInset>
           <main
-            className="flex flex-1 items-center justify-center relative"
+            ref={slideshowRef}
+            className="flex flex-1 items-center justify-center relative [&:fullscreen]:h-screen [&:fullscreen]:w-screen [&:fullscreen]:bg-background"
             aria-live="polite"
             aria-label={`Slide ${activeIndex + 1} of ${slides.length}`}
           >
             {slides[activeIndex]}
             <SlideshowNavigation
+              slideshowRef={slideshowRef}
               index={activeIndex}
               isVisible={isNavigationVisible}
               total={slides.length}

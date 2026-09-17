@@ -5,6 +5,7 @@ import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/ag
 import { getEffectiveSpaceIdsForAgentRun } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
+import { SkillNameSchema } from "@app/lib/api/skills/schemas";
 import {
   filterUsersWithSharedMembership,
   hasSharedMembership,
@@ -69,6 +70,8 @@ import {
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
+import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
   AgentConfigurationWithoutModelType,
   LightAgentConfigurationType,
@@ -91,6 +94,7 @@ import type {
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
+import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
@@ -102,6 +106,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import groupBy from "lodash/groupBy";
@@ -116,6 +121,8 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
+
+const SKILL_SEARCH_INDEXATION_CONCURRENCY = 8;
 
 export type SkillMCPServerConfiguration = {
   view: MCPServerViewResource;
@@ -484,6 +491,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       fileAttachments?: FileResource[];
     }
   ): Promise<SkillResource> {
+    SkillNameSchema.parse(blob.name);
     const owner = auth.getNonNullableWorkspace();
 
     assert(
@@ -568,6 +576,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await auth.refresh();
 
     return skillResource;
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;concurrency] skill-search-after-commit
+   * Skill mutations enqueue workspace-scoped custom IDs after their existing writes.
+   * Failed workflow launch results are logged without failing the mutation.
+   */
+  static async launchSearchIndexation(
+    auth: Authenticator,
+    skillIds: string[]
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (skillIds.length === 0) {
+      return;
+    }
+    const results = await concurrentExecutor(
+      uniq(skillIds),
+      (skillId) =>
+        launchIndexSkillSearchWorkflow({ workspaceId: workspace.sId, skillId }),
+      { concurrency: SKILL_SEARCH_INDEXATION_CONCURRENCY }
+    );
+    const failedResult = results.find((result) => result.isErr());
+    if (failedResult?.isErr()) {
+      logger.error(
+        { error: failedResult.error, workspaceId: workspace.sId, skillIds },
+        "Failed to launch skill search indexation"
+      );
+    }
   }
 
   static async makeSuggestion(
@@ -1051,11 +1087,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async fetchById(
     auth: Authenticator,
     sId: string,
-    {
-      permissionFiltering,
-    }: { permissionFiltering?: SkillPermissionFilteringMode } = {}
+    options: SkillFetchContext &
+      SkillHydrationOptions & { onlyActive?: boolean } = {}
   ): Promise<SkillResource | null> {
-    const [skill] = await this.fetchByIds(auth, [sId], { permissionFiltering });
+    const [skill] = await this.fetchByIds(auth, [sId], options);
 
     return skill ?? null;
   }
@@ -1070,12 +1105,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyActive = false,
       withInstructions = true,
       withTools = true,
+      withToolMetadata = false,
       withFileAttachments = true,
-    }: SkillFetchContext &
-      Pick<
-        SkillConfigurationFindOptions,
-        "withInstructions" | "withTools" | "withFileAttachments"
-      > & { onlyActive?: boolean } = {}
+    }: SkillFetchContext & SkillHydrationOptions & { onlyActive?: boolean } = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
@@ -1110,6 +1142,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
         withInstructions,
         withTools,
+        withToolMetadata,
         withFileAttachments,
       },
       { agentLoopData, effectiveSpaceIds, permissionFiltering }
@@ -3100,8 +3133,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           existingArchivedSkill.updatedAt.getTime(),
           "long"
         );
+        const suffix = ` (archived on ${timestamp}, ${SkillResource.modelIdToSId(existingArchivedSkill)})`;
+        const name = existingArchivedSkill.name.slice(
+          0,
+          SKILL_NAME_MAX_LENGTH - suffix.length
+        );
         await existingArchivedSkill.update(
-          { name: `${existingArchivedSkill.name} (archived on ${timestamp})` },
+          { name: `${name}${suffix}` },
           { transaction }
         );
       }
@@ -3222,6 +3260,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   ): Promise<void> {
     assert(this.canWrite(auth), "User is not authorized to update this skill");
+    SkillNameSchema.parse(name);
 
     const availabilityChanged =
       availability !== undefined && availability !== this.availability;
@@ -4455,6 +4494,50 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ) {
       await this.update({ instructions, instructionsHtml }, transaction);
     }
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;security] skill-search-serialization
+   * Serialize a custom skill fetched with tools, deriving user sIds from supplied editor
+   * resources; perform no I/O and never include private skill content.
+   */
+  toSearchDocument(
+    workspace: LightWorkspaceType,
+    {
+      lastEditedByUser,
+      editors,
+      activeUsersCount,
+    }: {
+      lastEditedByUser: UserResource | null;
+      editors: UserResource[];
+      activeUsersCount: number | null;
+    }
+  ): SkillSearchDocument {
+    assert(
+      !this.globalSId && this.workspaceId === workspace.id,
+      "Search documents require a custom skill in the workspace."
+    );
+    return {
+      workspace_id: workspace.sId,
+      skill_id: this.sId,
+      status: this.status,
+      availability: this.availability,
+      name: this.name,
+      description: this.userFacingDescription,
+      icon: this.icon,
+      last_edited_by_user_id: lastEditedByUser?.sId ?? null,
+      editor_ids: uniq(editors.map((editor) => editor.sId)).sort(),
+      requested_space_ids: this.requestedSpaceIds.map((id) =>
+        SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
+      ),
+      mcp_server_view_ids: uniq(
+        this.mcpServerViews.map((view) => view.sId)
+      ).sort(),
+      active_users_count: activeUsersCount,
+      favorite_count: this.favoriteCount,
+      created_at: this.createdAt.toISOString(),
+      updated_at: this.updatedAt.toISOString(),
+    };
   }
 
   toJSON(auth: Authenticator): SkillType {

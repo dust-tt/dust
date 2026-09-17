@@ -1,15 +1,110 @@
 import { getBlockOuterHtml } from "@app/components/shared/utils";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
+import { formatRelativeTime } from "@app/lib/utils/timestamps";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   SkillAgentFacingDescriptionEditType,
   SkillInstructionEditItemType,
+  SkillSuggestionState,
   SkillSuggestionType,
 } from "@app/types/suggestions/skill_suggestion";
-import { Button, Card, DiffBlock, Hoverable } from "@dust-tt/sparkle";
+import {
+  Button,
+  Card,
+  CheckCircle,
+  Chip,
+  Clock,
+  DiffBlock,
+  Hoverable,
+  Tooltip,
+  XCircle,
+} from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
+import type { ComponentType } from "react";
 import { useMemo } from "react";
 
 const MAX_VISIBLE_CONVERSATIONS = 3;
+
+function getStatusChip(
+  state: SkillSuggestionState,
+  { actor, when }: { actor: string | undefined; when: string }
+): {
+  color: "success" | "warning" | "primary";
+  icon: ComponentType;
+  label: string;
+  tooltip: string;
+} | null {
+  const by = actor ? ` by ${actor}` : "";
+
+  switch (state) {
+    case "pending":
+      return null;
+    case "approved":
+      return {
+        color: "success",
+        icon: CheckCircle,
+        label: "Accepted",
+        tooltip: `Accepted${by} ${when}`,
+      };
+    case "rejected":
+      return {
+        color: "warning",
+        icon: XCircle,
+        label: "Declined",
+        tooltip: `Declined${by} ${when}`,
+      };
+    case "outdated":
+      return {
+        color: "primary",
+        icon: Clock,
+        label: "Outdated",
+        tooltip: `Superseded by a later suggestion`,
+      };
+    default:
+      assertNeverAndIgnore(state);
+      return null;
+  }
+}
+
+interface ReviewedSuggestionCardProps {
+  suggestion: SkillSuggestionType;
+}
+
+function ReviewedSuggestionCard({ suggestion }: ReviewedSuggestionCardProps) {
+  const { state, title, updatedAt, updatedBy } = suggestion;
+  const { user } = useAuth();
+
+  const isCurrentUser = !!updatedBy && updatedBy.sId === user?.sId;
+
+  const chip = getStatusChip(state, {
+    actor: isCurrentUser ? "you" : updatedBy?.fullName,
+    when: formatRelativeTime(updatedAt),
+  });
+
+  return (
+    <Card variant="primary" size="sm" className="flex-col gap-1">
+      <div className="flex min-w-0 items-center gap-2">
+        {chip && (
+          <Tooltip
+            trigger={
+              <Chip
+                size="xs"
+                color={chip.color}
+                icon={chip.icon}
+                label={chip.label}
+              />
+            }
+            label={chip.tooltip}
+          />
+        )}
+        <span className="truncate text-sm text-muted-foreground">
+          {title ?? "Suggestion"}
+        </span>
+      </div>
+    </Card>
+  );
+}
 
 interface AgentFacingDescriptionEditSectionProps {
   edit: SkillAgentFacingDescriptionEditType;
@@ -175,10 +270,23 @@ export function SkillSuggestionCard({
   isAccepting = false,
   isDeclining = false,
 }: SkillSuggestionCardProps) {
+  switch (suggestion.kind) {
+    case "edit":
+      break;
+    case "editors":
+      return null;
+    default:
+      assertNeverAndIgnore(suggestion);
+      return null;
+  }
   const { instructionEdits, agentFacingDescriptionEdit } =
     suggestion.suggestion;
   const isClickable = !!onSelect;
   const hasActions = !!onAccept && !!onDecline;
+
+  if (suggestion.state !== "pending") {
+    return <ReviewedSuggestionCard suggestion={suggestion} />;
+  }
 
   return (
     <div

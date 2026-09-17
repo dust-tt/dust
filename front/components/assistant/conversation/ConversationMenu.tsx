@@ -6,6 +6,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import {
   useBranchConversation,
   useConversation,
+  useConversationMarkAsUnread,
   useConversationParticipants,
   useConversationParticipationOptions,
   useConversationUrlAccessMode,
@@ -321,6 +322,8 @@ export function ConversationMenu({
     config.getAppUrl()
   );
 
+  const markAsUnread = useConversationMarkAsUnread(owner);
+
   const doDelete = useDeleteConversation(owner);
   const leaveOrDelete = useCallback(
     async (forceDelete: boolean = false) => {
@@ -459,6 +462,13 @@ export function ConversationMenu({
             icon={GitBranch01}
             disabled={isBranching}
           />
+          {conversation && !isConversationDisplayed && !conversation.unread && (
+            <DropdownMenuItem
+              label="Mark as unread"
+              onClick={() => void markAsUnread(conversation)}
+              icon={EyeOff}
+            />
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuSub
             onOpenChange={(open) => {

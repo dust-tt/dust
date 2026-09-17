@@ -17,8 +17,13 @@ import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { escapeXml } from "@app/types/shared/utils/string_utils";
-import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import type { ReinforcementSkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import {
+  isReinforcementSkillSuggestion,
+  REINFORCEMENT_SKILL_SUGGESTION_KINDS,
+} from "@app/types/suggestions/skill_suggestion";
 import type { UserType } from "@app/types/user";
 
 const AGGREGATION_ASSEMBLY_ORDER = [
@@ -93,7 +98,7 @@ export function buildSkillAggregationSystemPrompt(): string {
   }).join("\n\n");
 }
 
-function formatSuggestion(s: SkillSuggestionType): string {
+function formatSuggestion(s: ReinforcementSkillSuggestionType): string {
   switch (s.kind) {
     case "edit": {
       let xml = `<suggestion kind="edit" sId="${escapeXml(s.sId)}"><skillId>${escapeXml(s.skillConfigurationId)}</skillId><analysis>${escapeXml(s.analysis ?? "N/A")}</analysis>`;
@@ -110,10 +115,14 @@ function formatSuggestion(s: SkillSuggestionType): string {
       xml += "</suggestion>";
       return xml;
     }
+    default:
+      assertNever(s.kind);
   }
 }
 
-function formatSuggestions(suggestions: SkillSuggestionType[]): string {
+function formatSuggestions(
+  suggestions: ReinforcementSkillSuggestionType[]
+): string {
   return suggestions
     .map((s, i) => `### Suggestion ${i + 1}\n${formatSuggestion(s)}`)
     .join("\n\n");
@@ -121,10 +130,10 @@ function formatSuggestions(suggestions: SkillSuggestionType[]): string {
 
 export function buildSkillAggregationPrompt(
   skill: SkillType,
-  syntheticSuggestions: SkillSuggestionType[],
+  syntheticSuggestions: ReinforcementSkillSuggestionType[],
   existingSuggestions: {
-    pending: SkillSuggestionType[];
-    rejected: SkillSuggestionType[];
+    pending: ReinforcementSkillSuggestionType[];
+    rejected: ReinforcementSkillSuggestionType[];
   }
 ): { systemPrompt: string; userMessage: string } {
   const systemPrompt = buildSkillAggregationSystemPrompt();
@@ -154,6 +163,16 @@ ${formatSuggestions(existingSuggestions.rejected)}`;
   return { systemPrompt, userMessage };
 }
 
+// Resources are fetched with `kinds: REINFORCEMENT_SKILL_SUGGESTION_KINDS`, so the filter here only
+// narrows the type; it never drops anything.
+function toReinforcementSuggestions(
+  suggestions: SkillSuggestionResource[]
+): ReinforcementSkillSuggestionType[] {
+  return suggestions
+    .map((s) => s.toJSON())
+    .filter(isReinforcementSkillSuggestion);
+}
+
 interface SkillAggregationContext {
   skill: SkillResource;
   syntheticSuggestions: SkillSuggestionResource[];
@@ -168,6 +187,7 @@ export async function loadSkillAggregationContext(
     await SkillSuggestionResource.listBySkillConfigurationId(auth, skillId, {
       sources: ["synthetic"],
       states: ["pending"],
+      kinds: REINFORCEMENT_SKILL_SUGGESTION_KINDS,
     });
 
   if (syntheticSuggestions.length === 0) {
@@ -190,10 +210,12 @@ export async function loadSkillAggregationContext(
     SkillSuggestionResource.listBySkillConfigurationId(auth, skillId, {
       sources: ["reinforcement"],
       states: ["pending"],
+      kinds: REINFORCEMENT_SKILL_SUGGESTION_KINDS,
     }),
     SkillSuggestionResource.listBySkillConfigurationId(auth, skillId, {
       sources: ["reinforcement"],
       states: ["rejected"],
+      kinds: REINFORCEMENT_SKILL_SUGGESTION_KINDS,
       limit: REJECTED_SUGGESTIONS_MAX_COUNT,
     }),
   ]);
@@ -210,10 +232,10 @@ export async function loadSkillAggregationContext(
 
   const prompt = buildSkillAggregationPrompt(
     skillType,
-    syntheticSuggestions.map((s) => s.toJSON()),
+    toReinforcementSuggestions(syntheticSuggestions),
     {
-      pending: pendingSuggestions.map((s) => s.toJSON()),
-      rejected: recentRejectedSuggestions.map((s) => s.toJSON()),
+      pending: toReinforcementSuggestions(pendingSuggestions),
+      rejected: toReinforcementSuggestions(recentRejectedSuggestions),
     }
   );
 
@@ -298,7 +320,11 @@ export async function createSkillSuggestionsConversation(
     await SkillSuggestionResource.listBySkillConfigurationId(
       auth,
       skillType.sId,
-      { sources: ["reinforcement"], states: ["pending"] }
+      {
+        sources: ["reinforcement"],
+        states: ["pending"],
+        kinds: REINFORCEMENT_SKILL_SUGGESTION_KINDS,
+      }
     );
 
   if (pendingSuggestions.length === 0) {
@@ -306,7 +332,7 @@ export async function createSkillSuggestionsConversation(
   }
 
   const formattedSuggestions = formatSuggestions(
-    pendingSuggestions.map((s) => s.toJSON())
+    toReinforcementSuggestions(pendingSuggestions)
   );
 
   const conversationTitle = `Reinforced suggestions for ${skillType.name} skill`;

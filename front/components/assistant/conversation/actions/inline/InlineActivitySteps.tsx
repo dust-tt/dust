@@ -91,7 +91,9 @@ export function InlineActivitySteps({
     });
   };
 
-  const isThinking = lastAgentStateClassification === "thinking";
+  const isThinking =
+    lastAgentStateClassification === "placeholder" ||
+    lastAgentStateClassification === "thinking";
   const isWriting = lastAgentStateClassification === "writing";
   const isActing = lastAgentStateClassification === "acting";
   const showPendingToolCalls = !isDone && pendingToolCalls.length > 0;

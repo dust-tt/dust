@@ -1,8 +1,9 @@
+import { SlideshowControls } from "@viz/components/dust/slideshow/SlideshowControls";
 import { cn } from "@viz/lib/utils";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import React from "react";
 
 interface SlideshowNavigationProps {
+  slideshowRef?: React.RefObject<HTMLElement>;
   index: number;
   isVisible: boolean;
   next: () => void;
@@ -11,6 +12,7 @@ interface SlideshowNavigationProps {
 }
 
 export function SlideshowNavigation({
+  slideshowRef,
   index,
   isVisible,
   next,
@@ -18,10 +20,19 @@ export function SlideshowNavigation({
   total,
 }: SlideshowNavigationProps) {
   React.useEffect(() => {
+    /**
+     * @cc [owner:spolu,label:product] keyboard-navigation
+     * ArrowLeft, ArrowUp, and PageUp MUST invoke the previous-slide action. ArrowRight, ArrowDown,
+     * and PageDown MUST invoke the next-slide action. Other keys MUST NOT trigger slide navigation.
+     */
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp") {
         prev();
-      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      } else if (
+        e.key === "ArrowRight" ||
+        e.key === "ArrowDown" ||
+        e.key === "PageDown"
+      ) {
         next();
       }
     };
@@ -35,42 +46,19 @@ export function SlideshowNavigation({
   return (
     <div
       className={cn(
-        "absolute bottom-6 left-1/2 -translate-x-1/2 transition-opacity duration-300",
+        "absolute bottom-6 left-1/2 -translate-x-1/2 transition-opacity duration-300 focus-within:opacity-100 focus-within:pointer-events-auto",
         isVisible ? "opacity-100" : "opacity-0 pointer-events-none",
         // Always visible on touch devices (no hover available)
         "[@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto"
       )}
     >
-      <div
-        className={cn(
-          "w-44 inline-flex justify-between items-center overflow-hidden rounded bg-card shadow",
-          "py-1.5 px-3 outline outline-1 outline-gray-100 border border-border"
-        )}
-      >
-        <button
-          onClick={prev}
-          disabled={index === 0}
-          className="disabled:opacity-40"
-          title="Previous (←)"
-          aria-label="Previous slide"
-        >
-          <ChevronLeftIcon className="h-5 w-5" />
-        </button>
-
-        <span className="text-center justify-center text-lg font-medium">
-          {index + 1} of {total}
-        </span>
-
-        <button
-          onClick={next}
-          disabled={index === total - 1}
-          className="disabled:opacity-40"
-          title="Next (→)"
-          aria-label="Next slide"
-        >
-          <ChevronRightIcon className="h-5 w-5" />
-        </button>
-      </div>
+      <SlideshowControls
+        activeIndex={index}
+        total={total}
+        onPrevious={prev}
+        onNext={next}
+        slideshowRef={slideshowRef}
+      />
     </div>
   );
 }

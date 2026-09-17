@@ -237,7 +237,6 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     await expect(response.json()).resolves.toEqual({
       frameId: context.frame.sId,
       manifestPath: context.manifestPath,
-      warnings: [],
     });
     expect(
       (await FileResource.fetchById(context.auth, context.frame.sId))

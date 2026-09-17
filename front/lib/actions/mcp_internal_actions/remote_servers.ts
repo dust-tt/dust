@@ -2408,7 +2408,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     id: 10033,
     name: "Spendesk",
     description:
-      "Spendesk tools for wallet funding, payables, settlements, purchase orders, suppliers, cards, invoices, accounting, and spend analysis.",
+      "Spendesk tools for spend management: check cash and wallet funding, track payables, settlements, and purchase orders, analyze spend by supplier or cost centre, and manage suppliers, expense categories, and accounting exports.",
     url: "https://public-api.demo.spendesk.com/v1/mcp",
     icon: "SpendeskLogo",
     documentationUrl:

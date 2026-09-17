@@ -265,7 +265,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
 
   /**
    * Lists all suggestions for a skill identified by its sId.
-   * Optionally filter by state, source, and kind.
+   * Optionally filter by state, source, and kinds.
    */
   static async listBySkillConfigurationId(
     auth: Authenticator,
@@ -273,7 +273,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     filters?: {
       states?: SkillSuggestionState[];
       sources?: SkillSuggestionSource[];
-      kind?: SkillSuggestionKind;
+      kinds?: readonly SkillSuggestionKind[];
       limit?: number;
       dangerouslyBypassConversationsVisibilityCheck?: boolean;
     }
@@ -296,7 +296,8 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       ...(filters?.states &&
         filters.states.length > 0 && { state: filters.states }),
       ...sourceFilter,
-      ...(filters?.kind && { kind: filters.kind }),
+      ...(filters?.kinds &&
+        filters.kinds.length > 0 && { kind: [...filters.kinds] }),
     };
 
     return this.baseFetch(auth, {
@@ -319,7 +320,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     filters?: {
       states?: SkillSuggestionState[];
       sources?: SkillSuggestionSource[];
-      kind?: SkillSuggestionKind;
+      kinds?: readonly SkillSuggestionKind[];
       limit?: number;
       createdAfter?: Date;
       dangerouslyBypassConversationsVisibilityCheck?: boolean;
@@ -334,7 +335,8 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       ...(filters?.states &&
         filters.states.length > 0 && { state: filters.states }),
       ...sourceFilter,
-      ...(filters?.kind && { kind: filters.kind }),
+      ...(filters?.kinds &&
+        filters.kinds.length > 0 && { kind: [...filters.kinds] }),
       ...(filters?.createdAfter && {
         createdAt: { [Op.gte]: filters.createdAfter },
       }),

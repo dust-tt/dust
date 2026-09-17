@@ -36,6 +36,7 @@ export type GetSkillSuggestionsResponseBody = z.infer<
 export const PatchSkillSuggestionRequestBodySchema = z.object({
   suggestionIds: z.array(z.string()).min(1),
   state: z.enum(["approved", "rejected", "outdated"]),
+  applyToSkill: z.boolean().optional(),
 });
 
 export type PatchSkillSuggestionRequestBody = z.infer<

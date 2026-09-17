@@ -1,9 +1,13 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { getToolIcon } from "@app/components/editor/extensions/skill_builder/ToolChip";
-import type { AttachmentChipDirectiveProps } from "@app/components/markdown/AttachmentChipDirective";
+import type {
+  AttachmentChipDirectiveProps,
+  KnowledgeChipDirectiveProps,
+} from "@app/components/markdown/AttachmentChipDirective";
 import {
   AttachmentChipDirectiveBlock,
   createAttachmentChipDirective,
+  getKnowledgeIcon,
 } from "@app/components/markdown/AttachmentChipDirective";
 import {
   CiteBlock,
@@ -13,6 +17,7 @@ import {
   ContentNodeMentionBlock,
   contentNodeMentionDirective,
 } from "@app/components/markdown/ContentNodeMentionBlock";
+import { createTextDirective } from "@app/components/markdown/directives";
 import {
   filePreviewDirective,
   getFilePreviewPlugin,
@@ -26,6 +31,10 @@ import {
   taskDirective,
 } from "@app/components/markdown/TaskDirectiveBlock";
 import {
+  KNOWLEDGE_TAG_REGEX,
+  parseKnowledgeTag,
+} from "@app/lib/knowledge/format";
+import {
   agentMentionDirective,
   getAgentMentionPlugin,
   getUserMentionPlugin,
@@ -34,7 +43,8 @@ import {
 import { getSkillIcon } from "@app/lib/skill";
 import { parseSkillTag, SKILL_TAG_REGEX } from "@app/lib/skills/format";
 import { parseToolTag, TOOL_TAG_REGEX } from "@app/lib/tools/format";
-import type { UserMessageType } from "@app/types/assistant/conversation";
+import type { UserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import { isContentNodeContentFragment } from "@app/types/content_fragment";
 import {
   SKILL_SIDE_PANEL_TYPE,
   TOOL_SIDE_PANEL_TYPE,
@@ -47,13 +57,23 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 interface UserMessageMarkdownProps {
   owner: WorkspaceType;
-  message: UserMessageType;
+  message: UserMessageTypeWithContentFragments;
   isLastMessage: boolean;
 }
 
 const skillDirective = createAttachmentChipDirective("skill");
 
 const toolDirective = createAttachmentChipDirective("tool");
+
+const knowledgeDirective = createTextDirective(
+  "knowledge",
+  (title, { id, space, dsv }) => ({
+    id,
+    title,
+    space,
+    dsv,
+  })
+);
 
 export const UserMessageMarkdown = ({
   owner,
@@ -75,8 +95,7 @@ export const UserMessageMarkdown = ({
         return (
           <AttachmentChipDirectiveBlock
             label={name}
-            icon={icon ?? null}
-            getIcon={getSkillIcon}
+            icon={getSkillIcon(icon ?? null)}
             onClick={() =>
               togglePanel({ type: SKILL_SIDE_PANEL_TYPE, skillId: id })
             }
@@ -86,16 +105,30 @@ export const UserMessageMarkdown = ({
       tool: ({ id, icon, name }: AttachmentChipDirectiveProps) => (
         <AttachmentChipDirectiveBlock
           label={name}
-          icon={icon ?? null}
-          getIcon={getToolIcon}
+          icon={getToolIcon(icon ?? null)}
           onClick={() =>
             togglePanel({ type: TOOL_SIDE_PANEL_TYPE, toolId: id })
           }
         />
       ),
+      knowledge: ({ id, title, dsv }: KnowledgeChipDirectiveProps) => {
+        const fragment = message.contentFragments
+          .filter(isContentNodeContentFragment)
+          .find(
+            (f) => f.nodeId === id && (!dsv || f.nodeDataSourceViewId === dsv)
+          );
+
+        return (
+          <AttachmentChipDirectiveBlock
+            label={title}
+            icon={getKnowledgeIcon(fragment?.contentNodeData ?? null)}
+            href={fragment?.sourceUrl ?? undefined}
+          />
+        );
+      },
       project_task: getTaskDirectiveBlock(owner),
     }),
-    [owner, togglePanel]
+    [owner, togglePanel, message.contentFragments]
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
@@ -109,6 +142,7 @@ export const UserMessageMarkdown = ({
       filePreviewDirective,
       skillDirective,
       toolDirective,
+      knowledgeDirective,
     ],
     []
   );
@@ -135,6 +169,21 @@ export const UserMessageMarkdown = ({
           const iconAttribute = tool.icon ? ` icon=${tool.icon}` : "";
 
           return `:tool[${tool.name}]{sId=${tool.id}${iconAttribute}}`;
+        })
+        .replace(KNOWLEDGE_TAG_REGEX, (match) => {
+          const knowledge = parseKnowledgeTag(match);
+          if (!knowledge) {
+            return match;
+          }
+
+          const spaceAttribute = knowledge.spaceId
+            ? ` space=${knowledge.spaceId}`
+            : "";
+          const dsvAttribute = knowledge.dataSourceViewId
+            ? ` dsv=${knowledge.dataSourceViewId}`
+            : "";
+
+          return `:knowledge[${knowledge.title}]{id=${knowledge.id}${spaceAttribute}${dsvAttribute}}`;
         }),
     [message.content]
   );

@@ -1,10 +1,15 @@
+import { isNonBusinessEmailDomain } from "@app/lib/utils/non_business_email_domains";
 import type { FileViewerType } from "@app/types/file_viewers";
 import type { SharingGrantType } from "@app/types/files";
-import { MAX_EMAILS_PER_INVITE } from "@app/types/files";
+import { MAX_EMAILS_OR_DOMAINS_PER_INVITE } from "@app/types/files";
 import type { UserType } from "@app/types/user";
 import { z } from "zod";
 
 // Exact DNS name. A leading @ is accepted, but omitted from stored domains.
+/**
+ * @cc [owner:flvndvd,label:product] business-domain-grants
+ * Domain grants must reject domains in the non-business email list.
+ */
 export const sharingDomainSchema = z
   .string()
   .trim()
@@ -18,7 +23,11 @@ export const sharingDomainSchema = z
         /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/,
         "Enter a domain such as example.com"
       )
-  );
+  )
+  .refine((domain) => !isNonBusinessEmailDomain(domain), {
+    message:
+      "Public or disposable email domains are not allowed. Invite individual email addresses instead.",
+  });
 
 export const sharingEmailSchema = z
   .string()
@@ -29,15 +38,21 @@ export const sharingEmailSchema = z
 
 export const addSharingGrantsSchema = z
   .object({
-    emails: z.array(z.string().email()).max(MAX_EMAILS_PER_INVITE).optional(),
-    domains: z.array(sharingDomainSchema).max(MAX_EMAILS_PER_INVITE).optional(),
+    emails: z
+      .array(z.string().email())
+      .max(MAX_EMAILS_OR_DOMAINS_PER_INVITE)
+      .optional(),
+    domains: z
+      .array(sharingDomainSchema)
+      .max(MAX_EMAILS_OR_DOMAINS_PER_INVITE)
+      .optional(),
   })
   .refine(
     ({ emails = [], domains = [] }) =>
       emails.length + domains.length > 0 &&
-      emails.length + domains.length <= MAX_EMAILS_PER_INVITE,
+      emails.length + domains.length <= MAX_EMAILS_OR_DOMAINS_PER_INVITE,
     {
-      message: `Add between 1 and ${MAX_EMAILS_PER_INVITE} email addresses or domains`,
+      message: `Add between 1 and ${MAX_EMAILS_OR_DOMAINS_PER_INVITE} email addresses or domains`,
     }
   );
 

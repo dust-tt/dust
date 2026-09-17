@@ -9,6 +9,10 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import {
+  AGENT_FACING_DESCRIPTION_MAX_LENGTH,
+  USER_FACING_DESCRIPTION_MAX_LENGTH,
+} from "@app/lib/skills/labels";
 import type {
   SkillAvailability,
   SkillReinforcementMode,
@@ -17,6 +21,7 @@ import type {
   SkillStatus,
 } from "@app/types/assistant/skill_configuration";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
+import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
 import isNil from "lodash/isNil";
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
 
@@ -40,11 +45,11 @@ const SKILL_MODEL_ATTRIBUTES = {
     allowNull: false,
   },
   agentFacingDescription: {
-    type: DANGEROUSLY_UNBOUNDED_TEXT,
+    type: DataTypes.STRING(AGENT_FACING_DESCRIPTION_MAX_LENGTH),
     allowNull: false,
   },
   userFacingDescription: {
-    type: DANGEROUSLY_UNBOUNDED_TEXT,
+    type: DataTypes.STRING(USER_FACING_DESCRIPTION_MAX_LENGTH),
     allowNull: true,
   },
   instructions: {
@@ -140,6 +145,10 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
 SkillConfigurationModel.init(
   {
     ...SKILL_MODEL_ATTRIBUTES,
+    name: {
+      type: DataTypes.STRING(SKILL_NAME_MAX_LENGTH),
+      allowNull: false,
+    },
     favoriteCount: {
       type: DataTypes.INTEGER,
       allowNull: false,

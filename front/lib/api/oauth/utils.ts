@@ -10,7 +10,7 @@ import type { ParsedUrlQuery } from "querystring";
 /**
  * @cc [owner:flvndvd,label:security] provider-callback-default
  * Outside the development override, a stored redirect_uri MUST take precedence.
- * Without one, the connection use case, mcp, and mcp_static MUST use
+ * Without one, the connection use case, mcp, mcp_static, and gong MUST use
  * DUST_OAUTH_REDIRECT_BASE_URL when set, otherwise the app URL. The use case
  * comes from the explicit argument, falling back to connection metadata.
  * All other provider/use-case combinations MUST default to the app URL.
@@ -37,10 +37,12 @@ export function finalizeUriForProvider({
   }
 
   // Connector and remote MCP apps may only allow the legacy cell callback.
+  // Gong shares one client across use cases and has not registered the app URL.
   if (
     (useCase ?? connection?.metadata.use_case) === "connection" ||
     provider === "mcp" ||
-    provider === "mcp_static"
+    provider === "mcp_static" ||
+    provider === "gong"
   ) {
     return (
       config.getLegacyOAuthRedirectBaseUrl() + `/oauth/${provider}/finalize`

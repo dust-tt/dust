@@ -1,5 +1,8 @@
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
-import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
+import {
+  AttachedKnowledgeSchema,
+  SkillNameSchema,
+} from "@app/lib/api/skills/schemas";
 import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
@@ -19,6 +22,7 @@ import type {
 import {
   availabilityFromIsDefault,
   DEFAULT_SKILL_AVAILABILITY,
+  isSkillVisibleToViewer,
   SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
   type SkillAvailability,
@@ -50,7 +54,7 @@ const SkillAvailabilitiesSchema = z
 // Request body schema for POST.
 const PostSkillRequestBodySchema = z.intersection(
   z.object({
-    name: z.string(),
+    name: SkillNameSchema,
     agentFacingDescription: z.string(),
     userFacingDescription: z.string(),
     instructions: z.string(),
@@ -224,8 +228,10 @@ app.get(
       ? allSkills
       : allSkills.filter(
           (skill) =>
-            skill.availability !== "editors" ||
-            skill.canWrite(auth) ||
+            isSkillVisibleToViewer({
+              availability: skill.availability,
+              viewerCanWrite: skill.canWrite(auth),
+            }) ||
             (skill.status === "suggested" &&
               canCreateSkill &&
               skill.canAdministrate(auth))

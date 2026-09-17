@@ -66,6 +66,7 @@ describe("getShareFrameViewerFiles", () => {
 
     expect(viewerFiles).toEqual([
       {
+        ref: `pod-${pod.sId}/my folder/another folder/aereataetaet.md`,
         name: "aereataetaet.md",
         contentType: "text/markdown",
         sourceKind: "pod",
@@ -73,24 +74,28 @@ describe("getShareFrameViewerFiles", () => {
         pathInSource: "my folder/another folder",
       },
       {
+        ref: `pod-${pod.sId}/company-knowledge-summary.md`,
         name: "company-knowledge-summary.md",
         contentType: "text/markdown",
         sourceKind: "pod",
         sourceName: pod.name,
       },
       {
+        ref: conversationFile.sId,
         name: "notes.md",
         contentType: "text/markdown",
         sourceKind: "conversation",
         sourceName: conversationTitle,
       },
       {
+        ref: podFile.sId,
         name: "summary.md",
         contentType: "text/markdown",
         sourceKind: "pod",
         sourceName: pod.name,
       },
       {
+        ref: `conversation-${conversation.sId}/report.csv`,
         name: "report.csv",
         contentType: "text/csv",
         sourceKind: "conversation",
@@ -117,6 +122,7 @@ describe("getShareFrameViewerFiles", () => {
 
     expect(viewerFiles).toEqual([
       {
+        ref: "conversation-conv_missing/nested/report.csv",
         name: "report.csv",
         contentType: "text/csv",
         sourceKind: "conversation",
@@ -124,6 +130,7 @@ describe("getShareFrameViewerFiles", () => {
         pathInSource: "nested",
       },
       {
+        ref: "pod-spc_missing/data.csv",
         name: "data.csv",
         contentType: "text/csv",
         sourceKind: "pod",

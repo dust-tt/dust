@@ -288,6 +288,8 @@ describe("OAuth setup handler", () => {
     ],
     ["notion", "connection", "https://eu.dust.tt", "https://eu.dust.tt"],
     ["notion", "platform_actions", "https://eu.dust.tt", "https://app.dust.tt"],
+    ["gong", "connection", "https://eu.dust.tt", "https://eu.dust.tt"],
+    ["gong", "personal_actions", "https://eu.dust.tt", "https://eu.dust.tt"],
     ["slack", "bot", "https://eu.dust.tt", "https://app.dust.tt"],
     [
       "slack_tools",
@@ -312,22 +314,50 @@ describe("OAuth setup handler", () => {
     vi.spyOn(config, "getOAuthSlackToolsClientId").mockReturnValue(
       "slack-tools-client"
     );
-    const { workspace } = await createPrivateApiMockRequest({
+    vi.spyOn(config, "getOAuthGongClientId").mockReturnValue("gong-client");
+    const { workspace, auth } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
     });
+    const expectedRedirect = `${callbackBase}/oauth/${provider}/finalize`;
+
+    const params = new URLSearchParams({ useCase });
+    if (useCase === "personal_actions") {
+      // Personal flows must reference a workspace connection to pass the setup preflight.
+      const remoteServer = await RemoteMCPServerFactory.create(workspace);
+      const workspaceConnection = await MCPServerConnectionFactory.remote(
+        auth,
+        remoteServer,
+        "workspace"
+      );
+      mocks.getConnectionMetadata.mockResolvedValue(
+        new Ok({
+          connection: {
+            connection_id: workspaceConnection.connectionId ?? "",
+            created: Date.now(),
+            provider,
+            status: "finalized",
+            redirect_uri: expectedRedirect,
+            metadata: { use_case: "connection" },
+          } satisfies OAuthConnectionType,
+        })
+      );
+      params.set(
+        "extraConfig",
+        JSON.stringify({ mcp_server_id: remoteServer.sId })
+      );
+    }
 
     const callbackResponse = await honoApp.request(
       `/api/w/${workspace.sId}/oauth/${provider}/redirect_uri?useCase=${useCase}`
     );
     expect(callbackResponse.status).toBe(200);
-    const expectedRedirect = `${callbackBase}/oauth/${provider}/finalize`;
     expect(await callbackResponse.json()).toEqual({
       redirectUri: expectedRedirect,
     });
 
     const response = await honoApp.request(
-      `/api/w/${workspace.sId}/oauth/${provider}/setup?useCase=${useCase}`
+      `/api/w/${workspace.sId}/oauth/${provider}/setup?${params}`
     );
     expect(response.status).toBe(200);
     expect(mocks.createConnection).toHaveBeenCalledExactlyOnceWith(

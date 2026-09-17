@@ -19,12 +19,12 @@
  * The script is intentionally scoped to one Pod and is dry-run by default.
  */
 
-import { isFilePreviewableContentType } from "@app/components/file_explorer/utils";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { isFilePreviewableContentType } from "@app/types/file_preview";
 import { isInteractiveContentType } from "@app/types/files";
 import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import type { PodFileTab } from "@app/types/pod_file_tab";

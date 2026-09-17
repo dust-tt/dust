@@ -14,6 +14,7 @@ import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_res
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isEditSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 
 /**
  * @cc [owner:fabiencelier,label:security] requires-skill-write
@@ -106,7 +107,9 @@ export async function suggestSkillUpdate(
     }
   );
 
-  await pruneConflictingSkillEditSuggestions(auth, skill, created);
+  if (isEditSkillSuggestion(created)) {
+    await pruneConflictingSkillEditSuggestions(auth, skill, created);
+  }
 
   return new Ok(created);
 }
