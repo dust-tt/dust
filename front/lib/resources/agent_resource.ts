@@ -12,9 +12,12 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { TemplateResource } from "@app/lib/resources/template_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
+  AgentConfigurationBaseType,
   AgentConfigurationScope,
   AgentConfigurationStatus,
   AgentConfigurationType,
@@ -142,6 +145,11 @@ export class AgentResource
   // Mutable so a light resource can be enriched to full in place once read access is confirmed
   // (see `fromAgentConfigurationModel`). `variant` is derived from its presence.
   private _content: AgentResourceContent | null;
+
+  // The loading caller's permission context, stamped by `filterByReadAccess` at the per-call read
+  // boundary — NOT on the caller-independent, cacheable `content`.
+  private _verbs: Set<GrantVerb> = new Set();
+  private _isRegularApiKey = false;
 
   private constructor(
     blob: Attributes<AgentModel>,
@@ -307,7 +315,7 @@ export class AgentResource
           modelId: configuration.modelId,
           temperature: configuration.temperature,
           reasoningEffort: configuration.reasoningEffort ?? undefined,
-          responseFormat: configuration.responseFormat,
+          responseFormat: configuration.responseFormat ?? undefined,
         },
         content: {
           agentConfigurationModelId: configuration.id,
@@ -337,7 +345,11 @@ export class AgentResource
     auth: Authenticator,
     full: FullAgentResource
   ): AgentResource {
-    if (!auth.can("read", full)) {
+    const verbs = full.getAllowedVerbs(auth);
+    full._verbs = verbs;
+    full._isRegularApiKey = auth.isKey() && !auth.isSystemKey();
+
+    if (!verbs.has("read")) {
       full._content = null;
     }
 
@@ -781,6 +793,53 @@ export class AgentResource
     }
 
     return verbs;
+  }
+
+  toJSON(): AgentConfigurationBaseType {
+    assert(
+      this.scope !== "global",
+      "Unexpected: `toJSON` called on a global AgentResource"
+    );
+    const content = this.content;
+
+    return {
+      id: content.agentConfigurationModelId,
+      agentModelId: this.id,
+      versionCreatedAt: content.createdAt.toISOString(),
+      sId: this.sId,
+      version: content.version,
+      versionAuthorId: this.versionAuthorId,
+      instructions: content.instructions,
+      model: this.modelConfiguration,
+      status: this.status,
+      scope: this.scope,
+      name: this.name,
+      description: this.description,
+      pictureUrl: this.pictureUrl,
+      maxStepsPerRun: content.maxStepsPerRun,
+      templateId: content.templateId
+        ? TemplateResource.modelIdToSId({ id: content.templateId })
+        : null,
+      // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+      visualizationEnabled: false,
+      // Deprecated: access is modeled by space membership; kept for wire compatibility.
+      requestedGroupIds: [],
+      requestedSpaceIds: this.requestedSpaceIds.map((spaceId) =>
+        SpaceResource.modelIdToSId({
+          id: spaceId,
+          workspaceId: this.workspaceId,
+        })
+      ),
+      reinforcement: content.reinforcement,
+      lastReinforcementAnalysisAt:
+        content.lastReinforcementAnalysisAt?.toISOString() ?? null,
+      canRead: this._verbs.has("read"),
+      // Regular API keys hold `write` from the admin role but may only edit an active version
+      // (see the `regular-key-agent-editability` contract on `enrichAgentConfigurations`).
+      canEdit:
+        this._verbs.has("write") &&
+        (!this._isRegularApiKey || this.status === "active"),
+    };
   }
 
   toLogJSON(): ResourceLogJSON {
