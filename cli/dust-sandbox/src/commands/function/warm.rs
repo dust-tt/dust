@@ -99,10 +99,21 @@ struct WarmFrame {
     outcome: Option<serde_json::Value>,
     #[serde(default, rename = "importKind")]
     import_kind: Option<ImportKind>,
+    #[serde(default, rename = "timingsMs")]
+    timings_ms: Option<WarmPhaseTimings>,
     #[serde(default)]
     stale: bool,
     #[serde(default)]
     error: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WarmPhaseTimings {
+    #[serde(default)]
+    pub import: Option<u64>,
+    #[serde(default)]
+    pub handler: Option<u64>,
 }
 
 /// The outcome of asking the warm pool to run an invocation.
@@ -115,7 +126,11 @@ pub enum WarmRun {
     /// was lost: past the ack the cold path is off the table, because
     /// re-running a function that may already have fired its side effects is
     /// worse than failing the invocation.
-    Outcome(serde_json::Value, Option<ImportKind>),
+    Outcome(
+        serde_json::Value,
+        Option<ImportKind>,
+        Option<WarmPhaseTimings>,
+    ),
     /// No usable warm worker (home slot not running, stale bundle, protocol
     /// mismatch, ownership refusal, first frame overdue...). Nothing
     /// executed; run cold.
@@ -454,7 +469,11 @@ async fn roundtrip(mut stream: UnixStream, name: &str, input: &str) -> Result<Wa
         // Single-frame outcome: a pre-execution classification such as
         // bad_input or overloaded, delivered without an ack. Nothing
         // executed, and the outcome is the invocation's result.
-        return Ok(WarmRun::Outcome(outcome, frame.import_kind));
+        return Ok(WarmRun::Outcome(
+            outcome,
+            frame.import_kind,
+            frame.timings_ms,
+        ));
     }
     if !frame.ack {
         return Ok(WarmRun::Miss);
@@ -465,7 +484,7 @@ async fn roundtrip(mut stream: UnixStream, name: &str, input: &str) -> Result<Wa
     let mut second = String::new();
     match tokio::time::timeout(WARM_RESPONSE_TIMEOUT, reader.read_line(&mut second)).await {
         Ok(Ok(0)) | Ok(Err(_)) | Err(_) => {
-            return Ok(WarmRun::Outcome(lost_outcome_after_ack(), None))
+            return Ok(WarmRun::Outcome(lost_outcome_after_ack(), None, None))
         }
         Ok(Ok(_)) => {}
     }
@@ -474,9 +493,10 @@ async fn roundtrip(mut stream: UnixStream, name: &str, input: &str) -> Result<Wa
             v: WARM_PROTOCOL_VERSION,
             outcome: Some(outcome),
             import_kind,
+            timings_ms,
             ..
-        }) => Ok(WarmRun::Outcome(outcome, import_kind)),
-        _ => Ok(WarmRun::Outcome(lost_outcome_after_ack(), None)),
+        }) => Ok(WarmRun::Outcome(outcome, import_kind, timings_ms)),
+        _ => Ok(WarmRun::Outcome(lost_outcome_after_ack(), None, None)),
     }
 }
 
@@ -655,7 +675,7 @@ export default {{
         let deadline = std::time::Instant::now() + Duration::from_secs(15);
         let (outcome, import_kind) = loop {
             match try_warm_run("greet", &input).await {
-                WarmRun::Outcome(outcome, import_kind) => break (outcome, import_kind),
+                WarmRun::Outcome(outcome, import_kind, _) => break (outcome, import_kind),
                 WarmRun::Miss if std::time::Instant::now() < deadline => {
                     tokio::time::sleep(Duration::from_millis(50)).await;
                 }
@@ -670,7 +690,7 @@ export default {{
 
         // A repeat invocation is served from the cached import.
         match try_warm_run("greet", &input).await {
-            WarmRun::Outcome(_, import_kind) => {
+            WarmRun::Outcome(_, import_kind, _) => {
                 assert_eq!(import_kind, Some(ImportKind::Cached));
             }
             WarmRun::Miss => panic!("second warm attempt missed"),
@@ -682,7 +702,7 @@ export default {{
         let environment_handler = bundle_dir.path().join("greet__environment.ts");
         std::fs::write(&environment_handler, environment_fixture()).expect("environment fixture");
         match try_warm_run("greet__environment", &input).await {
-            WarmRun::Outcome(outcome, _) => {
+            WarmRun::Outcome(outcome, _, _) => {
                 assert_eq!(
                     outcome,
                     serde_json::json!({
@@ -704,7 +724,7 @@ export default {{
         let sibling = bundle_dir.path().join("greet__aux.ts");
         std::fs::write(&sibling, HELLO_FIXTURE).expect("sibling fixture");
         match try_warm_run("greet__aux", &input).await {
-            WarmRun::Outcome(outcome, import_kind) => {
+            WarmRun::Outcome(outcome, import_kind, _) => {
                 assert_eq!(
                     outcome,
                     serde_json::json!({ "ok": true, "output": { "hello": "warm" } })

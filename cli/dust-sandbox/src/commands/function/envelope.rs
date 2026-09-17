@@ -43,6 +43,16 @@ pub enum ImportKind {
     Fresh,
 }
 
+/// Where a cold run resolved the handler path from.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ResolveKind {
+    /// Local `~/.dust-fn/bundles/<sha>.js` hit (skips gcsfuse).
+    Cache,
+    /// `$DUST_FUNCTIONS_DIR` readdir + path (typically gcsfuse-backed).
+    Gcsfuse,
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct TimingsMs {
@@ -55,6 +65,25 @@ pub struct TimingsMs {
     /// Additive, warm runs only: see [`ImportKind`].
     #[serde(skip_serializing_if = "Option::is_none")]
     pub import_kind: Option<ImportKind>,
+    /// Time spent in `try_warm_run` before a Miss (cold path only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub warm_attempt: Option<u64>,
+    /// Handler path resolution (cache lookup or functions-dir readdir).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolve: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolve_kind: Option<ResolveKind>,
+    /// Cold path: wall time of the Bun child (spawn through exit), which
+    /// includes import + handler. Warm path omits this.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub child: Option<u64>,
+    /// Dynamic `import()` of the function bundle (cold: in the Bun child;
+    /// warm: ensureBundle fresh import, usually ~0 when cached).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub import: Option<u64>,
+    /// Handler `fetch` + response parse.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub handler: Option<u64>,
 }
 
 impl ResultEnvelope {
@@ -105,6 +134,12 @@ mod tests {
                 runner: 8,
                 runner_kind: Some(RunnerKind::Warm),
                 import_kind: Some(ImportKind::Cached),
+                warm_attempt: None,
+                resolve: None,
+                resolve_kind: None,
+                child: None,
+                import: Some(3),
+                handler: Some(2),
             }),
         );
 
@@ -115,7 +150,14 @@ mod tests {
                 "protocolVersion": 3,
                 "delivery": "stdout",
                 "outcome": { "ok": true, "output": { "hello": "world" } },
-                "timingsMs": { "total": 12, "runner": 8, "runnerKind": "warm", "importKind": "cached" },
+                "timingsMs": {
+                    "total": 12,
+                    "runner": 8,
+                    "runnerKind": "warm",
+                    "importKind": "cached",
+                    "import": 3,
+                    "handler": 2,
+                },
             })
         );
     }

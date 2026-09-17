@@ -16,7 +16,11 @@ import { errorEnvelope, podDatabaseMaxSizeBytes } from "./db/common.ts";
 import { runQuery } from "./db/query.ts";
 import { reconcile } from "./db/reconcile.ts";
 import { generateSchemaFileText } from "./db/schema.ts";
-import { applyResultSpillPolicy, emitEnvelopeLine } from "./emit.ts";
+import {
+  applyResultSpillPolicy,
+  attachRunnerTimings,
+  emitEnvelopeLine,
+} from "./emit.ts";
 import { invoke } from "./invoke.ts";
 import { BadInputError, parseInput, type RequestInput } from "./protocol.ts";
 import { getFunctionSchema } from "./schema.ts";
@@ -45,10 +49,14 @@ async function runHandler(handlerPath: string): Promise<number> {
     emitEnvelopeLine({ ok: false, error: { code: "bad_input", message } });
     return 2;
   }
-  const out = await invoke(handlerPath, input);
+  const { output, timingsMs } = await invoke(handlerPath, input);
   // An oversized result is spilled to a scratch file and replaced by a
   // pointer envelope; over the hard cap it becomes an output_too_large error.
-  const delivered = applyResultSpillPolicy(out);
+  // Phase timings ride as a sidecar dsbx lifts into the outer envelope.
+  const delivered = attachRunnerTimings(
+    applyResultSpillPolicy(output),
+    timingsMs
+  );
   emitEnvelopeLine(delivered);
   return delivered.ok ? 0 : 1;
 }
