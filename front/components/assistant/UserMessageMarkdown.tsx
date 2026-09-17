@@ -1,9 +1,13 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { getToolIcon } from "@app/components/editor/extensions/skill_builder/ToolChip";
-import type { AttachmentChipDirectiveProps } from "@app/components/markdown/AttachmentChipDirective";
+import type {
+  AttachmentChipDirectiveProps,
+  KnowledgeChipDirectiveProps,
+} from "@app/components/markdown/AttachmentChipDirective";
 import {
   AttachmentChipDirectiveBlock,
   createAttachmentChipDirective,
+  getKnowledgeIcon,
 } from "@app/components/markdown/AttachmentChipDirective";
 import {
   CiteBlock,
@@ -13,15 +17,11 @@ import {
   ContentNodeMentionBlock,
   contentNodeMentionDirective,
 } from "@app/components/markdown/ContentNodeMentionBlock";
+import { createTextDirective } from "@app/components/markdown/directives";
 import {
   filePreviewDirective,
   getFilePreviewPlugin,
 } from "@app/components/markdown/FilePreviewBlock";
-import type { KnowledgeChipDirectiveProps } from "@app/components/markdown/KnowledgeChipDirective";
-import {
-  KnowledgeChipDirectiveBlock,
-  knowledgeChipDirective,
-} from "@app/components/markdown/KnowledgeChipDirective";
 import {
   PastedAttachmentBlock,
   pastedAttachmentDirective,
@@ -65,6 +65,16 @@ const skillDirective = createAttachmentChipDirective("skill");
 
 const toolDirective = createAttachmentChipDirective("tool");
 
+const knowledgeDirective = createTextDirective(
+  "knowledge",
+  (title, { id, space, dsv }) => ({
+    id,
+    title,
+    space,
+    dsv,
+  })
+);
+
 export const UserMessageMarkdown = ({
   owner,
   message,
@@ -85,8 +95,7 @@ export const UserMessageMarkdown = ({
         return (
           <AttachmentChipDirectiveBlock
             label={name}
-            icon={icon ?? null}
-            getIcon={getSkillIcon}
+            icon={getSkillIcon(icon ?? null)}
             onClick={() =>
               togglePanel({ type: SKILL_SIDE_PANEL_TYPE, skillId: id })
             }
@@ -96,8 +105,7 @@ export const UserMessageMarkdown = ({
       tool: ({ id, icon, name }: AttachmentChipDirectiveProps) => (
         <AttachmentChipDirectiveBlock
           label={name}
-          icon={icon ?? null}
-          getIcon={getToolIcon}
+          icon={getToolIcon(icon ?? null)}
           onClick={() =>
             togglePanel({ type: TOOL_SIDE_PANEL_TYPE, toolId: id })
           }
@@ -111,10 +119,10 @@ export const UserMessageMarkdown = ({
           );
 
         return (
-          <KnowledgeChipDirectiveBlock
-            title={title}
-            sourceUrl={fragment?.sourceUrl ?? null}
-            nodeData={fragment?.contentNodeData ?? null}
+          <AttachmentChipDirectiveBlock
+            label={title}
+            icon={getKnowledgeIcon(fragment?.contentNodeData ?? null)}
+            href={fragment?.sourceUrl ?? undefined}
           />
         );
       },
@@ -134,7 +142,7 @@ export const UserMessageMarkdown = ({
       filePreviewDirective,
       skillDirective,
       toolDirective,
-      knowledgeChipDirective,
+      knowledgeDirective,
     ],
     []
   );
