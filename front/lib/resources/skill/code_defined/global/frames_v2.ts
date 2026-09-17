@@ -310,30 +310,28 @@ client-side conditions are not access control.
 ## Storing files in a Frame
 
 A Frame owns one durable folder in its sandbox, kept for the lifetime of the Frame. \`filesDir()\`
-from \`@dust/pod\` returns its absolute path; use it with \`node:fs\` like any other directory. It
-is not part of the Frame source, so its contents exist only at run time and you cannot read them
-while authoring.
+from \`@dust/pod\` returns its absolute path; use it with \`node:fs\` like any other directory, for
+whatever the Frame needs to keep: uploads, generated artifacts, cached tool results. It is not part
+of the Frame source, so its contents exist only at run time and you cannot read them while
+authoring.
 
 It is remote object storage, not local disk:
 
-- Never write a file and read it back in the same call. There is no cache, so the payload crosses
-  the wire twice, and a \`fast\` function's ten-second ceiling will not survive it for anything but
-  a tiny file. Store bytes in one function, return an identifier, and let the UI fetch them from
-  another. Declaring the function \`durable\` raises the ceiling to two minutes.
-- A function result is capped at 5 MB, which bounds both the upload a function can accept and the
-  file it can return in one call.
+- Every read and write crosses the wire and nothing caches it, so a \`fast\` function's ten-second
+  ceiling will not survive anything but a tiny file. Declaring the function \`durable\` raises the
+  ceiling to two minutes.
 - Nothing validates what gets written, so a name says nothing about the bytes behind it. Stick to
-  \`.png\`, \`.jpeg\`, \`.json\`, \`.txt\`, and \`.csv\`, and when a function returns a stored file
-  pick the content type from a fixed list in code — never from the name, and never
-  \`image/svg+xml\` or \`text/html\`, which execute script inside the Frame.
+  \`.png\`, \`.jpeg\`, \`.json\`, \`.txt\`, and \`.csv\`.
 - A path segment from a viewer can contain \`..\` and resolve above the folder, where the write
   succeeds onto disk the Frame loses when its sandbox recycles. Check the resolved path is still
   under \`filesDir()\`, and derive per-user paths from \`currentUser().sId\` rather than from input.
 
-A Frame cannot make the browser download a file. Its UI runs in a sandboxed iframe that does not
-allow downloads, so building an anchor with a \`download\` attribute and clicking it silently does
-nothing — no error to catch. Do not offer a download button. Render the contents in the UI
-instead: an \`<img>\` for an image, formatted text for data, a table for rows.
+Moving a stored file through a function is bounded separately from the folder itself. A function
+result is capped at 5 MB, which limits both the upload a function can accept and the file it can
+return in one call. Never write a file and read it back in the same call: the payload crosses the
+wire twice. Store it in one function, return an identifier, and let the UI fetch it from another.
+When a function returns a stored file, pick the content type from a fixed list in code — never
+from the name, and never \`image/svg+xml\` or \`text/html\`, which execute script inside the Frame.
 
 ## Calling a function from the Frame UI
 
@@ -375,6 +373,11 @@ Trigger mutations from a button or another supported interaction, not HTML form 
 loading, empty, and error states for every call. Function failures are
 \`SandboxFunctionCallError\` instances with \`message\`, optional HTTP \`status\`, and an open-string
 \`code\`; handle known codes and provide a generic fallback.
+
+A Frame cannot make the browser download a file. Its UI runs in a sandboxed iframe that does not
+allow downloads, so building an anchor with a \`download\` attribute and clicking it silently does
+nothing — no error to catch. Do not offer a download button. Render the contents in the UI
+instead: an \`<img>\` for an image, formatted text for data, a table for rows.
 
 ## Publish a Frame
 
