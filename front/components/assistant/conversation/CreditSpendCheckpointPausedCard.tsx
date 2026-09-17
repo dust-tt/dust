@@ -19,8 +19,6 @@ interface CreditSpendCheckpointPausedCardProps {
   conversationId: string;
   messageId: string;
   triggeringUser: UserType | null;
-  // The message's billed cost as of the pause, not the threshold it crossed. Null until the
-  // attribution has been persisted, briefly, right when the live event first arrives.
   creditsUsed: number | null;
 }
 
