@@ -193,6 +193,7 @@ export function FileCitationCard(props: FileCitationCardProps) {
   const citation = href ? (
     <Citation
       className={layout.citationClassName}
+      containerClassName="h-full"
       compact={layout.citationCompact}
       isLoading={isLoading}
       loadingLabel={loadingLabel}
@@ -204,6 +205,7 @@ export function FileCitationCard(props: FileCitationCardProps) {
   ) : (
     <Citation
       className={layout.citationClassName}
+      containerClassName="h-full"
       compact={layout.citationCompact}
       isLoading={isLoading}
       loadingLabel={loadingLabel}
