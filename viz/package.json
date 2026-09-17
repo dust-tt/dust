@@ -6,8 +6,10 @@
   },
   "private": true,
   "scripts": {
+    "predev": "npm run build:runtime-types",
     "dev": "next dev -p 3007",
-    "build": "next build",
+    "build": "npm run build:runtime-types && next build",
+    "build:runtime-types": "node scripts/build-frame-runtime-types.mjs",
     "start": "next start",
     "test": "vitest --run",
     "format": "biome format --write .",
@@ -81,6 +83,7 @@
     "@types/react-dom": "^18.3.5",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "tsup": "^8.4.0",
     "vitest": "^4.0.16"
   }
 }
