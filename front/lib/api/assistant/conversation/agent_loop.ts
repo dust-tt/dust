@@ -8,7 +8,6 @@ import type {
   ConversationWithoutContentType,
   UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
-import assert from "assert";
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
@@ -32,10 +31,14 @@ export const runAgentLoopWorkflow = async ({
         agentMessage.configuration.sId
       );
 
-      assert(
-        agentConfiguration && auth.can("read", agentConfiguration),
-        "Unreachable: could not find detailed configuration for agent"
-      );
+      if (!agentConfiguration || !auth.can("read", agentConfiguration)) {
+        await ConversationResource.cancelUnavailableAgentMessage(auth, {
+          conversationId: conversation.sId,
+          agentMessageId: agentMessage.sId,
+          agentMessageVersion: agentMessage.version,
+        });
+        return;
+      }
 
       await ConversationResource.setIsRunningAgentLoop(auth, {
         conversation,
