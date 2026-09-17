@@ -40,15 +40,17 @@ export function parseKnowledgeTag(tag: string): KnowledgeReference | null {
   };
 }
 
-export function extractKnowledgeTagNodeIds(content: string): Set<string> {
-  const nodeIds = new Set<string>();
+export function extractKnowledgeTagReferences(
+  content: string
+): KnowledgeReference[] {
+  const references: KnowledgeReference[] = [];
   for (const match of content.matchAll(KNOWLEDGE_TAG_REGEX)) {
     const knowledge = parseKnowledgeTag(match[0]);
-    if (knowledge?.id) {
-      nodeIds.add(knowledge.id);
+    if (knowledge) {
+      references.push(knowledge);
     }
   }
-  return nodeIds;
+  return references;
 }
 
 /**

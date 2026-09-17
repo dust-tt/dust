@@ -24,7 +24,7 @@ import { WakeUpMessage } from "@app/components/assistant/conversation/WakeUpMess
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { extractKnowledgeTagNodeIds } from "@app/lib/knowledge/format";
+import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
 import { isContentNodeContentFragment } from "@app/types/content_fragment";
 import { isSupportedImageContentType } from "@app/types/files";
 import type { UserType } from "@app/types/user";
@@ -164,9 +164,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         return data.contentFragments;
       }
 
-      const inlineKnowledgeNodeIds = extractKnowledgeTagNodeIds(data.content);
+      const inlineKnowledgeReferences = extractKnowledgeTagReferences(
+        data.content
+      );
 
-      if (inlineKnowledgeNodeIds.size === 0) {
+      if (inlineKnowledgeReferences.length === 0) {
         return data.contentFragments;
       }
 
@@ -176,7 +178,12 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           !(
             isContentNodeContentFragment(fragment) &&
             fragment.nodeId &&
-            inlineKnowledgeNodeIds.has(fragment.nodeId)
+            inlineKnowledgeReferences.some(
+              (reference) =>
+                reference.id === fragment.nodeId &&
+                (!reference.dataSourceViewId ||
+                  reference.dataSourceViewId === fragment.nodeDataSourceViewId)
+            )
           )
       );
     }, [data]);

@@ -1,5 +1,5 @@
 import {
-  extractKnowledgeTagNodeIds,
+  extractKnowledgeTagReferences,
   parseKnowledgeTag,
   stripKnowledgeTagPresentationAttributes,
 } from "@app/lib/knowledge/format";
@@ -55,28 +55,41 @@ describe("stripKnowledgeTagPresentationAttributes", () => {
   });
 });
 
-describe("extractKnowledgeTagNodeIds", () => {
-  it("collects the id of every inline knowledge tag", () => {
+describe("extractKnowledgeTagReferences", () => {
+  it("collects the reference of every inline knowledge tag", () => {
     expect(
-      extractKnowledgeTagNodeIds(
+      extractKnowledgeTagReferences(
         'See <knowledge id="notion-page-123" title="A" space="vlt_1" dsv="dsv_1" /> and ' +
           '<knowledge id="gdrive-doc-456" title="B" /> for details.'
       )
-    ).toEqual(new Set(["notion-page-123", "gdrive-doc-456"]));
+    ).toEqual([
+      {
+        dataSourceViewId: "dsv_1",
+        id: "notion-page-123",
+        spaceId: "vlt_1",
+        title: "A",
+      },
+      {
+        dataSourceViewId: null,
+        id: "gdrive-doc-456",
+        spaceId: null,
+        title: "B",
+      },
+    ]);
   });
 
-  it("returns an empty set when there are no knowledge tags", () => {
-    expect(extractKnowledgeTagNodeIds("plain text, no tags")).toEqual(
-      new Set()
-    );
+  it("returns an empty array when there are no knowledge tags", () => {
+    expect(extractKnowledgeTagReferences("plain text, no tags")).toEqual([]);
   });
 
   it("skips malformed tags missing an id or title", () => {
     expect(
-      extractKnowledgeTagNodeIds(
+      extractKnowledgeTagReferences(
         '<knowledge id="valid-1" title="A" /> <knowledge title="no id" /> ' +
           '<knowledge id="no-title" />'
       )
-    ).toEqual(new Set(["valid-1"]));
+    ).toEqual([
+      { dataSourceViewId: null, id: "valid-1", spaceId: null, title: "A" },
+    ]);
   });
 });
