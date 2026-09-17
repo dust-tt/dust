@@ -3639,6 +3639,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "PuzzleIcon"
   | "SalesforceLogo"
   | "SemrushLogo"
+  | "SiitLogo"
   | "SalesloftLogo"
   | "ShopifyLogo"
   | "SlabLogo"
