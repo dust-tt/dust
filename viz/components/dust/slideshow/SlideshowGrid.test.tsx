@@ -217,6 +217,29 @@ describe.each(versions)("$name slide grid", ({
     );
   });
 
+  it("keeps keyed preview nodes attached to their slides when reordered", async () => {
+    const first = <DeckSlide key="first">First slide</DeckSlide>;
+    const second = <DeckSlide key="second">Second slide</DeckSlide>;
+    const { rerender } = render(<Root>{[first, second]}</Root>);
+    await act(async () =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "Show slide previews" })
+      )
+    );
+    const dialog = screen.getByRole("dialog", { name: "Slide previews" });
+    const firstPreview = within(dialog).getByText("First slide");
+    const firstButton = within(dialog).getByRole("button", {
+      name: "Go to slide 1",
+    });
+
+    rerender(<Root>{[second, first]}</Root>);
+
+    expect(within(dialog).getByText("First slide")).toBe(firstPreview);
+    expect(within(dialog).getByRole("button", { name: "Go to slide 2" })).toBe(
+      firstButton
+    );
+  });
+
   it("keeps the fixed trigger hidden while the drawer is sliding closed", async () => {
     motionStyle.remove();
     render(

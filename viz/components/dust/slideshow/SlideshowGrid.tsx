@@ -17,6 +17,7 @@ import { ScrollArea } from "@viz/components/ui/scroll-area";
 import { cn } from "@viz/lib/utils";
 import { LayoutGrid, X } from "lucide-react";
 import {
+  Children,
   type ReactNode,
   type RefObject,
   useEffect,
@@ -120,7 +121,7 @@ export function SlideshowGrid({
       <DrawerContent
         overlayClassName="absolute bg-transparent [&[data-vaul-overlay][data-state]]:[animation-duration:250ms] motion-reduce:[&[data-vaul-overlay][data-state]]:animate-none"
         onCloseAutoFocus={() => setIsClosing(false)}
-        className="absolute h-full rounded-none bg-white/80 backdrop-blur-xl outline-none data-[vaul-drawer-direction=left]:w-[232px] data-[vaul-drawer-direction=left]:max-w-[calc(100%_-_64px)] data-[vaul-drawer-direction=left]:border-r-0 data-[vaul-drawer-direction=left]:sm:max-w-[232px] dark:bg-[oklch(25.6%_0.006_34.298_/_0.8)] [&[data-vaul-drawer]]:[animation-duration:250ms] [&[data-vaul-drawer]]:duration-[250ms] motion-reduce:[&[data-vaul-drawer]]:animate-none motion-reduce:[&[data-vaul-drawer]]:transition-none"
+        className="absolute h-full rounded-none bg-white/80 backdrop-blur-xl outline-none data-[vaul-drawer-direction=left]:w-[232px] data-[vaul-drawer-direction=left]:max-w-[calc(100%_-_64px)] data-[vaul-drawer-direction=left]:border-r-0 data-[vaul-drawer-direction=left]:sm:max-w-[232px] dark:bg-[oklch(25.6%_0.006_34.298_/_0.8)] [&[data-vaul-drawer]]:[animation-duration:250ms] [&[data-vaul-drawer]]:[transition-property:transform] [&[data-vaul-drawer]]:duration-[250ms] motion-reduce:[&[data-vaul-drawer]]:animate-none motion-reduce:[&[data-vaul-drawer]]:transition-none"
         onKeyDown={(event) => {
           if (
             [
@@ -193,6 +194,10 @@ export function SlideshowGrid({
  * The selected preview MUST have a contrasting outline separated from the slide
  * content in both light and dark themes.
  */
+/**
+ * @cc [owner:flvndvd,label:react] preview-row-identity
+ * Reordering keyed slides MUST preserve their preview nodes and state.
+ */
 function SlidePreviewList({
   slides,
   activeIndex,
@@ -211,11 +216,8 @@ function SlidePreviewList({
   return (
     <ScrollArea className="min-h-0 flex-1">
       <ol ref={previewListRef} className="flex flex-col gap-4 px-4 py-6">
-        {slides.map((slide, index) => (
-          <li
-            key={index}
-            className="group/preview relative flex items-center gap-2"
-          >
+        {Children.map(slides, (slide, index) => (
+          <li className="group/preview relative flex items-center gap-2">
             <span
               aria-hidden="true"
               className={cn(
@@ -240,14 +242,14 @@ function SlidePreviewList({
             <Button
               asChild
               variant="ghost"
-              className="absolute inset-0 h-full w-full scroll-my-1 rounded-2xl p-0 hover:bg-transparent focus-visible:ring-0 dark:hover:bg-transparent"
-              aria-label={`Go to slide ${index + 1}`}
-              aria-current={index === activeIndex ? "true" : undefined}
+              className="absolute inset-0 h-full w-full scroll-my-1 rounded-2xl p-0 transition-colors hover:bg-transparent focus-visible:ring-0 dark:hover:bg-transparent motion-reduce:transition-none"
               onClick={() => onSlideSelect(index)}
             >
               <button
                 type="button"
                 ref={index === activeIndex ? activePreviewRef : undefined}
+                aria-label={`Go to slide ${index + 1}`}
+                aria-current={index === activeIndex ? "true" : undefined}
               />
             </Button>
           </li>
