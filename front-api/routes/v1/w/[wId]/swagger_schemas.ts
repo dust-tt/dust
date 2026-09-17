@@ -103,6 +103,10 @@
  *         - username
  *         - timezone
  *       properties:
+ *         origin:
+ *           type: string
+ *           nullable: true
+ *           description: Message source. Voice identifies internal live conversation context.
  *         username:
  *           type: string
  *           description: Username in the current context

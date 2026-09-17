@@ -502,6 +502,7 @@ const USER_MESSAGE_ORIGINS = [
   "reinforced_skill_notification",
   "reinforcement",
   "system_activation",
+  "voice",
 ] as const;
 
 const UserMessageOriginEnumSchema = z.enum(USER_MESSAGE_ORIGINS);
@@ -859,6 +860,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "frames_v2"
   | "google_sheets_tool"
   | "gpt_5_6_terra_long_context"
+  | "gpt_live"
   | "group_permissions_shadow"
   | "http_client_tool"
   | "index_private_slack_channel"

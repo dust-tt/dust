@@ -1,0 +1,6 @@
+@import "../src/styles/tailwind.css";
+
+/* Front stories use the same unprefixed utilities as the app. */
+@source "../../front/stories/LiveConversationPanel.stories.tsx";
+@source "../../front/components/assistant/conversation/LiveConversationPanel.tsx";
+@source "../../front/components/assistant/conversation/LiveConversationButton.tsx";

@@ -36,6 +36,7 @@ import events from "./events";
 import feedbacks from "./feedbacks";
 import files from "./files";
 import forks from "./forks";
+import live from "./live";
 import mentions from "./mentions";
 import messages from "./messages";
 import onboardingFollowup from "./onboarding-followup";
@@ -66,6 +67,7 @@ const PatchConversationsRequestBodySchema = z.union([
 // Mounted under /api/w/:wId/assistant/conversations/:cId. The bare `/`
 // handles GET, DELETE, and PATCH on the conversation resource itself.
 const app = workspaceApp();
+app.route("/live", live);
 
 /**
  * @swagger
