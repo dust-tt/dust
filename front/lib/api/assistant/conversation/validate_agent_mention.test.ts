@@ -65,8 +65,8 @@ describe("validateAgentMention", () => {
   let projectConversation: ConversationType;
   let projectConversationResource: ConversationResource;
   let agentWithDifferentSpace: LightAgentConfigurationType;
-  let userMessageSId: string;
-  let userMessageId: number;
+  let userMessageId: string;
+  let userMessageModelId: number;
 
   beforeEach(async () => {
     const setup = await createResourceTest({});
@@ -190,13 +190,13 @@ describe("validateAgentMention", () => {
     }
 
     expect(postResult.value.agentMessages).toHaveLength(0);
-    userMessageSId = postResult.value.userMessage.sId;
-    userMessageId = postResult.value.userMessage.id;
+    userMessageId = postResult.value.userMessage.sId;
+    userMessageModelId = postResult.value.userMessage.id;
 
     const mentionRow = await MentionModel.findOne({
       where: {
         workspaceId: workspace.id,
-        messageId: userMessageId,
+        messageId: userMessageModelId,
         agentConfigurationId: agentWithDifferentSpace.sId,
       },
     });
@@ -220,7 +220,7 @@ describe("validateAgentMention", () => {
     const result = await validateAgentMention(auth, {
       conversationId: projectConversation.sId,
       agentConfigurationId: agentWithDifferentSpace.sId,
-      messageId: userMessageSId,
+      messageId: userMessageId,
       approvalState: "approved",
     });
 
@@ -229,7 +229,7 @@ describe("validateAgentMention", () => {
     const mentionRow = await MentionModel.findOne({
       where: {
         workspaceId: workspace.id,
-        messageId: userMessageId,
+        messageId: userMessageModelId,
         agentConfigurationId: agentWithDifferentSpace.sId,
       },
     });
@@ -239,7 +239,7 @@ describe("validateAgentMention", () => {
       where: {
         workspaceId: workspace.id,
         conversationId: projectConversation.id,
-        parentId: userMessageId,
+        parentId: userMessageModelId,
       },
     });
     const agentChildren = allChildMessages.filter(
@@ -257,7 +257,7 @@ describe("validateAgentMention", () => {
     const result = await validateAgentMention(auth, {
       conversationId: projectConversation.sId,
       agentConfigurationId: agentWithDifferentSpace.sId,
-      messageId: userMessageSId,
+      messageId: userMessageId,
       approvalState: "rejected",
     });
 
@@ -266,7 +266,7 @@ describe("validateAgentMention", () => {
     const mentionRow = await MentionModel.findOne({
       where: {
         workspaceId: workspace.id,
-        messageId: userMessageId,
+        messageId: userMessageModelId,
         agentConfigurationId: agentWithDifferentSpace.sId,
       },
     });
@@ -276,7 +276,7 @@ describe("validateAgentMention", () => {
       where: {
         workspaceId: workspace.id,
         conversationId: projectConversation.id,
-        parentId: userMessageId,
+        parentId: userMessageModelId,
       },
     });
     expect(
@@ -316,7 +316,7 @@ describe("validateAgentMention", () => {
     const result = await validateAgentMention(otherAuth, {
       conversationId: projectConversation.sId,
       agentConfigurationId: agentWithDifferentSpace.sId,
-      messageId: userMessageSId,
+      messageId: userMessageId,
       approvalState: "approved",
     });
 
@@ -331,7 +331,7 @@ describe("validateAgentMention", () => {
     const existing = await MentionModel.findOne({
       where: {
         workspaceId: workspace.id,
-        messageId: userMessageId,
+        messageId: userMessageModelId,
         agentConfigurationId: agentWithDifferentSpace.sId,
         status: "agent_restricted_by_space_usage",
       },
@@ -344,7 +344,7 @@ describe("validateAgentMention", () => {
     // Simulate a duplicate MentionModel row (same agent, same message).
     await MentionModel.create({
       workspaceId: workspace.id,
-      messageId: userMessageId,
+      messageId: userMessageModelId,
       agentConfigurationId: agentWithDifferentSpace.sId,
       status: "agent_restricted_by_space_usage",
       dismissed: false,
@@ -357,7 +357,7 @@ describe("validateAgentMention", () => {
     const result = await validateAgentMention(auth, {
       conversationId: projectConversation.sId,
       agentConfigurationId: agentWithDifferentSpace.sId,
-      messageId: userMessageSId,
+      messageId: userMessageId,
       approvalState: "approved",
     });
 
@@ -366,7 +366,7 @@ describe("validateAgentMention", () => {
     const mentionRows = await MentionModel.findAll({
       where: {
         workspaceId: workspace.id,
-        messageId: userMessageId,
+        messageId: userMessageModelId,
         agentConfigurationId: agentWithDifferentSpace.sId,
       },
     });
@@ -377,7 +377,7 @@ describe("validateAgentMention", () => {
       where: {
         workspaceId: workspace.id,
         conversationId: projectConversation.id,
-        parentId: userMessageId,
+        parentId: userMessageModelId,
       },
     });
     expect(

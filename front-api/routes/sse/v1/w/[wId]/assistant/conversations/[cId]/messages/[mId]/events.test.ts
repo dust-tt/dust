@@ -86,17 +86,17 @@ async function setupAgentMessage() {
     agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
     messagesCreatedAt: [new Date()],
   });
-  const agentMessageSId = await getMessageSIdByRank(
+  const agentMessageId = await getMessageSIdByRank(
     userAuth,
     conversation.sId,
     1
   );
-  const userMessageSId = await getMessageSIdByRank(
+  const userMessageId = await getMessageSIdByRank(
     userAuth,
     conversation.sId,
     0
   );
-  return { workspace, key, conversation, agentMessageSId, userMessageSId };
+  return { workspace, key, conversation, agentMessageId, userMessageId };
 }
 
 describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events", () => {
@@ -134,13 +134,13 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
   });
 
   it("returns 400 when the target message is not an agent message", async () => {
-    const { workspace, key, conversation, userMessageSId } =
+    const { workspace, key, conversation, userMessageId } =
       await setupAgentMessage();
 
     const response = await getMessageEvents(
       workspace.sId,
       conversation.sId,
-      userMessageSId,
+      userMessageId,
       key.secret
     );
 
@@ -151,7 +151,7 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
   });
 
   it("streams an empty SSE response when no events are produced", async () => {
-    const { workspace, key, conversation, agentMessageSId } =
+    const { workspace, key, conversation, agentMessageId } =
       await setupAgentMessage();
 
     vi.mocked(getMessagesEvents).mockImplementation(emptyAsyncIterator);
@@ -159,7 +159,7 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
     const response = await getMessageEvents(
       workspace.sId,
       conversation.sId,
-      agentMessageSId,
+      agentMessageId,
       key.secret
     );
 
@@ -167,7 +167,7 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
   });
 
   it("streams events for an agent message to the client", async () => {
-    const { workspace, key, conversation, agentMessageSId } =
+    const { workspace, key, conversation, agentMessageId } =
       await setupAgentMessage();
 
     vi.mocked(getMessagesEvents).mockImplementation(
@@ -177,7 +177,7 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
     const response = await getMessageEvents(
       workspace.sId,
       conversation.sId,
-      agentMessageSId,
+      agentMessageId,
       key.secret
     );
 

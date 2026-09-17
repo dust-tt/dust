@@ -81,11 +81,7 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
     });
-    const agentMessageSId = await getMessageSIdByRank(
-      auth,
-      conversation.sId,
-      1
-    );
+    const agentMessageId = await getMessageSIdByRank(auth, conversation.sId, 1);
 
     const event: MessageStreamEvent = {
       eventId: "evt",
@@ -104,7 +100,7 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     const response = await getMessageEvents(
       workspace.sId,
       conversation.sId,
-      agentMessageSId
+      agentMessageId
     );
 
     expect(response.status).toBe(200);

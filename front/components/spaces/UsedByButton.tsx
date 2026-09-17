@@ -109,7 +109,7 @@ const USED_BY_BUTTON_CLASSES =
 
 interface UsedByButtonProps {
   usage: AgentsUsageType | AgentsAndSkillsUsageType | null;
-  onItemClick: (assistantSid: string) => void;
+  onItemClick: (assistantId: string) => void;
   onSkillClick?: (skillId: string) => void;
 }
 
