@@ -13,6 +13,8 @@ import { logModelHealthTransition } from "@app/lib/api/llm/health/transitions";
 import type { Authenticator } from "@app/lib/auth";
 import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import { launchModelHealthRecovery } from "@app/temporal/model_health/client";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { redisMock } from "@app/tests/utils/mocks/redis";
 import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,9 +40,7 @@ const BREACHING_ERRORS = Math.ceil(ATTEMPTS * ERROR_RATIO_THRESHOLD);
 
 const NOW = new Date();
 const DEGRADED_SINCE_MS = NOW.getTime();
-const AUTH = {
-  hasFeatureFlag: vi.fn().mockResolvedValue(true),
-} as unknown as Authenticator;
+let AUTH: Authenticator;
 
 async function seedWindow({
   attempts,
@@ -98,15 +98,17 @@ describe("evaluateEndpoint", () => {
     );
   }
 
-  beforeEach(() => {
+  beforeEach(async () => {
     redisMock.reset();
-    vi.clearAllMocks();
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    AUTH = authenticator;
     vi.mocked(launchModelHealthRecovery).mockResolvedValue(
       new Ok({ outcome: "started", degradedSinceMs: DEGRADED_SINCE_MS })
     );
   });
 
   it("declares a breaching endpoint degraded", async () => {
+    await FeatureFlagFactory.basic(AUTH, "automatic_model_health_routing");
     await seedWindow({ attempts: ATTEMPTS, providerErrors: BREACHING_ERRORS });
 
     expect(await evaluateEndpoint(ENDPOINT, AUTH, NOW)).toEqual({
@@ -122,7 +124,6 @@ describe("evaluateEndpoint", () => {
   });
 
   it("detects a breach without persisting it when routing is disabled", async () => {
-    vi.mocked(AUTH.hasFeatureFlag).mockResolvedValueOnce(false);
     await seedWindow({ attempts: ATTEMPTS, providerErrors: BREACHING_ERRORS });
 
     expect(await evaluateEndpoint(ENDPOINT, AUTH, NOW)).toEqual({
@@ -160,6 +161,7 @@ describe("evaluateEndpoint", () => {
   it("does not log a transition when the endpoint was already degraded", async () => {
     // Another pod won the race: the workflow already exists, so this is not a
     // state change and must not show up as a second incident.
+    await FeatureFlagFactory.basic(AUTH, "automatic_model_health_routing");
     vi.mocked(launchModelHealthRecovery).mockResolvedValue(
       new Ok({
         outcome: "already_degraded",

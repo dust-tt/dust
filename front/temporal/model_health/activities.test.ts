@@ -4,6 +4,7 @@ import {
   logModelHealthProbeFailedActivity,
   logModelHealthRecoveryActivity,
 } from "@app/temporal/model_health/activities";
+import { ModelDegradationFactory } from "@app/tests/utils/ModelDegradationFactory";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/llm/health/transitions", () => ({
@@ -45,13 +46,9 @@ describe("model health recovery activities", () => {
   });
 
   it("removes the degradation after recovery", async () => {
-    await ModelDegradationResource.updateDegradedEndpoints([
-      {
-        ...ENDPOINT,
-        degraded: true,
-        expiresAt: new Date(Date.now() + 60_000),
-      },
-    ]);
+    await ModelDegradationFactory.degraded(ENDPOINT, {
+      expiresAt: new Date(Date.now() + 60_000),
+    });
 
     await logModelHealthRecoveryActivity({
       endpoint: ENDPOINT,

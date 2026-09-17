@@ -40,12 +40,16 @@ export async function runModelHealthWorker() {
     bundlerOptions: {
       // The workflow imports its timings through `@app/` paths, which webpack
       // only resolves once the tsconfig aliases are registered here.
-      webpackConfigHook: (config) => {
-        const plugins = config.resolve?.plugins ?? [];
-
-        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
-        return config;
-      },
+      webpackConfigHook: (config) => ({
+        ...config,
+        resolve: {
+          ...config.resolve,
+          plugins: [
+            ...(config.resolve?.plugins ?? []),
+            new TsconfigPathsPlugin({}),
+          ],
+        },
+      }),
     },
   });
 

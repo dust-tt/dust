@@ -10,6 +10,7 @@ import type { LLMAttemptOutcomeTelemetry } from "@app/lib/api/llm/telemetry";
 import type { LLMErrorType } from "@app/lib/api/llm/types/errors";
 import { runOnRedisCache } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { redisMock } from "@app/tests/utils/mocks/redis";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -39,7 +40,7 @@ function providerError(errorType: LLMErrorType) {
 
 const NOW = new Date("2026-09-03T14:32:10Z");
 const KEY = modelHealthKey(ENDPOINT, "202609031432");
-const AUTH = {} as Authenticator;
+let AUTH: Authenticator;
 
 function recordLLMAttempt(
   args: Omit<Parameters<typeof recordLLMAttemptImpl>[0], "auth">
@@ -52,8 +53,10 @@ async function record(outcome: LLMAttemptOutcomeTelemetry): Promise<void> {
 }
 
 describe("model health counters", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     redisMock.reset();
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    AUTH = authenticator;
   });
 
   afterEach(() => {
