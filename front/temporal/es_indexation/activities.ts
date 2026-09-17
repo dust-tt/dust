@@ -162,15 +162,13 @@ export async function listSearchUsageWorkspacesActivity(
 
 export async function refreshWorkspaceSearchUsageActivity({
   workspaceId,
-  evaluatedAtMs,
 }: {
   workspaceId: string;
-  evaluatedAtMs: number;
 }): Promise<void> {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const activeUsers = await fetchSearchActiveUsers({
     workspaceId,
-    evaluatedAtMs,
+    evaluatedAtMs: Date.now(),
   });
   if (activeUsers.isErr()) {
     throw activeUsers.error;

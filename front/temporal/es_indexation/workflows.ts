@@ -4,7 +4,6 @@ import {
   proxyActivities,
   setHandler,
   sleep,
-  workflowInfo,
 } from "@temporalio/workflow";
 
 import { concurrentExecutor } from "../workflow_utils";
@@ -98,34 +97,28 @@ const {
 
 export async function refreshSearchUsageWorkflow({
   afterWorkspaceModelId = 0,
-  evaluatedAtMs = workflowInfo().startTime.getTime(),
 }: {
   afterWorkspaceModelId?: number;
-  evaluatedAtMs?: number;
 } = {}): Promise<void> {
   const workspaces = await listSearchUsageWorkspacesActivity(
     afterWorkspaceModelId
   );
   await concurrentExecutor(
     workspaces,
-    ({ workspaceId }) =>
-      refreshWorkspaceSearchUsageActivity({ workspaceId, evaluatedAtMs }),
+    ({ workspaceId }) => refreshWorkspaceSearchUsageActivity({ workspaceId }),
     { concurrency: 5 }
   );
   if (workspaces.length === 50) {
     await continueAsNew<typeof refreshSearchUsageWorkflow>({
       afterWorkspaceModelId: workspaces[workspaces.length - 1].workspaceModelId,
-      evaluatedAtMs,
     });
   }
 }
 
 export async function refreshWorkspaceSearchUsageWorkflow({
   workspaceId,
-  evaluatedAtMs = workflowInfo().startTime.getTime(),
 }: {
   workspaceId: string;
-  evaluatedAtMs?: number;
 }): Promise<void> {
-  await refreshWorkspaceSearchUsageActivity({ workspaceId, evaluatedAtMs });
+  await refreshWorkspaceSearchUsageActivity({ workspaceId });
 }

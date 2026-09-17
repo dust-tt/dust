@@ -40,9 +40,9 @@ describe("skill search indexation", () => {
       .spyOn(skillIndex, "updateSkillSearchActiveUsers")
       .mockResolvedValue(new Ok(undefined));
     const evaluatedAtMs = Date.parse("2026-09-08T03:00:00Z");
+    vi.spyOn(Date, "now").mockReturnValue(evaluatedAtMs);
     await refreshWorkspaceSearchUsageActivity({
       workspaceId: workspace.sId,
-      evaluatedAtMs,
     });
     expect(usage).toHaveBeenCalledExactlyOnceWith({
       workspaceId: workspace.sId,
