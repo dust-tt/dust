@@ -20,8 +20,6 @@ import {
   NavigationList,
   NavigationListItem,
   Pin02,
-  PuzzlePiece01,
-  Robot,
   SearchInput,
   Users01,
   Tabs,
@@ -41,7 +39,6 @@ import {
   type CatalogCategory,
   type CatalogKind,
   type CatalogView,
-  DISCOVER_FEATURED,
   filterCatalog,
   DISCOVER_FOR_YOU,
   DISCOVER_TABS,
@@ -50,7 +47,6 @@ import {
   type DiscoverItem,
   type DiscoverTab,
   formatAuthors,
-  formatCompactCount,
   formatCount,
   getAgentAvatarProps,
   getAgentImageUrl,
@@ -93,8 +89,7 @@ export const DiscoverAgentDiscoverPage = forwardRef<
     useState<CatalogCategory | null>(null);
   // Featured is editable: rows can be pinned to the front or the back of it
   // from their context menu.
-  const [featuredItems, setFeaturedItems] =
-    useState<DiscoverFeatured[]>(DISCOVER_FEATURED);
+  const [featuredItems, setFeaturedItems] = useState<DiscoverFeatured[]>([]);
   // Bumped on each pin so the trio remounts and replays its entrance.
   const [featuredVersion, setFeaturedVersion] = useState(0);
   // Row being pinned to Featured, while the pin dialog is open.
@@ -240,30 +235,42 @@ export const DiscoverAgentDiscoverPage = forwardRef<
                 key={featuredVersion}
                 className="grid grid-cols-1 gap-4 md:grid-cols-3"
               >
-                {featured.map((f, index) => (
-                  <div
-                    key={getFeaturedId(f)}
-                    className={cn(
-                      "transition-[opacity,translate] duration-(--transition-duration-enter) ease-emphasized",
-                      "starting:translate-x-3 starting:opacity-0 motion-reduce:starting:translate-x-0"
-                    )}
-                    style={{
-                      transitionDelay: reducedMotion
-                        ? undefined
-                        : `${index * 40}ms`,
-                    }}
-                  >
-                    <FeaturedCard
-                      featured={f}
-                      onClick={() =>
-                        f.kind === "agent"
-                          ? onUseAgent(f.agent)
-                          : onUseSkill(f.skill)
-                      }
-                    />
-                  </div>
-                ))}
+                {[0, 1, 2].map((index) => {
+                  const f = featured[index];
+                  if (!f) {
+                    return <FeaturedSlotPlaceholder key={`slot-${index}`} />;
+                  }
+                  return (
+                    <div
+                      key={getFeaturedId(f)}
+                      className={cn(
+                        "transition-[opacity,translate] duration-(--transition-duration-enter) ease-emphasized",
+                        "starting:translate-x-3 starting:opacity-0 motion-reduce:starting:translate-x-0"
+                      )}
+                      style={{
+                        transitionDelay: reducedMotion
+                          ? undefined
+                          : `${index * 40}ms`,
+                      }}
+                    >
+                      <FeaturedCard
+                        featured={f}
+                        onClick={() =>
+                          f.kind === "agent"
+                            ? onUseAgent(f.agent)
+                            : onUseSkill(f.skill)
+                        }
+                      />
+                    </div>
+                  );
+                })}
               </div>
+              {featured.length === 0 && (
+                <p className="pointer-events-none absolute inset-0 flex items-center justify-center px-6 text-center copy-sm text-muted-foreground">
+                  Nothing featured yet. Pin agents and skills from the lists
+                  below to show them here.
+                </p>
+              )}
               {leavingFeatured && (
                 <div
                   aria-hidden
@@ -350,6 +357,17 @@ export const DiscoverAgentDiscoverPage = forwardRef<
 
 // ── Featured card ───────────────────────────────────────────────────────────
 
+// An empty Featured slot: the same footprint as a card, drawn as a dashed
+// outline on a light stone field.
+function FeaturedSlotPlaceholder() {
+  return (
+    <div
+      aria-hidden
+      className="h-56 rounded-2xl border border-dashed border-border-dark bg-muted-background"
+    />
+  );
+}
+
 function FeaturedCard({
   featured,
   onClick,
@@ -357,7 +375,7 @@ function FeaturedCard({
   featured: DiscoverFeatured;
   onClick: () => void;
 }) {
-  const { author, messageCount, userCount } = featured;
+  const { author } = featured;
   return (
     // Buttons shrink-wrap even as flex containers, so the card claims its
     // grid column explicitly.
@@ -415,40 +433,21 @@ function FeaturedCard({
           />
         </div>
       )}
-      {/* Footer: type tile, name, then "by author · stats". */}
-      <div className="flex items-center gap-3 px-4 py-3">
-        <div
-          role="img"
-          aria-label={featured.kind === "agent" ? "Agent" : "Skill"}
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-            featured.kind === "agent"
-              ? "bg-muted-background text-foreground"
-              : cn(SKILL_TILE_BACKGROUND, SKILL_TILE_ICON_COLOR)
-          )}
-        >
-          <Icon
-            visual={featured.kind === "agent" ? Robot : PuzzlePiece01}
-            size="sm"
-          />
-        </div>
-        <div className="flex min-w-0 flex-col">
-          <span className="heading-base notranslate truncate text-foreground">
-            {capitalize(getFeaturedName(featured))}
+      {/* Footer: name with the author inline, then the description. */}
+      <div className="flex items-start gap-3 px-4 py-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="flex items-baseline gap-1.5 truncate">
+            <span className="heading-base notranslate text-foreground">
+              {capitalize(getFeaturedName(featured))}
+            </span>
+            <span className="copy-sm text-muted-foreground">
+              by {author.firstName}
+            </span>
           </span>
-          <span className="flex items-center gap-2 copy-sm text-muted-foreground">
-            <span className="truncate">by {author.firstName}</span>
-            <span aria-hidden>·</span>
-            <span className="flex items-center gap-1">
-              <Icon visual={MessageCircle01} size="xs" />
-              {formatCompactCount(messageCount)}
-              <span className="sr-only">messages</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <Icon visual={Users01} size="xs" />
-              {formatCompactCount(userCount)}
-              <span className="sr-only">members</span>
-            </span>
+          <span className="copy-sm line-clamp-2 text-muted-foreground">
+            {featured.kind === "agent"
+              ? featured.agent.description
+              : featured.skill.description}
           </span>
         </div>
       </div>
