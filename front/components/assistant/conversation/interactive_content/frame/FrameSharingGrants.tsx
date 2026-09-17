@@ -66,7 +66,6 @@ interface FrameSharingGrantsProps {
   sharing: SharingGrantsResponse | undefined;
   canInviteExternal: boolean;
   canRevoke: boolean;
-  showLastViewedAt: boolean;
   isLoading: boolean;
   hasError: boolean;
   onAdd: (
@@ -80,7 +79,6 @@ export function FrameSharingGrants({
   sharing,
   canInviteExternal,
   canRevoke,
-  showLastViewedAt,
   isLoading,
   hasError,
   onAdd,
@@ -122,9 +120,6 @@ export function FrameSharingGrants({
     (a, b) =>
       Number(!!a.blockedByPolicy) - Number(!!b.blockedByPolicy) ||
       a.target.value.localeCompare(b.target.value)
-  );
-  const lastViewedAtByEmail = new Map(
-    sharing?.grants.map((grant) => [grant.email, grant.lastViewedAt])
   );
 
   const revoke = async (grant: FileSharingGrantType) => {
@@ -249,11 +244,6 @@ export function FrameSharingGrants({
                 <li key={grant.sId}>
                   <GrantRow
                     grant={grant}
-                    lastViewedAt={
-                      showLastViewedAt
-                        ? (lastViewedAtByEmail.get(grant.target.value) ?? null)
-                        : undefined
-                    }
                     isRevoking={revokingId === grant.sId}
                     onRevoke={
                       canRevoke && revokingId === null
@@ -273,17 +263,11 @@ export function FrameSharingGrants({
 
 interface GrantRowProps {
   grant: FileSharingGrantType;
-  lastViewedAt?: number | null;
   isRevoking: boolean;
   onRevoke?: () => void;
 }
 
-function GrantRow({
-  grant,
-  lastViewedAt,
-  isRevoking,
-  onRevoke,
-}: GrantRowProps) {
+function GrantRow({ grant, isRevoking, onRevoke }: GrantRowProps) {
   const isDomain = grant.target.kind === "domain";
   const label = isDomain ? `@${grant.target.value}` : grant.target.value;
   const now = new Date();
@@ -293,13 +277,6 @@ function GrantRow({
   const grantedLabel = grantedBy
     ? `${action} by ${grantedBy} ${grantedAgo}`
     : `${action} ${grantedAgo}`;
-  const viewedLabel = lastViewedAt
-    ? `Viewed ${intlFormatDistance(new Date(lastViewedAt), now)}`
-    : "Never viewed";
-  const description =
-    isDomain || lastViewedAt === undefined
-      ? grantedLabel
-      : `${grantedLabel} · ${viewedLabel}`;
 
   return (
     <FrameSharingRow
@@ -308,7 +285,7 @@ function GrantRow({
       onRemove={onRevoke}
       isRemoving={isRevoking}
     >
-      <span>{description}</span>
+      <span>{grantedLabel}</span>
       {grant.blockedByPolicy && (
         <span>
           {isDomain
