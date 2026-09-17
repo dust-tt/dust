@@ -88,9 +88,9 @@ export function shortSandboxFunctionBundleSha256(sha: string | null): string {
 }
 
 export function getSandboxFunctionPublishLockName(
-  sandboxFunctionSId: string
+  sandboxFunctionId: string
 ): string {
-  return `sandbox_function:publish:${sandboxFunctionSId}`;
+  return `sandbox_function:publish:${sandboxFunctionId}`;
 }
 
 function userIdentityPolicyStrength(

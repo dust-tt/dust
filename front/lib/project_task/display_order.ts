@@ -35,32 +35,32 @@ function sortPodTasksForInitialDisplay(tasks: PodTaskType[]): PodTaskType[] {
 }
 
 /**
- * Preserves a previously shown order on revalidation; new items (not in `prevOrderedSIds`)
+ * Preserves a previously shown order on revalidation; new items (not in `prevOrderedIds`)
  * are prepended, ordered among themselves with {@link sortPodTasksForInitialDisplay}.
  */
 function mergePodTaskStableOrder(
-  prevOrderedSIds: string[] | undefined,
+  prevOrderedIds: string[] | undefined,
   tasks: PodTaskType[]
 ): string[] {
   const currentSet = new Set(tasks.map((t) => t.sId));
 
-  if (!prevOrderedSIds || prevOrderedSIds.length === 0) {
+  if (!prevOrderedIds || prevOrderedIds.length === 0) {
     return sortPodTasksForInitialDisplay(tasks).map((t) => t.sId);
   }
 
-  const prevSet = new Set(prevOrderedSIds);
-  const kept = prevOrderedSIds.filter((id) => currentSet.has(id));
+  const prevSet = new Set(prevOrderedIds);
+  const kept = prevOrderedIds.filter((id) => currentSet.has(id));
   const brandNew = tasks.filter((t) => !prevSet.has(t.sId));
   const brandNewIds = sortPodTasksForInitialDisplay(brandNew).map((t) => t.sId);
   return [...brandNewIds, ...kept];
 }
 
 function orderPodTasksBySIdList(
-  orderedSIds: string[],
+  orderedIds: string[],
   tasks: PodTaskType[]
 ): PodTaskType[] {
   const byId = new Map(tasks.map((t) => [t.sId, t]));
-  return orderedSIds
+  return orderedIds
     .map((id) => byId.get(id))
     .filter((t): t is PodTaskType => t !== undefined);
 }

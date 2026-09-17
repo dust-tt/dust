@@ -531,13 +531,13 @@ function buildNewKnowledgeAction(
 
 function actionIncludesDataSourceView(
   action: AgentBuilderFormData["actions"][number],
-  dataSourceViewSId: string,
+  dataSourceViewId: string,
   isQueryTables: boolean
 ): boolean {
   const config = isQueryTables
     ? action.configuration.tablesConfigurations
     : action.configuration.dataSourceConfigurations;
-  return config != null && dataSourceViewSId in config;
+  return config != null && dataSourceViewId in config;
 }
 
 function removeFirstWhere<T>(arr: T[], predicate: (item: T) => boolean): T[] {

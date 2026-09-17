@@ -225,7 +225,7 @@ export async function computeBulkSeatChangePreview(
   const seatTypeByUserModelId = new Map(
     memberships.map((m) => [m.userId, m.seatType])
   );
-  const seatTypeBySId = new Map(
+  const seatTypeByUserId = new Map(
     users.map((user) => [user.sId, seatTypeByUserModelId.get(user.id)])
   );
 
@@ -248,7 +248,7 @@ export async function computeBulkSeatChangePreview(
   const appliedCountByFromSeatType = new Map<MembershipSeatType, number>();
   const unchangedCountByFromSeatType = new Map<MembershipSeatType, number>();
   for (const userId of userIds) {
-    const fromSeatType = seatTypeBySId.get(userId);
+    const fromSeatType = seatTypeByUserId.get(userId);
     if (fromSeatType === undefined) {
       // No active membership (revoked between selection and preview) — the
       // apply step skips them too.

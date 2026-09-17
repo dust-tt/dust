@@ -2495,9 +2495,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     const activeWorkspaceUserIds = new Set(
       workspaceMemberships.map((m) => m.userId)
     );
-    const userModelIdBySId = new Map(users.map((u) => [u.sId, u.id]));
+    const userModelIdByUserId = new Map(users.map((u) => [u.sId, u.id]));
     const isActiveWorkspaceMember = (userId: string) => {
-      const modelId = userModelIdBySId.get(userId);
+      const modelId = userModelIdByUserId.get(userId);
       return modelId !== undefined && activeWorkspaceUserIds.has(modelId);
     };
     if (!uniqueAddUserIds.every(isActiveWorkspaceMember)) {
