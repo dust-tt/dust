@@ -53,7 +53,7 @@ export async function dataRetentionWorkflow(): Promise<void> {
  *
  * Declared here rather than in `config.ts`: workflow code is bundled by webpack without the
  * tsconfig path plugin in development, so it must not reach for an `@app/*` module — directly or
- * through one, as `config.ts` does for `EnvironmentConfig`.
+ * through one, as `config.ts` does for `ONE_DAY_MS`.
  */
 const FRAME_FUNCTION_INVOCATION_MAX_BATCHES_PER_RUN = 500;
 const FRAME_PUBLICATION_MAX_BATCHES_PER_RUN = 100;

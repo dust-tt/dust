@@ -11,22 +11,21 @@ import {
   getFramePublicationsBasePath,
   isSafeFrameStorageSegment,
 } from "@app/types/api/frame_storage";
+import assert from "assert";
+import sumBy from "lodash/sumBy";
 
 const FRAME_PUBLICATION_PURGE_CONCURRENCY = 4;
 
 export type StaleFramePublicationPurgeResult = {
   deletedFunctionCount: number;
   deletedPublicationCount: number;
-  keptPublicationCount: number;
   unreadablePublicationCount: number;
 };
 
-const EMPTY_PURGE_RESULT: StaleFramePublicationPurgeResult = {
-  deletedFunctionCount: 0,
-  deletedPublicationCount: 0,
-  keptPublicationCount: 0,
-  unreadablePublicationCount: 0,
-};
+type PublicationOutcome =
+  | { outcome: "kept" }
+  | { outcome: "unreadable" }
+  | { outcome: "deleted"; deletedFunctionCount: number };
 
 /**
  * @cc [owner:davidebbo,label:product] retention-keeps-the-active-publication
@@ -60,9 +59,10 @@ export async function purgeStaleFramePublications(
   }
 ): Promise<StaleFramePublicationPurgeResult> {
   const owner = auth.getNonNullableWorkspace();
-  if (!frame.isFrameV2 || frame.workspaceId !== owner.id) {
-    return EMPTY_PURGE_RESULT;
-  }
+  assert(
+    frame.isFrameV2 && frame.workspaceId === owner.id,
+    "Publication retention requires a Frames v2 file of the auth's workspace."
+  );
 
   const storage = getPrivateUploadBucket();
   const publicationIds = await storage.listSubdirectoryNames({
@@ -74,15 +74,35 @@ export async function purgeStaleFramePublications(
 
   const activePublicationId = frame.useCaseMetadata?.activePublicationId;
   const cutoffDate = new Date(Date.now() - retentionMs);
+  const logContext = { frameId: frame.sId, workspaceId: owner.sId };
 
-  const results = await concurrentExecutor(
+  const outcomes = await concurrentExecutor(
     publicationIds,
-    async (publicationId) => {
-      if (
-        publicationId === activePublicationId ||
-        !isSafeFrameStorageSegment(publicationId)
-      ) {
-        return { ...EMPTY_PURGE_RESULT, keptPublicationCount: 1 };
+    async (publicationId): Promise<PublicationOutcome> => {
+      if (publicationId === activePublicationId) {
+        return { outcome: "kept" };
+      }
+
+      // Publication ids are UUIDs we wrote ourselves, so anything else under the prefix is
+      // foreign data the path builders would refuse: report it rather than touch it.
+      if (!isSafeFrameStorageSegment(publicationId)) {
+        logger.warn(
+          { ...logContext, publicationId },
+          "[Frames Retention] Skipped a Frame publication directory with an unsafe name."
+        );
+
+        return { outcome: "unreadable" };
+      }
+
+      // The indexed DB check comes before the GCS descriptor read: a superseded publication whose
+      // runs are still on record is kept on every daily run until its invocations expire.
+      const invocationCount =
+        await SandboxFunctionInvocationResource.countForFramePublication(auth, {
+          frame,
+          publicationId,
+        });
+      if (invocationCount > 0) {
+        return { outcome: "kept" };
       }
 
       const descriptor = await loadFramePublicationDescriptor(auth, {
@@ -95,42 +115,24 @@ export async function purgeStaleFramePublications(
         // rather than guessing: deleting on a read failure would turn a transient GCS error into
         // data loss.
         logger.warn(
-          {
-            error: descriptor.error.message,
-            frameId: frame.sId,
-            publicationId,
-            workspaceId: owner.sId,
-          },
+          { ...logContext, error: descriptor.error.message, publicationId },
           "[Frames Retention] Skipped a Frame publication with an unreadable descriptor."
         );
 
-        return { ...EMPTY_PURGE_RESULT, unreadablePublicationCount: 1 };
+        return { outcome: "unreadable" };
       }
 
       if (new Date(descriptor.value.publishedAt) >= cutoffDate) {
-        return { ...EMPTY_PURGE_RESULT, keptPublicationCount: 1 };
+        return { outcome: "kept" };
       }
 
-      const sandboxFunctions =
-        await SandboxFunctionResource.listByFramePublication(auth, {
-          frame,
-          publicationId,
-        });
-      const invocationCount =
-        await SandboxFunctionInvocationResource.countForSandboxFunctions(auth, {
-          sandboxFunctions,
-        });
-      if (invocationCount > 0) {
-        return { ...EMPTY_PURGE_RESULT, keptPublicationCount: 1 };
-      }
-
+      // Rows first: a crash between the two leaves a GCS prefix the next sweep collects, where
+      // the reverse would leave rows describing bundles that no longer exist.
       const deletedFunctionCount =
         await SandboxFunctionResource.deleteAllForFramePublication(auth, {
           frame,
           publicationId,
         });
-      // Rows first: a crash here leaves a GCS prefix the next sweep collects, where the reverse
-      // would leave rows describing bundles that no longer exist.
       await storage.deleteByPrefix(
         getFramePublicationBasePath({
           workspaceId: owner.sId,
@@ -141,35 +143,27 @@ export async function purgeStaleFramePublications(
 
       logger.info(
         {
+          ...logContext,
           deletedFunctionCount,
-          frameId: frame.sId,
           publicationId,
           publishedAt: descriptor.value.publishedAt,
-          workspaceId: owner.sId,
         },
         "[Frames Retention] Purged a superseded Frame publication."
       );
 
-      return {
-        ...EMPTY_PURGE_RESULT,
-        deletedFunctionCount,
-        deletedPublicationCount: 1,
-      };
+      return { outcome: "deleted", deletedFunctionCount };
     },
     { concurrency: FRAME_PUBLICATION_PURGE_CONCURRENCY }
   );
 
-  return results.reduce(
-    (total, result) => ({
-      deletedFunctionCount:
-        total.deletedFunctionCount + result.deletedFunctionCount,
-      deletedPublicationCount:
-        total.deletedPublicationCount + result.deletedPublicationCount,
-      keptPublicationCount:
-        total.keptPublicationCount + result.keptPublicationCount,
-      unreadablePublicationCount:
-        total.unreadablePublicationCount + result.unreadablePublicationCount,
-    }),
-    EMPTY_PURGE_RESULT
-  );
+  return {
+    deletedFunctionCount: sumBy(outcomes, (o) =>
+      o.outcome === "deleted" ? o.deletedFunctionCount : 0
+    ),
+    deletedPublicationCount: outcomes.filter((o) => o.outcome === "deleted")
+      .length,
+    unreadablePublicationCount: outcomes.filter(
+      (o) => o.outcome === "unreadable"
+    ).length,
+  };
 }

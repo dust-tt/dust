@@ -27,6 +27,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -1465,22 +1466,26 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   /**
-   * How many invocations still reference any of `sandboxFunctions`. Retention uses this to tell a
-   * superseded publication that can be dropped from one whose runs are still on record.
+   * How many invocations still reference a function of `publicationId`. Retention uses this to
+   * tell a superseded publication that can be dropped from one whose runs are still on record.
    */
-  static async countForSandboxFunctions(
+  static async countForFramePublication(
     auth: Authenticator,
-    { sandboxFunctions }: { sandboxFunctions: SandboxFunctionResource[] }
+    { frame, publicationId }: { frame: FileResource; publicationId: string }
   ): Promise<number> {
-    if (sandboxFunctions.length === 0) {
-      return 0;
-    }
+    const workspaceId = auth.getNonNullableWorkspace().id;
 
     return this.model.count({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        sandboxFunctionId: sandboxFunctions.map(({ id }) => id),
-      },
+      where: { workspaceId },
+      include: [
+        {
+          model: SandboxFunctionModel,
+          as: "sandboxFunction",
+          attributes: [],
+          required: true,
+          where: { workspaceId, fileId: frame.id, publicationId },
+        },
+      ],
     });
   }
 

@@ -13,10 +13,11 @@ import {
   FRAME_FUNCTION_INVOCATION_BATCH_SIZE,
   FRAME_FUNCTION_INVOCATION_RETENTION_MS,
   FRAME_PUBLICATION_BATCH_SIZE,
-  FRAME_PUBLICATION_RETENTION_MS,
 } from "@app/temporal/data_retention/config";
 import type { ModelId } from "@app/types/shared/model_id";
 import { heartbeat } from "@temporalio/activity";
+import assert from "assert";
+import sumBy from "lodash/sumBy";
 
 const WORKSPACE_CONVERSATIONS_BATCH_SIZE = 200;
 const HEARTBEAT_RATE = 100;
@@ -271,41 +272,32 @@ export async function purgeStaleFramePublicationsActivity({
     afterModelId,
     batchSize: FRAME_PUBLICATION_BATCH_SIZE,
   });
-  if (frames.length === 0) {
-    return {
-      deletedFunctionCount: 0,
-      deletedPublicationCount: 0,
-      keptPublicationCount: 0,
-      nextAfterModelId: null,
-      scannedFrameCount: 0,
-      unreadablePublicationCount: 0,
-    };
-  }
 
+  // One admin authenticator per workspace, not per frame: building one costs several queries.
   const workspaces = await WorkspaceResource.fetchByModelIds([
     ...new Set(frames.map((frame) => frame.workspaceId)),
   ]);
-  const workspaceById = new Map(
-    workspaces.map((workspace) => [workspace.id, workspace])
+  const authByWorkspaceModelId = new Map(
+    await Promise.all(
+      workspaces.map(
+        async (workspace) =>
+          [
+            workspace.id,
+            await Authenticator.internalAdminForWorkspace(workspace.sId),
+          ] as const
+      )
+    )
   );
 
   const results = await concurrentExecutor(
     frames,
     async (frame) => {
-      const workspace = workspaceById.get(frame.workspaceId);
-      if (!workspace) {
-        logger.error(
-          { fileId: frame.sId, workspaceModelId: frame.workspaceId },
-          "[Frames Retention] Skipped a Frame whose workspace is missing."
-        );
+      const auth = authByWorkspaceModelId.get(frame.workspaceId);
+      assert(auth, "A Frame's workspace must exist.");
 
-        return null;
-      }
-
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
       const result = await purgeStaleFramePublications(auth, {
         frame,
-        retentionMs: FRAME_PUBLICATION_RETENTION_MS,
+        retentionMs: FRAME_FUNCTION_INVOCATION_RETENTION_MS,
       });
       heartbeat();
 
@@ -314,33 +306,16 @@ export async function purgeStaleFramePublicationsActivity({
     { concurrency: FRAME_PUBLICATION_FRAME_CONCURRENCY }
   );
 
-  const lastScannedFrame = frames.at(-1);
-  const result = results.reduce<PurgeStaleFramePublicationsActivityResult>(
-    (total, frameResult) => ({
-      ...total,
-      deletedFunctionCount:
-        total.deletedFunctionCount + (frameResult?.deletedFunctionCount ?? 0),
-      deletedPublicationCount:
-        total.deletedPublicationCount +
-        (frameResult?.deletedPublicationCount ?? 0),
-      keptPublicationCount:
-        total.keptPublicationCount + (frameResult?.keptPublicationCount ?? 0),
-      unreadablePublicationCount:
-        total.unreadablePublicationCount +
-        (frameResult?.unreadablePublicationCount ?? 0),
-    }),
-    {
-      deletedFunctionCount: 0,
-      deletedPublicationCount: 0,
-      keptPublicationCount: 0,
-      nextAfterModelId:
-        frames.length < FRAME_PUBLICATION_BATCH_SIZE
-          ? null
-          : (lastScannedFrame?.id ?? null),
-      scannedFrameCount: frames.length,
-      unreadablePublicationCount: 0,
-    }
-  );
+  const result: PurgeStaleFramePublicationsActivityResult = {
+    deletedFunctionCount: sumBy(results, "deletedFunctionCount"),
+    deletedPublicationCount: sumBy(results, "deletedPublicationCount"),
+    unreadablePublicationCount: sumBy(results, "unreadablePublicationCount"),
+    nextAfterModelId:
+      frames.length < FRAME_PUBLICATION_BATCH_SIZE
+        ? null
+        : frames[frames.length - 1].id,
+    scannedFrameCount: frames.length,
+  };
 
   logger.info(
     {
@@ -348,7 +323,6 @@ export async function purgeStaleFramePublicationsActivity({
       deletedFunctionCount: result.deletedFunctionCount,
       deletedPublicationCount: result.deletedPublicationCount,
       hasMore: result.nextAfterModelId !== null,
-      keptPublicationCount: result.keptPublicationCount,
       scannedFrameCount: result.scannedFrameCount,
       unreadablePublicationCount: result.unreadablePublicationCount,
     },
