@@ -1,4 +1,9 @@
 import { FullscreenButton } from "@viz/components/dust/slideshow/FullscreenButton";
+import {
+  SLIDESHOW_BUTTON_CLASS_NAME,
+  SLIDESHOW_ICON_CLASS_NAME,
+  SLIDESHOW_SURFACE_CLASS_NAME,
+} from "@viz/components/dust/slideshow/styles";
 import { Button } from "@viz/components/ui/button";
 import { cn } from "@viz/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -11,11 +16,6 @@ interface SlideshowControlsProps {
   onNext: () => void;
   slideshowRef?: RefObject<HTMLElement>;
 }
-
-const BUTTON_CLASS_NAME =
-  "h-10 w-10 rounded-2xl px-2.5 py-2 text-muted-foreground transition-colors duration-150 ease-out hover:bg-transparent hover:text-foreground focus-visible:text-foreground focus-visible:ring-inset dark:hover:bg-transparent motion-reduce:transition-none";
-const ICON_CLASS_NAME =
-  "size-5 drop-shadow-[0_0.75px_1.125px_rgba(0,0,0,0.08)]";
 
 export function SlideshowControls({
   activeIndex,
@@ -30,13 +30,7 @@ export function SlideshowControls({
       aria-label="Slideshow controls"
       className={cn(
         "inline-flex items-center gap-2 overflow-hidden rounded-full px-1.5",
-        "bg-gradient-to-b from-white to-[oklch(98.6%_0.002_67.802)]",
-        "shadow-[0_0_0_1px_rgba(0,0,0,0.06),0_1px_1px_-0.5px_rgba(0,0,0,0.06),0_3px_3px_-1.5px_rgba(0,0,0,0.06)]",
-        "dark:from-[oklch(34.6%_0.009_80.674)] dark:to-[oklch(25.6%_0.006_34.298)]",
-        "dark:shadow-[0_0_0_1px_rgba(0,0,0,0.12),0_1px_1px_-0.5px_rgba(0,0,0,0.18),0_3px_3px_-1.5px_rgba(0,0,0,0.18),inset_0_1px_0_0_rgba(255,255,255,0.02),inset_0_0_0_1px_rgba(255,255,255,0.02)]",
-        // Keep the mock's Stone palette local to the controls so frame themes stay intact.
-        "[--foreground:oklch(20.6%_0.005_67.543)] [--muted-foreground:oklch(44.4%_0.011_78.213)] [--border:oklch(94.9%_0.003_106.45)]",
-        "dark:[--foreground:oklch(92.3%_0.003_48.717)] dark:[--muted-foreground:oklch(70.9%_0.01_62.526)] dark:[--border:oklch(37.4%_0.01_73.594)]"
+        SLIDESHOW_SURFACE_CLASS_NAME
       )}
       style={{ fontFamily: "var(--font-geist), sans-serif" }}
     >
@@ -44,13 +38,13 @@ export function SlideshowControls({
         type="button"
         variant="ghost"
         size="icon"
-        className={BUTTON_CLASS_NAME}
+        className={SLIDESHOW_BUTTON_CLASS_NAME}
         aria-label="Previous slide"
         title="Previous slide (←)"
         disabled={activeIndex === 0}
         onClick={onPrevious}
       >
-        <ChevronLeft className={ICON_CLASS_NAME} aria-hidden="true" />
+        <ChevronLeft className={SLIDESHOW_ICON_CLASS_NAME} aria-hidden="true" />
       </Button>
       <span
         className="flex items-center gap-2 whitespace-nowrap text-xs font-medium leading-4 tabular-nums text-muted-foreground"
@@ -66,13 +60,16 @@ export function SlideshowControls({
         type="button"
         variant="ghost"
         size="icon"
-        className={BUTTON_CLASS_NAME}
+        className={SLIDESHOW_BUTTON_CLASS_NAME}
         aria-label="Next slide"
         title="Next slide (→)"
         disabled={activeIndex === total - 1}
         onClick={onNext}
       >
-        <ChevronRight className={ICON_CLASS_NAME} aria-hidden="true" />
+        <ChevronRight
+          className={SLIDESHOW_ICON_CLASS_NAME}
+          aria-hidden="true"
+        />
       </Button>
       {slideshowRef && (
         <>

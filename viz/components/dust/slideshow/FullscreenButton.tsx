@@ -1,3 +1,7 @@
+import {
+  SLIDESHOW_BUTTON_CLASS_NAME,
+  SLIDESHOW_ICON_CLASS_NAME,
+} from "@viz/components/dust/slideshow/styles";
 import { Button } from "@viz/components/ui/button";
 import { cn } from "@viz/lib/utils";
 import { LoaderCircle, Maximize, Minimize } from "lucide-react";
@@ -67,7 +71,7 @@ export function FullscreenButton({ containerRef }: FullscreenButtonProps) {
         type="button"
         variant="ghost"
         size="icon"
-        className="h-10 w-10 rounded-2xl px-2.5 py-2 text-muted-foreground transition-colors duration-150 ease-out hover:bg-transparent hover:text-foreground focus-visible:text-foreground focus-visible:ring-inset dark:hover:bg-transparent motion-reduce:transition-none"
+        className={SLIDESHOW_BUTTON_CLASS_NAME}
         aria-label={label}
         aria-pressed={isFullscreen}
         aria-busy={isPending}
@@ -80,10 +84,7 @@ export function FullscreenButton({ containerRef }: FullscreenButtonProps) {
         }}
       >
         <Icon
-          className={cn(
-            "size-5 drop-shadow-[0_0.75px_1.125px_rgba(0,0,0,0.08)]",
-            isPending && "animate-spin"
-          )}
+          className={cn(SLIDESHOW_ICON_CLASS_NAME, isPending && "animate-spin")}
           aria-hidden="true"
         />
       </Button>
