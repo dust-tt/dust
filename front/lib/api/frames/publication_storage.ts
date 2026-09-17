@@ -71,6 +71,7 @@ export class FramePublicationError extends Error {
       | "invalid_manifest"
       | "invalid_publication"
       | "invalid_source"
+      | "invalid_tailwind"
       | "allowlist_failed"
       | "publication_not_found"
       | "ui_build_failed"

@@ -61,6 +61,13 @@ describe("framesSkill.fetchInstructions", () => {
 
     expect(instructions).toContain("dsbx frame publish");
     expect(instructions).toContain("dsbx frame create");
+    expect(instructions).toContain(
+      "publish a new Frame in one Computer command"
+    );
+    expect(instructions).toContain("read the scaffolded files back");
+    expect(instructions).not.toContain(
+      "Edit the generated source before publishing"
+    );
     expect(instructions).toContain("dsbx frame register");
     expect(instructions).toContain("dsbx frame share-link");
     expect(instructions).toContain("dsbx frame call");
