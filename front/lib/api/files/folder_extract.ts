@@ -9,8 +9,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { IZipEntry } from "adm-zip";
 import AdmZip from "adm-zip";
 
-export type FolderExtractFileSystem = Pick<DustFileSystem, "mkdir" | "write">;
-
 // Entry types the upload API rejects are still written as-is: the pod file system already holds
 // arbitrary agent-written files, and silently dropping entries the user can see in their archive
 // is worse than storing an opaque one.
@@ -47,13 +45,6 @@ export class FolderExtractError extends Error {
     super(message);
     this.name = "FolderExtractError";
   }
-}
-
-export function isFolderExtractError(
-  error: unknown,
-  code?: FolderExtractErrorCode
-): error is FolderExtractError {
-  return error instanceof FolderExtractError && (!code || error.code === code);
 }
 
 export type FolderExtractResult = {
@@ -217,7 +208,7 @@ function planArchiveExtraction(
  * `planFolderArchive`/`streamFolderArchive`.
  */
 export async function extractArchiveToFolder(
-  fileSystem: FolderExtractFileSystem,
+  fileSystem: DustFileSystem,
   destFolderPath: string,
   archive: Buffer,
   limits: FolderExtractLimits = DEFAULT_FOLDER_EXTRACT_LIMITS

@@ -1,58 +1,60 @@
 // @vitest-environment node: adm-zip requires Node builtins (Buffer, zlib).
 
-import type { FolderExtractFileSystem } from "@app/lib/api/files/folder_extract";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   extractArchiveToFolder,
-  isFolderExtractError,
+  FolderExtractError,
 } from "@app/lib/api/files/folder_extract";
-import {
-  DustFileSystemError,
-  isDustFileSystemError,
-} from "@app/types/file_system";
-import { Err, Ok } from "@app/types/shared/result";
+import { Authenticator } from "@app/lib/auth";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { isDustFileSystemError } from "@app/types/file_system";
 import AdmZip from "adm-zip";
-import { describe, expect, it } from "vitest";
+import assert from "assert";
+import { beforeEach, describe, expect, it } from "vitest";
 
-type WrittenFile = { content: string; contentType: string };
+/**
+ * Drives the real `DustFileSystem` rather than a stand-in, so entry paths go through the same
+ * mount resolution and normalization production uses — which is where containment is decided.
+ */
+async function setupPodFileSystem(): Promise<{
+  dustFs: DustFileSystem;
+  podPrefix: string;
+  filesRoot: string;
+}> {
+  const { workspace, user } = await createResourceTest({ role: "admin" });
+  const projectSpace = await SpaceFactory.project(workspace, user.id);
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
 
-function makeFileSystem(): FolderExtractFileSystem & {
-  writes: Map<string, WrittenFile>;
-  directories: string[];
-} {
-  const writes = new Map<string, WrittenFile>();
-  const directories: string[] = [];
+  const result = await DustFileSystem.forPod(auth, projectSpace);
+  assert(result.isOk());
 
   return {
-    writes,
-    directories,
-    mkdir: async (scopedPath) => {
-      directories.push(scopedPath);
-      return new Ok({
-        entry: {
-          isDirectory: true,
-          fileName: scopedPath.split("/").pop() ?? scopedPath,
-          path: scopedPath,
-          sizeBytes: 0,
-          lastModifiedMs: 0,
-        },
-        nodeId: null,
-      });
-    },
-    write: async (scopedPath, content, contentType) => {
-      writes.set(scopedPath, { content: content.toString(), contentType });
-      return new Ok({ nodeId: null });
-    },
+    dustFs: result.value,
+    podPrefix: `pod-${projectSpace.sId}`,
+    filesRoot: `w/${workspace.sId}/pods/${projectSpace.sId}/files`,
   };
+}
+
+function savedFilePaths(): string[] {
+  return fileStorageMock.saveFileCalls.map((call) => call.filePath).sort();
+}
+
+function savedFile(filePath: string) {
+  return fileStorageMock.saveFileCalls.find(
+    (call) => call.filePath === filePath
+  );
 }
 
 function makeArchive(entries: { path: string; content?: string }[]): Buffer {
   const zip = new AdmZip();
   for (const entry of entries) {
     if (entry.content === undefined) {
-      zip.addFile(
-        entry.path.endsWith("/") ? entry.path : `${entry.path}/`,
-        Buffer.alloc(0)
-      );
+      zip.addFile(`${entry.path.replace(/\/+$/, "")}/`, Buffer.alloc(0));
     } else {
       zip.addFile(entry.path, Buffer.from(entry.content));
     }
@@ -80,39 +82,49 @@ function makeArchiveWithUnsafeEntry(
   );
 }
 
+function expectExtractError(
+  error: unknown,
+  code: FolderExtractError["code"]
+): void {
+  assert(error instanceof FolderExtractError);
+  expect(error.code).toBe(code);
+}
+
 describe("extractArchiveToFolder", () => {
+  beforeEach(() => {
+    fileStorageMock.reset();
+    fileStorageMock.setFileExists(() => false);
+  });
+
   it("writes entries under the destination, preserving the archive's own root folder", async () => {
-    const fileSystem = makeFileSystem();
+    const { dustFs, podPrefix, filesRoot } = await setupPodFileSystem();
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1/inbox",
+      dustFs,
+      `${podPrefix}/inbox`,
       makeArchive([
         { path: "reports/a.txt", content: "alpha" },
         { path: "reports/nested/b.txt", content: "bravo" },
       ])
     );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
+    assert(result.isOk());
     expect(result.value.filesWritten).toBe(2);
-    expect([...fileSystem.writes.keys()].sort()).toEqual([
-      "pod-p1/inbox/reports/a.txt",
-      "pod-p1/inbox/reports/nested/b.txt",
+    expect(savedFilePaths()).toEqual([
+      `${filesRoot}/inbox/reports/a.txt`,
+      `${filesRoot}/inbox/reports/nested/b.txt`,
     ]);
-    expect(fileSystem.writes.get("pod-p1/inbox/reports/a.txt")?.content).toBe(
-      "alpha"
+    expect(savedFile(`${filesRoot}/inbox/reports/a.txt`)?.content).toEqual(
+      Buffer.from("alpha")
     );
   });
 
   it("creates directory entries so empty folders survive the round trip", async () => {
-    const fileSystem = makeFileSystem();
+    const { dustFs, podPrefix, filesRoot } = await setupPodFileSystem();
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1",
+      dustFs,
+      podPrefix,
       makeArchive([
         { path: "reports/" },
         { path: "reports/empty/" },
@@ -120,70 +132,60 @@ describe("extractArchiveToFolder", () => {
       ])
     );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
+    assert(result.isOk());
     expect(result.value.directoriesCreated).toBe(2);
-    expect(fileSystem.directories.sort()).toEqual([
-      "pod-p1/reports",
-      "pod-p1/reports/empty",
+    expect(savedFilePaths()).toEqual([
+      `${filesRoot}/reports/`,
+      `${filesRoot}/reports/a.txt`,
+      `${filesRoot}/reports/empty/`,
     ]);
   });
 
   it("tolerates directories that already exist at the destination", async () => {
-    const fileSystem = makeFileSystem();
-    fileSystem.mkdir = async () =>
-      new Err(
-        new DustFileSystemError(
-          "already_exists",
-          "A directory already exists at this path."
-        )
-      );
+    const { dustFs, podPrefix, filesRoot } = await setupPodFileSystem();
+    fileStorageMock.setFileExists((filePath) => filePath.endsWith("/reports/"));
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1",
+      dustFs,
+      podPrefix,
       makeArchive([
         { path: "reports/" },
         { path: "reports/a.txt", content: "a" },
       ])
     );
 
-    expect(result.isOk()).toBe(true);
-    expect([...fileSystem.writes.keys()]).toEqual(["pod-p1/reports/a.txt"]);
+    assert(result.isOk());
+    expect(result.value.directoriesCreated).toBe(0);
+    expect(savedFilePaths()).toEqual([`${filesRoot}/reports/a.txt`]);
   });
 
   it("derives the content type from the entry name", async () => {
-    const fileSystem = makeFileSystem();
+    const { dustFs, podPrefix, filesRoot } = await setupPodFileSystem();
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1",
+      dustFs,
+      podPrefix,
       makeArchive([{ path: "notes.md", content: "# hi" }])
     );
 
-    expect(result.isOk()).toBe(true);
-    expect(fileSystem.writes.get("pod-p1/notes.md")?.contentType).toBe(
+    assert(result.isOk());
+    expect(savedFile(`${filesRoot}/notes.md`)?.contentType).toBe(
       "text/markdown"
     );
   });
 
   it("writes entry types the upload API would reject rather than dropping them", async () => {
-    const fileSystem = makeFileSystem();
+    const { dustFs, podPrefix, filesRoot } = await setupPodFileSystem();
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1",
+      dustFs,
+      podPrefix,
       makeArchive([{ path: "nested.zip", content: "PK" }])
     );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
+    assert(result.isOk());
     expect(result.value.filesWritten).toBe(1);
-    expect(fileSystem.writes.get("pod-p1/nested.zip")?.contentType).toBe(
+    expect(savedFile(`${filesRoot}/nested.zip`)?.contentType).toBe(
       "application/octet-stream"
     );
   });
@@ -197,11 +199,11 @@ describe("extractArchiveToFolder", () => {
     ],
     ["an absolute entry", "Xetc/passwd", "/etc/passwd"],
   ])("rejects %s without writing anything", async (_label, placeholder, unsafePath) => {
-    const fileSystem = makeFileSystem();
+    const { dustFs, podPrefix } = await setupPodFileSystem();
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1",
+      dustFs,
+      `${podPrefix}/inbox`,
       makeArchiveWithUnsafeEntry(
         [
           { path: "reports/a.txt", content: "alpha" },
@@ -212,23 +214,20 @@ describe("extractArchiveToFolder", () => {
       )
     );
 
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      throw new Error("Expected extraction to fail.");
-    }
-    expect(isFolderExtractError(result.error, "unsafe_entry_path")).toBe(true);
-    expect(fileSystem.writes.size).toBe(0);
+    assert(result.isErr());
+    expectExtractError(result.error, "unsafe_entry_path");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
   it("rejects an entry that only becomes traversal once control characters are stripped", async () => {
-    const fileSystem = makeFileSystem();
+    const { dustFs, podPrefix } = await setupPodFileSystem();
     // `DustFileSystem.normalizeScopedPath` strips control characters before normalizing, so a
     // name that is not traversal as stored becomes one by the time it reaches storage.
     const unsafePath = `.${String.fromCharCode(1)}./escaped.txt`;
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1/inbox",
+      dustFs,
+      `${podPrefix}/inbox`,
       makeArchiveWithUnsafeEntry(
         [
           { path: "reports/a.txt", content: "alpha" },
@@ -239,20 +238,17 @@ describe("extractArchiveToFolder", () => {
       )
     );
 
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      throw new Error("Expected extraction to fail.");
-    }
-    expect(isFolderExtractError(result.error, "unsafe_entry_path")).toBe(true);
-    expect(fileSystem.writes.size).toBe(0);
+    assert(result.isErr());
+    expectExtractError(result.error, "unsafe_entry_path");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
   it("rejects an unsafe path even when the entry would otherwise be skipped", async () => {
-    const fileSystem = makeFileSystem();
+    const { dustFs, podPrefix } = await setupPodFileSystem();
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1",
+      dustFs,
+      podPrefix,
       makeArchiveWithUnsafeEntry(
         [
           { path: "safe.txt", content: "alpha" },
@@ -263,20 +259,17 @@ describe("extractArchiveToFolder", () => {
       )
     );
 
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      throw new Error("Expected extraction to fail.");
-    }
-    expect(isFolderExtractError(result.error, "unsafe_entry_path")).toBe(true);
-    expect(fileSystem.writes.size).toBe(0);
+    assert(result.isErr());
+    expectExtractError(result.error, "unsafe_entry_path");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
   it("counts skipped entries toward the entry limit", async () => {
-    const fileSystem = makeFileSystem();
+    const { dustFs, podPrefix } = await setupPodFileSystem();
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1",
+      dustFs,
+      podPrefix,
       makeArchive([
         { path: "__MACOSX/._a.txt", content: "junk" },
         { path: "a.txt", content: "alpha" },
@@ -284,20 +277,17 @@ describe("extractArchiveToFolder", () => {
       { maxEntries: 1, maxUncompressedSizeBytes: 1024 }
     );
 
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      throw new Error("Expected extraction to fail.");
-    }
-    expect(isFolderExtractError(result.error, "too_many_entries")).toBe(true);
-    expect(fileSystem.writes.size).toBe(0);
+    assert(result.isErr());
+    expectExtractError(result.error, "too_many_entries");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
   it("skips archiver metadata entries", async () => {
-    const fileSystem = makeFileSystem();
+    const { dustFs, podPrefix, filesRoot } = await setupPodFileSystem();
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1",
+      dustFs,
+      podPrefix,
       makeArchive([
         { path: "__MACOSX/._a.txt", content: "junk" },
         { path: "reports/.DS_Store", content: "junk" },
@@ -305,21 +295,18 @@ describe("extractArchiveToFolder", () => {
       ])
     );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
-    }
+    assert(result.isOk());
     expect(result.value.filesWritten).toBe(1);
     expect(result.value.skippedEntryCount).toBe(2);
-    expect([...fileSystem.writes.keys()]).toEqual(["pod-p1/reports/a.txt"]);
+    expect(savedFilePaths()).toEqual([`${filesRoot}/reports/a.txt`]);
   });
 
   it("rejects an archive with more entries than the limit", async () => {
-    const fileSystem = makeFileSystem();
+    const { dustFs, podPrefix } = await setupPodFileSystem();
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1",
+      dustFs,
+      podPrefix,
       makeArchive([
         { path: "a.txt", content: "a" },
         { path: "b.txt", content: "b" },
@@ -328,63 +315,50 @@ describe("extractArchiveToFolder", () => {
       { maxEntries: 2, maxUncompressedSizeBytes: 1024 }
     );
 
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      throw new Error("Expected extraction to fail.");
-    }
-    expect(isFolderExtractError(result.error, "too_many_entries")).toBe(true);
-    expect(fileSystem.writes.size).toBe(0);
+    assert(result.isErr());
+    expectExtractError(result.error, "too_many_entries");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
   it("rejects an archive whose uncompressed size exceeds the limit", async () => {
-    const fileSystem = makeFileSystem();
+    const { dustFs, podPrefix } = await setupPodFileSystem();
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1",
+      dustFs,
+      podPrefix,
       makeArchive([{ path: "big.txt", content: "x".repeat(2048) }]),
       { maxEntries: 10, maxUncompressedSizeBytes: 1024 }
     );
 
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      throw new Error("Expected extraction to fail.");
-    }
-    expect(isFolderExtractError(result.error, "too_large")).toBe(true);
-    expect(fileSystem.writes.size).toBe(0);
+    assert(result.isErr());
+    expectExtractError(result.error, "too_large");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
   it("rejects a buffer that is not a ZIP archive", async () => {
-    const fileSystem = makeFileSystem();
+    const { dustFs, podPrefix } = await setupPodFileSystem();
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1",
+      dustFs,
+      podPrefix,
       Buffer.from("not a zip at all")
     );
 
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      throw new Error("Expected extraction to fail.");
-    }
-    expect(isFolderExtractError(result.error, "invalid_archive")).toBe(true);
+    assert(result.isErr());
+    expectExtractError(result.error, "invalid_archive");
   });
 
   it("propagates a file system write failure", async () => {
-    const fileSystem = makeFileSystem();
-    fileSystem.write = async () =>
-      new Err(new DustFileSystemError("unauthorized", "Read-only mount."));
+    const { dustFs, podPrefix } = await setupPodFileSystem();
+    fileStorageMock.setFileSaveFails(() => true);
 
     const result = await extractArchiveToFolder(
-      fileSystem,
-      "pod-p1",
+      dustFs,
+      podPrefix,
       makeArchive([{ path: "a.txt", content: "alpha" }])
     );
 
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      throw new Error("Expected extraction to fail.");
-    }
-    expect(isDustFileSystemError(result.error, "unauthorized")).toBe(true);
+    assert(result.isErr());
+    assert(isDustFileSystemError(result.error));
   });
 });
