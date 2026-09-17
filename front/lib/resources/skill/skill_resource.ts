@@ -313,6 +313,25 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
  *   an admin who is not an editor manages editors without editing content.
  * Global (code-defined) skills are `read`-only for every workspace member.
  */
+/**
+ * @cc [owner:fabiencelier,label:security;product] skill-create-capability
+ * `create` on the `skill` type means bringing a new skill into the workspace: creating one,
+ * importing one (zip, GitHub) or detecting one from files. Every such path MUST require
+ * `hasWorkspacePermission("create", "skill")`. Editing an existing skill MUST NOT.
+ */
+/**
+ * @cc [owner:fabiencelier,label:security;product] skill-publish-capability
+ * `publish` on the `skill` type means deciding who the skill is available to. Any change of a
+ * skill's `availability` (`editors`, `workspace_users`, `users_and_agents`), including creating a
+ * skill with a non-default availability, MUST require `hasWorkspacePermission("publish", "skill")`,
+ * even for the skill's editors.
+ */
+/**
+ * @cc [owner:fabiencelier,label:security;product] skill-make-discoverable-capability
+ * `make_discoverable` on the `skill` type means letting agents pick the skill on their own. Setting
+ * a skill's availability to `users_and_agents`, or moving it off that value, MUST require
+ * `hasWorkspacePermission("make_discoverable", "skill")` on top of `publish`.
+ */
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
