@@ -99,11 +99,11 @@ export function SlideshowGrid({
             SLIDESHOW_BUTTON_CLASS_NAME,
             SLIDESHOW_SURFACE_CLASS_NAME,
             isOpen || isClosing
-              ? "pointer-events-none opacity-0"
-              : cn(
-                  "opacity-100 focus-visible:pointer-events-auto [@media(hover:none)]:pointer-events-auto",
-                  isNearLeftEdge ? "pointer-events-auto" : "pointer-events-none"
-                )
+              ? "opacity-0"
+              : "opacity-100 focus-visible:pointer-events-auto [@media(hover:none)]:pointer-events-auto",
+            !isOpen && !isClosing && isNearLeftEdge
+              ? "pointer-events-auto"
+              : "pointer-events-none"
           )}
         >
           <DrawerTrigger
@@ -121,7 +121,7 @@ export function SlideshowGrid({
       <DrawerContent
         overlayClassName="absolute bg-transparent [&[data-vaul-overlay][data-state]]:[animation-duration:250ms] motion-reduce:[&[data-vaul-overlay][data-state]]:animate-none"
         onCloseAutoFocus={() => setIsClosing(false)}
-        className="absolute h-full rounded-none bg-white/80 backdrop-blur-xl outline-none data-[vaul-drawer-direction=left]:w-[232px] data-[vaul-drawer-direction=left]:max-w-[calc(100%_-_64px)] data-[vaul-drawer-direction=left]:border-r-0 data-[vaul-drawer-direction=left]:sm:max-w-[232px] dark:bg-[oklch(25.6%_0.006_34.298_/_0.8)] [&[data-vaul-drawer]]:[animation-duration:250ms] [&[data-vaul-drawer]]:[transition-property:transform] [&[data-vaul-drawer]]:duration-[250ms] motion-reduce:[&[data-vaul-drawer]]:animate-none motion-reduce:[&[data-vaul-drawer]]:transition-none"
+        className="absolute h-full rounded-none bg-white/80 backdrop-blur-xl outline-none data-[vaul-drawer-direction=left]:w-[232px] data-[vaul-drawer-direction=left]:max-w-[calc(100%_-_64px)] data-[vaul-drawer-direction=left]:border-r-0 data-[vaul-drawer-direction=left]:sm:max-w-[232px] dark:bg-stone-800/80 [&[data-vaul-drawer]]:[animation-duration:250ms] [&[data-vaul-drawer]]:[transition-property:transform] [&[data-vaul-drawer]]:[transition-duration:250ms] motion-reduce:[&[data-vaul-drawer]]:animate-none motion-reduce:[&[data-vaul-drawer]]:transition-none"
         onKeyDown={(event) => {
           if (
             [
