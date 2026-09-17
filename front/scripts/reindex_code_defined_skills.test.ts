@@ -95,4 +95,14 @@ describe("reindex code-defined skills", () => {
     );
     expect(deleteByQuery).not.toHaveBeenCalled();
   });
+
+  it.each([
+    { timed_out: true },
+    { failures: [{ cause: { reason: "Delete failed" } }] },
+  ])("fails when pruning does not complete: %j", async (result) => {
+    deleteByQuery.mockResolvedValue(result);
+    await expect(reindexCodeDefinedSkills(true, logger)).rejects.toThrow(
+      "Failed to remove obsolete code-defined skill documents"
+    );
+  });
 });

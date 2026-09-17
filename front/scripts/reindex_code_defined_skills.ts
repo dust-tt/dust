@@ -35,6 +35,11 @@ export function getCodeDefinedSkillSearchDocuments(): SkillSearchDocument[] {
  * Replace only documents in the reserved global workspace. Remove obsolete definitions
  * only after every current definition has been indexed successfully; dry runs must not write.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:error-handling] code-defined-reindex-script-failures
+ * At this operator-script boundary, incomplete ES writes throw so makeScript logs the
+ * failure and exits nonzero. Script tests may catch these failures to verify that behavior.
+ */
 export async function reindexCodeDefinedSkills(
   execute: boolean,
   logger: Logger
