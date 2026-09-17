@@ -1,4 +1,7 @@
-import { refreshDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
+import {
+  getDegradedModelIds,
+  refreshDegradedModelIds,
+} from "@app/lib/api/assistant/degraded_models";
 import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
 import { selectEnabledModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
@@ -107,10 +110,11 @@ export async function resolveModel(
         configuration.sId
       ),
     });
+    await refreshDegradedModelIds();
     const resolution = resolveStreamModel(
       models,
       streamId,
-      await refreshDegradedModelIds()
+      getDegradedModelIds()
     );
     enabled = resolution.model;
 
