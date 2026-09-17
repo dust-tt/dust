@@ -37,6 +37,7 @@ jobs:
             'connectors/src/resources/storage/models/'
             'sdks/js/'
             'front/package.json'
+            'front/scripts/reindex_code_defined_skills.ts'
             'extension/package.json'
           )
 
