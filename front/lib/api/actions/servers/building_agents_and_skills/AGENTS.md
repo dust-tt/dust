@@ -70,6 +70,12 @@ Server-side: `PATCH /w/:wId/assistant/skills/:sId/suggestions` with `applyToSkil
 Agents:
 no server-side apply yet; the sidekick patches the builder form client-side.
 
+### Update the conversational-building skill 
+
+- Mention the tool in the `<tools>` section of the `conversational-building` skill prompt
+  (`front/lib/resources/skill/code_defined/global/conversational_building.ts`): one line, what it
+  does and when to call it. Follow exiting tools pattern.
+
 ### Seed example
 
 Add an example of the new kind to the `conversational_building` dev seed
