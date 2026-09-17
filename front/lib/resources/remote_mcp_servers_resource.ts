@@ -566,7 +566,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       const cachedToolNames = new Set(cachedTools.map((tool) => tool.name));
 
       await RemoteMCPServerToolMetadataResource.deleteStaleTools(auth, {
-        serverId: this.id,
+        serverModelId: this.id,
         toolsToKeep: Array.from(cachedToolNames),
       });
     }
