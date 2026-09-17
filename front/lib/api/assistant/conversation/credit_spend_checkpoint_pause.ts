@@ -58,12 +58,12 @@ async function findPausedAgentMessage(
     );
   }
 
-  const state =
-    await ConversationResource.fetchCreditSpendCheckpointStateForAgentMessage(
+  const status =
+    await ConversationResource.fetchAgentMessageCreditSpendCheckpointStatus(
       auth,
       { agentMessageId }
     );
-  if (state?.status !== "paused") {
+  if (status !== "paused") {
     return new Err(
       new DustError(
         "agent_message_not_resumable",
