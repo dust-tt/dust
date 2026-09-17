@@ -1,4 +1,3 @@
-import { triggerSimulatedFailureModelFailure } from "@app/lib/api/llm/simulated_failure_model";
 import { WithDustSimulatedFailureModelConfig } from "@app/lib/llms/providers/openai/models/simulated_failure_model";
 import { defineDustStreamEndpoint } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { OpenAISimulatedFailureModelGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_simulated_failure_model_global_openai_responses";
@@ -24,9 +23,8 @@ function syntheticModelUnavailableError(): InternalServerError {
 
 /**
  * @cc [owner:frankaloia,label:error-handling;testing] synthetic-model-wrapper
- * The endpoint MUST delegate unchanged to its working model while failure is disabled. When
- * failure is enabled, it MUST throw a provider-classified, retryable 503 before yielding any model
- * output and MUST NOT mutate serving degradation state directly.
+ * Every stream MUST throw a provider-classified, retryable 503 before yielding
+ * any model output and MUST NOT mutate serving degradation state directly.
  */
 export class DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream extends WithDustSimulatedFailureModelConfig(
   OpenAISimulatedFailureModelGlobalOpenAIResponsesStream
@@ -36,13 +34,9 @@ export class DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream extends 
   };
 
   override async *streamRaw(
-    input: ResponseCreateParams
+    _input: ResponseCreateParams
   ): AsyncGenerator<ResponseStreamEvent> {
-    if (await triggerSimulatedFailureModelFailure()) {
-      throw syntheticModelUnavailableError();
-    }
-
-    yield* super.streamRaw(input);
+    throw syntheticModelUnavailableError();
   }
 }
 

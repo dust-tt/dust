@@ -14,12 +14,10 @@ import { readEndpointWindow } from "@app/lib/api/llm/health/window";
 import { runOnRedisCache } from "@app/lib/api/redis";
 import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/hosts";
 import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
-import logger from "@app/logger/logger";
 import {
   SIMULATED_FAILURE_MODEL_CONFIG,
   SIMULATED_FAILURE_MODEL_ID,
 } from "@app/types/assistant/models/simulated_failure_model";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export const SIMULATED_FAILURE_MODEL_MAX_TTL_SECONDS = 15 * 60;
 
@@ -103,31 +101,6 @@ async function seedTtlSeconds(now: Date): Promise<number | null> {
     }
     return remaining;
   });
-}
-
-/**
- * @cc [owner:frankaloia,label:security;testing] fail-closed-synthetic-model
- * Missing, invalid, expired, or unreadable arm state MUST keep the synthetic model healthy.
- * Arming is seeding this endpoint's breaker window. Injection MUST stop once that window is no
- * longer the seed or a `model_degradations` row exists, so recovery probes can succeed.
- * Disabling MUST NOT clear breaker-owned automatic degradation.
- */
-export async function triggerSimulatedFailureModelFailure(): Promise<boolean> {
-  try {
-    const [degradation, window] = await Promise.all([
-      ModelDegradationResource.fetchByEndpoint(
-        SIMULATED_FAILURE_MODEL_ENDPOINT
-      ),
-      readEndpointWindow(SIMULATED_FAILURE_MODEL_ENDPOINT, new Date()),
-    ]);
-    return !degradation && isSeededWindow(window);
-  } catch (err) {
-    logger.error(
-      { err: normalizeError(err), synthetic: true },
-      "Failed to read simulated failure model state"
-    );
-    return false;
-  }
 }
 
 export async function getSimulatedFailureModelStatus(): Promise<{

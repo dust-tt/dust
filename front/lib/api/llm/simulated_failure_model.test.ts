@@ -8,7 +8,6 @@ import {
   getSimulatedFailureModelStatus,
   SIMULATED_FAILURE_MODEL_ENDPOINT,
   seedSimulatedFailureModelHealthWindow,
-  triggerSimulatedFailureModelFailure,
 } from "@app/lib/api/llm/simulated_failure_model";
 import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -27,53 +26,26 @@ describe("simulated failure model control", () => {
     redisMock.reset();
   });
 
-  it("defaults healthy when the breaker window is not seeded", async () => {
-    expect(await triggerSimulatedFailureModelFailure()).toBe(false);
+  it("defaults to an unseeded window", async () => {
     await expect(getSimulatedFailureModelStatus()).resolves.toMatchObject({
       failureEnabled: false,
       degradation: "none",
     });
   });
 
-  it("injects a failure from the seeded window without writing degradation", async () => {
+  it("reports a seeded window without writing degradation", async () => {
     await seedSimulatedFailureModelHealthWindow();
 
-    await expect(getSimulatedFailureModelStatus()).resolves.toMatchObject({
-      failureEnabled: true,
-      degradation: "none",
-    });
-
-    expect(await triggerSimulatedFailureModelFailure()).toBe(true);
     await expect(getSimulatedFailureModelStatus()).resolves.toMatchObject({
       failureEnabled: true,
       degradation: "none",
     });
 
     await clearSimulatedFailureModelHealthWindow();
-    expect(await triggerSimulatedFailureModelFailure()).toBe(false);
     await expect(getSimulatedFailureModelStatus()).resolves.toMatchObject({
       failureEnabled: false,
       degradation: "none",
     });
-  });
-
-  it("stops injecting once the breaker has a lease", async () => {
-    await seedSimulatedFailureModelHealthWindow();
-    await ModelDegradationFactory.degraded(SIMULATED_FAILURE_MODEL_ENDPOINT, {
-      expiresAt: new Date(Date.now() + 20 * 60 * 1000),
-    });
-
-    try {
-      expect(await triggerSimulatedFailureModelFailure()).toBe(false);
-      await expect(getSimulatedFailureModelStatus()).resolves.toMatchObject({
-        failureEnabled: true,
-        degradation: "lease",
-      });
-    } finally {
-      await ModelDegradationResource.updateDegradedEndpoints([
-        { ...SIMULATED_FAILURE_MODEL_ENDPOINT, degraded: false },
-      ]);
-    }
   });
 
   it("reports an operator-flagged degradation as permanent", async () => {
