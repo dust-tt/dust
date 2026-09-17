@@ -1,4 +1,5 @@
 import { MCPServerViewForm } from "@app/components/actions/mcp/create/MCPServerViewForm";
+import { getEffectiveToolSettings } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { InternalMCPBearerTokenForm } from "@app/components/actions/mcp/InternalMCPBearerTokenForm";
 import { MCPServerSettings } from "@app/components/actions/mcp/MCPServerSettings";
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
@@ -8,14 +9,21 @@ import {
   isRemoteMCPServerType,
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
+import {
+  MCP_TOOL_STAKE_COLORS,
+  MCP_TOOL_STAKE_DESCRIPTIONS,
+  MCP_TOOL_STAKE_SHORT_LABELS,
+} from "@app/lib/actions/tool_stakes_descriptions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Chip,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   Separator,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -51,23 +59,42 @@ export function MCPServerDetailsInfo({
     return (
       <div className="flex flex-col gap-2">
         <div className="heading-lg">Available Tools ({tools.length})</div>
-        {tools.map((tool, index) => (
-          <div key={index} className="flex flex-col gap-1 py-1">
-            <div className="heading-base text-foreground">
-              {asDisplayName(tool.name)}
+        {tools.map((tool) => {
+          const { permission } = getEffectiveToolSettings(
+            mcpServerView,
+            tool.name
+          );
+
+          return (
+            <div key={tool.name} className="flex flex-col gap-1 my-1">
+              <div className="flex items-center gap-2">
+                <div className="heading-base flex-grow text-foreground">
+                  {asDisplayName(tool.name)}
+                </div>
+                <Tooltip
+                  label={MCP_TOOL_STAKE_DESCRIPTIONS[permission]}
+                  trigger={
+                    <Chip
+                      size="xs"
+                      color={MCP_TOOL_STAKE_COLORS[permission]}
+                      label={MCP_TOOL_STAKE_SHORT_LABELS[permission]}
+                    />
+                  }
+                />
+              </div>
+              {tool.description && (
+                <Collapsible>
+                  <CollapsibleTrigger label="Description" variant="secondary" />
+                  <CollapsibleContent>
+                    <p className="whitespace-pre-wrap break-words pt-1 text-sm text-muted-foreground">
+                      {tool.description}
+                    </p>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
             </div>
-            {tool.description && (
-              <Collapsible>
-                <CollapsibleTrigger label="Description" variant="secondary" />
-                <CollapsibleContent>
-                  <p className="whitespace-pre-wrap break-words pt-1 text-sm text-muted-foreground">
-                    {tool.description}
-                  </p>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-          </div>
-        ))}
+          );
+        })}
         {tools.length === 0 && (
           <p className="text-sm text-muted-foreground">No tools available.</p>
         )}
