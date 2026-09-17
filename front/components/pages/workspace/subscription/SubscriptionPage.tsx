@@ -7,10 +7,9 @@ import {
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
-  useCancelWorkspaceMigration,
-  useResumeWorkspaceMigration,
-  useWorkspaceMigration,
-} from "@app/hooks/useWorkspaceMigration";
+  useCancelWorkspaceSubscription,
+  useResumeWorkspaceSubscription,
+} from "@app/hooks/useWorkspaceSubscriptionCancellation";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   getPriceAsString,
@@ -199,21 +198,19 @@ function CancelFreeTrialDialog({
   );
 }
 
-interface CancelMigrationDialogProps {
+interface CancelSubscriptionDialogProps {
   show: boolean;
   onClose: () => void;
   onValidate: () => Promise<void>;
   isSaving: boolean;
-  billingPeriod: BillingPeriod | undefined;
 }
 
-function CancelMigrationDialog({
+function CancelSubscriptionDialog({
   show,
   onClose,
   onValidate,
   isSaving,
-  billingPeriod,
-}: CancelMigrationDialogProps) {
+}: CancelSubscriptionDialogProps) {
   return (
     <Dialog
       open={show}
@@ -227,11 +224,8 @@ function CancelMigrationDialog({
         <DialogHeader>
           <DialogTitle>Cancel subscription</DialogTitle>
           <DialogDescription>
-            {billingPeriod === "yearly"
-              ? "Your subscription will end on the scheduled migration date " +
-                "instead of continuing to your yearly renewal."
-              : "Your subscription will end at the end of your current " +
-                "billing period."}
+            Your subscription will end at the end of your current billing
+            period.
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
@@ -274,7 +268,7 @@ export function SubscriptionPage() {
   const [showSkipFreeTrialDialog, setShowSkipFreeTrialDialog] = useState(false);
   const [showCancelFreeTrialDialog, setShowCancelFreeTrialDialog] =
     useState(false);
-  const [showCancelMigrationDialog, setShowCancelMigrationDialog] =
+  const [showCancelSubscriptionDialog, setShowCancelSubscriptionDialog] =
     useState(false);
 
   const { trialDaysRemaining, isTrialInfoLoading } = useSubscriptionTrialInfo({
@@ -446,23 +440,12 @@ export function SubscriptionPage() {
     });
 
   const plan = subscription.plan;
-  // Legacy Pro (SEAT_29 / LARGE_FILES) and Business (SEAT_39) both migrate to
-  // Business and share the same cancel / migration flow — see
-  // FORCE_LEGACY_LARGE_PLAN_CODES.
   const isWorkspaceOnProOrBusinessPlan = isProOrBusinessPlanCode(plan);
 
-  // Hooks must run unconditionally (before any early return): the migration
-  // fetch is gated via `disabled`, not by skipping the hook.
-  const { pendingMigrationDate, willBeRefundedOnEnd, mutateMigration } =
-    useWorkspaceMigration({
-      workspaceId: owner.sId,
-      disabled: !isWorkspaceOnProOrBusinessPlan,
-    });
-  const { cancelMigration, isCancellingMigration } =
-    useCancelWorkspaceMigration({ workspaceId: owner.sId });
-  const { resumeMigration, isResumingMigration } = useResumeWorkspaceMigration({
-    workspaceId: owner.sId,
-  });
+  const { cancelSubscription, isCancellingSubscription } =
+    useCancelWorkspaceSubscription({ workspaceId: owner.sId });
+  const { resumeSubscription, isResumingSubscription } =
+    useResumeWorkspaceSubscription({ workspaceId: owner.sId });
 
   if (isCreditPriced) {
     return null;
@@ -476,48 +459,33 @@ export function SubscriptionPage() {
     isWorkspaceWhitelistedBusinessPlan &&
     !isMetronomeCheckout;
 
-  // A migration is scheduled (pending Business contract staged): the workspace
-  // can opt out (cancel) instead of being migrated.
-  const scheduledMigrationLabel = pendingMigrationDate
-    ? new Date(pendingMigrationDate).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    : null;
-  // A pending migration means the workspace is MIGRATING, not cancelled — this
-  // is the authoritative, freshly-fetched signal. It takes precedence over a
-  // lingering `subscription.endDate` (which can be stale right after a resume).
-  const isMigrating = pendingMigrationDate !== null;
-  // Cancelled (churning at the end date) only when not migrating.
-  const isCancelledNotMigrating = !isMigrating && subscription.endDate !== null;
+  // Cancelled (churning at the end date).
+  const isCancelled = subscription.endDate !== null;
 
-  // A Stripe-billed Pro or Business workspace (not trialing) can cancel — while
-  // active or while migrating (opt out). Not when already cancelled (→ Resume).
+  // A Stripe-billed Pro or Business workspace (not trialing) can cancel while
+  // active. Not when already cancelled (→ Resume).
   const canCancelSubscription =
     isWorkspaceOnProOrBusinessPlan &&
     !subscription.trialing &&
     subscription.stripeSubscriptionId !== null &&
-    !isCancelledNotMigrating;
-  // Cancelled (not migrating) but not yet ended — resume re-stages the migration.
-  const canResumeMigration =
+    !isCancelled;
+  // Cancelled but not yet ended — resume clears the scheduled cancellation.
+  const canResumeSubscription =
     isWorkspaceOnProOrBusinessPlan &&
-    isCancelledNotMigrating &&
+    isCancelled &&
     subscription.endDate !== null &&
     new Date(subscription.endDate).getTime() > Date.now();
 
-  const handleCancelMigration = async () => {
-    const ok = await cancelMigration();
+  const handleCancelSubscription = async () => {
+    const ok = await cancelSubscription();
     if (ok) {
-      setShowCancelMigrationDialog(false);
-      await mutateMigration();
+      setShowCancelSubscriptionDialog(false);
       router.reload();
     }
   };
-  const handleResumeMigration = async () => {
-    const ok = await resumeMigration();
+  const handleResumeSubscription = async () => {
+    const ok = await resumeSubscription();
     if (ok) {
-      await mutateMigration();
       router.reload();
     }
   };
@@ -542,75 +510,6 @@ export function SubscriptionPage() {
       })
     : null;
 
-  const migrationDate = (() => {
-    if (
-      !isWorkspaceOnProOrBusinessPlan ||
-      !isMetronomeCheckout ||
-      !perSeatPricing
-    ) {
-      return null;
-    }
-    // Rollout window [Jul 23, Aug 23) 2026 (UTC), matching the migration script.
-    const windowStartMs = Date.UTC(2026, 6, 23);
-    const windowEndMs = Date.UTC(2026, 7, 23);
-
-    let migrationMs: number;
-    if (perSeatPricing.billingPeriod === "yearly") {
-      if (perSeatPricing.currentPeriodEndMs === null) {
-        return null;
-      }
-      // Fixed at the window start, at the subscription's billing-anchor hour
-      // (== currentPeriodEnd's hour) — matches resolveMigrationDate.
-      const anchorHour = new Date(
-        perSeatPricing.currentPeriodEndMs
-      ).getUTCHours();
-      migrationMs = new Date(windowStartMs).setUTCHours(anchorHour, 0, 0, 0);
-    } else {
-      if (perSeatPricing.currentPeriodEndMs === null) {
-        return null;
-      }
-      // Add `n` UTC months, clamping to the last day of the target month —
-      // same as the script's `addMonthsUTC`.
-      const addMonthsUTC = (ms: number, n: number): number => {
-        const d = new Date(ms);
-        const first = new Date(
-          Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1)
-        );
-        const ty = first.getUTCFullYear();
-        const tm = first.getUTCMonth();
-        const lastDay = new Date(Date.UTC(ty, tm + 1, 0)).getUTCDate();
-        return Date.UTC(
-          ty,
-          tm,
-          Math.min(d.getUTCDate(), lastDay),
-          d.getUTCHours(),
-          d.getUTCMinutes(),
-          d.getUTCSeconds()
-        );
-      };
-      // Roll the monthly renewal boundary forward until it lands in the window
-      // (do NOT unconditionally add a month) — same as `migrationDateInWindow`.
-      let ms = perSeatPricing.currentPeriodEndMs;
-      if (ms >= windowEndMs) {
-        return null;
-      }
-      let guard = 0;
-      while (ms < windowStartMs && guard < 24) {
-        ms = addMonthsUTC(ms, 1);
-        guard += 1;
-      }
-      if (ms < windowStartMs || ms >= windowEndMs) {
-        return null;
-      }
-      migrationMs = ms;
-    }
-    return new Date(migrationMs).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  })();
-
   if (isLoading) {
     return (
       <AdminPageContainer>
@@ -624,7 +523,7 @@ export function SubscriptionPage() {
   return (
     <AdminPageContainer>
       <>
-        {(isCancellingMigration || isResumingMigration) && (
+        {(isCancellingSubscription || isResumingSubscription) && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-black/60">
             <Spinner size="lg" />
           </div>
@@ -638,12 +537,11 @@ export function SubscriptionPage() {
               isSaving={cancelFreeTrialSubmitting}
             />
 
-            <CancelMigrationDialog
-              show={showCancelMigrationDialog}
-              onClose={() => setShowCancelMigrationDialog(false)}
-              onValidate={handleCancelMigration}
-              isSaving={isCancellingMigration}
-              billingPeriod={perSeatPricing.billingPeriod}
+            <CancelSubscriptionDialog
+              show={showCancelSubscriptionDialog}
+              onClose={() => setShowCancelSubscriptionDialog(false)}
+              onValidate={handleCancelSubscription}
+              isSaving={isCancellingSubscription}
             />
 
             <SkipFreeTrialDialog
@@ -665,7 +563,7 @@ export function SubscriptionPage() {
           <Page.Vertical align="stretch" gap="md">
             <Page.H variant="h5">Your plan </Page.H>
 
-            {isCancelledNotMigrating && endDate && (
+            {isCancelled && endDate && (
               <ContentMessage
                 title={`Your subscription ends on ${endDate}.`}
                 variant="warning"
@@ -687,45 +585,10 @@ export function SubscriptionPage() {
                       here
                     </LinkWrapper>
                     .
-                    {willBeRefundedOnEnd && (
-                      <>
-                        {" "}
-                        You'll be refunded for the remaining days of your
-                        current period.
-                      </>
-                    )}
                   </>
                 )}
               </ContentMessage>
             )}
-            {scheduledMigrationLabel ||
-            (migrationDate && !isCancelledNotMigrating) ? (
-              <ContentMessage
-                title="Your plan is scheduled to migrate to the new credit-based pricing."
-                variant="blue"
-              >
-                On{" "}
-                <span className="font-semibold">
-                  {scheduledMigrationLabel ?? migrationDate}
-                </span>{" "}
-                your plan will move to the new credit-based pricing.
-                {perSeatPricing?.billingPeriod === "yearly" ? (
-                  <>
-                    {" "}
-                    You'll be refunded for the remaining days of your current
-                    annual period. To opt out, cancel your subscription below —
-                    it will then end on that date without moving to the new
-                    pricing.
-                  </>
-                ) : (
-                  <>
-                    {" "}
-                    To opt out, cancel your subscription below — it will then
-                    end at the end of your current billing period instead.
-                  </>
-                )}
-              </ContentMessage>
-            ) : null}
             <>
               <div>
                 {isWebhookProcessing ? (
@@ -738,19 +601,19 @@ export function SubscriptionPage() {
                         <Button
                           label="Cancel subscription"
                           variant="outline"
-                          disabled={isCancellingMigration}
+                          disabled={isCancellingSubscription}
                           onClick={() => {
-                            setShowCancelMigrationDialog(true);
+                            setShowCancelSubscriptionDialog(true);
                           }}
                         />
                       )}
-                      {canResumeMigration && (
+                      {canResumeSubscription && (
                         <Button
                           label="Resume subscription"
                           variant="primary"
-                          disabled={isResumingMigration}
+                          disabled={isResumingSubscription}
                           onClick={() => {
-                            void handleResumeMigration();
+                            void handleResumeSubscription();
                           }}
                         />
                       )}
