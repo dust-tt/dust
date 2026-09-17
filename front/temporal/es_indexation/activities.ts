@@ -10,9 +10,11 @@ import {
   updateSkillSearchActiveUsers,
 } from "@app/lib/skill_search";
 import { fetchSearchActiveUsers } from "@app/lib/skill_search/usage";
+import { heartbeat } from "@app/lib/temporal";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
 export async function indexUserSearchActivity({
   userId,
@@ -151,12 +153,10 @@ export async function deleteWorkspaceSkillSearchActivity({
   }
 }
 
-export async function listSearchUsageWorkspacesActivity(
-  afterWorkspaceModelId: number
-) {
-  return WorkspaceResource.unsafeListWorkspaceIdBatchAfterModelId({
-    lastWorkspaceModelId: afterWorkspaceModelId,
-    limit: 50,
+export async function refreshSearchUsageActivity(): Promise<void> {
+  await runOnAllWorkspaces(async (workspace) => {
+    await refreshWorkspaceSearchUsageActivity({ workspaceId: workspace.sId });
+    await heartbeat();
   });
 }
 

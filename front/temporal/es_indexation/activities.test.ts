@@ -4,6 +4,7 @@ import * as searchUsage from "@app/lib/skill_search/usage";
 import {
   deleteSkillSearchActivity,
   deleteWorkspaceSkillSearchActivity,
+  refreshSearchUsageActivity,
   refreshWorkspaceSearchUsageActivity,
 } from "@app/temporal/es_indexation/activities";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -15,6 +16,71 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 describe("skill search indexation", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  it("refreshes all workspaces sequentially using the shared workspace helper", async () => {
+    const first = await createResourceTest({ role: "admin" });
+    const second = await createResourceTest({ role: "admin" });
+    const firstSkill = await SkillFactory.create(first.authenticator);
+    const secondSkill = await SkillFactory.create(second.authenticator);
+    const events: string[] = [];
+    vi.spyOn(searchUsage, "fetchSearchActiveUsers").mockImplementation(
+      async ({ workspaceId }) => {
+        events.push(`fetch:${workspaceId}`);
+        return new Ok({});
+      }
+    );
+    const updated = vi
+      .spyOn(skillIndex, "updateSkillSearchActiveUsers")
+      .mockImplementation(async ({ workspaceId }) => {
+        events.push(`update:${workspaceId}`);
+        return new Ok(undefined);
+      });
+
+    await refreshSearchUsageActivity();
+
+    expect(events).toEqual([
+      `fetch:${first.workspace.sId}`,
+      `update:${first.workspace.sId}`,
+      `fetch:${second.workspace.sId}`,
+      `update:${second.workspace.sId}`,
+    ]);
+    expect(updated.mock.calls).toEqual([
+      [
+        {
+          workspaceId: first.workspace.sId,
+          skillIds: [firstSkill.sId],
+          activeUsers: {},
+        },
+      ],
+      [
+        {
+          workspaceId: second.workspace.sId,
+          skillIds: [secondSkill.sId],
+          activeUsers: {},
+        },
+      ],
+    ]);
+  });
+
+  it("stops and propagates a workspace refresh failure so Temporal retries", async () => {
+    const first = await createResourceTest({ role: "admin" });
+    await createResourceTest({ role: "admin" });
+    const error = new ElasticsearchError("query_error", "Usage refresh failed");
+    const usage = vi
+      .spyOn(searchUsage, "fetchSearchActiveUsers")
+      .mockResolvedValue(new Err(error));
+    const updated = vi
+      .spyOn(skillIndex, "updateSkillSearchActiveUsers")
+      .mockResolvedValue(new Ok(undefined));
+
+    await expect(refreshSearchUsageActivity()).rejects.toBe(error);
+
+    expect(usage).toHaveBeenCalledExactlyOnceWith({
+      workspaceId: first.workspace.sId,
+      evaluatedAtMs: expect.any(Number),
+    });
+    expect(updated).not.toHaveBeenCalled();
   });
 
   it("refreshes workspace usage including restricted and unused skills for zero resets", async () => {

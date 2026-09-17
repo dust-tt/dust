@@ -81,24 +81,21 @@ export async function deleteWorkspaceSkillSearchWorkflow({
   await deleteWorkspaceSkillSearchActivity({ workspaceId });
 }
 
-const {
-  listSearchUsageWorkspacesActivity,
-  refreshWorkspaceSearchUsageActivity,
-} = proxyActivities<typeof activities>({
+const { refreshSearchUsageActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "1 hour",
+  heartbeatTimeout: "10 minutes",
+  retry: { maximumAttempts: 3 },
+});
+
+const { refreshWorkspaceSearchUsageActivity } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "10 minutes",
   retry: { maximumAttempts: 3 },
 });
 
 export async function refreshSearchUsageWorkflow(): Promise<void> {
-  let workspaces = await listSearchUsageWorkspacesActivity(0);
-  while (workspaces.length > 0) {
-    for (const { workspaceId } of workspaces) {
-      await refreshWorkspaceSearchUsageActivity({ workspaceId });
-    }
-    workspaces = await listSearchUsageWorkspacesActivity(
-      workspaces[workspaces.length - 1].workspaceModelId
-    );
-  }
+  await refreshSearchUsageActivity();
 }
 
 export async function refreshWorkspaceSearchUsageWorkflow({
