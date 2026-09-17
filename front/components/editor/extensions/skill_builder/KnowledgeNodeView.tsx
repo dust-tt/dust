@@ -6,6 +6,7 @@ import {
 import type { KnowledgeNodeAttributes } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceView } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -27,7 +28,7 @@ export {
   isFullKnowledgeItem,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 
-interface SkillBuilderKnowledgeChipProps {
+interface HydratingKnowledgeChipProps {
   item: KnowledgeItem;
   owner: LightWorkspaceType;
   isSpacesLoading?: boolean;
@@ -35,13 +36,16 @@ interface SkillBuilderKnowledgeChipProps {
   updateAttributes: (attrs: Partial<KnowledgeNodeAttributes>) => void;
 }
 
-function SkillBuilderKnowledgeChip({
+// Fetches the content node for base items (e.g. restored from a draft's
+// serialized <knowledge> tag) and hydrates the node attrs so the chip gets its
+// icon back; full items render directly.
+function HydratingKnowledgeChip({
   item,
   owner,
   isSpacesLoading = false,
   onRemove,
   updateAttributes,
-}: SkillBuilderKnowledgeChipProps) {
+}: HydratingKnowledgeChipProps) {
   const needsFetch = !isFullKnowledgeItem(item);
 
   const { dataSourceView, isDataSourceViewError } = useSpaceDataSourceView({
@@ -116,30 +120,6 @@ function SkillBuilderKnowledgeChip({
   );
 }
 
-// Rendered in the conversation composer, which has no SpacesProvider: full
-// items already carry their node, base items degrade to a plain chip since the
-// node cannot be fetched without the context.
-interface ComposerKnowledgeChipProps {
-  item: KnowledgeItem;
-  onRemove?: () => void;
-}
-
-function ComposerKnowledgeChip({ item, onRemove }: ComposerKnowledgeChipProps) {
-  if (isFullKnowledgeItem(item)) {
-    return (
-      <InlineKnowledgeChip
-        node={item.node}
-        onRemove={onRemove}
-        title={item.label}
-      />
-    );
-  }
-
-  return (
-    <Chip label={item.label} color="primary" size="xs" onRemove={onRemove} />
-  );
-}
-
 interface KnowledgeNodeViewShellProps
   extends Pick<NodeViewProps, "deleteNode" | "editor" | "node"> {
   children: (item: KnowledgeItem, onRemove?: () => void) => React.ReactNode;
@@ -192,7 +172,7 @@ export const SkillBuilderKnowledgeNodeView: React.FC<NodeViewProps> = (
   return (
     <KnowledgeNodeViewShell {...props}>
       {(item, onRemove) => (
-        <SkillBuilderKnowledgeChip
+        <HydratingKnowledgeChip
           item={item}
           owner={owner}
           isSpacesLoading={isSpacesLoading}
@@ -204,11 +184,21 @@ export const SkillBuilderKnowledgeNodeView: React.FC<NodeViewProps> = (
   );
 };
 
-// Composer view: no SpacesProvider, renders whatever the item already carries.
-export const ComposerKnowledgeNodeView: React.FC<NodeViewProps> = (props) => (
-  <KnowledgeNodeViewShell {...props}>
-    {(item, onRemove) => (
-      <ComposerKnowledgeChip item={item} onRemove={onRemove} />
-    )}
-  </KnowledgeNodeViewShell>
-);
+// Composer view: no SpacesProvider here, so the workspace comes from the
+// app-level AuthContext and each chip fetches its own node individually.
+export const ComposerKnowledgeNodeView: React.FC<NodeViewProps> = (props) => {
+  const { workspace } = useAuth();
+
+  return (
+    <KnowledgeNodeViewShell {...props}>
+      {(item, onRemove) => (
+        <HydratingKnowledgeChip
+          item={item}
+          owner={workspace}
+          onRemove={onRemove}
+          updateAttributes={props.updateAttributes}
+        />
+      )}
+    </KnowledgeNodeViewShell>
+  );
+};
