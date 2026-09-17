@@ -9,6 +9,7 @@ export {
   requestConversationMarkAsRead,
   useConversationMarkAsRead,
 } from "./useConversationMarkAsRead";
+export { useConversationMarkAsUnread } from "./useConversationMarkAsUnread";
 export {
   useConversationMessage,
   useConversationMessageAction,
