@@ -19,7 +19,8 @@ import {
 } from "@app/lib/api/files/folder_archive";
 import {
   extractArchiveToFolder,
-  FolderExtractError,
+  type FolderExtractError,
+  isFolderExtractError,
   MAX_ARCHIVE_UPLOAD_SIZE_BYTES,
 } from "@app/lib/api/files/folder_extract";
 import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
@@ -605,7 +606,7 @@ app.post(
       const error = extractResult.error;
       return apiError(
         ctx,
-        error instanceof FolderExtractError
+        isFolderExtractError(error)
           ? mapFolderExtractError(error)
           : mapDustFsError(error)
       );
