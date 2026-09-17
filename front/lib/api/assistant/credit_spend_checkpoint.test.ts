@@ -3,35 +3,25 @@ import {
   hasReachedCreditSpendCheckpoint,
   isExemptFromCreditSpendCheckpoint,
 } from "@app/lib/api/assistant/credit_spend_checkpoint";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
-// Minimal stand-in for the Authenticator class exposing only the members the checkpoint logic
-// reads. A class instance can't be constructed structurally, so a single `as unknown as` is the
-// standard test-mock escape here (see the same pattern across the suite); the cast surface is
-// kept to this one spot.
-function makeAuth({
-  hasUser = true,
-}: {
-  hasUser?: boolean;
-} = {}): Authenticator {
-  return {
-    user: () => (hasUser ? { sId: "user_test" } : null),
-  } as unknown as Authenticator;
-}
-
 describe("isExemptFromCreditSpendCheckpoint", () => {
-  it("is exempt when there is no user to answer the pause", () => {
-    const auth = makeAuth({ hasUser: false });
+  it("is exempt when there is no user to answer the pause", async () => {
+    const { workspace } = await createResourceTest({});
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
     expect(
       isExemptFromCreditSpendCheckpoint(auth, { userMessageOrigin: "web" })
     ).toBe(true);
   });
 
-  it("is exempt when the origin is unknown", () => {
-    const auth = makeAuth({ hasUser: true });
+  it("is exempt when the origin is unknown", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
     expect(
       isExemptFromCreditSpendCheckpoint(auth, { userMessageOrigin: null })
     ).toBe(true);
@@ -47,8 +37,9 @@ describe("isExemptFromCreditSpendCheckpoint", () => {
     "zendesk",
     "project_kickoff",
     "cli",
-  ] as const)("is exempt for %s: the author cannot resume the pause from a Dust client", (origin) => {
-    const auth = makeAuth({ hasUser: true });
+  ] as const)("is exempt for %s: the author cannot resume the pause from a Dust client", async (origin) => {
+    const { authenticator: auth } = await createResourceTest({});
+
     expect(
       isExemptFromCreditSpendCheckpoint(auth, { userMessageOrigin: origin })
     ).toBe(true);
@@ -57,8 +48,9 @@ describe("isExemptFromCreditSpendCheckpoint", () => {
   it.each([
     "web",
     "extension",
-  ] as const)("is not exempt for %s: the author is in a Dust client UI", (origin) => {
-    const auth = makeAuth({ hasUser: true });
+  ] as const)("is not exempt for %s: the author is in a Dust client UI", async (origin) => {
+    const { authenticator: auth } = await createResourceTest({});
+
     expect(
       isExemptFromCreditSpendCheckpoint(auth, { userMessageOrigin: origin })
     ).toBe(false);

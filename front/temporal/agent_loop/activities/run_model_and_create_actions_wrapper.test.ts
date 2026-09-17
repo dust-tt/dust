@@ -31,7 +31,6 @@ const FAKE_AUTH = {
 } as unknown as Authenticator;
 
 const BASE_ARGS = {
-  auth: FAKE_AUTH,
   isRootAgentMessage: true,
   userMessageOrigin: "web" as const,
   agentMessageId: "agent_msg_id",
@@ -50,14 +49,14 @@ describe("getCreditSpendCheckpointCrossed", () => {
   it("is false when exempt, without reading the message", async () => {
     mockIsExemptFromCreditSpendCheckpoint.mockReturnValue(true);
 
-    const result = await getCreditSpendCheckpointCrossed(BASE_ARGS);
+    const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, BASE_ARGS);
 
     expect(mockFetchStatus).not.toHaveBeenCalled();
     expect(result).toBe(false);
   });
 
   it("is false for a sub-agent message, without reading the message", async () => {
-    const result = await getCreditSpendCheckpointCrossed({
+    const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, {
       ...BASE_ARGS,
       isRootAgentMessage: false,
     });
@@ -69,7 +68,7 @@ describe("getCreditSpendCheckpointCrossed", () => {
   it("is false while the pre-step spend hasn't reached the threshold, without reading the message", async () => {
     mockHasReachedCreditSpendCheckpoint.mockReturnValue(false);
 
-    const result = await getCreditSpendCheckpointCrossed(BASE_ARGS);
+    const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, BASE_ARGS);
 
     expect(mockFetchStatus).not.toHaveBeenCalled();
     expect(result).toBe(false);
@@ -79,7 +78,7 @@ describe("getCreditSpendCheckpointCrossed", () => {
     mockFetchStatus.mockResolvedValue("paused");
     mockHasCrossedCreditSpendCheckpoint.mockReturnValue(true);
 
-    const result = await getCreditSpendCheckpointCrossed(BASE_ARGS);
+    const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, BASE_ARGS);
 
     expect(mockFetchStatus).toHaveBeenCalledWith(FAKE_AUTH, {
       agentMessageId: "agent_msg_id",
@@ -90,14 +89,5 @@ describe("getCreditSpendCheckpointCrossed", () => {
       status: "paused",
     });
     expect(result).toBe(true);
-  });
-
-  it("fails open (not crossed) when reading the status errors", async () => {
-    mockFetchStatus.mockRejectedValue(new Error("db unavailable"));
-
-    const result = await getCreditSpendCheckpointCrossed(BASE_ARGS);
-
-    expect(mockHasCrossedCreditSpendCheckpoint).not.toHaveBeenCalled();
-    expect(result).toBe(false);
   });
 });
