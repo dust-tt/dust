@@ -48,7 +48,11 @@ export function FrameSharingFiles({ viewerFiles }: FrameSharingFilesProps) {
             </DialogTrigger>
           </Hoverable>
         </div>
-        <DialogContent size="md" preventAutoFocusOnClose={false}>
+        <DialogContent
+          size="lg"
+          className="max-h-[min(40rem,90dvh)]"
+          preventAutoFocusOnClose={false}
+        >
           <DialogHeader hideButton>
             <DialogTitle>Included files</DialogTitle>
             <DialogDescription>
