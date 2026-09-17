@@ -1,18 +1,19 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
-import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import {
+  DataSourceList,
+  toDataSourceListItem,
+} from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import { buildNodeItems } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import {
   findDataSourceViewFromNavigationHistory,
   getLatestNodeFromNavigationHistory,
 } from "@app/components/data_source_view/context/utils";
-import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
-import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import { useInfiniteDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { ArrowLeft, EmptyCTA, EmptyCTAButton, Spinner } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 const PAGE_SIZE = 50;
 
@@ -59,21 +60,12 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
 
   const listItems: DataSourceListItem[] = useMemo(
     () =>
-      childNodes.map((node) => {
-        return {
-          id: node.internalId,
-          title: getDisplayTitleForDataSourceViewContentNode(node, {
-            disambiguate: isTopLevelInView,
-          }),
-          icon: getVisualForDataSourceViewContentNode(node),
-          onClick: node.expandable ? () => addNodeEntry(node) : undefined,
-          entry: {
-            type: "node",
-            node,
-            tagsFilter: null,
-          },
-        };
-      }),
+      buildNodeItems(childNodes, { isTopLevelInView }).map((item) =>
+        toDataSourceListItem(
+          item,
+          item.expandable ? () => addNodeEntry(item.node) : undefined
+        )
+      ),
     [childNodes, addNodeEntry, isTopLevelInView]
   );
 
