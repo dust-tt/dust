@@ -22,7 +22,10 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/agent_configuration";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -205,13 +208,29 @@ export async function createOrUpgradeAgentConfiguration({
     authorId: resolvedAuthorId,
   };
 
-  const agentConfigurationRes = agentConfigurationId
-    ? await AgentResource.updateConfiguration(
-        auth,
-        agentConfigurationId,
-        saveParams
-      )
-    : await AgentResource.makeNew(auth, saveParams);
+  let agentConfigurationRes: Result<LightAgentConfigurationType, Error>;
+  if (agentConfigurationId) {
+    const agentResource = await AgentResource.fetchById(
+      auth,
+      agentConfigurationId
+    );
+    // A caller who cannot read an agent cannot save a new version of it. The exception is the
+    // admin batch re-save (`dangerouslySkipPermissionFiltering`), which resaves agents built on
+    // spaces the admin cannot read as-is; the admin still holds `admin` on the agent, so
+    // `fetchById` returns it (light).
+    if (
+      !agentResource ||
+      (!dangerouslySkipPermissionFiltering && !auth.can("read", agentResource))
+    ) {
+      return new Err(new Error("Agent configuration not found."));
+    }
+    agentConfigurationRes = await agentResource.updateConfiguration(
+      auth,
+      saveParams
+    );
+  } else {
+    agentConfigurationRes = await AgentResource.makeNew(auth, saveParams);
+  }
 
   if (agentConfigurationRes.isErr()) {
     return agentConfigurationRes;

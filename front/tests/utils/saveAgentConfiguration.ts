@@ -3,6 +3,7 @@ import type { SaveAgentConfigurationParams } from "@app/lib/resources/agent_reso
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 
 // Test/seed convenience mirroring the former `createAgentConfiguration` entry point: create a new
 // agent when no `agentConfigurationId` is given, otherwise a new version on that agent. Production
@@ -14,7 +15,17 @@ export async function saveAgentConfiguration(
     ...params
   }: SaveAgentConfigurationParams & { agentConfigurationId?: string }
 ): Promise<Result<LightAgentConfigurationType, Error>> {
-  return agentConfigurationId
-    ? AgentResource.updateConfiguration(auth, agentConfigurationId, params)
-    : AgentResource.makeNew(auth, params);
+  if (!agentConfigurationId) {
+    return AgentResource.makeNew(auth, params);
+  }
+
+  const agentResource = await AgentResource.fetchById(
+    auth,
+    agentConfigurationId
+  );
+  if (!agentResource || !auth.can("read", agentResource)) {
+    return new Err(new Error("Agent configuration not found."));
+  }
+
+  return agentResource.updateConfiguration(auth, params);
 }

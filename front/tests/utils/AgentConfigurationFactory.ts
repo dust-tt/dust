@@ -100,7 +100,13 @@ export class AgentConfigurationFactory {
     const user = auth.user();
     assert(user, "User is required");
 
-    const result = await AgentResource.updateConfiguration(auth, agentId, {
+    const agentResource = await AgentResource.fetchById(auth, agentId);
+    assert(
+      agentResource && auth.can("read", agentResource),
+      "Agent configuration not found"
+    );
+
+    const result = await agentResource.updateConfiguration(auth, {
       name: overrides.name ?? "Test Agent",
       description: overrides.description ?? "Test Agent Description",
       instructions: overrides.instructions ?? "Updated Test Instructions",

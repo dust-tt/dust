@@ -200,6 +200,14 @@ export interface FullAgentResource extends AgentResource {
  * agent without changing that, or changing the scope of a draft, pending or archived agent, MUST
  * NOT require it. Protected tags and linking Slack channels to an agent are gated by it too.
  */
+/**
+ * @cc [owner:tdraier,label:security] agent-edit-requires-write
+ * Saving a new configuration version of an existing agent (`updateConfiguration`) MUST require
+ * `write` on that agent (`auth.can("write", this)`), enforced inside the resource — callers may
+ * double-check, but MUST NOT be the sole gate. `read` alone (any member can read a visible agent)
+ * MUST NOT allow editing, and the workspace `admin` role alone (which grants `admin`, not `write`,
+ * on agents it does not edit) MUST NOT either.
+ */
 export class AgentResource
   extends BaseResource<AgentModel>
   implements WithAccessControl
@@ -1086,11 +1094,17 @@ export class AgentResource
 
   // Creates a brand-new custom agent: its `AgentModel` identity, first `AgentConfigurationModel`
   // version, editor group and tags. The orchestrator delegates action/skill creation on top.
+  // Bringing a new agent into the workspace requires the type-wide `create` capability, enforced
+  // here (see the `agent-create-capability` contract).
   static async makeNew(
     auth: Authenticator,
     params: SaveAgentConfigurationParams,
     transaction?: Transaction
   ): Promise<Result<LightAgentConfigurationType, Error>> {
+    if (!(await auth.hasWorkspacePermission("create", "agent"))) {
+      return new Err(new Error("Creating agents is restricted."));
+    }
+
     return this._saveConfiguration(
       auth,
       { ...params, agentConfigurationId: undefined },
@@ -1098,19 +1112,24 @@ export class AgentResource
     );
   }
 
-  // Creates a new configuration version on the identified agent: archives the prior version and
-  // moves the `currentVersion` pointer (or updates a pending agent in place). Keyed by `sId` rather
-  // than a fetched instance so it does not read-gate the write — editing rights, not read access,
-  // gate an update — matching the pre-move behavior.
-  static async updateConfiguration(
+  // Creates a new configuration version on `this` agent: archives the prior version and moves the
+  // `currentVersion` pointer (or updates a pending agent in place). Editing an agent requires
+  // `write` on it, enforced here on `this` (see the `agent-edit-requires-write` contract): the
+  // caller resolves the agent first (e.g. `fetchById`), and only an editor may save a new version.
+  async updateConfiguration(
     auth: Authenticator,
-    agentConfigurationId: string,
     params: SaveAgentConfigurationParams,
     transaction?: Transaction
   ): Promise<Result<LightAgentConfigurationType, Error>> {
-    return this._saveConfiguration(
+    if (!auth.can("write", this)) {
+      return new Err(
+        new Error("You don't have permission to edit this agent.")
+      );
+    }
+
+    return AgentResource._saveConfiguration(
       auth,
-      { ...params, agentConfigurationId },
+      { ...params, agentConfigurationId: this.sId },
       transaction
     );
   }
