@@ -98,10 +98,13 @@ function isEvaluationDue(
 export async function recordLLMAttempt({
   endpoint,
   outcome,
+  canDegrade = async () => true,
   now = new Date(),
 }: {
   endpoint: DegradedModelEndpointType;
   outcome: LLMAttemptOutcomeTelemetry;
+  // Whether a breach seen from this attempt may take the endpoint out of routing.
+  canDegrade?: () => Promise<boolean>;
   now?: Date;
 }): Promise<void> {
   // The noop model is a test fixture, not an endpoint anyone can be degraded on.
@@ -138,7 +141,11 @@ export async function recordLLMAttempt({
     // Only an error can push the ratio over the threshold, so a successful
     // attempt has nothing to detect. This reads back the window for this one
     // endpoint -- the one we just served -- and never for any other.
-    if (isProviderError && isEvaluationDue(endpoint, nowMs)) {
+    if (
+      isProviderError &&
+      (await canDegrade()) &&
+      isEvaluationDue(endpoint, nowMs)
+    ) {
       // While recovery holds the endpoint, evaluating again buys nothing: the
       // window still breaches and the start still comes back rejected. How long
       // that stays true depends on the outcome, so the hold does too.
