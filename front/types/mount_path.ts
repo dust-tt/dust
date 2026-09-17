@@ -170,7 +170,7 @@ const SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
  * rollout for no gain.
  */
 export function sandboxDatabaseExecEnvVars({
-  framePublicationDescriptorPath,
+  framePublicationDescriptorPath, // TODO (frames v2) - remove this once we have published the new build.
 }: {
   framePublicationDescriptorPath?: string;
 } = {}): {
