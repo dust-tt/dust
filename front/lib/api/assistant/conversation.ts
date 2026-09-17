@@ -1040,8 +1040,9 @@ export async function postUserMessage(
   }
 
   // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
+  let finalAgentMessages = agentMessages;
   if (agentMessages.length > 0) {
-    await runAgentLoopWorkflow({
+    finalAgentMessages = await runAgentLoopWorkflow({
       auth,
       agentMessages,
       conversation,
@@ -1065,7 +1066,7 @@ export async function postUserMessage(
           targetRank: userMessage.rank,
         }),
       },
-      agentMessages
+      finalAgentMessages
     ),
     // If the conversation did not have any agent messages yet, we might not have a title, this ensure we generate one.
     // Doing after 3 messages to avoid generating a title too early.
@@ -1078,7 +1079,7 @@ export async function postUserMessage(
 
   return new Ok({
     userMessage,
-    agentMessages,
+    agentMessages: finalAgentMessages,
   });
 }
 
@@ -1424,7 +1425,7 @@ export async function editUserMessage(
 
   // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
   if (agentMessages.length > 0) {
-    await runAgentLoopWorkflow({
+    agentMessages = await runAgentLoopWorkflow({
       auth,
       agentMessages,
       conversation,
@@ -3519,8 +3520,6 @@ export async function updateAgentMessageWithFinalStatus(
   }
 
   if (newAgentMessage) {
-    await publishAgentMessagesEvents(conversation, [newAgentMessage]);
-
     void emitAuditLogEvent({
       auth: promotedAuth,
       action: "agent.executed",
@@ -3540,12 +3539,13 @@ export async function updateAgentMessageWithFinalStatus(
       },
     });
 
-    await runAgentLoopWorkflow({
+    const finalAgentMessages = await runAgentLoopWorkflow({
       auth: promotedAuth,
       agentMessages: [newAgentMessage],
       conversation,
       userMessage: promotedUserMessages[promotedUserMessages.length - 1],
     });
+    await publishAgentMessagesEvents(conversation, finalAgentMessages);
   }
 
   // The agent message will never resume: tools still waiting on user input (e.g. a manual

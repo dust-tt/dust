@@ -51,12 +51,15 @@ it("cancels the message when the agent becomes unreadable before launch", async 
     workspace.sId
   );
 
-  await runAgentLoopWorkflow({
+  const [returnedAgentMessage] = await runAgentLoopWorkflow({
     auth: otherAuth,
     agentMessages: [agentMessage],
     conversation,
     userMessage,
   });
+  assert(returnedAgentMessage);
+  expect(returnedAgentMessage.status).toBe("cancelled");
+  expect(returnedAgentMessage.completedAt).toBeInstanceOf(Date);
 
   const updatedConversation = await ConversationResource.fetchById(
     authorAuth,

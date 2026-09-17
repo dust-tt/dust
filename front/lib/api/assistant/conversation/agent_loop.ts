@@ -23,7 +23,7 @@ export const runAgentLoopWorkflow = async ({
   conversation: ConversationWithoutContentType;
   userMessage: UserMessageTypeWithoutMentions;
 }) => {
-  await concurrentExecutor(
+  return concurrentExecutor(
     agentMessages,
     async (agentMessage) => {
       const agentConfiguration = await AgentResource.fetchById(
@@ -32,12 +32,15 @@ export const runAgentLoopWorkflow = async ({
       );
 
       if (!agentConfiguration || !auth.can("read", agentConfiguration)) {
-        await ConversationResource.cancelUnavailableAgentMessage(auth, {
-          conversationId: conversation.sId,
-          agentMessageId: agentMessage.sId,
-          agentMessageVersion: agentMessage.version,
-        });
-        return;
+        const completedAt =
+          await ConversationResource.cancelUnavailableAgentMessage(auth, {
+            conversationId: conversation.sId,
+            agentMessageId: agentMessage.sId,
+            agentMessageVersion: agentMessage.version,
+          });
+        return completedAt
+          ? { ...agentMessage, status: "cancelled" as const, completedAt }
+          : agentMessage;
       }
 
       await ConversationResource.setIsRunningAgentLoop(auth, {
@@ -58,6 +61,8 @@ export const runAgentLoopWorkflow = async ({
         },
         startStep: 0,
       });
+
+      return agentMessage;
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );
