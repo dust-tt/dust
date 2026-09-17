@@ -77,7 +77,7 @@ const ModelSuggestionSchema = z.object({
   reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
 });
 
-export const CreateSuggestionSchema = z.object({
+const CreateSuggestionSchema = z.object({
   name: z
     .string()
     .trim()

@@ -15,12 +15,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
- * @cc [owner:avervaet,label:security] requires-interactive-user
- * `suggestAgentCreation` MUST return an `Err` wrapping an `MCPError`, and record nothing, unless
- * `auth` carries an interactive user. Any failure of the underlying agent or suggestion creation
- * MUST likewise surface as an `Err` wrapping an `MCPError`, never as a thrown exception.
- */
-/**
  * @cc [owner:avervaet,label:product] no-direct-mutation
  * `suggestAgentCreation` MUST NOT make the proposed agent usable: the only agent it creates is a
  * `pending`, `hidden` placeholder editable solely by the caller, and the proposal is recorded as a
