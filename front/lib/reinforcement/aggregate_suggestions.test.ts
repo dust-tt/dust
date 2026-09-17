@@ -1,6 +1,6 @@
 import { buildSkillAggregationPrompt } from "@app/lib/reinforcement/aggregate_suggestions";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import type { ReinforcementSkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { describe, expect, it } from "vitest";
 
 function makeSkill(overrides: Partial<SkillType> = {}): SkillType {
@@ -36,8 +36,8 @@ function makeSkill(overrides: Partial<SkillType> = {}): SkillType {
 }
 
 function makeInstructionSuggestion(
-  overrides: Partial<SkillSuggestionType> = {}
-): SkillSuggestionType {
+  overrides: Partial<ReinforcementSkillSuggestionType> = {}
+): ReinforcementSkillSuggestionType {
   return {
     sId: "sug-1",
     createdAt: Date.now(),
@@ -59,12 +59,12 @@ function makeInstructionSuggestion(
       ],
     },
     ...overrides,
-  } as SkillSuggestionType;
+  } as ReinforcementSkillSuggestionType;
 }
 
 function makeAgentFacingDescriptionSuggestion(
-  overrides: Partial<SkillSuggestionType> = {}
-): SkillSuggestionType {
+  overrides: Partial<ReinforcementSkillSuggestionType> = {}
+): ReinforcementSkillSuggestionType {
   return {
     sId: "sug-3",
     createdAt: Date.now(),
@@ -82,7 +82,7 @@ function makeAgentFacingDescriptionSuggestion(
       },
     },
     ...overrides,
-  } as SkillSuggestionType;
+  } as ReinforcementSkillSuggestionType;
 }
 
 describe("buildSkillAggregationPrompt", () => {
@@ -108,7 +108,7 @@ describe("buildSkillAggregationPrompt", () => {
           },
         ],
       },
-    } as Partial<SkillSuggestionType>);
+    } as Partial<ReinforcementSkillSuggestionType>);
     const { userMessage } = buildSkillAggregationPrompt(
       makeSkill(),
       [suggestion],

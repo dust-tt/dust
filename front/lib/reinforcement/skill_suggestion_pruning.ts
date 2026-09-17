@@ -130,7 +130,7 @@ export async function pruneConflictingSkillEditSuggestions(
     skill.sId,
     {
       states: ["pending"],
-      kind: "edit",
+      kinds: ["edit"],
       sources: PRUNED_SOURCES,
     }
   );
@@ -214,7 +214,7 @@ export async function pruneOutdatedSkillEditSuggestions(
   const pending = (
     await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
       states: ["pending"],
-      kind: "edit",
+      kinds: ["edit"],
       sources: PRUNED_SOURCES,
     })
   ).filter((s): s is EditSkillSuggestionResource =>

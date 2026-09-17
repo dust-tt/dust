@@ -92,7 +92,7 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
     {
       states,
       sources: effectiveSources,
-      kind,
+      kinds: kind ? [kind] : undefined,
       limit: parsedLimit,
     }
   );
