@@ -70,6 +70,8 @@ import {
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
+import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
   AgentConfigurationWithoutModelType,
   LightAgentConfigurationType,
@@ -119,6 +121,8 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
+
+const SKILL_SEARCH_INDEXATION_CONCURRENCY = 8;
 
 export type SkillMCPServerConfiguration = {
   view: MCPServerViewResource;
@@ -572,6 +576,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await auth.refresh();
 
     return skillResource;
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;concurrency] skill-search-after-commit
+   * Skill mutations enqueue workspace-scoped custom IDs after their existing writes.
+   * Failed workflow launch results are logged without failing the mutation.
+   */
+  static async launchSearchIndexation(
+    auth: Authenticator,
+    skillIds: string[]
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (skillIds.length === 0) {
+      return;
+    }
+    const results = await concurrentExecutor(
+      uniq(skillIds),
+      (skillId) =>
+        launchIndexSkillSearchWorkflow({ workspaceId: workspace.sId, skillId }),
+      { concurrency: SKILL_SEARCH_INDEXATION_CONCURRENCY }
+    );
+    const failedResult = results.find((result) => result.isErr());
+    if (failedResult?.isErr()) {
+      logger.error(
+        { error: failedResult.error, workspaceId: workspace.sId, skillIds },
+        "Failed to launch skill search indexation"
+      );
+    }
   }
 
   static async makeSuggestion(
@@ -1055,11 +1087,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async fetchById(
     auth: Authenticator,
     sId: string,
-    {
-      permissionFiltering,
-    }: { permissionFiltering?: SkillPermissionFilteringMode } = {}
+    options: SkillFetchContext &
+      SkillHydrationOptions & { onlyActive?: boolean } = {}
   ): Promise<SkillResource | null> {
-    const [skill] = await this.fetchByIds(auth, [sId], { permissionFiltering });
+    const [skill] = await this.fetchByIds(auth, [sId], options);
 
     return skill ?? null;
   }
@@ -1074,12 +1105,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyActive = false,
       withInstructions = true,
       withTools = true,
+      withToolMetadata = false,
       withFileAttachments = true,
-    }: SkillFetchContext &
-      Pick<
-        SkillConfigurationFindOptions,
-        "withInstructions" | "withTools" | "withFileAttachments"
-      > & { onlyActive?: boolean } = {}
+    }: SkillFetchContext & SkillHydrationOptions & { onlyActive?: boolean } = {}
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
@@ -1114,6 +1142,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
         withInstructions,
         withTools,
+        withToolMetadata,
         withFileAttachments,
       },
       { agentLoopData, effectiveSpaceIds, permissionFiltering }
