@@ -55,9 +55,10 @@ describe("GET /api/v1/w/:wId/spaces/groups", () => {
     ]);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      groupIds: [globalGroup.sId, memberGroup.sId],
-    });
+    // The endpoint returns a set of group ids, not one positionally matched
+    // to each requested space, so the order is not part of its contract.
+    const { groupIds } = await response.json();
+    expect(groupIds.sort()).toEqual([globalGroup.sId, memberGroup.sId].sort());
   });
 
   it("skips a space of another workspace", async () => {
