@@ -1,0 +1,13 @@
+{
+  "action": "skill.editors_updated",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "skill" }
+  ],
+  "metadata": {
+    "skill_name": "string",
+    "added_editor_ids": "string",
+    "removed_editor_ids": "string",
+    "actor_added_self": "string"
+  }
+}

@@ -113,6 +113,10 @@ app.patch(
 
     const { addEditorIds = [], removeEditorIds = [] } = ctx.req.valid("json");
 
+    // TODO(achilleburah): adopt validateSkillEditorsChange here so this route follows the same
+    // rules as the suggestion path. Today removing an editor who left the workspace is accepted
+    // there and rejected here by dangerouslyRemoveMembers, which breaks the
+    // same-rules-as-manual-editors-route contract.
     const { missingIds, usersToAdd, usersToRemove } =
       await resolveSkillEditorUsers({
         addUserIds: addEditorIds,
