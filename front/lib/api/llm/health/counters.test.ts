@@ -253,7 +253,10 @@ describe("model health counters", () => {
   });
 
   it("still records when canDegrade is false, and does not consume the evaluation slot", async () => {
-    const endpoint = { ...ENDPOINT, modelId: "claude-haiku-4-5" } as const;
+    const endpoint = {
+      ...ENDPOINT,
+      modelId: "claude-3-opus-20240229",
+    } as const;
     const error = providerError("overloaded_error");
 
     await recordLLMAttempt({
