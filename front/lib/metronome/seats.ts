@@ -851,7 +851,7 @@ export function getSeatCreditNameForSeatType(
 }
 
 type SeatCreditTransfer = {
-  userSId: string;
+  userId: string;
   oldSeatType: MembershipSeatType;
   newSeatType: MembershipSeatType;
   oldCreditName: string;
@@ -906,8 +906,8 @@ export function computeSeatCreditTransfers({
   allocationBySeatType: Map<MembershipSeatType, number>;
 }): SeatCreditTransfer[] {
   const transfers: SeatCreditTransfer[] = [];
-  for (const [userSId, oldSeatType] of metronomeSeatByUser) {
-    const newSeatType = desiredSeatByUser.get(userSId);
+  for (const [userId, oldSeatType] of metronomeSeatByUser) {
+    const newSeatType = desiredSeatByUser.get(userId);
     if (!newSeatType || newSeatType === oldSeatType) {
       continue;
     }
@@ -919,7 +919,7 @@ export function computeSeatCreditTransfers({
     if (!oldCreditName || !newCreditName) {
       continue;
     }
-    const remaining = balanceByUser.get(userSId);
+    const remaining = balanceByUser.get(userId);
     // No balance reading for this user → we can't derive how much was consumed,
     // so skip rather than guess. A zero or negative (overdrawn) balance is NOT
     // skipped: a fully-consumed origin is exactly when the consumed amount must
@@ -933,7 +933,7 @@ export function computeSeatCreditTransfers({
       continue;
     }
     transfers.push({
-      userSId,
+      userId,
       oldSeatType,
       newSeatType,
       oldCreditName,
@@ -1056,8 +1056,8 @@ async function emptyOriginSeatCreditsForTransfers({
     if (!state) {
       continue;
     }
-    for (const userSId of state.assignedSeatIds) {
-      metronomeSeatByUser.set(userSId, seatType);
+    for (const userId of state.assignedSeatIds) {
+      metronomeSeatByUser.set(userId, seatType);
     }
   }
 
@@ -1068,13 +1068,13 @@ async function emptyOriginSeatCreditsForTransfers({
   // there are no candidates at all, skip that (expensive, bulk) fetch
   // entirely instead of always fetching the whole eligible population.
   const transferCandidateUserIds = [...metronomeSeatByUser.entries()].flatMap(
-    ([userSId, oldSeatType]) => {
-      const newSeatType = desiredSeatByUser.get(userSId);
+    ([userId, oldSeatType]) => {
+      const newSeatType = desiredSeatByUser.get(userId);
       return newSeatType &&
         newSeatType !== oldSeatType &&
         getSeatCreditNameForSeatType(oldSeatType) &&
         getSeatCreditNameForSeatType(newSeatType)
-        ? [userSId]
+        ? [userId]
         : [];
     }
   );
@@ -1132,7 +1132,7 @@ async function emptyOriginSeatCreditsForTransfers({
     const recurringCreditId = recurringCreditIdBySeatType.get(t.oldSeatType);
     if (!recurringCreditId) {
       logger.warn(
-        { workspaceId, contractId, userId: t.userSId, credit: t.oldCreditName },
+        { workspaceId, contractId, userId: t.userId, credit: t.oldCreditName },
         "[Metronome] No recurring credit id for origin seat — skipping transfer"
       );
       continue;
@@ -1144,7 +1144,7 @@ async function emptyOriginSeatCreditsForTransfers({
     });
     if (!seg) {
       logger.error(
-        { workspaceId, contractId, userId: t.userSId, credit: t.oldCreditName },
+        { workspaceId, contractId, userId: t.userId, credit: t.oldCreditName },
         "[Metronome] No origin seat credit segment for transfer — skipping"
       );
       continue;
@@ -1155,13 +1155,13 @@ async function emptyOriginSeatCreditsForTransfers({
           metronomeCustomerId,
           contractId,
           subscriptionId,
-          seatId: t.userSId,
+          seatId: t.userId,
           creditSegmentStartingAt: seg.segmentStartingAt,
         })
       : null;
     if (!timestamp) {
       logger.warn(
-        { workspaceId, contractId, userId: t.userSId, credit: t.oldCreditName },
+        { workspaceId, contractId, userId: t.userId, credit: t.oldCreditName },
         "[Metronome] No active window for origin seat — skipping transfer"
       );
       continue;
@@ -1170,7 +1170,7 @@ async function emptyOriginSeatCreditsForTransfers({
       {
         workspaceId,
         contractId,
-        userId: t.userSId,
+        userId: t.userId,
         credit: t.oldCreditName,
         segmentStartingAt: seg.segmentStartingAt,
         adjustmentTimestamp: timestamp.toISOString(),
@@ -1183,14 +1183,14 @@ async function emptyOriginSeatCreditsForTransfers({
       metronomeContractId: contractId,
       creditId: seg.creditId,
       segmentId: seg.segmentId,
-      perSeatAmounts: { [t.userSId]: -t.remaining },
+      perSeatAmounts: { [t.userId]: -t.remaining },
       reason: `Seat change ${t.oldSeatType}→${t.newSeatType}: empty origin credit`,
       timestamp,
       alignToHour: false,
     });
     if (adjustRes.isErr()) {
       logger.error(
-        { workspaceId, contractId, userId: t.userSId, error: adjustRes.error },
+        { workspaceId, contractId, userId: t.userId, error: adjustRes.error },
         "[Metronome] Failed to empty origin seat credit — skipping transfer"
       );
       continue;
@@ -1244,7 +1244,7 @@ async function carryConsumptionToNewSeatCredits({
     const targetAllocation = allocationBySeatType.get(t.newSeatType);
     if (!recurringCreditId || targetAllocation === undefined) {
       logger.warn(
-        { workspaceId, contractId, userId: t.userSId, credit: t.newCreditName },
+        { workspaceId, contractId, userId: t.userId, credit: t.newCreditName },
         "[Metronome] No recurring credit / allocation for new seat — origin already emptied"
       );
       continue;
@@ -1256,7 +1256,7 @@ async function carryConsumptionToNewSeatCredits({
     });
     if (!seg) {
       logger.error(
-        { workspaceId, contractId, userId: t.userSId, credit: t.newCreditName },
+        { workspaceId, contractId, userId: t.userId, credit: t.newCreditName },
         "[Metronome] No destination seat credit segment for transfer — origin already emptied"
       );
       continue;
@@ -1269,13 +1269,13 @@ async function carryConsumptionToNewSeatCredits({
           metronomeCustomerId,
           contractId,
           subscriptionId,
-          seatId: t.userSId,
+          seatId: t.userId,
           creditSegmentStartingAt: seg.segmentStartingAt,
         })
       : null;
     if (!timestamp) {
       logger.warn(
-        { workspaceId, contractId, userId: t.userSId, credit: t.newCreditName },
+        { workspaceId, contractId, userId: t.userId, credit: t.newCreditName },
         "[Metronome] No active window for new seat — origin already emptied"
       );
       continue;
@@ -1289,14 +1289,14 @@ async function carryConsumptionToNewSeatCredits({
       metronomeCustomerId,
       metronomeContractId: contractId,
       coveringDate: timestamp,
-      seatIds: [t.userSId],
+      seatIds: [t.userId],
     });
     if (balancesRes.isErr()) {
       logger.error(
         {
           workspaceId,
           contractId,
-          userId: t.userSId,
+          userId: t.userId,
           error: balancesRes.error,
         },
         "[Metronome] Failed to read new seat balance for transfer — origin already emptied"
@@ -1304,11 +1304,11 @@ async function carryConsumptionToNewSeatCredits({
       continue;
     }
     const currentBalance = balancesRes.value
-      .find((s) => s.seat_id === t.userSId)
+      .find((s) => s.seat_id === t.userId)
       ?.balances.find((b) => b.credit_type_id === awuCreditTypeId)?.balance;
     if (currentBalance === undefined) {
       logger.warn(
-        { workspaceId, contractId, userId: t.userSId, credit: t.newCreditName },
+        { workspaceId, contractId, userId: t.userId, credit: t.newCreditName },
         "[Metronome] New seat balance not found at adjustment time — origin already emptied"
       );
       continue;
@@ -1323,7 +1323,7 @@ async function carryConsumptionToNewSeatCredits({
       {
         workspaceId,
         contractId,
-        userId: t.userSId,
+        userId: t.userId,
         credit: t.newCreditName,
         adjustmentTimestamp: timestamp.toISOString(),
         currentBalance,
@@ -1337,14 +1337,14 @@ async function carryConsumptionToNewSeatCredits({
       metronomeContractId: contractId,
       creditId: seg.creditId,
       segmentId: seg.segmentId,
-      perSeatAmounts: { [t.userSId]: delta },
+      perSeatAmounts: { [t.userId]: delta },
       reason: `Seat change ${t.oldSeatType}→${t.newSeatType}: carry over consumed AWU`,
       timestamp,
       alignToHour: false,
     });
     if (adjustRes.isErr()) {
       logger.error(
-        { workspaceId, contractId, userId: t.userSId, error: adjustRes.error },
+        { workspaceId, contractId, userId: t.userId, error: adjustRes.error },
         "[Metronome] Failed to set new seat credit to carried balance"
       );
     }
@@ -1475,18 +1475,18 @@ export async function syncSeatCount({
     // TODO(pricing): Remove this + planCode param once we have no more shadow legacy contracts
     const legacy = !isCreditPricedPlanPrefix(planCode);
 
-    // userSId → current seat type (the seat they are on right now).
+    // userId → current seat type (the seat they are on right now).
     //
     // Only count memberships that are active in the same sense as the Stripe
     // seat count (`getMembersCountForWorkspace({ activeOnly: true })`): the seat
     // window is open AND `firstUsedAt` is set. This excludes provisioned members
     // who have never used the workspace, so Metronome and Stripe bill the same
     // set of seats.
-    const currentSeatByUserSId = new Map<string, MembershipSeatType>();
+    const currentSeatByUserId = new Map<string, MembershipSeatType>();
     for (const m of activeMemberships) {
-      const userSId = m.user?.sId;
-      if (userSId && m.firstUsedAt !== null) {
-        currentSeatByUserSId.set(userSId, m.seatType);
+      const userId = m.user?.sId;
+      if (userId && m.firstUsedAt !== null) {
+        currentSeatByUserId.set(userId, m.seatType);
       }
     }
 
@@ -1540,25 +1540,25 @@ export async function syncSeatCount({
       seatSubscriptions.map(({ seatType }) => seatType)
     );
     const uncoveredUsersBySeatType = new Map<MembershipSeatType, string[]>();
-    for (const [userSId, seatType] of currentSeatByUserSId) {
+    for (const [userId, seatType] of currentSeatByUserId) {
       // `none` is intentionally unbilled — skip silently.
       if (seatType === "none") {
         continue;
       }
       if (!coveredSeatTypes.has(seatType)) {
         const bucket = uncoveredUsersBySeatType.get(seatType) ?? [];
-        bucket.push(userSId);
+        bucket.push(userId);
         uncoveredUsersBySeatType.set(seatType, bucket);
       }
     }
-    for (const [seatType, userSIds] of uncoveredUsersBySeatType) {
+    for (const [seatType, userIds] of uncoveredUsersBySeatType) {
       logger.warn(
         {
           workspaceId: workspace.sId,
           contractId,
           seatType,
-          memberCount: userSIds.length,
-          userIds: userSIds,
+          memberCount: userIds.length,
+          userIds,
         },
         "[Metronome] Memberships with seat type not covered by any entitled contract subscription — they will not be billed"
       );
@@ -1630,11 +1630,11 @@ export async function syncSeatCount({
     // that user's own scheduled changes (ascending) from earliest up to (and
     // including) `tMs`.
     const seatTypeAt = (
-      userSId: string,
+      userId: string,
       tMs: number
     ): MembershipSeatType | undefined => {
-      let seatType = currentSeatByUserSId.get(userSId);
-      const changes = scheduledChangesByUserId.get(userSId);
+      let seatType = currentSeatByUserId.get(userId);
+      const changes = scheduledChangesByUserId.get(userId);
       if (changes) {
         for (const c of changes) {
           if (c.at.getTime() > tMs) {
@@ -1650,22 +1650,22 @@ export async function syncSeatCount({
     // currently-active row maps to `subSeatType` AND who have not (yet)
     // scheduled themselves off it by `tMs`, plus users who scheduled
     // themselves onto it.
-    const allUserSIds = new Set<string>([
-      ...currentSeatByUserSId.keys(),
+    const allUserIds = new Set<string>([
+      ...currentSeatByUserId.keys(),
       ...scheduledChanges.map((c) => c.userId),
     ]);
-    const desiredSIdsAt = (
+    const desiredSeatIdsAt = (
       subSeatType: MembershipSeatType,
       tMs: number
     ): string[] => {
       const sIds: string[] = [];
-      for (const userSId of allUserSIds) {
-        const userSeatType = seatTypeAt(userSId, tMs);
+      for (const userId of allUserIds) {
+        const userSeatType = seatTypeAt(userId, tMs);
         // On legacy contracts, "none" members are Platform Seat members that
         // predate the seat system — count them alongside explicit "workspace" seats.
         const match = userSeatType === subSeatType || legacy;
         if (match) {
-          sIds.push(userSId);
+          sIds.push(userId);
         }
       }
       return sIds;
@@ -1771,7 +1771,7 @@ export async function syncSeatCount({
         subscriptionIdBySeatType,
         recurringCreditIdBySeatType,
         allocationBySeatType,
-        desiredSeatByUser: currentSeatByUserSId,
+        desiredSeatByUser: currentSeatByUserId,
         seatStateBySubscriptionId,
       });
       logger.info(
@@ -1818,7 +1818,7 @@ export async function syncSeatCount({
       };
 
       if (quantityMode === "SEAT_BASED") {
-        // One reconcile per distinct effective moment. `desiredSIds` and the
+        // One reconcile per distinct effective moment. `desiredSeatIds` and the
         // seat limit are BOTH evaluated at the SAME moment the segment is
         // written to — so a future contract start reflects the membership state
         // at the start (post-remap), and a scheduled commitment change reflects
@@ -1843,7 +1843,7 @@ export async function syncSeatCount({
             contractId,
             subscriptionId,
             seatType,
-            desiredSIds: desiredSIdsAt(seatType, tMs),
+            desiredSeatIds: desiredSeatIdsAt(seatType, tMs),
             seatLimit: seatLimitAt(seatType, tMs),
             startingAt: segmentStartingAt,
             coveringDate,
@@ -1888,7 +1888,7 @@ export async function syncSeatCount({
           const segmentStartingAt = isImmediateBase
             ? startingAt
             : new Date(tMs).toISOString();
-          const actualQuantity = desiredSIdsAt(seatType, tMs).length;
+          const actualQuantity = desiredSeatIdsAt(seatType, tMs).length;
           // Clamp up to the configured billing floor: below `minSeats` we still
           // bill the floor.
           const quantity = clampSeatCountToMin(
@@ -1983,13 +1983,13 @@ export async function syncSeatCount({
         "[Metronome] Legacy contract — skipping free-seat credit grant/revoke entirely"
       );
     } else {
-      // Computed directly from `seatTypeAt`, NOT via `desiredSIdsAt`:
-      // `desiredSIdsAt` folds every user in on a legacy contract (`|| legacy`,
+      // Computed directly from `seatTypeAt`, NOT via `desiredSeatIdsAt`:
+      // `desiredSeatIdsAt` folds every user in on a legacy contract (`|| legacy`,
       // for billing "none"/legacy Platform Seat members under the one
       // "workspace" subscription) — irrelevant here since this whole branch
       // is skipped when `legacy` is true, but kept explicit for clarity.
       currentFreeUserIds = new Set(
-        [...allUserSIds].filter(
+        [...allUserIds].filter(
           (userId) => seatTypeAt(userId, baseMs) === "free"
         )
       );
@@ -2110,7 +2110,7 @@ async function reconcileSeatBasedSegment({
   contractId,
   subscriptionId,
   seatType,
-  desiredSIds,
+  desiredSeatIds,
   seatLimit,
   startingAt,
   coveringDate,
@@ -2122,7 +2122,7 @@ async function reconcileSeatBasedSegment({
   contractId: string;
   subscriptionId: string;
   seatType: MembershipSeatType;
-  desiredSIds: string[];
+  desiredSeatIds: string[];
   seatLimit?: SeatLimit;
   startingAt?: string;
   coveringDate?: Date;
@@ -2163,16 +2163,16 @@ async function reconcileSeatBasedSegment({
   // (`seat_limit_reached` upstream), never the synced state. Every member who
   // actually holds a seat must stay assigned and billed in Metronome — e.g.
   // when an admin lowers the cap below the current headcount.
-  const desired = new Set(desiredSIds);
+  const desired = new Set(desiredSeatIds);
   const current = new Set(assignedSeatIds);
-  const addSeatIds = desiredSIds.filter((id) => !current.has(id));
+  const addSeatIds = desiredSeatIds.filter((id) => !current.has(id));
   const removeSeatIds = assignedSeatIds.filter((id) => !desired.has(id));
 
   // Top up to the `minSeats` floor with unassigned seats when fewer real users
   // are assigned than the floor.
   const desiredUnassigned = Math.max(
     0,
-    (seatLimit?.minSeats ?? 0) - desiredSIds.length
+    (seatLimit?.minSeats ?? 0) - desiredSeatIds.length
   );
 
   // Metronome auto-fills unassigned seats when seat IDs are added: each added
@@ -2202,7 +2202,7 @@ async function reconcileSeatBasedSegment({
   // (including no-ops) so the assigned/unassigned/total counts are always
   // visible when debugging billing discrepancies.
   const currentAssigned = assignedSeatIds.length;
-  const desiredAssigned = desiredSIds.length;
+  const desiredAssigned = desiredSeatIds.length;
   const seatStateLog = {
     workspaceId,
     contractId,
