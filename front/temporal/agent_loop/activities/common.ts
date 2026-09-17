@@ -993,19 +993,25 @@ export async function finalizeCreditSpendCheckpointPause(
     return;
   }
 
-  await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(auth, {
-    agentMessage,
-  });
+  const { applied } =
+    await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(
+      auth,
+      { agentMessage }
+    );
+  if (!applied) {
+    return;
+  }
   await ConversationResource.markAsActionRequired(auth, { conversation });
 
   await publishConversationRelatedEvent({
     conversationId: conversation.sId,
     step,
     event: {
-      type: "agent_credit_spend_checkpoint_reached",
+      type: "agent_credit_spend_checkpoint_updated",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
+      paused: true,
     },
   });
   logger.info(

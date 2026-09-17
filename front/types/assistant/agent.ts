@@ -479,9 +479,12 @@ export type AgentContextPrunedEvent = {
   messageId: string;
 };
 
-export type AgentCreditSpendCheckpointReachedEvent = {
-  type: "agent_credit_spend_checkpoint_reached";
+// Emitted when the loop pauses on a credit spend checkpoint, and again once a decision has been
+// recorded and the loop relaunched.
+export type AgentCreditSpendCheckpointUpdatedEvent = {
+  type: "agent_credit_spend_checkpoint_updated";
   created: number;
   configurationId: string;
   messageId: string;
+  paused: boolean;
 };

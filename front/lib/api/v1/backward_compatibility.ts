@@ -197,9 +197,8 @@ export function toPublicAgentMessageEvent(
   auth: Authenticator,
   event: MessageStreamEvent
 ): AgentMessageEventType | null {
-  // UI-only signal: the pause is resolved from the web app, so the v1 stream (and the SDK's
-  // exhaustive event switch) never sees it.
-  if (event.data.type === "agent_credit_spend_checkpoint_reached") {
+  // UI-only signal: the pause is resolved from the web app, never through the public API.
+  if (event.data.type === "agent_credit_spend_checkpoint_updated") {
     return null;
   }
 

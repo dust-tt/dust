@@ -62,6 +62,20 @@ function tokensEvent(text: string): MessageStreamEvent {
   };
 }
 
+function creditSpendCheckpointEvent(paused: boolean): MessageStreamEvent {
+  return {
+    eventId: `checkpoint-${paused}`,
+    data: {
+      type: "agent_credit_spend_checkpoint_updated",
+      created: 0,
+      configurationId: "dust",
+      messageId: "msg",
+      paused,
+      step: 0,
+    },
+  };
+}
+
 function getMessageEvents(
   workspaceId: string,
   conversationId: string,
@@ -187,5 +201,30 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
       "hello",
       "world",
     ]);
+  });
+
+  it("drops the internal-only credit spend checkpoint event", async () => {
+    const { workspace, key, conversation, agentMessageSId } =
+      await setupAgentMessage();
+
+    vi.mocked(getMessagesEvents).mockImplementation(
+      asyncIteratorFrom([
+        creditSpendCheckpointEvent(true),
+        tokensEvent("kept"),
+        creditSpendCheckpointEvent(false),
+      ])
+    );
+
+    const response = await getMessageEvents(
+      workspace.sId,
+      conversation.sId,
+      agentMessageSId,
+      key.secret
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain("kept");
+    expect(body).not.toContain("agent_credit_spend_checkpoint");
   });
 });

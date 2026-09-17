@@ -1,5 +1,6 @@
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
+import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import { finalizeAgentMessagesWithoutWorkflow } from "@app/lib/api/cancel";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -139,10 +140,11 @@ export async function continueCreditSpendCheckpointPause(
     return new Ok(undefined);
   }
 
+  const startStep = nextStep(agentMessage);
   const launchRes = await launchAgentLoopWorkflow({
     auth,
     agentLoopArgs,
-    startStep: nextStep(agentMessage),
+    startStep,
     // Avoid racing with the workflow that just paused: wait for its run to be reported done
     // before starting the resumed one.
     waitForCompletion: true,
@@ -156,6 +158,19 @@ export async function continueCreditSpendCheckpointPause(
     );
     return new Err(launchRes.error);
   }
+
+  // Every viewer may be showing the pause; tell them the decision landed and the loop is back.
+  await publishConversationRelatedEvent({
+    conversationId: conversation.sId,
+    step: startStep,
+    event: {
+      type: "agent_credit_spend_checkpoint_updated",
+      created: Date.now(),
+      configurationId: agentMessage.configuration.sId,
+      messageId: agentMessage.sId,
+      paused: false,
+    },
+  });
 
   return new Ok(undefined);
 }

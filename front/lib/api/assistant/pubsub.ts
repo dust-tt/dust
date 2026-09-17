@@ -16,7 +16,7 @@ import {
 } from "@app/temporal/agent_loop/signals";
 import type {
   AgentActionSuccessEvent,
-  AgentCreditSpendCheckpointReachedEvent,
+  AgentCreditSpendCheckpointUpdatedEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentToolCallStartedEvent,
@@ -194,7 +194,7 @@ export async function interruptAgentLoop(
 export type MessageStreamEvent = {
   eventId: string;
   data: (
-    | AgentCreditSpendCheckpointReachedEvent
+    | AgentCreditSpendCheckpointUpdatedEvent
     | AgentErrorEvent
     | AgentActionRunningEvents
     | AgentActionSuccessEvent
