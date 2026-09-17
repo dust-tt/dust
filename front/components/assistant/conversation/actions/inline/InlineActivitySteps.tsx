@@ -59,11 +59,6 @@ function getTerminalLabel(status: LightAgentMessageType["status"]): string {
  *
  * Steps are accumulated by useAgentMessageStream — this component is a pure render.
  */
-/**
- * @cc [owner:aubin-tchoi,label:react] placeholder-thinking-feedback
- * Non-terminal optimistic placeholders must display the thinking indicator before
- * the backend creates the agent message.
- */
 export function InlineActivitySteps({
   agentMessage,
   lastAgentStateClassification,
