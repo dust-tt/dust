@@ -45,22 +45,22 @@ interface PodTasksCreateValidationDetailsProps {
 
 function formatAssigneeLabel({
   userId,
-  currentUserSId,
-  memberDisplayBySId,
+  currentUserId,
+  memberDisplayById,
   isMembersLoading,
 }: {
   userId: string | null | undefined;
-  currentUserSId: string;
-  memberDisplayBySId: Record<string, { fullName: string }>;
+  currentUserId: string;
+  memberDisplayById: Record<string, { fullName: string }>;
   isMembersLoading: boolean;
 }): string {
   if (userId === null || userId === undefined) {
     return POD_TASK_NO_ASSIGNEE_LABEL;
   }
-  if (userId === currentUserSId) {
+  if (userId === currentUserId) {
     return "You";
   }
-  const member = memberDisplayBySId[userId];
+  const member = memberDisplayById[userId];
   if (member) {
     return member.fullName;
   }
@@ -82,16 +82,16 @@ export function PodTasksCreateValidationDetails({
     conversationId,
   });
 
-  const assigneeSIds = useMemo(
+  const assigneeIds = useMemo(
     () =>
       input.tasks
         .map((task) => task.userId)
         .filter((userId): userId is string => typeof userId === "string"),
     [input.tasks]
   );
-  const { membersBySId, isMembersLoading } = useMemberDetails({
+  const { membersById, isMembersLoading } = useMemberDetails({
     workspaceId: owner.sId,
-    userIds: assigneeSIds,
+    userIds: assigneeIds,
   });
 
   const taskCount = input.tasks.length;
@@ -128,8 +128,8 @@ export function PodTasksCreateValidationDetails({
         {input.tasks.map((task, index) => {
           const assigneeLabel = formatAssigneeLabel({
             userId: task.userId,
-            currentUserSId: user.sId,
-            memberDisplayBySId: membersBySId,
+            currentUserId: user.sId,
+            memberDisplayById: membersById,
             isMembersLoading,
           });
           const isDone = Boolean(task.doneRationale);

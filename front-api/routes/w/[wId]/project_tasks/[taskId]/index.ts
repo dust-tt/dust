@@ -14,7 +14,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
-  taskSId: z.string(),
+  taskId: z.string(),
 });
 
 export interface GetWorkspaceProjectTaskResponseBody {
@@ -23,15 +23,15 @@ export interface GetWorkspaceProjectTaskResponseBody {
   space: PodType;
 }
 
-// Mounted at /api/w/:wId/project_tasks/:taskSId.
+// Mounted at /api/w/:wId/project_tasks/:taskId.
 const app = workspaceApp();
 
 /** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
-  const { taskSId } = ctx.req.valid("param");
+  const { taskId } = ctx.req.valid("param");
 
-  const taskRow = await ProjectTaskResource.fetchBySId(auth, taskSId);
+  const taskRow = await ProjectTaskResource.fetchBySId(auth, taskId);
   if (!taskRow) {
     return apiError(ctx, {
       status_code: 404,
@@ -63,9 +63,9 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   let conversationSidebarStatus: ConversationDotStatus | null = null;
   let conversationIsRunningAgentLoop: boolean = false;
   if (conversationId) {
-    const listItemByConversationSId =
+    const listItemByConversationId =
       await ConversationResource.fetchListItemsBySIds(auth, [conversationId]);
-    const listItem = listItemByConversationSId.get(conversationId);
+    const listItem = listItemByConversationId.get(conversationId);
     conversationSidebarStatus = listItem
       ? getConversationDotStatus(listItem)
       : "idle";

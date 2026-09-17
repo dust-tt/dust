@@ -248,7 +248,7 @@ export function makeSuccessResponse(data: Record<string, unknown>): {
  * Wraps an async operation with standardized error handling.
  * Catches exceptions and converts them to MCPError results.
  */
-export async function resolvePodUserRolesBySId(
+export async function resolvePodUserRolesById(
   auth: Authenticator,
   pod: SpaceResource
 ): Promise<Map<string, "editor" | "member">> {
@@ -277,32 +277,32 @@ export async function resolvePodUserRolesBySId(
   const users = await UserResource.fetchByModelIds([
     ...membershipByUserId.keys(),
   ]);
-  const roleByUserSId = new Map<string, "editor" | "member">();
+  const roleByUserId = new Map<string, "editor" | "member">();
 
   for (const user of users) {
     const membership = membershipByUserId.get(user.id);
     if (!membership) {
       continue;
     }
-    roleByUserSId.set(user.sId, membership.isEditor ? "editor" : "member");
+    roleByUserId.set(user.sId, membership.isEditor ? "editor" : "member");
   }
 
-  return roleByUserSId;
+  return roleByUserId;
 }
 
-export async function getPodMemberAndEditorSIds(
+export async function getPodMemberAndEditorIds(
   auth: Authenticator,
   pod: SpaceResource
 ): Promise<{ editorIds: string[]; memberIds: string[] }> {
-  const roleByUserSId = await resolvePodUserRolesBySId(auth, pod);
+  const roleByUserId = await resolvePodUserRolesById(auth, pod);
   const editorIds: string[] = [];
   const memberIds: string[] = [];
 
-  for (const [userSId, role] of roleByUserSId.entries()) {
+  for (const [userId, role] of roleByUserId.entries()) {
     if (role === "editor") {
-      editorIds.push(userSId);
+      editorIds.push(userId);
     } else {
-      memberIds.push(userSId);
+      memberIds.push(userId);
     }
   }
 
@@ -311,13 +311,13 @@ export async function getPodMemberAndEditorSIds(
 
 export function partitionMembersToRemove(
   membersToRemove: string[],
-  roleByUserSId: Map<string, "editor" | "member">
+  roleByUserId: Map<string, "editor" | "member">
 ): { editorIds: string[]; memberIds: string[] } {
   const editorIds: string[] = [];
   const memberIds: string[] = [];
 
   for (const userId of membersToRemove) {
-    const role = roleByUserSId.get(userId);
+    const role = roleByUserId.get(userId);
     if (role === "editor") {
       editorIds.push(userId);
     } else if (role === "member") {
