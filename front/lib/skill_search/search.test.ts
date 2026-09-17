@@ -113,18 +113,11 @@ describe("custom skill search", () => {
             bool: {
               should: [
                 {
-                  bool: {
-                    must_not: [{ term: { availability: "editors" } }],
+                  terms: {
+                    availability: ["workspace_users", "users_and_agents"],
                   },
                 },
-                {
-                  bool: {
-                    filter: [
-                      { term: { availability: "editors" } },
-                      { term: { editor_ids: auth.getNonNullableUser().sId } },
-                    ],
-                  },
-                },
+                { term: { editor_ids: auth.getNonNullableUser().sId } },
               ],
               minimum_should_match: 1,
             },
@@ -263,10 +256,9 @@ describe("custom skill search", () => {
     expect(terms).not.toContain(deniedSpace.sId);
     expect(terms).not.toContain(deniedPod.sId);
     expect(filters).toHaveLength(4);
-    expect(filters[2].bool.should[1].bool.filter).toEqual([
-      { term: { availability: "editors" } },
-      { term: { editor_ids: user.sId } },
-    ]);
+    expect(filters[2].bool.should[1]).toEqual({
+      term: { editor_ids: user.sId },
+    });
   }, 30_000);
 
   it.each([
@@ -550,7 +542,7 @@ describe("custom skill search", () => {
     expect(candidate).toBeUndefined();
     expect(
       mockSearch.mock.lastCall![0].query.bool.must[0].bool.filter[2].bool
-        .should[1].bool.filter[1]
+        .should[1]
     ).toEqual({ term: { editor_ids: user.sId } });
     expect(
       prepareSkillSearchQuery(auth, "", {

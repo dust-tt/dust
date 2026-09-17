@@ -66,15 +66,8 @@ function buildAvailabilityFilter(
   return {
     bool: {
       should: [
-        { bool: { must_not: [{ term: { availability: "editors" } }] } },
-        {
-          bool: {
-            filter: [
-              { term: { availability: "editors" } },
-              buildEditorFilter(auth),
-            ],
-          },
-        },
+        { terms: { availability: ["workspace_users", "users_and_agents"] } },
+        buildEditorFilter(auth),
       ],
       minimum_should_match: 1,
     },
