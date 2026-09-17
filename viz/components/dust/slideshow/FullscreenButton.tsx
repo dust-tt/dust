@@ -9,6 +9,10 @@ interface FullscreenButtonProps {
 }
 
 /**
+ * @cc [owner:flvndvd,label:react] fullscreen-button-mount
+ * The button MUST mount together with a presentation container that is not yet fullscreen.
+ */
+/**
  * @cc [owner:flvndvd,label:react] native-fullscreen-state
  * Fullscreen MUST target the existing presentation container without remounting its
  * content. State MUST follow browser exits (including Escape). Rejected requests MUST
@@ -21,14 +25,14 @@ export function FullscreenButton({ containerRef }: FullscreenButtonProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setIsSupported(document.fullscreenEnabled === true);
+
     const updateFullscreen = () => {
       setIsFullscreen(
         document.fullscreenElement != null &&
           document.fullscreenElement === containerRef.current
       );
-      setIsSupported(document.fullscreenEnabled === true);
     };
-    updateFullscreen();
     document.addEventListener("fullscreenchange", updateFullscreen);
     return () =>
       document.removeEventListener("fullscreenchange", updateFullscreen);

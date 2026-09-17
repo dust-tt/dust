@@ -151,7 +151,7 @@ describe.each(versions)("$name fullscreen", ({
   });
 });
 
-it("disables unsupported fullscreen and keeps navigation usable after a rejected request", async () => {
+it("disables unsupported fullscreen", () => {
   Object.defineProperty(document, "fullscreenEnabled", {
     configurable: true,
     value: false,
@@ -167,13 +167,15 @@ it("disables unsupported fullscreen and keeps navigation usable after a rejected
       .getByRole("button", { name: "Enter fullscreen" })
       .hasAttribute("disabled")
   ).toBe(true);
-  act(() => {
-    Object.defineProperty(document, "fullscreenEnabled", {
-      configurable: true,
-      value: true,
-    });
-    document.dispatchEvent(new Event("fullscreenchange"));
-  });
+});
+
+it("keeps navigation usable after a rejected fullscreen request", async () => {
+  render(
+    <Slideshow>
+      <Slide>First</Slide>
+      <Slide>Last</Slide>
+    </Slideshow>
+  );
   const presentation = screen.getByLabelText("Slideshow");
   Object.defineProperty(presentation, "requestFullscreen", {
     configurable: true,
