@@ -12,7 +12,6 @@ import {
   compactionCleanupActivity,
 } from "@app/temporal/agent_loop/activities/compaction";
 import { checkCreditsActivity } from "@app/temporal/agent_loop/activities/credit_check";
-import { checkCreditSpendCheckpointActivity } from "@app/temporal/agent_loop/activities/credit_spend_checkpoint";
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import {
   finalizeCancelledAgentLoopActivity,
@@ -124,7 +123,6 @@ async function runAgentLoopWorkerForQueue({
       upsertOngoingAgentLoopActivity,
       deleteOngoingAgentLoopActivity,
       checkCreditsActivity,
-      checkCreditSpendCheckpointActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,
       runToolActivity,

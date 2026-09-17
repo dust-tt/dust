@@ -33,3 +33,26 @@ export function hasReachedCreditSpendCheckpoint({
     CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS
   );
 }
+
+/**
+ * @cc [owner:avervaet,label:product] checkpoint-acknowledged-skips
+ * When the message's checkpoint status is `acknowledged`, this MUST return false, whatever the
+ * spend. A user who chose to continue is never asked again for the same message.
+ */
+/**
+ * @cc [owner:avervaet,label:product] checkpoint-root-messages-only
+ * When the triggering user message is agentic (the agent message belongs to a sub-agent), this
+ * MUST return false, whatever the spend. Only the root message can pause: a paused sub-agent
+ * would hang its parent's tool call with no one able to acknowledge it.
+ */
+export function hasCrossedCreditSpendCheckpoint({
+  isExempt,
+  isRootAgentMessage,
+  status,
+}: {
+  isExempt: boolean;
+  isRootAgentMessage: boolean;
+  status: "paused" | "acknowledged" | null;
+}): boolean {
+  return !isExempt && isRootAgentMessage && status !== "acknowledged";
+}
