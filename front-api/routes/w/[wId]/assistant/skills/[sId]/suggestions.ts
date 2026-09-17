@@ -1,3 +1,4 @@
+import { applySkillSuggestions } from "@app/lib/api/skills/apply_skill_suggestions";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
@@ -107,7 +108,27 @@ app.patch(
     const auth = ctx.get("auth");
     const skill = ctx.get("skill");
 
-    const { suggestionIds, state } = ctx.req.valid("json");
+    const { suggestionIds, state, applyToSkill } = ctx.req.valid("json");
+
+    if (applyToSkill && state !== "approved") {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Only an approved suggestion can be applied to the skill.",
+        },
+      });
+    }
+
+    if (applyToSkill && !skill.canWrite(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only editors can modify this skill.",
+        },
+      });
+    }
 
     const suggestions = await SkillSuggestionResource.fetchByIds(
       auth,
@@ -149,6 +170,35 @@ app.patch(
           message: `The following skill suggestions are not available: ${unavailableSuggestionIds.join(", ")}.`,
         },
       });
+    }
+
+    if (applyToSkill) {
+      const alreadyReviewedIds = suggestions
+        .filter((suggestion) => suggestion.state !== "pending")
+        .map((suggestion) => suggestion.sId);
+      if (alreadyReviewedIds.length > 0) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `The following skill suggestions have already been reviewed: ${alreadyReviewedIds.join(", ")}.`,
+          },
+        });
+      }
+
+      const applyRes = await applySkillSuggestions(auth, {
+        skill,
+        suggestions,
+      });
+      if (applyRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: applyRes.error.message,
+          },
+        });
+      }
     }
 
     await SkillSuggestionResource.bulkUpdateState(auth, suggestions, state);
