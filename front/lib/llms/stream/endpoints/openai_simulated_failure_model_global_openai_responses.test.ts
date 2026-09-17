@@ -23,7 +23,6 @@ class TestableSimulatedFailureStream extends DustOpenAISimulatedFailureModelGlob
     _input: ResponseCreateParamsStreaming
   ): AsyncGenerator<ResponseStreamEvent> {
     this.providerCall();
-    yield { type: "response.created" } as ResponseStreamEvent;
   }
 }
 

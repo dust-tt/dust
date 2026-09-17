@@ -90,16 +90,19 @@ export async function clearSimulatedFailureModelHealthWindow(
 
 async function seedTtlSeconds(now: Date): Promise<number | null> {
   return runOnRedisCache({ origin: "model_health" }, async (redis) => {
-    let remaining: number | null = null;
+    let remainingSeconds: number | null = null;
     for (const bucket of windowMinuteBuckets(now)) {
-      const ttl = await redis.ttl(
+      const ttlSeconds = await redis.ttl(
         modelHealthKey(SIMULATED_FAILURE_MODEL_ENDPOINT, bucket)
       );
-      if (ttl > 0) {
-        remaining = remaining === null ? ttl : Math.max(remaining, ttl);
+      if (ttlSeconds > 0) {
+        remainingSeconds =
+          remainingSeconds === null
+            ? ttlSeconds
+            : Math.max(remainingSeconds, ttlSeconds);
       }
     }
-    return remaining;
+    return remainingSeconds;
   });
 }
 
