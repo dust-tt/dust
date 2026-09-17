@@ -64,54 +64,45 @@ export async function seedSimulatedFailureModelHealthWindow(
     minuteBucket(now)
   );
 
-  await runOnRedisCache(
-    { origin: "model_health" },
-    async (redis) => {
-      const multi = redis.multi();
-      for (const bucket of buckets) {
-        multi.del(modelHealthKey(SIMULATED_FAILURE_MODEL_ENDPOINT, bucket));
-      }
-      multi.hSet(currentKey, {
-        [ATTEMPTS_FIELD]: String(SEEDED_WINDOW.attempts),
-        [PROVIDER_ERRORS_FIELD]: String(SEEDED_WINDOW.providerErrors),
-      });
-      multi.expire(currentKey, boundTtlSeconds(ttlSeconds));
-      await multi.exec();
+  await runOnRedisCache({ origin: "model_health" }, async (redis) => {
+    const multi = redis.multi();
+    for (const bucket of buckets) {
+      multi.del(modelHealthKey(SIMULATED_FAILURE_MODEL_ENDPOINT, bucket));
     }
-  );
+    multi.hSet(currentKey, {
+      [ATTEMPTS_FIELD]: String(SEEDED_WINDOW.attempts),
+      [PROVIDER_ERRORS_FIELD]: String(SEEDED_WINDOW.providerErrors),
+    });
+    multi.expire(currentKey, boundTtlSeconds(ttlSeconds));
+    await multi.exec();
+  });
 }
 
 export async function clearSimulatedFailureModelHealthWindow(
   now: Date = new Date()
 ): Promise<void> {
-  await runOnRedisCache(
-    { origin: "model_health" },
-    async (redis) => {
-      const multi = redis.multi();
-      for (const bucket of windowMinuteBuckets(now)) {
-        multi.del(modelHealthKey(SIMULATED_FAILURE_MODEL_ENDPOINT, bucket));
-      }
-      await multi.exec();
+  await runOnRedisCache({ origin: "model_health" }, async (redis) => {
+    const multi = redis.multi();
+    for (const bucket of windowMinuteBuckets(now)) {
+      multi.del(modelHealthKey(SIMULATED_FAILURE_MODEL_ENDPOINT, bucket));
     }
-  );
+    await multi.exec();
+  });
 }
 
 async function seedTtlSeconds(now: Date): Promise<number | null> {
-  return runOnRedisCache(
-    { origin: "model_health" },
-    async (redis) => {
-      let remaining: number | null = null;
-      for (const bucket of windowMinuteBuckets(now)) {
-        const ttl = await redis.ttl(
-          modelHealthKey(SIMULATED_FAILURE_MODEL_ENDPOINT, bucket)
-        );
-        if (ttl > 0) {
-          remaining = remaining === null ? ttl : Math.max(remaining, ttl);
-        }
+  return runOnRedisCache({ origin: "model_health" }, async (redis) => {
+    let remaining: number | null = null;
+    for (const bucket of windowMinuteBuckets(now)) {
+      const ttl = await redis.ttl(
+        modelHealthKey(SIMULATED_FAILURE_MODEL_ENDPOINT, bucket)
+      );
+      if (ttl > 0) {
+        remaining = remaining === null ? ttl : Math.max(remaining, ttl);
       }
-      return remaining;
     }
-  );
+    return remaining;
+  });
 }
 
 /**

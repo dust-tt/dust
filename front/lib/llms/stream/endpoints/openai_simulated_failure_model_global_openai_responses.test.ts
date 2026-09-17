@@ -54,9 +54,10 @@ describe("simulated failure model stream", () => {
   // GPT-5.4 Mini rejects explicit breakpoints (supported from 5.6). The
   // healthy path remaps to Mini, so the request must use Mini's contract.
   it("does not send prompt cache breakpoints on the Mini request", () => {
-    const endpoint = new DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream(
-      { OPENAI_API_KEY: "" }
-    );
+    const endpoint =
+      new DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream({
+        OPENAI_API_KEY: "",
+      });
 
     const request = endpoint.buildRequestPayload(
       {
