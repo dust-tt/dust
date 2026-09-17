@@ -26,6 +26,21 @@ export const AGENT_SUGGESTION_STATES = [
 
 export type AgentSuggestionState = (typeof AGENT_SUGGESTION_STATES)[number];
 
+// - `sidekick`: proposed by the AgentBuilderSidekick while editing a specific agent.
+// - `conversational`: proposed by an agent during a regular conversation (building_agents_and_skills MCP).
+export const AGENT_SUGGESTION_SOURCES = ["sidekick", "conversational"] as const;
+
+export type AgentSuggestionSource = (typeof AGENT_SUGGESTION_SOURCES)[number];
+
+export function isAgentSuggestionSource(
+  value: unknown
+): value is AgentSuggestionSource {
+  return (
+    typeof value === "string" &&
+    AGENT_SUGGESTION_SOURCES.includes(value as AgentSuggestionSource)
+  );
+}
+
 export const INSTRUCTIONS_ROOT_TARGET_BLOCK_ID = "instructions-root";
 
 const ToolsSuggestionSchema = z.object({
