@@ -5,6 +5,16 @@ import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 
 const SKILL_USAGE_BATCH_SIZE = 500;
 
+export function makeSkillDocumentId({
+  workspaceId,
+  skillId,
+}: {
+  workspaceId: string;
+  skillId: string;
+}): string {
+  return `${workspaceId}_${skillId}`;
+}
+
 export async function indexSkillDocument(
   document: SkillSearchDocument
 ): Promise<Result<void, ElasticsearchError>> {
@@ -12,7 +22,10 @@ export async function indexSkillDocument(
     const { active_users_count, ...fields } = document;
     await client.update({
       index: SKILL_SEARCH_ALIAS_NAME,
-      id: `${document.workspace_id}_${document.skill_id}`,
+      id: makeSkillDocumentId({
+        workspaceId: document.workspace_id,
+        skillId: document.skill_id,
+      }),
       doc: fields,
       upsert: { ...fields, active_users_count },
       retry_on_conflict: 3,
@@ -78,7 +91,7 @@ export async function updateSkillSearchActiveUsers({
           {
             update: {
               _index: SKILL_SEARCH_ALIAS_NAME,
-              _id: `${workspaceId}_${skillId}`,
+              _id: makeSkillDocumentId({ workspaceId, skillId }),
               retry_on_conflict: 3,
             },
           },
