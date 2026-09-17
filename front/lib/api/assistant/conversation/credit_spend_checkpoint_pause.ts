@@ -16,6 +16,7 @@ import type {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import maxBy from "lodash/maxBy";
 
 export type CreditSpendCheckpointDecision = "continue" | "decline";
@@ -105,13 +106,15 @@ function nextStep(agentMessage: AgentMessageType): number {
  * @cc [owner:avervaet,label:backend;concurrency] checkpoint-single-resolution
  * A pause MUST be resolved at most once: the `paused` status is transitioned with a conditional
  * update and, when another resolution already applied, the call MUST return `Ok` without doing
- * anything else.
+ * anything else. The message MUST NOT be put back to `paused` when a workflow for it is already
+ * running, since that would let another caller reclaim and relaunch an already-resolved pause.
  */
 /**
  * @cc [owner:avervaet,label:backend] checkpoint-resume-next-step
  * Continuing MUST relaunch the loop at the step after the message's highest persisted step
- * content, transitioning the message off `paused` first. If the launch fails, the message MUST
- * be put back to `paused` so the user can retry.
+ * content, transitioning the message off `paused` first. If the launch fails or throws, and no
+ * workflow ended up running for it, the message MUST be put back to `paused` so the user can
+ * retry.
  */
 export async function continueCreditSpendCheckpointPause(
   auth: Authenticator,
@@ -141,21 +144,34 @@ export async function continueCreditSpendCheckpointPause(
   }
 
   const startStep = nextStep(agentMessage);
-  const launchRes = await launchAgentLoopWorkflow({
-    auth,
-    agentLoopArgs,
-    startStep,
-    // Avoid racing with the workflow that just paused: wait for its run to be reported done
-    // before starting the resumed one.
-    waitForCompletion: true,
-  });
-  if (launchRes.isErr()) {
-    // Without a running workflow the message would be stuck off `paused` with nothing to clear
-    // it, so put it back in its paused state and let the user retry.
-    await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
+  let launchRes: Result<
+    undefined,
+    Error | DustError<"agent_loop_already_running">
+  >;
+  try {
+    launchRes = await launchAgentLoopWorkflow({
       auth,
-      { agentMessageModelId, from: "acknowledged", to: "paused" }
-    );
+      agentLoopArgs,
+      startStep,
+      // Avoid racing with the workflow that just paused: wait for its run to be reported done
+      // before starting the resumed one.
+      waitForCompletion: true,
+    });
+  } catch (error) {
+    launchRes = new Err(normalizeError(error));
+  }
+  if (launchRes.isErr()) {
+    const isAlreadyRunning =
+      launchRes.error instanceof DustError &&
+      launchRes.error.code === "agent_loop_already_running";
+    if (!isAlreadyRunning) {
+      // Without a running workflow the message would be stuck off `paused` with nothing to clear
+      // it, so put it back in its paused state and let the user retry.
+      await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
+        auth,
+        { agentMessageModelId, from: "acknowledged", to: "paused" }
+      );
+    }
     return new Err(launchRes.error);
   }
 
