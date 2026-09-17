@@ -1,4 +1,4 @@
-import { indexAgentMessageConsumptionAnalytics } from "@app/lib/analytics/agent_message_consumption";
+import { indexAgentMessageConsumptionAnalytics } from "@app/lib/api/analytics/agent_message_consumption";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
@@ -13,11 +13,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(
-  "@app/lib/analytics/agent_message_consumption",
+  "@app/lib/api/analytics/agent_message_consumption",
   async (importActual) => {
     const actual =
       await importActual<
-        typeof import("@app/lib/analytics/agent_message_consumption")
+        typeof import("@app/lib/api/analytics/agent_message_consumption")
       >();
     return { ...actual, indexAgentMessageConsumptionAnalytics: vi.fn() };
   }

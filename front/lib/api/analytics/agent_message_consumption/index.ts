@@ -1,7 +1,7 @@
-import type { ConsumptionDocumentsSkipReason } from "@app/lib/analytics/agent_message_consumption/documents";
-import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/documents";
-import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
-import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
+import type { ConsumptionDocumentsSkipReason } from "@app/lib/api/analytics/agent_message_consumption/documents";
+import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/api/analytics/agent_message_consumption/documents";
+import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/api/analytics/agent_message_consumption/load";
+import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/api/analytics/agent_message_consumption/store";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";

@@ -1,4 +1,4 @@
-import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
+import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/api/analytics/agent_message_consumption/load";
 import type { Authenticator } from "@app/lib/auth";
 import {
   USAGE_TYPE_FREE,

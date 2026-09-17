@@ -7,7 +7,7 @@ import {
 import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
+import { updateAnalyticsFeedback } from "@app/lib/api/analytics/feedback";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import {
   AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME,

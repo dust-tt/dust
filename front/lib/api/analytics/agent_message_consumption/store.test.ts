@@ -1,4 +1,4 @@
-import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
+import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/api/analytics/agent_message_consumption/store";
 import {
   CONSUMPTION_ANALYTICS_ALIAS_NAME,
   ElasticsearchError,

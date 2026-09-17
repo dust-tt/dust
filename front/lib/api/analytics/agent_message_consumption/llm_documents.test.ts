@@ -1,5 +1,5 @@
-import { buildLlmConsumptionDocuments } from "@app/lib/analytics/agent_message_consumption/llm_documents";
-import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
+import { buildLlmConsumptionDocuments } from "@app/lib/api/analytics/agent_message_consumption/llm_documents";
+import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/api/analytics/agent_message_consumption/load";
 import { buildLatestMessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";

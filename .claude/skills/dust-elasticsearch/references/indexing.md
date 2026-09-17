@@ -92,7 +92,7 @@ For asynchronous, reliable indexing, use the shared Temporal `es_indexation` que
 **Create activity file:** `temporal/es_indexation_queue/activities.ts`
 
 ```typescript
-import { storeYourData } from "@/lib/analytics/your_index";
+import { storeYourData } from "@/lib/api/analytics/your_index";
 import type { YourIndexData } from "@/types/your_feature/your_index";
 
 export async function storeYourAnalyticsActivity({

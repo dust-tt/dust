@@ -1,6 +1,6 @@
-import { buildLlmConsumptionDocuments } from "@app/lib/analytics/agent_message_consumption/llm_documents";
-import type { AgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
-import { buildToolConsumptionDocuments } from "@app/lib/analytics/agent_message_consumption/tool_documents";
+import { buildLlmConsumptionDocuments } from "@app/lib/api/analytics/agent_message_consumption/llm_documents";
+import type { AgentMessageConsumptionAnalyticsInput } from "@app/lib/api/analytics/agent_message_consumption/load";
+import { buildToolConsumptionDocuments } from "@app/lib/api/analytics/agent_message_consumption/tool_documents";
 import type { AllocationSkipReason } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { buildLatestMessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";

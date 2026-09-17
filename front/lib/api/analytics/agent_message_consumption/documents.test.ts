@@ -1,6 +1,6 @@
-import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/documents";
-import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
+import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/api/analytics/agent_message_consumption/documents";
+import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/api/analytics/agent_message_consumption/load";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { intelligenceAwuFromRunUsagesGroupedByRunKey } from "@app/lib/metronome/events";

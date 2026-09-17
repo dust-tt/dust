@@ -24,10 +24,16 @@ export const INDEX_REGISTRY: Record<
   string,
   { directory: string; version: number }
 > = {
-  agent_document_outputs: { directory: "lib/analytics/indices", version: 1 },
-  agent_message_analytics: { directory: "lib/analytics/indices", version: 2 },
+  agent_document_outputs: {
+    directory: "lib/api/analytics/indices",
+    version: 1,
+  },
+  agent_message_analytics: {
+    directory: "lib/api/analytics/indices",
+    version: 2,
+  },
   agent_message_consumption_analytics: {
-    directory: "lib/analytics/indices",
+    directory: "lib/api/analytics/indices",
     version: 1,
   },
   skills: { directory: "lib/skill_search/indices", version: 1 },
