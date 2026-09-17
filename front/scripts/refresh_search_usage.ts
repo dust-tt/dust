@@ -1,36 +1,26 @@
 import { makeScript } from "@app/scripts/helpers";
-import {
-  launchSearchUsageSchedule,
-  launchWorkspaceSearchUsageWorkflow,
-} from "@app/temporal/es_indexation/client";
+import { launchWorkspaceSearchUsageWorkflow } from "@app/temporal/es_indexation/client";
 
 makeScript(
   {
     wId: {
       type: "string",
-      describe:
-        "Refresh one workspace now; omit to install the daily regional schedule.",
+      demandOption: true,
+      describe: "Workspace ID to refresh search usage for.",
     },
   },
   async ({ execute, wId }, logger) => {
     if (!execute) {
       logger.info(
         { wId },
-        "Search usage snapshot dry run: no workflow or schedule launched"
+        "Search usage snapshot dry run: no workflow launched"
       );
       return;
     }
-    const result = wId
-      ? await launchWorkspaceSearchUsageWorkflow(wId)
-      : await launchSearchUsageSchedule();
+    const result = await launchWorkspaceSearchUsageWorkflow(wId);
     if (result.isErr()) {
       throw result.error;
     }
-    logger.info(
-      { wId },
-      wId
-        ? "Search usage refresh launched"
-        : "Daily search usage schedule installed"
-    );
+    logger.info({ wId }, "Search usage refresh launched");
   }
 );
