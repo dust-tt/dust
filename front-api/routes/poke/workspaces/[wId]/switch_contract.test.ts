@@ -550,7 +550,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
         workspaceModelId
       );
     expect(firstPending).not.toBeNull();
-    const firstPendingSId = firstPending!.sId;
+    const firstPendingId = firstPending!.sId;
 
     // Second schedule with a different (business) target → ends P1, creates P2.
     const SECOND_CONTRACT_ID = "contract_new_zzz";
@@ -568,7 +568,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
         workspaceModelId
       );
     expect(secondPending).not.toBeNull();
-    expect(secondPending!.sId).not.toBe(firstPendingSId);
+    expect(secondPending!.sId).not.toBe(firstPendingId);
     expect(secondPending!.metronomeContractId).toBe(SECOND_CONTRACT_ID);
     expect(secondPending!.getPlan().code).toBe(
       CREDIT_PRICED_BUSINESS_PLAN_CODE

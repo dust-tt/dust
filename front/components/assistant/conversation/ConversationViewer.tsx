@@ -680,13 +680,13 @@ export const ConversationViewer = ({
               } else {
                 // Same rank occupied by a real non-user message — fall back to
                 // sId so mention status still lands on the correct user row.
-                const bySId = virtuosoMessageListRef.current.data.find(
+                const byId = virtuosoMessageListRef.current.data.find(
                   (m) => isUserMessage(m) && m.sId === userMessage.sId
                 );
                 if (
-                  bySId &&
-                  isUserMessage(bySId) &&
-                  bySId.version <= userMessage.version
+                  byId &&
+                  isUserMessage(byId) &&
+                  byId.version <= userMessage.version
                 ) {
                   virtuosoMessageListRef.current.data.map((m) =>
                     m.sId === userMessage.sId ? userMessage : m
@@ -1258,12 +1258,12 @@ export const ConversationViewer = ({
 
           // Remove optimistic placeholders — SWR rolls back the server cache but
           // Virtuoso's in-memory list must be cleaned up manually.
-          const failedPlaceholderSids = [
+          const failedPlaceholderIds = [
             placeholderUserMsg.sId,
             ...placeholderAgentMessages.map((m) => m.sId),
           ];
           virtuosoMessageListRef.current.data.findAndDelete((m) =>
-            failedPlaceholderSids.includes(m.sId)
+            failedPlaceholderIds.includes(m.sId)
           );
           logger.error({ err: result.error }, "Failed to post message");
           return new Err({

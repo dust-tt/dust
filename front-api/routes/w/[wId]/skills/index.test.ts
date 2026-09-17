@@ -539,11 +539,11 @@ describe("GET /api/w/:wId/skills", () => {
 
     const response2 = await getSkills(workspace, { onlyCustom: "true" });
     expect(response2.status).toBe(200);
-    const customOnlySIds = (await response2.json()).skills.map(
+    const customOnlyIds = (await response2.json()).skills.map(
       (s: SkillWithoutInstructionsAndToolsType) => s.sId
     );
-    expect(customOnlySIds).not.toContain("frames");
-    expect(customOnlySIds).toContain(customSkill.sId);
+    expect(customOnlyIds).not.toContain("frames");
+    expect(customOnlyIds).toContain(customSkill.sId);
   });
 
   it("should return suggested skills when status=suggested", async () => {
