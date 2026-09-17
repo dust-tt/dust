@@ -9,17 +9,12 @@ import {
   withEs,
 } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
-import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { estypes } from "@elastic/elasticsearch";
-import { z } from "zod";
 
 export const SEARCH_USAGE_WINDOW_DAYS = 30;
 const USAGE_BUCKET_PAGE_SIZE = 500;
-const USAGE_SNAPSHOT_TTL_SECONDS = 48 * 60 * 60;
-const ActiveUsersSchema = z.record(z.string(), z.number().int().nonnegative());
 
 type UsageAggregations = {
   resources: {
@@ -131,37 +126,4 @@ export async function fetchSearchActiveUsers({
     after = resources.buckets.length > 0 ? next : undefined;
   } while (after);
   return new Ok(counts);
-}
-
-// Ranking-only data; current registry and ACL checks still determine eligibility.
-export async function storeCodeDefinedSkillActiveUsers(
-  workspaceId: string,
-  counts: Record<string, number>
-): Promise<void> {
-  const redis = await getRedisCacheClient({ origin: "search_usage_snapshot" });
-  await redis.set(
-    `search_usage_snapshot:skill:${workspaceId}`,
-    JSON.stringify(
-      Object.fromEntries(
-        Object.entries(counts).filter(([id]) => !id.startsWith("skl_"))
-      )
-    ),
-    { EX: USAGE_SNAPSHOT_TTL_SECONDS }
-  );
-}
-
-export async function readCodeDefinedSkillActiveUsers(
-  workspaceId: string
-): Promise<Record<string, number>> {
-  const redis = await getRedisCacheClient({ origin: "search_usage_snapshot" });
-  const raw = await redis.get(`search_usage_snapshot:skill:${workspaceId}`);
-  if (!raw) {
-    return {};
-  }
-  const json = safeParseJSON(raw);
-  if (json.isErr()) {
-    return {};
-  }
-  const parsed = ActiveUsersSchema.safeParse(json.value);
-  return parsed.success ? parsed.data : {};
 }

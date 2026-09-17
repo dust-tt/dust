@@ -53,10 +53,6 @@ describe("skill search indexation", () => {
       skillIds: [skill.sId, unused.sId, archived.sId],
       activeUsers: { [skill.sId]: 3, "go-deep": 4 },
     });
-    const snapshot = await searchUsage.readCodeDefinedSkillActiveUsers(
-      workspace.sId
-    );
-    expect(snapshot).toEqual({ "go-deep": 4 });
   });
 
   it("deletes the requested skill and propagates errors so Temporal retries", async () => {
