@@ -9,7 +9,7 @@ import type { ZipDetectedSkill } from "@app/lib/api/skills/detection/zip/types";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { SkillNameSchema } from "@app/lib/api/skills/schemas";
 import type { Authenticator } from "@app/lib/auth";
-import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
