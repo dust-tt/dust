@@ -25,6 +25,7 @@ import type { ContentFragmentInputWithContentNode } from "@app/types/api/assista
 import type {
   FileSystemEntry,
   GetSpaceFilesResponseBody,
+  PostExtractArchiveResponseBody,
 } from "@app/types/api/file_system/types";
 import type {
   GetPodMetadataResponseBody,
@@ -428,6 +429,61 @@ export function useMovePodFile({ owner }: { owner: LightWorkspaceType }) {
       sendNotification({
         type: "error",
         title: "Failed to move file",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
+export function useExtractPodArchive({ owner }: { owner: LightWorkspaceType }) {
+  const sendNotification = useSendNotification();
+
+  return async ({
+    archive,
+    destCanonicalPath,
+  }: {
+    /** The ZIP file to expand. */
+    archive: File;
+    /** Canonical scoped path of the destination folder, e.g. `pod-{sId}/reports`. */
+    destCanonicalPath: string;
+  }): Promise<Result<void, Error>> => {
+    try {
+      const encoded = destCanonicalPath
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/files/path/${encoded}?action=extract`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/zip" },
+          body: archive,
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: `Failed to extract "${archive.name}"`,
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      const { filesWritten }: PostExtractArchiveResponseBody = await res.json();
+      sendNotification({
+        type: "success",
+        title: `Extracted ${filesWritten} ${filesWritten === 1 ? "file" : "files"} from "${archive.name}"`,
+      });
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: `Failed to extract "${archive.name}"`,
         description: errorMessage,
       });
       return new Err(new Error(errorMessage));
