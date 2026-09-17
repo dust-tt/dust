@@ -309,60 +309,26 @@ client-side conditions are not access control.
 
 ## Storing files in a Frame
 
-A Frame owns one durable files folder, mounted read-write into its sandbox and kept for the
-lifetime of the Frame. It holds files: images and documents a viewer uploads, anything a function
-generates. It is not part of the Frame source and never appears in the Frame folder, so its
-contents exist only at run time and you cannot read them while authoring.
+A Frame owns one durable folder in its sandbox, kept for the lifetime of the Frame. \`filesDir()\`
+from \`@dust/pod\` returns its absolute path; use it with \`node:fs\` like any other directory. It
+is not part of the Frame source, so its contents exist only at run time and you cannot read them
+while authoring.
 
-Reach it through \`files\` from \`@dust/pod\`, which resolves every path inside the folder and
-refuses one that would escape it — a file name often comes from a viewer. A refused path throws
-\`FrameFilePathError\`; catch it with \`error instanceof FrameFilePathError\` to answer the viewer
-instead of ending the invocation on an internal error:
+It is remote object storage, not local disk:
 
-\`\`\`ts
-import { files } from "@dust/pod";
-
-await files.write(\`uploads/\${imageId}.png\`, bytes);
-const stored = await files.read(\`uploads/\${imageId}.png\`);
-const names = await files.list("uploads");
-await files.remove(\`uploads/\${imageId}.png\`);
-\`\`\`
-
-\`files.write\` creates missing parent directories; plain \`node:fs\` \`writeFile\` fails with
-ENOENT instead, because the folder starts empty. \`files.list\` returns an empty array for a
-directory that does not exist yet, so a first read needs no special case.
-
-Never build a path by interpolating into \`filesDir()\`, and never read the folder's location from
-the environment yourself: only \`@dust/pod\` resolves it per invocation, so a fast function that
-reads the environment directly can get another invocation's folder.
-
-**Never write a file and read it back in the same call.** The folder is remote storage with no
-metadata cache, so each operation is a round trip and the payload crosses the wire twice. A
-\`fast\` function has a ten-second ceiling and doing both will exceed it for anything but a tiny
-file. Store the bytes in one function, return only an identifier, and let the UI fetch them from a
-separate read function. Declare a function \`durable\` when one operation on a large file needs
-more than ten seconds; that raises the ceiling to two minutes.
-
-The folder holds unstructured data, so organize it with paths. A directory listing is the only
-index it has: when a Frame needs to filter, sort, or join over its files, keep that metadata in a
-Frame database and let the rows name the paths.
-
-For per-user files, derive the path from \`currentUser().sId\` rather than from function input. A
-path a viewer sends proves nothing about who owns the file.
-
-The folder is object storage behind a mount, which sets the rules:
-
-- Write whole files. There are no partial writes, so appending to or seeking within a file
-  rewrites the whole object, and every write is a full upload.
-- Never put a SQLite database in it. Declare a Frame database instead.
-- Keep it to what the Frame needs. Nothing removes files until the Frame is deleted.
-- Stick to \`.png\`, \`.jpeg\`, \`.json\`, \`.txt\`, and \`.csv\`. Nothing validates what gets
-  written, so a name says nothing about the bytes behind it.
-- When a function returns a stored file to the UI, pick the content type from a fixed list in the
-  function. Never derive it from the file name, and never return \`image/svg+xml\` or
-  \`text/html\`: both execute script inside the Frame.
-- A function result is capped at 5 MB, which bounds both the upload a function can accept in one
-  call and the file it can return.
+- Never write a file and read it back in the same call. There is no cache, so the payload crosses
+  the wire twice, and a \`fast\` function's ten-second ceiling will not survive it for anything but
+  a tiny file. Store bytes in one function, return an identifier, and let the UI fetch them from
+  another. Declaring the function \`durable\` raises the ceiling to two minutes.
+- A function result is capped at 5 MB, which bounds both the upload a function can accept and the
+  file it can return in one call.
+- Nothing validates what gets written, so a name says nothing about the bytes behind it. Stick to
+  \`.png\`, \`.jpeg\`, \`.json\`, \`.txt\`, and \`.csv\`, and when a function returns a stored file
+  pick the content type from a fixed list in code — never from the name, and never
+  \`image/svg+xml\` or \`text/html\`, which execute script inside the Frame.
+- A path segment from a viewer can contain \`..\` and resolve above the folder, where the write
+  succeeds onto disk the Frame loses when its sandbox recycles. Check the resolved path is still
+  under \`filesDir()\`, and derive per-user paths from \`currentUser().sId\` rather than from input.
 
 ## Calling a function from the Frame UI
 
