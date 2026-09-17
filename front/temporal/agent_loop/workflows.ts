@@ -472,8 +472,6 @@ async function executeStepIteration({
   shouldContinue: boolean;
   retryWithoutTools?: boolean;
 }> {
-  deprecatePatch("wait-for-model-activity-before-finalization");
-
   const result = await runModelAndCreateActionsActivity({
     authType,
     checkForResume: currentStep === startStep, // Only run resume the first time.

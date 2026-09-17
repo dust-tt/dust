@@ -268,7 +268,7 @@ describe("runSandboxChildToolWorkflow", () => {
   });
 });
 
-describe("agentLoopWorkflow activity cancellation patches", () => {
+describe("agentLoopWorkflow activity cancellation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
@@ -288,7 +288,7 @@ describe("agentLoopWorkflow activity cancellation patches", () => {
     finalizeSuccessfulAgentLoopActivity.mockResolvedValue(undefined);
   });
 
-  it("deprecates both patches and always uses explicit cancellation", async () => {
+  it("always uses explicit cancellation for model and tool activities", async () => {
     await agentLoopWorkflow({
       agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
       authType,
@@ -302,9 +302,6 @@ describe("agentLoopWorkflow activity cancellation patches", () => {
     expect(runModelAndCreateActionsActivity).not.toHaveBeenCalled();
     expect(runToolActivityWithExplicitCancellation).toHaveBeenCalledOnce();
     expect(runToolActivity).not.toHaveBeenCalled();
-    expect(deprecatePatch).toHaveBeenCalledWith(
-      "wait-for-model-activity-before-finalization"
-    );
     expect(deprecatePatch).toHaveBeenCalledWith(
       "wait-for-all-tool-activities-before-finalization"
     );
