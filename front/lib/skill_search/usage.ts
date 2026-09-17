@@ -1,17 +1,16 @@
 import {
+  buildConsumptionScopeQuery,
   CARDINALITY_PRECISION_THRESHOLD,
-  COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
 } from "@app/lib/api/analytics/consumption/scope";
 import {
-  CONSUMPTION_ANALYTICS_ALIAS_NAME,
   ElasticsearchError,
-  withEs,
+  searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
+import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { estypes } from "@elastic/elasticsearch";
 
 export const SEARCH_USAGE_WINDOW_DAYS = 30;
 const USAGE_BUCKET_PAGE_SIZE = 500;
@@ -31,44 +30,32 @@ type UsageAggregations = {
  * Counts distinct human users over the previous 30 complete UTC days using the
  * consumption attribution dimensions; every composite page is workspace-scoped.
  */
-export async function fetchSearchActiveUsers({
-  workspaceId,
-  evaluatedAtMs,
-}: {
-  workspaceId: string;
-  evaluatedAtMs: number;
-}): Promise<Result<Record<string, number>, ElasticsearchError>> {
+export async function fetchSearchActiveUsers(
+  auth: Authenticator,
+  { evaluatedAtMs }: { evaluatedAtMs: number }
+): Promise<Result<Record<string, number>, ElasticsearchError>> {
   const end = new Date(evaluatedAtMs);
   end.setUTCHours(0, 0, 0, 0);
   const start = new Date(end);
   start.setUTCDate(start.getUTCDate() - SEARCH_USAGE_WINDOW_DAYS);
-  const query: estypes.QueryDslQueryContainer = {
-    bool: {
-      filter: [
-        { term: { workspace_id: workspaceId } },
-        { terms: { context_origin: USER_USAGE_ORIGINS } },
-        { exists: { field: CONSUMPTION_DIMENSION_FIELDS.user } },
-        {
-          range: {
-            [COMPLETED_AT_FIELD]: {
-              gte: start.toISOString(),
-              lt: end.toISOString(),
-            },
-          },
-        },
-      ],
-    },
-  };
+  const query = buildConsumptionScopeQuery({
+    auth,
+    startDate: start.toISOString(),
+    endDate: end.toISOString(),
+    extraFilters: [
+      { terms: { context_origin: USER_USAGE_ORIGINS } },
+      { exists: { field: CONSUMPTION_DIMENSION_FIELDS.user } },
+    ],
+  });
   const counts: Record<string, number> = {};
   let after: { resource_id: string } | undefined;
   do {
-    const page = await withEs((client) =>
-      client.search<never, UsageAggregations>({
-        index: CONSUMPTION_ANALYTICS_ALIAS_NAME,
-        query,
+    const page = await searchConsumptionAnalytics<never, UsageAggregations>(
+      query,
+      {
         size: 0,
         allow_partial_search_results: false,
-        aggs: {
+        aggregations: {
           resources: {
             composite: {
               size: USAGE_BUCKET_PAGE_SIZE,
@@ -93,7 +80,7 @@ export async function fetchSearchActiveUsers({
             },
           },
         },
-      })
+      }
     );
     if (page.isErr()) {
       return page;

@@ -4,16 +4,17 @@ const search = vi.hoisted(() => vi.fn());
 vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
   const original =
     await importOriginal<typeof import("@app/lib/api/elasticsearch")>();
-  const { Ok } = await import("@app/types/shared/result");
   return {
     ...original,
-    withEs: async (
-      fn: (client: { search: typeof search }) => Promise<unknown>
-    ) => new Ok(await fn({ search })),
+    searchConsumptionAnalytics: search,
   };
 });
 
+import { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import { fetchSearchActiveUsers } from "@app/lib/skill_search/usage";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { Err, Ok } from "@app/types/shared/result";
 
 describe("search usage snapshots", () => {
   beforeEach(() => {
@@ -23,8 +24,90 @@ describe("search usage snapshots", () => {
   it.each([
     ["skill", "tool.attributed_skill_ids"],
   ] as const)("paginates distinct active users for %s using a fixed UTC window", async (_resourceType, field) => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
     search
-      .mockResolvedValueOnce({
+      .mockResolvedValueOnce(
+        new Ok({
+          aggregations: {
+            resources: {
+              buckets: [
+                { key: { resource_id: "first" }, active_users: { value: 3 } },
+              ],
+              after_key: { resource_id: "first" },
+            },
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Ok({
+          aggregations: {
+            resources: {
+              buckets: [
+                { key: { resource_id: "second" }, active_users: { value: 2 } },
+              ],
+            },
+          },
+        })
+      );
+    const result = await fetchSearchActiveUsers(auth, {
+      evaluatedAtMs: Date.parse("2026-09-08T13:00:00Z"),
+    });
+    expect(result.isOk() && result.value).toEqual({ first: 3, second: 2 });
+    expect(search).toHaveBeenCalledTimes(2);
+    for (const [query, options] of search.mock.calls) {
+      expect(query).toMatchObject({
+        bool: {
+          filter: expect.arrayContaining([
+            { term: { workspace_id: workspace.sId } },
+            { terms: { context_origin: USER_USAGE_ORIGINS } },
+            { exists: { field: "user.id" } },
+            {
+              range: {
+                completed_at: {
+                  gte: "2026-08-09T00:00:00.000Z",
+                  lt: "2026-09-08T00:00:00.000Z",
+                },
+              },
+            },
+          ]),
+        },
+      });
+      expect(options).toMatchObject({
+        size: 0,
+        allow_partial_search_results: false,
+        aggregations: {
+          resources: {
+            composite: { sources: [{ resource_id: { terms: { field } } }] },
+            aggs: { active_users: { cardinality: { field: "user.id" } } },
+          },
+        },
+      });
+    }
+    expect(
+      search.mock.calls[1][1].aggregations.resources.composite.after
+    ).toEqual({
+      resource_id: "first",
+    });
+  });
+
+  it.each([
+    { timed_out: true },
+    {},
+  ])("does not treat incomplete usage as zero: %j", async (response) => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    search.mockResolvedValue(new Ok(response));
+    const result = await fetchSearchActiveUsers(auth, {
+      evaluatedAtMs: Date.now(),
+    });
+    expect(result.isErr()).toBe(true);
+  });
+
+  it("fails if composite pagination does not advance", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    search.mockResolvedValue(
+      new Ok({
         aggregations: {
           resources: {
             buckets: [
@@ -34,81 +117,23 @@ describe("search usage snapshots", () => {
           },
         },
       })
-      .mockResolvedValueOnce({
-        aggregations: {
-          resources: {
-            buckets: [
-              { key: { resource_id: "second" }, active_users: { value: 2 } },
-            ],
-          },
-        },
-      });
-    const result = await fetchSearchActiveUsers({
-      workspaceId: "workspace-1",
-      evaluatedAtMs: Date.parse("2026-09-08T13:00:00Z"),
-    });
-    expect(result.isOk() && result.value).toEqual({ first: 3, second: 2 });
-    expect(search).toHaveBeenCalledTimes(2);
-    for (const [query] of search.mock.calls) {
-      expect(query).toMatchObject({
-        size: 0,
-        allow_partial_search_results: false,
-        query: {
-          bool: {
-            filter: expect.arrayContaining([
-              { term: { workspace_id: "workspace-1" } },
-              {
-                range: {
-                  completed_at: {
-                    gte: "2026-08-09T00:00:00.000Z",
-                    lt: "2026-09-08T00:00:00.000Z",
-                  },
-                },
-              },
-            ]),
-          },
-        },
-        aggs: {
-          resources: {
-            composite: { sources: [{ resource_id: { terms: { field } } }] },
-            aggs: { active_users: { cardinality: { field: "user.id" } } },
-          },
-        },
-      });
-    }
-    expect(search.mock.calls[1][0].aggs.resources.composite.after).toEqual({
-      resource_id: "first",
-    });
-  });
-
-  it.each([
-    { timed_out: true },
-    {},
-  ])("does not treat incomplete usage as zero: %j", async (response) => {
-    search.mockResolvedValue(response);
-    const result = await fetchSearchActiveUsers({
-      workspaceId: "workspace-1",
-      evaluatedAtMs: Date.now(),
-    });
-    expect(result.isErr()).toBe(true);
-  });
-
-  it("fails if composite pagination does not advance", async () => {
-    search.mockResolvedValue({
-      aggregations: {
-        resources: {
-          buckets: [
-            { key: { resource_id: "first" }, active_users: { value: 3 } },
-          ],
-          after_key: { resource_id: "first" },
-        },
-      },
-    });
-    const result = await fetchSearchActiveUsers({
-      workspaceId: "workspace-1",
+    );
+    const result = await fetchSearchActiveUsers(auth, {
       evaluatedAtMs: Date.now(),
     });
     expect(result.isErr()).toBe(true);
     expect(search).toHaveBeenCalledTimes(2);
+  });
+
+  it("propagates consumption search failures", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const error = new ElasticsearchError("connection_error", "Search failed");
+    search.mockResolvedValue(new Err(error));
+
+    const result = await fetchSearchActiveUsers(auth, {
+      evaluatedAtMs: Date.now(),
+    });
+
+    expect(result).toEqual(new Err(error));
   });
 });

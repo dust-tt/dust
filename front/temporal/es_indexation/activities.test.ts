@@ -1,4 +1,5 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { Authenticator } from "@app/lib/auth";
 import * as skillIndex from "@app/lib/skill_search";
 import * as searchUsage from "@app/lib/skill_search/usage";
 import {
@@ -41,10 +42,12 @@ describe("skill search indexation", () => {
       refreshWorkspaceSearchUsageActivity({ workspaceId: workspace.sId })
     ).rejects.toBe(error);
 
-    expect(usage).toHaveBeenCalledExactlyOnceWith({
-      workspaceId: workspace.sId,
+    expect(usage).toHaveBeenCalledExactlyOnceWith(expect.any(Authenticator), {
       evaluatedAtMs: expect.any(Number),
     });
+    expect(usage.mock.calls[0][0].getNonNullableWorkspace().sId).toBe(
+      workspace.sId
+    );
     expect(updated).not.toHaveBeenCalled();
   });
 
@@ -75,10 +78,12 @@ describe("skill search indexation", () => {
     await refreshWorkspaceSearchUsageActivity({
       workspaceId: workspace.sId,
     });
-    expect(usage).toHaveBeenCalledExactlyOnceWith({
-      workspaceId: workspace.sId,
+    expect(usage).toHaveBeenCalledExactlyOnceWith(expect.any(Authenticator), {
       evaluatedAtMs,
     });
+    expect(usage.mock.calls[0][0].getNonNullableWorkspace().sId).toBe(
+      workspace.sId
+    );
     expect(updated).toHaveBeenCalledExactlyOnceWith({
       workspaceId: workspace.sId,
       skillIds: [skill.sId, unused.sId, archived.sId],
