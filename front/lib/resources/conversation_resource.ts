@@ -893,7 +893,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       to,
     }: {
       agentMessageModelId: ModelId;
-      from: NonNullable<AgentMessageModel["creditSpendCheckpointStatus"]>;
+      from: AgentMessageModel["creditSpendCheckpointStatus"];
       to: AgentMessageModel["creditSpendCheckpointStatus"];
     }
   ): Promise<{ applied: boolean }> {
