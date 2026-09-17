@@ -1,12 +1,12 @@
+import { refreshDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import { resolveModel } from "@app/lib/api/assistant/resolve_model";
-import { refreshDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
-import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import { SIMULATED_FAILURE_MODEL_ENDPOINT } from "@app/lib/api/llm/simulated_failure_model";
 import { Authenticator } from "@app/lib/auth";
 import { setWorkspaceMaxAllowedTierName } from "@app/lib/model_tiers/allowed_tiers";
 import * as enabledModels from "@app/lib/model_tiers/enabled_models";
+import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
