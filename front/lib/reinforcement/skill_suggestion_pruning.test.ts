@@ -2,6 +2,7 @@ import { buildDescendantMap } from "@app/lib/editor/instructions_block_conflict"
 import {
   hasSuggestionSelfConflict,
   instructionEditSetsConflict,
+  pruneConflictingSkillEditorsSuggestions,
   pruneConflictingSkillEditSuggestions,
   pruneOutdatedSkillEditSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -11,6 +12,10 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { SkillEditSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import {
+  isEditorsSkillSuggestion,
+  isEditSkillSuggestion,
+} from "@app/types/suggestions/skill_suggestion";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const HIERARCHY_HTML = `
@@ -356,32 +361,40 @@ describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", 
     ({ authenticator } = await createResourceTest({ role: "admin" }));
   });
 
+  const createEdit = async (
+    skill: Awaited<ReturnType<typeof SkillFactory.create>>,
+    overrides: Parameters<typeof SkillSuggestionFactory.createEdit>[2]
+  ) => {
+    const created = await SkillSuggestionFactory.createEdit(
+      authenticator,
+      skill,
+      overrides
+    );
+    if (!isEditSkillSuggestion(created)) {
+      throw new Error("The factory did not create an edit suggestion.");
+    }
+
+    return created;
+  };
+
   it("a new description-edit suggestion outdates an older description-edit suggestion", async () => {
     const skill = await SkillFactory.create(authenticator, {
       instructionsHtml: '<p data-block-id="block-1">Content.</p>',
     });
-    const older = await SkillSuggestionFactory.createEdit(
-      authenticator,
-      skill,
-      {
-        suggestion: {
-          agentFacingDescriptionEdit: {
-            content: "First proposed description.",
-          },
+    const older = await createEdit(skill, {
+      suggestion: {
+        agentFacingDescriptionEdit: {
+          content: "First proposed description.",
         },
-      }
-    );
-    const newer = await SkillSuggestionFactory.createEdit(
-      authenticator,
-      skill,
-      {
-        suggestion: {
-          agentFacingDescriptionEdit: {
-            content: "Second proposed description.",
-          },
+      },
+    });
+    const newer = await createEdit(skill, {
+      suggestion: {
+        agentFacingDescriptionEdit: {
+          content: "Second proposed description.",
         },
-      }
-    );
+      },
+    });
 
     await pruneConflictingSkillEditSuggestions(authenticator, skill, newer);
 
@@ -401,24 +414,16 @@ describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", 
     const skill = await SkillFactory.create(authenticator, {
       instructionsHtml: '<p data-block-id="block-1">Content.</p>',
     });
-    const instructionOnly = await SkillSuggestionFactory.createEdit(
-      authenticator,
-      skill,
-      {
-        suggestion: {
-          instructionEdits: [makeInstructionEdit("block-1")],
-        },
-      }
-    );
-    const newer = await SkillSuggestionFactory.createEdit(
-      authenticator,
-      skill,
-      {
-        suggestion: {
-          agentFacingDescriptionEdit: { content: "New description." },
-        },
-      }
-    );
+    const instructionOnly = await createEdit(skill, {
+      suggestion: {
+        instructionEdits: [makeInstructionEdit("block-1")],
+      },
+    });
+    const newer = await createEdit(skill, {
+      suggestion: {
+        agentFacingDescriptionEdit: { content: "New description." },
+      },
+    });
 
     await pruneConflictingSkillEditSuggestions(authenticator, skill, newer);
 
@@ -433,24 +438,16 @@ describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", 
     const skill = await SkillFactory.create(authenticator, {
       instructionsHtml: '<p data-block-id="block-1">Content.</p>',
     });
-    const descriptionOnly = await SkillSuggestionFactory.createEdit(
-      authenticator,
-      skill,
-      {
-        suggestion: {
-          agentFacingDescriptionEdit: { content: "Existing description." },
-        },
-      }
-    );
-    const newer = await SkillSuggestionFactory.createEdit(
-      authenticator,
-      skill,
-      {
-        suggestion: {
-          instructionEdits: [makeInstructionEdit("block-1")],
-        },
-      }
-    );
+    const descriptionOnly = await createEdit(skill, {
+      suggestion: {
+        agentFacingDescriptionEdit: { content: "Existing description." },
+      },
+    });
+    const newer = await createEdit(skill, {
+      suggestion: {
+        instructionEdits: [makeInstructionEdit("block-1")],
+      },
+    });
 
     await pruneConflictingSkillEditSuggestions(authenticator, skill, newer);
 
@@ -459,5 +456,110 @@ describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", 
       descriptionOnly.sId
     );
     expect(refetched?.state).toBe("pending");
+  });
+});
+
+describe("pruneConflictingSkillEditorsSuggestions", () => {
+  let authenticator: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["authenticator"];
+
+  beforeEach(async () => {
+    ({ authenticator } = await createResourceTest({ role: "admin" }));
+  });
+
+  const createEditors = async (
+    skill: Awaited<ReturnType<typeof SkillFactory.create>>,
+    suggestion: { addUserIds?: string[]; removeUserIds?: string[] }
+  ) => {
+    const created = await SkillSuggestionFactory.create(authenticator, skill, {
+      kind: "editors",
+      suggestion: {
+        addUserIds: suggestion.addUserIds ?? [],
+        removeUserIds: suggestion.removeUserIds ?? [],
+      },
+      source: "conversational",
+    });
+    if (!isEditorsSkillSuggestion(created)) {
+      throw new Error("The factory did not create an editors suggestion.");
+    }
+
+    return created;
+  };
+
+  const stateOf = async (sId: string) =>
+    (await SkillSuggestionResource.fetchById(authenticator, sId))?.state;
+
+  it("outdates a pending suggestion adding the same user", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const older = await createEditors(skill, { addUserIds: ["usr_a"] });
+    const newer = await createEditors(skill, {
+      addUserIds: ["usr_a", "usr_b"],
+    });
+
+    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, newer);
+
+    expect(await stateOf(older.sId)).toBe("outdated");
+    expect(await stateOf(newer.sId)).toBe("pending");
+  });
+
+  it("outdates a pending suggestion removing the same user", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const older = await createEditors(skill, { removeUserIds: ["usr_a"] });
+    const newer = await createEditors(skill, { removeUserIds: ["usr_a"] });
+
+    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, newer);
+
+    expect(await stateOf(older.sId)).toBe("outdated");
+    expect(await stateOf(newer.sId)).toBe("pending");
+  });
+
+  it("keeps a suggestion that removes a user the new one adds", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const removal = await createEditors(skill, { removeUserIds: ["usr_a"] });
+    const addition = await createEditors(skill, { addUserIds: ["usr_a"] });
+
+    await pruneConflictingSkillEditorsSuggestions(
+      authenticator,
+      skill,
+      addition
+    );
+
+    expect(await stateOf(removal.sId)).toBe("pending");
+    expect(await stateOf(addition.sId)).toBe("pending");
+  });
+
+  it("keeps suggestions about other users and other skills", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const otherSkill = await SkillFactory.create(authenticator, {
+      name: "Other Test Skill",
+    });
+    const otherUser = await createEditors(skill, { addUserIds: ["usr_b"] });
+    const sameUserOtherSkill = await createEditors(otherSkill, {
+      addUserIds: ["usr_a"],
+    });
+    const newer = await createEditors(skill, { addUserIds: ["usr_a"] });
+
+    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, newer);
+
+    expect(await stateOf(otherUser.sId)).toBe("pending");
+    expect(await stateOf(sameUserOtherSkill.sId)).toBe("pending");
+  });
+
+  it("leaves edit suggestions and non-pending editors suggestions alone", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const edit = await SkillSuggestionFactory.createEdit(authenticator, skill);
+    const approved = await createEditors(skill, { addUserIds: ["usr_a"] });
+    await SkillSuggestionResource.bulkUpdateState(
+      authenticator,
+      [approved],
+      "approved"
+    );
+    const newer = await createEditors(skill, { addUserIds: ["usr_a"] });
+
+    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, newer);
+
+    expect(await stateOf(edit.sId)).toBe("pending");
+    expect(await stateOf(approved.sId)).toBe("approved");
   });
 });

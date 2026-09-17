@@ -44,6 +44,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { SkillSuggestionSource } from "@app/types/suggestions/skill_suggestion";
+import { isEditSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -573,7 +574,9 @@ async function createSkillSuggestionsFromToolCall({
           sourceConversationIds,
         });
 
-      await pruneConflictingSkillEditSuggestions(auth, skill, newSuggestion);
+      if (isEditSkillSuggestion(newSuggestion)) {
+        await pruneConflictingSkillEditSuggestions(auth, skill, newSuggestion);
+      }
 
       return { type: "created", suggestionsCreated: 1 };
     }
