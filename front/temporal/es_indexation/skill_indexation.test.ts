@@ -113,7 +113,7 @@ describe("skill search indexing activity", () => {
     );
   });
 
-  it("upserts active and archived skills", async () => {
+  it("upserts active and archived skills but skips suggested and missing skills", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -135,6 +135,13 @@ describe("skill search indexing activity", () => {
       expect.objectContaining({ skill_id: skill.sId, status: "active" })
     );
 
+    expect((await skill.delete(auth)).isOk()).toBe(true);
+    await indexSkillSearchActivity(target);
+    const suggestion = await SkillFactory.create(auth, { status: "suggested" });
+    await indexSkillSearchActivity({
+      workspaceId: workspace.sId,
+      skillId: suggestion.sId,
+    });
     expect(skillIndex.indexSkillDocument).toHaveBeenCalledTimes(3);
   });
 });

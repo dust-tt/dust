@@ -17,3 +17,40 @@ export async function indexSkillDocument(
     });
   });
 }
+
+export async function deleteSkillDocument({
+  workspaceId,
+  skillId,
+}: {
+  workspaceId: string;
+  skillId: string;
+}): Promise<Result<void, ElasticsearchError>> {
+  return withEs(async (client) => {
+    await client.deleteByQuery({
+      index: SKILL_SEARCH_ALIAS_NAME,
+      query: {
+        bool: {
+          filter: [
+            { term: { workspace_id: workspaceId } },
+            { term: { skill_id: skillId } },
+          ],
+        },
+      },
+      refresh: false,
+    });
+  });
+}
+
+export async function deleteWorkspaceSkillDocuments({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<Result<void, ElasticsearchError>> {
+  return withEs(async (client) => {
+    await client.deleteByQuery({
+      index: SKILL_SEARCH_ALIAS_NAME,
+      query: { term: { workspace_id: workspaceId } },
+      refresh: false,
+    });
+  });
+}
