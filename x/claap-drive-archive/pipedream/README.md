@@ -26,7 +26,9 @@ writes to Drive. If a write fails, workflow B repairs it.
 1. New workflow → trigger **Schedule** → every 1 hour (or daily).
 2. Add a Node.js step and paste `scheduled-backfill.js`.
 3. Reuse the same Drive account, API key, and folder ID.
-4. `lookbackHours` defaults to 48.
+4. `lookbackHours` defaults to 336 (14 days). `maxPerRun` defaults to 40.
+5. Leave `recordingId` empty so the schedule polls instead of forcing one id.
+   Files land directly in `Claap Recordings/` (external calls only).
 
 ## Test without a real meeting
 

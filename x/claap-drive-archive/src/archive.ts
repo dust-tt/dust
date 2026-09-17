@@ -1,9 +1,6 @@
 import { buildArchiveJson, buildArchiveMarkdown } from "./document.ts";
-import {
-  archiveBaseName,
-  recorderFolderName,
-  videoExtension,
-} from "./filenames.ts";
+import { classifyExternal } from "./external.ts";
+import { archiveBaseName, videoExtension } from "./filenames.ts";
 import type {
   ArchiveOptions,
   ArchiveResult,
@@ -81,13 +78,19 @@ export async function archiveRecording(input: {
     };
   }
 
+  const visibility = classifyExternal(recording);
+  if (!visibility.external) {
+    return {
+      status: "skipped",
+      recordingId: recording.id,
+      reason: visibility.reason,
+    };
+  }
+
   const transcript = await loadTranscript(input.claap, recording);
   const markdown = buildArchiveMarkdown({ recording, transcript });
   const json = buildArchiveJson({ recording, transcript });
-  const folderId = await input.drive.ensureFolder(
-    input.options.rootFolderId,
-    recorderFolderName(recording)
-  );
+  const folderId = input.options.rootFolderId;
   const baseName = archiveBaseName(recording);
 
   const markdownFile = await input.drive.upsertFile({

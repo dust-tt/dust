@@ -2,8 +2,8 @@
 
 Internal ops automation. **Not part of the Dust product.**
 
-It copies every Claap recording's *raw* data into a company Google Drive folder,
-one subfolder per recorder, with no AI notes or generated summaries.
+It copies every **external** Claap recording's *raw* data into a company Google
+Drive folder, with no per-person subfolders and no AI notes or generated summaries.
 
 Host this on **Pipedream**. The TypeScript here is the testable source of truth
 plus a local backfill CLI. The files in `pipedream/` are what you paste into
@@ -28,12 +28,15 @@ workspace, connected with a dedicated Google account (for example
 
 ```
 <Shared Drive>/Claap Recordings/
-  ilias@dust.tt/
-    2026-09-12_Discovery-call-with-Acme-Q3_rec_abc123.md
-    2026-09-12_Discovery-call-with-Acme-Q3_rec_abc123.json
-  iris@dust.tt/
-    ...
+  2026-09-12_Discovery-call-with-Acme-Q3_rec_abc123.md
+  2026-09-12_Discovery-call-with-Acme-Q3_rec_abc123.json
+  2026-09-13_Fathom-Demo_McZt7Fq16MaX.md
+  ...
 ```
+
+Internal Dust-only meetings (`meeting.type=internal`) are skipped. Private Claap
+recordings never appear on the API (not visible in global search / member
+channels) and cannot be archived.
 
 The markdown file is the durable document: YAML metadata (who recorded, who
 attended, source, deal, Claap URL) and the **word-for-word transcript**. See
@@ -77,8 +80,9 @@ In Claap admin → Webhooks, create a webhook:
 
 Create a second workflow with a **Schedule** trigger (every hour or daily).
 Paste `pipedream/scheduled-backfill.js`. Use the same Drive connection, API key,
-and folder ID. Default lookback is 48 hours. Safe to rerun: files upsert by
-`claapRecordingId`.
+and folder ID. Default lookback is 14 days. Safe to rerun: files upsert by
+filename in the Claap Recordings root. Hourly runs skip already-archived files
+and cap new writes (`maxPerRun`, default 40).
 
 ## Local backfill
 

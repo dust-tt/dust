@@ -75,7 +75,7 @@ function createMocks(recordings: ClaapRecording[]) {
 }
 
 describe("archiveRecording", () => {
-  it("writes markdown and json under the recorder folder", async () => {
+  it("writes markdown and json in the Claap Recordings root", async () => {
     const recording = makeRecording();
     const { claap, drive, files, folders } = createMocks([recording]);
 
@@ -91,13 +91,35 @@ describe("archiveRecording", () => {
     });
 
     assert.equal(result.status, "archived");
-    assert.equal(folders.get("root/ilias@dust.tt"), "folder_1");
+    assert.equal(folders.size, 0);
     assert.equal(files.length, 2);
+    assert.equal(files[0]?.parentId, "root");
     assert.equal(files[0]?.name.endsWith(".md"), true);
     assert.equal(files[1]?.name.endsWith(".json"), true);
     assert.match(files[0]?.content ?? "", /# Transcript/);
     assert.doesNotMatch(files[0]?.content ?? "", /MEDICC/);
     assert.match(files[1]?.content ?? "", /"id": "rec_abc123"/);
+  });
+
+  it("skips internal meetings", async () => {
+    const recording = makeRecording({
+      meeting: { ...makeRecording().meeting!, type: "internal" },
+    });
+    const { claap, drive, files } = createMocks([recording]);
+
+    const result = await archiveRecording({
+      claap,
+      drive,
+      recordingId: recording.id,
+      options: { rootFolderId: "root", uploadVideo: false, maxVideoBytes: 1 },
+    });
+
+    assert.deepEqual(result, {
+      status: "skipped",
+      recordingId: recording.id,
+      reason: "meeting.type=internal",
+    });
+    assert.equal(files.length, 0);
   });
 
   it("skips recordings that are not ready", async () => {
@@ -145,7 +167,8 @@ describe("archiveRecording", () => {
     });
 
     assert.equal(results.length, 2);
-    assert.equal(folders.get("root/iris@dust.tt"), "folder_2");
+    assert.equal(folders.size, 0);
     assert.equal(files.length, 4);
+    assert.equal(files.every((file) => file.parentId === "root"), true);
   });
 });

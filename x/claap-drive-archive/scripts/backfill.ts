@@ -17,7 +17,7 @@ function parseArgs(argv: string[]): { createdAfter: string } {
   }
 
   const daysFlag = argv.find((arg) => arg.startsWith("--days="));
-  const days = daysFlag ? Number(daysFlag.slice("--days=".length)) : 2;
+  const days = daysFlag ? Number(daysFlag.slice("--days=".length)) : 14;
   if (!Number.isFinite(days) || days <= 0) {
     throw new Error("`--days` must be a positive number");
   }
