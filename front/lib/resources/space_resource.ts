@@ -159,6 +159,22 @@ function memberGrant(space: SpaceResource): GrantSpec {
   };
 }
 
+/**
+ * @cc [owner:tdraier,label:security;product] space-verbs
+ * The verbs a caller holds on a space mean:
+ * - `read`: reading the content the space holds: its data sources and data source views, apps,
+ *   MCP and webhook server views, files and project conversations. Reading that content MUST
+ *   require `read`, whatever the caller's workspace role: `read` comes from the space's grants
+ *   (on an open space, the workspace global group's `reader` grant), never from a role.
+ * - `write`: creating, changing and deleting that content. It MUST NOT allow changing the space
+ *   itself: renaming it or managing its members and editors is `admin` (a user joining an open
+ *   project themselves is the one exception).
+ * - `admin`: administering the space itself: name, members and editors, attached views,
+ *   deletion, and on the system space the workspace's connections. The admin workspace role
+ *   confers `admin` on every space, and `write` only on the global, conversations and system
+ *   spaces: on regular and project spaces `write` MUST come from the space's grants.
+ * Resources living in the space hold exactly these verbs (see `ResourceWithSpace`).
+ */
 export class SpaceResource extends BaseResource<SpaceModel> {
   static model: ModelStaticSoftDeletable<SpaceModel> = SpaceModel;
 
@@ -2062,7 +2078,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    *
    * 3. Open spaces:
    * - Read: All workspace members
-   * - Write: Admins and builders
+   * - Write: Members of the space's member groups
    *
    * 4. Restricted spaces:
    * - Read/Write: Group members

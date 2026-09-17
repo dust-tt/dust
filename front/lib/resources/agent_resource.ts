@@ -124,6 +124,17 @@ export interface FullAgentResource extends AgentResource {
  * superuser) sees identity and core fields only. Callers MUST NOT re-attach private fields to a
  * `light` resource from another read path.
  */
+/**
+ * @cc [owner:philipperolet,label:security;product] agent-verbs
+ * The verbs a caller holds on an agent mean:
+ * - `read`: seeing the agent's configuration and using it. Mentioning or running an agent MUST
+ *   require `read`.
+ * - `write`: editing the agent's definition: configuration versions, tags, model, skills, linked
+ *   Slack channels, archiving and restoring.
+ * - `admin`: managing the agent's editors. `admin` alone MUST NOT allow changing the definition,
+ *   and `write` alone MUST NOT allow changing the editors.
+ * Global (code-defined) agents are `read`-only, for the roles in their audience.
+ */
 export class AgentResource
   extends BaseResource<AgentModel>
   implements WithAccessControl
