@@ -1,11 +1,16 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
-import { hasReachedCreditSpendCheckpoint } from "@app/lib/api/assistant/credit_spend_checkpoint";
+import {
+  hasCrossedCreditSpendCheckpoint,
+  hasReachedCreditSpendCheckpoint,
+  isExemptFromCreditSpendCheckpoint,
+} from "@app/lib/api/assistant/credit_spend_checkpoint";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DurationRecorder } from "@app/lib/duration_recorder";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
@@ -35,6 +40,7 @@ import type {
   AgentLoopRuntimeData,
 } from "@app/types/assistant/agent_run";
 import { isAgentLoopDataSoftDeleteError } from "@app/types/assistant/agent_run";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
@@ -45,7 +51,7 @@ export type RunModelAndCreateActionsResult = {
   // The model returned nothing at all: the loop should run one more step with
   // tool use disabled to force a final answer.
   retryWithoutTools?: boolean;
-  preStepReachedCreditSpendCheckpoint?: boolean;
+  creditSpendCheckpointCrossed?: boolean;
 };
 
 const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
@@ -246,7 +252,11 @@ async function _runModelAndCreateActionsActivity({
     return null;
   }
 
-  const preStepReachedCreditSpendCheckpoint = hasReachedCreditSpendCheckpoint({
+  const creditSpendCheckpointCrossed = await getCreditSpendCheckpointCrossed({
+    auth,
+    isRootAgentMessage,
+    userMessageOrigin: runAgentArgs.userMessageOrigin ?? null,
+    agentMessageId: runAgentArgs.agentMessageId,
     totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
   });
 
@@ -271,7 +281,7 @@ async function _runModelAndCreateActionsActivity({
       return {
         actionBlobs: existingData.actionBlobs,
         runId: null,
-        preStepReachedCreditSpendCheckpoint,
+        creditSpendCheckpointCrossed,
       };
     }
   }
@@ -311,7 +321,7 @@ async function _runModelAndCreateActionsActivity({
       runId,
       actionBlobs: [],
       retryWithoutTools,
-      preStepReachedCreditSpendCheckpoint,
+      creditSpendCheckpointCrossed,
     };
   }
 
@@ -352,8 +362,65 @@ async function _runModelAndCreateActionsActivity({
   return {
     runId,
     actionBlobs: createResult.actionBlobs,
-    preStepReachedCreditSpendCheckpoint,
+    creditSpendCheckpointCrossed,
   };
+}
+
+/**
+ * Whether the agent loop must pause here for the user to confirm continuing. Reads the agent
+ * message's checkpoint status only when the cheap, in-memory checks (exemption, root message,
+ * pre-step spend) don't already rule it out — kept fail-open: a failure to read the status must
+ * not abort an otherwise-successful step.
+ */
+export async function getCreditSpendCheckpointCrossed({
+  auth,
+  isRootAgentMessage,
+  userMessageOrigin,
+  agentMessageId,
+  totalCostMicroUsd,
+}: {
+  auth: Authenticator;
+  isRootAgentMessage: boolean;
+  userMessageOrigin: UserMessageOrigin | null;
+  agentMessageId: string;
+  totalCostMicroUsd: number;
+}): Promise<boolean> {
+  const isExempt = isExemptFromCreditSpendCheckpoint(auth, {
+    userMessageOrigin,
+  });
+
+  if (
+    isExempt ||
+    !isRootAgentMessage ||
+    !hasReachedCreditSpendCheckpoint({ totalCostMicroUsd })
+  ) {
+    return false;
+  }
+
+  let status: AgentMessageModel["creditSpendCheckpointStatus"] = null;
+  try {
+    status =
+      await ConversationResource.fetchAgentMessageCreditSpendCheckpointStatus(
+        auth,
+        { agentMessageId }
+      );
+  } catch (error) {
+    logger.warn(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentMessageId,
+        error,
+      },
+      "[CreditSpendCheckpoint] failed to read checkpoint status, continuing without it"
+    );
+    return false;
+  }
+
+  return hasCrossedCreditSpendCheckpoint({
+    isExempt,
+    isRootAgentMessage,
+    status,
+  });
 }
 
 async function publishAgentLoopGuardrailExceededError(

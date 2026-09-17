@@ -1,4 +1,5 @@
 import {
+  hasCrossedCreditSpendCheckpoint,
   hasReachedCreditSpendCheckpoint,
   isExemptFromCreditSpendCheckpoint,
 } from "@app/lib/api/assistant/credit_spend_checkpoint";
@@ -81,6 +82,58 @@ describe("hasReachedCreditSpendCheckpoint", () => {
   it("is true once the spend reaches the threshold", () => {
     expect(
       hasReachedCreditSpendCheckpoint({ totalCostMicroUsd: thresholdMicroUsd })
+    ).toBe(true);
+  });
+});
+
+describe("hasCrossedCreditSpendCheckpoint", () => {
+  it("is false when exempt, whatever the status", () => {
+    expect(
+      hasCrossedCreditSpendCheckpoint({
+        isExempt: true,
+        isRootAgentMessage: true,
+        status: null,
+      })
+    ).toBe(false);
+  });
+
+  it("is false for a sub-agent message, whatever the status", () => {
+    expect(
+      hasCrossedCreditSpendCheckpoint({
+        isExempt: false,
+        isRootAgentMessage: false,
+        status: null,
+      })
+    ).toBe(false);
+  });
+
+  it("is false once acknowledged", () => {
+    expect(
+      hasCrossedCreditSpendCheckpoint({
+        isExempt: false,
+        isRootAgentMessage: true,
+        status: "acknowledged",
+      })
+    ).toBe(false);
+  });
+
+  it("is true for a pausable root message with no prior status", () => {
+    expect(
+      hasCrossedCreditSpendCheckpoint({
+        isExempt: false,
+        isRootAgentMessage: true,
+        status: null,
+      })
+    ).toBe(true);
+  });
+
+  it("is true for a pausable root message already flagged paused", () => {
+    expect(
+      hasCrossedCreditSpendCheckpoint({
+        isExempt: false,
+        isRootAgentMessage: true,
+        status: "paused",
+      })
     ).toBe(true);
   });
 });

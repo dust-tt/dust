@@ -7,7 +7,6 @@ import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
-import type * as creditSpendCheckpointActivities from "@app/temporal/agent_loop/activities/credit_spend_checkpoint";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
 import type * as finalizeSandboxChildToolActivities from "@app/temporal/agent_loop/activities/finalize_sandbox_child_tool";
@@ -39,10 +38,7 @@ import type {
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import {
-  ActivityFailure,
-  WorkflowExecutionAlreadyStartedError,
-} from "@temporalio/common";
+import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type {
   ChildWorkflowHandle,
   WorkflowInterceptorsFactory,
@@ -51,7 +47,6 @@ import {
   ActivityCancellationType,
   CancellationScope,
   deprecatePatch,
-  isCancellation,
   log,
   patched,
   proxyActivities,
@@ -142,17 +137,6 @@ const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
   startToCloseTimeout: "2 minutes",
   retry: {
     maximumAttempts: 3,
-  },
-});
-
-// No retries: this is a fail-open check, so a failure should resolve immediately rather than
-// delaying the step with retries.
-const { checkCreditSpendCheckpointActivity } = proxyActivities<
-  typeof creditSpendCheckpointActivities
->({
-  startToCloseTimeout: "15 seconds",
-  retry: {
-    maximumAttempts: 1,
   },
 });
 
@@ -291,10 +275,6 @@ export async function agentLoopWorkflow({
   // ask the user whether to continue.
   let creditSpendCheckpointPaused = false;
 
-  // Cached per execution: once the check says to skip, nothing within this execution can bring
-  // it back.
-  let skipCreditSpendCheckpointChecks = false;
-
   const runIds: string[] = [];
 
   try {
@@ -326,7 +306,7 @@ export async function agentLoopWorkflow({
           runId,
           shouldContinue,
           retryWithoutTools,
-          preStepReachedCreditSpendCheckpoint,
+          creditSpendCheckpointCrossed,
         } = await executeStepIteration({
           authType,
           agentLoopArgs: {
@@ -392,39 +372,11 @@ export async function agentLoopWorkflow({
           break;
         }
 
-        // The threshold is decided on the spend measured before this step ran. The step itself
-        // may have crossed it, in which case the pause lands one step late: accepted to avoid
-        // scheduling the activity on every step of every message.
-        if (
-          patched("credit-spend-checkpoint-gate") &&
-          !skipCreditSpendCheckpointChecks &&
-          preStepReachedCreditSpendCheckpoint
-        ) {
-          try {
-            const checkpointResult = await checkCreditSpendCheckpointActivity(
-              authType,
-              {
-                agentLoopArgs: {
-                  ...agentLoopArgs,
-                  initialStartTime,
-                },
-              }
-            );
-            if (checkpointResult.crossed) {
-              creditSpendCheckpointPaused = true;
-              break;
-            }
-            // Not crossed once the threshold is reached means this message can never pause.
-            skipCreditSpendCheckpointChecks = true;
-          } catch (err) {
-            if (!(err instanceof ActivityFailure) || isCancellation(err)) {
-              throw err;
-            }
-            log.warn(
-              "Credit spend checkpoint check failed, continuing without it",
-              { agentMessageId, step: currentStep, error: String(err) }
-            );
-          }
+        // The decision is made on the spend measured before this step ran. The step itself may
+        // have crossed it, in which case the pause lands one step late.
+        if (creditSpendCheckpointCrossed) {
+          creditSpendCheckpointPaused = true;
+          break;
         }
       }
 
@@ -540,8 +492,8 @@ async function executeStepIteration({
   runId: string | null;
   shouldContinue: boolean;
   retryWithoutTools?: boolean;
-  // Passed through so the caller schedules the credit spend checkpoint activity only when needed.
-  preStepReachedCreditSpendCheckpoint?: boolean;
+  // Passed through so the caller knows whether to pause and finalize as checkpointed.
+  creditSpendCheckpointCrossed?: boolean;
 }> {
   const result = await runModelAndCreateActionsActivity({
     authType,
@@ -564,7 +516,7 @@ async function executeStepIteration({
     runId,
     actionBlobs,
     retryWithoutTools = false,
-    preStepReachedCreditSpendCheckpoint,
+    creditSpendCheckpointCrossed,
   } = result;
 
   // Generation completed or the loop unpaused and no new tools were generated.
@@ -577,7 +529,7 @@ async function executeStepIteration({
       // disabled to force a final answer.
       shouldContinue: runId === null || retryWithoutTools,
       retryWithoutTools,
-      preStepReachedCreditSpendCheckpoint,
+      creditSpendCheckpointCrossed,
     };
   }
 
@@ -588,7 +540,7 @@ async function executeStepIteration({
     return {
       runId,
       shouldContinue: false,
-      preStepReachedCreditSpendCheckpoint,
+      creditSpendCheckpointCrossed,
     };
   }
 
@@ -627,7 +579,7 @@ async function executeStepIteration({
       return {
         runId,
         shouldContinue: false,
-        preStepReachedCreditSpendCheckpoint,
+        creditSpendCheckpointCrossed,
       };
     }
   }
@@ -635,7 +587,7 @@ async function executeStepIteration({
   return {
     runId,
     shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
-    preStepReachedCreditSpendCheckpoint,
+    creditSpendCheckpointCrossed,
   };
 }
 
