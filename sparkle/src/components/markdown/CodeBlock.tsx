@@ -143,11 +143,8 @@ const codeStyle = {
   },
 };
 
-// Mirrors `codeStyle.hljs` (padding, font-size, colors) so the Suspense
-// fallback occupies the same height as the highlighted output. The block is
-// laid out with `white-space: pre` (or `pre-wrap` when wrapping), so the raw
-// text produces the same line count — and therefore the same height — as the
-// highlighted version, avoiding a layout jump when the lazy highlighter loads.
+// Mirrors `codeStyle.hljs` (padding, font-size, colors) so while we are loading 
+// syntax hightligter we can reserve the similar height 
 const codeBlockFallbackStyle: React.CSSProperties = {
   display: "block",
   overflowX: "auto",
