@@ -177,23 +177,23 @@ type SkillFetchContext = {
 
 type SkillResourceConstructorOptions =
   | {
+      codeDefinedSkillId: string;
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       // When true, the global skill's instructions are exposed to the front-end.
       exposeInstructions?: boolean;
       fileAttachments: FileResource[];
       // Files that ship with a code-defined skill (addressable, not embedded).
       files?: readonly CodeDefinedSkillFile[];
-      globalSId: string;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
     }
   | {
+      codeDefinedSkillId?: undefined;
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       // Custom skills always expose their own instructions; this flag is unused.
       exposeInstructions?: undefined;
       fileAttachments: FileResource[];
       files?: readonly CodeDefinedSkillFile[];
-      globalSId?: undefined;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
     };
@@ -255,7 +255,7 @@ export interface SkillResource
  * - Global skills use synthetic database fields (id: -1, editedBy: -1)
  * - Mutations (update/delete) require runtime checks to reject global skills
  * - Mixed queries limited to simple equality filters (name, sId, status)
- * - Some internal complexity to distinguish types via `globalSId` presence
+ * - Some internal complexity to distinguish types via `codeDefinedSkillId` presence
  *
  * ## Key Limitations
  *
@@ -265,7 +265,7 @@ export interface SkillResource
  * 2. **No Sequelize Features for Global Skills**: Pagination, ordering, and joins only work fully
  *    for custom skills. Global skills are in-memory filtered.
  *
- * 3. **Type Detection is Implicit**: Global skills identified by presence of `globalSId` field.
+ * 3. **Type Detection is Implicit**: Global skills identified by presence of `codeDefinedSkillId` field.
  *    No explicit type enum exposed externally.
  *
  * 4. **Synthetic Fields Never Exposed**: The fake `id: -1` is internal only.
@@ -309,7 +309,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   private readonly codeDefinedFiles: readonly CodeDefinedSkillFile[];
   readonly version: number | null = null;
 
-  private readonly globalSId: string | null;
+  private readonly codeDefinedSkillId: string | null;
   // Only meaningful for global skills: whether their instructions may be
   // serialized to the front-end. Custom skills always expose their own.
   private readonly exposeInstructions: boolean;
@@ -325,11 +325,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     _: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
     {
+      codeDefinedSkillId,
       dataSourceConfigurations,
       exposeInstructions,
       fileAttachments,
       files,
-      globalSId,
       mcpServerConfigurations,
       version,
     }: SkillResourceConstructorOptions
@@ -340,14 +340,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     this.exposeInstructions = exposeInstructions ?? false;
     this.fileAttachments = fileAttachments ?? [];
     this.codeDefinedFiles = files ?? [];
-    this.globalSId = globalSId ?? null;
+    this.codeDefinedSkillId = codeDefinedSkillId ?? null;
     this._mcpServerConfigurations = mcpServerConfigurations;
     this.version = version ?? null;
   }
 
   get sId(): string {
-    if (this.globalSId) {
-      return this.globalSId;
+    if (this.codeDefinedSkillId) {
+      return this.codeDefinedSkillId;
     }
 
     return SkillResource.modelIdToSId({
@@ -449,7 +449,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   // Mirrors `SkillDefinition["kind"]` for code-defined skills; anything without a global sId is
   // authored in the workspace.
   get kind(): "custom" | "global" | "system" {
-    if (!this.globalSId) {
+    if (!this.codeDefinedSkillId) {
       return "custom";
     }
 
@@ -457,7 +457,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   get isSystemSkill(): boolean {
-    if (!this.globalSId) {
+    if (!this.codeDefinedSkillId) {
       return false;
     }
 
@@ -465,16 +465,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   get inheritsAgentConfigurationDataSources(): boolean {
-    if (!this.globalSId) {
+    if (!this.codeDefinedSkillId) {
       return false;
     }
 
     return (
       GlobalSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
-        this.globalSId
+        this.codeDefinedSkillId
       ) ||
       SystemSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
-        this.globalSId
+        this.codeDefinedSkillId
       )
     );
   }
@@ -1196,7 +1196,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     parentSkills: SkillResource[]
   ): Promise<Map<string, SkillResource[]>> {
     const workspace = auth.getNonNullableWorkspace();
-    const customParentSkills = parentSkills.filter((skill) => !skill.globalSId);
+    const customParentSkills = parentSkills.filter(
+      (skill) => !skill.codeDefinedSkillId
+    );
 
     if (customParentSkills.length === 0) {
       return new Map();
@@ -1338,8 +1340,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   private get skillReference():
     | { globalSkillId: string }
     | { customSkillId: ModelId } {
-    return this.globalSId
-      ? { globalSkillId: this.globalSId }
+    return this.codeDefinedSkillId
+      ? { globalSkillId: this.codeDefinedSkillId }
       : { customSkillId: this.id };
   }
 
@@ -1431,7 +1433,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
     }
 
-    if (!this.globalSId) {
+    if (!this.codeDefinedSkillId) {
       await this.model.increment("favoriteCount", {
         by: isFavorite ? 1 : -1,
         where: {
@@ -1517,8 +1519,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const skillByCustomId = new Map<ModelId, SkillResource>();
     const skillByGlobalId = new Map<string, SkillResource>();
     for (const skill of allSkills) {
-      if (skill.globalSId) {
-        skillByGlobalId.set(skill.globalSId, skill);
+      if (skill.codeDefinedSkillId) {
+        skillByGlobalId.set(skill.codeDefinedSkillId, skill);
       } else {
         skillByCustomId.set(skill.id, skill);
       }
@@ -1976,7 +1978,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     let discoverableSkills: SkillResource[] = [];
     let favoriteSkills: SkillResource[] = [];
-    if (allAgentSkills.some((s) => s.globalSId === "discover_skills")) {
+    if (
+      allAgentSkills.some((s) => s.codeDefinedSkillId === "discover_skills")
+    ) {
       discoverableSkills = await this.listDiscoverable(auth, {
         agentLoopData,
         effectiveSpaceIds,
@@ -2283,7 +2287,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         // Global skills do not have data source configurations.
         dataSourceConfigurations: [],
         exposeInstructions: def.exposeInstructions,
-        globalSId: def.sId,
+        codeDefinedSkillId: def.sId,
         mcpServerConfigurations,
         fileAttachments: [],
         files: def.files ?? [],
@@ -2339,7 +2343,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     // Global skills carry no row, so there is no grant to look up (and their synthetic `id` of -1
     // is the type-wide sentinel, which would resolve the workspace-wide capability grants instead).
-    if (this.globalSId) {
+    if (this.codeDefinedSkillId) {
       return new Set(
         verbsFromRoleGrants(auth, GLOBAL_SKILL_ROLE_GRANTS, this.workspaceId)
       );
@@ -2663,7 +2667,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
     // Code-defined global/system skills have no editors at all.
-    if (this.globalSId) {
+    if (this.codeDefinedSkillId) {
       return null;
     }
 
@@ -2832,9 +2836,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Separate custom skills from global skills.
     const customSkillIds = removeNulls(
-      skills.map((s) => (s.globalSId ? null : s.id))
+      skills.map((s) => (s.codeDefinedSkillId ? null : s.id))
     );
-    const globalSkillIds = removeNulls(skills.map((s) => s.globalSId));
+    const globalSkillIds = removeNulls(skills.map((s) => s.codeDefinedSkillId));
 
     // Single query: all agent-skill associations for the given skills.
     const agentSkills = await AgentSkillModel.findAll({
@@ -2873,7 +2877,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Map AgentSkillModel references back to skill sId.
     const sIdByCustomId = new Map(
-      skills.filter((s) => !s.globalSId).map((s) => [s.id, s.sId])
+      skills.filter((s) => !s.codeDefinedSkillId).map((s) => [s.id, s.sId])
     );
 
     const result = new Map<string, AgentUsageAttributes[]>();
@@ -2933,8 +2937,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       skills.map((skill) => [skill.sId, []])
     );
 
-    const customSkills = skills.filter((skill) => !skill.globalSId);
-    const globalSkills = skills.filter((skill) => skill.globalSId);
+    const customSkills = skills.filter((skill) => !skill.codeDefinedSkillId);
+    const globalSkills = skills.filter((skill) => skill.codeDefinedSkillId);
     if (customSkills.length === 0 && globalSkills.length === 0) {
       return result;
     }
@@ -3012,7 +3016,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     // Code-defined global/system skills have no editors — see `listEditors`.
-    const customSkills = skills.filter((s) => !s.globalSId);
+    const customSkills = skills.filter((s) => !s.codeDefinedSkillId);
 
     if (customSkills.length === 0) {
       return result;
@@ -4598,7 +4602,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   ): SkillSearchDocument {
     assert(
-      !this.globalSId && this.workspaceId === workspace.id,
+      !this.codeDefinedSkillId && this.workspaceId === workspace.id,
       "Search documents require a custom skill in the workspace."
     );
     return {
@@ -4643,15 +4647,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // the public v1 API only returns custom skills, so this only surfaces on the
     // single-skill detail fetch.
     const hideInstructions =
-      (this.globalSId !== null && !this.exposeInstructions) ||
+      (this.codeDefinedSkillId !== null && !this.exposeInstructions) ||
       this.redactedForCaller;
 
     return {
       id: this.id,
       sId: this.sId,
-      createdAt: this.globalSId ? null : this.createdAt.getTime(),
-      updatedAt: this.globalSId ? null : this.updatedAt.getTime(),
-      editedBy: this.globalSId ? null : this.editedBy,
+      createdAt: this.codeDefinedSkillId ? null : this.createdAt.getTime(),
+      updatedAt: this.codeDefinedSkillId ? null : this.updatedAt.getTime(),
+      editedBy: this.codeDefinedSkillId ? null : this.editedBy,
       status: this.status,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
