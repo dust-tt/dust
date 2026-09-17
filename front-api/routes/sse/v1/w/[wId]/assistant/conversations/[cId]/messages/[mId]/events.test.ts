@@ -204,7 +204,7 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
   });
 
   it("drops the internal-only credit spend checkpoint event", async () => {
-    const { workspace, key, conversation, agentMessageSId } =
+    const { workspace, key, conversation, agentMessageId } =
       await setupAgentMessage();
 
     vi.mocked(getMessagesEvents).mockImplementation(
@@ -218,7 +218,7 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
     const response = await getMessageEvents(
       workspace.sId,
       conversation.sId,
-      agentMessageSId,
+      agentMessageId,
       key.secret
     );
 
