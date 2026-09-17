@@ -200,9 +200,9 @@ export function PodSettingsTab({
   // Resolve the stored ids to skills the current user can see. Ids that no longer resolve
   // (archived / out of scope) are not rendered; saving the current
   // selection then drops them.
-  const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
+  const skillById = new Map(skills.map((skill) => [skill.sId, skill]));
   const selectedDefaultSkills = defaultSkillIds.flatMap((skillId) => {
-    const skill = skillBySId.get(skillId);
+    const skill = skillById.get(skillId);
     return skill ? [skill] : [];
   });
   const normalizedSkillSearch = skillSearchText.trim().toLowerCase();
