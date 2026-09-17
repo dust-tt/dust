@@ -101,6 +101,48 @@ function renderFileCitationIcon(
   );
 }
 
+function FileCitationChip(props: FileCitationCardProps) {
+  const { description, icon, isLoading, loadingLabel, onRemove, title } = props;
+
+  // AttachmentChip takes an icon component; rendered visuals are wrapped in
+  // one (as KnowledgeChip does) and keep their own size.
+  const iconVisual: ComponentType<{ className?: string }> = isIconComponent(
+    icon
+  )
+    ? icon
+    : () => <>{icon}</>;
+
+  const chipProps = {
+    color: "primary" as const,
+    icon: { visual: iconVisual },
+    isBusy: isLoading,
+    label: title,
+    onRemove,
+    size: "xs" as const,
+  };
+
+  const chip =
+    "href" in props && props.href ? (
+      <AttachmentChip {...chipProps} href={props.href} target="_blank" />
+    ) : (
+      <AttachmentChip
+        {...chipProps}
+        onClick={"onClick" in props ? props.onClick : undefined}
+      />
+    );
+
+  return (
+    <Tooltip
+      tooltipTriggerAsChild
+      trigger={<span className="inline-flex align-middle">{chip}</span>}
+      label={getChipTooltipLabel({
+        description: isLoading && loadingLabel ? loadingLabel : description,
+        tooltipLabel: props.tooltipLabel,
+      })}
+    />
+  );
+}
+
 export function FileCitationCard(props: FileCitationCardProps) {
   const {
     description,
@@ -115,43 +157,7 @@ export function FileCitationCard(props: FileCitationCardProps) {
   } = props;
 
   if (variant === "chip") {
-    // AttachmentChip takes an icon component; rendered visuals are wrapped in
-    // one (as KnowledgeChip does) and keep their own size.
-    const iconVisual: ComponentType<{ className?: string }> = isIconComponent(
-      icon
-    )
-      ? icon
-      : () => <>{icon}</>;
-
-    const chipProps = {
-      color: "primary" as const,
-      icon: { visual: iconVisual },
-      isBusy: isLoading,
-      label: title,
-      onRemove,
-      size: "xs" as const,
-    };
-
-    const chip =
-      "href" in props && props.href ? (
-        <AttachmentChip {...chipProps} href={props.href} target="_blank" />
-      ) : (
-        <AttachmentChip
-          {...chipProps}
-          onClick={"onClick" in props ? props.onClick : undefined}
-        />
-      );
-
-    return (
-      <Tooltip
-        tooltipTriggerAsChild
-        trigger={<span className="inline-flex align-middle">{chip}</span>}
-        label={getChipTooltipLabel({
-          description: isLoading && loadingLabel ? loadingLabel : description,
-          tooltipLabel,
-        })}
-      />
-    );
+    return <FileCitationChip {...props} />;
   }
 
   const renderedIcon = renderFileCitationIcon(icon, size);
