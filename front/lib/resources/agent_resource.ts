@@ -723,7 +723,7 @@ export class AgentResource
   // a system key downscoped to a group subset (see `Authenticator.fromKey` with `requestedGroupIds`)
   // enumerates only what those groups grant, so it is checked like any other caller. A missing or
   // deleted space is absent from the snapshot and therefore fails closed.
-  private requestedSpacesReadable(auth: Authenticator): boolean {
+  requestedSpacesReadable(auth: Authenticator): boolean {
     const readableSpaces = auth.getReadableSpaceModelIds();
     return (
       readableSpaces.kind === "all" ||

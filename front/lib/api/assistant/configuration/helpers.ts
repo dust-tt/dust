@@ -110,24 +110,49 @@ export async function getAgentIdFromName(
   return agent.sId;
 }
 
+/**
+ * @cc [owner:philipperolet,label:logging] shadow-legacy-space-gate
+ * The legacy side of the comparison MUST apply the `agent-read-requires-space-read` gate to `read`
+ * and `write`: a difference that only comes from a requested space the caller cannot read is not a
+ * grant divergence and MUST NOT be logged as a mismatch.
+ */
 async function shadowAgentPermissions(
   auth: Authenticator,
   agentModels: AgentConfigurationModel[],
+  // Aligned with `agentModels` (see `enrichAgentConfigurations`).
+  agentResources: AgentResource[],
   legacyAgents: AgentConfigurationType[],
   spaceById: Map<ModelId, SpaceResource>,
   reverse = false
 ): Promise<void> {
   const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
+  // User-less callers other than regular keys take legacy access from the grant ACL, whose `write`
+  // the space gate drops; their editor grant is the ungated equivalent.
+  const hasUserlessEditorGrant = (resource: AgentResource) =>
+    !auth.user() &&
+    !isRegularApiKey &&
+    auth
+      .getGovernanceGrantVerbs("agent", resource.id, resource.workspaceId)
+      .includes("write");
   await shadowCompare({
     auth,
     reverse,
-    legacy: legacyAgents.map((agent) => ({
-      agentId: agent.sId,
-      agentConfigurationModelId: agent.id,
-      read: agent.canRead,
-      write: agent.canEdit,
-      admin: agent.canEdit || auth.isAdmin(),
-    })),
+    // Served grants (`reverse`) already apply the space gate; served legacy reads never did.
+    legacy: legacyAgents.map((agent, index) => {
+      const resource = agentResources[index];
+      const spacesReadable = resource.requestedSpacesReadable(auth);
+      return {
+        agentId: agent.sId,
+        agentConfigurationModelId: agent.id,
+        read: agent.canRead && spacesReadable,
+        write: agent.canEdit && spacesReadable,
+        // Served grants keep `admin` on agents whose spaces the editor cannot read, so `canEdit`
+        // only stands for `admin` on the legacy source, before the gate.
+        admin: reverse
+          ? auth.can("admin", resource)
+          : agent.canEdit || hasUserlessEditorGrant(resource) || auth.isAdmin(),
+      };
+    }),
     candidate: async () => {
       const groups =
         reverse && auth.user()
@@ -139,20 +164,20 @@ async function shadowAgentPermissions(
       const editorIds = new Set(
         groups.map((group) => group.agentConfigurationId)
       );
-      return agentModels.map((agent) => {
-        const resource = AgentResource.fromAgentConfigurationModel(auth, agent);
+      return agentModels.map((agent, index) => {
+        const resource = agentResources[index];
+        const spacesReadable = resource.requestedSpacesReadable(auth);
         const legacyAccess =
           agent.authorId === auth.user()?.id ||
           editorIds.has(agent.id) ||
-          (!auth.user() && !isRegularApiKey && auth.can("write", resource));
+          hasUserlessEditorGrant(resource);
+        const legacyWrite = isRegularApiKey ? auth.isAdmin() : legacyAccess;
         const read = reverse
-          ? legacyAccess || agent.scope === "visible"
+          ? (legacyAccess || agent.scope === "visible") && spacesReadable
           : auth.can("read", resource);
         const write =
           (reverse
-            ? isRegularApiKey
-              ? auth.isAdmin()
-              : legacyAccess
+            ? legacyWrite && spacesReadable
             : auth.can("write", resource)) &&
           (!isRegularApiKey ||
             (agent.status === "active" &&
@@ -166,8 +191,9 @@ async function shadowAgentPermissions(
           agentConfigurationModelId: agent.id,
           read,
           write,
+          // Legacy editors keep administering an agent backed by spaces they cannot read.
           admin: reverse
-            ? write || auth.isAdmin()
+            ? legacyWrite || auth.isAdmin()
             : auth.can("admin", resource),
         };
       });
@@ -261,6 +287,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   const spaceById = new Map(spacesForApiKey.map((space) => [space.id, space]));
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
+  const agentResources: AgentResource[] = [];
   for (const agent of agentConfigurations) {
     const actions =
       variant === "full"
@@ -325,11 +352,13 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     };
 
     agentConfigurationTypes.push(agentConfigurationType);
+    agentResources.push(resource);
   }
 
   await shadowAgentPermissions(
     auth,
     agentConfigurations,
+    agentResources,
     agentConfigurationTypes,
     spaceById,
     useGrants
