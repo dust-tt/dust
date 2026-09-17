@@ -217,6 +217,40 @@ describe("AgentSuggestionResource", () => {
     });
   });
 
+  describe("create suggestion", () => {
+    it("should create and fetch a create suggestion", async () => {
+      const suggestion = await AgentSuggestionFactory.createCreate(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: {
+            name: "Incident Helper",
+            description: "Helps triage incidents.",
+            instructions: "Collect impact and timeline.",
+          },
+          analysis: "Proposing a new agent",
+        }
+      );
+
+      expect(suggestion).toBeDefined();
+      expect(suggestion.kind).toBe("create");
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched).toBeDefined();
+
+      const json = fetched!.toJSON();
+      expect(json.kind).toBe("create");
+      expect(json.suggestion).toEqual({
+        name: "Incident Helper",
+        description: "Helps triage incidents.",
+        instructions: "Collect impact and timeline.",
+      });
+    });
+  });
+
   describe("bulkUpdateState", () => {
     it.each<"approved" | "rejected" | "outdated">([
       "approved",
