@@ -28,18 +28,28 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # One target per E2B team: templates are team-scoped, so each cluster that
+      # runs sandboxes needs its own build. The legacy regions and every cell
+      # each have their own team (their own E2B API key). Adding a cell is one
+      # entry here plus its E2B key as a secret, mapped in the step below.
       matrix:
-        region: [ eu, us ]
+        target:
+          - { name: eu, domain: e2b-juliett.dev }
+          - { name: us, domain: e2b.dev }
+          - { name: cell-00002, domain: e2b-juliett.dev }
     steps:
-      - name: Configure E2B for ${{ matrix.region }}
+      - name: Configure E2B for ${{ matrix.target.name }}
         run: |
-          if [ "${{ matrix.region }}" = "eu" ]; then
-            echo "E2B_API_KEY=${{ secrets.E2B_API_KEY }}" >> "$GITHUB_ENV"
-            echo "E2B_DOMAIN=e2b-juliett.dev" >> "$GITHUB_ENV"
-          else
-            echo "E2B_API_KEY=${{ secrets.E2B_US_API_KEY }}" >> "$GITHUB_ENV"
-            echo "E2B_DOMAIN=e2b.dev" >> "$GITHUB_ENV"
-          fi
+          case "${{ matrix.target.name }}" in
+            eu)          E2B_KEY="${{ secrets.E2B_API_KEY }}" ;;
+            us)          E2B_KEY="${{ secrets.E2B_US_API_KEY }}" ;;
+            cell-00002)  E2B_KEY="${{ secrets.E2B_CELL_00002_API_KEY }}" ;;
+            *)
+              echo "::error::no E2B API key mapped for target ${{ matrix.target.name }}"
+              exit 1 ;;
+          esac
+          echo "E2B_API_KEY=$E2B_KEY" >> "$GITHUB_ENV"
+          echo "E2B_DOMAIN=${{ matrix.target.domain }}" >> "$GITHUB_ENV"
 
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -55,13 +65,13 @@ jobs:
         run: |
           set -eo pipefail
           REBUILD="${{ inputs.rebuild || 'false' }}"
-          echo "Running sandbox image check (${{ matrix.region }})... (rebuild=$REBUILD)"
+          echo "Running sandbox image check (${{ matrix.target.name }})... (rebuild=$REBUILD)"
           if ! RESULT=$(npx tsx scripts/sandbox_image_check.ts --json 2>&1); then
-            echo "::error::Sandbox image check failed (${{ matrix.region }})"
+            echo "::error::Sandbox image check failed (${{ matrix.target.name }})"
             echo "$RESULT"
             exit 1
           fi
-          echo "Check result (${{ matrix.region }}):"
+          echo "Check result (${{ matrix.target.name }}):"
           echo "$RESULT"
 
           if [ "$REBUILD" == "true" ]; then
@@ -79,7 +89,7 @@ jobs:
 
           HAS_JSON=$( [ "$HAS_MISSING" == "true" ] && echo true || echo false )
           jq -nc --argjson missing "$MISSING" --argjson buildMatrix "$BUILD_MATRIX" \
-            --arg r "${{ matrix.region }}" --argjson hasMissing "$HAS_JSON" \
+            --arg r "${{ matrix.target.name }}" --argjson hasMissing "$HAS_JSON" \
             '{region: $r, missing: $missing, buildMatrix: $buildMatrix, hasMissing: $hasMissing}' \
             > "$GITHUB_WORKSPACE/check-result.json"
 
@@ -89,7 +99,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: sandbox-img-check-${{ matrix.region }}
+          name: sandbox-img-check-${{ matrix.target.name }}
           path: check-result.json
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -115,7 +125,7 @@ jobs:
           while IFS= read -r row; do
             image=$(echo "$row" | jq -r '.image')
             tag=$(echo "$row" | jq -r '.tag')
-            echo "Building ${image}:${tag} (${{ matrix.region }})"
+            echo "Building ${image}:${tag} (${{ matrix.target.name }})"
             npx tsx scripts/sandbox_image_build.ts \
               --image "$image" \
               --tag "$tag" \
@@ -133,7 +143,7 @@ jobs:
           while IFS= read -r row; do
             image=$(echo "$row" | jq -r '.image')
             tag=$(echo "$row" | jq -r '.tag')
-            echo "Checking ${image}:${tag} (${{ matrix.region }})"
+            echo "Checking ${image}:${tag} (${{ matrix.target.name }})"
             npx tsx scripts/sandbox_security_check.ts \
               --image "$image" \
               --tag "$tag"
@@ -148,27 +158,21 @@ jobs:
     if: always() && needs['check-and-build'].result == 'success'
     runs-on: ubuntu-latest
     steps:
-      - name: Download check results (eu)
+      - name: Download every target's check result
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: sandbox-img-check-eu
-          path: check-eu
-
-      - name: Download check results (us)
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-        with:
-          name: sandbox-img-check-us
-          path: check-us
+          pattern: sandbox-img-check-*
+          path: checks
 
       - name: Aggregate summary
         id: count
         run: |
           set -eo pipefail
-          EU=$(cat check-eu/check-result.json)
-          US=$(cat check-us/check-result.json)
-          HAS=$(echo "$EU" "$US" | jq -s 'map(.hasMissing) | any')
-          SUMMARY=$(echo "$EU" "$US" | jq -s -c 'map({(.region): .missing}) | add')
-          COUNT=$(echo "$EU" "$US" | jq -s '[.[].buildMatrix | length] | add')
+          # One check-result.json per target, in its own subfolder.
+          ALL=$(find checks -name check-result.json -exec cat {} +)
+          HAS=$(echo "$ALL" | jq -s 'map(.hasMissing) | any')
+          SUMMARY=$(echo "$ALL" | jq -s -c 'map({(.region): .missing}) | add')
+          COUNT=$(echo "$ALL" | jq -s '[.[].buildMatrix | length] | add')
           {
             echo "has-missing=$HAS"
             echo "missing-summary=$SUMMARY"
@@ -183,13 +187,13 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ steps.count.outputs.has-missing }}" == "true" ]; then
             {
-              echo "Built **${{ steps.count.outputs.planned-builds }}** image(s) across EU and US E2B (sequential per region)."
+              echo "Built **${{ steps.count.outputs.planned-builds }}** image(s) across every E2B target (sequential per target)."
               echo ""
-              echo "### Missing by region (before build):"
+              echo "### Missing by target (before build):"
               echo '```json'
               echo '${{ steps.count.outputs.missing-summary }}'
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "All required sandbox images already exist in both regions" >> "$GITHUB_STEP_SUMMARY"
+            echo "All required sandbox images already exist in every E2B target" >> "$GITHUB_STEP_SUMMARY"
           fi
