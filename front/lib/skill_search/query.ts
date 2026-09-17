@@ -1,10 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  applySearchRanking,
-  buildSkillMatchQuery,
-} from "@app/lib/skill_search/ranking";
+import { buildSkillMatchQuery } from "@app/lib/skill_search/ranking";
 import type {
   SkillSearchFilters,
   SkillSearchOptions,
@@ -162,40 +159,34 @@ export function prepareSkillSearchQuery(
   auth: Authenticator,
   searchTerm: string,
   permissionFiltering: SkillSearchPermissionFiltering = "strict",
-  {
-    mode = "autocomplete",
-    filters = {},
-  }: Pick<SkillSearchOptions, "mode" | "filters"> = {}
+  { filters = {} }: Pick<SkillSearchOptions, "filters"> = {}
 ): estypes.QueryDslQueryContainer {
   assert(
     permissionFiltering !== "redact_unreadable" || auth.isAdmin(),
     "Only admins can search unreadable skills."
   );
   const readable = getSkillSearchReadPermissions(auth);
-  return applySearchRanking(
-    {
-      bool: {
-        filter: [
-          { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
-          {
-            terms: {
-              status: [...new Set(filters.status ?? ["active"])].sort(),
-            },
+  return {
+    bool: {
+      filter: [
+        { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
+        {
+          terms: {
+            status: [...new Set(filters.status ?? ["active"])].sort(),
           },
-          ...(permissionFiltering === "strict"
-            ? [
-                ...(auth.isKey() ? [] : [buildAvailabilityFilter(auth)]),
-                ...(readable.skillIds === null
-                  ? []
-                  : [{ terms: { skill_id: readable.skillIds } }]),
-                buildSpaceAccessFilter(readable.spaceIds),
-              ]
-            : []),
-          ...buildSelectionFilters(auth, filters),
-        ],
-        must: [buildSkillMatchQuery(searchTerm, mode)],
-      },
+        },
+        ...(permissionFiltering === "strict"
+          ? [
+              ...(auth.isKey() ? [] : [buildAvailabilityFilter(auth)]),
+              ...(readable.skillIds === null
+                ? []
+                : [{ terms: { skill_id: readable.skillIds } }]),
+              buildSpaceAccessFilter(readable.spaceIds),
+            ]
+          : []),
+        ...buildSelectionFilters(auth, filters),
+      ],
+      must: [buildSkillMatchQuery(searchTerm)],
     },
-    mode
-  );
+  };
 }

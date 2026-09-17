@@ -25,13 +25,6 @@ export type SkillSearchPermissionFiltering = Exclude<
   "dangerously_skip"
 >;
 
-export const SEARCH_MODES = [
-  "autocomplete",
-  "management",
-  "discovery",
-] as const;
-export type SearchMode = (typeof SEARCH_MODES)[number];
-
 // OR within a dimension, AND across dimensions. Selection never replaces ACLs.
 export interface SkillSearchFilters {
   // Omitted means active only. Suggested skills are never searchable.
@@ -45,7 +38,6 @@ export interface SkillSearchFilters {
 
 export interface SkillSearchOptions {
   searchTerm: string;
-  mode?: SearchMode;
   filters?: SkillSearchFilters;
   permissionFiltering?: SkillSearchPermissionFiltering;
 }
