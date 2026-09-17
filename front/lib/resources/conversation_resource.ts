@@ -35,6 +35,7 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageStatus,
+  AgentMessageType,
   CompactionMessageStatus,
   ConversationForkedChildType,
   ConversationForkedFromType,
@@ -864,15 +865,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async markAgentMessageCreditSpendCheckpointPaused(
     auth: Authenticator,
-    { agentMessageModelId }: { agentMessageModelId: ModelId }
+    { agentMessage }: { agentMessage: AgentMessageType }
   ): Promise<void> {
-    // Guarded in the same statement: a message finalized by another path between the caller's
-    // status read and this write must not end up flagged as waiting for the user.
+    if (agentMessage.status !== "created") {
+      return;
+    }
+
     await AgentMessageModel.update(
       { creditSpendCheckpointStatus: "paused" },
       {
         where: {
-          id: agentMessageModelId,
+          id: agentMessage.agentMessageId,
           workspaceId: auth.getNonNullableWorkspace().id,
           status: "created",
         },

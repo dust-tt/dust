@@ -991,7 +991,7 @@ export async function finalizeCreditSpendCheckpointPause(
   }
 
   await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(auth, {
-    agentMessageModelId: agentMessage.agentMessageId,
+    agentMessage,
   });
   await ConversationResource.markAsActionRequired(auth, { conversation });
 

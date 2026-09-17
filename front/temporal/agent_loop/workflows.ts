@@ -374,7 +374,10 @@ export async function agentLoopWorkflow({
 
         // The decision is made on the spend measured before this step ran. The step itself may
         // have crossed it, in which case the pause lands one step late.
-        if (creditSpendCheckpointCrossed) {
+        if (
+          creditSpendCheckpointCrossed &&
+          patched("credit-spend-checkpoint-gate")
+        ) {
           creditSpendCheckpointPaused = true;
           break;
         }

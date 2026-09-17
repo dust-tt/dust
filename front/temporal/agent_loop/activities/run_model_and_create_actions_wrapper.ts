@@ -10,7 +10,6 @@ import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DurationRecorder } from "@app/lib/duration_recorder";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
-import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
@@ -252,13 +251,15 @@ async function _runModelAndCreateActionsActivity({
     return null;
   }
 
-  const creditSpendCheckpointCrossed = await getCreditSpendCheckpointCrossed({
+  const creditSpendCheckpointCrossed = await getCreditSpendCheckpointCrossed(
     auth,
-    isRootAgentMessage,
-    userMessageOrigin: runAgentArgs.userMessageOrigin ?? null,
-    agentMessageId: runAgentArgs.agentMessageId,
-    totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
-  });
+    {
+      isRootAgentMessage,
+      userMessageOrigin: runAgentArgs.userMessageOrigin ?? null,
+      agentMessageId: runAgentArgs.agentMessageId,
+      totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
+    }
+  );
 
   // Tool test run: bypass LLM and directly execute tool commands. The command result does not
   // carry the checkpoint flag: a test run never pauses.
@@ -369,22 +370,22 @@ async function _runModelAndCreateActionsActivity({
 /**
  * Whether the agent loop must pause here for the user to confirm continuing. Reads the agent
  * message's checkpoint status only when the cheap, in-memory checks (exemption, root message,
- * pre-step spend) don't already rule it out — kept fail-open: a failure to read the status must
- * not abort an otherwise-successful step.
+ * pre-step spend) don't already rule it out.
  */
-export async function getCreditSpendCheckpointCrossed({
-  auth,
-  isRootAgentMessage,
-  userMessageOrigin,
-  agentMessageId,
-  totalCostMicroUsd,
-}: {
-  auth: Authenticator;
-  isRootAgentMessage: boolean;
-  userMessageOrigin: UserMessageOrigin | null;
-  agentMessageId: string;
-  totalCostMicroUsd: number;
-}): Promise<boolean> {
+export async function getCreditSpendCheckpointCrossed(
+  auth: Authenticator,
+  {
+    isRootAgentMessage,
+    userMessageOrigin,
+    agentMessageId,
+    totalCostMicroUsd,
+  }: {
+    isRootAgentMessage: boolean;
+    userMessageOrigin: UserMessageOrigin | null;
+    agentMessageId: string;
+    totalCostMicroUsd: number;
+  }
+): Promise<boolean> {
   const isExempt = isExemptFromCreditSpendCheckpoint(auth, {
     userMessageOrigin,
   });
@@ -397,24 +398,11 @@ export async function getCreditSpendCheckpointCrossed({
     return false;
   }
 
-  let status: AgentMessageModel["creditSpendCheckpointStatus"] = null;
-  try {
-    status =
-      await ConversationResource.fetchAgentMessageCreditSpendCheckpointStatus(
-        auth,
-        { agentMessageId }
-      );
-  } catch (error) {
-    logger.warn(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        agentMessageId,
-        error,
-      },
-      "[CreditSpendCheckpoint] failed to read checkpoint status, continuing without it"
+  const status =
+    await ConversationResource.fetchAgentMessageCreditSpendCheckpointStatus(
+      auth,
+      { agentMessageId }
     );
-    return false;
-  }
 
   return hasCrossedCreditSpendCheckpoint({
     isExempt,
