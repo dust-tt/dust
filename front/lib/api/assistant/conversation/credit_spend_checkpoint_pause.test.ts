@@ -13,7 +13,6 @@ import {
   declineCreditSpendCheckpointPause,
 } from "@app/lib/api/assistant/conversation/credit_spend_checkpoint_pause";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -29,15 +28,13 @@ describe("credit spend checkpoint pause resolution", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
   let conversation: ConversationResource;
-  let agentMessageSId: string;
+  let agentMessageId: string;
   let agentMessageModelId: ModelId;
 
-  const getStatus = async () => {
-    const row = await AgentMessageModel.findOne({
-      where: { id: agentMessageModelId, workspaceId: workspace.id },
+  const getStatus = () =>
+    ConversationResource.fetchAgentMessageCreditSpendCheckpointStatus(auth, {
+      agentMessageId,
     });
-    return row?.creditSpendCheckpointStatus ?? null;
-  };
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -66,7 +63,7 @@ describe("credit spend checkpoint pause resolution", () => {
         conversation: created,
         content: "Do a long task",
       });
-    const { messageRow: agentMessageRow } =
+    const { messageRow: agentMessageRow, agentMessage } =
       await ConversationFactory.createAgentMessage(auth, {
         workspace,
         conversation: created,
@@ -74,8 +71,8 @@ describe("credit spend checkpoint pause resolution", () => {
         parentMessageModelId: userMessageRow.id,
         rank: 1,
       });
-    agentMessageSId = agentMessageRow.sId;
-    agentMessageModelId = agentMessageRow.agentMessageId as ModelId;
+    agentMessageId = agentMessageRow.sId;
+    agentMessageModelId = agentMessage.agentMessageId;
 
     // The loop paused after completing step 2.
     for (const step of [0, 1, 2]) {
@@ -88,9 +85,9 @@ describe("credit spend checkpoint pause resolution", () => {
         value: { type: "text_content", value: `step ${step}` },
       });
     }
-    await AgentMessageModel.update(
-      { creditSpendCheckpointStatus: "paused" },
-      { where: { id: agentMessageModelId, workspaceId: workspace.id } }
+    await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(
+      auth,
+      { agentMessage }
     );
 
     const fetched = await ConversationResource.fetchById(auth, created.sId);
@@ -101,13 +98,13 @@ describe("credit spend checkpoint pause resolution", () => {
   });
 
   it("rejects a message that is not paused", async () => {
-    await AgentMessageModel.update(
-      { creditSpendCheckpointStatus: null },
-      { where: { id: agentMessageModelId, workspaceId: workspace.id } }
+    await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
+      auth,
+      { agentMessageModelId, from: "paused", to: null }
     );
 
     const res = await continueCreditSpendCheckpointPause(auth, conversation, {
-      messageId: agentMessageSId,
+      messageId: agentMessageId,
     });
 
     expect(res.isErr()).toBe(true);
@@ -128,7 +125,7 @@ describe("credit spend checkpoint pause resolution", () => {
     const res = await declineCreditSpendCheckpointPause(
       otherAuth,
       conversation,
-      { messageId: agentMessageSId }
+      { messageId: agentMessageId }
     );
 
     expect(res.isErr()).toBe(true);
@@ -140,7 +137,7 @@ describe("credit spend checkpoint pause resolution", () => {
 
   it("continue acknowledges the pause and relaunches the loop at the next step", async () => {
     const res = await continueCreditSpendCheckpointPause(auth, conversation, {
-      messageId: agentMessageSId,
+      messageId: agentMessageId,
     });
 
     expect(res.isOk()).toBe(true);
@@ -152,7 +149,7 @@ describe("credit spend checkpoint pause resolution", () => {
         startAsToolFreeGracefulStop: false,
         waitForCompletion: true,
         agentLoopArgs: expect.objectContaining({
-          agentMessageId: agentMessageSId,
+          agentMessageId,
           conversationId: conversation.sId,
         }),
       })
@@ -161,10 +158,10 @@ describe("credit spend checkpoint pause resolution", () => {
 
   it("resolving the same pause twice is a no-op the second time", async () => {
     await continueCreditSpendCheckpointPause(auth, conversation, {
-      messageId: agentMessageSId,
+      messageId: agentMessageId,
     });
     const second = await declineCreditSpendCheckpointPause(auth, conversation, {
-      messageId: agentMessageSId,
+      messageId: agentMessageId,
     });
 
     expect(second.isErr()).toBe(true);
@@ -178,7 +175,7 @@ describe("credit spend checkpoint pause resolution", () => {
     );
 
     const res = await continueCreditSpendCheckpointPause(auth, conversation, {
-      messageId: agentMessageSId,
+      messageId: agentMessageId,
     });
 
     expect(res.isErr()).toBe(true);
@@ -187,7 +184,7 @@ describe("credit spend checkpoint pause resolution", () => {
 
   it("decline clears the pause and relaunches the loop as a tool-free graceful stop", async () => {
     const res = await declineCreditSpendCheckpointPause(auth, conversation, {
-      messageId: agentMessageSId,
+      messageId: agentMessageId,
     });
 
     expect(res.isOk()).toBe(true);
@@ -200,7 +197,7 @@ describe("credit spend checkpoint pause resolution", () => {
         startAsToolFreeGracefulStop: true,
         waitForCompletion: true,
         agentLoopArgs: expect.objectContaining({
-          agentMessageId: agentMessageSId,
+          agentMessageId,
           conversationId: conversation.sId,
         }),
       })
@@ -213,7 +210,7 @@ describe("credit spend checkpoint pause resolution", () => {
     );
 
     const res = await declineCreditSpendCheckpointPause(auth, conversation, {
-      messageId: agentMessageSId,
+      messageId: agentMessageId,
     });
 
     expect(res.isErr()).toBe(true);
