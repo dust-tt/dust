@@ -25,7 +25,7 @@ export function getKnowledgeItems(attrs: {
   return Array.isArray(attrs.selectedItems) ? attrs.selectedItems : [];
 }
 
-// `selectedItems` is an array in the persisted schema, but every insertion
+// `selectedItems` is an array in the schema, but every insertion
 // writes exactly one item, so a knowledge node holds at most one
 export function getFirstKnowledgeItem(attrs: {
   selectedItems?: unknown;
