@@ -50,7 +50,7 @@ async function findWorkspace(
 async function makeWorkspaceWithRetiredProviderLastEditedYesterday(): Promise<LightWorkspaceType> {
   const workspace = await makeWorkspaceLastEditedYesterday(["openai", "xai"]);
   await frontSequelize.query(
-    `UPDATE workspaces SET "whiteListedProviders" = ARRAY['togetherai','xai']::text[] WHERE id = :id`,
+    `UPDATE workspaces SET "whiteListedProviders" = ARRAY['openai','togetherai','xai','anthropic']::text[] WHERE id = :id`,
     { replacements: { id: workspace.id } }
   );
   return workspace;
@@ -150,19 +150,30 @@ describe("removeXaiFromWhitelistedProviders", () => {
     expect(await readStoredProviders(workspace)).toBeNull();
   });
 
-  it("skips a workspace holding a retired provider id instead of failing the whole run", async () => {
-    const retired = await makeWorkspaceWithRetiredProviderLastEditedYesterday();
-    const healthy = await makeWorkspaceLastEditedYesterday(["openai", "xai"]);
+  it("drops retired provider ids alongside xai", async () => {
+    const workspace =
+      await makeWorkspaceWithRetiredProviderLastEditedYesterday();
 
-    const { updated } = await removeXaiFromWhitelistedProviders({
-      execute: true,
-      logger,
+    expect(await runMigration(true, workspace)).toEqual({
+      before: ["openai", "togetherai", "xai", "anthropic"],
+      after: ["openai", "anthropic"],
     });
+    expect(await readStoredProviders(workspace)).toEqual([
+      "openai",
+      "anthropic",
+    ]);
+  });
 
-    expect(updated.map((c) => c.workspaceId)).toContain(healthy.sId);
-    expect(updated.map((c) => c.workspaceId)).not.toContain(retired.sId);
-    expect(await readStoredProviders(retired)).toEqual(["togetherai", "xai"]);
-    expect(await readStoredProviders(healthy)).toEqual(["openai"]);
+  it("leaves a workspace holding only retired providers with an empty whitelist", async () => {
+    const workspace = await makeWorkspaceLastEditedYesterday(["xai"]);
+    await frontSequelize.query(
+      `UPDATE workspaces SET "whiteListedProviders" = ARRAY['togetherai','xai']::text[] WHERE id = :id`,
+      { replacements: { id: workspace.id } }
+    );
+
+    await runMigration(true, workspace);
+
+    expect(await readStoredProviders(workspace)).toEqual([]);
   });
 
   it("exempts a workspace holding the xai feature flag without exempting the others", async () => {

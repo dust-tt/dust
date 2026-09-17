@@ -51,6 +51,9 @@ interface WhitelistChange {
   workspaceId: string;
   before: ModelProviderIdType[];
   after: ModelProviderIdType[];
+  // Ids the row carried that are no longer declared in MODEL_PROVIDER_IDS. Logged separately
+  // because dropping them goes beyond what this migration's name promises.
+  retiredProviders: ModelProviderIdType[];
   updatedAt: Date;
 }
 
@@ -109,33 +112,30 @@ export async function removeXaiFromWhitelistedProviders({
     if (!before) {
       return [];
     }
-    // The column validator rejects any id no longer in MODEL_PROVIDER_IDS, so a row still carrying
-    // a retired provider cannot be written back at all. Skipping it here rather than letting the
-    // write throw keeps the run going and keeps the dry run honest about what it would do.
+    // Retired ids go out with xai. The column validator rejects any id no longer in
+    // MODEL_PROVIDER_IDS, so keeping them would make the row unwritable.
     const retiredProviders = before.filter(
       (provider) => !KNOWN_PROVIDERS.has(provider)
     );
-    if (retiredProviders.length > 0) {
-      logger.warn(
-        { workspaceId: row.sId, before, retiredProviders },
-        `Skipping workspace ${row.sId}: its whitelist holds retired provider(s) ${retiredProviders.join(", ")} that the column validator would reject.`
-      );
-      return [];
-    }
     return [
       {
         workspaceId: row.sId,
         before,
-        after: before.filter((provider) => provider !== PROVIDER_TO_REMOVE),
+        after: before.filter(
+          (provider) =>
+            provider !== PROVIDER_TO_REMOVE && KNOWN_PROVIDERS.has(provider)
+        ),
+        retiredProviders,
         updatedAt: row.updatedAt,
       },
     ];
   });
 
   for (const change of updated) {
+    const removed = [PROVIDER_TO_REMOVE, ...change.retiredProviders].join(", ");
     logger.info(
       change,
-      `${execute ? "Removing" : "[DRY RUN] Would remove"} ${PROVIDER_TO_REMOVE} from workspace ${change.workspaceId}.`
+      `${execute ? "Removing" : "[DRY RUN] Would remove"} ${removed} from workspace ${change.workspaceId}.`
     );
   }
 
