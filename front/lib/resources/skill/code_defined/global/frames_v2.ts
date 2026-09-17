@@ -330,6 +330,11 @@ It is remote object storage, not local disk:
   succeeds onto disk the Frame loses when its sandbox recycles. Check the resolved path is still
   under \`filesDir()\`, and derive per-user paths from \`currentUser().sId\` rather than from input.
 
+A Frame cannot make the browser download a file. Its UI runs in a sandboxed iframe that does not
+allow downloads, so building an anchor with a \`download\` attribute and clicking it silently does
+nothing — no error to catch. Do not offer a download button. Render the contents in the UI
+instead: an \`<img>\` for an image, formatted text for data, a table for rows.
+
 ## Calling a function from the Frame UI
 
 Use the \`useFrameFunction\` and \`useFrameFunctionMutation\` hooks from
