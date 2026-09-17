@@ -1215,10 +1215,26 @@ describe("cleanupAgentScopedResourcesForHardDeletion", () => {
 });
 
 describe("updateAgentConfigurationsScope", () => {
+  // Production seeds the "publish agents" capability to everybody (see governance_seeding); the test
+  // harness does not. Grant it and rebuild the authenticator so it resolves the new grant — only
+  // callers who hold `publish` on an agent may change its scope.
+  async function withPublishCapability(
+    test: Awaited<ReturnType<typeof createResourceTest>>
+  ): Promise<Authenticator> {
+    await GroupPermissionResource.setForEverybody(
+      await Authenticator.internalAdminForWorkspace(test.workspace.sId),
+      { grantType: "publish", resourceType: "agent" }
+    );
+    return Authenticator.fromUserIdAndWorkspaceId(
+      test.user.sId,
+      test.workspace.sId
+    );
+  }
+
   it("updates the scope of a single agent", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
+    const test = await createResourceTest({ role: "admin" });
+    const { workspace } = test;
+    const authenticator = await withPublishCapability(test);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       { scope: "hidden" }
@@ -1238,9 +1254,9 @@ describe("updateAgentConfigurationsScope", () => {
   });
 
   it("updates the scope of multiple agents in a single call", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
+    const test = await createResourceTest({ role: "admin" });
+    const { workspace } = test;
+    const authenticator = await withPublishCapability(test);
     const agents = await Promise.all([
       AgentConfigurationFactory.createTestAgent(authenticator, {
         name: "A1",
@@ -1315,10 +1331,12 @@ describe("updateAgentConfigurationsScope", () => {
     false,
     true,
   ])("disables non-editor triggers when hiding an agent (grants: %s)", async (grants) => {
-    const { authenticator, workspace, user } = await createResourceTest({
+    const test = await createResourceTest({
       plan: "creditPriced",
       role: "admin",
     });
+    const { workspace, user } = test;
+    const authenticator = await withPublishCapability(test);
 
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
