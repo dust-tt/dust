@@ -138,6 +138,7 @@ async fn run() -> anyhow::Result<()> {
             }
         },
         Commands::Frame { command } => match command {
+            commands::frame::FrameCommand::Lint(args) => commands::cmd_frame_lint(args).await?,
             commands::frame::FrameCommand::Call {
                 target,
                 function_name,
@@ -567,6 +568,28 @@ mod tests {
                 _ => panic!("expected build"),
             },
             _ => panic!("expected function"),
+        }
+    }
+
+    #[test]
+    fn frame_lint_parses() {
+        let cli = Cli::try_parse_from([
+            "dsbx",
+            "frame",
+            "lint",
+            "./Status",
+            "--viz-url",
+            "http://localhost:3007",
+        ])
+        .expect("parse lint");
+        match cli.command {
+            Commands::Frame {
+                command: commands::frame::FrameCommand::Lint(args),
+            } => {
+                assert_eq!(args.source, std::path::PathBuf::from("./Status"));
+                assert_eq!(args.viz_url.as_deref(), Some("http://localhost:3007"));
+            }
+            _ => panic!("expected Frame lint"),
         }
     }
 

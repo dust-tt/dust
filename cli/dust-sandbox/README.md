@@ -23,6 +23,35 @@ dsbx tools         Interact with MCP servers and tools
 dsbx function      Run a sandbox function (run) or print its schema (get)
 ```
 
+## Frame linting
+
+```sh
+dsbx frame lint /files/conversation/Status
+dsbx frame lint ./Status --viz-url http://localhost:3007
+```
+
+Accepts a Frame folder, `manifest.json`, or a legacy UI entry file. For a folder, the UI entry
+is `uiEntryPoint` from the manifest or `index.tsx` by default. TypeScript finds the entry's
+imports and Oxlint checks those files, reporting original file paths, lines and columns.
+Errors exit with status 1. Backend functions outside the UI import graph are excluded.
+
+The sandbox supplies `DUST_VIZ_URL`. Local runs can select a Viz server with `--viz-url`.
+Each run fetches its public types manifest and reuses declarations cached by manifest id in
+`$XDG_CACHE_HOME/dust/frame-types` or `$HOME/.cache/dust/frame-types`. Use `--cache-dir` to
+choose another location. Downloads are checked against the manifest's checksum and size.
+The Viz hostname must be reachable through the sandbox egress policy.
+
+The command creates a temporary project with the Viz compiler settings. It uses the original
+source contents and does not overwrite a Frame's `tsconfig.json`. The lint rules catch
+unsupported runtime imports, incorrect hook placement and unhandled promises, alongside
+Oxlint's TypeScript diagnostics.
+
+For local development and CLI tests, install the tools included in the sandbox image:
+
+```sh
+npm install --global typescript@5.9.3 oxlint@1.83.0 oxlint-tsgolint@7.0.2001
+```
+
 ## Build
 
 The functions runner bundle (`functions-runner/runner.js`) is a generated
