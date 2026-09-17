@@ -27,7 +27,7 @@ export {
   isFullKnowledgeItem,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 
-interface HydratingKnowledgeChipProps {
+interface KnowledgeDisplayProps {
   item: KnowledgeItem;
   owner: LightWorkspaceType;
   onRemove?: () => void;
@@ -37,12 +37,12 @@ interface HydratingKnowledgeChipProps {
 // Fetches the content node for base items (e.g. restored from a draft's
 // serialized <knowledge> tag) and hydrates the node attrs so the chip gets its
 // icon back; full items render directly.
-function HydratingKnowledgeChip({
+function KnowledgeDisplayComponent({
   item,
   owner,
   onRemove,
   updateAttributes,
-}: HydratingKnowledgeChipProps) {
+}: KnowledgeDisplayProps) {
   const needsFetch = !isFullKnowledgeItem(item);
 
   const { dataSourceView, isDataSourceViewError } = useSpaceDataSourceView({
@@ -149,7 +149,7 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
 
   return (
     <NodeViewWrapper className="inline-flex align-middle" data-drag-handle="">
-      <HydratingKnowledgeChip
+      <KnowledgeDisplayComponent
         item={selectedItems[0]}
         owner={workspace}
         onRemove={editor.isEditable ? handleRemove : undefined}
