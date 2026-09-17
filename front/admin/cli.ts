@@ -6,12 +6,6 @@ import {
   getDataSources,
   softDeleteDataSourceAndLaunchScrubWorkflow,
 } from "@app/lib/api/data_sources";
-import {
-  getSimulatedFailureModelStatus,
-  SIMULATED_FAILURE_MODEL_MAX_TTL_SECONDS,
-  seedSimulatedFailureModelHealthWindow,
-  setSimulatedFailureModelFailure,
-} from "@app/lib/api/llm/simulated_failure_model";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
@@ -813,68 +807,6 @@ const productionCheck = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
-const simulatedFailureModel = async (
-  command: string,
-  args: parseArgs.ParsedArgs
-) => {
-  switch (command) {
-    case "enable": {
-      const ttlSeconds = args.ttlSeconds ?? 5 * 60;
-      if (
-        typeof ttlSeconds !== "number" ||
-        !Number.isInteger(ttlSeconds) ||
-        ttlSeconds < 1 ||
-        ttlSeconds > SIMULATED_FAILURE_MODEL_MAX_TTL_SECONDS
-      ) {
-        throw new Error(
-          `--ttlSeconds must be an integer between 1 and ${SIMULATED_FAILURE_MODEL_MAX_TTL_SECONDS}`
-        );
-      }
-
-      const status = await getSimulatedFailureModelStatus();
-      if (status.degradation === "lease") {
-        throw new Error(
-          "The simulated failure model is still in recovery; wait for its lease to clear before starting another run."
-        );
-      }
-      // The streams already route around a degraded model, so a run would
-      // never reach the synthetic endpoint to fail in the first place.
-      if (status.degradation === "permanent") {
-        throw new Error(
-          "The simulated failure model is flagged degraded in `model_degradations`; clear that row before starting a run."
-        );
-      }
-
-      // Disarm an earlier incomplete run before replacing its health window.
-      await setSimulatedFailureModelFailure({ enabled: false, ttlSeconds: 1 });
-      await seedSimulatedFailureModelHealthWindow();
-      await setSimulatedFailureModelFailure({ enabled: true, ttlSeconds });
-      console.log(
-        JSON.stringify(await getSimulatedFailureModelStatus(), null, 2)
-      );
-      return;
-    }
-
-    case "disable":
-      await setSimulatedFailureModelFailure({ enabled: false, ttlSeconds: 1 });
-      console.log(
-        JSON.stringify(await getSimulatedFailureModelStatus(), null, 2)
-      );
-      return;
-
-    case "status":
-      console.log(
-        JSON.stringify(await getSimulatedFailureModelStatus(), null, 2)
-      );
-      return;
-
-    default:
-      console.log(
-        "Unknown simulated-failure-model command, possible values: `enable`, `disable`, `status`"
-      );
-  }
-};
-
 async function apikeys(command: string, args: parseArgs.ParsedArgs) {
   switch (command) {
     case "set-role": {
@@ -1021,7 +953,6 @@ const CLI_OBJECT_TYPES = [
   "conversation",
   "transcripts",
   "production-check",
-  "simulated-failure-model",
   "api-key",
   "trigger",
 ] as const;
@@ -1070,8 +1001,6 @@ const main = async () => {
       return transcripts(command, argv);
     case "production-check":
       return productionCheck(command, argv);
-    case "simulated-failure-model":
-      return simulatedFailureModel(command, argv);
     case "api-key":
       return apikeys(command, argv);
     case "trigger":

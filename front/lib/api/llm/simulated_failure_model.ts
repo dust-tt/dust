@@ -154,27 +154,23 @@ export async function getSimulatedFailureModelStatus(): Promise<{
     providerErrors: number;
   };
 }> {
-  const [state, observedExpiration, ttlSeconds, healthWindow] =
-    await Promise.all([
-      readFailureState(),
-      ModelDegradationResource.getObservedExpiration(
-        SIMULATED_FAILURE_MODEL_ENDPOINT
-      ),
-      runOnRedisCache({ origin: "simulated_failure_model" }, (redis) =>
-        redis.ttl(SIMULATED_FAILURE_MODEL_KEY)
-      ),
-      readEndpointWindow(SIMULATED_FAILURE_MODEL_ENDPOINT, new Date()),
-    ]);
+  const [state, degradation, ttlSeconds, healthWindow] = await Promise.all([
+    readFailureState(),
+    ModelDegradationResource.fetchByEndpoint(SIMULATED_FAILURE_MODEL_ENDPOINT),
+    runOnRedisCache({ origin: "simulated_failure_model" }, (redis) =>
+      redis.ttl(SIMULATED_FAILURE_MODEL_KEY)
+    ),
+    readEndpointWindow(SIMULATED_FAILURE_MODEL_ENDPOINT, new Date()),
+  ]);
 
   return {
     failureEnabled: state !== null,
     failureTriggered: state === "triggered",
-    degradation:
-      observedExpiration === null
-        ? "none"
-        : observedExpiration === "permanent"
-          ? "permanent"
-          : "lease",
+    degradation: !degradation
+      ? "none"
+      : degradation.expiresAt
+        ? "lease"
+        : "permanent",
     ttlSeconds: ttlSeconds >= 0 ? ttlSeconds : null,
     healthWindow,
   };

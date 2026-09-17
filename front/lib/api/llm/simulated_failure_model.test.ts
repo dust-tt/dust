@@ -11,6 +11,7 @@ import {
   triggerSimulatedFailureModelFailure,
 } from "@app/lib/api/llm/simulated_failure_model";
 import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
+import { ModelDegradationFactory } from "@app/tests/utils/ModelDegradationFactory";
 import { redisMock } from "@app/tests/utils/mocks/redis";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -56,13 +57,27 @@ describe("simulated failure model control", () => {
   });
 
   it("reports an operator-flagged degradation as permanent", async () => {
-    await ModelDegradationResource.updateDegradedEndpoints([
-      { ...SIMULATED_FAILURE_MODEL_ENDPOINT, degraded: true },
-    ]);
+    await ModelDegradationFactory.degraded(SIMULATED_FAILURE_MODEL_ENDPOINT);
 
     try {
       await expect(getSimulatedFailureModelStatus()).resolves.toMatchObject({
         degradation: "permanent",
+      });
+    } finally {
+      await ModelDegradationResource.updateDegradedEndpoints([
+        { ...SIMULATED_FAILURE_MODEL_ENDPOINT, degraded: false },
+      ]);
+    }
+  });
+
+  it("reports a breaker lease as a lease", async () => {
+    await ModelDegradationFactory.degraded(SIMULATED_FAILURE_MODEL_ENDPOINT, {
+      expiresAt: new Date(Date.now() + 20 * 60 * 1000),
+    });
+
+    try {
+      await expect(getSimulatedFailureModelStatus()).resolves.toMatchObject({
+        degradation: "lease",
       });
     } finally {
       await ModelDegradationResource.updateDegradedEndpoints([

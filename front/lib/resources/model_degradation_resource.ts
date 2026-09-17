@@ -45,6 +45,20 @@ export class ModelDegradationResource extends BaseResource<ModelDegradationModel
     }));
   }
 
+  static async fetchByEndpoint(
+    endpoint: DegradedModelEndpointType
+  ): Promise<ModelDegradationResource | null> {
+    const blob = await ModelDegradationModel.findOne({
+      where: {
+        ...endpoint,
+        [Op.or]: [{ expiresAt: null }, { expiresAt: { [Op.gt]: new Date() } }],
+      },
+    });
+    return blob
+      ? new ModelDegradationResource(ModelDegradationModel, blob.get())
+      : null;
+  }
+
   static async updateDegradedEndpoints(
     updates: DegradedModelEndpointUpdateType[]
   ): Promise<void> {

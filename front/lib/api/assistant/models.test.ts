@@ -10,6 +10,7 @@ import { ModelDegradationResource } from "@app/lib/resources/model_degradation_r
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { ModelDegradationFactory } from "@app/tests/utils/ModelDegradationFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -336,10 +337,9 @@ describe("resolveModel", () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     await FeatureFlagFactory.basic(auth, "simulated_failure_model_feature");
-    await ModelDegradationResource.createOrRenewLease(
-      SIMULATED_FAILURE_MODEL_ENDPOINT,
-      new Date(Date.now() + 20 * 60 * 1000)
-    );
+    await ModelDegradationFactory.degraded(SIMULATED_FAILURE_MODEL_ENDPOINT, {
+      expiresAt: new Date(Date.now() + 20 * 60 * 1000),
+    });
     await refreshDegradedModelIds();
 
     try {
