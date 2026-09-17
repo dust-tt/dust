@@ -12,6 +12,8 @@ export const SUGGEST_SKILL_UPDATE_TOOL_NAME = "suggest_skill_update" as const;
 export const SUGGEST_SKILL_EDITORS_TOOL_NAME = "suggest_skill_editors" as const;
 export const SUGGEST_AGENT_CREATION_TOOL_NAME =
   "suggest_agent_creation" as const;
+export const SUGGEST_AGENT_DELETION_TOOL_NAME =
+  "suggest_agent_deletion" as const;
 
 // Bounds the O(n²) pairwise conflict check in hasSuggestionSelfConflict; larger rewrites
 // should target the instructions root block instead.
@@ -115,6 +117,19 @@ export type SuggestAgentCreationArgs = z.infer<
   typeof SUGGEST_AGENT_CREATION_INPUT_SCHEMA
 >;
 
+export const SUGGEST_AGENT_DELETION_DESCRIPTION =
+  "Suggest deleting an existing agent in this workspace. The change is not applied directly: it " +
+  "is recorded as a pending suggestion that the agent's editors can review, accept, or reject. " +
+  "Accepting the suggestion archives the agent.";
+
+export const SUGGEST_AGENT_DELETION_INPUT_SCHEMA = z.object({
+  agentId: z.string().describe("The sId of the agent to suggest deleting."),
+});
+
+export type SuggestAgentDeletionArgs = z.infer<
+  typeof SUGGEST_AGENT_DELETION_INPUT_SCHEMA
+>;
+
 export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   {
     name: DESCRIBE_SKILL_TOOL_NAME,
@@ -172,6 +187,18 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting a new agent",
       done: "Suggest new agent",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_AGENT_DELETION_TOOL_NAME,
+    description: SUGGEST_AGENT_DELETION_DESCRIPTION,
+    schema: SUGGEST_AGENT_DELETION_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting agent deletion",
+      done: "Suggest agent deletion",
     },
     toolCostCategory: "basic",
     freeUsage: true,

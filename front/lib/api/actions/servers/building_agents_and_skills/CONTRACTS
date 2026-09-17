@@ -1,5 +1,10 @@
 @cc [owner:fabiencelier,label:product;mcp] changes-are-suggestions
 Tools of the `building_agents_and_skills` MCP server MUST NOT modify an agent or a skill directly.
-Every tool that proposes a change records a `pending` agent or skill suggestion with source `conversational` for the
-editors to review, marks conflicting pending suggestions `outdated`, and returns the suggestion
-`sId` embedded in a directive (`:skill_suggestion[]{sId=... kind=... skillId=...}`) so the conversation UI can render it inline.
+Every tool that proposes a change records a `pending` agent or skill suggestion for the editors to
+review, marks conflicting pending suggestions `outdated`, and returns the suggestion `sId` embedded
+in a directive (`:agent_suggestion[]{sId=... kind=... agentId=...}` or
+`:skill_suggestion[]{sId=... kind=... skillId=...}`) so the conversation UI can render it inline.
+Skill suggestions additionally record source `conversational`; see the `single-implicit-suggestion-source`
+contract on `AgentSuggestionModel` for why agent suggestions don't.
+This contract governs the tool call itself: a suggestion may still cause a real mutation once a
+human accepts it later (see the `delete` kind), which is a separate, human-reviewed step.

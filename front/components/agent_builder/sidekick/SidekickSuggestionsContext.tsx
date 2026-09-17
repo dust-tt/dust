@@ -12,12 +12,15 @@ import { getSuggestionPosition } from "@app/components/editor/extensions/agent_b
 import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { clientFetch } from "@app/lib/egress/client";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import {
   useAgentSuggestions,
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
@@ -124,6 +127,7 @@ function SidekickSuggestionsProviderContent({
   disabled = false,
 }: SidekickSuggestionsProviderProps) {
   const { owner } = useAgentBuilderContext();
+  const sendNotification = useSendNotification();
   const { skills } = useSkillsContext();
   const { mcpServerViews, mcpServerViewsWithKnowledge } =
     useMCPServerViewsContext();
@@ -275,6 +279,7 @@ function SidekickSuggestionsProviderContent({
 
         case "instructions":
         case "create":
+        case "delete":
           return { ...suggestion, relations: null };
 
         default:
@@ -510,6 +515,13 @@ function SidekickSuggestionsProviderContent({
     [pendingSuggestions, focusOnSuggestion, scrollSidekickToSuggestion]
   );
 
+  /**
+   * @cc [owner:avervaet,label:product] delete-suggestion-archives-on-accept
+   * Accepting a `delete` suggestion MUST archive the target agent (`suggestion.suggestion.agentId`)
+   * via the same endpoint the regular "delete agent" action uses. Unlike every other suggestion
+   * kind, whose acceptance only flips the suggestion's own state, `delete` is the one kind whose
+   * acceptance performs a real, irreversible mutation on the target agent.
+   */
   const acceptSuggestion = useCallback(
     async (suggestion: AgentSuggestionType): Promise<boolean> => {
       if (disabled) {
@@ -574,6 +586,23 @@ function SidekickSuggestionsProviderContent({
         scrollToNextSuggestion(suggestion);
       }
 
+      if (suggestion.kind === "delete") {
+        const { agentId, agentName } = suggestion.suggestion;
+        const res = await clientFetch(
+          `/api/w/${owner.sId}/assistant/agent_configurations/${agentId}`,
+          { method: "DELETE" }
+        );
+
+        if (!res.ok) {
+          const errorData = await getErrorFromResponse(res);
+          sendNotification({
+            type: "error",
+            title: `Error deleting ${agentName}`,
+            description: `Error: ${errorData.message}`,
+          });
+        }
+      }
+
       return true;
     },
     [
@@ -582,6 +611,8 @@ function SidekickSuggestionsProviderContent({
       dispatchDelayedBlur,
       scrollToNextSuggestion,
       disabled,
+      owner.sId,
+      sendNotification,
     ]
   );
 
