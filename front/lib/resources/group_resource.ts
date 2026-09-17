@@ -194,6 +194,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
+  // Upper bound on how long a stale user group list can be served.
+  private static readonly AUTH_GROUPS_CACHE_TTL_MS = 60 * 60 * 1000;
+
   private static readonly groupIdsCacheKeyResolver = ({
     user,
     workspace,
@@ -223,7 +226,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
-  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
+  /**
+   * @cc [owner:philipperolet,label:performance;security] auth-groups-cache-bounded-staleness
+   * A cached user group list MUST expire at most `AUTH_GROUPS_CACHE_TTL_MS` after it is written,
+   * so a membership change missed by an invalidation is never served indefinitely.
+   */
   private static dangerouslyListUserGroupsForAuthCached = cacheWithRedis(
     ({
       user,
@@ -237,7 +244,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         workspace,
       }),
     GroupResource.groupIdsCacheKeyResolver,
-    { cacheNullValues: false }
+    { cacheNullValues: false, ttlMs: GroupResource.AUTH_GROUPS_CACHE_TTL_MS }
   );
 
   private static _invalidateGroupIdsCacheForUser = invalidateCacheWithRedis(

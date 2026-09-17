@@ -19,6 +19,8 @@ class RedisMock {
     { value: string; expiresAtMs: number }
   >();
   private readonly hashStore = new Map<string, Map<string, string>>();
+  // Hash expiries, keyed like `hashStore`; absent means no expiry.
+  private readonly hashExpiresAtMs = new Map<string, number>();
 
   // runOnRedis / getRedisStreamClient: one shared client, state persists across calls.
   readonly streamClient = this.createStatefulClient(this.hashStore);
@@ -28,6 +30,7 @@ class RedisMock {
   reset(): void {
     this.stringStore.clear();
     this.hashStore.clear();
+    this.hashExpiresAtMs.clear();
   }
 
   // Clients that never need to observe their own writes get an isolated hash store.
@@ -124,17 +127,20 @@ class RedisMock {
             deleted += 1;
           }
           if (hashStore.delete(key)) {
+            this.hashExpiresAtMs.delete(key);
             deleted += 1;
           }
         }
         return deleted;
       }),
       ttl: vi.fn(async (key: string) => {
-        const entry = this.stringStore.get(key);
-        if (!entry || entry.expiresAtMs === 0) {
+        const expiresAtMs = hashStore.has(key)
+          ? (this.hashExpiresAtMs.get(key) ?? 0)
+          : (this.stringStore.get(key)?.expiresAtMs ?? 0);
+        if (expiresAtMs === 0) {
           return -1;
         }
-        const remainingMs = entry.expiresAtMs - Date.now();
+        const remainingMs = expiresAtMs - Date.now();
         return remainingMs > 0 ? Math.ceil(remainingMs / 1000) : -2;
       }),
       zAdd: vi.fn(),
@@ -250,10 +256,23 @@ class RedisMock {
       }
     );
 
-    // Hash TTLs are not enforced; the call is recorded on the spy so tests can
-    // assert that counter keys were given one.
-    const expire = vi.fn(async (key: string, _seconds: number) =>
-      hashStore.has(key) || this.stringStore.has(key) ? 1 : 0
+    // Hash expiries are recorded (with `NX` honored) but never enforced on reads; tests observe
+    // them through `ttl`.
+    const expire = vi.fn(
+      async (
+        key: string,
+        seconds: number,
+        mode?: "NX" | "XX" | "GT" | "LT"
+      ) => {
+        if (hashStore.has(key)) {
+          if (mode === "NX" && this.hashExpiresAtMs.has(key)) {
+            return 0;
+          }
+          this.hashExpiresAtMs.set(key, Date.now() + seconds * 1000);
+          return 1;
+        }
+        return this.stringStore.has(key) ? 1 : 0;
+      }
     );
 
     const type = vi.fn(async (key: string) => {
@@ -297,8 +316,16 @@ class RedisMock {
           ops.push(() => hIncrBy(key, field, increment));
           return multiClient;
         },
-        expire: (key: string, seconds: number) => {
-          ops.push(() => expire(key, seconds));
+        expire: (
+          key: string,
+          seconds: number,
+          mode?: "NX" | "XX" | "GT" | "LT"
+        ) => {
+          ops.push(() =>
+            mode === undefined
+              ? expire(key, seconds)
+              : expire(key, seconds, mode)
+          );
           return multiClient;
         },
         pExpire: (key: string, ms: number) => {
