@@ -88,18 +88,14 @@ function buildSelectionFilters(
     }
   }
   if (filters.isDefault !== undefined) {
-    const defaultFilter = { term: { availability: "users_and_agents" } };
     selected.push(
       filters.isDefault
-        ? defaultFilter
-        : { bool: { must_not: [defaultFilter] } }
+        ? { term: { availability: "users_and_agents" } }
+        : { terms: { availability: ["editors", "workspace_users"] } }
     );
   }
-  if (filters.editedByMe !== undefined) {
-    const editorFilter = buildEditorFilter(auth);
-    selected.push(
-      filters.editedByMe ? editorFilter : { bool: { must_not: [editorFilter] } }
-    );
+  if (filters.editedByMe) {
+    selected.push(buildEditorFilter(auth));
   }
   return selected;
 }

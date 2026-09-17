@@ -152,16 +152,15 @@ describe("custom skill search", () => {
       },
     });
     const editor = { term: { editor_ids: auth.getNonNullableUser().sId } };
-    const defaultFilter = { term: { availability: "users_and_agents" } };
-    expect(query.bool?.filter).toEqual(
-      expect.arrayContaining([
-        ...[base.bool?.filter].flat(),
-        { terms: { mcp_server_view_ids: ["view-1", "view-2"] } },
-        { terms: { availability: ["users_and_agents"] } },
-        isDefault ? editor : { bool: { must_not: [editor] } },
-        isDefault ? defaultFilter : { bool: { must_not: [defaultFilter] } },
-      ])
-    );
+    expect(query.bool?.filter).toEqual([
+      ...[base.bool?.filter].flat(),
+      { terms: { mcp_server_view_ids: ["view-1", "view-2"] } },
+      { terms: { availability: ["users_and_agents"] } },
+      isDefault
+        ? { term: { availability: "users_and_agents" } }
+        : { terms: { availability: ["editors", "workspace_users"] } },
+      ...(isDefault ? [editor] : []),
+    ]);
   });
 
   it.each(
