@@ -104,6 +104,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import groupBy from "lodash/groupBy";
@@ -4464,6 +4465,50 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ) {
       await this.update({ instructions, instructionsHtml }, transaction);
     }
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;security] skill-search-serialization
+   * Serialize a custom skill fetched with tools, deriving user sIds from supplied editor
+   * resources; perform no I/O and never include private skill content.
+   */
+  toSearchDocument(
+    workspace: LightWorkspaceType,
+    {
+      lastEditedByUser,
+      editors,
+      activeUsersCount,
+    }: {
+      lastEditedByUser: UserResource | null;
+      editors: UserResource[];
+      activeUsersCount: number | null;
+    }
+  ): SkillSearchDocument {
+    assert(
+      !this.globalSId && this.workspaceId === workspace.id,
+      "Search documents require a custom skill in the workspace."
+    );
+    return {
+      workspace_id: workspace.sId,
+      skill_id: this.sId,
+      status: this.status,
+      availability: this.availability,
+      name: this.name,
+      description: this.userFacingDescription,
+      icon: this.icon,
+      last_edited_by_user_id: lastEditedByUser?.sId ?? null,
+      editor_ids: uniq(editors.map((editor) => editor.sId)).sort(),
+      requested_space_ids: this.requestedSpaceIds.map((id) =>
+        SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
+      ),
+      mcp_server_view_ids: uniq(
+        this.mcpServerViews.map((view) => view.sId)
+      ).sort(),
+      active_users_count: activeUsersCount,
+      favorite_count: this.favoriteCount,
+      created_at: this.createdAt.toISOString(),
+      updated_at: this.updatedAt.toISOString(),
+    };
   }
 
   toJSON(auth: Authenticator): SkillType {
