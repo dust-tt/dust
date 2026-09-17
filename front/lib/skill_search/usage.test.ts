@@ -13,11 +13,7 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
   };
 });
 
-import {
-  fetchSearchActiveUsers,
-  readCodeDefinedSkillActiveUsers,
-  storeCodeDefinedSkillActiveUsers,
-} from "@app/lib/skill_search/usage";
+import { fetchSearchActiveUsers } from "@app/lib/skill_search/usage";
 
 describe("search usage snapshots", () => {
   beforeEach(() => {
@@ -114,21 +110,5 @@ describe("search usage snapshots", () => {
     });
     expect(result.isErr()).toBe(true);
     expect(search).toHaveBeenCalledTimes(2);
-  });
-
-  it("keeps code-defined usage workspace-scoped and replaces stale counts", async () => {
-    await storeCodeDefinedSkillActiveUsers("workspace-a", {
-      "go-deep": 7,
-      skl_custom: 3,
-    });
-    await storeCodeDefinedSkillActiveUsers("workspace-b", { "go-deep": 1 });
-    expect(await readCodeDefinedSkillActiveUsers("workspace-a")).toEqual({
-      "go-deep": 7,
-    });
-    expect(await readCodeDefinedSkillActiveUsers("workspace-b")).toEqual({
-      "go-deep": 1,
-    });
-    await storeCodeDefinedSkillActiveUsers("workspace-a", {});
-    expect(await readCodeDefinedSkillActiveUsers("workspace-a")).toEqual({});
   });
 });

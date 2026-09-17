@@ -9,10 +9,7 @@ import {
   indexSkillDocument,
   updateSkillSearchActiveUsers,
 } from "@app/lib/skill_search";
-import {
-  fetchSearchActiveUsers,
-  storeCodeDefinedSkillActiveUsers,
-} from "@app/lib/skill_search/usage";
+import { fetchSearchActiveUsers } from "@app/lib/skill_search/usage";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -197,5 +194,4 @@ export async function refreshWorkspaceSearchUsageActivity({
       throw updated.error;
     }
   }
-  await storeCodeDefinedSkillActiveUsers(workspaceId, activeUsers.value);
 }
