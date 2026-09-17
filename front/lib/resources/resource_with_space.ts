@@ -211,6 +211,13 @@ export abstract class ResourceWithSpace<
   }
 
   /**
+   * @cc [owner:philipperolet,label:security;backend] space-verbs-checked-by-callers
+   * Because `canFetch` here checks only the workspace, a fetch result may hold resources living in
+   * spaces where the caller has no verb. Code that exposes or changes such a resource MUST first
+   * check the verb it needs (`canRead`, `canWrite`, `canAdministrate`, or the matching `with_*`
+   * middleware option) rather than rely on the fetch having done it.
+   */
+  /**
    * @cc [owner:tdraier,label:security] workspace-scoped-fetch
    * Superusers may fetch any resource. Otherwise the caller MUST NOT fetch a resource whose
    * `workspaceId` differs from `auth.getNonNullableWorkspace().id`.
