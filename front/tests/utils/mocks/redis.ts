@@ -243,8 +243,13 @@ class RedisMock {
         return 0;
       }
       const toDelete = Array.isArray(fields) ? fields : [fields];
-
-      return toDelete.filter((field) => hash.delete(field)).length;
+      const deleted = toDelete.filter((field) => hash.delete(field)).length;
+      // Like Redis, a hash whose last field is removed no longer exists.
+      if (hash.size === 0) {
+        hashStore.delete(key);
+        this.hashExpiresAtMs.delete(key);
+      }
+      return deleted;
     });
     const pExpire = vi.fn(async (_key: string, _ms: number) => true);
     const hIncrBy = vi.fn(
@@ -289,6 +294,7 @@ class RedisMock {
           ops.push(async () => {
             this.stringStore.delete(key);
             hashStore.delete(key);
+            this.hashExpiresAtMs.delete(key);
           });
           return multiClient;
         },

@@ -56,8 +56,9 @@ export type GroupGrant = {
   resourceId: number;
 };
 
-// Bump to orphan hashes written under the previous field encoding.
-const CACHE_SCHEMA_VERSION = 1;
+// Bump to orphan hashes written under the previous field encoding or, as for v2, without an
+// expiry: entries are never rewritten on a hit, so only new keys pick up a new shape.
+const CACHE_SCHEMA_VERSION = 2;
 
 // Upper bound on how long a stale grants hash can be served.
 export const GRANTS_CACHE_TTL_SECONDS = 60 * 60;

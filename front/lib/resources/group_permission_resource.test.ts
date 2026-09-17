@@ -18,7 +18,7 @@ import assert from "assert";
 import type { QueryOptions } from "sequelize";
 import { Transaction } from "sequelize";
 import type { AbstractQuery } from "sequelize/types/dialects/abstract/query";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("GroupPermissionResource", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
@@ -211,17 +211,27 @@ describe("GroupPermissionResource", () => {
         workspaceModelId: String(auth.getNonNullableWorkspace().id),
       });
 
-      await GroupPermissionResource.listForGroups(workspace, {
-        groupModelIds: [groupA.id],
-      });
-      const ttlAfterCreation = await redis.ttl(key);
-      await GroupPermissionResource.listForGroups(workspace, {
-        groupModelIds: [groupA.id, groupB.id],
-      });
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        await GroupPermissionResource.listForGroups(workspace, {
+          groupModelIds: [groupA.id],
+        });
+        const ttlAfterCreation = await redis.ttl(key);
+        const laterFillDelaySeconds = 10 * 60;
+        vi.setSystemTime(Date.now() + laterFillDelaySeconds * 1000);
+        await GroupPermissionResource.listForGroups(workspace, {
+          groupModelIds: [groupA.id, groupB.id],
+        });
 
-      expect(ttlAfterCreation).toBeGreaterThan(0);
-      expect(ttlAfterCreation).toBeLessThanOrEqual(GRANTS_CACHE_TTL_SECONDS);
-      expect(await redis.ttl(key)).toBeLessThanOrEqual(ttlAfterCreation);
+        expect(ttlAfterCreation).toBeGreaterThan(0);
+        expect(ttlAfterCreation).toBeLessThanOrEqual(GRANTS_CACHE_TTL_SECONDS);
+        // The later fill did not reset the deadline: the remaining time shrank by the delay.
+        expect(await redis.ttl(key)).toBeLessThanOrEqual(
+          ttlAfterCreation - laterFillDelaySeconds
+        );
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("filters in Postgres through one bound bigint array", async () => {

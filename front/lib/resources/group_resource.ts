@@ -203,7 +203,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }: {
     user: { id: ModelId };
     workspace: { id: ModelId };
-  }) => `groups:v2:user:${user.id}:workspace:${workspace.id}`;
+  }) => `groups:v3:user:${user.id}:workspace:${workspace.id}`; // v3: entries carry a TTL.
 
   private static async dangerouslyListUserGroupsForAuthUncached({
     user,
