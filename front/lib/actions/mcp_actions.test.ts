@@ -322,13 +322,13 @@ describe("MCP Actions", () => {
 
     // Update tool metadata settings - disable list_calendars and change permissions.
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
-      serverSId: mcpServerId,
+      serverId: mcpServerId,
       toolName: "list_calendars",
       permission: "high",
       enabled: false, // This will cause the tool to be filtered out.
     });
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
-      serverSId: mcpServerId,
+      serverId: mcpServerId,
       toolName: "list_events",
       permission: "high",
       enabled: true, // Explicitly enable (though it's enabled by default).
