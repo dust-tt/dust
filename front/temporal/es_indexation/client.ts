@@ -25,6 +25,8 @@ import {
   refreshWorkspaceSearchUsageWorkflow,
 } from "./workflows";
 
+const SEARCH_USAGE_SCHEDULE_ID = "search-usage-daily";
+
 export async function launchIndexUserSearchWorkflow({
   userId,
 }: {
@@ -153,7 +155,7 @@ export async function launchSearchUsageSchedule(): Promise<
   const client = await getTemporalClientForFrontNamespace();
   try {
     await client.schedule.create({
-      scheduleId: "search-usage-daily",
+      scheduleId: SEARCH_USAGE_SCHEDULE_ID,
       action: {
         type: "startWorkflow",
         workflowType: refreshSearchUsageWorkflow,
