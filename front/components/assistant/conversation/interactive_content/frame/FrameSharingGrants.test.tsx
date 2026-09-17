@@ -9,7 +9,6 @@ it("explains why a public domain is rejected and allows inviting a named address
       sharing={{ grants: [], accessGrants: [], canGrantDomains: true }}
       canInviteExternal={true}
       canRevoke={true}
-      showLastViewedAt={false}
       isLoading={false}
       hasError={false}
       onAdd={onAdd}

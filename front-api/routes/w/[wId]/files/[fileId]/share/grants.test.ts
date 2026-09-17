@@ -2,7 +2,6 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -113,7 +112,6 @@ describe("sharing grants endpoint", () => {
     const outsider = await createPrivateApiMockRequest({ workspace });
     expect(outsider.auth.can("read", space)).toBe(false);
     await grantInviteToEveryone(workspace);
-    await FeatureFlagFactory.basic(outsider.auth, "frame_domain_sharing");
 
     const readResponse = await getGrants(workspace, file.sId);
     expect(readResponse.status).toBe(404);
@@ -958,8 +956,7 @@ describe("domain sharing grants", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("adds mixed targets, audits only new grants and revokes by string ID", async () => {
-    const { auth, workspace, file } = await setup();
-    await FeatureFlagFactory.basic(auth, "frame_domain_sharing");
+    const { workspace, file } = await setup();
     await grantInviteToEveryone(workspace);
     const body = {
       emails: ["alice@example.com"],
@@ -1008,8 +1005,7 @@ describe("domain sharing grants", () => {
   });
 
   it("rejects public domain invitations but accepts individual email invitations", async () => {
-    const { auth, workspace, file } = await setup();
-    await FeatureFlagFactory.basic(auth, "frame_domain_sharing");
+    const { workspace, file } = await setup();
     await grantInviteToEveryone(workspace);
     mockEmitAuditLogEvent.mockClear();
 
@@ -1047,11 +1043,9 @@ describe("domain sharing grants", () => {
     );
   });
 
-  it("requires the flag and invitation permission before creating any target", async () => {
-    const { auth, workspace, file } = await setup();
+  it("requires invitation permission and external sharing before creating any target", async () => {
+    const { workspace, file } = await setup();
     const body = { emails: ["alice@example.com"], domains: ["example.com"] };
-    expect((await postGrants(workspace, file.sId, body)).status).toBe(403);
-    await FeatureFlagFactory.basic(auth, "frame_domain_sharing");
     expect((await postGrants(workspace, file.sId, body)).status).toBe(403);
     expect(await SharingGrantResource.listForFile(file)).toEqual([]);
     expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
@@ -1082,7 +1076,6 @@ describe("domain sharing grants", () => {
 
   it("blocks domain additions to Frames with functions and marks older domain grants", async () => {
     const { auth, workspace } = await setup();
-    await FeatureFlagFactory.basic(auth, "frame_domain_sharing");
     await grantInviteToEveryone(workspace);
     const space = await SpaceFactory.project(
       workspace,

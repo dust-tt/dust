@@ -3,7 +3,6 @@ import { FrameSharingGrants } from "@app/components/assistant/conversation/inter
 import { FrameSharingViewers } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingViewers";
 import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
 import { getAvailableScopeOptions } from "@app/components/assistant/conversation/interactive_content/frame/shareFrameScopeOptions";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   useShareInteractiveContentFile,
   useSharingGrants,
@@ -89,8 +88,6 @@ function ShareFramePopoverContent({
   contentHash,
   titleId,
 }: ShareFramePopoverContentProps) {
-  const { featureFlags } = useFeatureFlags();
-  const isDomainSharingEnabled = featureFlags.includes("frame_domain_sharing");
   const [shareBlockError, setShareBlockError] = useState<string[] | null>(null);
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
 
@@ -230,7 +227,6 @@ function ShareFramePopoverContent({
                 sharing={sharing}
                 canInviteExternal={canInviteExternal}
                 canRevoke={hasPermission("invite", "frame")}
-                showLastViewedAt={!isDomainSharingEnabled}
                 isLoading={isGrantsLoading}
                 hasError={!!isGrantsError}
                 onAdd={doAddGrants}
@@ -240,16 +236,14 @@ function ShareFramePopoverContent({
                 }}
               />
             )}
-            {isDomainSharingEnabled && (
-              <FrameSharingViewers
-                viewers={sharing?.viewers}
-                isLoading={isGrantsLoading}
-                hasError={!!isGrantsError}
-                onRetry={() => {
-                  void mutateGrants();
-                }}
-              />
-            )}
+            <FrameSharingViewers
+              viewers={sharing?.viewers}
+              isLoading={isGrantsLoading}
+              hasError={!!isGrantsError}
+              onRetry={() => {
+                void mutateGrants();
+              }}
+            />
           </div>
         )}
       </div>

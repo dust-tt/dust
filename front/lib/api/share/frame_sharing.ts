@@ -32,11 +32,7 @@ async function canGrantFrameDomains(
   auth: Authenticator,
   { membersOnly }: { membersOnly: boolean }
 ): Promise<boolean> {
-  return (
-    !membersOnly &&
-    (await auth.hasFeatureFlag("frame_domain_sharing")) &&
-    (await auth.hasWorkspacePermission("invite", "frame"))
-  );
+  return !membersOnly && (await auth.hasWorkspacePermission("invite", "frame"));
 }
 
 async function frameRequiresMembership(
@@ -80,7 +76,7 @@ export async function listFrameSharing(
 
 /**
  * @cc [owner:flvndvd,label:security] domain-invitation-permission
- * Domain grants require the rollout flag, invite-frame permission and a frame that allows external viewers.
+ * Domain grants require invite-frame permission and a frame that allows external viewers.
  */
 export async function addFrameSharingGrants(
   auth: Authenticator,
