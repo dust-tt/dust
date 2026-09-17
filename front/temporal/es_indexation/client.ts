@@ -22,6 +22,7 @@ import {
   indexSkillSearchWorkflow,
   indexUserSearchWorkflow,
   refreshSearchUsageWorkflow,
+  refreshWorkspaceSearchUsageWorkflow,
 } from "./workflows";
 
 const SEARCH_USAGE_SCHEDULE_ID = "search-usage-daily";
@@ -168,6 +169,22 @@ export async function launchSearchUsageSchedule(): Promise<
     if (!(error instanceof ScheduleAlreadyRunning)) {
       return new Err(normalizeError(error));
     }
+  }
+  return new Ok(undefined);
+}
+
+export async function launchWorkspaceSearchUsageWorkflow(
+  workspaceId: string
+): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  try {
+    await client.workflow.start(refreshWorkspaceSearchUsageWorkflow, {
+      workflowId: `search-usage-${workspaceId}`,
+      args: [{ workspaceId }],
+      taskQueue: QUEUE_NAME,
+    });
+  } catch (error) {
+    return new Err(normalizeError(error));
   }
   return new Ok(undefined);
 }
