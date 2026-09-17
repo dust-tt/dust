@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { DustFileSystemError } from "@app/types/file_system";
 import { isDustFileSystemError } from "@app/types/file_system";
 import { contentTypeFromFileName } from "@app/types/files";
@@ -63,8 +63,8 @@ export type FolderExtractResult = {
 };
 
 type FolderExtractPlanEntry = {
-  /** Path relative to the destination folder, already checked to stay inside it. */
-  relativePath: string;
+  /** Normalized canonical path, already checked to resolve inside the destination folder. */
+  destPath: string;
   entry: IZipEntry;
 };
 
@@ -83,31 +83,74 @@ function isSkippedEntry(entryName: string): boolean {
 }
 
 /**
- * Validates every entry before anything is written, so an archive that is rejected — for a
- * traversing path or for busting a limit — leaves the destination untouched rather than
- * half-populated.
+ * Resolves an entry against the destination folder the same way storage will, and returns the
+ * result only when it stays inside that folder.
+ *
+ * Checking the entry name on its own is not enough: `DustFileSystem.normalizeScopedPath` strips
+ * control characters *before* normalizing, so `.\x01./x` reads as an ordinary relative name here
+ * and as `../x` by the time it reaches storage. Resolving through the same normalization is what
+ * makes the containment check match what actually gets written.
+ */
+function resolveContainedDestPath(
+  normalizedDestFolder: string,
+  relativePath: string
+): string | null {
+  if (path.posix.isAbsolute(relativePath)) {
+    return null;
+  }
+
+  const resolved = DustFileSystem.normalizeScopedPath(
+    `${normalizedDestFolder}/${relativePath}`
+  );
+  if (!resolved || !resolved.startsWith(`${normalizedDestFolder}/`)) {
+    return null;
+  }
+
+  return resolved;
+}
+
+/**
+ * Validates every entry before anything is written, so an archive that is rejected — for an entry
+ * escaping the destination or for busting a limit — leaves the destination untouched rather than
+ * half-populated. Skipped entries are validated and counted like any other: a junk name must not
+ * buy an archive a free pass through either check.
  */
 function planArchiveExtraction(
   zip: AdmZip,
+  destFolderPath: string,
   limits: FolderExtractLimits
 ): Result<FolderExtractPlan, FolderExtractError> {
+  const normalizedDestFolder =
+    DustFileSystem.normalizeScopedPath(destFolderPath);
+  if (!normalizedDestFolder) {
+    return new Err(
+      new FolderExtractError(
+        "unsafe_entry_path",
+        `Invalid destination folder: "${destFolderPath}".`
+      )
+    );
+  }
+
   const entries: FolderExtractPlanEntry[] = [];
+  let entryCount = 0;
   let skippedEntryCount = 0;
   let totalUncompressedSizeBytes = 0;
 
   for (const entry of zip.getEntries()) {
-    if (isSkippedEntry(entry.entryName)) {
+    const relativePath = entry.entryName.replace(/\/+$/, "");
+
+    // Some tools emit an entry for the archive root itself; it names the destination folder,
+    // which already exists.
+    if (relativePath === "" || relativePath === ".") {
       skippedEntryCount += 1;
       continue;
     }
 
-    const relativePath = entry.entryName.replace(/\/+$/, "");
-    // `dustFs.write` would reject a traversing path at the mount boundary anyway; rejecting it
-    // here keeps the failure specific and stops the archive before its safe entries land.
-    if (
-      path.posix.isAbsolute(relativePath) ||
-      path.posix.normalize(relativePath).startsWith("..")
-    ) {
+    const destPath = resolveContainedDestPath(
+      normalizedDestFolder,
+      relativePath
+    );
+    if (!destPath) {
       return new Err(
         new FolderExtractError(
           "unsafe_entry_path",
@@ -116,9 +159,8 @@ function planArchiveExtraction(
       );
     }
 
-    entries.push({ relativePath, entry });
-
-    if (entries.length > limits.maxEntries) {
+    entryCount += 1;
+    if (entryCount > limits.maxEntries) {
       return new Err(
         new FolderExtractError(
           "too_many_entries",
@@ -136,6 +178,13 @@ function planArchiveExtraction(
         )
       );
     }
+
+    if (isSkippedEntry(entry.entryName)) {
+      skippedEntryCount += 1;
+      continue;
+    }
+
+    entries.push({ destPath, entry });
   }
 
   return new Ok({ entries, skippedEntryCount });
@@ -145,19 +194,23 @@ function planArchiveExtraction(
  * @cc [owner:davidebbo,label:product] extract-preserves-archive-layout
  * Archive entries are written verbatim under the destination folder, without adding or stripping a
  * root folder. An archive produced by `planFolderArchive` carries the downloaded folder as its own
- * root, so extracting it into the folder it came from recreates that folder rather than nesting or
- * flattening it.
+ * root, so extracting it into that folder's PARENT recreates the folder rather than nesting or
+ * flattening it. Extracting into the folder itself nests it one level deeper, which is what
+ * verbatim placement means.
  */
 /**
  * @cc [owner:davidebbo,label:security] extract-entry-path-containment
- * No entry may be written outside the destination folder. An archive holding an absolute or
- * traversing entry path MUST be rejected before any of its entries is written, so a rejected
+ * No entry may be written outside the destination folder. Containment MUST be decided on the entry
+ * path resolved through the same normalization storage applies, not on the raw entry name, and MUST
+ * be checked for every entry including ones that are otherwise skipped. An archive holding an entry
+ * that escapes the destination MUST be rejected before any of its entries is written, so a rejected
  * archive never leaves entries behind.
  */
 /**
  * @cc [owner:davidebbo,label:performance] extract-limits-enforced-before-writing
  * The entry count and total uncompressed size MUST be checked against `limits` before any entry is
- * written, so an archive over either limit leaves the destination untouched.
+ * written, counting every archive entry including skipped ones, so an archive over either limit
+ * leaves the destination untouched.
  */
 /**
  * Expands a ZIP archive into `destFolderPath`, the mirror image of
@@ -183,7 +236,7 @@ export async function extractArchiveToFolder(
     );
   }
 
-  const planResult = planArchiveExtraction(zip, limits);
+  const planResult = planArchiveExtraction(zip, destFolderPath, limits);
   if (planResult.isErr()) {
     return planResult;
   }
@@ -192,9 +245,7 @@ export async function extractArchiveToFolder(
   let directoriesCreated = 0;
   let filesWritten = 0;
 
-  for (const { relativePath, entry } of entries) {
-    const destPath = `${destFolderPath}/${relativePath}`;
-
+  for (const { destPath, entry } of entries) {
     if (entry.isDirectory) {
       const mkdirResult = await fileSystem.mkdir(destPath);
       // Extracting into an existing tree re-declares directories that are already there.
@@ -208,7 +259,7 @@ export async function extractArchiveToFolder(
       continue;
     }
 
-    const fileName = relativePath.split("/").pop() ?? relativePath;
+    const fileName = destPath.split("/").pop() ?? destPath;
     const writeResult = await fileSystem.write(
       destPath,
       entry.getData(),

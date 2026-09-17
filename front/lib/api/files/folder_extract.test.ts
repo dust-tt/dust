@@ -220,6 +220,78 @@ describe("extractArchiveToFolder", () => {
     expect(fileSystem.writes.size).toBe(0);
   });
 
+  it("rejects an entry that only becomes traversal once control characters are stripped", async () => {
+    const fileSystem = makeFileSystem();
+    // `DustFileSystem.normalizeScopedPath` strips control characters before normalizing, so a
+    // name that is not traversal as stored becomes one by the time it reaches storage.
+    const unsafePath = `.${String.fromCharCode(1)}./escaped.txt`;
+
+    const result = await extractArchiveToFolder(
+      fileSystem,
+      "pod-p1/inbox",
+      makeArchiveWithUnsafeEntry(
+        [
+          { path: "reports/a.txt", content: "alpha" },
+          { path: "AAA/escaped.txt", content: "evil" },
+        ],
+        "AAA/escaped.txt",
+        unsafePath
+      )
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected extraction to fail.");
+    }
+    expect(isFolderExtractError(result.error, "unsafe_entry_path")).toBe(true);
+    expect(fileSystem.writes.size).toBe(0);
+  });
+
+  it("rejects an unsafe path even when the entry would otherwise be skipped", async () => {
+    const fileSystem = makeFileSystem();
+
+    const result = await extractArchiveToFolder(
+      fileSystem,
+      "pod-p1",
+      makeArchiveWithUnsafeEntry(
+        [
+          { path: "safe.txt", content: "alpha" },
+          { path: "Xetc/.DS_Store", content: "junk" },
+        ],
+        "Xetc/.DS_Store",
+        "/etc/.DS_Store"
+      )
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected extraction to fail.");
+    }
+    expect(isFolderExtractError(result.error, "unsafe_entry_path")).toBe(true);
+    expect(fileSystem.writes.size).toBe(0);
+  });
+
+  it("counts skipped entries toward the entry limit", async () => {
+    const fileSystem = makeFileSystem();
+
+    const result = await extractArchiveToFolder(
+      fileSystem,
+      "pod-p1",
+      makeArchive([
+        { path: "__MACOSX/._a.txt", content: "junk" },
+        { path: "a.txt", content: "alpha" },
+      ]),
+      { maxEntries: 1, maxUncompressedSizeBytes: 1024 }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected extraction to fail.");
+    }
+    expect(isFolderExtractError(result.error, "too_many_entries")).toBe(true);
+    expect(fileSystem.writes.size).toBe(0);
+  });
+
   it("skips archiver metadata entries", async () => {
     const fileSystem = makeFileSystem();
 
