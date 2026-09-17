@@ -1100,6 +1100,11 @@ export const ConversationViewer = ({
       initialListData.length > 0,
   });
 
+  /**
+   * @cc [owner:aubin-tchoi,label:product] queued-send-preserves-scroll
+   * Appending a queued message while an agent is running must not request
+   * automatic scrolling.
+   */
   const handleSubmit = useCallback(
     async (
       input: string,
@@ -1216,8 +1221,8 @@ export const ConversationViewer = ({
         }
         virtuosoMessageListRef.current.data.append(
           [placeholderUserMsg, ...placeholderAgentMessages],
-          shouldScrollToUserMessage
-            ? false // The footer scrolls once the new turn and spacer are measured.
+          shouldScrollToUserMessage || hasRunningAgent
+            ? false // The footer scrolls new turns; queued sends keep their position.
             : (params) => {
                 if (params.scrollLocation.bottomOffset >= 0) {
                   return {
