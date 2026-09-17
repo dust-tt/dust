@@ -6,7 +6,7 @@ makeScript(
     wId: {
       type: "string",
       demandOption: true,
-      describe: "Workspace sId to refresh search usage for.",
+      describe: "Workspace ID to refresh search usage for.",
     },
   },
   async ({ execute, wId }, logger) => {
