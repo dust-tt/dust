@@ -74,6 +74,51 @@ const mockAgentMessage: LightAgentMessageType = {
 };
 
 describe("InlineActivitySteps", () => {
+  it("shows thinking immediately for a placeholder and keeps it visible until writing starts", () => {
+    const pendingMessage = {
+      ...mockAgentMessage,
+      content: null,
+      chainOfThought: null,
+    };
+    const props = {
+      agentMessage: pendingMessage,
+      completedSteps: [],
+      pendingToolCalls: [],
+      owner: mockOwner,
+      isLastMessage: true,
+    };
+
+    const { rerender } = render(
+      <InlineActivitySteps
+        {...props}
+        lastAgentStateClassification="placeholder"
+      />
+    );
+
+    const thinkingIndicator = screen.getByRole("button", { name: /Thinking/i });
+    expect(thinkingIndicator).toBeVisible();
+
+    rerender(
+      <InlineActivitySteps {...props} lastAgentStateClassification="thinking" />
+    );
+
+    expect(screen.getByRole("button", { name: /Thinking/i })).toBe(
+      thinkingIndicator
+    );
+
+    rerender(
+      <InlineActivitySteps
+        {...props}
+        agentMessage={mockAgentMessage}
+        lastAgentStateClassification="writing"
+      />
+    );
+
+    expect(screen.queryByRole("button", { name: /Thinking/i })).toBeNull();
+    expect(screen.getByText("Writing…")).toBeVisible();
+    expect(screen.getByText("Live final answer")).toBeVisible();
+  });
+
   it.each([
     "thinking",
     "acting",
