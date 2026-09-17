@@ -60,8 +60,10 @@ export class FrameFilePathError extends FrameFilesError {
 }
 
 /**
- * Absolute path of the Frame's files folder. Throws when called outside a
- * Frame function, where the folder is not mounted.
+ * Absolute path of the Frame's files folder.
+ *
+ * @throws FrameFilesUnavailableError when called outside a Frame function,
+ *   where the folder is not mounted.
  */
 export function filesDir(): string {
   const dir = podEnv(FRAME_DATA_FILES_DIR_ENV);
@@ -80,6 +82,14 @@ export function filesDir(): string {
  * a name that reaches the folder from a viewer can contain `..`, and the
  * sandbox has writable directories above the mount. A path that would resolve
  * outside the folder is refused.
+ *
+ * A viewer-supplied name failing this check is an expected outcome, not a bug:
+ * catch it with `error instanceof FrameFilePathError` and answer 400, rather
+ * than letting the invocation end as an internal error.
+ *
+ * @throws FrameFilePathError when `relativePath` is empty, absolute, contains
+ *   a null byte, or resolves to the folder itself or outside it.
+ * @throws FrameFilesUnavailableError when called outside a Frame function.
  */
 export function filePath(relativePath: string): string {
   if (relativePath === "") {
@@ -121,6 +131,11 @@ export function filePath(relativePath: string): string {
  * Do the write in one function and let the UI fetch the bytes from another
  * rather than returning them from the call that stored them: a `fast` function
  * has a 10-second ceiling and doing both in one call can exceed it.
+ *
+ * @throws FrameFilePathError from every method taking a `relativePath`, on the
+ *   conditions listed on `filePath`.
+ * @throws FrameFilesUnavailableError from every method when called outside a
+ *   Frame function.
  */
 export const files = {
   /** Write `data` to `relativePath`, creating parent directories as needed. */

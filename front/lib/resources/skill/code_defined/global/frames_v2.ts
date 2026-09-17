@@ -315,7 +315,9 @@ generates. It is not part of the Frame source and never appears in the Frame fol
 contents exist only at run time and you cannot read them while authoring.
 
 Reach it through \`files\` from \`@dust/pod\`, which resolves every path inside the folder and
-refuses one that would escape it — a file name often comes from a viewer:
+refuses one that would escape it — a file name often comes from a viewer. A refused path throws
+\`FrameFilePathError\`; catch it with \`error instanceof FrameFilePathError\` to answer the viewer
+instead of ending the invocation on an internal error:
 
 \`\`\`ts
 import { files } from "@dust/pod";
