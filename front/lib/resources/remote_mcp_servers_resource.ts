@@ -659,6 +659,12 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
    * Dynamic Client Registration; else (3) fails with a `DustError` directing the
    * caller to Static OAuth. It never performs DCR when CIMD applies.
    */
+  /**
+   * @cc [owner:aubin-tchoi,label:mcp] oauth-registration-auth-method
+   * DCR requests select an advertised method in preference order: `none`,
+   * `client_secret_basic`, `client_secret_post`. If none of these methods is
+   * advertised, retain the provider's method.
+   */
   static async discoverOAuthMetadata({
     serverUrl,
     provider,
@@ -752,7 +758,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     //const parsedMetadata = await OAuthMetadataSchema.parseAsync(metadata);
 
     // Dynamic client registration
-    const clientMetadata = provider.clientMetadata;
+    const clientMetadata = { ...provider.clientMetadata };
 
     clientMetadata.scope = getMCPAuthorizationScope({
       extraScopes,
@@ -782,6 +788,11 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     }
 
     try {
+      clientMetadata.token_endpoint_auth_method =
+        ["none", "client_secret_basic", "client_secret_post"].find((method) =>
+          metadata.token_endpoint_auth_methods_supported?.includes(method)
+        ) ?? clientMetadata.token_endpoint_auth_method;
+
       // Try DCR.
       const fullInformation = await registerClient(serverUrl, {
         metadata,

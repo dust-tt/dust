@@ -75,6 +75,66 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata", () => {
 
   it.each([
     {
+      supportedMethods: ["client_secret_post", "client_secret_basic"],
+      expectedMethod: "client_secret_basic",
+    },
+    {
+      supportedMethods: ["client_secret_post"],
+      expectedMethod: "client_secret_post",
+    },
+    {
+      supportedMethods: ["client_secret_basic", "none"],
+      expectedMethod: "none",
+    },
+    {
+      supportedMethods: undefined,
+      expectedMethod: "none",
+    },
+  ])("registers with $expectedMethod when the server advertises $supportedMethods", async ({
+    supportedMethods,
+    expectedMethod,
+  }) => {
+    oauthMocks.discoverAuthorizationServerMetadata.mockResolvedValue({
+      authorization_endpoint: "https://auth.example.com/authorize",
+      registration_endpoint: "https://auth.example.com/register",
+      token_endpoint: "https://auth.example.com/token",
+      token_endpoint_auth_methods_supported: supportedMethods,
+    });
+    const clientSecret = expectedMethod === "none" ? undefined : "secret";
+    oauthMocks.registerClient.mockResolvedValue({
+      client_id: "registered-client",
+      client_secret: clientSecret,
+      token_endpoint_auth_method: expectedMethod,
+    });
+
+    const result = await RemoteMCPServerResource.discoverOAuthMetadata({
+      serverUrl: "https://mcp.example.com/mcp",
+      provider: oauthProvider,
+    });
+
+    expect(oauthMocks.registerClient).toHaveBeenCalledWith(
+      "https://mcp.example.com/mcp",
+      expect.objectContaining({
+        clientMetadata: expect.objectContaining({
+          token_endpoint_auth_method: expectedMethod,
+        }),
+      })
+    );
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toMatchObject({
+        client_id: "registered-client",
+        client_secret: clientSecret,
+        token_endpoint_auth_method: expectedMethod,
+      });
+    }
+    expect(oauthProvider.clientMetadata.token_endpoint_auth_method).toBe(
+      "none"
+    );
+  });
+
+  it.each([
+    {
       registeredMethod: "none",
       clientSecret: undefined,
     },
