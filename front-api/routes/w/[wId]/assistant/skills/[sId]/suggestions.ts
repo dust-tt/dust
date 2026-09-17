@@ -1,3 +1,4 @@
+import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
 import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
@@ -10,8 +11,10 @@ import {
   GetSkillSuggestionsQuerySchema,
   PatchSkillSuggestionRequestBodySchema,
 } from "@app/types/api/assistant/skills/suggestions";
-import { removeNulls } from "@app/types/shared/utils/general";
-import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import type {
+  SkillSuggestionSource,
+  SkillSuggestionType,
+} from "@app/types/suggestions/skill_suggestion";
 import { skillApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -21,6 +24,21 @@ import { validate } from "@front-api/middlewares/validator";
 // The `skill` context variable is set by the parent skills/[sId]/index.ts
 // middleware, which also enforces canAdministrate.
 const app = skillApp();
+
+async function listEnabledSources(
+  auth: Authenticator
+): Promise<Set<SkillSuggestionSource>> {
+  const sources = new Set<SkillSuggestionSource>();
+
+  if (await hasReinforcementEnabled(auth)) {
+    sources.add("reinforcement");
+  }
+  if (await hasFeatureFlag(auth, "conversational_building")) {
+    sources.add("conversational");
+  }
+
+  return sources;
+}
 
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
@@ -60,14 +78,9 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
   }
 
   const requestedSources = sources ?? ["reinforcement"];
-  const enabledSources = removeNulls([
-    (await hasReinforcementEnabled(auth)) ? ("reinforcement" as const) : null,
-    (await hasFeatureFlag(auth, "conversational_building"))
-      ? ("conversational" as const)
-      : null,
-  ]);
+  const enabledSources = await listEnabledSources(auth);
   const effectiveSources = requestedSources.filter((source) =>
-    enabledSources.includes(source)
+    enabledSources.has(source)
   );
   if (effectiveSources.length === 0) {
     return ctx.json({ suggestions: [] });
@@ -93,16 +106,6 @@ app.patch(
   async (ctx): HandlerResult<PatchSkillSuggestionResponseBody> => {
     const auth = ctx.get("auth");
     const skill = ctx.get("skill");
-
-    if (!(await hasReinforcementEnabled(auth))) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Self-improving skills are not enabled for this workspace.",
-        },
-      });
-    }
 
     const { suggestionIds, state } = ctx.req.valid("json");
 
@@ -132,6 +135,20 @@ app.patch(
           },
         });
       }
+    }
+
+    const enabledSources = await listEnabledSources(auth);
+    const unavailableSuggestionIds = suggestions
+      .filter((suggestion) => !enabledSources.has(suggestion.source))
+      .map((suggestion) => suggestion.sId);
+    if (unavailableSuggestionIds.length > 0) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `The following skill suggestions are not available: ${unavailableSuggestionIds.join(", ")}.`,
+        },
+      });
     }
 
     await SkillSuggestionResource.bulkUpdateState(auth, suggestions, state);
