@@ -55,9 +55,20 @@ Directives carry ids only; a remark plugin resolves the suggestion via SWR and s
 - Skill kinds: see `markdown/suggestion/SkillSuggestionDirective.tsx` 
 - Agent kinds: `SidekickSuggestionDirective.tsx` and `SidekickSuggestionCard.tsx`.
 
-### Applying on accept (TBD)
+### Applying on accept
 
-TBD
+Skills:
+Server-side: `PATCH /w/:wId/assistant/skills/:sId/suggestions` with `applyToSkill: true` calls
+`applySkillSuggestions` (`front/lib/api/skills/apply_skill_suggestions.ts`) before
+`bulkUpdateState`. The route already enforces `approved`, `skill.canWrite(auth)` and `pending`.
+
+- Add a `case "<kind>"` in `editsForSuggestion` returning the `SkillEdits` to apply (or `Err` if
+  not applicable yet) and extend `mergeSkillEdits`. `updateSkill` replaces the whole skill, so
+  carry over untouched fields.
+- Test in `front-api/routes/.../skills/[sId]/suggestions.test.ts` (`PATCH with applyToSkill`).
+
+Agents:
+no server-side apply yet; the sidekick patches the builder form client-side.
 
 ### Notes and things to be aware
 
