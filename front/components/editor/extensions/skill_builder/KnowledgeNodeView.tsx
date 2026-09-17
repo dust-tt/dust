@@ -119,13 +119,12 @@ function SkillBuilderKnowledgeChip({
 // Rendered in the conversation composer, which has no SpacesProvider: full
 // items already carry their node, base items degrade to a plain chip since the
 // node cannot be fetched without the context.
-function ComposerKnowledgeChip({
-  item,
-  onRemove,
-}: {
+interface ComposerKnowledgeChipProps {
   item: KnowledgeItem;
   onRemove?: () => void;
-}) {
+}
+
+function ComposerKnowledgeChip({ item, onRemove }: ComposerKnowledgeChipProps) {
   if (isFullKnowledgeItem(item)) {
     return (
       <InlineKnowledgeChip
@@ -141,14 +140,17 @@ function ComposerKnowledgeChip({
   );
 }
 
+interface KnowledgeNodeViewShellProps
+  extends Pick<NodeViewProps, "deleteNode" | "editor" | "node"> {
+  children: (item: KnowledgeItem, onRemove?: () => void) => React.ReactNode;
+}
+
 function KnowledgeNodeViewShell({
   deleteNode,
   editor,
   node,
   children,
-}: Pick<NodeViewProps, "deleteNode" | "editor" | "node"> & {
-  children: (item: KnowledgeItem, onRemove?: () => void) => React.ReactNode;
-}) {
+}: KnowledgeNodeViewShellProps) {
   const { selectedItems } = node.attrs as KnowledgeNodeAttributes;
 
   const handleRemove = useCallback(

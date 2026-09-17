@@ -1178,7 +1178,7 @@ const InputBarContainer = ({
         if (
           isString(nodeId) &&
           !hasAnotherAttachedNode(
-            currentEditor,
+            currentEditor.state.doc,
             (n) => n.type.name === "dataSourceLink" && n.attrs.nodeId === nodeId
           )
         ) {
@@ -1197,7 +1197,7 @@ const InputBarContainer = ({
         if (
           isString(mcpServerViewId) &&
           !hasAnotherAttachedNode(
-            currentEditor,
+            currentEditor.state.doc,
             (n) =>
               n.type.name === TOOL_NODE_TYPE &&
               n.attrs.mcpServerViewId === mcpServerViewId
@@ -1217,7 +1217,7 @@ const InputBarContainer = ({
         const item = getFirstKnowledgeItem(node.attrs);
         if (
           item &&
-          !hasAnotherAttachedNode(currentEditor, (n) => {
+          !hasAnotherAttachedNode(currentEditor.state.doc, (n) => {
             if (n.type.name !== KNOWLEDGE_NODE_TYPE) {
               return false;
             }
