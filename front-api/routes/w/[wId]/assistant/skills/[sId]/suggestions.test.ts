@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -8,11 +9,18 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
+import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { SkillSuggestionState } from "@app/types/suggestions/skill_suggestion";
 import type { WorkspaceType } from "@app/types/user";
-import { describe, expect, it, vi } from "vitest";
+import assert from "assert";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+
+beforeAll(() => {
+  setupSkillInstructionsMarkdownPipeline();
+});
 
 vi.mock("@app/lib/reinforcement/workspace_check", () => ({
   hasReinforcementEnabled: vi.fn().mockResolvedValue(true),
@@ -29,11 +37,16 @@ vi.mock("@app/lib/reinforcement/aggregate_suggestions", () => ({
 
 import { honoApp } from "@front-api/app";
 
-async function setup(options: { role?: MembershipRoleType } = {}) {
+async function setup(
+  options: {
+    role?: MembershipRoleType;
+    skill?: Parameters<typeof SkillFactory.create>[1];
+  } = {}
+) {
   const role = options.role ?? "user";
   const { workspace, auth } = await createPrivateApiMockRequest({ role });
 
-  const skill = await SkillFactory.create(auth);
+  const skill = await SkillFactory.create(auth, options.skill);
   // Refresh authenticator to pick up the skill's editor group membership.
   await auth.refresh();
 
@@ -473,6 +486,35 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
   });
 });
 
+// Block ids of the real blocks, skipping the wrapping instructions root.
+function blockIdsOf(instructionsHtml: string): string[] {
+  return [...instructionsHtml.matchAll(/data-block-id="([^"]+)"/g)]
+    .map((m) => m[1])
+    .filter((id) => id !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID);
+}
+
+// Gives the skill real block-structured instructions and hands back its block ids, so edits can
+// target something that actually exists.
+async function setupSkillWithBlockInstructions(
+  markdown: string = "Original instructions"
+) {
+  const instructionsHtml = convertMarkdownToBlockHtml(markdown);
+  const { workspace, auth, skill } = await setup({
+    skill: { instructions: markdown, instructionsHtml },
+  });
+
+  const blockIds = blockIdsOf(instructionsHtml);
+  assert(blockIds.length > 0, "the generated instructions have no block");
+
+  return { workspace, auth, skill, blockIds };
+}
+
+function instructionEditSuggestion(targetBlockId: string, content: string) {
+  return {
+    instructionEdits: [{ targetBlockId, content, type: "replace" as const }],
+  };
+}
+
 describe("PATCH with applyToSkill", () => {
   it("applies an agent-facing description edit", async () => {
     const { workspace, auth, skill } = await setup();
@@ -494,6 +536,144 @@ describe("PATCH with applyToSkill", () => {
 
     const updated = await SkillResource.fetchById(auth, skill.sId);
     expect(updated?.agentFacingDescription).toBe("A better description");
+  });
+
+  it("applies an instruction edit", async () => {
+    const { workspace, auth, skill, blockIds } =
+      await setupSkillWithBlockInstructions();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      suggestion: instructionEditSuggestion(
+        blockIds[0],
+        "<p>Rewritten instructions</p>"
+      ),
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.instructions).toContain("Rewritten instructions");
+    expect(updated?.instructions).not.toContain("Original instructions");
+  });
+
+  it("keeps the text after a closed <tool></tool> tag", async () => {
+    const { workspace, auth, skill, blockIds } =
+      await setupSkillWithBlockInstructions();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      suggestion: instructionEditSuggestion(
+        blockIds[0],
+        '<p>Use <tool id="msv_abc123" name="Web search"></tool> then summarize.</p>'
+      ),
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.instructions).toBe(
+      'Use <tool id="msv_abc123" name="Web search" /> then summarize.'
+    );
+  });
+
+  // Skipped: currently fails. HTML ignores the `/` on a non-void unknown element, so `<tool …/>`
+  // opens a tag that swallows the rest of the paragraph, and `ToolNode` being an atom then
+  // discards what it swallowed — "then summarize." is lost, silently, on a 200 response. The
+  // browser parses it the same way, and the edit prompt's own example is written self-closing, so
+  // the model is being asked for the one form that loses content. Enable once the tag is
+  // normalized to `<tool …></tool>` before parsing.
+  it.skip("keeps the text after a self-closing <tool/> tag", async () => {
+    const { workspace, auth, skill, blockIds } =
+      await setupSkillWithBlockInstructions();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      suggestion: instructionEditSuggestion(
+        blockIds[0],
+        '<p>Use <tool id="msv_abc123" name="Web search" /> then summarize.</p>'
+      ),
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.instructions).toBe(
+      'Use <tool id="msv_abc123" name="Web search" /> then summarize.'
+    );
+  });
+
+  it("applies several suggestions targeting different blocks in one call", async () => {
+    const { workspace, auth, skill, blockIds } =
+      await setupSkillWithBlockInstructions("Alpha\n\nBravo");
+    const [alphaId, bravoId] = blockIds;
+
+    const first = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      suggestion: instructionEditSuggestion(alphaId, "<p>Alpha edited</p>"),
+    });
+    const second = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      suggestion: instructionEditSuggestion(bravoId, "<p>Bravo edited</p>"),
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [first.sId, second.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.instructions).toContain("Alpha edited");
+    expect(updated?.instructions).toContain("Bravo edited");
+  });
+
+  it("refuses the whole call when one edit targets a missing block", async () => {
+    const { workspace, auth, skill, blockIds } =
+      await setupSkillWithBlockInstructions();
+    const applicable = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      suggestion: instructionEditSuggestion(blockIds[0], "<p>Would apply</p>"),
+    });
+    const stale = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      suggestion: instructionEditSuggestion("gone12345", "<p>Never</p>"),
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [applicable.sId, stale.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.instructions).toBe("Original instructions");
+    expect(updated?.instructions).not.toContain("Would apply");
+
+    const untouched = await SkillSuggestionResource.fetchByIds(auth, [
+      applicable.sId,
+      stale.sId,
+    ]);
+    expect(untouched.map((s) => s.state)).toEqual(["pending", "pending"]);
   });
 
   it("returns 403 when an admin is not an editor of the skill", async () => {

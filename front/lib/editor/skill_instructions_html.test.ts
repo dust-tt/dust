@@ -1,4 +1,5 @@
-import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
+// @vitest-environment node: the server has no DOM globals, jsdom must not hide a reliance on them.
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
