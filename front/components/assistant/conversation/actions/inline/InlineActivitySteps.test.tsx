@@ -115,7 +115,9 @@ describe("InlineActivitySteps", () => {
     );
 
     expect(screen.queryByRole("button", { name: /Thinking/i })).toBeNull();
-    expect(screen.getByText("Writing…")).toBeVisible();
+    for (const writingIndicator of screen.getAllByText("Writing…")) {
+      expect(writingIndicator).toBeVisible();
+    }
     expect(screen.getByText("Live final answer")).toBeVisible();
   });
 
