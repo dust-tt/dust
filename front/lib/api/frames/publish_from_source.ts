@@ -287,7 +287,11 @@ async function readFrameV2SourceWithSourceLockHeld(
   }
 ): Promise<
   Result<
-    { manifest: FrameManifest; sourceFiles: FramePublicationSourceFile[] },
+    {
+      frameRoot: string;
+      manifest: FrameManifest;
+      sourceFiles: FramePublicationSourceFile[];
+    },
     FramePublicationError
   >
 > {
@@ -421,7 +425,11 @@ async function readFrameV2SourceWithSourceLockHeld(
     sourceFiles.push({ content: content.value, contentType, relativePath });
   }
 
-  return new Ok({ manifest: manifestResult.value, sourceFiles });
+  return new Ok({
+    frameRoot: sourceDirectoryPath,
+    manifest: manifestResult.value,
+    sourceFiles,
+  });
 }
 
 async function publishFrameV2FromSourceWithSourceLockHeld(
@@ -454,7 +462,9 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
   return buildAndPublishFramePublication(auth, {
     conversation,
     frame,
-    ...source.value,
+    frameRoot: source.value.frameRoot,
+    manifest: source.value.manifest,
+    sourceFiles: source.value.sourceFiles,
     publishedByAgentConfigurationId,
   });
 }
@@ -678,7 +688,9 @@ export async function validateFrameV2FromSource(
 
     return validateFramePublication(auth, {
       conversation,
-      ...source.value,
+      frameRoot: source.value.frameRoot,
+      manifest: source.value.manifest,
+      sourceFiles: source.value.sourceFiles,
     });
   });
   if (validation.isErr()) {

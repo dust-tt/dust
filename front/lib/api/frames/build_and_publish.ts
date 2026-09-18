@@ -11,6 +11,7 @@ import {
 } from "@app/lib/api/frames/publication_storage";
 import { withStagedFrameSource } from "@app/lib/api/frames/source_staging";
 import { validateFrameFunctionReferences } from "@app/lib/api/frames/validate_frame_functions";
+import { validateFramePackageFileRefs } from "@app/lib/api/frames/validate_package_file_refs";
 import { ensureConversationSandboxReadyWithScope } from "@app/lib/api/sandbox/lifecycle";
 import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
@@ -73,10 +74,13 @@ async function buildFramePublication(
   auth: Authenticator,
   {
     conversation,
+    frameRoot,
     manifest,
     sourceFiles,
   }: {
     conversation: ConversationWithoutContentType;
+    /** Canonical scoped path of the Frame package directory (parent of manifest.json). */
+    frameRoot: string;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
   }
@@ -106,6 +110,14 @@ async function buildFramePublication(
   });
   if (references.isErr()) {
     return references;
+  }
+
+  const packageFileRefs = validateFramePackageFileRefs({
+    frameRoot,
+    sourceFiles,
+  });
+  if (packageFileRefs.isErr()) {
+    return packageFileRefs;
   }
 
   const tailwind = validateFrameTailwind(sourceFiles);
@@ -215,16 +227,19 @@ export async function validateFramePublication(
   auth: Authenticator,
   {
     conversation,
+    frameRoot,
     manifest,
     sourceFiles,
   }: {
     conversation: ConversationWithoutContentType;
+    frameRoot: string;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
   }
 ): Promise<Result<undefined, FramePublicationError | SandboxFunctionError>> {
   const buildResult = await buildFramePublication(auth, {
     conversation,
+    frameRoot,
     manifest,
     sourceFiles,
   });
@@ -254,12 +269,14 @@ export async function buildAndPublishFramePublication(
   {
     conversation,
     frame,
+    frameRoot,
     manifest,
     sourceFiles,
     publishedByAgentConfigurationId,
   }: {
     conversation: ConversationWithoutContentType;
     frame: FileResource;
+    frameRoot: string;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
     publishedByAgentConfigurationId?: string;
@@ -272,6 +289,7 @@ export async function buildAndPublishFramePublication(
 > {
   const buildResult = await buildFramePublication(auth, {
     conversation,
+    frameRoot,
     manifest,
     sourceFiles,
   });

@@ -103,6 +103,7 @@ export function isWorkspaceVisibleShareScope(scope: FileShareScope): boolean {
 export const authorizedFileAccessKindSchema = z.enum([
   "file_id",
   "canonical_path",
+  "frame_relative_path",
   "unverifiable",
 ]);
 
@@ -135,6 +136,16 @@ const authorizedCanonicalPathAccessEntrySchema = z
   })
   .strict();
 
+const authorizedFrameRelativePathAccessEntrySchema = z
+  .object({
+    kind: z.literal("frame_relative_path"),
+    /** Portable package path, always `./…` (e.g. `./data.csv`). */
+    ref: z.string(),
+    fileName: z.string().optional(),
+    ...authorizedFileAccessEntryBaseSchema,
+  })
+  .strict();
+
 const authorizedUnverifiableAccessEntrySchema = z
   .object({
     kind: z.literal("unverifiable"),
@@ -146,6 +157,7 @@ const authorizedUnverifiableAccessEntrySchema = z
 export const authorizedFileAccessEntrySchema = z.discriminatedUnion("kind", [
   authorizedFileIdAccessEntrySchema,
   authorizedCanonicalPathAccessEntrySchema,
+  authorizedFrameRelativePathAccessEntrySchema,
   authorizedUnverifiableAccessEntrySchema,
 ]);
 
@@ -170,9 +182,19 @@ const authorizedCanonicalPathRefSchema = z
   })
   .strict();
 
+const authorizedFrameRelativePathRefSchema = z
+  .object({
+    kind: z.literal("frame_relative_path"),
+    /** Portable package path, always `./…` (e.g. `./data.csv`). */
+    ref: z.string(),
+    fileName: z.string().optional(),
+  })
+  .strict();
+
 export const authorizedFileRefSchema = z.discriminatedUnion("kind", [
   authorizedFileIdRefSchema,
   authorizedCanonicalPathRefSchema,
+  authorizedFrameRelativePathRefSchema,
 ]);
 
 export type AuthorizedFileRef = z.infer<typeof authorizedFileRefSchema>;
@@ -184,7 +206,9 @@ export function getAuthorizedFileRefLabel(ref: AuthorizedFileRef): string {
   if (ref.kind === "file_id") {
     return ref.ref;
   }
-  return ref.ref.split("/").pop() ?? ref.ref;
+  // `./data.csv` → `data.csv`; scoped paths → basename.
+  const trimmed = ref.ref.startsWith("./") ? ref.ref.slice(2) : ref.ref;
+  return trimmed.split("/").pop() ?? trimmed;
 }
 
 export function entryToAuthorizedFileRef(
@@ -204,6 +228,12 @@ export function entryToAuthorizedFileRef(
         kind: "canonical_path",
         ref: entry.ref,
         ...(entry.legacyPath ? { legacyPath: entry.legacyPath } : {}),
+        ...(entry.fileName ? { fileName: entry.fileName } : {}),
+      };
+    case "frame_relative_path":
+      return {
+        kind: "frame_relative_path",
+        ref: entry.ref,
         ...(entry.fileName ? { fileName: entry.fileName } : {}),
       };
     default:

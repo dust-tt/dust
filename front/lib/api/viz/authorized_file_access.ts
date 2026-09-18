@@ -20,6 +20,7 @@ import { getAuthorizedFileRefLabel } from "@app/types/files";
 import { legacyScopedPathsMatch } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Readable } from "stream";
 
@@ -297,13 +298,19 @@ export async function reverifyAuthorAccess(
   );
 
   const matchingRef = authorizedFileAccess.refs.find((r) => {
-    if (r.kind === "file_id") {
-      return r.ref === requestedRef;
+    switch (r.kind) {
+      case "file_id":
+        return r.ref === requestedRef;
+      case "frame_relative_path":
+        return r.ref === requestedRef;
+      case "canonical_path":
+        return (
+          r.ref === requestedRef ||
+          legacyScopedPathsMatch(r.legacyPath, requestedRef)
+        );
+      default:
+        return assertNever(r);
     }
-    return (
-      r.ref === requestedRef ||
-      legacyScopedPathsMatch(r.legacyPath, requestedRef)
-    );
   });
 
   if (!matchingRef) {
@@ -313,6 +320,11 @@ export async function reverifyAuthorAccess(
   if (matchingRef.kind === "file_id") {
     const file = await FileResource.fetchById(auth, matchingRef.ref);
     return file !== null;
+  }
+
+  // Package-root resolution for frame_relative_path is handled in the read PR.
+  if (matchingRef.kind === "frame_relative_path") {
+    return false;
   }
 
   const fsResult = await DustFileSystem.fromScopedPath(auth, matchingRef.ref);
