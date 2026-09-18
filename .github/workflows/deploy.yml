@@ -192,6 +192,7 @@ jobs:
           # Global registry, lives in the dust-infra project next to the helm charts.
           project_id: dust-infra
           region: us-central1
+          report_bundle_metrics: true
           virtuoso_license_key: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
           contentful_space_id: ${{ secrets.CONTENTFUL_SPACE_ID }}
           contentful_access_token: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}

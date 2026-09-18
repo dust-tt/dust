@@ -1,7 +1,8 @@
-import parsePhoneNumber, {
+import {
+  isValidPhoneNumber as libIsValidPhoneNumber,
+  parsePhoneNumber,
   parsePhoneNumberFromString,
-} from "libphonenumber-js";
-import { isValidPhoneNumber as libIsValidPhoneNumber } from "react-phone-number-input";
+} from "libphonenumber-js/min";
 
 export const CODE_LENGTH = 6;
 export const RESEND_COOLDOWN_SECONDS = 60;
