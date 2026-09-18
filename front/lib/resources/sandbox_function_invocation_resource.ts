@@ -394,29 +394,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     await this.pendingDataLoad;
   }
 
-  async getInput(): Promise<unknown> {
-    await this.ensureData();
-    return this.data.input;
-  }
-
   async getContext(): Promise<SandboxFunctionInvocationContext | undefined> {
     await this.ensureData();
     return this.data.context;
-  }
-
-  async getResult(): Promise<unknown> {
-    await this.ensureData();
-    return this.data.result;
-  }
-
-  async getError(): Promise<StoredSandboxFunctionCallError | undefined> {
-    await this.ensureData();
-    return this.data.error;
-  }
-
-  async getBundleSha256(): Promise<string | undefined> {
-    await this.ensureData();
-    return this.data.bundleSha256;
   }
 
   // WHERE-guarded compare-and-swap on status. Same pattern as
@@ -1304,7 +1284,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     });
 
     // DB row only — the GCS blob is loaded on demand via `ensureData` /
-    // `getInput` / `getContext` / … when a caller needs it.
+    // `getContext` when a caller needs it.
     return invocations.map(
       (invocation) =>
         new this(this.model, invocation.get(), { sandboxFunction })
