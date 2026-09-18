@@ -182,6 +182,18 @@ describe("resolveSlackBotInfo", () => {
     expect(replies).not.toHaveBeenCalled();
   });
 
+  it("falls back to the event username when bots.info returns a nameless bot", async () => {
+    const slackClient = new WebClient("test-token");
+    vi.spyOn(slackClient.bots, "info").mockResolvedValue({ ok: true, bot: {} });
+
+    const info = await resolveSlackBotInfo(connectorId, slackClient, {
+      ...params,
+      slackBotUsername: "Onboarding requests ",
+    });
+
+    expect(info?.real_name).toBe("Onboarding requests");
+  });
+
   it("falls back to the trimmed event username on bot_not_found", async () => {
     const slackClient = new WebClient("test-token");
     vi.spyOn(slackClient.bots, "info").mockRejectedValue(
