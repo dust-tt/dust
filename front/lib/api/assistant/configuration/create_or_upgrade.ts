@@ -23,10 +23,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/agent_configuration";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -242,19 +239,14 @@ export async function createOrUpgradeAgentConfiguration({
   // hold `write` without `read` (e.g. an admin API key editing a hidden agent), so that resource can
   // come back `light` — `toJSON` would throw on it. Re-read the config skipping the read gate (the
   // caller just wrote it) to get a usable light config for the steps below and the response.
-  const savedAgent = await getAgentConfiguration(auth, {
+  const savedConfig = await getAgentConfiguration(auth, {
     agentId: agentConfigurationRes.value.sId,
     variant: "light",
     dangerouslySkipPermissionFiltering: true,
   });
-  if (!savedAgent) {
+  if (!savedConfig) {
     return new Err(new Error("Failed to load the saved agent configuration."));
   }
-  const savedConfig: LightAgentConfigurationType = {
-    ...savedAgent,
-    tags: assistant.tags,
-    userFavorite: false,
-  };
 
   const actionConfigs: MCPServerConfigurationType[] = [];
 

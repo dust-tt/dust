@@ -205,8 +205,10 @@ export interface FullAgentResource extends AgentResource {
  * Saving a new configuration version of an existing agent (`updateConfiguration`) MUST require
  * `write` on that agent (`auth.can("write", this)`), enforced inside the resource — callers may
  * double-check, but MUST NOT be the sole gate. `read` alone (any member can read a visible agent)
- * MUST NOT allow editing, and the workspace `admin` role alone (which grants `admin`, not `write`,
- * on agents it does not edit) MUST NOT either.
+ * MUST NOT allow editing. For human and system-key callers the workspace `admin` role alone (which
+ * grants `admin`, not `write`, on agents they do not edit) MUST NOT allow editing either. Regular
+ * API keys are the sole exception: the admin role grants them `write` (see `admin-key-agent-write`),
+ * so an admin key may edit an agent it holds no editor grant on.
  */
 export class AgentResource
   extends BaseResource<AgentModel>
