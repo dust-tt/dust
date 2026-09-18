@@ -1,4 +1,4 @@
-import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar_picker/types";
+import { DROID_AVATAR_URLS } from "@app/lib/agent_builder/avatars";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
