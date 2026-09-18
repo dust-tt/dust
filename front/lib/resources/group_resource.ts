@@ -104,6 +104,15 @@ type CachedGroup = {
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+/**
+ * @cc [owner:philipperolet,label:security;product] group-verbs
+ * The verbs a caller holds on a group mean:
+ * - `read`: seeing the group and its membership.
+ * - `write`: renaming a `regular_manual` group and adding or removing its members.
+ * - `admin`: deleting a `regular_manual` group.
+ * `global` and `provisioned` groups are read-only. `regular_auto`, `agent_editors` and `system`
+ * groups hold no verbs and MUST only be used by paths with a separate authorization context.
+ */
 export class GroupResource extends BaseResource<GroupModel> {
   static model: ModelStatic<GroupModel> = GroupModel;
 
