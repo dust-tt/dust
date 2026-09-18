@@ -73,9 +73,9 @@ export function useInputBarSlashCommandCapabilities({
     kinds: ["global"],
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
-  const { skills, isSkillsLoading } = useSkills({
+  const { skills, isSkillsLoading } = useSearchSkills({
     owner,
-    status: "active",
+    searchTerm: query,
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
   // The JIT views endpoint only returns views whose tools can be enabled directly in a
@@ -91,7 +91,8 @@ export function useInputBarSlashCommandCapabilities({
     () =>
       buildCapabilitySlashCommandItems({
         excludeSkillId,
-        query,
+        query: query.slice(0, 200),
+        useSearchRanking: true,
         skills,
         tools: serverViews,
       }),
