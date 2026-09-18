@@ -7,17 +7,16 @@ import { z } from "zod";
 /**
  * @cc [owner:flvndvd,label:product] frame-local-types-development-only
  * Locally built Viz declarations MUST only be attached in development. If no local manifest
- * exists, the skill MUST keep its normal download behavior.
+ * exists, the skill MUST keep its normal download behavior. Locating the build MUST NOT add
+ * a Viz runtime package dependency.
  */
 function getLocalRuntimeTypes(): CodeDefinedSkillFile[] {
   if (!isDevelopment()) {
     return [];
   }
 
-  const directory = path.join(
-    path.dirname(require.resolve("viz/package.json")),
-    "public/frame-runtime"
-  );
+  // API and worker dev commands run from their workspaces, both beside viz.
+  const directory = path.resolve("../viz/public/frame-runtime");
   const manifestPath = path.join(directory, "manifest.json");
   if (!existsSync(manifestPath)) {
     return [];
