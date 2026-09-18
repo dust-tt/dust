@@ -30,6 +30,7 @@ yarn-error.log*
 # build output
 dist/
 public/spa/
+/lib/resources/skill/code_defined/global/frames/assets/frame-runtime/
 
 # next.js
 /.next/

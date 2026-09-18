@@ -60,7 +60,7 @@ export type CodeDefinedSkillFile = {
   // Unique within the skill; becomes the file name under `skills/<skillName>/`.
   readonly fileName: string;
   readonly contentType: string;
-  readonly content: string;
+  readonly content: string | Buffer;
 };
 
 type WithStaticInstructions<T extends BaseSkillDefinition> = T & {

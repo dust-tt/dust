@@ -131,6 +131,32 @@ async function lint(context: Awaited<ReturnType<typeof fixture>>) {
   return { stdout, stderr, exitCode };
 }
 
+async function attachTypes(context: Awaited<ReturnType<typeof fixture>>) {
+  await writeFile(
+    path.join(context.skill, "frame-runtime.json"),
+    JSON.stringify(context.manifest)
+  );
+  await writeFile(
+    path.join(context.skill, "frame-runtime.tgz"),
+    context.archive
+  );
+}
+
+test("uses attached types without Viz and keeps skill caches separate", async () => {
+  const context = await fixture();
+  await attachTypes(context);
+  expect((await lint({ ...context, url: "" })).exitCode).toBe(0);
+  await rm(path.join(context.skill, "frame-runtime.json"));
+  await rm(path.join(context.skill, "frame-runtime.tgz"));
+  expect((await lint({ ...context, url: "" })).exitCode).toBe(0);
+  expect(context.requests).toEqual([]);
+
+  // A different conversation still downloads its manifest when it has no attached types.
+  const other = await fixture();
+  expect((await lint({ ...other, root: context.root })).exitCode).toBe(0);
+  expect(other.requests).toEqual(["/frame-runtime/manifest.json"]);
+});
+
 test("lints current source, skips backend folders and reuses local checker files", async () => {
   const context = await fixture();
   await writeFile(
@@ -181,14 +207,23 @@ test("lints current source, skips backend folders and reuses local checker files
   ]);
 });
 
-test("rejects corrupted downloads before creating configs or caching types", async () => {
+test.each([
+  "download",
+  "attachment",
+])("rejects a corrupted %s before creating configs or caching types", async (source) => {
   const context = await fixture();
   context.archive[0] ^= 1;
+  if (source === "attachment") {
+    await attachTypes(context);
+  }
   const result = await lint(context);
   expect(result.exitCode).toBe(1);
   expect(result.stderr).toContain("checksum mismatch");
   expect(await readdir(path.join(context.root, "cache"))).toEqual([]);
   expect(await readdir(context.project)).toEqual(["index.tsx"]);
+  if (source === "attachment") {
+    expect(context.requests).toEqual([]);
+  }
 });
 
 test.each([

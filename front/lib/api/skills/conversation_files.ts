@@ -17,9 +17,13 @@ import type { Readable } from "stream";
 type WritableSkillFile = {
   fileName: string;
   contentType: string;
-  getContent: () => Readable | string;
+  getContent: () => Readable | string | Buffer;
 };
 
+/**
+ * @cc [owner:flvndvd,label:product] skill-file-content-bytes
+ * Skill file delivery MUST preserve binary content without decoding it as text.
+ */
 /**
  * Copy a skill's files into the conversation's file system under
  * `skills/{skillName}/{fileName}` (skill names are unique per workspace).

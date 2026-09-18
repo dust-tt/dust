@@ -7,6 +7,7 @@
 .DS_Store
 **/*.pem
 **/dist
+front/lib/resources/skill/code_defined/global/frames/assets/frame-runtime
 
 # env files
 **/.env
