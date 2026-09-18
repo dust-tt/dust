@@ -158,7 +158,7 @@ export function CreateSkillSuggestionSheet({
   const { editor } = useSkillInstructionsEditor({
     content: "",
     enableSlashCommands: false,
-    isReadOnly: false,
+    mode: "editable",
     onUpdate: handleInstructionsUpdate,
   });
 

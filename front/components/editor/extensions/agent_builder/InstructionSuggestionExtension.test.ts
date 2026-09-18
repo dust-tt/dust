@@ -5,6 +5,7 @@ import {
   getActiveSuggestionIds,
   getActiveSuggestions,
   InstructionSuggestionExtension,
+  isSuggestionDeletionDecoration,
   SUGGESTION_ID_ATTRIBUTE,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import {
@@ -19,6 +20,8 @@ import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preproce
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { Editor } from "@tiptap/core";
 import type { Node as PMNode } from "@tiptap/pm/model";
+import type { Decoration } from "@tiptap/pm/view";
+import { DecorationSet } from "@tiptap/pm/view";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 function getDeletions(editor: Editor) {
@@ -37,6 +40,17 @@ function getAdditions(editor: Editor) {
     text: el.textContent,
     suggestionId: el.getAttribute(SUGGESTION_ID_ATTRIBUTE),
   }));
+}
+
+function getSuggestionDeletionDecorations(editor: Editor): Decoration[] {
+  const decorations: Decoration[] = [];
+  for (const plugin of editor.state.plugins) {
+    const source = plugin.props.decorations?.call(plugin, editor.state);
+    if (source instanceof DecorationSet) {
+      decorations.push(...source.find().filter(isSuggestionDeletionDecoration));
+    }
+  }
+  return decorations;
 }
 
 function getBlockIds(editor: Editor): string[] {
@@ -1885,6 +1899,47 @@ describe("Root-targeting suggestions", () => {
       expect(deletions.length).toBeGreaterThanOrEqual(1);
       const deletedText = deletions.map((d) => d.text).join("");
       expect(deletedText).toContain("Hello");
+    });
+
+    it("should mark deletion decorations with the suggestion-deletion spec", () => {
+      editor.commands.setContent("Hello world", { contentType: "markdown" });
+
+      const ids = getBlockIds(editor);
+      const paragraphBlockId = ids.find(
+        (id) => id !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
+      );
+      expect(paragraphBlockId).toBeDefined();
+
+      editor.commands.applySuggestion({
+        id: "deletion-spec",
+        targetBlockId: paragraphBlockId!,
+        content: "<p>Hello</p>",
+      });
+
+      // Node views rely on this marker to render deleted content with their
+      // static suggestion presentation.
+      const deletionDecorations = getSuggestionDeletionDecorations(editor);
+      expect(deletionDecorations.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("should not mark addition decorations with the suggestion-deletion spec", () => {
+      editor.commands.setContent("Hello", { contentType: "markdown" });
+
+      const ids = getBlockIds(editor);
+      const paragraphBlockId = ids.find(
+        (id) => id !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
+      );
+      expect(paragraphBlockId).toBeDefined();
+
+      // Pure insertion: nothing is deleted, so no decoration carries the marker.
+      editor.commands.applySuggestion({
+        id: "addition-spec",
+        targetBlockId: paragraphBlockId!,
+        content: "<p>Hello world</p>",
+      });
+
+      expect(getAdditions().length).toBeGreaterThanOrEqual(1);
+      expect(getSuggestionDeletionDecorations(editor)).toHaveLength(0);
     });
 
     it("should use all blocks when multi-block HTML targets a specific block", () => {
