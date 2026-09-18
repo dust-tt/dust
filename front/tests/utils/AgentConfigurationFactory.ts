@@ -40,8 +40,8 @@ export class AgentConfigurationFactory {
     assert(user, "User is required");
 
     const workspace = auth.getNonNullableWorkspace();
-    // Some legacy tests use an auth without workspace membership. Such users cannot belong to an
-    // editor group, but authorId below still preserves attribution and the author fallback.
+    // Some legacy tests use an auth without workspace membership. Such users cannot receive an
+    // editor grant, but authorId below still preserves attribution and the author fallback.
     const editors = Authenticator.isMember(auth.role()) ? [user.toJSON()] : [];
 
     // Internal auth only bypasses the create capability; explicit authorId keeps attribution.
@@ -73,11 +73,8 @@ export class AgentConfigurationFactory {
       throw result.error;
     }
 
-    // createAgentConfiguration refreshes its own `auth` argument's group memberships as a side
-    // effect of creating the new editor group. Since we called it with `internalAuth` above,
-    // mirror that refresh onto the caller's own `auth` so tests that rely on it seeing
-    // just-added group memberships (added earlier in the same test, before this call) keep
-    // working as if `auth` itself had been used.
+    // Refresh the caller so tests see group memberships added earlier in the same test. The save
+    // above uses `internalAuth`, whose refresh cannot update the caller's permission snapshot.
     await auth.refresh();
 
     // Re-read the full config: as the caller when they are a workspace member (so the returned
