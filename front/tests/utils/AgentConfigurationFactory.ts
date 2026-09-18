@@ -44,7 +44,7 @@ export class AgentConfigurationFactory {
     // editor group, but authorId below still preserves attribution and the author fallback.
     const editors = Authenticator.isMember(auth.role()) ? [user.toJSON()] : [];
 
-    // Internal auth only bypasses the create/publish capabilities; explicit authorId keeps attribution.
+    // Internal auth only bypasses the create capability; explicit authorId keeps attribution.
     const internalAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -80,10 +80,12 @@ export class AgentConfigurationFactory {
     // working as if `auth` itself had been used.
     await auth.refresh();
 
-    // makeNew resolves the resource for its saver (the internal admin). Re-read the full config as
-    // the caller — `dangerouslySkipPermissionFiltering` so tests may build agents on spaces the
-    // caller cannot read (the agent still ends up correctly space-restricted).
-    const config = await getAgentConfiguration(auth, {
+    // Re-read the full config: as the caller when they are a workspace member (so the returned
+    // verbs reflect the author), otherwise as the internal admin — legacy tests build agents with a
+    // non-member auth, which `getAgentConfigurations` rejects. `dangerouslySkipPermissionFiltering`
+    // lets tests build agents on spaces the caller cannot read.
+    const readAuth = auth.isUser() ? auth : internalAuth;
+    const config = await getAgentConfiguration(readAuth, {
       agentId: result.value.sId,
       variant: "full",
       dangerouslySkipPermissionFiltering: true,
