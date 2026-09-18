@@ -50,14 +50,14 @@ describe("searchSkills pagination", () => {
     const skill = await SkillFactory.create(auth, { name: "ÉclairBot" });
     const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
     const hits = [
-      { _source: document, sort: [3.25, "eclairbot", skill.sId] },
+      { _source: document, sort: [3.25, skill.sId] },
       {
         _source: { ...document, skill_id: "second", name: "ReportBot" },
-        sort: [2, "reportbot", "second"],
+        sort: [2, "second"],
       },
       {
-        _source: { ...document, skill_id: "third", name: "WeatherBot" },
-        sort: [1, "weatherbot", "third"],
+        _source: { ...document, skill_id: "third", name: "AlphaBot" },
+        sort: [2, "third"],
       },
     ];
     mockSearch
@@ -88,6 +88,7 @@ describe("searchSkills pagination", () => {
     expect(mockSearch).toHaveBeenCalledTimes(2);
     expect(mockSearch.mock.calls[1][0]).toMatchObject({
       size: 3,
+      sort: [{ _score: { order: "desc" } }, { skill_id: { order: "asc" } }],
       search_after: hits[1].sort,
       query: buildSkillSearchQuery(auth, options),
     });
