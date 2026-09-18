@@ -339,7 +339,7 @@ describe("applyInstructionEditsToHtml", () => {
     }
   });
 
-  it.skip("correctly applies an edit holding a self-closing <knowledge/> tag", () => {
+  it("correctly applies an edit holding a self-closing <knowledge/> tag", () => {
     const html = convertMarkdownToBlockHtml("First para");
     const [, firstId] = blockIds(html);
 
@@ -359,7 +359,7 @@ describe("applyInstructionEditsToHtml", () => {
     }
   });
 
-  it.skip("correctly applies an edit holding a self-closing <skill/> tag", () => {
+  it("correctly applies an edit holding a self-closing <skill/> tag", () => {
     const html = convertMarkdownToBlockHtml("First para");
     const [, firstId] = blockIds(html);
 
@@ -379,7 +379,7 @@ describe("applyInstructionEditsToHtml", () => {
     }
   });
 
-  it.skip("correctly applies an edit holding a self-closing <tool/> tag", () => {
+  it("correctly applies an edit holding a self-closing <tool/> tag", () => {
     const html = convertMarkdownToBlockHtml("First para");
     const [, firstId] = blockIds(html);
 
@@ -395,6 +395,26 @@ describe("applyInstructionEditsToHtml", () => {
     if (result.isOk()) {
       expect(result.value.instructions).toBe(
         'Use <tool id="msv_abc123" name="Web search" /> then stop.'
+      );
+    }
+  });
+
+  it("keeps trailing text when a self-closing tag holds a literal '>' in an attribute", () => {
+    const html = convertMarkdownToBlockHtml("First para");
+    const [, firstId] = blockIds(html);
+
+    const result = applyInstructionEditsToHtml(html, [
+      {
+        targetBlockId: firstId,
+        content:
+          '<p>Use <skill id="skl_abc" name="A > B" icon="ActionSpeakIcon" /> then stop.</p>',
+      },
+    ]);
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.instructions).toBe(
+        'Use <skill id="skl_abc" name="A > B" icon="ActionSpeakIcon" /> then stop.'
       );
     }
   });
