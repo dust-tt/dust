@@ -7,6 +7,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -695,6 +696,49 @@ describe("AgentResource", () => {
           tagIds: [],
         })
       ).toThrow("Search documents require a custom agent in the workspace.");
+    });
+  });
+
+  describe("listSkills", () => {
+    it("lists the skills linked to the agent's current configuration", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent With Skills" }
+      );
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Linked Skill",
+      });
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: agent.id,
+      });
+
+      const resource = await AgentResource.fetchById(
+        testContext.authenticator,
+        agent.sId
+      );
+      assert(resource);
+      // The `agents` row id and the `agent_configurations` row id are distinct: listing skills off
+      // the former would silently return nothing.
+      expect(resource.id).not.toEqual(resource.agentConfigurationModelId);
+
+      const skills = await resource.listSkills(testContext.authenticator);
+
+      expect(skills.map((s) => s.id)).toEqual([skill.id]);
+    });
+
+    it("refuses to list the skills of a global agent", async () => {
+      const resource = await AgentResource.fetchById(
+        testContext.authenticator,
+        GLOBAL_AGENTS_SID.HELPER
+      );
+      assert(resource);
+
+      await expect(
+        resource.listSkills(testContext.authenticator)
+      ).rejects.toThrow(
+        "Unexpected: `listSkills` called on a global AgentResource"
+      );
     });
   });
 });
