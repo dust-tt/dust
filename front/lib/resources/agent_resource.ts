@@ -244,9 +244,6 @@ export class AgentResource
   readonly versionAuthorId: ModelId | null;
   private readonly requestedSpaceIds: ModelId[];
   readonly modelConfiguration: AgentModelConfigurationType;
-  // The skills a global agent declares in code; always empty for custom agents, whose skills live in
-  // `AgentSkillModel` rows. A core field: global resources are always `light`, so `content` is not
-  // an option (see `listSkills`).
   private readonly codeDefinedSkillIds: string[];
   // Mutable so a light resource can be enriched to full in place once read access is confirmed
   // (see `fromAgentConfigurationModel`). `variant` is derived from its presence.
