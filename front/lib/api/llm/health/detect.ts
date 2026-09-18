@@ -1,3 +1,4 @@
+import { applyDegradedEndpointCacheUpdate } from "@app/lib/api/assistant/degraded_models";
 import {
   DEGRADATION_LEASE_MS,
   ERROR_RATIO_THRESHOLD,
@@ -69,9 +70,9 @@ export async function evaluateEndpoint(
   let expiresAt: Date | undefined;
   if (persistDegradation) {
     expiresAt = new Date(now.getTime() + DEGRADATION_LEASE_MS);
-    await ModelDegradationResource.updateDegradedEndpoints([
-      { ...endpoint, degraded: true, expiresAt },
-    ]);
+    const updates = [{ ...endpoint, degraded: true as const, expiresAt }];
+    await ModelDegradationResource.updateDegradedEndpoints(updates);
+    applyDegradedEndpointCacheUpdate(updates);
   }
 
   switch (launchRes.value.outcome) {

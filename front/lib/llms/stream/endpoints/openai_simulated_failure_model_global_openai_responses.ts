@@ -23,7 +23,7 @@ function syntheticModelUnavailableError(): InternalServerError {
 
 /**
  * @cc [owner:frankaloia,label:error-handling;testing] synthetic-model-wrapper
- * Every stream MUST throw a provider-classified, retryable 503 before yielding
+ * This endpoint MUST throw a provider-classified, retryable 503 before yielding
  * any model output and MUST NOT mutate serving degradation state directly.
  */
 export class DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream extends WithDustSimulatedFailureModelConfig(
