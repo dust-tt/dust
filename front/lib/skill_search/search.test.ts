@@ -239,7 +239,9 @@ describe("custom skill search", () => {
     expect(candidates.map((skill) => skill.sId)).toEqual(expectedIds);
     expect(candidates).toHaveLength(expectedIds.length);
     expect(mockSearch).toHaveBeenCalledOnce();
-    const filters = mockSearch.mock.lastCall![0].query.bool.filter;
+    const { query } = mockSearch.mock.lastCall![0];
+    const customQuery = query.bool.should?.[0] ?? query;
+    const filters = customQuery.bool.filter;
     const terms = filters.at(-1).terms_set.requested_space_ids.terms;
     expect(terms).toEqual(
       expect.arrayContaining([
@@ -395,7 +397,7 @@ describe("custom skill search", () => {
     });
   });
 
-  it("returns only indexed listing metadata without querying the database", async () => {
+  it("projects indexed listing metadata without database reads after search", async () => {
     const { authenticator: auth, globalSpace } = await createResourceTest({
       role: "admin",
     });
@@ -425,10 +427,14 @@ describe("custom skill search", () => {
     documents[0].active_users_count = null;
     documents[0].mcp_server_view_ids = ["tool-view-id"];
     const onQuery = vi.fn();
-    frontSequelize.addHook("afterQuery", "skill-search-no-db", onQuery);
+    const search = mockSearch.getMockImplementation();
+    assert(search);
+    mockSearch.mockImplementationOnce(async (request) => {
+      const response = await search(request);
+      frontSequelize.addHook("afterQuery", "skill-search-no-db", onQuery);
+      return response;
+    });
     try {
-      const defaults = await searchListings(auth);
-      expect(defaults.map((skill) => skill.sId)).toEqual([active.sId]);
       const both = await searchListings(auth, {
         searchTerm: "",
         filters: { status: ["active", "archived"] },
@@ -455,14 +461,56 @@ describe("custom skill search", () => {
       expect(mockSearch.mock.lastCall![0]).toMatchObject({
         index: "front.skills",
         _source: true,
-        query: buildSkillSearchQuery(auth, {
+      });
+      expect(mockSearch.mock.lastCall![0].query.bool.should).toContainEqual(
+        buildSkillSearchQuery(auth, {
           searchTerm: "",
           filters: { status: ["active", "archived"] },
-        }),
-      });
+        })
+      );
       expect(onQuery).not.toHaveBeenCalled();
     } finally {
       frontSequelize.removeHook("afterQuery", "skill-search-no-db");
+    }
+  });
+
+  it("projects eligible global documents without database reads after search", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const documents = await SkillFactory.createCodeDefinedSearchDocuments();
+    const global = documents.find(
+      (document) => document.skill_id === "go-deep"
+    );
+    assert(global);
+    await mockHits(auth, [], [global]);
+    const onQuery = vi.fn();
+    const search = mockSearch.getMockImplementation();
+    assert(search);
+    mockSearch.mockImplementationOnce(async (request) => {
+      const response = await search(request);
+      frontSequelize.addHook(
+        "afterQuery",
+        "global-skill-search-no-db",
+        onQuery
+      );
+      return response;
+    });
+    try {
+      const result = await searchSkills(auth, {
+        searchTerm: "",
+        limit: 200,
+      });
+      assert(result.isOk());
+      const listings = result.value.skills;
+      expect(listings).toEqual([
+        {
+          ...toSkillListItem(global),
+          updatedAt: null,
+        },
+      ]);
+      expect(SkillListItemSchema.parse(listings[0]).updatedAt).toBeNull();
+      expect(onQuery).not.toHaveBeenCalled();
+    } finally {
+      frontSequelize.removeHook("afterQuery", "global-skill-search-no-db");
     }
   });
 
@@ -491,7 +539,9 @@ describe("custom skill search", () => {
     expect(SkillListItemSchema.strict().parse(redacted)).toEqual(
       toSkillListItem(document)
     );
-    expect(mockSearch.mock.lastCall![0].query.bool.filter).toEqual([
+    expect(
+      mockSearch.mock.lastCall![0].query.bool.should[0].bool.filter
+    ).toEqual([
       { term: { workspace_id: workspace.sId } },
       { terms: { status: ["active"] } },
     ]);
@@ -600,7 +650,8 @@ describe("custom skill search", () => {
     const [candidate] = await searchListings(auth);
     expect(candidate).toBeUndefined();
     expect(
-      mockSearch.mock.lastCall![0].query.bool.filter[2].bool.should[1]
+      mockSearch.mock.lastCall![0].query.bool.should[0].bool.filter[2].bool
+        .should[1]
     ).toEqual({ term: { editor_ids: user.sId } });
     expect(
       buildSkillSearchQuery(auth, {

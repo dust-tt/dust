@@ -17,13 +17,18 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
 });
 
 import { searchSkills } from "@app/lib/api/skills/search";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import {
   buildSkillSearchQuery,
   MAX_SKILL_SEARCH_RESULTS,
 } from "@app/lib/skill_search/query";
+import { buildSkillNameAutocompleteQuery } from "@app/lib/skill_search/ranking";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { matchesSkillSearchFilters } from "@app/tests/utils/skill_search";
 import type { SkillSearchFilters } from "@app/types/api/skills";
+import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
 
 describe("searchSkills pagination", () => {
@@ -112,5 +117,131 @@ describe("searchSkills pagination", () => {
     assert(result.isErr());
     expect(result.error).toBe("invalid_cursor");
     expect(mockSearch).not.toHaveBeenCalled();
+  });
+});
+
+describe("code-defined skill search", () => {
+  beforeEach(async () => {
+    const documents = await SkillFactory.createCodeDefinedSearchDocuments();
+    mockSearch.mockReset();
+    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
+      hits: {
+        hits: documents
+          .filter((document) =>
+            matchesSkillSearchFilters(document, request.query!)
+          )
+          .map((document) => ({
+            _source: document,
+            sort: [1, document.name.toLowerCase(), document.skill_id],
+          })),
+      },
+    }));
+  });
+
+  it("applies registry restrictions and availability filters", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const result = await searchSkills(auth, {
+      searchTerm: "",
+      filters: { availability: ["users_and_agents"] },
+    });
+    assert(result.isOk());
+    const globals = await GlobalSkillsRegistry.findAll(auth);
+    const ids = result.value.skills.map((skill) => skill.sId).sort();
+    expect(ids).toEqual(globals.map((skill) => skill.sId).sort());
+    expect(ids).toContain("go-deep");
+    expect(ids).not.toContain("workspace-analytics");
+  });
+
+  it.each<SkillSearchFilters>([
+    { status: ["archived"] },
+    { editedByMe: true },
+    { availability: ["editors"] },
+  ])("excludes code-defined skills for %j", async (filters) => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const result = await searchSkills(auth, { searchTerm: "", filters });
+    assert(result.isOk());
+    expect(result.value).toEqual({
+      skills: [],
+      hasMore: false,
+      nextCursor: null,
+    });
+  });
+
+  it("resolves tool filters using the caller's workspace views", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const view =
+      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        "web_search_&_browse"
+      );
+    assert(view);
+    const options = {
+      searchTerm: "",
+      filters: { mcpServerViewIds: [view.sId] },
+    };
+    const result = await searchSkills(auth, options);
+    assert(result.isOk());
+    const ids = result.value.skills.map((skill) => skill.sId);
+    expect(ids).toContain("go-deep");
+    expect(ids).not.toContain("discover_skills");
+
+    const { authenticator: otherAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const denied = await searchSkills(otherAuth, options);
+    assert(denied.isOk());
+    expect(denied.value.skills).toEqual([]);
+  });
+
+  it("uses the same autocomplete and cursor for a mixed ES page", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const skill = await SkillFactory.create(auth, { name: "WeeklyDeepReport" });
+    const [custom] = await SkillFactory.createSearchDocuments(auth, [skill]);
+    const documents = await SkillFactory.createCodeDefinedSearchDocuments();
+    const global = documents.find(
+      (document) => document.skill_id === "go-deep"
+    );
+    assert(global);
+    const hits = [
+      { _source: custom, sort: [3.25, "weeklydeepreport", skill.sId] },
+      { _source: global, sort: [2, "go deep", global.skill_id] },
+      {
+        _source: { ...custom, skill_id: "last", name: "Deep" },
+        sort: [1.5, "deep", "last"],
+      },
+    ];
+    mockSearch
+      .mockResolvedValueOnce({ hits: { hits } })
+      .mockResolvedValueOnce({ hits: { hits: hits.slice(2) } });
+
+    const page = await searchSkills(auth, { searchTerm: "deep", limit: 2 });
+    assert(page.isOk());
+    expect(page.value.skills.map((item) => item.sId)).toEqual([
+      skill.sId,
+      global.skill_id,
+    ]);
+    expect(page.value.nextCursor).toBe(
+      Buffer.from(JSON.stringify(hits[1].sort)).toString("base64url")
+    );
+    expect(page.value.hasMore).toBe(true);
+    expect(page.value.skills[1]).not.toHaveProperty("score");
+    for (const branch of mockSearch.mock.calls[0][0].query.bool.should) {
+      expect(branch.bool.must).toEqual([
+        buildSkillNameAutocompleteQuery("deep"),
+      ]);
+    }
+
+    const next = await searchSkills(auth, {
+      searchTerm: "deep",
+      limit: 2,
+      cursor: page.value.nextCursor,
+    });
+    assert(next.isOk());
+    expect(next.value.skills.map((item) => item.sId)).toEqual(["last"]);
+    expect(next.value.nextCursor).toBe(
+      Buffer.from(JSON.stringify(hits[2].sort)).toString("base64url")
+    );
+    expect(next.value.hasMore).toBe(false);
+    expect(mockSearch.mock.calls[1][0].search_after).toEqual(hits[1].sort);
   });
 });

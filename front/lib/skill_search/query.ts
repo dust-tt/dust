@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
 import { buildSkillNameAutocompleteQuery } from "@app/lib/skill_search/ranking";
 import type {
   SkillSearchFilters,
@@ -88,22 +89,25 @@ function buildSelectionFilters(
 
 /**
  * @cc [owner:aubin-tchoi,label:security] workspace-scoped-skill-search
- * Every query is workspace- and lifecycle-scoped, defaulting to active skills. Strict mode requires every requested
- * space and editor visibility. Callers must authorize admin-only metadata redaction upstream.
+ * Every query is scoped to the caller's workspace and explicitly eligible code-defined IDs
+ * in the reserved global workspace. It defaults to active skills. Strict mode requires every
+ * requested space and editor visibility. Callers must authorize admin-only metadata redaction upstream.
  */
 export function buildSkillSearchQuery(
   auth: Authenticator,
   {
     searchTerm,
-    filters = {},
     permissionFiltering = "strict",
+    filters = {},
+    codeDefinedSkillIds = [],
   }: {
     searchTerm: string;
     filters?: SkillSearchFilters;
     permissionFiltering?: SkillSearchPermissionFiltering;
+    codeDefinedSkillIds?: string[];
   }
 ): estypes.QueryDslQueryContainer {
-  return {
+  const customQuery: estypes.QueryDslQueryContainer = {
     bool: {
       filter: [
         { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
@@ -121,4 +125,30 @@ export function buildSkillSearchQuery(
       must: [buildSkillNameAutocompleteQuery(searchTerm)],
     },
   };
+  return codeDefinedSkillIds.length === 0
+    ? customQuery
+    : {
+        bool: {
+          should: [
+            customQuery,
+            {
+              bool: {
+                filter: [
+                  {
+                    term: { workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID },
+                  },
+                  { terms: { skill_id: codeDefinedSkillIds } },
+                  {
+                    terms: {
+                      status: [...new Set(filters.status ?? ["active"])].sort(),
+                    },
+                  },
+                ],
+                must: [buildSkillNameAutocompleteQuery(searchTerm)],
+              },
+            },
+          ],
+          minimum_should_match: 1,
+        },
+      };
 }
