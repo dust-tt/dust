@@ -8,8 +8,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@app/lib/api/elasticsearch", async () => {
   const { Err, Ok } = await import("@app/types/shared/result");
+  const { ElasticsearchError } = await vi.importActual<
+    typeof import("@app/lib/api/elasticsearch")
+  >("@app/lib/api/elasticsearch");
 
   return {
+    ElasticsearchError,
     SKILL_SEARCH_ALIAS_NAME: "front.skills",
     withEs: async (
       fn: (client: typeof mocks) => Promise<unknown>

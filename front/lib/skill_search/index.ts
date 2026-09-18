@@ -1,6 +1,10 @@
-import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
-import { SKILL_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
+import {
+  ElasticsearchError,
+  SKILL_SEARCH_ALIAS_NAME,
+  withEs,
+} from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 
 export function makeSkillDocumentId({
@@ -77,31 +81,39 @@ export async function updateSkillSearchActiveUsers({
   skillIds: string[];
   activeUsers: Record<string, number>;
 }): Promise<Result<void, ElasticsearchError>> {
-  return withEs(async (client) => {
-    if (skillIds.length === 0) {
-      return;
-    }
+  if (skillIds.length === 0) {
+    return new Ok(undefined);
+  }
 
-    const operations = skillIds.flatMap((skillId) => [
-      {
-        update: {
-          _index: SKILL_SEARCH_ALIAS_NAME,
-          _id: makeSkillDocumentId({ workspaceId, skillId }),
-          retry_on_conflict: 3,
-        },
+  const operations = skillIds.flatMap((skillId) => [
+    {
+      update: {
+        _index: SKILL_SEARCH_ALIAS_NAME,
+        _id: makeSkillDocumentId({ workspaceId, skillId }),
+        retry_on_conflict: 3,
       },
-      { doc: { active_users_count: activeUsers[skillId] ?? 0 } },
-    ]);
-    const result = await client.bulk({ operations });
-    const failures = result.items.filter(
-      (item) =>
-        item.update?.error &&
-        item.update.error.type !== "document_missing_exception"
-    );
-    if (failures.length > 0) {
-      throw new Error(
+    },
+    { doc: { active_users_count: activeUsers[skillId] ?? 0 } },
+  ]);
+
+  const bulkRes = await withEs((client) => client.bulk({ operations }));
+  if (bulkRes.isErr()) {
+    return bulkRes;
+  }
+
+  const failures = bulkRes.value.items.filter(
+    (item) =>
+      item.update?.error &&
+      item.update.error.type !== "document_missing_exception"
+  );
+  if (failures.length > 0) {
+    return new Err(
+      new ElasticsearchError(
+        "query_error",
         `Failed to update ${failures.length} skill usage snapshots`
-      );
-    }
-  });
+      )
+    );
+  }
+
+  return new Ok(undefined);
 }
