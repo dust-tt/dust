@@ -1,6 +1,5 @@
 import type {
   SkillAvailability,
-  SkillListItemType,
   SkillStatus,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
@@ -13,8 +12,6 @@ export type GetSkillsResponseBody = {
     isFavorite?: boolean;
   })[];
 };
-
-export type SkillSearchResult = SkillListItemType;
 
 // OR within a dimension, AND across dimensions. Selection never replaces ACLs.
 export interface SkillSearchFilters {
