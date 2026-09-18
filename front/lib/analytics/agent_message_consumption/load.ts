@@ -27,9 +27,8 @@ import type {
   AgentMessageConsumptionAnalyticsInput,
   BilledRunUsage,
   ConsumptionAnalyticsSource,
-  LoadAgentMessageConsumptionAnalyticsInputOptions,
-  LoadConsumptionOptions,
-  LoadSettledAttributionOptions,
+  LoadConsumptionAnalyticsOptions,
+  LoadLegacySettledConsumptionAnalyticsOptions,
 } from "@app/types/assistant/agent_message_consumption_analytics";
 import { CONSUMPTION_RECONCILIATION_SOURCE } from "@app/types/assistant/agent_message_consumption_analytics";
 import type { AgentMessageConsumptionAnalyticsUser } from "@app/types/assistant/analytics";
@@ -147,29 +146,15 @@ async function loadAnalyticsUser({
 
 /**
  * @cc [owner:id13,label:backend;data-integrity] consumption-analytics-source-identity
- * Settled attribution MUST load a terminal message by public ID and use its authoritative message
- * cost. Incremental consumption MUST load by model ID and derive its cost from ledger items.
+ * Legacy settled attribution MUST load a terminal message by public ID and use its authoritative
+ * message cost.
  */
-/**
- * @cc [owner:id13,label:backend;data-integrity] consumption-analytics-completion-time
- * Analytics completion time MUST equal the message's stored completion time. An unfinished
- * incremental snapshot MUST keep completion time `null`; message creation time MUST NOT substitute
- * for it.
- */
-export async function loadAgentMessageConsumptionAnalyticsInput(
+export async function loadLegacySettledConsumptionAnalyticsInput(
   auth: Authenticator,
-  options: LoadAgentMessageConsumptionAnalyticsInputOptions
-): Promise<AgentMessageConsumptionAnalyticsInput | null> {
-  if (options.source === "consumption") {
-    return loadConsumptionAnalyticsInput(auth, options);
-  }
-
-  return loadSettledAttributionAnalyticsInput(auth, options);
-}
-
-async function loadSettledAttributionAnalyticsInput(
-  auth: Authenticator,
-  { agentMessageId, preloadedActions }: LoadSettledAttributionOptions
+  {
+    agentMessageId,
+    preloadedActions,
+  }: LoadLegacySettledConsumptionAnalyticsOptions
 ): Promise<AgentMessageConsumptionAnalyticsInput | null> {
   const context =
     await ConversationResource.fetchAgentMessageConsumptionAnalyticsContext(
@@ -212,9 +197,18 @@ async function loadSettledAttributionAnalyticsInput(
   });
 }
 
-async function loadConsumptionAnalyticsInput(
+/**
+ * @cc [owner:id13,label:backend;data-integrity] consumption-analytics-source-identity
+ * Consumption analytics MUST load by model ID and derive billed credits from consumption items.
+ */
+/**
+ * @cc [owner:id13,label:backend;data-integrity] consumption-analytics-completion-time
+ * Analytics completion time MUST equal the message's stored completion time. An unfinished
+ * snapshot MUST keep completion time `null`; message creation time MUST NOT substitute for it.
+ */
+export async function loadConsumptionAnalyticsInput(
   auth: Authenticator,
-  { agentMessageModelId, preloadedActions }: LoadConsumptionOptions
+  { agentMessageModelId, preloadedActions }: LoadConsumptionAnalyticsOptions
 ): Promise<AgentMessageConsumptionAnalyticsInput | null> {
   const context =
     await ConversationResource.fetchAgentMessageConsumptionAnalyticsContext(

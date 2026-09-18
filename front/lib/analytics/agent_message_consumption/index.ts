@@ -1,6 +1,9 @@
 import type { ConsumptionDocumentsSkipReason } from "@app/lib/analytics/agent_message_consumption/documents";
 import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/documents";
-import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
+import {
+  loadConsumptionAnalyticsInput,
+  loadLegacySettledConsumptionAnalyticsInput,
+} from "@app/lib/analytics/agent_message_consumption/load";
 import {
   upsertAgentMessageConsumptionAnalyticsDocuments,
   upsertVersionedAgentMessageConsumptionAnalyticsDocuments,
@@ -27,7 +30,7 @@ export async function indexAgentMessageConsumptionAnalytics(
     preloadedActions?: AgentMCPActionResource[];
   }
 ): Promise<Result<void, ElasticsearchError | ConsumptionDocumentsSkipReason>> {
-  const input = await loadAgentMessageConsumptionAnalyticsInput(auth, {
+  const input = await loadLegacySettledConsumptionAnalyticsInput(auth, {
     agentMessageId,
     preloadedActions,
   });
@@ -66,9 +69,8 @@ export async function indexAgentMessageConsumptionSnapshot(
     ElasticsearchError | ConsumptionDocumentsSkipReason
   >
 > {
-  const input = await loadAgentMessageConsumptionAnalyticsInput(auth, {
+  const input = await loadConsumptionAnalyticsInput(auth, {
     agentMessageModelId,
-    source: "consumption",
   });
   if (!input) {
     return new Ok({ versionConflictCount: 0 });

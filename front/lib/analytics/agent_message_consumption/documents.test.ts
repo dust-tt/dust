@@ -1,5 +1,8 @@
 import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/documents";
-import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
+import {
+  loadConsumptionAnalyticsInput,
+  loadLegacySettledConsumptionAnalyticsInput,
+} from "@app/lib/analytics/agent_message_consumption/load";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/consumption/version";
@@ -212,7 +215,7 @@ async function setupLlmAndToolConsumptionScenario(
 async function buildDocuments(
   context: SettledMessageContext
 ): Promise<AgentMessageConsumptionAnalyticsData[] | null> {
-  const input = await loadAgentMessageConsumptionAnalyticsInput(context.auth, {
+  const input = await loadLegacySettledConsumptionAnalyticsInput(context.auth, {
     agentMessageId: context.agentMessage.sId,
   });
   if (!input) {
@@ -297,13 +300,9 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       }
     );
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(
-      context.auth,
-      {
-        agentMessageModelId: context.agentMessageModelId,
-        source: "consumption",
-      }
-    );
+    const input = await loadConsumptionAnalyticsInput(context.auth, {
+      agentMessageModelId: context.agentMessageModelId,
+    });
     if (!input) {
       throw new Error("Consumption analytics input was not loaded");
     }

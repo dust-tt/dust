@@ -71,18 +71,12 @@ export type ConsumptionAnalyticsSource = Pick<
   context: AgentMessageConsumptionAnalyticsContext;
 };
 
-export type LoadSettledAttributionOptions = {
+export type LoadLegacySettledConsumptionAnalyticsOptions = {
   agentMessageId: string;
   preloadedActions?: AgentMCPActionResource[];
-  source?: "settled_attribution";
 };
 
-export type LoadConsumptionOptions = {
+export type LoadConsumptionAnalyticsOptions = {
   agentMessageModelId: ModelId;
   preloadedActions?: AgentMCPActionResource[];
-  source: "consumption";
 };
-
-export type LoadAgentMessageConsumptionAnalyticsInputOptions =
-  | LoadSettledAttributionOptions
-  | LoadConsumptionOptions;
