@@ -102,7 +102,7 @@ describe("custom skill search permissions", () => {
     const base = buildSkillSearchQuery(auth);
     const query = buildSkillSearchQuery(auth, {
       filters: {
-        toolIds: ["view-2", "view-1", "view-2"],
+        mcpServerViewIds: ["view-2", "view-1", "view-2"],
         availability: ["users_and_agents"],
         editedByMe,
       },

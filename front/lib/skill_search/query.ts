@@ -67,7 +67,7 @@ function buildSelectionFilters(
 ): estypes.QueryDslQueryContainer[] {
   const selected: estypes.QueryDslQueryContainer[] = [];
   for (const [field, values] of [
-    ["mcp_server_view_ids", filters.toolIds],
+    ["mcp_server_view_ids", filters.mcpServerViewIds],
     ["availability", filters.availability],
   ] as const) {
     if (values?.length) {

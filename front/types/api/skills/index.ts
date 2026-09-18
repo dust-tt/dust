@@ -16,7 +16,7 @@ export type GetSkillsResponseBody = {
 export interface SkillSearchFilters {
   // Omitted means active only. Suggested skills are never searchable.
   status?: ("active" | "archived")[];
-  toolIds?: string[];
+  mcpServerViewIds?: string[];
   editedByMe?: true;
   availability?: SkillAvailability[];
 }
