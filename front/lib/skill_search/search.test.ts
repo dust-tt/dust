@@ -70,7 +70,7 @@ async function searchCandidates(
   options: SkillSearchOptions = { searchTerm: "" }
 ) {
   const result = await searchSkills(auth, {
-    query: buildSkillSearchQuery(auth, options.searchTerm, options),
+    query: buildSkillSearchQuery(auth, options),
     searchAfter: null,
     limit: 200,
   });
@@ -88,7 +88,7 @@ describe("custom skill search", () => {
       globalSpace,
       conversationsSpace,
     } = await createResourceTest({ role: "user" });
-    const query = buildSkillSearchQuery(auth, "report b");
+    const query = buildSkillSearchQuery(auth, { searchTerm: "report b" });
     expect(query).toEqual({
       bool: {
         must: [
@@ -142,8 +142,9 @@ describe("custom skill search", () => {
     undefined,
   ] as const)("adds selection filters without replacing ACLs (editedByMe=%s)", async (editedByMe) => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
-    const base = buildSkillSearchQuery(auth, "");
-    const query = buildSkillSearchQuery(auth, "", {
+    const base = buildSkillSearchQuery(auth, { searchTerm: "" });
+    const query = buildSkillSearchQuery(auth, {
+      searchTerm: "",
       filters: {
         mcpServerViewIds: ["view-2", "view-1", "view-2"],
         availability: ["users_and_agents"],
@@ -457,7 +458,9 @@ describe("custom skill search", () => {
       kind: "ids",
       resourceIds: [],
     });
-    expect(buildSkillSearchQuery(auth, "").bool?.filter).toContainEqual({
+    expect(
+      buildSkillSearchQuery(auth, { searchTerm: "" }).bool?.filter
+    ).toContainEqual({
       terms_set: {
         requested_space_ids: {
           terms: [],
@@ -474,7 +477,9 @@ describe("custom skill search", () => {
     });
     await auth.refresh();
     expect(auth.getReadableSpaceModelIds()).toEqual({ kind: "all" });
-    expect(buildSkillSearchQuery(auth, "").bool?.filter).toContainEqual({
+    expect(
+      buildSkillSearchQuery(auth, { searchTerm: "" }).bool?.filter
+    ).toContainEqual({
       match_all: {},
     });
   });
@@ -510,7 +515,9 @@ describe("custom skill search", () => {
       own.sId,
       other.sId,
     ]);
-    expect(buildSkillSearchQuery(auth, "").bool?.filter).not.toContainEqual({
+    expect(
+      buildSkillSearchQuery(auth, { searchTerm: "" }).bool?.filter
+    ).not.toContainEqual({
       terms: { skill_id: [own.sId] },
     });
   });
@@ -538,7 +545,8 @@ describe("custom skill search", () => {
         .should[1]
     ).toEqual({ term: { editor_ids: user.sId } });
     expect(
-      buildSkillSearchQuery(auth, "", {
+      buildSkillSearchQuery(auth, {
+        searchTerm: "",
         filters: { editedByMe: true },
       }).bool?.filter
     ).toContainEqual({ term: { editor_ids: user.sId } });
@@ -550,7 +558,7 @@ describe("custom skill search", () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     mockSearch.mockResolvedValue(response);
     const result = await searchSkills(auth, {
-      query: buildSkillSearchQuery(auth, ""),
+      query: buildSkillSearchQuery(auth, { searchTerm: "" }),
       searchAfter: null,
       limit: 10,
     });

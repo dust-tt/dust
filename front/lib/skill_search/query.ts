@@ -8,7 +8,8 @@ import type {
 import type { estypes } from "@elastic/elasticsearch";
 import { z } from "zod";
 
-export const MAX_SKILL_SEARCH_RESULTS = 150;
+export const MAX_SKILL_SEARCH_RESULTS = 100;
+
 export const SkillSearchSortSchema = z.tuple([
   z.number().finite(),
   z.string(),
@@ -96,25 +97,24 @@ function buildSelectionFilters(
 /**
  * @cc [owner:aubin-tchoi,label:security] workspace-scoped-skill-search
  * Every query is workspace- and lifecycle-scoped, defaulting to active skills, and requires
- * every requested space and editor visibility.
+ * every requested space and editor visibility. Selection filters never replace permissions.
  */
 export function buildSkillSearchQuery(
   auth: Authenticator,
-  searchTerm: string,
-  { filters = {} }: Pick<SkillSearchOptions, "filters"> = {}
+  {
+    searchTerm,
+    filters = {},
+  }: Pick<SkillSearchOptions, "searchTerm" | "filters">
 ): estypes.QueryDslQueryContainer {
-  const readableSpaceIds = getSkillSearchReadableSpaceIds(auth);
   return {
     bool: {
       filter: [
         { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
         {
-          terms: {
-            status: [...new Set(filters.status ?? ["active"])].sort(),
-          },
+          terms: { status: [...new Set(filters.status ?? ["active"])].sort() },
         },
         buildAvailabilityFilter(auth),
-        buildSpaceAccessFilter(readableSpaceIds),
+        buildSpaceAccessFilter(getSkillSearchReadableSpaceIds(auth)),
         ...buildSelectionFilters(auth, filters),
       ],
       must: [buildSkillMatchQuery(searchTerm)],
