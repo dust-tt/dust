@@ -5,7 +5,7 @@ import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_
  * sidekick (agents only) and the conversational-building skill (agents and
  * skills, collectively called "entities").
  *
- * `noun` is the word used for the thing being built ("agent" or "entity").
+ * `noun` is the word used for the entity being built ("agent" or "entity").
  */
 export type EntityNoun = "agent" | "entity";
 
