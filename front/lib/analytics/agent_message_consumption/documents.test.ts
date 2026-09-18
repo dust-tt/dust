@@ -1,6 +1,7 @@
 import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/documents";
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
+import { ConsumptionReconciliationSource } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/consumption/version";
 import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
@@ -313,7 +314,9 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       );
     }
 
-    expect(input.reconciliationSource).toBe("stored");
+    expect(input.reconciliationSource).toBe(
+      ConsumptionReconciliationSource.Stored
+    );
     expect(
       result.value.find((document) => document.consumption_type === "tool")
     ).toMatchObject({

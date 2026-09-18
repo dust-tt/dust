@@ -1,3 +1,4 @@
+import { ConsumptionReconciliationSource } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { getEnabledSkillIdsFromAction } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
 import { INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/consumption/version";
@@ -79,7 +80,7 @@ export type AgentMessageConsumptionAnalyticsInput =
     skills: SkillResource[];
     stepContents: AgentStepContentResource[];
     usages: BilledRunUsage[];
-    reconciliationSource: "derived" | "stored";
+    reconciliationSource: ConsumptionReconciliationSource;
   };
 
 // We only account for billed usage types in the analytics pipeline.
@@ -181,12 +182,13 @@ async function loadAnalyticsUser({
   };
 }
 
-type ConsumptionAnalyticsSource = {
+type ConsumptionAnalyticsSource = Pick<
+  AgentMessageConsumptionAnalyticsInput,
+  "items" | "reconciliationSource"
+> & {
   billedCredits: number | null;
   completedAt: Date;
   context: AgentMessageConsumptionAnalyticsContext;
-  items: AgentMessageConsumptionItemResource[];
-  reconciliationSource: "derived" | "stored";
 };
 
 type LoadSettledAttributionOptions = {
@@ -257,7 +259,7 @@ async function loadSettledAttributionAnalyticsInput(
       completedAt: agentMessage.completedAt,
       context,
       items,
-      reconciliationSource: "derived",
+      reconciliationSource: ConsumptionReconciliationSource.Derived,
     },
   });
 }
@@ -303,7 +305,7 @@ async function loadConsumptionAnalyticsInput(
       completedAt: agentMessage.completedAt ?? agentMessage.createdAt,
       context,
       items,
-      reconciliationSource: "stored",
+      reconciliationSource: ConsumptionReconciliationSource.Stored,
     },
   });
 }

@@ -5,6 +5,7 @@ import type { AllocationSkipReason } from "@app/lib/api/assistant/agent_message_
 import {
   buildLatestMessageConsumptionAllocation,
   buildStoredMessageConsumptionAllocation,
+  ConsumptionReconciliationSource,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
@@ -57,7 +58,7 @@ export function buildAgentMessageConsumptionAnalyticsDocuments(
     usages: input.usages,
   };
   const allocationResult =
-    input.reconciliationSource === "stored"
+    input.reconciliationSource === ConsumptionReconciliationSource.Stored
       ? buildStoredMessageConsumptionAllocation(allocationInput)
       : buildLatestMessageConsumptionAllocation(allocationInput);
   if (allocationResult.isErr()) {
