@@ -15,6 +15,7 @@ import {
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import uniq from "lodash/uniq";
 
 export async function indexUserSearchActivity({
   userId,
@@ -93,6 +94,11 @@ export async function indexUserSearchActivity({
  * @cc [owner:aubin-tchoi,label:backend;security] searchable-skill-index-projection
  * Index active or archived custom skills, including those the internal admin cannot read.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:backend;security] skill-index-global-space
+ * The indexed document must include the workspace's global space exactly once, including
+ * when reindexing a legacy skill whose stored requestedSpaceIds omits it.
+ */
 export async function indexSkillSearchActivity({
   workspaceId,
   skillId,
@@ -118,13 +124,16 @@ export async function indexSkillSearchActivity({
   if (skill.editedBy) {
     lastEditor = await UserResource.fetchByModelId(skill.editedBy);
   }
-  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const document = skill.toSearchDocument(auth.getNonNullableWorkspace(), {
     editors: editors ?? [],
     lastEditedByUser: lastEditor,
     activeUsersCount: 0,
-    globalSpace,
   });
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+  document.requested_space_ids = uniq([
+    ...document.requested_space_ids,
+    globalSpace.sId,
+  ]);
   const result = await indexSkillDocument(document);
   if (result.isErr()) {
     throw result.error;

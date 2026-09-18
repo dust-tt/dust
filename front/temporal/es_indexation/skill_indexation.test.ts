@@ -1,5 +1,4 @@
 import { Authenticator } from "@app/lib/auth";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import * as skillIndex from "@app/lib/skill_search";
 import { indexSkillSearchActivity } from "@app/temporal/es_indexation/activities";
@@ -33,13 +32,6 @@ describe("skill search indexing activity", () => {
     const skill = await SkillFactory.create(auth, {
       requestedSpaceIds: alreadyRequested ? [globalSpace.id] : [],
     });
-    if (!alreadyRequested) {
-      // Legacy rows can still lack the global space even though new writes include it.
-      await SkillConfigurationModel.update(
-        { requestedSpaceIds: [] },
-        { where: { id: skill.id, workspaceId: workspace.id } }
-      );
-    }
 
     await indexSkillSearchActivity({
       workspaceId: workspace.sId,

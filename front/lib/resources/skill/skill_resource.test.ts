@@ -55,32 +55,6 @@ describe("SkillResource", () => {
     createdConfigurations.length = 0;
   });
 
-  describe("makeNew", () => {
-    it.each([
-      false,
-      true,
-    ])("stores the global space exactly once when already requested: %s", async (alreadyRequested) => {
-      const { authenticator, workspace, globalGroup, globalSpace } =
-        testContext;
-      const space = await SpaceFactory.regular(workspace);
-      await SpaceFactory.attachGroup(space, globalGroup);
-      const skill = await SkillFactory.create(authenticator, {
-        requestedSpaceIds: alreadyRequested
-          ? [space.id, globalSpace.id]
-          : [space.id],
-      });
-
-      const storedSkill = await SkillResource.fetchById(
-        authenticator,
-        skill.sId
-      );
-      expect(storedSkill?.requestedSpaceIds).toEqual([
-        space.id,
-        globalSpace.id,
-      ]);
-    });
-  });
-
   describe("permissions", () => {
     it("allows any API key to write and administrate skills, regardless of role", async () => {
       const skill = await SkillFactory.create(testContext.authenticator);
@@ -706,20 +680,10 @@ describe("SkillResource", () => {
 
   describe("updateSkill", () => {
     it("adds the global space to legacy skill updates and version snapshots", async () => {
-      const { authenticator, workspace, globalSpace } = testContext;
-      const createdSkill = await SkillFactory.create(authenticator);
-      expect(createdSkill.requestedSpaceIds).toEqual([globalSpace.id]);
-
-      // Reproduce a legacy row that predates the resource's global-space guarantee.
-      await SkillConfigurationModel.update(
-        { requestedSpaceIds: [] },
-        { where: { id: createdSkill.id, workspaceId: workspace.id } }
-      );
-      const skill = await SkillResource.fetchById(
-        authenticator,
-        createdSkill.sId
-      );
-      assert(skill);
+      const { authenticator, globalSpace } = testContext;
+      const skill = await SkillFactory.create(authenticator, {
+        requestedSpaceIds: [],
+      });
       await skill.updateSkill(authenticator, {
         name: skill.name,
         agentFacingDescription: skill.agentFacingDescription,
@@ -2972,6 +2936,29 @@ describe("SkillResource", () => {
   });
 
   describe("computeRequestedSpaceIds", () => {
+    it.each([
+      false,
+      true,
+    ])("includes the global space exactly once when attached knowledge requests it: %s", async (hasAttachedKnowledge) => {
+      const { authenticator, workspace, globalSpace, user } = testContext;
+      const dataSourceView = await DataSourceViewFactory.folder(
+        workspace,
+        globalSpace,
+        user
+      );
+      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
+        authenticator,
+        {
+          mcpServerViews: [],
+          attachedKnowledge: hasAttachedKnowledge
+            ? [{ dataSourceView, nodeId: "node1" }]
+            : [],
+        }
+      );
+
+      expect(requestedSpaceIds).toEqual([globalSpace.id]);
+    });
+
     it("should compute space IDs from attached knowledge", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
       await SpaceFactory.attachGroup(space, testContext.globalGroup);
@@ -2994,7 +2981,7 @@ describe("SkillResource", () => {
         }
       );
 
-      expect(requestedSpaceIds).toContain(space.id);
+      expect(requestedSpaceIds).toEqual([space.id, testContext.globalSpace.id]);
     });
   });
 

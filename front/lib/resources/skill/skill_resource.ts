@@ -334,7 +334,7 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
  */
 /**
  * @cc [owner:aubin-tchoi,label:backend;security] skill-stored-global-space
- * Creation, requestedSpaceIds updates, and new version snapshots must store the workspace's
+ * requestedSpaceIds updates and new version snapshots must store the workspace's
  * global space exactly once alongside all requested spaces, even when callers omit it.
  */
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
@@ -455,6 +455,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Compute the requestedSpaceIds from MCP server views and attached knowledge.
    * This is the source of truth for which spaces a skill needs access to.
    */
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;security] skill-requested-global-space
+   * The returned space IDs must include the workspace's global space exactly once, including
+   * when no tools or attached knowledge request any spaces.
+   */
   static async computeRequestedSpaceIds(
     auth: Authenticator,
     {
@@ -475,10 +480,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const spaceIdsFromAttachedKnowledge = attachedKnowledge.map(
       (k) => k.dataSourceView.space.id
     );
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
     return uniq([
       ...spaceIdsFromMcpServerViews,
       ...spaceIdsFromAttachedKnowledge,
+      globalSpace.id,
     ]);
   }
 
@@ -547,14 +554,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Use a transaction to ensure all creations succeed or all are rolled back.
     const skillResource = await withTransaction(async (transaction) => {
-      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
-        auth,
-        transaction
-      );
       const skill = await this.model.create(
         {
           ...blob,
-          requestedSpaceIds: uniq([...blob.requestedSpaceIds, globalSpace.id]),
           instructionsHtml: blob.instructionsHtml ?? null,
           workspaceId: owner.id,
         },
@@ -681,13 +683,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return new Err(new Error("Some MCP server views are missing."));
     }
 
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const createdSuggestedSkill = await this.makeNew(
       auth,
       {
         ...blob,
         status: "suggested",
         editedBy: null,
-        requestedSpaceIds: [],
+        requestedSpaceIds: [globalSpace.id],
       },
       {
         mcpServerViews,
@@ -4638,32 +4641,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Serialize a custom skill fetched with tools, deriving user sIds from supplied editor
    * resources; perform no I/O and never include private skill content.
    */
-  /**
-   * @cc [owner:aubin-tchoi,label:backend;security] skill-search-global-space
-   * requested_space_ids must include the workspace's global space exactly once, even when it
-   * is absent from the skill's stored requestedSpaceIds, and preserve all requested spaces.
-   */
   toSearchDocument(
     workspace: LightWorkspaceType,
     {
       lastEditedByUser,
       editors,
       activeUsersCount,
-      globalSpace,
     }: {
       lastEditedByUser: UserResource | null;
       editors: UserResource[];
       activeUsersCount: number | null;
-      globalSpace: SpaceResource;
     }
   ): SkillSearchDocument {
     assert(
       !this.codeDefinedSkillId && this.workspaceId === workspace.id,
       "Search documents require a custom skill in the workspace."
-    );
-    assert(
-      globalSpace.isGlobal() && globalSpace.workspaceId === workspace.id,
-      "Search documents require the workspace's global space."
     );
     return {
       workspace_id: workspace.sId,
@@ -4675,10 +4667,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       icon: this.icon,
       last_edited_by_user_id: lastEditedByUser?.sId ?? null,
       editor_ids: uniq(editors.map((editor) => editor.sId)).sort(),
-      requested_space_ids: uniq([
-        ...this.requestedSpaceIds,
-        globalSpace.id,
-      ]).map((id) =>
+      requested_space_ids: this.requestedSpaceIds.map((id) =>
         SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
       ),
       mcp_server_view_ids: uniq(

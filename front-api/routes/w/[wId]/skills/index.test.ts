@@ -329,7 +329,7 @@ describe("GET /api/w/:wId/skills", () => {
   });
 
   it("lists skills built on spaces the admin cannot read with bypassEditorVisibility, redacted", async () => {
-    const { workspace, auth, globalSpace } = await setupTest("admin");
+    const { workspace, auth } = await setupTest("admin");
 
     const skillOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, skillOwner, {
@@ -368,10 +368,7 @@ describe("GET /api/w/:wId/skills", () => {
     expect(restrictedSkill).toBeDefined();
     expect(restrictedSkill!.canRead).toBe(false);
     expect(restrictedSkill!.fileAttachments).toEqual([]);
-    expect(restrictedSkill!.requestedSpaceIds).toEqual([
-      restrictedSpace.sId,
-      globalSpace.sId,
-    ]);
+    expect(restrictedSkill!.requestedSpaceIds).toEqual([restrictedSpace.sId]);
 
     // Readable skills keep `canRead` true.
     expect(skills.filter((s) => s.canRead)).not.toHaveLength(0);
@@ -1575,7 +1572,7 @@ describe("POST /api/w/:wId/skills", () => {
     const responseData = await response.json();
     expect(responseData.skill).toMatchObject({
       name: "Skill With Additional Space",
-      requestedSpaceIds: [openSpace.sId, globalSpace.sId],
+      requestedSpaceIds: [globalSpace.sId, openSpace.sId],
     });
 
     const createdSkill = await SkillResource.fetchById(

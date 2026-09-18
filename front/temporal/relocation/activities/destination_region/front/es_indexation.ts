@@ -145,8 +145,11 @@ export async function recreateSkillSearchIndex({
             ? null
             : (lastEditorByModelId.get(skill.editedBy) ?? null),
         activeUsersCount: 0,
-        globalSpace,
       });
+      document.requested_space_ids = uniq([
+        ...document.requested_space_ids,
+        globalSpace.sId,
+      ]);
       const result = await indexSkillDocument(document);
       if (result.isErr()) {
         localLogger.error(
