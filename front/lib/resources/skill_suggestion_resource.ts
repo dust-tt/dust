@@ -9,6 +9,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -166,7 +167,8 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
 
     const skillResources = await SkillResource.fetchByModelIds(
       auth,
-      skillConfigIds
+      skillConfigIds,
+      { status: [...SKILL_STATUSES] }
     );
 
     const skillResourceByModelId = new Map(

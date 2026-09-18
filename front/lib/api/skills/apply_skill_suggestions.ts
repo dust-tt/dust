@@ -63,6 +63,14 @@ function editsForSuggestion(
         userFacingDescription: data.suggestion.userFacingDescription,
       });
 
+    case "create":
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          "Skill creation suggestions cannot be applied to the skill yet."
+        )
+      );
+
     default:
       assertNever(data);
   }
