@@ -183,6 +183,8 @@ export interface FullAgentResource extends AgentResource {
  *   Slack channels, archiving and restoring.
  * - `admin`: managing the agent's editors. `admin` alone MUST NOT allow changing the definition,
  *   and `write` alone MUST NOT allow changing the editors.
+ * An agent's editors hold `read`, `write` and `admin` together (`AGENT_EDITOR_VERBS`), so an editor
+ * may change the editor set; a caller holding `write` without `admin` MUST NOT.
  * Global (code-defined) agents are `read`-only, for the roles in their audience.
  */
 /**
@@ -1133,6 +1135,23 @@ export class AgentResource
       );
     }
 
+    // Changing the editor set requires `admin`, not merely `write` (see the `agent-verbs`
+    // contract). Editors hold `admin` too, so this does not restrict them; it stops a caller who
+    // holds `write` without `admin` from altering who can edit the agent.
+    const currentEditors = await this.listEditors(auth, { transaction });
+    if (currentEditors !== null) {
+      const currentEditorIds = new Set(currentEditors.map((e) => e.id));
+      const nextEditorIds = new Set(params.editors.map((e) => e.id));
+      const editorsChanged =
+        currentEditorIds.size !== nextEditorIds.size ||
+        [...nextEditorIds].some((id) => !currentEditorIds.has(id));
+      if (editorsChanged && !auth.can("admin", this)) {
+        return new Err(
+          new Error("You don't have permission to change this agent's editors.")
+        );
+      }
+    }
+
     return AgentResource._saveConfiguration(
       auth,
       { ...params, agentConfigurationId: this.sId },
@@ -1527,10 +1546,9 @@ export class AgentResource
             }
 
             // Authorization is enforced upstream: this branch is only reached through
-            // `updateConfiguration`, which requires `write` on this agent before saving a new
-            // version (see `agent-edit-requires-write`). Editing the editor set is part of editing
-            // the agent, so it is covered by that same `write` gate; the assertion above only
-            // guarantees the author invariant.
+            // `updateConfiguration`, which requires `write` to save a new version (see
+            // `agent-edit-requires-write`) and additionally requires `admin` when the editor set
+            // changes (see `agent-verbs`). The assertion above only guarantees the author invariant.
             const setMembersRes = await group.dangerouslySetMembers(auth, {
               users: editors,
               transaction: t,
