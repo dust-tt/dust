@@ -18,6 +18,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
 import { WebClient } from "@slack/web-api";
+import { z } from "zod";
 
 // Timeout in ms for all network requests;
 const SLACK_NETWORK_TIMEOUT_MS = 30000;
@@ -259,6 +260,89 @@ export async function getSlackBotInfo(
     teamId: null,
     name: slackBot.bot?.name || null,
   };
+}
+
+export function makeSlackBotUserInfo({
+  username,
+  imageUrl,
+}: {
+  username: string;
+  imageUrl: string | null;
+}): SlackUserInfo {
+  return {
+    display_name: username,
+    real_name: username,
+    email: null,
+    is_email_confirmed: false,
+    image_512: imageUrl,
+    tz: null,
+    is_restricted: false,
+    is_stranger: false,
+    is_ultra_restricted: false,
+    is_bot: true,
+    teamId: null,
+    name: username,
+  };
+}
+
+const SlackBotMessageSchema = z.object({
+  ts: z.string().optional(),
+  username: z.string().optional(),
+  icons: z.object({ image_72: z.string().optional() }).optional(),
+});
+
+/**
+ * @cc [owner:rfrenoy,label:product] bot-name-from-message-username
+ * The returned bot MUST be named after the trimmed `username` of the message whose `ts` is
+ * `messageTs` in `channelId`, which is where Slack Workflow Builder posts (`subtype: bot_message`)
+ * carry their name when `bots.info` answers `bot_not_found`. Other messages Slack returns alongside
+ * it, such as a thread parent, MUST be ignored. When that message is absent or has no `username`,
+ * the function MUST return `null` rather than a bot with an empty name.
+ */
+export async function getSlackBotInfoFromMessage(
+  connectorId: ModelId,
+  slackClient: WebClient,
+  { channelId, messageTs }: { channelId: string; messageTs: string }
+): Promise<SlackUserInfo | null> {
+  reportSlackUsage({
+    connectorId,
+    method: "conversations.replies",
+    channelId,
+    useCase: "bot",
+  });
+  const res = await throttleWithRedis(
+    RATE_LIMITS["conversations.replies"],
+    `${connectorId}-conversations-replies`,
+    { canBeIgnored: false },
+    () =>
+      slackClient.conversations.replies({
+        channel: channelId,
+        ts: messageTs,
+      }),
+    { source: "getSlackBotInfoFromMessage" }
+  );
+  if (!res) {
+    throw new Error("Unexpected undefined response from conversations.replies");
+  }
+  if (res.error) {
+    throw new Error(res.error);
+  }
+
+  const message = (res.messages ?? [])
+    .flatMap((m) => {
+      const parsed = SlackBotMessageSchema.safeParse(m);
+      return parsed.success ? [parsed.data] : [];
+    })
+    .find((m) => m.ts === messageTs);
+  const username = message?.username?.trim();
+  if (!message || !username) {
+    return null;
+  }
+
+  return makeSlackBotUserInfo({
+    username,
+    imageUrl: message.icons?.image_72 ?? null,
+  });
 }
 
 export async function getSlackConversationInfo(
