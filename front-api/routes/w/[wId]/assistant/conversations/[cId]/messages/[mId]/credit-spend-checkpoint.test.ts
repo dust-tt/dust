@@ -88,12 +88,9 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages/:mId/credit-spe
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true });
     expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledWith(
-      expect.objectContaining({ startAsToolFreeGracefulStop: false })
-    );
   });
 
-  it("declines the pause and relaunches the loop as a tool-free graceful stop", async () => {
+  it("declines the pause and cancels the message without relaunching the loop", async () => {
     const { workspace, conversation, agentMessageRow } =
       await setupPausedMessage();
 
@@ -106,10 +103,7 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages/:mId/credit-spe
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true });
-    expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledWith(
-      expect.objectContaining({ startAsToolFreeGracefulStop: true })
-    );
+    expect(mockLaunchAgentLoopWorkflow).not.toHaveBeenCalled();
   });
 
   it("returns 400 for an invalid decision", async () => {

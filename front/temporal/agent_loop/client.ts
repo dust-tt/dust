@@ -59,27 +59,16 @@ export async function getTaskQueueForRun(
   return getQueueName(getQueueForUserMessageOrigin(userMessageOrigin));
 }
 
-/**
- * @cc [owner:avervaet,label:backend;concurrency] tool-free-graceful-stop-start
- * When `startAsToolFreeGracefulStop` is true, the launched run MUST disable tool use on its
- * first step and finalize through the graceful-stop path regardless of that step's outcome,
- * matching the state a running loop reaches after a `gracefullyStopAgentLoopSignal`.
- */
 export async function launchAgentLoopWorkflow({
   auth,
   agentLoopArgs,
   startStep,
   waitForCompletion,
-  startAsToolFreeGracefulStop,
 }: {
   auth: Authenticator;
   agentLoopArgs: AgentLoopArgs;
   startStep: number;
   waitForCompletion?: boolean;
-  // Seeds the workflow already in the state a running loop reaches when it's told to stop
-  // gracefully after its current step: tool use disabled for this step and the run finalized as
-  // a graceful stop, regardless of that step's outcome.
-  startAsToolFreeGracefulStop?: boolean;
 }): Promise<
   Result<undefined, Error | DustError<"agent_loop_already_running">>
 > {
@@ -134,7 +123,6 @@ export async function launchAgentLoopWorkflow({
           agentLoopArgs: executionArgs,
           startStep,
           initialStartTime,
-          startAsToolFreeGracefulStop,
         },
       ],
       taskQueue: await getTaskQueueForRun(auth, {

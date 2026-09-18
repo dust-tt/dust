@@ -19,6 +19,7 @@ import type {
   CompactionMessageStatus,
   ConversationMetadata,
   ConversationVisibility,
+  CreditSpendCheckpointStatus,
   MessageVisibility,
   ParticipantActionType,
   UserMessageOrigin,
@@ -502,12 +503,8 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
 
   // "paused": loop stopped after crossing the spend checkpoint, waiting on the user.
   // "acknowledged": user confirmed continuing, kept for the rest of the message's lifetime.
-  // "stopped": user declined; the message status also becomes "gracefully_stopped".
-  declare creditSpendCheckpointStatus:
-    | "paused"
-    | "acknowledged"
-    | "stopped"
-    | null;
+  // "stopped": user declined; the message status also becomes "cancelled".
+  declare creditSpendCheckpointStatus: CreditSpendCheckpointStatus | null;
 
   // The concrete provider/model/effort triplet used by the message when
   // running the agent. Legacy: null when the message runs the agent's configured model.

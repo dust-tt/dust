@@ -537,10 +537,11 @@
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/PrivateRichMentionWithStatus'
- *         pausedAtCreditSpendCheckpoint:
- *           type: boolean
+ *         creditSpendCheckpointStatus:
+ *           type: string
+ *           enum: [paused, acknowledged, stopped]
  *           nullable: true
- *           description: Set while the loop waits for the user to continue past the credit spend checkpoint.
+ *           description: Where the message stands with the credit spend checkpoint. Null when never reached.
  *         completionDurationMs:
  *           type: integer
  *           nullable: true
@@ -670,10 +671,11 @@
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/PrivateRichMentionWithStatus'
- *         pausedAtCreditSpendCheckpoint:
- *           type: boolean
+ *         creditSpendCheckpointStatus:
+ *           type: string
+ *           enum: [paused, acknowledged, stopped]
  *           nullable: true
- *           description: Set while the loop waits for the user to continue past the credit spend checkpoint.
+ *           description: Where the message stands with the credit spend checkpoint. Null when never reached.
  *         completionDurationMs:
  *           type: integer
  *           nullable: true
