@@ -91,7 +91,6 @@ const useUrlHandler = (
                   spaceId: node.dataSourceView.spaceId,
                   url: pendingUrl.url,
                 },
-                text: `:content_node_mention[${node.title}]{url=${pendingUrl.url}}`,
               };
           const content = [
             ...(needsLeadingSpace ? [{ type: "text", text: " " }] : []),

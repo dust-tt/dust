@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { stripContentNodeMentionUrls, stripMarkdown } from "./markdown";
+import { stripContentNodeMentionAttributes, stripMarkdown } from "./markdown";
 
 describe("stripMarkdown", () => {
   it("strips basic markdown formatting", () => {
@@ -80,11 +80,11 @@ describe("stripMarkdown", () => {
   });
 });
 
-describe("stripContentNodeMentionUrls", () => {
+describe("stripContentNodeMentionAttributes", () => {
   it("drops quoted and unquoted url attributes", () => {
     const content =
       'See :content_node_mention[Sheet]{url="https://docs.google.com/d/1/edit?gid=0"} and :content_node_mention[Doc]{url=https://example.com/doc}.';
-    expect(stripContentNodeMentionUrls(content)).toBe(
+    expect(stripContentNodeMentionAttributes(content)).toBe(
       "See :content_node_mention[Sheet] and :content_node_mention[Doc]."
     );
   });
@@ -92,7 +92,7 @@ describe("stripContentNodeMentionUrls", () => {
   it("handles titles with balanced brackets", () => {
     const content =
       ':content_node_mention[[Q3] Report]{url="https://docs.google.com/document/d/123/edit"}';
-    expect(stripContentNodeMentionUrls(content)).toBe(
+    expect(stripContentNodeMentionAttributes(content)).toBe(
       ":content_node_mention[[Q3] Report]"
     );
   });
@@ -100,6 +100,6 @@ describe("stripContentNodeMentionUrls", () => {
   it("leaves mentions without url and other text untouched", () => {
     const content =
       "Hey :mention[Bot]{sId=b1} :content_node_mention[Doc] https://example.com/a?b=c";
-    expect(stripContentNodeMentionUrls(content)).toBe(content);
+    expect(stripContentNodeMentionAttributes(content)).toBe(content);
   });
 });

@@ -20,7 +20,6 @@ function replaceUrlRange(
     {
       type: "dataSourceLink",
       attrs: { nodeId: null, title, provider: null, spaceId: null, url },
-      text: `:content_node_mention[${title}]{url=${url}}`,
     },
     { type: "text", text: " " },
   ];
