@@ -15,6 +15,7 @@ import {
   getConversation,
   getLightConversation,
 } from "@app/lib/api/assistant/conversation/fetch";
+import { createAgentMessages } from "@app/lib/api/assistant/conversation/messages";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/events";
 import * as attachmentsModule from "@app/lib/api/files/attachments";
@@ -94,6 +95,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 // Mock rateLimiter from the utils module
 import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 
 const TEST_PROGRAMMATIC_CREDIT_AMOUNT_MICRO_USD = 100_000_000;
 const TEST_CREDIT_START_DELAY_MS = 1000;
@@ -1157,6 +1159,82 @@ describe("softDeleteAgentMessage", () => {
       expect(result.error.type).toBe("message_deletion_not_authorized");
     }
   });
+
+  it("is idempotent when the same stale message snapshot is deleted twice", async () => {
+    const first = await softDeleteAgentMessage(auth, {
+      message: agentMessage,
+      conversation,
+    });
+    expect(first.isOk()).toBe(true);
+
+    // A second request for the same sId (double-click, client retry) still resolves the original
+    // "visible" row, so the snapshot is stale: the v+1 placeholder already exists.
+    const second = await softDeleteAgentMessage(auth, {
+      message: agentMessage,
+      conversation,
+    });
+    expect(second.isOk()).toBe(true);
+
+    const updated = await getConversation(auth, conversation.sId);
+    if (updated.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+    // Rank 1 holds v0 + a single v1 placeholder, no duplicate.
+    expect(updated.value.content[1].length).toBe(2);
+    expect(updated.value.content[1][1].visibility).toBe("deleted");
+  });
+
+  it("returns message_version_conflict when a newer version exists at the rank", async () => {
+    const conversationResource = await fetchConversationResource(
+      auth,
+      conversation.sId
+    );
+    const parentMessage = conversation.content
+      .flat()
+      .find((m): m is UserMessageType => isUserMessageType(m));
+    if (!parentMessage) {
+      throw new Error("No user message found in conversation");
+    }
+
+    const agentMessageRow = await AgentMessageModel.findOne({
+      where: { id: agentMessage.agentMessageId, workspaceId: workspace.id },
+    });
+    if (!agentMessageRow) {
+      throw new Error("Agent message row not found");
+    }
+
+    // Simulate a concurrent retry that wrote v1 at the same rank after the snapshot was taken.
+    await withTransaction(async (t) => {
+      await createAgentMessages(auth, {
+        conversation: conversationResource.toJSON(),
+        metadata: {
+          type: "retry",
+          agentMessage,
+          agentMessageRow,
+          parentId: parentMessage.id,
+          modelResolution: {
+            resolvedModel: {
+              providerId: agentConfig.model.providerId,
+              modelId: agentConfig.model.modelId,
+              reasoningEffort: agentConfig.model.reasoningEffort ?? "none",
+            },
+            modelResolutionMethod: "agent",
+          },
+        },
+        transaction: t,
+      });
+    });
+
+    const result = await softDeleteAgentMessage(auth, {
+      message: agentMessage,
+      conversation,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe("message_version_conflict");
+    }
+  });
 });
 
 describe("softDeleteUserMessageAndReplies", () => {
@@ -1310,6 +1388,69 @@ describe("softDeleteUserMessageAndReplies", () => {
 
     // Cascade should not add a v2 placeholder when the orphan is already deleted.
     expect(updated.value.content[1].length).toBe(agentRankVersionsBefore);
+  });
+
+  it("is idempotent when the same stale user message snapshot is deleted twice", async () => {
+    const firstUserMessage = conversation.content
+      .flat()
+      .find((m): m is UserMessageType => isUserMessageType(m));
+    if (!firstUserMessage) {
+      throw new Error("No user message found in conversation");
+    }
+
+    const first = await softDeleteUserMessageAndReplies(auth, {
+      message: firstUserMessage,
+      conversationResource,
+    });
+    expect(first.isOk()).toBe(true);
+
+    const second = await softDeleteUserMessageAndReplies(auth, {
+      message: firstUserMessage,
+      conversationResource,
+    });
+    expect(second.isOk()).toBe(true);
+
+    const updated = await getConversation(auth, conversation.sId);
+    if (updated.isErr()) {
+      throw new Error("Failed to refetch conversation");
+    }
+    // One placeholder per rank, no duplicates on the user message or the cascaded reply.
+    expect(updated.value.content[0].length).toBe(2);
+    expect(updated.value.content[1].length).toBe(2);
+  });
+
+  it("skips a cascaded reply that was deleted after the orphan snapshot was taken", async () => {
+    const firstUserMessage = conversation.content
+      .flat()
+      .find((m): m is UserMessageType => isUserMessageType(m));
+    const firstAgent = conversation.content
+      .flat()
+      .find((m): m is AgentMessageType => m.type === "agent_message");
+    if (!firstUserMessage || !firstAgent) {
+      throw new Error("Messages not found in conversation");
+    }
+
+    // The delete flow snapshots orphans before taking the rank lock; a concurrent delete of the
+    // reply lands in between. Reuse the pre-snapshot resource to reproduce the stale read.
+    const preDelete = await softDeleteAgentMessage(auth, {
+      message: firstAgent,
+      conversation: conversationResource.toJSON(),
+    });
+    expect(preDelete.isOk()).toBe(true);
+
+    const result = await softDeleteUserMessageAndReplies(auth, {
+      message: firstUserMessage,
+      conversationResource,
+    });
+    expect(result.isOk()).toBe(true);
+
+    const updated = await getConversation(auth, conversation.sId);
+    if (updated.isErr()) {
+      throw new Error("Failed to refetch conversation");
+    }
+    expect(updated.value.content[0].length).toBe(2);
+    expect(updated.value.content[0][1].visibility).toBe("deleted");
+    expect(updated.value.content[1].length).toBe(2);
   });
 
   it("signals gracefullyStopAgentLoop when the cascaded agent reply is still running", async () => {

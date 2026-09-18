@@ -10,6 +10,7 @@ import { cleanupDeniedBlockedActions } from "@app/lib/api/assistant/conversation
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   getConversationRankVersionLock,
+  getLatestMessageAtRank,
   getNextConversationMessageRank,
 } from "@app/lib/api/assistant/conversation/lock";
 import {
@@ -187,6 +188,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { IncomingHttpHeaders } from "http";
+import type { Transaction } from "sequelize";
 import { col } from "sequelize";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
@@ -2181,6 +2183,41 @@ export async function postNewContentFragment(
 }
 
 /**
+ * Checks, under the conversation rank lock, that `message` is still the latest version at its rank
+ * before a deletion placeholder is appended. Deletion requests read the message outside the lock:
+ * a concurrent delete may already have written the placeholder and a concurrent edit/retry may
+ * have written a newer version that must not be written over.
+ */
+async function checkLatestVersionForDeletion(
+  auth: Authenticator,
+  {
+    conversation,
+    message,
+    transaction,
+  }: {
+    conversation: ConversationWithoutContentType;
+    message: { id: ModelId; rank: number };
+    transaction: Transaction;
+  }
+): Promise<Result<"current" | "already_deleted", ConversationError>> {
+  const latestAtRank = await getLatestMessageAtRank(auth, {
+    conversation,
+    rank: message.rank,
+    transaction,
+  });
+  if (!latestAtRank) {
+    return new Err(new ConversationError("message_not_found"));
+  }
+  if (latestAtRank.visibility === "deleted") {
+    return new Ok("already_deleted");
+  }
+  if (latestAtRank.id !== message.id) {
+    return new Err(new ConversationError("message_version_conflict"));
+  }
+  return new Ok("current");
+}
+
+/**
  * Soft-delete a user message and the agent replies that followed it.
  *
  * Both deletions are represented as new v+1 `messages` rows with `visibility: "deleted"` rather
@@ -2218,9 +2255,8 @@ export async function softDeleteUserMessageAndReplies(
     return new Err(new ConversationError("message_deletion_not_authorized"));
   }
 
-  // Known small race: this snapshot is taken before the rank lock below. A concurrent retry/edit
-  // that takes the lock first and writes a v+1 at the same rank could cause the cascade insert to
-  // hit the (rank, version) unique constraint.
+  // This snapshot is taken before the rank lock below so the rendering queries do not run while
+  // the lock is held. It is re-validated against the latest versions inside the lock.
   const orphanAgentMessageModels =
     await conversationResource.getConsecutiveAgentReplyModelsAfterRank(auth, {
       afterRank: message.rank,
@@ -2245,59 +2281,109 @@ export async function softDeleteUserMessageAndReplies(
   }
 
   const cascadedAgentMessages: AgentMessageType[] = [];
-  const userMessage = await withTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
+  const userMessageRes = await withTransaction(
+    async (
+      t
+    ): Promise<
+      Result<UserMessageTypeWithoutMentions | null, ConversationError>
+    > => {
+      await getConversationRankVersionLock(auth, conversation, t);
 
-    const relatedContentFragments = await fetchPrecedingContentFragments(auth, {
-      conversationResource,
-      targetRank: message.rank,
-      transaction: t,
-    });
-
-    const userMessage = await createUserMessage(auth, {
-      conversation,
-      content: "deleted",
-      metadata: {
-        type: "delete",
+      const versionCheck = await checkLatestVersionForDeletion(auth, {
+        conversation,
         message,
-      },
-      transaction: t,
-    });
+        transaction: t,
+      });
+      if (versionCheck.isErr()) {
+        return versionCheck;
+      }
+      if (versionCheck.value === "already_deleted") {
+        return new Ok(null);
+      }
 
-    if (relatedContentFragments.length > 0) {
-      await MessageModel.update(
+      // The orphan snapshot was rendered outside the lock: skip replies deleted since, and
+      // conflict on any reply that appeared or changed version since.
+      const latestOrphanModels =
+        await conversationResource.getConsecutiveAgentReplyModelsAfterRank(
+          auth,
+          { afterRank: message.rank, transaction: t }
+        );
+      const snapshotOrphanIds = new Set(orphanAgentMessages.map((m) => m.id));
+      const orphansToCascade = new Set(
+        latestOrphanModels
+          .filter((m) => m.visibility !== "deleted")
+          .map((m) => m.id)
+      );
+      for (const id of orphansToCascade) {
+        if (!snapshotOrphanIds.has(id)) {
+          return new Err(new ConversationError("message_version_conflict"));
+        }
+      }
+
+      const relatedContentFragments = await fetchPrecedingContentFragments(
+        auth,
         {
-          visibility: "deleted",
-          contentFragmentId: col("contentFragmentId"),
-        },
-        {
-          where: {
-            workspaceId: owner.id,
-            conversationId: conversation.id,
-            id: relatedContentFragments.map((cf) => cf.id),
-          },
+          conversationResource,
+          targetRank: message.rank,
           transaction: t,
         }
       );
-    }
 
-    for (const orphan of orphanAgentMessages) {
-      const { agentMessages } = await createAgentMessages(auth, {
+      const userMessage = await createUserMessage(auth, {
         conversation,
+        content: "deleted",
         metadata: {
           type: "delete",
-          agentMessage: orphan,
-          parentId: message.id,
+          message,
         },
         transaction: t,
       });
-      cascadedAgentMessages.push(...agentMessages);
+
+      if (relatedContentFragments.length > 0) {
+        await MessageModel.update(
+          {
+            visibility: "deleted",
+            contentFragmentId: col("contentFragmentId"),
+          },
+          {
+            where: {
+              workspaceId: owner.id,
+              conversationId: conversation.id,
+              id: relatedContentFragments.map((cf) => cf.id),
+            },
+            transaction: t,
+          }
+        );
+      }
+
+      for (const orphan of orphanAgentMessages) {
+        if (!orphansToCascade.has(orphan.id)) {
+          continue;
+        }
+        const { agentMessages } = await createAgentMessages(auth, {
+          conversation,
+          metadata: {
+            type: "delete",
+            agentMessage: orphan,
+            parentId: message.id,
+          },
+          transaction: t,
+        });
+        cascadedAgentMessages.push(...agentMessages);
+      }
+
+      await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+      return new Ok(userMessage);
     }
-
-    await ConversationResource.markAsUpdated(auth, { conversation, t });
-
-    return userMessage;
-  });
+  );
+  if (userMessageRes.isErr()) {
+    return userMessageRes;
+  }
+  const userMessage = userMessageRes.value;
+  if (!userMessage) {
+    return new Ok({ success: true });
+  }
 
   await publishMessageEventsOnMessagePostOrEdit(
     conversation,
@@ -2383,19 +2469,43 @@ export async function softDeleteAgentMessage(
     return new Err(new ConversationError("message_deletion_not_authorized"));
   }
 
-  const { agentMessages } = await withTransaction(async (t) => {
-    await getConversationRankVersionLock(auth, conversation, t);
+  const agentMessagesRes = await withTransaction(
+    async (
+      t
+    ): Promise<Result<AgentMessageType[] | null, ConversationError>> => {
+      await getConversationRankVersionLock(auth, conversation, t);
 
-    return createAgentMessages(auth, {
-      conversation,
-      metadata: {
-        type: "delete",
-        agentMessage: message,
-        parentId: parentMessage.id,
-      },
-      transaction: t,
-    });
-  });
+      const versionCheck = await checkLatestVersionForDeletion(auth, {
+        conversation,
+        message,
+        transaction: t,
+      });
+      if (versionCheck.isErr()) {
+        return versionCheck;
+      }
+      if (versionCheck.value === "already_deleted") {
+        return new Ok(null);
+      }
+
+      const { agentMessages } = await createAgentMessages(auth, {
+        conversation,
+        metadata: {
+          type: "delete",
+          agentMessage: message,
+          parentId: parentMessage.id,
+        },
+        transaction: t,
+      });
+      return new Ok(agentMessages);
+    }
+  );
+  if (agentMessagesRes.isErr()) {
+    return agentMessagesRes;
+  }
+  const agentMessages = agentMessagesRes.value;
+  if (!agentMessages) {
+    return new Ok({ success: true });
+  }
 
   await publishAgentMessagesEvents(conversation, agentMessages);
 
