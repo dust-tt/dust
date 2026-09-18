@@ -15,7 +15,7 @@ export function buildSkillDefaultSort(): estypes.Sort {
  * description matching or usage boosts. The ICU-folded keyword field and skill ID
  * break relevance ties.
  */
-export function buildSkillMatchQuery(
+export function buildSkillNameAutocompleteQuery(
   searchTerm: string
 ): estypes.QueryDslQueryContainer {
   const query = searchTerm.trim();

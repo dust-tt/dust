@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { buildSkillMatchQuery } from "@app/lib/skill_search/ranking";
+import { buildSkillNameAutocompleteQuery } from "@app/lib/skill_search/ranking";
 import type {
   SkillSearchFilters,
   SkillSearchOptions,
@@ -109,7 +109,7 @@ export function buildSkillSearchQuery(
         buildSpaceAccessFilter(getSkillSearchReadableSpaceIds(auth)),
         ...buildSelectionFilters(auth, filters),
       ],
-      must: [buildSkillMatchQuery(searchTerm)],
+      must: [buildSkillNameAutocompleteQuery(searchTerm)],
     },
   };
 }
