@@ -172,11 +172,15 @@ function ConversationAgentSuggestion({
     workspaceId: owner.sId,
   });
 
-  const { resolveSuggestionState, acceptSuggestion, rejectSuggestion } =
-    useAgentSuggestionActions({
-      agentConfigurationId: agentId,
-      workspaceId: owner.sId,
-    });
+  const {
+    resolveSuggestionState,
+    isSuggestionPending,
+    acceptSuggestion,
+    rejectSuggestion,
+  } = useAgentSuggestionActions({
+    agentConfigurationId: agentId,
+    workspaceId: owner.sId,
+  });
 
   if (isSuggestionsLoading) {
     return <SuggestionCardSkeleton kind={kind} />;
@@ -194,6 +198,7 @@ function ConversationAgentSuggestion({
           ...suggestion,
           state: resolveSuggestionState(suggestion),
         }}
+        disabled={isSuggestionPending(suggestion)}
         onAccept={() => void acceptSuggestion(suggestion)}
         onReject={() => void rejectSuggestion(suggestion)}
       />

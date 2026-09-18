@@ -139,6 +139,7 @@ export function useAgentSuggestionActions({
   const [overrides, setOverrides] = useState<
     Record<string, AgentSuggestionState>
   >({});
+  const [pendingIds, setPendingIds] = useState<Record<string, boolean>>({});
 
   const resolveSuggestionState = useCallback(
     (suggestion: { sId: string; state: AgentSuggestionState }) =>
@@ -146,22 +147,30 @@ export function useAgentSuggestionActions({
     [overrides]
   );
 
+  const isSuggestionPending = useCallback(
+    (suggestion: { sId: string }) => pendingIds[suggestion.sId] ?? false,
+    [pendingIds]
+  );
+
   const setSuggestionState = useCallback(
     async (
       suggestion: { sId: string },
       nextState: Extract<AgentSuggestionState, "approved" | "rejected">
     ): Promise<boolean> => {
-      setOverrides((current) => ({ ...current, [suggestion.sId]: nextState }));
+      setPendingIds((current) => ({ ...current, [suggestion.sId]: true }));
 
       const result = await patchSuggestions([suggestion.sId], nextState);
+
+      setPendingIds((current) => {
+        const { [suggestion.sId]: _removed, ...rest } = current;
+        return rest;
+      });
+
       if (!result || result.suggestions.length === 0) {
-        setOverrides((current) => {
-          const { [suggestion.sId]: _removed, ...rest } = current;
-          return rest;
-        });
         return false;
       }
 
+      setOverrides((current) => ({ ...current, [suggestion.sId]: nextState }));
       return true;
     },
     [patchSuggestions]
@@ -176,5 +185,10 @@ export function useAgentSuggestionActions({
     [setSuggestionState]
   );
 
-  return { resolveSuggestionState, acceptSuggestion, rejectSuggestion };
+  return {
+    resolveSuggestionState,
+    isSuggestionPending,
+    acceptSuggestion,
+    rejectSuggestion,
+  };
 }

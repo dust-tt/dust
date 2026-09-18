@@ -35,6 +35,8 @@ interface AgentSuggestionActionCardProps {
   agentSuggestion: AgentCreateSuggestionType | AgentDeleteSuggestionType;
   onAccept: () => void;
   onReject: () => void;
+  /** Forces the busy/disabled visual, e.g. while an accept/reject request is in flight. */
+  disabled?: boolean;
 }
 
 /**
@@ -47,9 +49,12 @@ export function AgentSuggestionActionCard({
   agentSuggestion,
   onAccept,
   onReject,
+  disabled,
 }: AgentSuggestionActionCardProps) {
   const { kind, suggestion, state, analysis } = agentSuggestion;
-  const cardState = mapSuggestionStateToCardState(state);
+  const cardState = disabled
+    ? "disabled"
+    : mapSuggestionStateToCardState(state);
   const name = suggestion.name;
 
   const labels =
