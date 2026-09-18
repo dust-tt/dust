@@ -51,7 +51,7 @@ function agentLoopDataInPod(spaceId: string | null): AgentLoopExecutionData {
 }
 
 describe("framesSkill.fetchInstructions", () => {
-  it("uses the dsbx lifecycle and restricts the MCP server under Frames v2", async () => {
+  it("uses the dsbx lifecycle and keeps MCP export under Frames v2", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "frames_v2");
 
@@ -128,7 +128,7 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("shared Zod domain");
     expect(instructions).toContain("instead of `bun build`");
     expect(instructions).toContain(
-      "Other interactive-content tools remain available"
+      "`export_interactive_content_file`: use it to export a Frame as a PNG screenshot or PDF document"
     );
     expect(framesSkill.mcpServers).toEqual([
       { name: "interactive_content" },
@@ -139,7 +139,7 @@ describe("framesSkill.fetchInstructions", () => {
         auth,
         "interactive_content"
       )
-    ).resolves.toBe(true);
+    ).resolves.toBe(false);
   });
 
   it("teaches the computer-first flow when the Computer is enabled", async () => {

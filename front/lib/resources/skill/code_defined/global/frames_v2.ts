@@ -452,9 +452,10 @@ For a legacy Frame, pass its entry source file instead:
 dsbx frame publish /files/<scope>/<frame>.tsx
 \`\`\`
 
-Do not use the \`publish_interactive_content_file\` tool: the CLI replaces it under Frames v2.
-Other interactive-content tools remain available for Frame operations that the CLI does not cover
-yet. Use \`dsbx frame --help\` as the authority for available operations.
+The only interactive-content MCP tool available under Frames v2 is
+\`export_interactive_content_file\`: use it to export a Frame as a PNG screenshot or PDF document.
+Use the Computer and CLI for all other Frame operations. Use \`dsbx frame --help\` as the authority
+for available operations.
 
 Do not use \`mv\` or \`cp\` on a registered Frame folder: move and clone are not supported in this
 initial scope.
