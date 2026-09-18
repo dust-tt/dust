@@ -134,7 +134,7 @@ The manifest declares the UI entry point, every server function, and every datab
   Database names start with a lower-case letter and contain only lower-case letters, digits, and
   underscores. A Frame can declare up to ${MAX_FRAME_DATABASE_COUNT} databases.
 - \`executionMode\` defaults to \`durable\`. Use \`fast\` when the function never calls a Dust tool;
-  use \`durable\` when it calls \`dsbx tools\`.
+  use \`durable\` when it calls \`tools.call\` (or otherwise invokes a Dust tool).
 - \`defaultStake\` defaults to \`low\`. \`never_ask\` runs unattended, \`low\` asks once and can be
   always approved, and \`high\` asks on every call when the function is exposed as a tool.
 - Input, output, and caller-identity schemas belong in the function's TypeScript \`schema\` export,
@@ -261,10 +261,11 @@ on every read and write. Fetching a row by primary key does not prove ownership.
 - \`fast\` runs synchronously and returns sooner, but cannot call Dust tools. Frame databases, local
   computation, local binaries, and allowed outbound HTTP still work, but count against its shorter
   execution ceiling.
-- \`durable\` is required for \`dsbx tools\`. Tool calls can wait for user approval or personal
-  authentication, so the invocation runs in the background and resumes when the user responds.
+- \`durable\` is required for Dust tool calls (\`tools.call\`). Tool calls can wait for user approval
+  or personal authentication, so the invocation runs in the background and resumes when the user
+  responds.
 
-The decision is mechanical: if a function calls \`dsbx tools\`, declare it \`durable\`; otherwise
+The decision is mechanical: if a function calls \`tools.call\`, declare it \`durable\`; otherwise
 prefer \`fast\`. A durable call is visibly slower, so its UI needs a loading state.
 
 When polled UI data comes from a Dust tool and can be slightly stale, split the path: a durable
@@ -273,17 +274,41 @@ whole path durable only when every call must be live or the interaction itself i
 
 ### Calling Dust tools from a function
 
-Run \`dsbx tools --help\` from the Computer first to discover the exact server, tool, and arguments.
-Inside a durable function, shell out to:
+**Computer vs Frame function — do not mix the two call styles:**
 
-\`\`\`bash
-dsbx tools --json <server-name> <tool-name> <arguments...>
+- From the **Computer** (your bash session): explore and invoke tools with the \`dsbx tools\` CLI
+  (\`dsbx tools --help\`, \`dsbx tools --json …\`). That is the Computer skill's path.
+- Inside **Frame function source** (\`fetch()\`): use \`tools.call\` from \`@dust/pod\`. Do **not**
+  shell out to \`dsbx\`, \`execFile\`, or \`child_process\` to run \`dsbx tools\` from a function.
+
+Discover the exact server name, tool name, and argument shapes from the Computer with
+\`dsbx tools --help\` (and trial calls with \`--json\` if needed). Then implement the durable
+function with the typed client:
+
+\`\`\`ts
+import { tools } from "@dust/pod";
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const { maxResults } = await request.json();
+    const result = await tools.call("gmail", "get_messages", {
+      maxResults,
+      includeAttachments: false,
+    });
+    if (result.isError) {
+      throw new Error(result.text() || "Tool call failed.");
+    }
+    // Prefer result.json() when the tool returns structured output; otherwise parse result.text().
+    return Response.json({ /* … */ });
+  },
+};
 \`\`\`
 
-Parse the JSON stdout envelope, including \`content\` and \`isError\`. Publishing a function that
-calls \`dsbx tools\` as \`fast\` is a bug: the runtime refuses the tool call. Function \`fetch()\`
-requests use the same workspace egress allowlist and \`DST_*\` / \`DSEC_*\` configuration rules as
-the Computer.
+\`tools.call(server, tool, args?)\` takes a plain JSON \`args\` object (no stringification, no CLI
+flags). Transport failures throw; a tool that ran and reported an error resolves with
+\`isError: true\`. Publishing a function that calls Dust tools as \`fast\` is a bug: the runtime
+refuses the tool call. Function \`fetch()\` requests use the same workspace egress allowlist and
+\`DST_*\` / \`DSEC_*\` configuration rules as the Computer.
 
 ### Knowing who called a function
 

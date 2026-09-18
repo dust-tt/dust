@@ -625,6 +625,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return new Ok(undefined);
     }
 
+    const phaseStartedAtMs = Date.now();
+    let ensureSandboxMs: number | undefined;
+    let authorizeMs: number | undefined;
+    let mintTokenMs: number | undefined;
+    let execMs: number | undefined;
+
     try {
       const { sandboxFunction } = this;
       const { frame } = sandboxFunction;
@@ -678,6 +684,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
       let functionCheck;
       let ensureResult;
+      const ensureStartedAtMs = Date.now();
       if (inline) {
         [functionCheck, ensureResult] = await Promise.all([
           runFunctionCheck(),
@@ -691,6 +698,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           ensureResult = await runEnsure();
         }
       }
+      ensureSandboxMs = Date.now() - ensureStartedAtMs;
       if (!functionCheck) {
         return new Err(new Error("The Frame function no longer exists."));
       }
@@ -715,6 +723,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       if (!scope) {
         return new Err(new Error("The Frame runtime scope is missing."));
       }
+      const authorizeStartedAtMs = Date.now();
       const authorization = await authorizeSandboxFunctionInvocation(auth, {
         userIdentity: persistedFunction.userIdentity,
         origin: this.origin ?? "delegated",
@@ -724,6 +733,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           scope,
         },
       });
+      authorizeMs = Date.now() - authorizeStartedAtMs;
       if (!authorization.authorized) {
         return new Err(
           new SandboxFunctionInvocationError(
@@ -745,6 +755,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // Remember which bundle this execution serves, so the terminal transition records the
       // version behind the outcome.
       this.executedBundleSha256 = persistedFunction.bundleSha256 ?? undefined;
+      const mintStartedAtMs = Date.now();
       const token = await generateSandboxFunctionInvocationToken(auth, {
         sandbox,
         sandboxFunction,
@@ -757,6 +768,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         execId,
         noTools,
       });
+      mintTokenMs = Date.now() - mintStartedAtMs;
 
       const command = buildSandboxFunctionRunCommand(sandboxFunction.slug);
       const inputEnvelope = {
@@ -864,6 +876,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           });
         }
       );
+      execMs = Date.now() - execStartedAtMs;
       if (execResult.isErr()) {
         // Exec-level failures (timeouts included) must land in the same metric as served runs,
         // or the duration distribution silently drops the slowest attempts.
@@ -871,7 +884,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           ownerKind: frame ? "frame" : "pod",
           runnerKind: "unknown",
           status: "error",
-          durationMs: Date.now() - execStartedAtMs,
+          durationMs: execMs,
         });
         if (inline) {
           // An inline exec that fails is usually one that ran past its ceiling, but nothing in the
@@ -884,6 +897,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
               ...this.observabilityContext(auth),
               timeoutMs: SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS,
               error: execResult.error.message,
+              phaseTimingsMs: {
+                ensureSandbox: ensureSandboxMs,
+                authorize: authorizeMs,
+                mintToken: mintTokenMs,
+                exec: execMs,
+                total: Date.now() - phaseStartedAtMs,
+              },
             },
             "Inline sandbox function execution failed"
           );
@@ -896,6 +916,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // written a well-formed invocation_failed envelope the worker should keep.
       const parsed = parseStdoutResultEnvelope(stdout);
       const { timings } = parsed;
+      // phaseTimingsMs is front-side (ensure / mint / Process.Start). timingsMs is
+      // in-VM (archive / resolve / child / import / handler / tools). execOverheadMs
+      // approximates Process/Start + dsbx startup outside the child's measured work.
+      const runnerTotalMs =
+        typeof timings?.total === "number" ? timings.total : undefined;
       logger.info(
         {
           ...this.observabilityContext(auth),
@@ -905,6 +930,16 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             ? {}
             : { spilledResultBytes: parsed.spill.resultBytes }),
           ...(timings === null ? {} : { timingsMs: timings }),
+          phaseTimingsMs: {
+            ensureSandbox: ensureSandboxMs,
+            authorize: authorizeMs,
+            mintToken: mintTokenMs,
+            exec: execMs,
+            ...(runnerTotalMs === undefined || execMs === undefined
+              ? {}
+              : { execOverhead: Math.max(0, execMs - runnerTotalMs) }),
+            total: Date.now() - phaseStartedAtMs,
+          },
         },
         "Sandbox function stdout result delivery"
       );
@@ -920,7 +955,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         ownerKind: frame ? "frame" : "pod",
         runnerKind: timings?.runnerKind ?? "unknown",
         status: normalized.ok ? "success" : "error",
-        durationMs: Date.now() - execStartedAtMs,
+        durationMs: execMs ?? Date.now() - execStartedAtMs,
       });
       if (!normalized.ok || exitCode !== 0) {
         // Without the raw stdout/stderr there is no way to diagnose a rejected envelope.

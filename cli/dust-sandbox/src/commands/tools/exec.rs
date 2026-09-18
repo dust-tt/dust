@@ -93,11 +93,19 @@ async fn run_exec(
         // `--json` is a machine contract: content blocks whose full text was
         // offloaded by front get their archived content read back and
         // substituted, so the emitted JSON is complete rather than a snippet.
+        let offload_started = std::time::Instant::now();
         let content = resolve_offloaded_content(&resp.result.content, &ResolveOptions::default())
             .await
             .map_err(anyhow::Error::new)?;
+        let offload_ms = offload_started.elapsed().as_millis() as u64;
+        let mut timings_ms = resp.result.timings_ms;
+        if let Some(ref mut timings) = timings_ms {
+            timings.offload = Some(offload_ms);
+            timings.total = timings.total.saturating_add(offload_ms);
+        }
         let result = CallToolResult {
             content,
+            timings_ms,
             ..resp.result
         };
         println!("{}", serde_json::to_string_pretty(&result)?);
