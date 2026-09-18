@@ -244,6 +244,31 @@ async function initElasticsearchTS(
     }
   }
 
+  const reindexScript = "./scripts/reindex_code_defined_skills.ts";
+  if (await Bun.file(`${frontDir}/${reindexScript}`).exists()) {
+    logger.step("Indexing code-defined skills...");
+    const command = buildShell({
+      sourceEnv: envShPath,
+      sourceNvm: true,
+      run: `npx tsx ${reindexScript} --execute`,
+    });
+    const proc = Bun.spawn(["bash", "-c", command], {
+      cwd: frontDir,
+      env: { ...process.env, ...envVars },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
+    await proc.exited;
+
+    if (proc.exitCode !== 0) {
+      logger.error(`Failed to index code-defined skills:\n${stdout}\n${stderr}`);
+      return false;
+    }
+  }
+
   return true;
 }
 
