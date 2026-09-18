@@ -13,8 +13,8 @@ import type { estypes } from "@elastic/elasticsearch";
 
 export type { SkillSearchSort } from "@app/lib/skill_search/query";
 export {
-  MAX_SKILL_SEARCH_RESULTS,
   buildSkillSearchQuery,
+  MAX_SKILL_SEARCH_RESULTS,
   SkillSearchSortSchema,
 } from "@app/lib/skill_search/query";
 
