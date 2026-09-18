@@ -178,6 +178,9 @@ describe("building_agents_and_skills tools", () => {
       expect(result.value[0].text).toContain('name="Described"');
       expect(result.value[0].text).toContain("Use when describing things.");
       expect(result.value[0].text).toContain('data-block-id="blk00001"');
+      expect(result.value[0].text).toContain(
+        `<editors>${authenticator.getNonNullableUser().sId}</editors>`
+      );
     });
 
     it("rejects non-custom skill ids", async () => {

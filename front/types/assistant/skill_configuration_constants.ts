@@ -31,3 +31,6 @@ export function isSkillVisibleToViewer({
 }
 
 export const SKILL_NAME_MAX_LENGTH = 256;
+
+export const SKILL_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
+export type SkillReinforcementMode = (typeof SKILL_REINFORCEMENT_MODES)[number];

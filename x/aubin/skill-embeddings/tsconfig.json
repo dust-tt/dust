@@ -1,0 +1,10 @@
+{
+  "extends": "../../../front/tsconfig.json",
+  "compilerOptions": {
+    "target": "es2023",
+    "incremental": false,
+    "allowJs": false
+  },
+  "include": ["*.ts"],
+  "exclude": ["output", "node_modules"]
+}

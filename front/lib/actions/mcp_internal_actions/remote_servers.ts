@@ -2731,6 +2731,502 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10036,
+    name: "Siit",
+    description:
+      "Siit tools to run your internal IT and HR service desk — requests, people, applications and equipment, services, knowledge base articles, workflows and app access approvals, scoped to your Siit permissions.",
+    url: "https://mcp.siit.io/mcp",
+    icon: "SiitLogo",
+    documentationUrl: "https://docs.siit.io/integrations/mcp",
+    connectionInstructions:
+      'Siit uses OAuth with dynamic client registration. You will be prompted to sign in with your Siit account. The MCP can only read data you can already see and only perform writes you can already perform in the Siit admin dashboard, so make sure the "Public API" permission is enabled for your role under Settings > Roles & permissions in Siit.',
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      send_feedback: "low",
+      list_approval_policies: "never_ask",
+      get_approval_policy: "never_ask",
+      list_app_access_roles: "never_ask",
+      get_app_access_role: "never_ask",
+      get_app_access_role_provisioning_actions_schema: "never_ask",
+      create_app_access_role: "high",
+      update_app_access_role: "high",
+      delete_app_access_role: "high",
+      list_app_access_requests: "never_ask",
+      get_app_access_request: "never_ask",
+      approve_app_access_request: "high",
+      reject_app_access_request: "high",
+      list_people: "never_ask",
+      get_person: "never_ask",
+      whoami: "never_ask",
+      create_person: "low",
+      update_person: "low",
+      archive_person: "high",
+      unarchive_person: "low",
+      merge_person: "high",
+      list_requests: "never_ask",
+      get_request: "never_ask",
+      update_request: "low",
+      archive_request: "high",
+      unarchive_request: "low",
+      create_request: "low",
+      get_request_messages: "never_ask",
+      get_request_events: "never_ask",
+      send_request_message: "high",
+      add_request_note: "low",
+      get_request_group: "never_ask",
+      get_request_group_events: "never_ask",
+      group_requests: "low",
+      rename_request_group: "low",
+      disband_request_group: "high",
+      add_requests_to_group: "low",
+      remove_requests_from_group: "low",
+      send_message_to_requests_in_group: "high",
+      add_note_to_requests_in_group: "low",
+      set_status_of_requests_in_group: "high",
+      set_priority_of_requests_in_group: "low",
+      set_assignee_of_requests_in_group: "low",
+      add_tags_to_requests_in_group: "low",
+      archive_requests_in_group: "high",
+      snooze_requests_in_group: "low",
+      get_request_agent_logs: "never_ask",
+      list_services: "never_ask",
+      get_services: "never_ask",
+      create_service: "low",
+      update_service: "low",
+      get_service_custom_form_input: "never_ask",
+      create_service_custom_form_input: "low",
+      update_service_custom_form_input: "low",
+      delete_service_custom_form_input: "high",
+      list_team_inboxes: "never_ask",
+      get_team_inbox: "never_ask",
+      list_request_tags: "never_ask",
+      get_request_tag: "never_ask",
+      list_applications: "never_ask",
+      get_application: "never_ask",
+      create_application: "low",
+      update_application: "low",
+      archive_application: "high",
+      unarchive_application: "low",
+      list_equipments: "never_ask",
+      get_equipment: "never_ask",
+      create_equipment: "low",
+      update_equipment: "low",
+      archive_equipment: "high",
+      unarchive_equipment: "low",
+      list_equipment_categories: "never_ask",
+      list_departments: "never_ask",
+      get_department: "never_ask",
+      list_legal_entities: "never_ask",
+      get_legal_entity: "never_ask",
+      list_office_locations: "never_ask",
+      get_office_location: "never_ask",
+      list_teams: "never_ask",
+      get_team: "never_ask",
+      list_article_categories: "never_ask",
+      list_articles: "never_ask",
+      get_article: "never_ask",
+      create_article: "low",
+      update_article: "low",
+      publish_article: "high",
+      unpublish_article: "high",
+      archive_article: "high",
+      unarchive_article: "low",
+      list_workflows: "never_ask",
+      get_workflow: "never_ask",
+      get_workflow_execution_logs: "never_ask",
+      get_workflow_manifest_schema: "never_ask",
+      create_workflow: "high",
+      update_workflow: "high",
+      fetch_attachment: "never_ask",
+    },
+    toolDisplayLabels: {
+      send_feedback: {
+        running: "Sending feedback to Siit",
+        done: "Sent feedback to Siit",
+      },
+      list_approval_policies: {
+        running: "Listing approval policies on Siit",
+        done: "Listed approval policies on Siit",
+      },
+      get_approval_policy: {
+        running: "Fetching approval policy from Siit",
+        done: "Fetched approval policy from Siit",
+      },
+      list_app_access_roles: {
+        running: "Listing app access roles on Siit",
+        done: "Listed app access roles on Siit",
+      },
+      get_app_access_role: {
+        running: "Fetching app access role from Siit",
+        done: "Fetched app access role from Siit",
+      },
+      get_app_access_role_provisioning_actions_schema: {
+        running: "Fetching provisioning actions schema from Siit",
+        done: "Fetched provisioning actions schema from Siit",
+      },
+      create_app_access_role: {
+        running: "Creating app access role on Siit",
+        done: "Created app access role on Siit",
+      },
+      update_app_access_role: {
+        running: "Updating app access role on Siit",
+        done: "Updated app access role on Siit",
+      },
+      delete_app_access_role: {
+        running: "Deleting app access role on Siit",
+        done: "Deleted app access role on Siit",
+      },
+      list_app_access_requests: {
+        running: "Listing app access requests on Siit",
+        done: "Listed app access requests on Siit",
+      },
+      get_app_access_request: {
+        running: "Fetching app access request from Siit",
+        done: "Fetched app access request from Siit",
+      },
+      approve_app_access_request: {
+        running: "Approving app access request on Siit",
+        done: "Approved app access request on Siit",
+      },
+      reject_app_access_request: {
+        running: "Rejecting app access request on Siit",
+        done: "Rejected app access request on Siit",
+      },
+      list_people: {
+        running: "Listing people on Siit",
+        done: "Listed people on Siit",
+      },
+      get_person: {
+        running: "Fetching person from Siit",
+        done: "Fetched person from Siit",
+      },
+      whoami: {
+        running: "Fetching your Siit identity",
+        done: "Fetched your Siit identity",
+      },
+      create_person: {
+        running: "Creating person on Siit",
+        done: "Created person on Siit",
+      },
+      update_person: {
+        running: "Updating person on Siit",
+        done: "Updated person on Siit",
+      },
+      archive_person: {
+        running: "Archiving person on Siit",
+        done: "Archived person on Siit",
+      },
+      unarchive_person: {
+        running: "Unarchiving person on Siit",
+        done: "Unarchived person on Siit",
+      },
+      merge_person: {
+        running: "Merging people on Siit",
+        done: "Merged people on Siit",
+      },
+      list_requests: {
+        running: "Listing requests on Siit",
+        done: "Listed requests on Siit",
+      },
+      get_request: {
+        running: "Fetching request from Siit",
+        done: "Fetched request from Siit",
+      },
+      update_request: {
+        running: "Updating request on Siit",
+        done: "Updated request on Siit",
+      },
+      archive_request: {
+        running: "Archiving request on Siit",
+        done: "Archived request on Siit",
+      },
+      unarchive_request: {
+        running: "Unarchiving request on Siit",
+        done: "Unarchived request on Siit",
+      },
+      create_request: {
+        running: "Creating request on Siit",
+        done: "Created request on Siit",
+      },
+      get_request_messages: {
+        running: "Fetching request messages from Siit",
+        done: "Fetched request messages from Siit",
+      },
+      get_request_events: {
+        running: "Fetching request events from Siit",
+        done: "Fetched request events from Siit",
+      },
+      send_request_message: {
+        running: "Sending message on Siit request",
+        done: "Sent message on Siit request",
+      },
+      add_request_note: {
+        running: "Adding internal note on Siit request",
+        done: "Added internal note on Siit request",
+      },
+      get_request_group: {
+        running: "Fetching request group from Siit",
+        done: "Fetched request group from Siit",
+      },
+      get_request_group_events: {
+        running: "Fetching request group events from Siit",
+        done: "Fetched request group events from Siit",
+      },
+      group_requests: {
+        running: "Grouping requests on Siit",
+        done: "Grouped requests on Siit",
+      },
+      rename_request_group: {
+        running: "Renaming request group on Siit",
+        done: "Renamed request group on Siit",
+      },
+      disband_request_group: {
+        running: "Disbanding request group on Siit",
+        done: "Disbanded request group on Siit",
+      },
+      add_requests_to_group: {
+        running: "Adding requests to group on Siit",
+        done: "Added requests to group on Siit",
+      },
+      remove_requests_from_group: {
+        running: "Removing requests from group on Siit",
+        done: "Removed requests from group on Siit",
+      },
+      send_message_to_requests_in_group: {
+        running: "Sending message to grouped Siit requests",
+        done: "Sent message to grouped Siit requests",
+      },
+      add_note_to_requests_in_group: {
+        running: "Adding internal note to grouped Siit requests",
+        done: "Added internal note to grouped Siit requests",
+      },
+      set_status_of_requests_in_group: {
+        running: "Setting status of grouped Siit requests",
+        done: "Set status of grouped Siit requests",
+      },
+      set_priority_of_requests_in_group: {
+        running: "Setting priority of grouped Siit requests",
+        done: "Set priority of grouped Siit requests",
+      },
+      set_assignee_of_requests_in_group: {
+        running: "Setting assignee of grouped Siit requests",
+        done: "Set assignee of grouped Siit requests",
+      },
+      add_tags_to_requests_in_group: {
+        running: "Adding tags to grouped Siit requests",
+        done: "Added tags to grouped Siit requests",
+      },
+      archive_requests_in_group: {
+        running: "Archiving grouped Siit requests",
+        done: "Archived grouped Siit requests",
+      },
+      snooze_requests_in_group: {
+        running: "Snoozing grouped Siit requests",
+        done: "Snoozed grouped Siit requests",
+      },
+      get_request_agent_logs: {
+        running: "Fetching request agent logs from Siit",
+        done: "Fetched request agent logs from Siit",
+      },
+      list_services: {
+        running: "Listing services on Siit",
+        done: "Listed services on Siit",
+      },
+      get_services: {
+        running: "Fetching services from Siit",
+        done: "Fetched services from Siit",
+      },
+      create_service: {
+        running: "Creating service on Siit",
+        done: "Created service on Siit",
+      },
+      update_service: {
+        running: "Updating service on Siit",
+        done: "Updated service on Siit",
+      },
+      get_service_custom_form_input: {
+        running: "Fetching service form input from Siit",
+        done: "Fetched service form input from Siit",
+      },
+      create_service_custom_form_input: {
+        running: "Creating service form input on Siit",
+        done: "Created service form input on Siit",
+      },
+      update_service_custom_form_input: {
+        running: "Updating service form input on Siit",
+        done: "Updated service form input on Siit",
+      },
+      delete_service_custom_form_input: {
+        running: "Deleting service form input on Siit",
+        done: "Deleted service form input on Siit",
+      },
+      list_team_inboxes: {
+        running: "Listing team inboxes on Siit",
+        done: "Listed team inboxes on Siit",
+      },
+      get_team_inbox: {
+        running: "Fetching team inbox from Siit",
+        done: "Fetched team inbox from Siit",
+      },
+      list_request_tags: {
+        running: "Listing request tags on Siit",
+        done: "Listed request tags on Siit",
+      },
+      get_request_tag: {
+        running: "Fetching request tag from Siit",
+        done: "Fetched request tag from Siit",
+      },
+      list_applications: {
+        running: "Listing applications on Siit",
+        done: "Listed applications on Siit",
+      },
+      get_application: {
+        running: "Fetching application from Siit",
+        done: "Fetched application from Siit",
+      },
+      create_application: {
+        running: "Creating application on Siit",
+        done: "Created application on Siit",
+      },
+      update_application: {
+        running: "Updating application on Siit",
+        done: "Updated application on Siit",
+      },
+      archive_application: {
+        running: "Archiving application on Siit",
+        done: "Archived application on Siit",
+      },
+      unarchive_application: {
+        running: "Unarchiving application on Siit",
+        done: "Unarchived application on Siit",
+      },
+      list_equipments: {
+        running: "Listing equipment on Siit",
+        done: "Listed equipment on Siit",
+      },
+      get_equipment: {
+        running: "Fetching equipment from Siit",
+        done: "Fetched equipment from Siit",
+      },
+      create_equipment: {
+        running: "Creating equipment on Siit",
+        done: "Created equipment on Siit",
+      },
+      update_equipment: {
+        running: "Updating equipment on Siit",
+        done: "Updated equipment on Siit",
+      },
+      archive_equipment: {
+        running: "Archiving equipment on Siit",
+        done: "Archived equipment on Siit",
+      },
+      unarchive_equipment: {
+        running: "Unarchiving equipment on Siit",
+        done: "Unarchived equipment on Siit",
+      },
+      list_equipment_categories: {
+        running: "Listing equipment categories on Siit",
+        done: "Listed equipment categories on Siit",
+      },
+      list_departments: {
+        running: "Listing departments on Siit",
+        done: "Listed departments on Siit",
+      },
+      get_department: {
+        running: "Fetching department from Siit",
+        done: "Fetched department from Siit",
+      },
+      list_legal_entities: {
+        running: "Listing legal entities on Siit",
+        done: "Listed legal entities on Siit",
+      },
+      get_legal_entity: {
+        running: "Fetching legal entity from Siit",
+        done: "Fetched legal entity from Siit",
+      },
+      list_office_locations: {
+        running: "Listing office locations on Siit",
+        done: "Listed office locations on Siit",
+      },
+      get_office_location: {
+        running: "Fetching office location from Siit",
+        done: "Fetched office location from Siit",
+      },
+      list_teams: {
+        running: "Listing teams on Siit",
+        done: "Listed teams on Siit",
+      },
+      get_team: {
+        running: "Fetching team from Siit",
+        done: "Fetched team from Siit",
+      },
+      list_article_categories: {
+        running: "Listing article categories on Siit",
+        done: "Listed article categories on Siit",
+      },
+      list_articles: {
+        running: "Listing articles on Siit",
+        done: "Listed articles on Siit",
+      },
+      get_article: {
+        running: "Fetching article from Siit",
+        done: "Fetched article from Siit",
+      },
+      create_article: {
+        running: "Creating article on Siit",
+        done: "Created article on Siit",
+      },
+      update_article: {
+        running: "Updating article on Siit",
+        done: "Updated article on Siit",
+      },
+      publish_article: {
+        running: "Publishing article on Siit",
+        done: "Published article on Siit",
+      },
+      unpublish_article: {
+        running: "Unpublishing article on Siit",
+        done: "Unpublished article on Siit",
+      },
+      archive_article: {
+        running: "Archiving article on Siit",
+        done: "Archived article on Siit",
+      },
+      unarchive_article: {
+        running: "Unarchiving article on Siit",
+        done: "Unarchived article on Siit",
+      },
+      list_workflows: {
+        running: "Listing workflows on Siit",
+        done: "Listed workflows on Siit",
+      },
+      get_workflow: {
+        running: "Fetching workflow from Siit",
+        done: "Fetched workflow from Siit",
+      },
+      get_workflow_execution_logs: {
+        running: "Fetching workflow execution logs from Siit",
+        done: "Fetched workflow execution logs from Siit",
+      },
+      get_workflow_manifest_schema: {
+        running: "Fetching workflow manifest schema from Siit",
+        done: "Fetched workflow manifest schema from Siit",
+      },
+      create_workflow: {
+        running: "Creating workflow on Siit",
+        done: "Created workflow on Siit",
+      },
+      update_workflow: {
+        running: "Updating workflow on Siit",
+        done: "Updated workflow on Siit",
+      },
+      fetch_attachment: {
+        running: "Fetching attachment from Siit",
+        done: "Fetched attachment from Siit",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

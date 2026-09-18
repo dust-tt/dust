@@ -23,10 +23,15 @@ export async function describeSkillHandler(
     return new Err(new MCPError("Skill not found."));
   }
 
+  const editors = await skill.listEditors(auth);
+  const editorsBlock = editors
+    ? `<editors>${editors.map((editor) => editor.sId).join(", ")}</editors>`
+    : "";
+
   return new Ok([
     {
       type: "text" as const,
-      text: formatSkillContext(skill.toJSON(auth)),
+      text: formatSkillContext(skill.toJSON(auth), "full") + editorsBlock,
     },
   ]);
 }

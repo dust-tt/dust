@@ -7,7 +7,6 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
@@ -1185,6 +1184,11 @@ export class AgentResource
   // `currentVersion` pointer (or updates a pending agent in place). Editing an agent requires
   // `write` on it, enforced here on `this` (see the `agent-edit-requires-write` contract): the
   // caller resolves the agent first (e.g. `fetchById`), and only an editor may save a new version.
+  /**
+   * @cc [owner:philipperolet,label:security;product] complete-editor-set-replaces-grants
+   * Saving an existing agent with its complete editor set MUST revoke every current editor grant
+   * omitted from that set.
+   */
   async updateConfiguration(
     auth: Authenticator,
     params: SaveAgentConfigurationParams,
@@ -1616,16 +1620,14 @@ export class AgentResource
             agentConfigurationInstance
           );
           await agentResource.grantEditors(auth, { editors, transaction: t });
-          if (!isLegacyAclsEnabled()) {
-            const currentEditors = await agentResource.listEditors(auth, {
-              transaction: t,
-            });
-            assert(currentEditors !== null);
-            const editorIds = new Set(editors.map((editor) => editor.id));
-            removedEditors = currentEditors
-              .filter((editor) => !editorIds.has(editor.id))
-              .map((editor) => editor.toJSON());
-          }
+          const currentEditors = await agentResource.listEditors(auth, {
+            transaction: t,
+          });
+          assert(currentEditors !== null);
+          const editorIds = new Set(editors.map((editor) => editor.id));
+          removedEditors = currentEditors
+            .filter((editor) => !editorIds.has(editor.id))
+            .map((editor) => editor.toJSON());
           await agentResource.revokeEditors(auth, {
             editors: removedEditors,
             transaction: t,

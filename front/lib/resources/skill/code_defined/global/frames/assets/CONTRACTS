@@ -14,6 +14,13 @@ trigger this rule. Diagnostics MUST report file, line and column and identify th
 The script MUST NOT modify or execute Frame source or replace existing project configs. It MUST
 lint the current source with its standard configs, even when the project has its own configs.
 
+@cc [owner:flvndvd,label:product] frame-lint-package-file-refs
+String literals and templates without interpolation in UI and backend source MUST fail linting
+when they reference an existing file inside the Frame package via its absolute scoped path.
+Diagnostics MUST include file, line, column and the portable ./ path to use. Relative paths,
+file IDs and references outside the package MUST NOT trigger this rule. Package membership MUST
+be checked from the local source listing without stat calls through GCS Fuse for each reference.
+
 @cc [owner:flvndvd,label:performance] frame-lint-local-files
 The checker files MUST be cached on local sandbox disk after first use. Generated lint configs
 MUST stay on local disk and MUST be removed when the lint command exits.

@@ -396,6 +396,8 @@ publishing. A failed check returns a nonzero exit code.
 It keeps generated configs on local sandbox disk and leaves the Frame source and existing
 configs untouched. Keep server functions in
 \`functions/\` and database schemas in \`databases/\`, which are excluded from UI linting.
+The linter also checks UI and backend source for absolute scoped paths to files inside the Frame.
+Use the suggested \`./…\` path so those references still work when the Frame moves.
 
 ## Publish a Frame
 
@@ -408,11 +410,10 @@ dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
 
 Publishing runs the manifest, UI, function-build, database-contract, Tailwind,
-function-reference, and in-package \`useFile\` path checks. If any fails, no partial publication
+and function-reference checks. If any fails, no partial publication
 becomes active: fix the reported error and rerun. Tailwind arbitrary values such as \`h-[600px]\`
-are errors, not warnings: use predefined classes or the \`style\` prop. Absolute scoped paths that
-point at files inside this Frame package (for example \`conversation-…/MyFrame/data.csv\` in
-\`useFile\`) must be rewritten to \`./data.csv\` before publish. Do not run \`dsbx frame validate\`
+are errors, not warnings: use predefined classes or the \`style\` prop. Run the attached linter
+before publishing to check in-package file paths. Do not run \`dsbx frame validate\`
 immediately before publishing: it repeats the same server build.
 
 To run the same checks without storing or activating a publication or reconciling Frame-owned

@@ -164,6 +164,29 @@ beforeEach(() => {
 });
 
 describe("buildAndPublishFramePublication", () => {
+  it("leaves package-path authoring checks to the Frame linter", async () => {
+    const { auth, conversation } = await setup();
+    const result = await validateFramePublication(auth, {
+      conversation,
+      manifest: uiOnlyManifest,
+      sourceFiles: [
+        {
+          ...sourceFiles[0],
+          content: Buffer.from(
+            'export default () => <main>{"conversation-test/MyFrame/data.csv"}</main>'
+          ),
+        },
+        {
+          relativePath: "data.csv",
+          content: Buffer.from("value\n42\n"),
+          contentType: "text/csv",
+        },
+      ],
+    });
+
+    expect(result.isOk()).toBe(true);
+  });
+
   it("rejects forbidden Tailwind values without writing a publication", async () => {
     const { auth, conversation, frame } = await setup();
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
@@ -175,7 +198,6 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await validateFramePublication(auth, {
       conversation,
-      frameRoot: "conversation-test/MyFrame",
       manifest: uiOnlyManifest,
       sourceFiles: [
         {
@@ -205,7 +227,6 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await validateFramePublication(auth, {
       conversation,
-      frameRoot: "conversation-test/MyFrame",
       manifest: databaseManifest,
       sourceFiles: sourceFiles.slice(0, 1),
     });
@@ -222,7 +243,6 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,
-      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest: uiOnlyManifest,
       sourceFiles: [
@@ -256,7 +276,6 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,
-      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest: uiOnlyManifest,
       sourceFiles: sourceFiles.slice(0, 1),
@@ -282,7 +301,6 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,
-      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest: uiOnlyManifest,
       sourceFiles: [
@@ -334,7 +352,6 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,
-      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest,
       sourceFiles,
@@ -426,7 +443,6 @@ describe("buildAndPublishFramePublication", () => {
 
     const failed = await buildAndPublishFramePublication(auth, {
       conversation,
-      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest,
       sourceFiles,
@@ -454,7 +470,6 @@ describe("buildAndPublishFramePublication", () => {
 
     const published = await buildAndPublishFramePublication(auth, {
       conversation,
-      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest,
       sourceFiles,
@@ -481,7 +496,6 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,
-      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest,
       sourceFiles,
@@ -517,7 +531,6 @@ describe("buildAndPublishFramePublication", () => {
       conversation,
       frame,
       manifest,
-      frameRoot: "conversation-test/MyFrame",
       sourceFiles: [
         {
           ...sourceFiles[0],
@@ -545,7 +558,6 @@ describe("buildAndPublishFramePublication", () => {
 
     const result = await buildAndPublishFramePublication(auth, {
       conversation,
-      frameRoot: "conversation-test/MyFrame",
       frame,
       manifest,
       sourceFiles: [
