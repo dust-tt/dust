@@ -13,6 +13,7 @@ export const AGENT_SUGGESTION_KINDS = [
   "skills",
   "model",
   "knowledge",
+  "create",
 ] as const;
 
 export type AgentSuggestionKind = (typeof AGENT_SUGGESTION_KINDS)[number];
@@ -76,6 +77,26 @@ const ModelSuggestionSchema = z.object({
   reasoningEffort: z.enum(ORDERED_REASONING_EFFORTS).optional(),
 });
 
+const CreateSuggestionSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("Unique, human-readable agent name (no leading '@')."),
+  description: z
+    .string()
+    .trim()
+    .min(1)
+    .describe(
+      "Short description of what the agent does, shown to users browsing agents."
+    ),
+  instructions: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("The agent's instructions, as HTML."),
+});
+
 const KNOWLEDGE_SUGGESTION_METHODS = ["search", "query_tables"] as const;
 const KnowledgeSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]),
@@ -99,6 +120,7 @@ export type InstructionsSuggestionSchemaType = z.infer<
 >;
 export type ModelSuggestionType = z.infer<typeof ModelSuggestionSchema>;
 export type KnowledgeSuggestionType = z.infer<typeof KnowledgeSuggestionSchema>;
+export type CreateSuggestionType = z.infer<typeof CreateSuggestionSchema>;
 
 export function isToolsSuggestion(data: unknown): data is ToolsSuggestionType {
   return ToolsSuggestionSchema.safeParse(data).success;
@@ -123,6 +145,7 @@ export function isKnowledgeSuggestion(
 }
 
 export type SuggestionPayload =
+  | CreateSuggestionType
   | InstructionsSuggestionSchemaType
   | KnowledgeSuggestionType
   | ModelSuggestionType
@@ -146,6 +169,7 @@ export const AgentSuggestionDataSchema = z.discriminatedUnion("kind", [
     kind: z.literal("knowledge"),
     suggestion: KnowledgeSuggestionSchema,
   }),
+  z.object({ kind: z.literal("create"), suggestion: CreateSuggestionSchema }),
 ]);
 
 export type AgentSuggestionData = z.infer<typeof AgentSuggestionDataSchema>;
@@ -201,6 +225,11 @@ export type AgentKnowledgeSuggestionType = Extract<
   { kind: "knowledge" }
 >;
 
+export type AgentCreateSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "create" }
+>;
+
 export interface ToolSuggestionRelations {
   tool: MCPServerViewType;
 }
@@ -245,4 +274,5 @@ export type AgentSuggestionWithRelationsType =
   | AgentSkillsSuggestionWithRelationsType
   | AgentModelSuggestionWithRelationsType
   | AgentKnowledgeSuggestionWithRelationsType
-  | (AgentInstructionsSuggestionType & { relations: null });
+  | (AgentInstructionsSuggestionType & { relations: null })
+  | (AgentCreateSuggestionType & { relations: null });

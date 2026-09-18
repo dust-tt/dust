@@ -4,6 +4,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentSuggestionState,
+  CreateSuggestionType,
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
@@ -131,6 +132,32 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Suggested a more capable model",
         state: overrides.state ?? "pending",
+      }
+    );
+  }
+
+  static async createCreate(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType,
+    overrides: Partial<{
+      suggestion: CreateSuggestionType;
+      analysis: string | null;
+      state: AgentSuggestionState;
+    }> = {}
+  ): Promise<AgentSuggestionResource> {
+    return AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      agentConfiguration,
+      {
+        kind: "create",
+        suggestion: overrides.suggestion ?? {
+          name: "Incident Helper",
+          description: "Helps triage incidents.",
+          instructions: "Collect impact and timeline.",
+        },
+        analysis: overrides.analysis ?? "Suggested a new agent",
+        state: overrides.state ?? "pending",
+        conversationId: null,
       }
     );
   }

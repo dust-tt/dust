@@ -1,15 +1,21 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   DESCRIBE_SKILL_TOOL_NAME,
+  SUGGEST_AGENT_CREATION_INPUT_SCHEMA,
+  SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -24,6 +30,8 @@ import { TOOLS } from "./index";
 const SKILL_SUGGESTION_DIRECTIVE_REGEX = new RegExp(
   `^:skill_suggestion\\[\\]\\{sId=(\\S+) kind=(${SKILL_SUGGESTION_KINDS.join("|")}) skillId=(\\S+)\\}$`
 );
+const AGENT_CREATE_SUGGESTION_DIRECTIVE_REGEX =
+  /^:agent_suggestion\[\]\{sId=(\S+) kind=create agentId=(\S+)\}$/;
 
 function getTool(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -102,6 +110,28 @@ function expectMcpError(
     throw new Error("Expected an error.");
   }
   expect(result.error.message).toContain(fragment);
+}
+
+function extractAgentCreateSuggestionDirective(text: string): {
+  suggestionId: string;
+  agentId: string;
+} {
+  const match = AGENT_CREATE_SUGGESTION_DIRECTIVE_REGEX.exec(text);
+  if (!match) {
+    throw new Error(`Unexpected tool output: ${text}`);
+  }
+  return { suggestionId: match[1], agentId: match[2] };
+}
+
+// A non-admin role membership does not grant create/agent by itself — it requires a group grant.
+async function createAgentAuthorTestContext() {
+  const result = await createResourceTest({ role: "user" });
+  await grantWorkspacePermission(result.workspace, result.user, {
+    grantType: "create",
+    resourceType: "agent",
+  });
+  await result.authenticator.refresh();
+  return result;
 }
 
 describe("building_agents_and_skills tools", () => {
@@ -625,6 +655,125 @@ describe("building_agents_and_skills tools", () => {
       );
 
       expectMcpError(result, "do not have access");
+    });
+  });
+
+  describe(SUGGEST_AGENT_CREATION_TOOL_NAME, () => {
+    it("records a pending create suggestion against a hidden placeholder agent", async () => {
+      const { authenticator, user } = await createAgentAuthorTestContext();
+
+      const result = await getTool(SUGGEST_AGENT_CREATION_TOOL_NAME).handler(
+        {
+          name: "Incident Helper",
+          description: "Helps triage incidents.",
+          instructions: "Collect impact and timeline.",
+        },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+
+      const output = result.value[0];
+      expect(output?.type).toBe("text");
+      if (output?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const { suggestionId, agentId } = extractAgentCreateSuggestionDirective(
+        output.text
+      );
+
+      const suggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      expect(suggestion).not.toBeNull();
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.kind).toBe("create");
+      expect(suggestion?._agentConfigurationId).toBe(agentId);
+      expect(suggestion?.toJSON()).toMatchObject({
+        suggestion: {
+          name: "Incident Helper",
+          description: "Helps triage incidents.",
+          instructions: "Collect impact and timeline.",
+        },
+      });
+
+      // The suggestion targets a hidden, pending, instructions-less placeholder
+      // agent with the caller as sole editor.
+      const placeholderAgent = await getAgentConfiguration(authenticator, {
+        agentId: suggestion!._agentConfigurationId,
+        variant: "light",
+      });
+      expect(placeholderAgent).not.toBeNull();
+      expect(placeholderAgent?.status).toBe("pending");
+      expect(placeholderAgent?.scope).toBe("hidden");
+
+      const editors = await getAgentsEditors(authenticator, [
+        placeholderAgent!,
+      ]);
+      expect(editors[placeholderAgent!.sId]?.map((e) => e.sId)).toEqual([
+        user.sId,
+      ]);
+    });
+
+    it("rejects blank fields at the input schema level", () => {
+      const valid = {
+        name: " Incident Helper ",
+        description: "Desc",
+        instructions: "Do things.",
+      };
+      const parsed = SUGGEST_AGENT_CREATION_INPUT_SCHEMA.safeParse(valid);
+      expect(parsed.success).toBe(true);
+      expect(parsed.data?.name).toBe("Incident Helper");
+
+      for (const field of ["name", "description", "instructions"] as const) {
+        expect(
+          SUGGEST_AGENT_CREATION_INPUT_SCHEMA.safeParse({
+            ...valid,
+            [field]: "   ",
+          }).success
+        ).toBe(false);
+      }
+    });
+
+    it("returns an MCPError without an interactive user", async () => {
+      const { workspace } = await createAgentAuthorTestContext();
+      const nonInteractiveAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_AGENT_CREATION_TOOL_NAME).handler(
+        { name: "No User", description: "Desc", instructions: "Do things." },
+        makeExtra(nonInteractiveAuth)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        throw new Error("Expected an error.");
+      }
+      expect(result.error.message).toContain("interactive user");
+    });
+
+    it("returns an MCPError for users without the create-agent capability", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await getTool(SUGGEST_AGENT_CREATION_TOOL_NAME).handler(
+        {
+          name: "Restricted",
+          description: "Desc",
+          instructions: "Do things.",
+        },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        throw new Error("Expected an error.");
+      }
+      expect(result.error.message).toContain("restricted");
     });
   });
 });
