@@ -1,13 +1,8 @@
 @cc [owner:philipperolet,label:security;backend] permission-checked-fetch
-A resource with permissioning is one implementing `WithAccessControl` (`getAllowedVerbs`):
-`SpaceResource`, every `ResourceWithSpace` subclass, `AgentResource`, `SkillResource` and
-`GroupResource`. A method that fetches or lists such resources MUST either:
-
+A resource with permissioning is one implementing `WithAccessControl` (`getAllowedVerbs`).
+A method that fetches or lists such resources MUST either:
 - return no resource for which `resource.canFetch(auth)` is false, as `canFetch` is defined by that
   class (dropped from a list; `null` or an error for a single fetch); or
 - carry `dangerously` in its name (`dangerouslyFetchByModelIds`), or take an option whose name or
   value carries it (`permissionFiltering: "dangerously_skip"`), and say in a comment which check is
   skipped and why.
-
-Scoping the query to the caller's workspace is not a permission check, and an `unsafe` or
-`internal` name is not the marker.
