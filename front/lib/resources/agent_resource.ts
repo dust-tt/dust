@@ -184,12 +184,17 @@ export interface FullAgentResource extends AgentResource {
 /**
  * @cc [owner:philipperolet,label:security;product] agent-verbs
  * The verbs a caller holds on an agent mean:
- * - `read`: seeing the agent's configuration and using it. Mentioning or running an agent MUST
- *   require `read`.
+ * - `read`: seeing the agent's full configuration and using it. Mentioning or running an agent
+ *   MUST require `read`. A custom agent grants it only when the agent is workspace-visible or the
+ *   caller has editor access, and when the caller can read every space in `requestedSpaceIds` (see
+ *   `agent-read-requires-space-read`).
  * - `write`: editing the agent's definition: configuration versions, tags, model, skills, linked
  *   Slack channels, archiving and restoring.
  * - `admin`: managing the agent's editors. `admin` alone MUST NOT allow changing the definition,
  *   and `write` alone MUST NOT allow changing the editors.
+ * Holding any verb makes the agent fetchable, but without `read` only its light core fields may be
+ * exposed (see `unreadable-agent-is-light`). The explicit `admin_can_see_private_entities` admin
+ * override is the only exception and may expose the full configuration.
  * Global (code-defined) agents are `read`-only, for the roles in their audience.
  */
 /**
