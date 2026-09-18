@@ -31,8 +31,10 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { launchIndexAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
 import type {
   AgentConfigurationBaseType,
@@ -65,6 +67,8 @@ import assert from "assert";
 import uniq from "lodash/uniq";
 import type { Attributes, Transaction } from "sequelize";
 import { Op, UniqueConstraintError, ValidationError } from "sequelize";
+
+const AGENT_SEARCH_INDEXATION_CONCURRENCY = 8;
 
 // Legacy `canEdit` also allows changing the editor set, so the author fallback mirrors the full
 // editor role rather than granting write alone.
@@ -767,6 +771,34 @@ export class AgentResource
     });
 
     return new Ok(undefined);
+  }
+
+  /**
+   * @cc [owner:sfriquet,label:backend;concurrency] agent-search-after-commit
+   * Agent mutations enqueue workspace-scoped agent sIds after their existing writes.
+   * Failed workflow launch results are logged without failing the mutation.
+   */
+  static async launchSearchIndexation(
+    auth: Authenticator,
+    agentIds: string[]
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (agentIds.length === 0) {
+      return;
+    }
+    const results = await concurrentExecutor(
+      uniq(agentIds),
+      (agentId) =>
+        launchIndexAgentSearchWorkflow({ workspaceId: workspace.sId, agentId }),
+      { concurrency: AGENT_SEARCH_INDEXATION_CONCURRENCY }
+    );
+    const failedResult = results.find((result) => result.isErr());
+    if (failedResult?.isErr()) {
+      logger.error(
+        { error: failedResult.error, workspaceId: workspace.sId, agentIds },
+        "Failed to launch agent search indexation"
+      );
+    }
   }
 
   // The agent's favorite relations are keyed by `sId`, so the count spans every version.
