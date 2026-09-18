@@ -67,23 +67,21 @@ export async function backfillSkillGlobalSpace({
 }
 
 // After executing, run scripts/backfill_skill_search.ts to refresh Elasticsearch documents.
-if (process.argv[1]?.endsWith("20260918_backfill_skill_global_space.ts")) {
-  makeScript(
-    {
-      wId: {
-        type: "string",
-        description: "Workspace ID (omit for all workspaces).",
-      },
-      fromWorkspaceModelId: {
-        type: "number",
-        description: "Resume from this workspace model ID.",
-      },
+makeScript(
+  {
+    wId: {
+      type: "string",
+      description: "Workspace ID (omit for all workspaces).",
     },
-    async ({ wId, fromWorkspaceModelId, execute }, logger) => {
-      await runOnAllWorkspaces(
-        (workspace) => backfillSkillGlobalSpace({ workspace, execute, logger }),
-        { wId, fromWorkspaceId: fromWorkspaceModelId }
-      );
-    }
-  );
-}
+    fromWorkspaceModelId: {
+      type: "number",
+      description: "Resume from this workspace model ID.",
+    },
+  },
+  async ({ wId, fromWorkspaceModelId, execute }, logger) => {
+    await runOnAllWorkspaces(
+      (workspace) => backfillSkillGlobalSpace({ workspace, execute, logger }),
+      { wId, fromWorkspaceId: fromWorkspaceModelId }
+    );
+  }
+);
