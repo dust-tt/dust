@@ -1,4 +1,4 @@
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { GlobalSkillId } from "@app/lib/resources/skill/code_defined/global_registry";
@@ -38,6 +38,21 @@ type CreateSkillOverrides = Partial<{
 }>;
 
 export class SkillFactory {
+  static async createCodeDefinedSearchDocuments(): Promise<
+    SkillSearchDocument[]
+  > {
+    const auth = Authenticator.unauthenticated();
+    const skills = await SkillResource.dangerouslyListAllCodeDefined(auth);
+
+    return skills.map((skill) =>
+      skill.toSearchDocument(auth, {
+        editors: [],
+        lastEditedByUser: null,
+        activeUsersCount: null,
+      })
+    );
+  }
+
   static async createSearchDocuments(
     auth: Authenticator,
     skills: SkillResource[]
