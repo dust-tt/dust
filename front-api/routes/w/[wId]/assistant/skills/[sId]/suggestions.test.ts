@@ -1506,3 +1506,92 @@ describe("PATCH with applyToSkill (user_facing_description)", () => {
     expect(updated?.userFacingDescription).toBe(skill.userFacingDescription);
   });
 });
+
+describe("PATCH with applyToSkill (name)", () => {
+  async function setupWithFlag() {
+    const context = await setup();
+    await FeatureFlagFactory.basic(context.auth, "conversational_building");
+
+    return context;
+  }
+
+  async function nameSuggestion(
+    auth: Authenticator,
+    skill: SkillResource,
+    name: string
+  ) {
+    return SkillSuggestionFactory.create(auth, skill, {
+      kind: "name",
+      source: "conversational",
+      state: "pending",
+      suggestion: { name },
+    });
+  }
+
+  it("renames the skill and saves a version", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const suggestion = await nameSuggestion(auth, skill, "Renamed Skill");
+    const versionsBefore = (await skill.listVersions(auth)).length;
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.name).toBe("Renamed Skill");
+    expect((await skill.listVersions(auth)).length).toBe(versionsBefore + 1);
+  });
+
+  it("returns 400 when the name was taken after the suggestion was recorded", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const suggestion = await nameSuggestion(auth, skill, "Taken Later");
+    await SkillFactory.create(auth, { name: "Taken Later" });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain("already exists");
+
+    const reloaded = await SkillSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(reloaded?.state).toBe("pending");
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.name).toBe(skill.name);
+  });
+
+  it("outdates the other pending renames only", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const approved = await nameSuggestion(auth, skill, "Approved Name");
+    const conflicting = await nameSuggestion(auth, skill, "Other Name");
+    const edit = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [approved.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const states = await Promise.all(
+      [conflicting, edit].map(
+        async (suggestion) =>
+          (await SkillSuggestionResource.fetchById(auth, suggestion.sId))?.state
+      )
+    );
+    expect(states).toEqual(["outdated", "pending"]);
+  });
+});

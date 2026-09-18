@@ -62,6 +62,7 @@ export function SkillBuilderSuggestionsPanel({
         case "editors":
         case "user_facing_description":
         case "create":
+        case "name":
           return;
         default:
           assertNeverAndIgnore(suggestion);

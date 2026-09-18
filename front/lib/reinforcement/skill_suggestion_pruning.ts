@@ -12,12 +12,14 @@ import type {
   SkillEditSuggestionData,
   SkillEditSuggestionType,
   SkillInstructionEditItemType,
+  SkillNameSuggestionData,
   SkillSuggestionSource,
   SkillUserFacingDescriptionSuggestionData,
 } from "@app/types/suggestions/skill_suggestion";
 import {
   isEditorsSkillSuggestion,
   isEditSkillSuggestion,
+  isNameSkillSuggestion,
   isUserFacingDescriptionSkillSuggestion,
   REVIEWABLE_SKILL_SUGGESTION_SOURCES,
 } from "@app/types/suggestions/skill_suggestion";
@@ -243,6 +245,40 @@ export async function pruneConflictingSkillUserFacingDescriptionSuggestions(
     })
   )
     .filter(isUserFacingDescriptionSkillSuggestion)
+    .filter((s) => !excluded.has(s.sId));
+
+  await SkillSuggestionResource.bulkUpdateState(
+    auth,
+    toMarkOutdated,
+    "outdated"
+  );
+}
+
+/**
+ * @cc [owner:achilleburah,label:product] prune-conflicting-name-suggestions
+ * Recording a new `name` suggestion, or applying one to the skill, MUST mark every other pending
+ * `name` suggestion for the same skill `outdated`: the field holds a single value, so two pending
+ * renames always conflict. Approving a suggestion without applying it changes nothing on the
+ * skill and prunes nothing.
+ */
+export async function pruneConflictingSkillNameSuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  newSuggestions: (SkillSuggestionResource & SkillNameSuggestionData)[]
+): Promise<void> {
+  if (newSuggestions.length === 0) {
+    return;
+  }
+
+  const excluded = new Set(newSuggestions.map((s) => s.sId));
+  const toMarkOutdated = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
+      states: ["pending"],
+      kinds: ["name"],
+      sources: PRUNED_SOURCES,
+    })
+  )
+    .filter(isNameSkillSuggestion)
     .filter((s) => !excluded.has(s.sId));
 
   await SkillSuggestionResource.bulkUpdateState(
