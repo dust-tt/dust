@@ -1,15 +1,7 @@
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
-import type {
-  MCPServerConfigurationType,
-  ServerSideMCPServerConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
-import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
-import {
-  getAgentConfiguration,
-  restoreAgentConfiguration,
-  unsafeHardDeleteAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -190,6 +182,46 @@ export async function createOrUpgradeAgentConfiguration({
     return new Err(new Error(accessError.message));
   }
 
+  const owner = auth.getNonNullableWorkspace();
+
+  const actionConfigs: ServerSideMCPServerConfigurationType[] = actions.map(
+    (action) =>
+      ({
+        type: "mcp_server_configuration",
+        name: action.name,
+        description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+        mcpServerViewId: action.mcpServerViewId,
+        dataSources: action.dataSources ?? null,
+        tables: action.tables,
+        childAgentId: action.childAgentId,
+        additionalConfiguration: action.additionalConfiguration,
+        dustAppConfiguration: action.dustAppConfiguration,
+        secretName: action.secretName,
+        timeFrame: action.timeFrame,
+        jsonSchema: action.jsonSchema,
+        dustProject: action.dustProject,
+      }) as ServerSideMCPServerConfigurationType
+  );
+
+  const skillById = new Map(skills.map((skill) => [skill.sId, skill]));
+  const skillsToAdd = removeNulls(
+    (assistant.skills ?? []).map((skill) => {
+      const skillResource = skillById.get(skill.sId);
+      if (!skillResource) {
+        logger.warn(
+          {
+            workspaceId: owner.sId,
+            skillId: skill.sId,
+          },
+          "Skill not found when creating agent configuration, skipping"
+        );
+        return null;
+      }
+
+      return skillResource;
+    })
+  );
+
   const saveParams = {
     name: assistant.name,
     description: assistant.description,
@@ -204,6 +236,8 @@ export async function createOrUpgradeAgentConfiguration({
     tags: assistant.tags,
     editors,
     authorId: resolvedAuthorId,
+    actions: actionConfigs,
+    skills: skillsToAdd,
   };
 
   let agentConfigurationRes: Result<AgentResource, Error>;
@@ -235,125 +269,24 @@ export async function createOrUpgradeAgentConfiguration({
     return agentConfigurationRes;
   }
 
-  // makeNew/updateConfiguration return the saved agent as a (read-gated) resource. The saver may
-  // hold `write` without `read` (e.g. an admin API key editing a hidden agent), so that resource can
-  // come back `light` — `toJSON` would throw on it. Re-read the config skipping the read gate (the
-  // caller just wrote it) to get a usable light config for the steps below and the response.
+  // The save (configuration row + actions + skills) is atomic (see `agent-save-atomic`), so a
+  // returned Ok means everything committed. Re-read the full config skipping the read gate — the
+  // caller just wrote it, and may hold `write` without `read` (e.g. an admin API key editing a
+  // hidden agent) — to build the `AgentConfigurationType` response, including the actions just
+  // created.
   const savedConfig = await getAgentConfiguration(auth, {
     agentId: agentConfigurationRes.value.sId,
-    variant: "light",
+    variant: "full",
     dangerouslySkipPermissionFiltering: true,
   });
   if (!savedConfig) {
     return new Err(new Error("Failed to load the saved agent configuration."));
   }
 
-  const actionConfigs: MCPServerConfigurationType[] = [];
-
-  for (const action of actions) {
-    const res = await createAgentActionConfiguration(
-      auth,
-      {
-        type: "mcp_server_configuration",
-        name: action.name,
-        description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
-        mcpServerViewId: action.mcpServerViewId,
-        dataSources: action.dataSources ?? null,
-        tables: action.tables,
-        childAgentId: action.childAgentId,
-        additionalConfiguration: action.additionalConfiguration,
-        dustAppConfiguration: action.dustAppConfiguration,
-        secretName: action.secretName,
-        timeFrame: action.timeFrame,
-        jsonSchema: action.jsonSchema,
-        dustProject: action.dustProject,
-      } as ServerSideMCPServerConfigurationType,
-      agentConfigurationRes.value
-    );
-    if (res.isErr()) {
-      logger.error(
-        {
-          error: res.error,
-          agentConfigurationId: savedConfig.sId,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          mcpServerViewId: action.mcpServerViewId,
-        },
-        "Failed to create agent action configuration."
-      );
-      // If we fail to create an action, we should delete the agent configuration
-      // we just created and re-throw the error.
-      await unsafeHardDeleteAgentConfiguration(auth, savedConfig);
-      // If we were upgrading an existing agent (i.e., creating a new
-      // version for an existing `agentConfigurationId`), we archived the
-      // previous version just before creating this one. Since creation of
-      // an action failed and we are cleaning up the new version, restore
-      // the previous version back to `active` status so the agent remains
-      // available.
-      if (agentConfigurationId) {
-        const restoredResult = await restoreAgentConfiguration(
-          auth,
-          savedConfig.sId
-        );
-        if (restoredResult.isErr()) {
-          logger.error(
-            {
-              error: restoredResult.error,
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              agentConfigurationId: savedConfig.sId,
-            },
-            "Error while restoring previous agent version after rollback"
-          );
-        } else if (!restoredResult.value.restored) {
-          logger.error(
-            {
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              agentConfigurationId: savedConfig.sId,
-            },
-            "Failed to restore previous agent version after action creation error"
-          );
-        }
-      }
-      return res;
-    }
-    actionConfigs.push(res.value);
-  }
-
-  // Create skill associations.
-  const owner = auth.getNonNullableWorkspace();
-  const skillById = new Map(skills.map((skill) => [skill.sId, skill]));
-  const skillsToAdd = removeNulls(
-    (assistant.skills ?? []).map((skill) => {
-      const skillResource = skillById.get(skill.sId);
-      if (!skillResource) {
-        logger.warn(
-          {
-            workspaceId: owner.sId,
-            agentConfigurationId: savedConfig.sId,
-            skillId: skill.sId,
-          },
-          "Skill not found when creating agent configuration, skipping"
-        );
-        return null;
-      }
-
-      return skillResource;
-    })
-  );
-  await SkillResource.addManyToAgent(auth, {
-    agentConfiguration: savedConfig,
-    skills: skillsToAdd,
-  });
-
-  const agentConfiguration: AgentConfigurationType = {
-    ...savedConfig,
-    instructionsHtml: assistant.instructionsHtml ?? null,
-    actions: actionConfigs,
-  };
-
   // Prune outdated suggestions after saving an existing agent.
   // This must happen after skills/tools are added to the new version.
   if (agentConfigurationId) {
-    await pruneSuggestionsForAgent(auth, agentConfiguration);
+    await pruneSuggestionsForAgent(auth, savedConfig);
   }
 
   // We are not tracking draft agents
@@ -361,9 +294,9 @@ export async function createOrUpgradeAgentConfiguration({
     void ServerSideTracking.trackAssistantCreated({
       user: auth.user() ?? undefined,
       workspace: auth.workspace() ?? undefined,
-      assistant: agentConfiguration,
+      assistant: savedConfig,
     });
   }
 
-  return new Ok(agentConfiguration);
+  return new Ok(savedConfig);
 }

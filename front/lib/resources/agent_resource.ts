@@ -1,3 +1,5 @@
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { isSelfHostedImageWithValidContentType } from "@app/lib/api/assistant/configuration/agent_image";
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
@@ -144,6 +146,13 @@ export type SaveAgentConfigurationParams = {
   editors: UserType[];
   authorId: ModelId;
   reinforcement?: AgentReinforcementMode;
+  // MCP action configurations to create atomically with the agent version. Created inside the same
+  // transaction as the configuration row (see `agent-save-atomic`), so a failure rolls the whole
+  // save back and no partial version is ever committed. Defaults to none.
+  actions?: ServerSideMCPServerConfigurationType[];
+  // Skill associations to attach atomically with the agent version, in the same transaction.
+  // Defaults to none.
+  skills?: SkillResource[];
 };
 
 // A `full` resource always exposes its `content`.
@@ -1236,24 +1245,22 @@ export class AgentResource
     };
   }
 
-  // Creates a brand-new custom agent: its `AgentModel` identity, first `AgentConfigurationModel`
-  // version, editor group and tags. The orchestrator delegates action/skill creation on top.
+  // Creates a brand-new custom agent atomically: its `AgentModel` identity, first
+  // `AgentConfigurationModel` version, editor group, tags, MCP actions and skill associations.
   // Bringing a new agent into the workspace requires the type-wide `create` capability, enforced
   // here (see the `agent-create-capability` contract).
   static async makeNew(
     auth: Authenticator,
-    params: SaveAgentConfigurationParams,
-    transaction?: Transaction
+    params: SaveAgentConfigurationParams
   ): Promise<Result<AgentResource, Error>> {
     if (!(await auth.hasWorkspacePermission("create", "agent"))) {
       return new Err(new Error("Creating agents is restricted."));
     }
 
-    return this._saveConfiguration(
-      auth,
-      { ...params, agentConfigurationId: undefined },
-      transaction
-    );
+    return this._saveConfiguration(auth, {
+      ...params,
+      agentConfigurationId: undefined,
+    });
   }
 
   // Creates a new configuration version on `this` agent: archives the prior version and moves the
@@ -1267,8 +1274,7 @@ export class AgentResource
    */
   async updateConfiguration(
     auth: Authenticator,
-    params: SaveAgentConfigurationParams,
-    transaction?: Transaction
+    params: SaveAgentConfigurationParams
   ): Promise<Result<AgentResource, Error>> {
     if (!auth.can("write", this)) {
       return new Err(
@@ -1276,13 +1282,23 @@ export class AgentResource
       );
     }
 
-    return AgentResource._saveConfiguration(
-      auth,
-      { ...params, agentConfigurationId: this.sId },
-      transaction
-    );
+    return AgentResource._saveConfiguration(auth, {
+      ...params,
+      agentConfigurationId: this.sId,
+    });
   }
 
+  // Persists an agent configuration version and everything that belongs to it (editors, tags, MCP
+  // actions, and skill associations) in a single self-owned managed transaction, so a failure
+  // anywhere rolls the whole save back before it is returned as `Err`. (In `NODE_ENV=test` the
+  // ambient CLS transaction is reused with no savepoint, so this rollback is not exercised by the
+  // suite — the test's own transaction rolls back at teardown.)
+  /**
+   * @cc [owner:tdraier,label:backend] agent-save-atomic
+   * The configuration row and everything created with it — editors, tags, MCP actions, and skill
+   * associations — MUST be committed in one transaction owned by this method, so a failure in any
+   * part leaves no partial agent version behind and needs no external rollback.
+   */
   private static async _saveConfiguration(
     auth: Authenticator,
     {
@@ -1301,6 +1317,8 @@ export class AgentResource
       editors,
       authorId,
       reinforcement,
+      actions = [],
+      skills = [],
     }: {
       name: string;
       description: string;
@@ -1317,8 +1335,9 @@ export class AgentResource
       editors: UserType[];
       authorId: ModelId;
       reinforcement?: AgentReinforcementMode;
-    },
-    transaction?: Transaction
+      actions?: ServerSideMCPServerConfigurationType[];
+      skills?: SkillResource[];
+    }
   ): Promise<Result<AgentResource, Error>> {
     const owner = auth.workspace();
     if (!owner) {
@@ -1481,46 +1500,44 @@ export class AgentResource
         // Create or update Agent config.
         let agentConfigurationInstance: AgentConfigurationModel;
 
+        // Columns shared by the two write paths below. The identity columns (`sId`, `agentId`,
+        // `workspaceId`) are added only on create — an in-place pending update preserves them.
+        const configFields = {
+          version,
+          status,
+          scope,
+          name,
+          description,
+          instructions,
+          instructionsHtml,
+          providerId: model.providerId,
+          modelId: model.modelId,
+          temperature: model.temperature,
+          reasoningEffort: model.reasoningEffort,
+          maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+          pictureUrl,
+          authorId,
+          templateId: template?.id,
+          requestedSpaceIds,
+          responseFormat: model.responseFormat,
+          reinforcement:
+            reinforcement ?? existingAgent?.reinforcement ?? "auto",
+        };
+
         if (existingAgent && existingAgent.status === "pending") {
-          // Update pending agent in place to preserve id (and FK relationships like suggestions)
-          await AgentConfigurationModel.update(
-            {
-              version,
-              status,
-              scope,
-              name,
-              description,
-              instructions,
-              instructionsHtml,
-              providerId: model.providerId,
-              modelId: model.modelId,
-              temperature: model.temperature,
-              reasoningEffort: model.reasoningEffort,
-              maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-              pictureUrl,
-              authorId,
-              templateId: template?.id,
-              requestedSpaceIds: requestedSpaceIds,
-              responseFormat: model.responseFormat,
-              reinforcement:
-                reinforcement ?? existingAgent.reinforcement ?? "auto",
-            },
+          // Update pending agent in place to preserve id (and FK relationships like suggestions).
+          // `returning: true` hands back the updated row, so no reload query is needed.
+          const [, [updatedAgent]] = await AgentConfigurationModel.update(
+            configFields,
             {
               where: {
                 id: existingAgent.id,
                 workspaceId: owner.id,
               },
               transaction: t,
+              returning: true,
             }
           );
-          // Reload the updated instance
-          const updatedAgent = await AgentConfigurationModel.findOne({
-            where: {
-              id: existingAgent.id,
-              workspaceId: owner.id,
-            },
-            transaction: t,
-          });
           if (!updatedAgent) {
             throw new Error("Failed to reload updated agent configuration");
           }
@@ -1529,28 +1546,10 @@ export class AgentResource
           // Create new agent config
           agentConfigurationInstance = await AgentConfigurationModel.create(
             {
+              ...configFields,
               sId,
               agentId: agentModelId,
-              version,
-              status,
-              scope,
-              name,
-              description,
-              instructions,
-              instructionsHtml,
-              providerId: model.providerId,
-              modelId: model.modelId,
-              temperature: model.temperature,
-              reasoningEffort: model.reasoningEffort,
-              maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-              pictureUrl,
               workspaceId: owner.id,
-              authorId,
-              templateId: template?.id,
-              requestedSpaceIds: requestedSpaceIds,
-              responseFormat: model.responseFormat,
-              reinforcement:
-                reinforcement ?? existingAgent?.reinforcement ?? "auto",
             },
             {
               transaction: t,
@@ -1710,10 +1709,38 @@ export class AgentResource
           });
         }
 
+        // Create the MCP actions and skill associations in the same transaction as the
+        // configuration row, so any failure rolls the whole save back and never leaves a partial
+        // version behind (see `agent-save-atomic`).
+        const savedResource = AgentResource.fromAgentConfigurationModel(
+          auth,
+          agentConfigurationInstance
+        );
+        for (const action of actions) {
+          const actionRes = await createAgentActionConfiguration(
+            auth,
+            action,
+            savedResource,
+            { transaction: t }
+          );
+          if (actionRes.isErr()) {
+            throw actionRes.error;
+          }
+        }
+        if (skills.length > 0) {
+          await SkillResource.addManyToAgent(
+            auth,
+            { agentResource: savedResource, skills },
+            { transaction: t }
+          );
+        }
+
         return agentConfigurationInstance;
       };
 
-      const agent = await withTransaction(performCreation, transaction);
+      // Self-owned managed transaction: a throw in `performCreation` auto-rolls-back the whole save
+      // before it is converted to an `Err` (see `agent-save-atomic`).
+      const agent = await withTransaction(performCreation);
 
       // Resolve the saved agent through the access-controlled resolver. In every real path the caller
       // is the author (or otherwise holds read), so this is the `full` agent they just wrote.

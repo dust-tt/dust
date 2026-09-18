@@ -30,6 +30,7 @@ import {
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -4258,12 +4259,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async addManyToAgent(
     auth: Authenticator,
     {
-      agentConfiguration,
+      agentResource,
       skills,
     }: {
-      agentConfiguration: LightAgentConfigurationType;
+      agentResource: AgentResource;
       skills: SkillResource[];
-    }
+    },
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     if (skills.length === 0) {
       return;
@@ -4275,8 +4277,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       skills.map((skill) => ({
         ...skill.skillReference,
         workspaceId: workspace.id,
-        agentConfigurationId: agentConfiguration.id,
-      }))
+        agentConfigurationId: agentResource.agentConfigurationModelId,
+      })),
+      { transaction }
     );
   }
 

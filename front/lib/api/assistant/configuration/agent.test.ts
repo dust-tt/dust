@@ -325,10 +325,16 @@ describe("stable agent identities", () => {
     expect(await currentVersion(firstVersion.sId)).toBe(1);
 
     // Rolling back the newest version moves the pointer back to the previous one.
-    await unsafeHardDeleteAgentConfiguration(authenticator, secondVersion);
+    await unsafeHardDeleteAgentConfiguration(
+      authenticator,
+      AgentResource.fromAgentConfiguration(authenticator, secondVersion)
+    );
     expect(await currentVersion(firstVersion.sId)).toBe(0);
 
-    await unsafeHardDeleteAgentConfiguration(authenticator, firstVersion);
+    await unsafeHardDeleteAgentConfiguration(
+      authenticator,
+      AgentResource.fromAgentConfiguration(authenticator, firstVersion)
+    );
     expect(await currentVersion(firstVersion.sId)).toBeNull();
   });
 
@@ -385,7 +391,10 @@ describe("stable agent identities", () => {
       throw new Error("Agent editor grant was not created");
     }
 
-    await unsafeHardDeleteAgentConfiguration(authenticator, secondVersion);
+    await unsafeHardDeleteAgentConfiguration(
+      authenticator,
+      AgentResource.fromAgentConfiguration(authenticator, secondVersion)
+    );
     expect(
       await AgentModel.findOne({
         where: { sId: firstVersion.sId, workspaceId: workspace.id },
@@ -397,7 +406,10 @@ describe("stable agent identities", () => {
       ])
     ).toHaveLength(1);
 
-    await unsafeHardDeleteAgentConfiguration(authenticator, firstVersion);
+    await unsafeHardDeleteAgentConfiguration(
+      authenticator,
+      AgentResource.fromAgentConfiguration(authenticator, firstVersion)
+    );
     expect(
       await AgentModel.findOne({
         where: { sId: firstVersion.sId, workspaceId: workspace.id },
