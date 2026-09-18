@@ -6,6 +6,7 @@ import {
 import { useEventSource } from "@app/hooks/useEventSource";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import { getAgentLoopEventId } from "@app/lib/client/agent_loop_stream";
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -225,6 +226,17 @@ export function useChildAgentStream({
     dispatch(eventPayload.data);
   }, []);
 
+  const buildLongPollURL = useCallback(
+    (lastEvent: string | null) => {
+      if (!childStreamIds || disabled) {
+        return null;
+      }
+      const { conversationId, agentMessageId } = childStreamIds;
+      return `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessageId}/events/poll?lastEventId=${getAgentLoopEventId(lastEvent)}`;
+    },
+    [childStreamIds, disabled, owner.sId]
+  );
+
   const isStreamDone = state.status === "done" || state.status === "error";
 
   useEventSource(
@@ -233,6 +245,8 @@ export function useChildAgentStream({
     `child-agent-${childStreamIds?.agentMessageId}`,
     {
       workspaceId: owner.sId,
+      buildLongPollURL,
+      getEventId: getAgentLoopEventId,
       isReadyToConsumeStream:
         childStreamIds !== null && !isStreamDone && !disabled,
     }
