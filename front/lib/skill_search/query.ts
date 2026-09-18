@@ -1,10 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { buildSkillNameAutocompleteQuery } from "@app/lib/skill_search/ranking";
-import type {
-  SkillSearchFilters,
-  SkillSearchOptions,
-} from "@app/types/api/skills";
+import type { SkillSearchFilters } from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
 
 export const MAX_SKILL_SEARCH_RESULTS = 100;
@@ -96,7 +93,10 @@ export function buildSkillSearchQuery(
   {
     searchTerm,
     filters = {},
-  }: Pick<SkillSearchOptions, "searchTerm" | "filters">
+  }: {
+    searchTerm: string;
+    filters?: SkillSearchFilters;
+  }
 ): estypes.QueryDslQueryContainer {
   return {
     bool: {

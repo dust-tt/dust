@@ -28,11 +28,6 @@ export interface SkillSearchFilters {
   availability?: SkillAvailability[];
 }
 
-export interface SkillSearchOptions {
-  searchTerm: string;
-  filters?: SkillSearchFilters;
-}
-
 /**
  * @cc [owner:aubin-tchoi,label:api] skill-usage-compatibility
  * `usage` is included only for `withUsage=true` and is null when unavailable.

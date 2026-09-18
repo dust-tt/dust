@@ -29,7 +29,7 @@ import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { matchesSkillSearchFilters } from "@app/tests/utils/skill_search";
-import type { SkillSearchOptions } from "@app/types/api/skills";
+import type { SkillSearchFilters } from "@app/types/api/skills";
 import {
   SkillListItemSchema,
   SkillSchema,
@@ -66,7 +66,10 @@ async function mockHits(
 
 async function searchListings(
   auth: Authenticator,
-  options: SkillSearchOptions = { searchTerm: "" }
+  options: {
+    searchTerm: string;
+    filters?: SkillSearchFilters;
+  } = { searchTerm: "" }
 ) {
   const result = await searchSkills(auth, {
     ...options,
