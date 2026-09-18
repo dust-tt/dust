@@ -2,7 +2,7 @@ import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp"
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import {
-  isContentFragmentDataSourceNode,
+  contentNodeAttachmentParentsFilter,
   isContentNodeAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { isSearchableFolder } from "@app/lib/api/assistant/jit_utils";
@@ -52,12 +52,7 @@ export async function getFolderSearchServers(
         workspaceId: auth.getNonNullableWorkspace().sId,
         dataSourceViewId: folder.nodeDataSourceViewId,
         filter: {
-          parents: isContentFragmentDataSourceNode(folder)
-            ? null
-            : {
-                in: [folder.nodeId],
-                not: [],
-              },
+          parents: contentNodeAttachmentParentsFilter(folder),
           tags: null,
         },
       },

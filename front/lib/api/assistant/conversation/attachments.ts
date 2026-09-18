@@ -7,6 +7,10 @@ import {
   CONVERSATION_FILES_SERVER_NAME,
   CONVERSATION_SEARCH_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import type {
+  DataSourceConfiguration,
+  DataSourceFilter,
+} from "@app/lib/api/assistant/configuration/types";
 import {
   isConversationIncludableFileContentType,
   isQueryableContentType,
@@ -54,12 +58,82 @@ export function isContentNodeAttachmentType(
   return "contentFragmentId" in attachment;
 }
 
+/**
+ * @cc [owner:rfrenoy,label:backend;product] data-source-node-id-is-not-addressable
+ * When this returns true, the attachment's `nodeId` is the `DATA_SOURCE_NODE_ID` placeholder core
+ * stamps on the data source projection (`CoreContentNode::from_es_data_source_document`), not an
+ * identifier: it is constant across every data source, matches no document in the nodes index, and
+ * appears in no node's `parents`. Code handling such an attachment MUST address the data source
+ * itself, and MUST NOT pass the `nodeId` to a core node lookup, a `parents` filter, or a tool
+ * argument that addresses a node. It MAY still travel as the `(nodeId, nodeDataSourceViewId)` key
+ * identifying the stored reference, which is how `remove_content_node` receives it.
+ */
 export function isContentFragmentDataSourceNode(
   attachment: ContentNodeAttachmentType | ContentFragmentInputWithContentNode
 ): attachment is ContentNodeAttachmentType & {
   nodeId: typeof DATA_SOURCE_NODE_ID;
 } {
   return attachment.nodeId === DATA_SOURCE_NODE_ID;
+}
+
+/**
+ * @cc [owner:rfrenoy,label:backend;product] parents-filter-scopes-to-attachment
+ * The returned filter MUST restrict a core search to the attached node's subtree, and MUST be null
+ * for a data source root so the search covers the whole data source rather than matching nothing.
+ * Callers deriving a `parents` filter from a single content node attachment MUST use this helper
+ * instead of building one inline; callers combining several attachments MUST use
+ * `contentNodeAttachmentsDataSourceConfigurations`.
+ */
+export function contentNodeAttachmentParentsFilter(
+  attachment: ContentNodeAttachmentType
+): DataSourceFilter["parents"] {
+  if (isContentFragmentDataSourceNode(attachment)) {
+    return null;
+  }
+  return { in: [attachment.nodeId], not: [] };
+}
+
+/**
+ * @cc [owner:rfrenoy,label:backend;product] one-configuration-per-data-source-view
+ * Attachments sharing a `nodeDataSourceViewId` MUST collapse into a single configuration: when any
+ * of them is a data source root the view's `parents` filter MUST be null, otherwise it MUST be the
+ * deduplicated union of their node ids. Callers building search data sources from several content
+ * node attachments MUST use this helper: one configuration per attachment makes core run
+ * overlapping searches whose duplicate chunks are never deduplicated.
+ */
+export function contentNodeAttachmentsDataSourceConfigurations(
+  workspaceId: string,
+  attachments: ContentNodeAttachmentType[]
+): DataSourceConfiguration[] {
+  const byViewId = new Map<
+    string,
+    { hasFullView: boolean; nodeIds: Set<string> }
+  >();
+
+  for (const attachment of attachments) {
+    const viewId = attachment.nodeDataSourceViewId;
+    let agg = byViewId.get(viewId);
+    if (!agg) {
+      agg = { hasFullView: false, nodeIds: new Set() };
+      byViewId.set(viewId, agg);
+    }
+    if (isContentFragmentDataSourceNode(attachment)) {
+      agg.hasFullView = true;
+    } else {
+      agg.nodeIds.add(attachment.nodeId);
+    }
+  }
+
+  return Array.from(byViewId.entries()).map(([dataSourceViewId, agg]) => ({
+    workspaceId,
+    dataSourceViewId,
+    filter: {
+      parents: agg.hasFullView
+        ? null
+        : { in: Array.from(agg.nodeIds), not: [] },
+      tags: null,
+    },
+  }));
 }
 
 // If updating this function, make sure to update `contentFragmentId` when we render the conversation
@@ -436,6 +510,14 @@ function renderAttachmentUsageLine(
  * left to retrieve, and a usage line would both contradict the content and shift the offsets
  * callers compute over the rendered text.
  */
+/**
+ * @cc [owner:rfrenoy,label:product] rendered-node-id-must-be-tool-resolvable
+ * A `nodeId` attribute MUST only be emitted when the value can be resolved by the model-facing node
+ * tools, which address nodes in the `renderNode` dialect (see
+ * `@app/lib/actions/mcp_internal_actions/rendering`). Data source root attachments MUST NOT emit
+ * one: their `nodeId` is the bare `DATA_SOURCE_NODE_ID` placeholder, which resolves to nothing and
+ * leads the model to call tools with an unusable id.
+ */
 export function renderAttachmentXml({
   attachment,
   content = null,
@@ -453,7 +535,9 @@ export function renderAttachmentXml({
   ];
 
   if (isContentNodeAttachmentType(attachment)) {
-    params.push(`nodeId="${attachment.nodeId}"`);
+    if (!isContentFragmentDataSourceNode(attachment)) {
+      params.push(`nodeId="${attachment.nodeId}"`);
+    }
     if (attachment.sourceUrl) {
       params.push(`sourceUrl="${attachment.sourceUrl}"`);
     }

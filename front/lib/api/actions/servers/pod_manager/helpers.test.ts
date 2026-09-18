@@ -2,6 +2,7 @@ import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/p
 import { getProjectConversationFolderInternalId } from "@app/lib/api/projects/context";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -95,6 +96,41 @@ describe("buildProjectRetrieveDataSources", () => {
       },
       {
         uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_views/dsv_node_2/filter/%7B%22parents%22%3A%7B%22in%22%3A%5B%22node_1%22%5D%2C%22not%22%3A%5B%5D%7D%2C%22tags%22%3Anull%7D`,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
+      },
+    ]);
+  });
+
+  it("widens a view to the whole data source when a data source root is attached alongside its nodes", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const projectSpace = await SpaceFactory.project(workspace);
+
+    mockFetchProjectDataSourceView.mockResolvedValue({
+      isOk: () => false,
+    });
+    mockListProjectContextAttachments.mockResolvedValue([
+      {
+        contentFragmentId: "cf_1",
+        nodeDataSourceViewId: "dsv_node_1",
+        nodeId: DATA_SOURCE_NODE_ID,
+      },
+      {
+        contentFragmentId: "cf_2",
+        nodeDataSourceViewId: "dsv_node_1",
+        nodeId: "node_1",
+      },
+    ]);
+
+    const dataSources = await buildProjectRetrieveDataSources(auth, {
+      space: projectSpace,
+      onlyGroupConversationsAndConnectedData: false,
+    });
+
+    expect(dataSources).toEqual([
+      {
+        uri: `data_source_configuration://dust/w/${workspace.sId}/data_source_views/dsv_node_1/filter/%7B%22parents%22%3Anull%2C%22tags%22%3Anull%7D`,
         mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
       },
     ]);
