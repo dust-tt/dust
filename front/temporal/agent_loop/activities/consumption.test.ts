@@ -108,6 +108,19 @@ describe("consumption execution events", () => {
     expect(mocks.signal).toHaveBeenCalledOnce();
   });
 
+  it("reuses the message credit context for a root execution", async () => {
+    await recordExecutionStarted(
+      auth,
+      {
+        ...agentLoopArgs,
+        rootAgentMessageId: agentLoopArgs.agentMessageId,
+      },
+      { startStep: 0 }
+    );
+
+    expect(mocks.fetchCreditContext).toHaveBeenCalledOnce();
+  });
+
   it("snapshots live billing without a Metronome customer", async () => {
     const workspace = await WorkspaceResource.makeNew({
       sId: "workspace-without-metronome",
