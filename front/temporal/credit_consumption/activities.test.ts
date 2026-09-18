@@ -6,16 +6,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   billExecution: vi.fn(),
+  emitUsageEvent: vi.fn(),
   fetchAnalyticsContext: vi.fn(),
   indexConsumption: vi.fn(),
   listUnprocessed: vi.fn(),
   maxIdForAgentMessage: vi.fn(),
+  recordCreditCounters: vi.fn(),
+  updateCostCredits: vi.fn(),
 }));
 
 vi.mock("@app/lib/auth", () => ({
   Authenticator: {
     fromJSON: vi.fn().mockResolvedValue({
-      getNonNullableWorkspace: () => ({ sId: "workspace" }),
+      getNonNullableWorkspace: () => ({
+        sId: "workspace",
+        metronomeCustomerId: null,
+      }),
     }),
   },
 }));
@@ -28,14 +34,19 @@ vi.mock("@app/lib/api/assistant/consumption/bill", () => ({
   billExecution: mocks.billExecution,
 }));
 
+vi.mock("@app/lib/api/assistant/consumption/usage_event", () => ({
+  emitAgentMessageUsageEvent: mocks.emitUsageEvent,
+}));
+
 vi.mock("@app/lib/resources/conversation_resource", () => ({
   ConversationResource: {
     fetchAgentMessageConsumptionAnalyticsContext: mocks.fetchAnalyticsContext,
+    updateAgentMessageCostCreditsAtLeast: mocks.updateCostCredits,
   },
 }));
 
 vi.mock("@app/lib/api/assistant/credit_counters", () => ({
-  recordAgentMessageCreditCounters: vi.fn(),
+  recordAgentMessageCreditCounters: mocks.recordCreditCounters,
 }));
 
 vi.mock("@app/lib/resources/agent_message_consumption_event_resource", () => ({
@@ -182,5 +193,46 @@ describe("billExecutionActivity", () => {
       )
     ).resolves.toBeUndefined();
     expect(mocks.billExecution).not.toHaveBeenCalled();
+  });
+
+  it("records live fair-use counters without a Metronome customer", async () => {
+    mocks.fetchAnalyticsContext.mockResolvedValue({
+      agentMessage: { agentMessageId: "agent-message" },
+    });
+    mocks.billExecution.mockResolvedValue({
+      userMessageOrigin: "web",
+      eventCreditAmount: 21,
+      costCredits: 21,
+      runUsageModelIds: [],
+      actionModelIds: [],
+    });
+
+    await billExecutionActivity(
+      {
+        authMethod: "session",
+        workspaceId: "workspace",
+        userId: null,
+        role: "admin",
+        groupIds: [],
+        subscriptionId: null,
+        isByok: false,
+      },
+      {
+        agentMessageModelId: 7,
+        consumptionMode: "live",
+        rootAgentMessageId: 7,
+        runKey: "execution-x",
+        status: "succeeded",
+        timestamp: "2026-09-18T08:00:00.000Z",
+      }
+    );
+
+    expect(mocks.recordCreditCounters).toHaveBeenCalledWith(expect.anything(), {
+      creditAmount: 21,
+      idempotencyKey: "consumption:7:execution-x",
+      throwOnError: true,
+      userMessageOrigin: "web",
+    });
+    expect(mocks.emitUsageEvent).toHaveBeenCalledOnce();
   });
 });
