@@ -1026,6 +1026,27 @@ describe("GET /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     expect(body.suggestions[0].state).toBe("pending");
   });
 
+  it("filters on a kind other than edit", async () => {
+    const { workspace, auth, skill } = await setup();
+    const matching = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      kind: "editors",
+      suggestion: { addUserIds: ["usr_a"], removeUserIds: [] },
+    });
+    await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      kind: "edit",
+    });
+
+    const response = await get(workspace, skill.sId, { kind: "editors" });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.suggestions).toHaveLength(1);
+    expect(body.suggestions[0].sId).toBe(matching.sId);
+    expect(body.suggestions[0].kind).toBe("editors");
+  });
+
   it("limits the number of returned suggestions", async () => {
     const { workspace, auth, skill } = await setup();
     await SkillSuggestionFactory.create(auth, skill, { state: "pending" });
