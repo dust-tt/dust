@@ -1,3 +1,4 @@
+import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { isSelfHostedImageWithValidContentType } from "@app/lib/api/assistant/configuration/agent_image";
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
@@ -61,7 +62,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { UserType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import assert from "assert";
 import uniq from "lodash/uniq";
@@ -1133,11 +1134,13 @@ export class AgentResource
 
   /**
    * @cc [owner:sfriquet,label:backend;security] agent-search-serialization
-   * Serialize a custom agent from its core fields, deriving user sIds from supplied editor
+   * Serialize listing metadata from the core fields, deriving user sIds from supplied editor
    * resources; perform no I/O and never include private agent content.
+   * Custom agents use the authenticator's workspace; global agents use the global namespace, as
+   * always active and without workspace-specific relationships, usage or dates.
    */
   toSearchDocument(
-    workspace: LightWorkspaceType,
+    auth: Authenticator,
     {
       activeUsersCount,
       editors,
@@ -1160,32 +1163,35 @@ export class AgentResource
       tagIds: string[];
     }
   ): AgentSearchDocument {
-    assert(
-      this.scope !== "global" && this.workspaceId === workspace.id,
-      "Search documents require a custom agent in the workspace."
-    );
+    const isGlobal = this.scope === "global";
     return {
-      workspace_id: workspace.sId,
+      workspace_id: isGlobal
+        ? GLOBAL_AGENTS_WORKSPACE_ID
+        : auth.getNonNullableWorkspace().sId,
       agent_id: this.sId,
-      status: this.status,
+      status: isGlobal ? "active" : this.status,
       scope: this.scope,
       name: this.name,
       picture_url: this.pictureUrl,
-      last_edited_by_user_id: lastEditedByUser?.sId ?? null,
-      editor_ids: uniq(editors.map((editor) => editor.sId)).sort(),
-      requested_space_ids: this.requestedSpaceIds.map((id) =>
-        SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
-      ),
-      created_at: this.createdAt.toISOString(),
-      updated_at: this.updatedAt.toISOString(),
+      last_edited_by_user_id: isGlobal ? null : (lastEditedByUser?.sId ?? null),
+      editor_ids: isGlobal
+        ? []
+        : uniq(editors.map((editor) => editor.sId)).sort(),
+      requested_space_ids: isGlobal
+        ? []
+        : this.requestedSpaceIds.map((id) =>
+            SpaceResource.modelIdToSId({ id, workspaceId: this.workspaceId })
+          ),
+      created_at: isGlobal ? null : this.createdAt.toISOString(),
+      updated_at: isGlobal ? null : this.updatedAt.toISOString(),
       description: this.description,
       skill_ids: uniq(skillIds).sort(),
-      mcp_server_view_ids: uniq(mcpServerViewIds).sort(),
-      tag_ids: uniq(tagIds).sort(),
-      feedback_positive_count: feedbackPositiveCount,
-      feedback_negative_count: feedbackNegativeCount,
-      active_users_count: activeUsersCount,
-      favorite_count: favoriteCount,
+      mcp_server_view_ids: isGlobal ? [] : uniq(mcpServerViewIds).sort(),
+      tag_ids: isGlobal ? [] : uniq(tagIds).sort(),
+      feedback_positive_count: isGlobal ? 0 : feedbackPositiveCount,
+      feedback_negative_count: isGlobal ? 0 : feedbackNegativeCount,
+      active_users_count: isGlobal ? null : activeUsersCount,
+      favorite_count: isGlobal ? 0 : favoriteCount,
     };
   }
 
