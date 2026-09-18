@@ -10,7 +10,10 @@ vi.mock(import("@connectors/lib/throttle"), () => ({
   ) => func(),
 }));
 
-import { getSlackBotInfoFromMessage } from "./slack_client";
+import {
+  getSlackBotInfoFromMessage,
+  resolveSlackBotInfo,
+} from "./slack_client";
 
 const connectorId = 123;
 const channelId = "C123";
@@ -111,6 +114,22 @@ describe("getSlackBotInfoFromMessage", () => {
     ).rejects.toThrow("channel_not_found");
   });
 
+  it("tolerates null icons on the message", async () => {
+    const { slackClient } = makeSlackClient([
+      { ts: messageTs, username: "Onboarding requests", icons: null },
+    ]);
+
+    const info = await getSlackBotInfoFromMessage(connectorId, slackClient, {
+      channelId,
+      messageTs,
+    });
+
+    expect(info).toMatchObject({
+      real_name: "Onboarding requests",
+      image_512: null,
+    });
+  });
+
   it("ignores messages with another ts", async () => {
     const { slackClient } = makeSlackClient([
       { ts: "1700000001.000001", username: "Other workflow" },
@@ -135,5 +154,92 @@ describe("getSlackBotInfoFromMessage", () => {
     });
 
     expect(info).toBeNull();
+  });
+});
+
+describe("resolveSlackBotInfo", () => {
+  const params = {
+    slackBotId: "B0TESTWORKF",
+    slackBotUsername: undefined,
+    channelId,
+    messageTs,
+  };
+
+  it("uses bots.info when Slack resolves the bot", async () => {
+    const slackClient = new WebClient("test-token");
+    vi.spyOn(slackClient.bots, "info").mockResolvedValue({
+      ok: true,
+      bot: { name: "Resolved bot " },
+    });
+    const replies = vi.spyOn(slackClient.conversations, "replies");
+
+    const info = await resolveSlackBotInfo(connectorId, slackClient, {
+      ...params,
+      slackBotUsername: "Event name",
+    });
+
+    expect(info?.real_name).toBe("Resolved bot");
+    expect(replies).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the trimmed event username on bot_not_found", async () => {
+    const slackClient = new WebClient("test-token");
+    vi.spyOn(slackClient.bots, "info").mockRejectedValue(
+      makeSlackPlatformError("bot_not_found")
+    );
+    const replies = vi.spyOn(slackClient.conversations, "replies");
+
+    const info = await resolveSlackBotInfo(connectorId, slackClient, {
+      ...params,
+      slackBotUsername: "Onboarding requests ",
+    });
+
+    expect(info).toMatchObject({
+      is_bot: true,
+      real_name: "Onboarding requests",
+      display_name: "Onboarding requests",
+    });
+    expect(replies).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the message username when the event has none", async () => {
+    const { slackClient } = makeSlackClient([
+      { ts: messageTs, username: "Onboarding requests " },
+    ]);
+    vi.spyOn(slackClient.bots, "info").mockRejectedValue(
+      makeSlackPlatformError("bot_not_found")
+    );
+
+    const info = await resolveSlackBotInfo(connectorId, slackClient, {
+      ...params,
+      slackBotUsername: "  ",
+    });
+
+    expect(info?.real_name).toBe("Onboarding requests");
+  });
+
+  it("returns null when no source names the bot", async () => {
+    const { slackClient } = makeSlackClient([{ ts: messageTs }]);
+    vi.spyOn(slackClient.bots, "info").mockRejectedValue(
+      makeSlackPlatformError("bot_not_found")
+    );
+
+    const info = await resolveSlackBotInfo(connectorId, slackClient, params);
+
+    expect(info).toBeNull();
+  });
+
+  it("propagates bots.info errors other than bot_not_found", async () => {
+    const slackClient = new WebClient("test-token");
+    vi.spyOn(slackClient.bots, "info").mockRejectedValue(
+      makeSlackPlatformError("invalid_auth")
+    );
+
+    await expect(
+      resolveSlackBotInfo(connectorId, slackClient, {
+        ...params,
+        slackBotUsername: "Onboarding requests",
+      })
+    ).rejects.toThrow("invalid_auth");
   });
 });

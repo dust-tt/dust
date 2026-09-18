@@ -1,5 +1,6 @@
 import {
   isSlackWebAPIPlatformError,
+  isSlackWebAPIPlatformErrorBotNotFound,
   isWebAPIHTTPError,
   isWebAPIPlatformError,
   isWebAPIRateLimitedError,
@@ -243,24 +244,15 @@ export async function getSlackBotInfo(
   if (slackBot.error) {
     throw slackBot.error;
   }
-  if (!slackBot.bot?.name) {
+  const username = slackBot.bot?.name?.trim();
+  if (!username) {
     throw new Error(`Slack bot with id ${botId} has no name`);
   }
 
-  return {
-    display_name: slackBot.bot?.name,
-    real_name: slackBot.bot.name,
-    email: null,
-    is_email_confirmed: false,
-    image_512: slackBot.bot?.icons?.image_72 || null,
-    tz: null,
-    is_restricted: false,
-    is_stranger: false,
-    is_ultra_restricted: false,
-    is_bot: true,
-    teamId: null,
-    name: slackBot.bot?.name || null,
-  };
+  return makeSlackBotUserInfo({
+    username,
+    imageUrl: slackBot.bot?.icons?.image_72 || null,
+  });
 }
 
 export function makeSlackBotUserInfo({
@@ -290,8 +282,8 @@ const SLACK_MESSAGE_GONE_ERRORS = ["thread_not_found", "message_not_found"];
 
 const SlackBotMessageSchema = z.object({
   ts: z.string().optional(),
-  username: z.string().optional(),
-  icons: z.object({ image_72: z.string().optional() }).optional(),
+  username: z.string().nullish(),
+  icons: z.object({ image_72: z.string().nullish() }).nullish(),
 });
 
 /**
@@ -353,6 +345,53 @@ export async function getSlackBotInfoFromMessage(
   return makeSlackBotUserInfo({
     username,
     imageUrl: message.icons?.image_72 ?? null,
+  });
+}
+
+/**
+ * @cc [owner:rfrenoy,label:product] bot-identity-resolution-order
+ * The bot posting a message MUST be identified from `bots.info` when Slack resolves `slackBotId`,
+ * otherwise from the trimmed `slackBotUsername` carried by the webhook event, otherwise from the
+ * `username` of the message at `messageTs`. A `bots.info` failure other than `bot_not_found` MUST
+ * propagate. When no source yields a name, the function MUST return `null`.
+ */
+export async function resolveSlackBotInfo(
+  connectorId: ModelId,
+  slackClient: WebClient,
+  {
+    slackBotId,
+    slackBotUsername,
+    channelId,
+    messageTs,
+  }: {
+    slackBotId: string;
+    slackBotUsername: string | undefined;
+    channelId: string;
+    messageTs: string;
+  }
+): Promise<SlackUserInfo | null> {
+  try {
+    return await getSlackBotInfo(connectorId, slackClient, slackBotId);
+  } catch (e) {
+    if (!isSlackWebAPIPlatformErrorBotNotFound(e)) {
+      if (isSlackWebAPIPlatformError(e)) {
+        logger.error(
+          { error: e, connectorId, slackBotId },
+          "Failed to get slack bot info"
+        );
+      }
+      throw e;
+    }
+  }
+
+  const username = slackBotUsername?.trim();
+  if (username) {
+    return makeSlackBotUserInfo({ username, imageUrl: null });
+  }
+
+  return getSlackBotInfoFromMessage(connectorId, slackClient, {
+    channelId,
+    messageTs,
   });
 }
 

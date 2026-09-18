@@ -17,7 +17,6 @@ import {
 import {
   isSlackPostingPermissionError,
   isSlackWebAPIPlatformError,
-  isSlackWebAPIPlatformErrorBotNotFound,
   isWebAPIRateLimitedError,
   SlackExternalUserError,
   SlackMessageError,
@@ -25,12 +24,10 @@ import {
 import { formatMessagesForUpsert } from "@connectors/connectors/slack/lib/messages";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
-  getSlackBotInfo,
-  getSlackBotInfoFromMessage,
   getSlackClient,
   getSlackUserInfoMemoized,
-  makeSlackBotUserInfo,
   reportSlackUsage,
+  resolveSlackBotInfo,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
@@ -843,51 +840,26 @@ async function answerMessage(
       throw e;
     }
   } else if (slackBotId) {
-    try {
-      slackUserInfo = await getSlackBotInfo(
-        connector.id,
-        slackClient,
-        slackBotId
+    slackUserInfo = await resolveSlackBotInfo(connector.id, slackClient, {
+      slackBotId,
+      slackBotUsername,
+      channelId: slackChannel,
+      messageTs: slackMessageTs,
+    });
+    if (!slackUserInfo) {
+      logger.warn(
+        {
+          connectorId: connector.id,
+          slackBotId,
+          slackTeamId,
+          slackChannel,
+          slackMessageTs,
+        },
+        "Could not identify the bot posting a Slack message"
       );
-    } catch (e) {
-      if (!isSlackWebAPIPlatformErrorBotNotFound(e)) {
-        if (isSlackWebAPIPlatformError(e)) {
-          logger.error(
-            {
-              error: e,
-              connectorId: connector.id,
-              slackUserId,
-              slackBotId,
-              slackTeamId,
-            },
-            "Failed to get slack bot info"
-          );
-        }
-        throw e;
-      }
-      const username = slackBotUsername?.trim();
-      slackUserInfo = username
-        ? makeSlackBotUserInfo({ username, imageUrl: null })
-        : await getSlackBotInfoFromMessage(connector.id, slackClient, {
-            channelId: slackChannel,
-            messageTs: slackMessageTs,
-          });
-      if (!slackUserInfo) {
-        logger.warn(
-          {
-            error: e,
-            connectorId: connector.id,
-            slackBotId,
-            slackTeamId,
-            slackChannel,
-            slackMessageTs,
-          },
-          "Received bot_not_found for a message without username"
-        );
-        return new Err(
-          new SlackExternalUserError(SLACK_BOT_NOT_IDENTIFIED_MESSAGE)
-        );
-      }
+      return new Err(
+        new SlackExternalUserError(SLACK_BOT_NOT_IDENTIFIED_MESSAGE)
+      );
     }
   }
 
