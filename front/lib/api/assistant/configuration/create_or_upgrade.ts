@@ -6,6 +6,7 @@ import type {
 import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
+  getAgentConfiguration,
   restoreAgentConfiguration,
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
@@ -214,13 +215,14 @@ export async function createOrUpgradeAgentConfiguration({
       auth,
       agentConfigurationId
     );
-    // A caller who cannot read an agent cannot save a new version of it. The exception is the
-    // admin batch re-save (`dangerouslySkipPermissionFiltering`), which resaves agents built on
-    // spaces the admin cannot read as-is; the admin still holds `admin` on the agent, so
-    // `fetchById` returns it (light).
+    // A caller who cannot edit an agent cannot save a new version of it (`updateConfiguration`
+    // re-checks). Editors may hold `write` without `read` (e.g. an admin API key on a hidden agent,
+    // see `admin-key-agent-write`), so gate on `write`, not `read`. The exception is the admin batch
+    // re-save (`dangerouslySkipPermissionFiltering`), which resaves agents built on spaces the admin
+    // cannot read as-is; `fetchById` returns those (light).
     if (
       !agentResource ||
-      (!dangerouslySkipPermissionFiltering && !auth.can("read", agentResource))
+      (!dangerouslySkipPermissionFiltering && !auth.can("write", agentResource))
     ) {
       return new Err(new Error("Agent configuration not found."));
     }
@@ -236,10 +238,20 @@ export async function createOrUpgradeAgentConfiguration({
     return agentConfigurationRes;
   }
 
-  // makeNew/updateConfiguration return the saved agent as a resource; the steps below (action and
-  // skill creation, rollback, tracking) and the final response want a light config, so derive one.
+  // makeNew/updateConfiguration return the saved agent as a (read-gated) resource. The saver may
+  // hold `write` without `read` (e.g. an admin API key editing a hidden agent), so that resource can
+  // come back `light` — `toJSON` would throw on it. Re-read the config skipping the read gate (the
+  // caller just wrote it) to get a usable light config for the steps below and the response.
+  const savedAgent = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationRes.value.sId,
+    variant: "light",
+    dangerouslySkipPermissionFiltering: true,
+  });
+  if (!savedAgent) {
+    return new Err(new Error("Failed to load the saved agent configuration."));
+  }
   const savedConfig: LightAgentConfigurationType = {
-    ...agentConfigurationRes.value.toJSON(),
+    ...savedAgent,
     tags: assistant.tags,
     userFavorite: false,
   };
