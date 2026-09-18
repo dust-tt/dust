@@ -12,8 +12,8 @@ export interface AgentSearchDocument extends ElasticsearchBaseDocument {
   picture_url: string;
   last_edited_by_user_id: string | null;
   requested_space_ids: string[];
-  created_at: string;
-  updated_at: string;
+  created_at: string | null;
+  updated_at: string | null;
   description: string;
   skill_ids: string[];
   mcp_server_view_ids: string[];
