@@ -201,11 +201,6 @@ async function initElasticsearchRust(
 }
 
 // Initialize Elasticsearch indices (TypeScript scripts)
-/**
- * @cc [owner:aubin-tchoi,label:cli] seed-code-defined-skills
- * If the checkout contains the reindex script, run it after creating the indices.
- * A reindex failure must fail initialization; older checkouts without the script must still work.
- */
 async function initElasticsearchTS(
   worktreePath: string,
   envVars: Record<string, string>
