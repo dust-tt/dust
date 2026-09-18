@@ -21,12 +21,17 @@ import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolContext, ToolOutputItemType } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
+import {
+  recordMcpMarkSucceededMs,
+  recordMcpPauseEventsMs,
+  roundMs,
+} from "@app/lib/api/sandbox_functions/sandbox_function_mcp_action_server_timings";
 import type { Authenticator } from "@app/lib/auth";
+import { heartbeat } from "@app/lib/temporal";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
 /**
@@ -151,10 +156,12 @@ export async function* runToolWithStreaming(
 
   // Parse the output resources to check if we find special events that require the agent loop to pause.
   // This could be an authentication, validation, or unconditional exit from the action.
+  const pauseEventsStarted = performance.now();
   const agentPauseEvents = await getExitOrPauseEvents(auth, {
     outputItems,
     toolContext,
   });
+  recordMcpPauseEventsMs(roundMs(pauseEventsStarted));
 
   if (agentPauseEvents.length > 0) {
     // Durable GCS may still be in flight from createOutputItems; finish before exiting.
@@ -172,7 +179,9 @@ export async function* runToolWithStreaming(
   }
 
   const endDate = performance.now();
+  const markSucceededStarted = performance.now();
   await action.markAsSucceeded({ executionDurationMs: endDate - startDate });
+  recordMcpMarkSucceededMs(roundMs(markSucceededStarted));
 
   yield {
     type: "tool_success",
