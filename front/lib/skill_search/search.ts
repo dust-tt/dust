@@ -1,7 +1,7 @@
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { SKILL_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import { prepareSkillSearchQuery } from "@app/lib/skill_search/query";
+import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
 import type { Result } from "@app/types/shared/result";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";
@@ -21,7 +21,7 @@ export async function searchSkills(
   return withEs((client) =>
     client.search<SkillSearchDocument>({
       index: SKILL_SEARCH_ALIAS_NAME,
-      query: prepareSkillSearchQuery(auth),
+      query: buildSkillSearchQuery(auth),
       size: limit,
     })
   );

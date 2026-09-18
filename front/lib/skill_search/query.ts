@@ -65,7 +65,7 @@ function buildAvailabilityFilter(
  * Every query is scoped to the caller's workspace and requires every requested space
  * and editor visibility. Permissions come from hydrated grants, without database reads.
  */
-export function prepareSkillSearchQuery(
+export function buildSkillSearchQuery(
   auth: Authenticator
 ): estypes.QueryDslQueryContainer {
   return {

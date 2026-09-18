@@ -18,7 +18,7 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { prepareSkillSearchQuery } from "@app/lib/skill_search/query";
+import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
 import { searchSkills } from "@app/lib/skill_search/search";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -85,7 +85,7 @@ describe("custom skill search permissions", () => {
       ]);
       expect(mockSearch).toHaveBeenCalledWith({
         index: "front.skills",
-        query: prepareSkillSearchQuery(auth),
+        query: buildSkillSearchQuery(auth),
         size: 10,
       });
       expect(onQuery).not.toHaveBeenCalled();
@@ -206,7 +206,7 @@ describe("custom skill search permissions", () => {
       kind: "ids",
       resourceIds: [],
     });
-    expect(prepareSkillSearchQuery(auth).bool?.filter).toContainEqual({
+    expect(buildSkillSearchQuery(auth).bool?.filter).toContainEqual({
       terms_set: {
         requested_space_ids: {
           terms: [],
@@ -223,7 +223,7 @@ describe("custom skill search permissions", () => {
     });
     await auth.refresh();
     expect(auth.getReadableSpaceModelIds()).toEqual({ kind: "all" });
-    expect(prepareSkillSearchQuery(auth).bool?.filter).toContainEqual({
+    expect(buildSkillSearchQuery(auth).bool?.filter).toContainEqual({
       match_all: {},
     });
   });
