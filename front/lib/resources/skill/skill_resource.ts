@@ -40,11 +40,13 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type {
   CodeDefinedSkillFile,
   SkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
+import { SYSTEM_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/system";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import type {
   SkillConfigurationFindOptions,
@@ -53,6 +55,7 @@ import type {
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
+  CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
   getResourceIdFromSId,
   getResourceNameAndIdFromSId,
   isResourceSId,
@@ -2296,6 +2299,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;security] code-defined-indexing-metadata
+   * For global indexing only: bypass workspace restrictions and include every code-defined skill.
+   * Return no instructions or workspace-specific tools; perform no database reads.
+   */
+  static async dangerouslyListAllCodeDefined(
+    auth: Authenticator
+  ): Promise<SkillResource[]> {
+    return concurrentExecutor(
+      [...GLOBAL_SKILLS_ARRAY, ...SYSTEM_SKILLS_ARRAY],
+      (definition) =>
+        this.fromGlobalSkill(auth, definition, {
+          effectiveSpaceIds: [],
+          mcpServerViews: [],
+          withInstructions: false,
+        }),
+      { concurrency: 5 }
+    );
+  }
+
   private static async fromGlobalSkill(
     auth: Authenticator,
     def: SkillDefinition,
@@ -2311,7 +2334,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withInstructions?: boolean;
     }
   ): Promise<SkillResource> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const workspaceId =
+      auth.workspace()?.id ?? CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID;
 
     const requestedSpaceModelIds = removeNulls(
       effectiveSpaceIds.map(getResourceIdFromSId)

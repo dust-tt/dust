@@ -237,6 +237,19 @@ export class Authenticator {
     }
   }
 
+  /**
+   * @cc [owner:aubin-tchoi,label:security] unauthenticated-context
+   * Return a workspace-free authenticator with no user, role privileges or grants, without I/O.
+   */
+  static unauthenticated(): Authenticator {
+    return new Authenticator({
+      authMethod: "internal",
+      role: "none",
+      groupModelIds: [],
+      permissions: GroupPermissions.empty(),
+    });
+  }
+
   static async userFromSession(
     session: SessionWithUser | null
   ): Promise<UserResource | null> {
