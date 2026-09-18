@@ -5,9 +5,9 @@ import {
   toAgentExportCsvRow,
 } from "@app/lib/api/analytics/agents_export";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
+import { updateAgentPermissions } from "@app/lib/api/assistant/configuration/agent";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -73,29 +73,18 @@ describe("fetchAgentExportRows", () => {
       name: "Multi-author agent",
     });
 
-    const editorGroupResult = await GroupResource.findEditorGroupForAgent(
-      authorAAuth,
-      agent
-    );
-    expect(editorGroupResult.isOk()).toBe(true);
-    if (editorGroupResult.isErr()) {
-      throw editorGroupResult.error;
-    }
-    const addAuthorBResult =
-      await editorGroupResult.value.dangerouslyAddMembers(authorAAuth, {
-        users: [authorB.toJSON()],
-      });
-    expect(addAuthorBResult.isOk()).toBe(true);
-    if (addAuthorBResult.isErr()) {
-      throw addAuthorBResult.error;
-    }
-    // `dangerouslyAddMembers` invalidates the group cache fire-and-forget, so `refresh` below could
-    // otherwise read a stale snapshot that lacks the freshly joined editor group. Invalidate
-    // synchronously first so B resolves the `write` they now hold as an editor.
-    await GroupResource.invalidateGroupIdsCacheForUser({
-      user: { id: authorB.id },
-      workspace: { id: workspace.id },
+    // Make B an editor through the production path so B holds `write`: this both adds B to the
+    // legacy editor group and grants the `editor` permission (the `regular_auto` grant that actually
+    // confers `write`); adding B to the editor group alone would not.
+    const addEditorResult = await updateAgentPermissions(authorAAuth, {
+      agent,
+      usersToAdd: [authorB.toJSON()],
+      usersToRemove: [],
     });
+    expect(addEditorResult.isOk()).toBe(true);
+    if (addEditorResult.isErr()) {
+      throw addEditorResult.error;
+    }
     await authorBAuth.refresh();
 
     await AgentConfigurationFactory.updateTestAgent(authorBAuth, agent.sId);
