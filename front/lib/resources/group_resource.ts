@@ -194,16 +194,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
-  // Upper bound on how long a stale user group list can be served.
-  private static readonly AUTH_GROUPS_CACHE_TTL_MS = 60 * 60 * 1000;
-
   private static readonly groupIdsCacheKeyResolver = ({
     user,
     workspace,
   }: {
     user: { id: ModelId };
     workspace: { id: ModelId };
-  }) => `groups:v3:user:${user.id}:workspace:${workspace.id}`; // v3: entries carry a TTL.
+  }) => `groups:v3:user:${user.id}:workspace:${workspace.id}`;
 
   private static async dangerouslyListUserGroupsForAuthUncached({
     user,
@@ -226,11 +223,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
-  /**
-   * @cc [owner:philipperolet,label:performance;security] auth-groups-cache-bounded-staleness
-   * A cached user group list MUST expire at most `AUTH_GROUPS_CACHE_TTL_MS` after it is written,
-   * so a membership change missed by an invalidation is never served indefinitely.
-   */
+  // One-hour TTL, so a membership change missed by an invalidation is never served indefinitely.
   private static dangerouslyListUserGroupsForAuthCached = cacheWithRedis(
     ({
       user,
@@ -244,7 +237,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         workspace,
       }),
     GroupResource.groupIdsCacheKeyResolver,
-    { cacheNullValues: false, ttlMs: GroupResource.AUTH_GROUPS_CACHE_TTL_MS }
+    { cacheNullValues: false, ttlMs: 60 * 60 * 1000 }
   );
 
   private static _invalidateGroupIdsCacheForUser = invalidateCacheWithRedis(

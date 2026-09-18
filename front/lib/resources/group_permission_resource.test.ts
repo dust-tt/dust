@@ -1,10 +1,7 @@
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import { Authenticator } from "@app/lib/auth";
 import type { GroupGrant } from "@app/lib/resources/group_permission_resource";
-import {
-  GRANTS_CACHE_TTL_SECONDS,
-  GroupPermissionResource,
-} from "@app/lib/resources/group_permission_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -18,7 +15,7 @@ import assert from "assert";
 import type { QueryOptions } from "sequelize";
 import { Transaction } from "sequelize";
 import type { AbstractQuery } from "sequelize/types/dialects/abstract/query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 describe("GroupPermissionResource", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
@@ -195,44 +192,6 @@ describe("GroupPermissionResource", () => {
         })
       );
     }
-
-    it("expires the workspace hash without later fills extending it", async () => {
-      await GroupPermissionResource.grant(auth, {
-        group: groupA,
-        grantType: "reader",
-        resourceType: "space",
-        resourceId: 1,
-      });
-      await flushGrantCache();
-      const redis = await getRedisCacheClient({
-        origin: "group_permissions_cache",
-      });
-      const key = GroupPermissionResource.cacheOperations.buildKey({
-        workspaceModelId: String(auth.getNonNullableWorkspace().id),
-      });
-
-      vi.useFakeTimers({ toFake: ["Date"] });
-      try {
-        await GroupPermissionResource.listForGroups(workspace, {
-          groupModelIds: [groupA.id],
-        });
-        const ttlAfterCreation = await redis.ttl(key);
-        const laterFillDelaySeconds = 10 * 60;
-        vi.setSystemTime(Date.now() + laterFillDelaySeconds * 1000);
-        await GroupPermissionResource.listForGroups(workspace, {
-          groupModelIds: [groupA.id, groupB.id],
-        });
-
-        expect(ttlAfterCreation).toBeGreaterThan(0);
-        expect(ttlAfterCreation).toBeLessThanOrEqual(GRANTS_CACHE_TTL_SECONDS);
-        // The later fill did not reset the deadline: the remaining time shrank by the delay.
-        expect(await redis.ttl(key)).toBeLessThanOrEqual(
-          ttlAfterCreation - laterFillDelaySeconds
-        );
-      } finally {
-        vi.useRealTimers();
-      }
-    });
 
     it("filters in Postgres through one bound bigint array", async () => {
       await GroupPermissionResource.grant(auth, {

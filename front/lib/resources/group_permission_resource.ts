@@ -44,10 +44,9 @@ import { literal, Op } from "sequelize";
 import { z } from "zod";
 
 // Grants are cached in a Redis hash per workspace, one field per groupId, so a caller reads its
-// own groups and fills only what is missing. Readers fill with HSETNX and mutations delete the
-// fields after commit, so a stale in-flight read cannot replace a fresher value. The whole hash
-// expires `GRANTS_CACHE_TTL_SECONDS` after it is created: a missed invalidation (failed delete,
-// write outside the resource, race with an in-flight fill) is then bounded instead of permanent.
+// own groups and fills only what is missing. Readers fill with HSETNX and mutations delete after
+// commit, so a stale in-flight read cannot replace a fresher value. The hash expires one hour after
+// its creation, so an entry missed by an invalidation is never served indefinitely.
 
 export type GroupGrant = {
   groupId: ModelId;
@@ -56,12 +55,8 @@ export type GroupGrant = {
   resourceId: number;
 };
 
-// Bump to orphan hashes written under the previous field encoding or, as for v2, without an
-// expiry: entries are never rewritten on a hit, so only new keys pick up a new shape.
+// Bump to orphan hashes written under the previous field encoding.
 const CACHE_SCHEMA_VERSION = 2;
-
-// Upper bound on how long a stale grants hash can be served.
-export const GRANTS_CACHE_TTL_SECONDS = 60 * 60;
 
 type SerializedGrant = [GrantType, GroupPermissionResourceType, number];
 
@@ -746,12 +741,6 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
   // Takes no transaction: a read inside an unrelated transaction still uses the cache, while the
   // mutations below keep their own transaction-scoped queries.
-  /**
-   * @cc [owner:philipperolet,label:performance;security] grants-cache-bounded-staleness
-   * A workspace grants hash MUST expire at most `GRANTS_CACHE_TTL_SECONDS` after it is created, and
-   * filling more fields MUST NOT extend that expiry, so grants missed by an invalidation are never
-   * served indefinitely.
-   */
   private static async listGrantsForGroups(
     workspace: LightWorkspaceType,
     groupModelIds: ModelId[]
@@ -800,8 +789,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       for (const [field, value] of encodeFields(missingGroupModelIds, loaded)) {
         multi.hSetNX(key, field, value);
       }
-      // `NX` only sets the expiry when the hash has none, i.e. when this fill created it.
-      multi.expire(key, GRANTS_CACHE_TTL_SECONDS, "NX");
+      // `NX`: only the fill that creates the hash sets its expiry, later fills do not extend it.
+      multi.expire(key, 60 * 60, "NX");
       await multi.exec();
 
       return [...grants, ...loaded];
