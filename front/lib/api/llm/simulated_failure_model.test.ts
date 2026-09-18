@@ -1,3 +1,4 @@
+import { applyDegradedEndpointCacheUpdate } from "@app/lib/api/assistant/degraded_models";
 import {
   ERROR_RATIO_THRESHOLD,
   MIN_ATTEMPTS_IN_WINDOW,
@@ -6,6 +7,7 @@ import { readEndpointWindow } from "@app/lib/api/llm/health/window";
 import {
   clearSimulatedFailureModelHealthWindow,
   getSimulatedFailureModelStatus,
+  isSimulatedFailureModelDegraded,
   SIMULATED_FAILURE_MODEL_ENDPOINT,
   seedSimulatedFailureModelHealthWindow,
 } from "@app/lib/api/llm/simulated_failure_model";
@@ -23,6 +25,9 @@ describe("simulated failure model control", () => {
 
   afterEach(async () => {
     await clearSimulatedFailureModelHealthWindow();
+    applyDegradedEndpointCacheUpdate([
+      { modelId: SIMULATED_FAILURE_MODEL_ENDPOINT.modelId, degraded: false },
+    ]);
     redisMock.reset();
   });
 
@@ -58,6 +63,22 @@ describe("simulated failure model control", () => {
     } finally {
       await ModelDegradationResource.updateDegradedEndpoints([
         { ...SIMULATED_FAILURE_MODEL_ENDPOINT, degraded: false },
+      ]);
+    }
+  });
+
+  it("reads a degradation row as degraded even when the process cache is cold", async () => {
+    await expect(isSimulatedFailureModelDegraded()).resolves.toBe(false);
+
+    await ModelDegradationFactory.degraded(SIMULATED_FAILURE_MODEL_ENDPOINT);
+    try {
+      await expect(isSimulatedFailureModelDegraded()).resolves.toBe(true);
+    } finally {
+      await ModelDegradationResource.updateDegradedEndpoints([
+        { ...SIMULATED_FAILURE_MODEL_ENDPOINT, degraded: false },
+      ]);
+      applyDegradedEndpointCacheUpdate([
+        { modelId: SIMULATED_FAILURE_MODEL_ENDPOINT.modelId, degraded: false },
       ]);
     }
   });

@@ -1,4 +1,8 @@
 import {
+  applyDegradedEndpointCacheUpdate,
+  getDegradedModelIds,
+} from "@app/lib/api/assistant/degraded_models";
+import {
   ERROR_RATIO_THRESHOLD,
   MIN_ATTEMPTS_IN_WINDOW,
 } from "@app/lib/api/llm/health/config";
@@ -104,6 +108,32 @@ async function seedTtlSeconds(now: Date): Promise<number | null> {
     }
     return remainingSeconds;
   });
+}
+
+/**
+ * Whether the breaker (or an operator) has already marked this endpoint
+ * degraded. Conversation streams 503 until that flag exists; recovery probes
+ * see it and call the cheap delegate instead.
+ *
+ * The in-memory set is enough on a pod that just wrote the row. A Temporal
+ * worker may not have it yet, so a cache miss falls through to one row read.
+ */
+export async function isSimulatedFailureModelDegraded(): Promise<boolean> {
+  if (getDegradedModelIds().has(SIMULATED_FAILURE_MODEL_ID)) {
+    return true;
+  }
+
+  const degradation = await ModelDegradationResource.fetchByEndpoint(
+    SIMULATED_FAILURE_MODEL_ENDPOINT
+  );
+  if (!degradation) {
+    return false;
+  }
+
+  applyDegradedEndpointCacheUpdate([
+    { modelId: SIMULATED_FAILURE_MODEL_ID, degraded: true },
+  ]);
+  return true;
 }
 
 export async function getSimulatedFailureModelStatus(): Promise<{
