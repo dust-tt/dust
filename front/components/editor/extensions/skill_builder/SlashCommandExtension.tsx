@@ -17,7 +17,6 @@ import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   clearSlashSubMenuStack,
   createSlashMenuNavigationStorage,
-  enterSlashSubMenu,
   handleSlashSubMenuCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { createAttachKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
@@ -255,7 +254,6 @@ interface SkillBuilderSlashSuggestionStorage {
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     skillBuilderSlashCommand: {
-      openAttachKnowledgeSlashCommand: () => ReturnType;
       openSlashCommand: () => ReturnType;
     };
   }
@@ -305,40 +303,6 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
           .focus()
           .insertContentAt(from, needsSpaceBefore ? " /" : "/")
           .run();
-      },
-    openAttachKnowledgeSlashCommand:
-      () =>
-      ({ chain }: { chain: () => ChainedCommands }) => {
-        storage.hasBeenFocused = true;
-        const insertFrom = editor.state.selection.from;
-        const result = chain().focus().insertContentAt(insertFrom, "/").run();
-
-        const pluginState = slashCommandPluginKey.getState(editor.state);
-        const range =
-          pluginState?.active && pluginState.range
-            ? pluginState.range
-            : { from: insertFrom, to: insertFrom + 1 };
-
-        if (
-          pluginState?.active &&
-          handleSlashSubMenuCommand({
-            command: createAttachKnowledgeSlashCommand(),
-            editor,
-            range,
-            storage,
-          })
-        ) {
-          return result;
-        }
-
-        enterSlashSubMenu({
-          command: createAttachKnowledgeSlashCommand(),
-          editor,
-          range,
-          storage,
-          subMenuId: ATTACH_CONTEXT_SUB_MENU_ID,
-        });
-        return result;
       },
   }),
   allow: ({ storage }) => storage.hasBeenFocused,
