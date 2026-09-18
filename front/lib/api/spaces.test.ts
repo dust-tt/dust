@@ -1492,8 +1492,8 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       expect(skillAfter).not.toBeNull();
       expect(skillAfter!.requestedSpaceIds).not.toContain(toolSpace!.id);
       expect(skillAfter!.requestedSpaceIds).toEqual([
-        globalSpace.id,
         additionalSpace!.id,
+        globalSpace.id,
       ]);
     });
 

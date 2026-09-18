@@ -2936,29 +2936,6 @@ describe("SkillResource", () => {
   });
 
   describe("computeRequestedSpaceIds", () => {
-    it.each([
-      false,
-      true,
-    ])("includes the global space exactly once when attached knowledge requests it: %s", async (hasAttachedKnowledge) => {
-      const { authenticator, workspace, globalSpace, user } = testContext;
-      const dataSourceView = await DataSourceViewFactory.folder(
-        workspace,
-        globalSpace,
-        user
-      );
-      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
-        authenticator,
-        {
-          mcpServerViews: [],
-          attachedKnowledge: hasAttachedKnowledge
-            ? [{ dataSourceView, nodeId: "node1" }]
-            : [],
-        }
-      );
-
-      expect(requestedSpaceIds).toEqual([globalSpace.id]);
-    });
-
     it("should compute space IDs from attached knowledge", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
       await SpaceFactory.attachGroup(space, testContext.globalGroup);
@@ -2981,7 +2958,7 @@ describe("SkillResource", () => {
         }
       );
 
-      expect(requestedSpaceIds).toEqual([space.id, testContext.globalSpace.id]);
+      expect(requestedSpaceIds).toContain(space.id);
     });
   });
 

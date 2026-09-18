@@ -18,10 +18,9 @@ describe("recreateSkillSearchIndex", () => {
   });
 
   it("rebuilds restricted active and archived skills, excluding suggestions", async () => {
-    const { authenticator, user, workspace, globalSpace } =
-      await createResourceTest({
-        role: "admin",
-      });
+    const { authenticator, user, workspace } = await createResourceTest({
+      role: "admin",
+    });
     const regularSpace = await SpaceFactory.regular(workspace);
     const pod = await SpaceFactory.project(workspace, user.id);
     const activeSkill = await SkillFactory.create(authenticator, {
@@ -41,7 +40,7 @@ describe("recreateSkillSearchIndex", () => {
         skill_id: activeSkill.sId,
         status: "active",
         workspace_id: workspace.sId,
-        requested_space_ids: [regularSpace.sId, pod.sId, globalSpace.sId],
+        requested_space_ids: [regularSpace.sId, pod.sId],
         editor_ids: [user.sId],
       })
     );
@@ -50,7 +49,7 @@ describe("recreateSkillSearchIndex", () => {
         skill_id: archivedSkill.sId,
         status: "archived",
         workspace_id: workspace.sId,
-        requested_space_ids: [regularSpace.sId, globalSpace.sId],
+        requested_space_ids: [regularSpace.sId],
       })
     );
   });

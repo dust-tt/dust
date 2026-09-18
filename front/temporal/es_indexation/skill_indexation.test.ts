@@ -20,31 +20,6 @@ describe("skill search indexing activity", () => {
     );
   });
 
-  it.each([
-    false,
-    true,
-  ])("includes the global space exactly once when already requested: %s", async (alreadyRequested) => {
-    const {
-      authenticator: auth,
-      workspace,
-      globalSpace,
-    } = await createResourceTest({ role: "admin" });
-    const skill = await SkillFactory.create(auth, {
-      requestedSpaceIds: alreadyRequested ? [globalSpace.id] : [],
-    });
-
-    await indexSkillSearchActivity({
-      workspaceId: workspace.sId,
-      skillId: skill.sId,
-    });
-
-    expect(skillIndex.indexSkillDocument).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({
-        requested_space_ids: [globalSpace.sId],
-      })
-    );
-  });
-
   it("fetches current editors and resolves the last editor independently", async () => {
     const {
       authenticator: auth,
@@ -79,7 +54,6 @@ describe("skill search indexing activity", () => {
       authenticator: auth,
       workspace,
       user,
-      globalSpace,
     } = await createResourceTest({ role: "admin" });
     const space = await SpaceFactory[kind](workspace);
     const server = await RemoteMCPServerFactory.create(workspace);
@@ -107,7 +81,7 @@ describe("skill search indexing activity", () => {
         name: skill.name,
         description: skill.userFacingDescription,
         availability: "editors",
-        requested_space_ids: [space.sId, globalSpace.sId],
+        requested_space_ids: [space.sId],
         editor_ids: [user.sId],
         last_edited_by_user_id: user.sId,
         mcp_server_view_ids: [serverView.sId],

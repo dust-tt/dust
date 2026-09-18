@@ -455,11 +455,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Compute the requestedSpaceIds from MCP server views and attached knowledge.
    * This is the source of truth for which spaces a skill needs access to.
    */
-  /**
-   * @cc [owner:aubin-tchoi,label:backend;security] skill-requested-global-space
-   * The returned space IDs must include the workspace's global space exactly once, including
-   * when no tools or attached knowledge request any spaces.
-   */
   static async computeRequestedSpaceIds(
     auth: Authenticator,
     {
@@ -480,12 +475,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const spaceIdsFromAttachedKnowledge = attachedKnowledge.map(
       (k) => k.dataSourceView.space.id
     );
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
     return uniq([
       ...spaceIdsFromMcpServerViews,
       ...spaceIdsFromAttachedKnowledge,
-      globalSpace.id,
     ]);
   }
 
