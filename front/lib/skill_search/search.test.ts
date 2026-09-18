@@ -60,10 +60,16 @@ describe("custom skill search permissions", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("returns workspace-scoped indexed documents without database queries", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const { authenticator: auth, globalSpace } = await createResourceTest({
+      role: "user",
+    });
     const other = await createResourceTest({ role: "user" });
-    const skill = await SkillFactory.create(auth);
-    const foreign = await SkillFactory.create(other.authenticator);
+    const skill = await SkillFactory.create(auth, {
+      requestedSpaceIds: [globalSpace.id],
+    });
+    const foreign = await SkillFactory.create(other.authenticator, {
+      requestedSpaceIds: [other.globalSpace.id],
+    });
     const foreignDocuments = await SkillFactory.createSearchDocuments(
       other.authenticator,
       [foreign]
