@@ -396,13 +396,9 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       }
     );
 
-    const input = await loadAgentMessageConsumptionAnalyticsInput(
-      context.auth,
-      {
-        agentMessageModelId: context.agentMessageModelId,
-        source: "consumption",
-      }
-    );
+    const input = await loadConsumptionAnalyticsInput(context.auth, {
+      agentMessageModelId: context.agentMessageModelId,
+    });
     if (!input) {
       throw new Error("Consumption analytics input was not loaded");
     }

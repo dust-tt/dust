@@ -31,6 +31,10 @@ export type ExecutionBill = {
   actionModelIds: ModelId[];
 };
 
+/**
+ * @cc [owner:id13,label:backend;billing] free-origin-consumption-settlement
+ * Free-origin billing MUST zero attributed reconciled credits in the billing transaction while preserving gross evidence and direct tool postings. Retrying a settled execution MUST leave its items unchanged.
+ */
 export async function billExecution(
   auth: Authenticator,
   {
@@ -200,7 +204,7 @@ export async function billExecution(
         kind: "items_changed",
         idempotencyKey: `execution:${runKey}:billed`,
         runKey,
-        rootAgentMessageId,
+        rootAgentMessageModelId: rootAgentMessageId,
         agentMessageModelId,
         consumptionItemIds: [
           ...adjustmentItemIds,

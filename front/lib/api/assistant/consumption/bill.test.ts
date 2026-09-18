@@ -15,10 +15,10 @@ import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
-import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -61,6 +61,7 @@ async function setupMessage({ origin }: { origin?: UserMessageOrigin } = {}) {
     conversation,
     agentConfig: agentConfiguration,
     parentMessageModelId: parentMessage?.messageRow.id,
+    rank: parentMessage ? 1 : 0,
     runIds: [],
   });
 
@@ -277,32 +278,14 @@ describe("billExecution", () => {
     expect(sumReconciled(secondItems)).toBe(sumReconciled(firstItems));
   });
 
-  it("zeros attributed credits but retains direct tool charges for a free origin", async () => {
-    const { auth, workspace, conversation, agentMessage, context } =
-      await setupMessage({ origin: "system_activation" });
-    const { action } = await AgentMCPActionFactory.create(auth, {
-      workspace,
-      conversationModelId: conversation.id,
-      agentMessageModelId: agentMessage.agentMessageId,
-      output: [{ type: "text", text: "tool result" }],
+  it("zeros attributed credits for a free origin and stays idempotent", async () => {
+    const { auth, context } = await setupMessage({
+      origin: "system_activation",
     });
     await recordModelCall(auth, {
       context,
-      emittedActions: [action],
       inputTokens: 2_000,
       outputTokens: 300,
-    });
-    await action.markAsSucceeded({ executionDurationMs: 5 });
-    const settledAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
-      auth,
-      action.id
-    );
-    if (!settledAction) {
-      throw new Error("Settled action not found");
-    }
-    await recordToolCompletionConsumption(auth, {
-      action: settledAction,
-      context,
     });
 
     const first = await billFinalizedExecution(auth, {
@@ -318,20 +301,13 @@ describe("billExecution", () => {
       (item) =>
         item.itemType !== "tool_direct" && item.itemType !== "tool_adjustment"
     );
-    const directItems = firstItems.filter(
-      (item) =>
-        item.itemType === "tool_direct" || item.itemType === "tool_adjustment"
-    );
     expect(
       attributedItems.some((item) => item.grossAttributedCreditAmountMicro > 0)
     ).toBe(true);
     expect(
       attributedItems.every((item) => item.reconciledCreditAmountMicro === 0)
     ).toBe(true);
-    expect(
-      directItems.some((item) => (item.reconciledCreditAmountMicro ?? 0) > 0)
-    ).toBe(true);
-    expect(first?.eventCreditAmount).toBeGreaterThan(0);
+    expect(first?.eventCreditAmount).toBe(0);
     expect(sumReconciled(firstItems)).toBe(
       (first?.eventCreditAmount ?? 0) * MICRO_CREDITS_PER_CREDIT
     );

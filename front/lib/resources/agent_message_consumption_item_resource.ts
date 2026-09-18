@@ -772,6 +772,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           workspaceId: auth.getNonNullableWorkspace().id,
         },
         transaction,
+        validate: false,
       }
     );
     assert(
