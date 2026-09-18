@@ -1,4 +1,4 @@
-import { consumptionModeFromFeatureFlags } from "@app/lib/api/assistant/consumption/mode";
+import { consumptionModeFromFeatureFlags } from "@app/lib/api/assistant/consumption/mode_switch";
 import { describe, expect, it } from "vitest";
 
 describe("consumptionModeFromFeatureFlags", () => {
