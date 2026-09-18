@@ -1,4 +1,5 @@
-import type { Authenticator } from "@app/lib/auth";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { Authenticator } from "@app/lib/auth";
 import type { SaveAgentConfigurationParams } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -8,7 +9,8 @@ import { Err, Ok } from "@app/types/shared/result";
 // Test/seed convenience mirroring the former `createAgentConfiguration` entry point: create a new
 // agent when no `agentConfigurationId` is given, otherwise a new version on that agent. Production
 // code uses `AgentResource.makeNew` / `AgentResource.updateConfiguration` directly, which return the
-// saved agent as a resource; this helper converts it to a `LightAgentConfigurationType` for tests.
+// saved agent as a (read-gated) resource; this helper re-reads it as a `LightAgentConfigurationType`
+// for tests.
 export async function saveAgentConfiguration(
   auth: Authenticator,
   {
@@ -34,8 +36,27 @@ export async function saveAgentConfiguration(
     return res;
   }
 
+  // Re-read the saved agent. `makeNew` returns a resource resolved for the saver, which comes back
+  // `light` when the saver cannot read it (seeds attribute agents to other authors and may build
+  // them hidden or on spaces the saver is not a member of). Skip the read gate to always get the
+  // full config; read as the caller when they are a workspace member, otherwise as the internal
+  // admin (`getAgentConfigurations` rejects non-member auths).
+  const readAuth = auth.isUser()
+    ? auth
+    : await Authenticator.internalAdminForWorkspace(
+        auth.getNonNullableWorkspace().sId
+      );
+  const config = await getAgentConfiguration(readAuth, {
+    agentId: res.value.sId,
+    variant: "light",
+    dangerouslySkipPermissionFiltering: true,
+  });
+  if (!config) {
+    return new Err(new Error("The saved agent must be resolvable."));
+  }
+
   return new Ok({
-    ...res.value.toJSON(),
+    ...config,
     tags: params.tags,
     userFavorite: false,
   });

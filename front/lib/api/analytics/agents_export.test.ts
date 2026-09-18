@@ -89,6 +89,13 @@ describe("fetchAgentExportRows", () => {
     if (addAuthorBResult.isErr()) {
       throw addAuthorBResult.error;
     }
+    // `dangerouslyAddMembers` invalidates the group cache fire-and-forget, so `refresh` below could
+    // otherwise read a stale snapshot that lacks the freshly joined editor group. Invalidate
+    // synchronously first so B resolves the `write` they now hold as an editor.
+    await GroupResource.invalidateGroupIdsCacheForUser({
+      user: { id: authorB.id },
+      workspace: { id: workspace.id },
+    });
     await authorBAuth.refresh();
 
     await AgentConfigurationFactory.updateTestAgent(authorBAuth, agent.sId);
