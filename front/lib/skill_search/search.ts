@@ -65,7 +65,7 @@ export async function searchSkills(
   if (result.isErr()) {
     return result;
   }
-  const hits = result.value.hits.hits;
+  const { hits } = result.value.hits;
   const candidates: SkillSearchCandidate[] = [];
   for (const hit of hits) {
     const document = hit._source;
