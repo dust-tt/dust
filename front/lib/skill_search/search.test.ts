@@ -139,16 +139,15 @@ describe("custom skill search", () => {
 
   it.each([
     true,
-    false,
-  ])("adds selection filters without replacing ACLs (isDefault=%s)", async (isDefault) => {
+    undefined,
+  ] as const)("adds selection filters without replacing ACLs (editedByMe=%s)", async (editedByMe) => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     const base = prepareSkillSearchQuery(auth, "");
     const query = prepareSkillSearchQuery(auth, "", {
       filters: {
         toolIds: ["view-2", "view-1", "view-2"],
         availability: ["users_and_agents"],
-        editedByMe: isDefault,
-        isDefault,
+        editedByMe,
       },
     });
     const editor = { term: { editor_ids: auth.getNonNullableUser().sId } };
@@ -156,10 +155,7 @@ describe("custom skill search", () => {
       ...[base.bool?.filter].flat(),
       { terms: { mcp_server_view_ids: ["view-1", "view-2"] } },
       { terms: { availability: ["users_and_agents"] } },
-      isDefault
-        ? { term: { availability: "users_and_agents" } }
-        : { terms: { availability: ["editors", "workspace_users"] } },
-      ...(isDefault ? [editor] : []),
+      ...(editedByMe ? [editor] : []),
     ]);
   });
 

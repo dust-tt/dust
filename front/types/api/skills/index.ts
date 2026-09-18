@@ -22,9 +22,8 @@ export interface SkillSearchFilters {
   // Omitted means active only. Suggested skills are never searchable.
   status?: ("active" | "archived")[];
   toolIds?: string[];
-  editedByMe?: boolean;
+  editedByMe?: true;
   availability?: SkillAvailability[];
-  isDefault?: boolean;
 }
 
 export interface SkillSearchOptions {

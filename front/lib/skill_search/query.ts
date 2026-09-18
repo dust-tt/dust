@@ -87,13 +87,6 @@ function buildSelectionFilters(
       selected.push({ terms: { [field]: [...new Set(values)].sort() } });
     }
   }
-  if (filters.isDefault !== undefined) {
-    selected.push(
-      filters.isDefault
-        ? { term: { availability: "users_and_agents" } }
-        : { terms: { availability: ["editors", "workspace_users"] } }
-    );
-  }
   if (filters.editedByMe) {
     selected.push(buildEditorFilter(auth));
   }
