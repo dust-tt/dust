@@ -171,6 +171,7 @@ Skill suggestions:
 
 Agent suggestions:
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_creation\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`. Nothing is created for real: the proposal is recorded as a suggestion that its editors review, accept, or reject.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_deletion\`: propose deleting an existing agent by \`agentId\`, with an \`analysis\` explaining why. Nothing is deleted for real: the proposal is recorded as a suggestion that the agent's editors review, accept, or reject.
 </tools>`,
 
   responseStyle: responseStyleSection({ noun: NOUN, editTool: EDIT_TOOLS }),

@@ -25,6 +25,7 @@ import { defaultSelectionConfiguration } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   AgentCreateSuggestionType,
+  AgentDeleteSuggestionType,
   AgentInstructionsSuggestionType,
   AgentKnowledgeSuggestionWithRelationsType,
   AgentModelSuggestionWithRelationsType,
@@ -695,6 +696,33 @@ function CreateAgentSuggestionCard({
   );
 }
 
+interface DeleteAgentSuggestionCardProps {
+  agentSuggestion: AgentDeleteSuggestionType;
+}
+
+function DeleteAgentSuggestionCard({
+  agentSuggestion,
+}: DeleteAgentSuggestionCardProps) {
+  const { suggestion, state, analysis } = agentSuggestion;
+  const cardState = mapSuggestionStateToCardState(state);
+  const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
+
+  return (
+    <ActionCardBlock
+      title={`Delete "${suggestion.name}" agent`}
+      applyLabel="Accept"
+      acceptedTitle={`"${suggestion.name}" agent deletion accepted`}
+      visual={<Avatar icon={getIcon("ActionRobotIcon")} size="sm" />}
+      description={analysis ?? undefined}
+      state={cardState}
+      rejectedTitle={`"${suggestion.name}" agent deletion rejected`}
+      actionsPosition="header"
+      onClickAccept={() => void acceptSuggestion(agentSuggestion)}
+      onClickReject={() => void rejectSuggestion(agentSuggestion)}
+    />
+  );
+}
+
 interface SuggestionCardProps {
   agentSuggestion: AgentSuggestionWithRelationsType;
 }
@@ -726,6 +754,8 @@ export function SidekickSuggestionCard({
       return <KnowledgeSuggestionCard agentSuggestion={agentSuggestion} />;
     case "create":
       return <CreateAgentSuggestionCard agentSuggestion={agentSuggestion} />;
+    case "delete":
+      return <DeleteAgentSuggestionCard agentSuggestion={agentSuggestion} />;
     default:
       assertNeverAndIgnore(agentSuggestion);
       return null;

@@ -140,15 +140,30 @@ export function getSidekickSuggestionPlugin() {
   return SidekickSuggestionPlugin;
 }
 
+const CONVERSATION_AGENT_SUGGESTION_KINDS = ["create", "delete"] as const;
+
+type ConversationAgentSuggestionKind =
+  (typeof CONVERSATION_AGENT_SUGGESTION_KINDS)[number];
+
+function isConversationAgentSuggestionKind(
+  kind: AgentSuggestionKind
+): kind is ConversationAgentSuggestionKind {
+  return CONVERSATION_AGENT_SUGGESTION_KINDS.includes(
+    kind as ConversationAgentSuggestionKind
+  );
+}
+
 interface ConversationAgentSuggestionProps {
   owner: LightWorkspaceType;
   agentId: string;
+  kind: ConversationAgentSuggestionKind;
   sId: string;
 }
 
 function ConversationAgentSuggestion({
   owner,
   agentId,
+  kind,
   sId,
 }: ConversationAgentSuggestionProps) {
   const { suggestions, isSuggestionsLoading } = useAgentSuggestions({
@@ -157,11 +172,11 @@ function ConversationAgentSuggestion({
   });
 
   if (isSuggestionsLoading) {
-    return <SuggestionCardSkeleton kind="create" />;
+    return <SuggestionCardSkeleton kind={kind} />;
   }
 
   const suggestion = suggestions.find((s) => s.sId === sId);
-  if (!suggestion || suggestion.kind !== "create") {
+  if (!suggestion || suggestion.kind !== kind) {
     return null;
   }
 
@@ -170,15 +185,31 @@ function ConversationAgentSuggestion({
       ? "disabled"
       : mapSuggestionStateToCardState(suggestion.state);
 
+  const name = suggestion.suggestion.name;
+  const labels =
+    suggestion.kind === "create"
+      ? {
+          title: `Create "${name}" agent`,
+          acceptedTitle: `"${name}" agent creation accepted`,
+          rejectedTitle: `"${name}" agent creation rejected`,
+          description: suggestion.analysis ?? suggestion.suggestion.description,
+        }
+      : {
+          title: `Delete "${name}" agent`,
+          acceptedTitle: `"${name}" agent deletion accepted`,
+          rejectedTitle: `"${name}" agent deletion rejected`,
+          description: suggestion.analysis ?? undefined,
+        };
+
   return (
     <div data-suggestion-s-id={sId}>
       <ActionCardBlock
-        title={`Create "${suggestion.suggestion.name}" agent`}
+        title={labels.title}
         applyLabel="Accept"
-        acceptedTitle={`"${suggestion.suggestion.name}" agent creation accepted`}
-        rejectedTitle={`"${suggestion.suggestion.name}" agent creation rejected`}
+        acceptedTitle={labels.acceptedTitle}
+        rejectedTitle={labels.rejectedTitle}
         visual={<Avatar icon={getIcon("ActionRobotIcon")} size="sm" />}
-        description={suggestion.analysis ?? suggestion.suggestion.description}
+        description={labels.description}
         state={cardState}
         actionsPosition="header"
       />
@@ -200,8 +231,13 @@ export function getConversationAgentSuggestionPlugin(
     kind,
     agentId,
   }: ConversationAgentSuggestionPluginProps) =>
-    sId && kind === "create" && agentId ? (
-      <ConversationAgentSuggestion owner={owner} agentId={agentId} sId={sId} />
+    sId && kind && isConversationAgentSuggestionKind(kind) && agentId ? (
+      <ConversationAgentSuggestion
+        owner={owner}
+        agentId={agentId}
+        kind={kind}
+        sId={sId}
+      />
     ) : null;
 
   return ConversationAgentSuggestionPlugin;
