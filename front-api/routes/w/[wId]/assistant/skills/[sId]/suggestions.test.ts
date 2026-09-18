@@ -542,6 +542,47 @@ describe("PATCH with applyToSkill", () => {
     expect(updated?.agentFacingDescription).toBe("A better description");
   });
 
+  it("applies a delete suggestion by archiving the skill", async () => {
+    const { workspace, auth, skill } = await setup();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      kind: "delete",
+      state: "pending",
+      suggestion: { name: skill.name },
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await SkillResource.fetchById(auth, skill.sId, {
+      onlyActive: false,
+    });
+    expect(updated?.status).toBe("archived");
+  });
+
+  it("returns 400 when applying a delete suggestion for an already archived skill", async () => {
+    const { workspace, auth, skill } = await setup();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      kind: "delete",
+      state: "pending",
+      suggestion: { name: skill.name },
+    });
+    await skill.archive(auth);
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+  });
+
   it("applies an instruction edit", async () => {
     const { workspace, auth, skill, blockIds } =
       await setupSkillWithBlockInstructions();

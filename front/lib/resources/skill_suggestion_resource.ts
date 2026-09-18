@@ -164,7 +164,9 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
 
     // Filter suggestions to only include those for skills the user can administrate. Resolved
     // without fetching the skill row: `canAdministrateCustomSkillId` only needs the id and
-    // workspace id, and `sId` is a pure derivation from the same pair.
+    // workspace id, and `sId` is a pure derivation from the same pair. This also means a
+    // suggestion whose skill was archived since (e.g. a `delete` suggestion archives its own
+    // target on accept) stays visible: the permission check never depends on skill status.
     const resources = removeNulls(
       suggestions.map((suggestion) => {
         if (

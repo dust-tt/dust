@@ -54,6 +54,16 @@
           "sId": "ConvBuildingAMsg05",
           "content": "Probably not. Here is a rename that matches what the skill does now:\n\n:skill_suggestion[]{sId=__SKILL_NAME_SUGGESTION_SID__ kind=name skillId=__MEETING_NOTES_SKILL_SID__}\n\nAgents referencing the skill by name in their instructions are updated automatically when the rename is accepted."
         }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg06",
+          "content": "Actually, nobody has used this skill in months since we started formatting notes directly in the meeting tool. Can you propose retiring it?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg06",
+          "content": "Here is the proposal to delete the skill:\n\n:skill_suggestion[]{sId=__SKILL_DELETE_SUGGESTION_SID__ kind=delete skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting it archives the skill; it can be restored afterwards if you change your mind."
+        }
       }
     ]
   }

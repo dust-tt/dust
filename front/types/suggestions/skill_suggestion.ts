@@ -56,6 +56,7 @@ export const SKILL_SUGGESTION_KINDS = [
   "user_facing_description",
   "create",
   "name",
+  "delete",
 ] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
@@ -183,12 +184,21 @@ export const SkillNameSuggestionSchema = z.object({
 
 export type SkillNameSuggestionType = z.infer<typeof SkillNameSuggestionSchema>;
 
+// No payload: the target skill is identified by `skillConfigurationId` on the carrier, and its
+// name is looked up from the skill itself so it never goes stale.
+export const SkillDeleteSuggestionSchema = z.object({});
+
+export type SkillDeleteSuggestionType = z.infer<
+  typeof SkillDeleteSuggestionSchema
+>;
+
 export type SkillSuggestionPayload =
   | SkillEditSuggestionType
   | SkillEditorsSuggestionType
   | SkillUserFacingDescriptionSuggestionType
   | SkillCreateSuggestionType
-  | SkillNameSuggestionType;
+  | SkillNameSuggestionType
+  | SkillDeleteSuggestionType;
 
 const SkillEditSuggestionDataSchema = z.object({
   kind: z.literal("edit"),
@@ -215,12 +225,18 @@ const SkillNameSuggestionDataSchema = z.object({
   suggestion: SkillNameSuggestionSchema,
 });
 
+const SkillDeleteSuggestionDataSchema = z.object({
+  kind: z.literal("delete"),
+  suggestion: SkillDeleteSuggestionSchema,
+});
+
 const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillEditSuggestionDataSchema,
   SkillEditorsSuggestionDataSchema,
   SkillUserFacingDescriptionSuggestionDataSchema,
   SkillCreateSuggestionDataSchema,
   SkillNameSuggestionDataSchema,
+  SkillDeleteSuggestionDataSchema,
 ]);
 
 type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
@@ -252,6 +268,11 @@ export type SkillCreateSuggestionData = Extract<
 export type SkillNameSuggestionData = Extract<
   SkillSuggestionData,
   { kind: "name" }
+>;
+
+export type SkillDeleteSuggestionData = Extract<
+  SkillSuggestionData,
+  { kind: "delete" }
 >;
 
 // `kind` and `suggestion` are separate columns, so narrowing one without the other would lie about
@@ -302,6 +323,12 @@ export function isNameSkillSuggestion<
   T extends { kind: SkillSuggestionKind; suggestion: unknown },
 >(carrier: T): carrier is T & SkillNameSuggestionData {
   return isSkillSuggestionOfKind(carrier, "name");
+}
+
+export function isDeleteSkillSuggestion<
+  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+>(carrier: T): carrier is T & SkillDeleteSuggestionData {
+  return isSkillSuggestionOfKind(carrier, "delete");
 }
 
 const SkillSuggestionUpdatedBySchema = z.object({

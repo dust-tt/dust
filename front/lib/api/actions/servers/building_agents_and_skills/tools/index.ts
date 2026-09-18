@@ -5,6 +5,7 @@ import {
   DESCRIBE_SKILL_TOOL_NAME,
   SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_AGENT_DELETION_TOOL_NAME,
+  SUGGEST_SKILL_DELETION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
   SUGGEST_SKILL_NAME_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
@@ -13,6 +14,7 @@ import {
 import { describeSkillHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/describe_skill";
 import { suggestAgentCreationHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/suggest_agent_creation";
 import { suggestAgentDeletionHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/suggest_agent_deletion";
+import { suggestSkillDeletionHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/suggest_skill_deletion";
 import { suggestSkillEditorsHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/suggest_skill_editors";
 import { suggestSkillNameHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/suggest_skill_name";
 import { suggestSkillUpdateHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/suggest_skill_update";
@@ -23,6 +25,7 @@ const handlers: ToolHandlers<typeof BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA> =
     [DESCRIBE_SKILL_TOOL_NAME]: describeSkillHandler,
     [SUGGEST_SKILL_UPDATE_TOOL_NAME]: suggestSkillUpdateHandler,
     [SUGGEST_SKILL_EDITORS_TOOL_NAME]: suggestSkillEditorsHandler,
+    [SUGGEST_SKILL_DELETION_TOOL_NAME]: suggestSkillDeletionHandler,
     [SUGGEST_AGENT_CREATION_TOOL_NAME]: suggestAgentCreationHandler,
     [SUGGEST_AGENT_DELETION_TOOL_NAME]: suggestAgentDeletionHandler,
     [SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME]:

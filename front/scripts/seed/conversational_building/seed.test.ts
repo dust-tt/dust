@@ -80,6 +80,7 @@ describe("conversational building seed script integration test", () => {
       { sources: ["conversational"] }
     );
     expect(listed.map((s) => s.toJSON().kind).toSorted()).toEqual([
+      "delete",
       "edit",
       "edit",
       "edit",
@@ -136,6 +137,9 @@ describe("conversational building seed script integration test", () => {
     if (nameSuggestion.kind === "name") {
       expect(nameSuggestion.suggestion.name).toBe("MeetingSummarizer");
     }
+
+    const deleteSuggestion = skillSuggestions.get("skillDelete")!.toJSON();
+    expect(deleteSuggestion.kind).toBe("delete");
 
     // The conversation embeds each suggestion as a directive, with no leftover placeholder.
     const conversation = await ConversationResource.fetchById(
