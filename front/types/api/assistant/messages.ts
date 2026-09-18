@@ -45,3 +45,7 @@ export type FetchConversationMessageActionResponse = {
 export type GetAgentMessageSkillsResponseBody = {
   skills: SkillType[];
 };
+
+export type GetAgentMessageEventsResponseBody = {
+  events: string[];
+};

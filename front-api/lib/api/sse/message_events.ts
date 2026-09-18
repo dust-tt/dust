@@ -1,8 +1,12 @@
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
 import type { MessageStreamEvent } from "@app/lib/api/assistant/pubsub";
-import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
+import {
+  getMessagesEvents,
+  getMessagesEventsBatch,
+} from "@app/lib/api/assistant/pubsub";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { GetAgentMessageEventsResponseBody } from "@app/types/api/assistant/messages";
 import { ConversationError } from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { streamEvents } from "@front-api/lib/api/sse/stream_events";
@@ -19,18 +23,12 @@ export type MessageEventsOptions = {
   transformEvent: (auth: Authenticator, event: MessageStreamEvent) => unknown;
 };
 
-// Shared orchestration for both the v1 (public API) and private SSE
-// message-events routes; each supplies its own `transformEvent`. Public-API
-// stability rules ([api-backward-compatibility]) apply to whatever the v1 caller emits.
-export async function streamMessageEventsForRoute(
+const MESSAGE_EVENTS_LONG_POLL_TIMEOUT_MS = 25_000;
+
+async function validateMessageEventsRequest(
   ctx: Context,
   auth: Authenticator,
-  {
-    conversationId,
-    messageId,
-    lastEventId,
-  }: { conversationId: string; messageId: string; lastEventId: string | null },
-  opts: MessageEventsOptions
+  { conversationId, messageId }: { conversationId: string; messageId: string }
 ) {
   const conversation = await ConversationResource.fetchById(
     auth,
@@ -67,6 +65,30 @@ export async function streamMessageEventsForRoute(
     });
   }
 
+  return null;
+}
+
+// Shared orchestration for both the v1 (public API) and private SSE
+// message-events routes; each supplies its own `transformEvent`. Public-API
+// stability rules ([api-backward-compatibility]) apply to whatever the v1 caller emits.
+export async function streamMessageEventsForRoute(
+  ctx: Context,
+  auth: Authenticator,
+  {
+    conversationId,
+    messageId,
+    lastEventId,
+  }: { conversationId: string; messageId: string; lastEventId: string | null },
+  opts: MessageEventsOptions
+) {
+  const errorResponse = await validateMessageEventsRequest(ctx, auth, {
+    conversationId,
+    messageId,
+  });
+  if (errorResponse) {
+    return errorResponse;
+  }
+
   return streamEvents({
     ctx,
     iterator: (signal) =>
@@ -74,4 +96,45 @@ export async function streamMessageEventsForRoute(
     transform: (event) => opts.transformEvent(auth, event),
     writeDoneSentinel: true,
   });
+}
+
+export async function pollMessageEventsForRoute(
+  ctx: Context,
+  auth: Authenticator,
+  {
+    conversationId,
+    messageId,
+    lastEventId,
+  }: { conversationId: string; messageId: string; lastEventId: string | null }
+) {
+  const errorResponse = await validateMessageEventsRequest(ctx, auth, {
+    conversationId,
+    messageId,
+  });
+  if (errorResponse) {
+    return errorResponse;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    MESSAGE_EVENTS_LONG_POLL_TIMEOUT_MS
+  );
+  const onRequestAbort = () => controller.abort();
+  ctx.req.raw.signal.addEventListener("abort", onRequestAbort, { once: true });
+
+  try {
+    const events = await getMessagesEventsBatch({
+      messageId,
+      lastEventId,
+      signal: controller.signal,
+    });
+
+    return ctx.json<GetAgentMessageEventsResponseBody>({
+      events: events.map((event) => JSON.stringify(event)),
+    });
+  } finally {
+    clearTimeout(timeout);
+    ctx.req.raw.signal.removeEventListener("abort", onRequestAbort);
+  }
 }
