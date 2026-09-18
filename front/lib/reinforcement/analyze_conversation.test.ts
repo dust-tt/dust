@@ -43,6 +43,35 @@ describe("buildSkillAnalysisPrompt", () => {
     expect(userMessage).toContain('name="DataLookup"');
   });
 
+  it("includes availability and reinforcement as skill attributes", () => {
+    const skill = makeSkill({
+      availability: "users_and_agents",
+      reinforcement: "on",
+    });
+    const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
+
+    expect(userMessage).toContain('availability="users_and_agents"');
+    expect(userMessage).toContain('reinforcement="on"');
+  });
+
+  it("includes user-facing description when present", () => {
+    const skill = makeSkill({
+      userFacingDescription: "Looks up customer records",
+    });
+    const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
+
+    expect(userMessage).toContain(
+      "<userFacingDescription>Looks up customer records</userFacingDescription>"
+    );
+  });
+
+  it("omits user-facing description when empty", () => {
+    const skill = makeSkill({ userFacingDescription: "" });
+    const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
+
+    expect(userMessage).not.toContain("<userFacingDescription>");
+  });
+
   it("includes description when present", () => {
     const skill = makeSkill({
       agentFacingDescription: "Searches internal databases",
@@ -55,7 +84,10 @@ describe("buildSkillAnalysisPrompt", () => {
   });
 
   it("omits description when empty", () => {
-    const skill = makeSkill({ agentFacingDescription: "" });
+    const skill = makeSkill({
+      agentFacingDescription: "",
+      userFacingDescription: "",
+    });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
 
     expect(userMessage).not.toContain("<agentFacingDescription>");

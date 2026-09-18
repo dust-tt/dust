@@ -25,6 +25,7 @@ import type { SkillWithRelationsType } from "@app/types/assistant/skill_configur
 import {
   availabilityFromIsDefault,
   SKILL_AVAILABILITIES,
+  SKILL_REINFORCEMENT_MODES,
 } from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -68,7 +69,7 @@ const PatchSkillRequestBodySchema = z.object({
   // @deprecated Use availability instead. Kept while old clients still send it.
   isDefault: z.boolean().optional(),
   availability: z.enum(SKILL_AVAILABILITIES).optional(),
-  reinforcement: z.enum(["auto", "on", "off"]).optional(),
+  reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
 });
 
 // Shared per-request prelude: resolve :sId to a SkillResource or return a

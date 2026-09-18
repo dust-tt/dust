@@ -4,6 +4,10 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { escapeXml } from "@app/types/shared/utils/string_utils";
 
 export function formatSkillContext(skill: SkillType): string {
+  const userDescBlock = skill.userFacingDescription
+    ? `<userFacingDescription>${escapeXml(skill.userFacingDescription)}</userFacingDescription>`
+    : "";
+
   const descBlock = skill.agentFacingDescription
     ? `<agentFacingDescription>${escapeXml(skill.agentFacingDescription)}</agentFacingDescription>`
     : "";
@@ -14,5 +18,5 @@ export function formatSkillContext(skill: SkillType): string {
       )}</instructions>`
     : "";
 
-  return `<skill ID="${escapeXml(skill.sId)}" name="${escapeXml(skill.name)}">${descBlock}${instructionsBlock}</skill>`;
+  return `<skill ID="${escapeXml(skill.sId)}" name="${escapeXml(skill.name)}" availability="${skill.availability}" reinforcement="${skill.reinforcement}">${userDescBlock}${descBlock}${instructionsBlock}</skill>`;
 }
