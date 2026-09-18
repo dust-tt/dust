@@ -275,6 +275,7 @@ function SidekickSuggestionsProviderContent({
 
         case "instructions":
         case "create":
+        case "delete":
           return { ...suggestion, relations: null };
 
         default:

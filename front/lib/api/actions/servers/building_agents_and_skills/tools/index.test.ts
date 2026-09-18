@@ -3,16 +3,21 @@ import {
   DESCRIBE_SKILL_TOOL_NAME,
   SUGGEST_AGENT_CREATION_INPUT_SCHEMA,
   SUGGEST_AGENT_CREATION_TOOL_NAME,
+  SUGGEST_AGENT_DELETION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  archiveAgentConfiguration,
+  getAgentConfiguration,
+} from "@app/lib/api/assistant/configuration/agent";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
@@ -32,6 +37,8 @@ const SKILL_SUGGESTION_DIRECTIVE_REGEX = new RegExp(
 );
 const AGENT_CREATE_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=create agentId=(\S+)\}$/;
+const AGENT_DELETE_SUGGESTION_DIRECTIVE_REGEX =
+  /^:agent_suggestion\[\]\{sId=(\S+) kind=delete agentId=(\S+)\}$/;
 
 function getTool(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -117,6 +124,17 @@ function extractAgentCreateSuggestionDirective(text: string): {
   agentId: string;
 } {
   const match = AGENT_CREATE_SUGGESTION_DIRECTIVE_REGEX.exec(text);
+  if (!match) {
+    throw new Error(`Unexpected tool output: ${text}`);
+  }
+  return { suggestionId: match[1], agentId: match[2] };
+}
+
+function extractAgentDeleteSuggestionDirective(text: string): {
+  suggestionId: string;
+  agentId: string;
+} {
+  const match = AGENT_DELETE_SUGGESTION_DIRECTIVE_REGEX.exec(text);
   if (!match) {
     throw new Error(`Unexpected tool output: ${text}`);
   }
@@ -774,6 +792,120 @@ describe("building_agents_and_skills tools", () => {
         throw new Error("Expected an error.");
       }
       expect(result.error.message).toContain("restricted");
+    });
+  });
+  describe(SUGGEST_AGENT_DELETION_TOOL_NAME, () => {
+    it("records a pending delete suggestion and outdates previous ones", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Old Helper" }
+      );
+
+      const first = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
+        { agentId: agent.sId, analysis: "Unused for months." },
+        makeExtra(authenticator)
+      );
+      expect(first.isOk()).toBe(true);
+      if (first.isErr()) {
+        throw first.error;
+      }
+      const firstOutput = first.value[0];
+      if (firstOutput?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const { suggestionId: firstId, agentId } =
+        extractAgentDeleteSuggestionDirective(firstOutput.text);
+      expect(agentId).toBe(agent.sId);
+
+      const suggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        firstId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.kind).toBe("delete");
+      expect(suggestion?.toJSON()).toMatchObject({
+        suggestion: { name: "Old Helper" },
+        analysis: "Unused for months.",
+      });
+
+      // The agent itself is untouched.
+      const untouched = await getAgentConfiguration(authenticator, {
+        agentId: agent.sId,
+        variant: "light",
+      });
+      expect(untouched?.status).toBe("active");
+
+      const second = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(authenticator)
+      );
+      expect(second.isOk()).toBe(true);
+
+      const previous = await AgentSuggestionResource.fetchById(
+        authenticator,
+        firstId
+      );
+      expect(previous?.state).toBe("outdated");
+    });
+
+    it("returns an MCPError without an interactive user", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const nonInteractiveAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(nonInteractiveAuth)
+      );
+      expectMcpError(result, "interactive user");
+    });
+
+    it("returns an MCPError for an unknown agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
+        { agentId: "unknown_agent" },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "not found");
+    });
+
+    it("returns an MCPError when the caller is not an editor", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const other = await addMember(workspace);
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        other.sId,
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(otherAuth)
+      );
+      expectMcpError(result, "Only editors");
+    });
+
+    it("returns an MCPError for an archived agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      await archiveAgentConfiguration(authenticator, agent.sId);
+
+      const result = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "active agents");
     });
   });
 });

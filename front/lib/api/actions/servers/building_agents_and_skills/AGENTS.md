@@ -35,8 +35,15 @@ and the parsed payload, and call `toJSON()`.
 - Validation that a manual route already performs (e.g. `PATCH /skills/:sId/editors`) must be
   extracted to `front/lib/api/skills/` and shared with that route, so the apply step can re-run
   it against live state.
+- Pass `source: "conversational"` explicitly in every `createSuggestionForAgent` /
+  `createSuggestionForSkill` call from a tool (`explicit-suggestion-source` in `CONTRACTS`): the
+  column's `sidekick`/legacy default is not a fallback for new callers, and factories used by the
+  new tests need the same explicit `source` (see `AgentSuggestionFactory`/`SkillSuggestionFactory`).
 - Prune conflicting pending suggestions of the same kind and mark them `outdated`
-  (`front/lib/reinforcement/skill_suggestion_pruning.ts`).
+  (`front/lib/reinforcement/skill_suggestion_pruning.ts`). If the prune-then-insert sequence must
+  guarantee a single open pending suggestion per target (`no-direct-deletion`-style contracts),
+  serialize it with `executeWithLockResult` (`front/lib/lock.ts`) keyed by the target id — the
+  read/outdate/insert steps are not otherwise atomic.
 - Output a directive: `:skill_suggestion[]{sId=... kind=<kind> skillId=...}` or
   `:agent_suggestion[]{sId=... kind=<kind> agentId=...}`.
 - `tools/index.ts`: register the handler. Add `@cc` contracts for security-relevant invariants
