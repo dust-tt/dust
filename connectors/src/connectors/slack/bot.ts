@@ -125,7 +125,7 @@ type BotAnswerParams = {
   responseUrl?: string;
   slackTeamId: string;
   slackChannel: string;
-  slackUserId: string;
+  slackUserId?: string;
   slackBotId?: string;
   slackBotUsername?: string;
   slackMessageTs: string;
@@ -844,6 +844,7 @@ async function answerMessage(
       slackBotId,
       slackBotUsername,
       channelId: slackChannel,
+      threadTs: slackThreadTs ?? slackMessageTs,
       messageTs: slackMessageTs,
     });
     if (!slackUserInfo) {

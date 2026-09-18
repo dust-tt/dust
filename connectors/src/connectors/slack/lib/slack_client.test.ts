@@ -48,6 +48,7 @@ describe("getSlackBotInfoFromMessage", () => {
 
     const info = await getSlackBotInfoFromMessage(connectorId, slackClient, {
       channelId,
+      threadTs: messageTs,
       messageTs,
     });
 
@@ -78,11 +79,18 @@ describe("getSlackBotInfoFromMessage", () => {
       { ts: "1700000003.000001", thread_ts: parentTs, username: "Other bot" },
     ]);
 
+    const replies = vi.spyOn(slackClient.conversations, "replies");
+
     const info = await getSlackBotInfoFromMessage(connectorId, slackClient, {
       channelId,
+      threadTs: parentTs,
       messageTs,
     });
 
+    expect(replies).toHaveBeenCalledWith({
+      channel: channelId,
+      ts: parentTs,
+    });
     expect(info?.real_name).toBe("Onboarding requests");
   });
 
@@ -94,6 +102,7 @@ describe("getSlackBotInfoFromMessage", () => {
 
     const info = await getSlackBotInfoFromMessage(connectorId, slackClient, {
       channelId,
+      threadTs: messageTs,
       messageTs,
     });
 
@@ -109,6 +118,7 @@ describe("getSlackBotInfoFromMessage", () => {
     await expect(
       getSlackBotInfoFromMessage(connectorId, slackClient, {
         channelId,
+        threadTs: messageTs,
         messageTs,
       })
     ).rejects.toThrow("channel_not_found");
@@ -121,6 +131,7 @@ describe("getSlackBotInfoFromMessage", () => {
 
     const info = await getSlackBotInfoFromMessage(connectorId, slackClient, {
       channelId,
+      threadTs: messageTs,
       messageTs,
     });
 
@@ -137,6 +148,7 @@ describe("getSlackBotInfoFromMessage", () => {
 
     const info = await getSlackBotInfoFromMessage(connectorId, slackClient, {
       channelId,
+      threadTs: messageTs,
       messageTs,
     });
 
@@ -150,6 +162,7 @@ describe("getSlackBotInfoFromMessage", () => {
 
     const info = await getSlackBotInfoFromMessage(connectorId, slackClient, {
       channelId,
+      threadTs: messageTs,
       messageTs,
     });
 
@@ -162,6 +175,7 @@ describe("resolveSlackBotInfo", () => {
     slackBotId: "B0TESTWORKF",
     slackBotUsername: undefined,
     channelId,
+    threadTs: messageTs,
     messageTs,
   };
 

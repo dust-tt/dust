@@ -294,15 +294,20 @@ const SlackBotMessageSchema = z.object({
 /**
  * @cc [owner:rfrenoy,label:product] bot-name-from-message-username
  * The returned bot MUST be named after the trimmed `username` of the message whose `ts` is
- * `messageTs` in `channelId`, which is where Slack Workflow Builder posts (`subtype: bot_message`)
- * carry their name when `bots.info` answers `bot_not_found`. Other messages Slack returns alongside
- * it, such as a thread parent, MUST be ignored. When that message is absent or has no `username`,
- * the function MUST return `null` rather than a bot with an empty name.
+ * `messageTs`, read from the thread `threadTs` in `channelId` (`threadTs` equals `messageTs` for a
+ * top-level message). That is where Slack Workflow Builder posts (`subtype: bot_message`) carry
+ * their name when `bots.info` answers `bot_not_found`. Other messages of the thread MUST be
+ * ignored. When that message is absent or has no `username`, the function MUST return `null`
+ * rather than a bot with an empty name.
  */
 export async function getSlackBotInfoFromMessage(
   connectorId: ModelId,
   slackClient: WebClient,
-  { channelId, messageTs }: { channelId: string; messageTs: string }
+  {
+    channelId,
+    threadTs,
+    messageTs,
+  }: { channelId: string; threadTs: string; messageTs: string }
 ): Promise<SlackUserInfo | null> {
   reportSlackUsage({
     connectorId,
@@ -319,7 +324,7 @@ export async function getSlackBotInfoFromMessage(
       () =>
         slackClient.conversations.replies({
           channel: channelId,
-          ts: messageTs,
+          ts: threadTs,
         }),
       { source: "getSlackBotInfoFromMessage" }
     );
@@ -357,8 +362,9 @@ export async function getSlackBotInfoFromMessage(
  * @cc [owner:rfrenoy,label:product] bot-identity-resolution-order
  * The bot posting a message MUST be identified from `bots.info` when Slack resolves `slackBotId` to
  * a named bot, otherwise from the trimmed `slackBotUsername` carried by the webhook event, otherwise
- * from the `username` of the message at `messageTs`. A `bots.info` failure other than
- * `bot_not_found` MUST propagate. When no source yields a name, the function MUST return `null`.
+ * from the `username` of the message `messageTs` in thread `threadTs`. A `bots.info` failure other
+ * than `bot_not_found` MUST propagate. When no source yields a name, the function MUST return
+ * `null`.
  */
 export async function resolveSlackBotInfo(
   connectorId: ModelId,
@@ -367,11 +373,13 @@ export async function resolveSlackBotInfo(
     slackBotId,
     slackBotUsername,
     channelId,
+    threadTs,
     messageTs,
   }: {
     slackBotId: string;
     slackBotUsername: string | undefined;
     channelId: string;
+    threadTs: string;
     messageTs: string;
   }
 ): Promise<SlackUserInfo | null> {
@@ -399,6 +407,7 @@ export async function resolveSlackBotInfo(
 
   return getSlackBotInfoFromMessage(connectorId, slackClient, {
     channelId,
+    threadTs,
     messageTs,
   });
 }
