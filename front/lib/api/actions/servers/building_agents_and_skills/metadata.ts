@@ -119,8 +119,8 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   {
     name: DESCRIBE_SKILL_TOOL_NAME,
     description:
-      "Get a custom Skill's name, agent-facing description, and instructions as HTML whose blocks " +
-      "carry a data-block-id.",
+      "Get a custom Skill's name, availability, self-improvement mode, user-facing and " +
+      "agent-facing descriptions, and instructions as HTML whose blocks carry a data-block-id.",
     schema: {
       skillId: z.string().describe("The id of the custom skill to describe."),
     },
