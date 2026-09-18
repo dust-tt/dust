@@ -35,9 +35,10 @@ export function hasReachedCreditSpendCheckpoint({
 }
 
 /**
- * @cc [owner:avervaet,label:product] checkpoint-acknowledged-skips
- * When the message's checkpoint status is `acknowledged`, this MUST return false, whatever the
- * spend. A user who chose to continue is never asked again for the same message.
+ * @cc [owner:avervaet,label:product] checkpoint-resolved-skips
+ * When the message's checkpoint status is `acknowledged` or `stopped`, this MUST return false,
+ * whatever the spend. A message whose pause was already resolved, either way, is never asked
+ * again.
  */
 /**
  * @cc [owner:avervaet,label:product] checkpoint-root-messages-only
@@ -52,7 +53,12 @@ export function hasCrossedCreditSpendCheckpoint({
 }: {
   isExempt: boolean;
   isRootAgentMessage: boolean;
-  status: "paused" | "acknowledged" | null;
+  status: "paused" | "acknowledged" | "stopped" | null;
 }): boolean {
-  return !isExempt && isRootAgentMessage && status !== "acknowledged";
+  return (
+    !isExempt &&
+    isRootAgentMessage &&
+    status !== "acknowledged" &&
+    status !== "stopped"
+  );
 }

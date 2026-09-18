@@ -128,4 +128,14 @@ describe("hasCrossedCreditSpendCheckpoint", () => {
       })
     ).toBe(true);
   });
+
+  it("is false once stopped", () => {
+    expect(
+      hasCrossedCreditSpendCheckpoint({
+        isExempt: false,
+        isRootAgentMessage: true,
+        status: "stopped",
+      })
+    ).toBe(false);
+  });
 });

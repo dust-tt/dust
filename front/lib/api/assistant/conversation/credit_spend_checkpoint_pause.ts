@@ -122,7 +122,7 @@ async function relaunchAfterCheckpointResolution(
   }: {
     agentLoopArgs: AgentLoopArgs;
     agentMessage: AgentMessageType;
-    resolvedStatus: "acknowledged" | null;
+    resolvedStatus: "acknowledged" | "stopped";
     startAsToolFreeGracefulStop: boolean;
   }
 ): Promise<Result<void, DustError | Error>> {
@@ -188,6 +188,12 @@ export async function continueCreditSpendCheckpointPause(
  * (see `tool-free-graceful-stop-start`) rather than a bespoke LLM call, so it goes through the
  * loop's normal persistence, streaming, and per-execution-scoped finalize side effects.
  */
+/**
+ * @cc [owner:avervaet,label:backend;product] checkpoint-decline-status-distinct
+ * Declining MUST transition `creditSpendCheckpointStatus` to `"stopped"`, a value distinct from
+ * `null`, so a later reader can tell a message that was declined at the checkpoint apart from one
+ * that was never paused.
+ */
 export async function declineCreditSpendCheckpointPause(
   auth: Authenticator,
   conversation: ConversationResource,
@@ -202,7 +208,7 @@ export async function declineCreditSpendCheckpointPause(
 
   return relaunchAfterCheckpointResolution(auth, conversation, {
     ...foundRes.value,
-    resolvedStatus: null,
+    resolvedStatus: "stopped",
     startAsToolFreeGracefulStop: true,
   });
 }
