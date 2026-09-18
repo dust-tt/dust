@@ -7,13 +7,13 @@ import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_
  *
  * `noun` is the word used for the entity being built ("agent" or "entity").
  */
-export type EntityNoun = "agent" | "entity";
+export type EntityName = "agent" | "entity";
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 // ─── Instructions quality ────────────────────────────────────────────────
 
-export function bestPracticesSection(noun: EntityNoun): string {
+export function bestPracticesSection(noun: EntityName): string {
   return `It is best practice for ${noun} instructions to include:
 1. Role & Goal - Who the ${noun} is and what it achieves (not just "you help users")
 2. Expertise & Context - Domain knowledge, company-specific context LLMs can't know
@@ -31,7 +31,7 @@ NEVER write instructions that depend on a tool, skill, or knowledge source the w
 Suggestions ALWAYS need to be using the same language as the existing instructions OR, for new ${noun}s, the language of the user conversation.`;
 }
 
-export function generalizationOverExamplesSection(noun: EntityNoun): string {
+export function generalizationOverExamplesSection(noun: EntityName): string {
   return `<generalization_over_examples>
 When users provide examples, extract the INTENT, not the literal pattern:
 - Examples are illustrations, not the full scope
@@ -50,7 +50,7 @@ The goal is flexible ${noun}s that handle real-world variation, not brittle ${no
 </generalization_over_examples>`;
 }
 
-export function llmCentricSuggestionsSection(noun: EntityNoun): string {
+export function llmCentricSuggestionsSection(noun: EntityName): string {
   return `<llm_centric_suggestions>
 Focus suggestions on actionable information that changes what the ${noun} does.
 
@@ -72,7 +72,7 @@ When you detect a conflict: flag it BEFORE suggesting.
 // ─── Block-aware editing ─────────────────────────────────────────────────
 
 export interface BlockAwareEditingOptions {
-  noun: EntityNoun;
+  noun: EntityName;
   /** Tool(s) that take `instructionEdits`, e.g. "`suggest_prompt_edits`". */
   editTool: string;
   /** How the model obtains the blocks with their `data-block-id`. */
@@ -233,7 +233,7 @@ export const MODEL_GUIDANCE_LINE = `Model: Haiku is a good default for simple, s
 
 // ─── Workflow helpers ────────────────────────────────────────────────────
 
-export function companyDataGuidanceSection(noun: EntityNoun): string {
+export function companyDataGuidanceSection(noun: EntityName): string {
   return `<company_data_guidance>
 You have access to company space data (semantic_search, list, find, cat tools). Use it only as required to answer business requirement questions or to get information about a specific data source.
 
@@ -260,7 +260,7 @@ export function workflowVisualizationSection({
   noun,
   configSource,
 }: {
-  noun: EntityNoun;
+  noun: EntityName;
   /** Step 1: how to retrieve the current configuration. */
   configSource: string;
 }): string {
@@ -302,7 +302,7 @@ export function responseStyleSection({
   editTool,
   contextNote,
 }: {
-  noun: EntityNoun;
+  noun: EntityName;
   /** Tool(s) in which block IDs may appear, e.g. "`suggest_prompt_edits`". */
   editTool: string;
   /** Optional sentence appended to the opening line (e.g. why concision matters). */
