@@ -223,7 +223,7 @@ export class AgentResource
   readonly description: string;
   readonly status: AgentConfigurationStatus;
   readonly pictureUrl: string;
-  private readonly versionAuthorId: ModelId | null;
+  readonly versionAuthorId: ModelId | null;
   private readonly requestedSpaceIds: ModelId[];
   readonly modelConfiguration: AgentModelConfigurationType;
   // Mutable so a light resource can be enriched to full in place once read access is confirmed
@@ -1100,7 +1100,7 @@ export class AgentResource
     auth: Authenticator,
     params: SaveAgentConfigurationParams,
     transaction?: Transaction
-  ): Promise<Result<LightAgentConfigurationType, Error>> {
+  ): Promise<Result<AgentResource, Error>> {
     if (!(await auth.hasWorkspacePermission("create", "agent"))) {
       return new Err(new Error("Creating agents is restricted."));
     }
@@ -1120,7 +1120,7 @@ export class AgentResource
     auth: Authenticator,
     params: SaveAgentConfigurationParams,
     transaction?: Transaction
-  ): Promise<Result<LightAgentConfigurationType, Error>> {
+  ): Promise<Result<AgentResource, Error>> {
     if (!auth.can("write", this)) {
       return new Err(
         new Error("You don't have permission to edit this agent.")
@@ -1170,7 +1170,7 @@ export class AgentResource
       reinforcement?: AgentReinforcementMode;
     },
     transaction?: Transaction
-  ): Promise<Result<LightAgentConfigurationType, Error>> {
+  ): Promise<Result<AgentResource, Error>> {
     const owner = auth.workspace();
     if (!owner) {
       throw new Error("Unexpected `auth` without `workspace`.");
@@ -1192,8 +1192,6 @@ export class AgentResource
     }
 
     let version = 0;
-
-    let userFavorite = false;
 
     // Track removed editors so their triggers can be disabled if this save leaves the agent hidden.
     let removedEditors: UserType[] = [];
@@ -1234,39 +1232,27 @@ export class AgentResource
         let existingAgent = null;
 
         if (agentConfigurationId) {
-          const [agentConfiguration, userRelation] = await Promise.all([
-            AgentConfigurationModel.findOne({
-              where: {
-                sId: agentConfigurationId,
-                workspaceId: owner.id,
-              },
-              attributes: [
-                "agentId",
-                "scope",
-                "version",
-                "id",
-                "sId",
-                "status",
-                "authorId",
-                "workspaceId",
-                "createdAt",
-                "reinforcement",
-              ],
-              order: [["version", "DESC"]],
-              transaction: t,
-              limit: 1,
-            }),
-            AgentUserRelationModel.findOne({
-              where: {
-                workspaceId: owner.id,
-                agentConfiguration: agentConfigurationId,
-                userId: authorId,
-              },
-              transaction: t,
-            }),
-          ]);
-
-          existingAgent = agentConfiguration;
+          existingAgent = await AgentConfigurationModel.findOne({
+            where: {
+              sId: agentConfigurationId,
+              workspaceId: owner.id,
+            },
+            attributes: [
+              "agentId",
+              "scope",
+              "version",
+              "id",
+              "sId",
+              "status",
+              "authorId",
+              "workspaceId",
+              "createdAt",
+              "reinforcement",
+            ],
+            order: [["version", "DESC"]],
+            transaction: t,
+            limit: 1,
+          });
 
           if (existingAgent) {
             if (existingAgent.status === "archived") {
@@ -1309,8 +1295,6 @@ export class AgentResource
               );
             }
           }
-
-          userFavorite = userRelation?.favorite ?? false;
         }
 
         // `existingAgent` is null both when no `agentConfigurationId` was given and when one was
@@ -1579,51 +1563,25 @@ export class AgentResource
 
       const agent = await withTransaction(performCreation, transaction);
 
-      /*
-       * Final rendering.
-       */
-      const agentConfiguration: LightAgentConfigurationType = {
-        id: agent.id,
-        agentModelId: agent.agentId,
-        sId: agent.sId,
-        versionCreatedAt: agent.createdAt.toISOString(),
-        version: agent.version,
-        versionAuthorId: agent.authorId,
-        scope: agent.scope,
-        name: agent.name,
-        description: agent.description,
-        instructions: agent.instructions,
-        userFavorite,
-        model: {
-          providerId: agent.providerId,
-          modelId: agent.modelId,
-          temperature: agent.temperature,
-          responseFormat: agent.responseFormat,
-        },
-        pictureUrl: agent.pictureUrl,
-        status: agent.status,
-        maxStepsPerRun: agent.maxStepsPerRun,
-        templateId: template?.sId ?? null,
-        requestedGroupIds: [],
-        requestedSpaceIds: agent.requestedSpaceIds.map((spaceId) =>
-          SpaceResource.modelIdToSId({ id: spaceId, workspaceId: owner.id })
-        ),
-        tags,
-        reinforcement: reinforcement ?? "auto",
-        canRead: true,
-        canEdit: true,
-      };
+      // Resolve the saved agent through the access-controlled resolver. In every real path the caller
+      // is the author (or otherwise holds read), so this is the `full` agent they just wrote.
+      const resource = await AgentResource.fetchById(auth, agent.sId);
+      if (resource === null) {
+        return new Err(
+          new Error("Unexpected: the saved agent could not be resolved.")
+        );
+      }
 
-      await agentConfigurationWasUpdatedBy({
-        agent: agentConfiguration,
-        auth,
-      });
+      // Recording the recent author reads the current version, so it needs the full resource.
+      if (resource.isFull()) {
+        await agentConfigurationWasUpdatedBy({ agent: resource, auth });
+      }
 
       // Disable triggers for editors who were removed from a hidden agent.
       if (removedEditors.length > 0 && scope === "hidden") {
         const triggersToDisableRes =
           await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
-            agentConfigurationId: agent.sId,
+            agentConfigurationId: resource.sId,
             editorIds: removedEditors.map((editor) => editor.id),
           });
         if (triggersToDisableRes.isOk()) {
@@ -1633,37 +1591,36 @@ export class AgentResource
               logger.error(
                 {
                   workspaceId: owner.sId,
-                  agentConfigurationId: agent.sId,
+                  agentConfigurationId: resource.sId,
                   triggerId: trigger.sId,
                   error: disableResult.error,
                 },
-                `Failed to disable trigger ${trigger.sId} when removing editor from agent ${agent.sId}`
+                `Failed to disable trigger ${trigger.sId} when removing editor from agent ${resource.sId}`
               );
             }
           }
         }
       }
 
-      if (agentConfiguration.status === "active") {
-        const isCreate =
-          !agentConfigurationId || agentConfiguration.version === 0;
+      if (resource.status === "active") {
+        const isCreate = !agentConfigurationId || version === 0;
         void emitAuditLogEvent({
           auth,
           action: isCreate ? "agent.created" : "agent.updated",
           targets: [
             buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-            buildAuditLogTarget("agent", agentConfiguration),
+            buildAuditLogTarget("agent", resource),
           ],
           context: getAuditLogContext(auth),
           metadata: {
-            agent_name: agentConfiguration.name,
+            agent_name: resource.name,
             scope: scope,
             model: `${model.providerId}/${model.modelId}`,
           },
         });
       }
 
-      return new Ok(agentConfiguration);
+      return new Ok(resource);
     } catch (error) {
       if (error instanceof UniqueConstraintError) {
         return new Err(new Error("An agent with this name already exists."));

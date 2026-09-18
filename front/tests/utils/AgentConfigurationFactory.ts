@@ -1,3 +1,4 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
@@ -43,7 +44,7 @@ export class AgentConfigurationFactory {
     // editor group, but authorId below still preserves attribution and the author fallback.
     const editors = Authenticator.isMember(auth.role()) ? [user.toJSON()] : [];
 
-    // Internal auth only bypasses the create capability; explicit authorId keeps attribution.
+    // Internal auth only bypasses the create/publish capabilities; explicit authorId keeps attribution.
     const internalAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -79,7 +80,17 @@ export class AgentConfigurationFactory {
     // working as if `auth` itself had been used.
     await auth.refresh();
 
-    return { ...result.value, instructionsHtml: null, actions: [] };
+    // makeNew resolves the resource for its saver (the internal admin). Re-read the full config as
+    // the caller — `dangerouslySkipPermissionFiltering` so tests may build agents on spaces the
+    // caller cannot read (the agent still ends up correctly space-restricted).
+    const config = await getAgentConfiguration(auth, {
+      agentId: result.value.sId,
+      variant: "full",
+      dangerouslySkipPermissionFiltering: true,
+    });
+    assert(config, "The saved agent must be resolvable");
+
+    return config;
   }
 
   /**
@@ -131,7 +142,9 @@ export class AgentConfigurationFactory {
     }
 
     return {
-      ...result.value,
+      ...result.value.toJSON(),
+      tags: [],
+      userFavorite: false,
       instructionsHtml: overrides.instructionsHtml ?? null,
       actions: [],
     };

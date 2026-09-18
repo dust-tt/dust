@@ -136,7 +136,13 @@ describe.each([
     const restrictedSpace = await SpaceFactory.regular(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
-      { scope: "hidden", requestedSpaceIds: [restrictedSpace.id] }
+      { scope: "hidden" }
+    );
+    // Put the agent behind the restricted space after creation: nobody can create an agent on a
+    // space they cannot read, but an existing agent can end up on one the caller cannot read.
+    await AgentConfigurationModel.update(
+      { requestedSpaceIds: [restrictedSpace.id] },
+      { where: { sId: agent.sId, workspaceId: workspace.id } }
     );
 
     const configuration = await getAgentConfiguration(authenticator, {
@@ -156,7 +162,13 @@ describe.each([
     const restrictedSpace = await SpaceFactory.regular(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
-      { scope: "hidden", requestedSpaceIds: [restrictedSpace.id] }
+      { scope: "hidden" }
+    );
+    // Put the agent behind the restricted space after creation: nobody can create an agent on a
+    // space they cannot read, but an existing agent can end up on one the caller cannot read.
+    await AgentConfigurationModel.update(
+      { requestedSpaceIds: [restrictedSpace.id] },
+      { where: { sId: agent.sId, workspaceId: workspace.id } }
     );
     const group = await GroupFactory.regularManual(workspace, "Agent editors");
     const resource = AgentResource.fromAgentConfiguration(authenticator, agent);

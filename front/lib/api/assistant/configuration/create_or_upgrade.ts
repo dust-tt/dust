@@ -208,7 +208,7 @@ export async function createOrUpgradeAgentConfiguration({
     authorId: resolvedAuthorId,
   };
 
-  let agentConfigurationRes: Result<LightAgentConfigurationType, Error>;
+  let agentConfigurationRes: Result<AgentResource, Error>;
   if (agentConfigurationId) {
     const agentResource = await AgentResource.fetchById(
       auth,
@@ -236,6 +236,14 @@ export async function createOrUpgradeAgentConfiguration({
     return agentConfigurationRes;
   }
 
+  // makeNew/updateConfiguration return the saved agent as a resource; the steps below (action and
+  // skill creation, rollback, tracking) and the final response want a light config, so derive one.
+  const savedConfig: LightAgentConfigurationType = {
+    ...agentConfigurationRes.value.toJSON(),
+    tags: assistant.tags,
+    userFavorite: false,
+  };
+
   const actionConfigs: MCPServerConfigurationType[] = [];
 
   for (const action of actions) {
@@ -256,13 +264,13 @@ export async function createOrUpgradeAgentConfiguration({
         jsonSchema: action.jsonSchema,
         dustProject: action.dustProject,
       } as ServerSideMCPServerConfigurationType,
-      agentConfigurationRes.value
+      savedConfig
     );
     if (res.isErr()) {
       logger.error(
         {
           error: res.error,
-          agentConfigurationId: agentConfigurationRes.value.sId,
+          agentConfigurationId: savedConfig.sId,
           workspaceId: auth.getNonNullableWorkspace().sId,
           mcpServerViewId: action.mcpServerViewId,
         },
@@ -270,10 +278,7 @@ export async function createOrUpgradeAgentConfiguration({
       );
       // If we fail to create an action, we should delete the agent configuration
       // we just created and re-throw the error.
-      await unsafeHardDeleteAgentConfiguration(
-        auth,
-        agentConfigurationRes.value
-      );
+      await unsafeHardDeleteAgentConfiguration(auth, savedConfig);
       // If we were upgrading an existing agent (i.e., creating a new
       // version for an existing `agentConfigurationId`), we archived the
       // previous version just before creating this one. Since creation of
@@ -283,14 +288,14 @@ export async function createOrUpgradeAgentConfiguration({
       if (agentConfigurationId) {
         const restoredResult = await restoreAgentConfiguration(
           auth,
-          agentConfigurationRes.value.sId
+          savedConfig.sId
         );
         if (restoredResult.isErr()) {
           logger.error(
             {
               error: restoredResult.error,
               workspaceId: auth.getNonNullableWorkspace().sId,
-              agentConfigurationId: agentConfigurationRes.value.sId,
+              agentConfigurationId: savedConfig.sId,
             },
             "Error while restoring previous agent version after rollback"
           );
@@ -298,7 +303,7 @@ export async function createOrUpgradeAgentConfiguration({
           logger.error(
             {
               workspaceId: auth.getNonNullableWorkspace().sId,
-              agentConfigurationId: agentConfigurationRes.value.sId,
+              agentConfigurationId: savedConfig.sId,
             },
             "Failed to restore previous agent version after action creation error"
           );
@@ -319,7 +324,7 @@ export async function createOrUpgradeAgentConfiguration({
         logger.warn(
           {
             workspaceId: owner.sId,
-            agentConfigurationId: agentConfigurationRes.value.sId,
+            agentConfigurationId: savedConfig.sId,
             skillId: skill.sId,
           },
           "Skill not found when creating agent configuration, skipping"
@@ -331,12 +336,12 @@ export async function createOrUpgradeAgentConfiguration({
     })
   );
   await SkillResource.addManyToAgent(auth, {
-    agentConfiguration: agentConfigurationRes.value,
+    agentConfiguration: savedConfig,
     skills: skillsToAdd,
   });
 
   const agentConfiguration: AgentConfigurationType = {
-    ...agentConfigurationRes.value,
+    ...savedConfig,
     instructionsHtml: assistant.instructionsHtml ?? null,
     actions: actionConfigs,
   };
@@ -348,7 +353,7 @@ export async function createOrUpgradeAgentConfiguration({
   }
 
   // We are not tracking draft agents
-  if (agentConfigurationRes.value.status === "active") {
+  if (savedConfig.status === "active") {
     void ServerSideTracking.trackAssistantCreated({
       user: auth.user() ?? undefined,
       workspace: auth.workspace() ?? undefined,
