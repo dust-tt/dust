@@ -167,10 +167,7 @@ pub enum CallToolPostResponse {
         #[serde(default)]
         server_timings_ms: Option<ToolCallServerTimingsMs>,
     },
-    Rejected {
-        #[serde(default)]
-        server_timings_ms: Option<ToolCallServerTimingsMs>,
-    },
+    Rejected,
     /// Same shape as a successful poll body: front may return the terminal
     /// result on the create POST when the tool finishes within the early-wait budget.
     Success {
@@ -205,7 +202,7 @@ pub fn interpret_call_tool_post_response(resp: CallToolPostResponse) -> CallTool
             action_id,
             server_timings_ms,
         },
-        CallToolPostResponse::Rejected { .. } => CallToolPostOutcome::Rejected,
+        CallToolPostResponse::Rejected => CallToolPostOutcome::Rejected,
         CallToolPostResponse::Success {
             action,
             server_timings_ms,
@@ -524,12 +521,7 @@ mod tests {
     fn parse_call_tool_post_response_rejected() {
         let resp: CallToolPostResponse =
             serde_json::from_str(r#"{"status":"rejected"}"#).expect("should parse");
-        assert!(matches!(
-            resp,
-            CallToolPostResponse::Rejected {
-                server_timings_ms: _
-            }
-        ));
+        assert!(matches!(resp, CallToolPostResponse::Rejected));
     }
 
     #[test]
