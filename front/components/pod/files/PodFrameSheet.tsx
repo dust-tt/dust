@@ -6,6 +6,7 @@ import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import { getFrameFunctionReferenceKind } from "@app/types/api/frame_function_reference";
+import { getFileDisplayName } from "@app/types/files";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -95,7 +96,7 @@ export function PodFrameSheet({
         <SheetHeader hideButton>
           <div className="flex min-w-0 items-center gap-2">
             <SheetTitle className="min-w-0 flex-1 truncate">
-              {fileMetadata?.fileName}
+              {fileMetadata && getFileDisplayName(fileMetadata)}
             </SheetTitle>
             {fileId && (
               <div className="flex max-w-[60%] shrink-0 items-center justify-end gap-1 overflow-x-auto">
