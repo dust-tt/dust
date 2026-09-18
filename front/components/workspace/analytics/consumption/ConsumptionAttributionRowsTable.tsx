@@ -17,6 +17,7 @@ import type {
   ColumnDef,
   OnChangeFn,
   SortingState,
+  VisibilityState,
 } from "@tanstack/react-table";
 import {
   flexRender,
@@ -25,7 +26,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import type { ComponentType } from "react";
-import { Fragment } from "react";
+import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import type { ConsumptionAttributionBreakdownProps } from "./ConsumptionAttributionBreakdown";
 import { ConsumptionAttributionBreakdown } from "./ConsumptionAttributionBreakdown";
 import type { ConsumptionDimension } from "./consumptionDimensions";
@@ -38,6 +39,33 @@ export type AttributionRowData = ConsumptionTopRow & {
 };
 
 const ATTRIBUTION_SKELETON_ROW_COUNT = 10;
+
+// Table container widths below which a column is hidden, least important
+// first, so headers never overlap in narrow layouts (agent sheet, small
+// windows). Driven in JS rather than CSS so the breakdown row's colSpan and
+// the skeleton match the rendered columns.
+const ATTRIBUTION_COLUMN_MIN_CONTAINER_WIDTH_PX: Record<string, number> = {
+  vsPrev: 1024,
+  avgCredits: 896,
+  usageVsAverage: 896,
+  count: 672,
+  costShare: 576,
+  activeMembers: 576,
+};
+
+// Every column shows until the container has been measured.
+export function attributionColumnVisibility(
+  containerWidthPx: number | null
+): VisibilityState {
+  return Object.fromEntries(
+    Object.entries(ATTRIBUTION_COLUMN_MIN_CONTAINER_WIDTH_PX).map(
+      ([columnId, minWidthPx]) => [
+        columnId,
+        containerWidthPx === null || containerWidthPx >= minWidthPx,
+      ]
+    )
+  );
+}
 
 interface AttributionSkeletonCellProps {
   columnId: string;
@@ -152,17 +180,38 @@ export function ConsumptionAttributionRowsTableView({
   onSortingChange,
   BreakdownComponent,
 }: ConsumptionAttributionRowsTableViewProps) {
+  const [containerWidthPx, setContainerWidthPx] = useState<number | null>(
+    null
+  );
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const setContainerNode = useCallback((node: HTMLDivElement | null) => {
+    resizeObserverRef.current?.disconnect();
+    resizeObserverRef.current = null;
+    if (!node || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const observer = new ResizeObserver(([entry]) => {
+      setContainerWidthPx(entry.contentRect.width);
+    });
+    observer.observe(node);
+    resizeObserverRef.current = observer;
+  }, []);
+  const columnVisibility = useMemo(
+    () => attributionColumnVisibility(containerWidthPx),
+    [containerWidthPx]
+  );
+
   const table = useReactTable({
     data,
     columns,
-    state: { sorting },
+    state: { sorting, columnVisibility },
     onSortingChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
 
   return (
-    <DataTable.Root className="min-w-150">
+    <DataTable.Root containerRef={setContainerNode}>
       <DataTable.Header>
         {table.getHeaderGroups().map((headerGroup) => (
           <DataTable.Row key={headerGroup.id} widthClassName="w-full">
@@ -215,7 +264,7 @@ export function ConsumptionAttributionRowsTableView({
                 widthClassName="w-full"
                 aria-hidden="true"
               >
-                {table.getAllLeafColumns().map((column) => (
+                {table.getVisibleLeafColumns().map((column) => (
                   <DataTable.Cell column={column} key={column.id}>
                     <AttributionSkeletonCell
                       columnId={column.id}
