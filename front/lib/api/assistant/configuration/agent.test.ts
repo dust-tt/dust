@@ -15,6 +15,7 @@ import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
@@ -280,6 +281,31 @@ describe("getAgentConfigurations", () => {
 });
 
 describe("stable agent identities", () => {
+  it("does not create legacy editor links for new agents or versions", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const firstVersion =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      firstVersion.sId
+    );
+
+    const versions = await AgentConfigurationModel.findAll({
+      where: { sId: firstVersion.sId, workspaceId: workspace.id },
+      attributes: ["id"],
+    });
+    expect(
+      await GroupAgentModel.count({
+        where: {
+          workspaceId: workspace.id,
+          agentConfigurationId: versions.map((version) => version.id),
+        },
+      })
+    ).toBe(0);
+  });
+
   it("reuses one identity across agent versions", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
@@ -458,6 +484,14 @@ describe("saveAgentConfiguration with pending agent", () => {
         (editor) => editor.sId
       )
     ).toEqual([user.sId]);
+    expect(
+      await GroupAgentModel.count({
+        where: {
+          workspaceId: workspace.id,
+          agentConfigurationId: pendingAgent.id,
+        },
+      })
+    ).toBe(0);
 
     // Convert the pending agent to active by passing its sId as agentConfigurationId
     const result = await saveAgentConfiguration(authenticator, {
@@ -499,6 +533,14 @@ describe("saveAgentConfiguration with pending agent", () => {
     expect(agent.status).toBe("active");
     expect(agent.name).toBe("My New Agent");
     expect(agent.version).toBe(0); // Version should remain 0 (updated in place)
+    expect(
+      await GroupAgentModel.count({
+        where: {
+          workspaceId: workspace.id,
+          agentConfigurationId: agent.id,
+        },
+      })
+    ).toBe(0);
 
     expect(
       new Set(
@@ -916,21 +958,32 @@ describe("create agent capability", () => {
 });
 
 describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
-  it("keeps editor group memberships active while archiving and restoring", async () => {
+  it("keeps editor grants active while archiving and restoring", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
 
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+    const agentResource = AgentResource.fromAgentConfiguration(
       authenticator,
       agent
     );
-    if (editorGroupRes.isErr()) {
-      throw editorGroupRes.error;
+    if (agentResource.id === null) {
+      throw new Error("Agent identity was not created");
     }
-    const editorGroup = editorGroupRes.value;
+    const editorGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(
+        authenticator,
+        {
+          grantType: "editor",
+          resourceType: "agent",
+          resourceId: agentResource.id,
+        }
+      );
+    if (!editorGroup) {
+      throw new Error("Agent editor grant was not created");
+    }
 
     const membershipsBeforeArchive = await GroupMembershipModel.findAll({
       where: {
@@ -1316,13 +1369,13 @@ describe("updateAgentConfigurationsScope", () => {
       { scope: "visible" }
     );
 
-    // A workspace member who is not in the agent's editor group.
+    // A workspace member who does not have an editor grant on the agent.
     const nonEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, nonEditor, {
       role: "user",
     });
 
-    // Trigger owned by the admin (member of the editor group).
+    // Trigger owned by the admin (an agent editor).
     const editorTriggerRes = await TriggerResource.makeNew(authenticator, {
       workspaceId: workspace.id,
       name: "editor-trigger",
@@ -1360,17 +1413,6 @@ describe("updateAgentConfigurationsScope", () => {
       ? nonEditorTriggerRes.value
       : null;
 
-    // A stale editor-group membership must not retain access after leaving the workspace.
-    const editorGroup = await GroupResource.findEditorGroupForAgent(
-      authenticator,
-      agent
-    );
-    if (editorGroup.isErr()) {
-      throw editorGroup.error;
-    }
-    await GroupFactory.withMembers(authenticator, editorGroup.value, [
-      nonEditor,
-    ]);
     expect(
       (
         await MembershipResource.revokeMembership({

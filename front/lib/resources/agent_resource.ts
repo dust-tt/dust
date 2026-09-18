@@ -1237,7 +1237,7 @@ export class AgentResource
   }
 
   // Creates a brand-new custom agent: its `AgentModel` identity, first `AgentConfigurationModel`
-  // version, editor group and tags. The orchestrator delegates action/skill creation on top.
+  // version, editor grants and tags. The orchestrator delegates action/skill creation on top.
   // Bringing a new agent into the workspace requires the type-wide `create` capability, enforced
   // here (see the `agent-create-capability` contract).
   static async makeNew(
@@ -1620,77 +1620,8 @@ export class AgentResource
 
           assert(
             editors.some((e) => e.id === authorId) || isAdmin(owner),
-            "Unexpected: author must be in editor group or admin"
+            "Unexpected: author must be an editor or admin"
           );
-          if (!existingAgent) {
-            const group = await GroupResource.makeNewAgentEditorsGroup(
-              auth,
-              agentConfigurationInstance,
-              { transaction: t, authorId }
-            );
-            await auth.refresh({ transaction: t });
-            // Authorization is enforced upstream: this branch is only reached through `makeNew`,
-            // which requires the `create` capability (see `agent-create-capability`). The assertion
-            // above additionally guarantees the author is among the editors or an admin.
-            const setMembersRes = await group.dangerouslySetMembers(auth, {
-              users: editors,
-              transaction: t,
-            });
-            if (setMembersRes.isErr()) {
-              throw setMembersRes.error;
-            }
-          } else {
-            const group = await GroupResource.fetchByAgentConfiguration({
-              auth,
-              agentConfiguration: existingAgent,
-            });
-            if (!group) {
-              throw new Error(
-                "Unexpected: agent should have exactly one editor group."
-              );
-            }
-            // For pending agents updated in place, the group is already linked to the same agent ID
-            // For regular updates, we need to link the group to the new agent configuration
-            if (existingAgent.id !== agentConfigurationInstance.id) {
-              const result = await group.addGroupToAgentConfiguration({
-                auth,
-                agentConfiguration: agentConfigurationInstance,
-                transaction: t,
-              });
-              if (result.isErr()) {
-                logger.error(
-                  {
-                    workspaceId: owner.sId,
-                    agentConfigurationId: existingAgent.sId,
-                  },
-                  `Error adding group to agent ${existingAgent.sId}: ${result.error}`
-                );
-                throw result.error;
-              }
-            }
-
-            // Authorization is enforced upstream: this branch is only reached through
-            // `updateConfiguration`, which requires `write` on this agent before saving a new
-            // version (see `agent-edit-requires-write`). Editing the editor set is part of editing
-            // the agent, so it is covered by that same `write` gate; the assertion above only
-            // guarantees the author invariant.
-            const setMembersRes = await group.dangerouslySetMembers(auth, {
-              users: editors,
-              transaction: t,
-            });
-            if (setMembersRes.isErr()) {
-              logger.error(
-                {
-                  workspaceId: owner.sId,
-                  agentConfigurationId: existingAgent.sId,
-                },
-                `Error setting members to agent ${existingAgent.sId}: ${setMembersRes.error}`
-              );
-              throw setMembersRes.error;
-            }
-            removedEditors = setMembersRes.value.removedUsers;
-          }
-
           const agentResource = AgentResource.fromAgentConfigurationModel(
             auth,
             agentConfigurationInstance
