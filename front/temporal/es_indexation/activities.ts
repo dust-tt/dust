@@ -127,7 +127,7 @@ export async function indexSkillSearchActivity({
   if (skill.editedBy) {
     lastEditor = await UserResource.fetchByModelId(skill.editedBy);
   }
-  const document = skill.toSearchDocument(auth.getNonNullableWorkspace(), {
+  const document = skill.toSearchDocument({
     editors: editors ?? [],
     lastEditedByUser: lastEditor,
     activeUsersCount: 0,

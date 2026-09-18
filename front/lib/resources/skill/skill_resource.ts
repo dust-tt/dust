@@ -53,12 +53,14 @@ import type {
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
+  CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
   getResourceIdFromSId,
   getResourceNameAndIdFromSId,
   isResourceSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
 import {
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
@@ -175,7 +177,7 @@ export type SkillFetchContext = {
     }
 );
 
-type SkillResourceConstructorOptions =
+type SkillResourceConstructorOptions = { workspace: { sId: string } } & (
   | {
       codeDefinedSkillId: string;
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
@@ -196,7 +198,8 @@ type SkillResourceConstructorOptions =
       files?: readonly CodeDefinedSkillFile[];
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
-    };
+    }
+);
 
 type SkillVersionCreationAttributes =
   CreationAttributes<SkillConfigurationModel> & {
@@ -346,6 +349,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   readonly version: number | null = null;
 
   private readonly codeDefinedSkillId: string | null;
+  private readonly searchWorkspaceId: string;
   // Only meaningful for global skills: whether their instructions may be
   // serialized to the front-end. Custom skills always expose their own.
   private readonly exposeInstructions: boolean;
@@ -368,6 +372,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       files,
       mcpServerConfigurations,
       version,
+      workspace,
     }: SkillResourceConstructorOptions
   ) {
     super(SkillConfigurationModel, blob);
@@ -379,6 +384,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     this.codeDefinedSkillId = codeDefinedSkillId ?? null;
     this._mcpServerConfigurations = mcpServerConfigurations;
     this.version = version ?? null;
+    this.searchWorkspaceId = workspace.sId;
   }
 
   get sId(): string {
@@ -596,6 +602,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         });
 
       const skillResource = new this(this.model, skill.get(), {
+        workspace: owner,
         dataSourceConfigurations,
         fileAttachments,
         mcpServerConfigurations: mcpServerViews.map((view) => ({
@@ -946,6 +953,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         );
 
         const resource = new this(this.model, customSkillAttributes, {
+          workspace,
           mcpServerConfigurations: skillMCPServerViews.map((view) => ({
             view,
           })),
@@ -2340,6 +2348,28 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         : def.instructions
       : "";
 
+    return this.fromCodeDefinedSkill(def, {
+      workspaceModelId: workspaceId,
+      requestedSpaceIds: requestedSpaceModelIds,
+      instructions,
+      mcpServerConfigurations,
+    });
+  }
+
+  static fromCodeDefinedSkill(
+    def: SkillDefinition,
+    {
+      workspaceModelId = CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
+      requestedSpaceIds = [],
+      instructions = "",
+      mcpServerConfigurations = [],
+    }: {
+      workspaceModelId?: ModelId;
+      requestedSpaceIds?: ModelId[];
+      instructions?: string;
+      mcpServerConfigurations?: SkillMCPServerConfiguration[];
+    } = {}
+  ): SkillResource {
     return new SkillResource(
       this.model,
       {
@@ -2352,17 +2382,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         instructions,
         instructionsHtml: null,
         name: def.name,
-        requestedSpaceIds: requestedSpaceModelIds,
+        requestedSpaceIds,
         manuallyRequestedSpaceIds: [],
         status: "active",
         updatedAt: new Date(),
-        workspaceId,
+        workspaceId: workspaceModelId,
         icon: def.icon,
         source: null,
         sourceMetadata: null,
-        availability: SystemSkillsRegistry.isSystemSkill(def.sId)
-          ? "workspace_users"
-          : "users_and_agents",
+        availability:
+          def.kind === "system" ? "workspace_users" : "users_and_agents",
         favoriteCount: 0,
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
@@ -2371,6 +2400,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         selfImprovementLock: false,
       },
       {
+        workspace: { sId: CODE_DEFINED_SKILLS_WORKSPACE_ID },
         // Global skills do not have data source configurations.
         dataSourceConfigurations: [],
         exposeInstructions: def.exposeInstructions,
@@ -2730,6 +2760,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           selfImprovementLock: versionModel.selfImprovementLock,
         },
         {
+          workspace,
           // We ignore data source configurations for historical versions.
           // As when the user saves we re-compute those from the nodes.
           dataSourceConfigurations: [],
@@ -4673,45 +4704,46 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * @cc [owner:aubin-tchoi,label:backend;security] skill-search-serialization
-   * Serialize a custom skill fetched with tools, deriving user sIds from supplied editor
-   * resources; perform no I/O and never include private skill content.
+   * Serialize listing metadata without I/O or private content; fetch custom skills with tools.
+   * Code-defined skills
+   * use the global namespace, without workspace-specific relationships, usage or dates.
    */
-  toSearchDocument(
-    workspace: LightWorkspaceType,
-    {
-      lastEditedByUser,
-      editors,
-      activeUsersCount,
-    }: {
-      lastEditedByUser: UserResource | null;
-      editors: UserResource[];
-      activeUsersCount: number | null;
-    }
-  ): SkillSearchDocument {
-    assert(
-      !this.codeDefinedSkillId && this.workspaceId === workspace.id,
-      "Search documents require a custom skill in the workspace."
-    );
+  toSearchDocument({
+    lastEditedByUser,
+    editors,
+    activeUsersCount,
+  }: {
+    lastEditedByUser: UserResource | null;
+    editors: UserResource[];
+    activeUsersCount: number | null;
+  }): SkillSearchDocument {
+    const isCodeDefined = this.codeDefinedSkillId !== null;
     return {
-      workspace_id: workspace.sId,
+      workspace_id: this.searchWorkspaceId,
       skill_id: this.sId,
       status: this.status,
       availability: this.availability,
       name: this.name,
       description: this.userFacingDescription,
       icon: this.icon,
-      last_edited_by_user_id: lastEditedByUser?.sId ?? null,
-      editor_ids: uniq(editors.map((editor) => editor.sId)).sort(),
-      requested_space_ids: this.requestedSpaceIds.map((id) =>
-        SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
-      ),
-      mcp_server_view_ids: uniq(
-        this.mcpServerViews.map((view) => view.sId)
-      ).sort(),
-      active_users_count: activeUsersCount,
+      last_edited_by_user_id: isCodeDefined
+        ? null
+        : (lastEditedByUser?.sId ?? null),
+      editor_ids: isCodeDefined
+        ? []
+        : uniq(editors.map((editor) => editor.sId)).sort(),
+      requested_space_ids: isCodeDefined
+        ? []
+        : this.requestedSpaceIds.map((id) =>
+            SpaceResource.modelIdToSId({ id, workspaceId: this.workspaceId })
+          ),
+      mcp_server_view_ids: isCodeDefined
+        ? []
+        : uniq(this.mcpServerViews.map((view) => view.sId)).sort(),
+      active_users_count: isCodeDefined ? null : activeUsersCount,
       favorite_count: this.favoriteCount,
-      created_at: this.createdAt.toISOString(),
-      updated_at: this.updatedAt.toISOString(),
+      created_at: isCodeDefined ? null : this.createdAt.toISOString(),
+      updated_at: isCodeDefined ? null : this.updatedAt.toISOString(),
     };
   }
 

@@ -132,11 +132,10 @@ export async function recreateSkillSearchIndex({
   const lastEditorByModelId = new Map(
     lastEditors.map((user) => [user.id, user])
   );
-  const workspace = auth.getNonNullableWorkspace();
   const results = await concurrentExecutor(
     skills,
     async (skill) => {
-      const document = skill.toSearchDocument(workspace, {
+      const document = skill.toSearchDocument({
         editors: editorsBySkillId.get(skill.sId) ?? [],
         lastEditedByUser:
           skill.editedBy === null

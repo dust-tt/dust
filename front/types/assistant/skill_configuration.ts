@@ -117,7 +117,7 @@ export const SkillListItemSchema = z.object({
   editorIds: z.array(z.string()),
   availability: z.enum(SKILL_AVAILABILITIES),
   activeUsersCount: z.number().nullable(),
-  updatedAt: z.number(),
+  updatedAt: z.number().nullable(),
 });
 
 export type SkillListItemType = z.infer<typeof SkillListItemSchema>;
