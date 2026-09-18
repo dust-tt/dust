@@ -5,6 +5,7 @@ import type { GlobalSkillId } from "@app/lib/resources/skill/code_defined/global
 import type { SystemSkillId } from "@app/lib/resources/skill/code_defined/system_registry";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { SKILL_ICON } from "@app/lib/skill";
 import { serializeSkillTag } from "@app/lib/skills/format";
@@ -111,7 +112,8 @@ export class SkillFactory {
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
     const editedBy = overrides.status === "suggested" ? null : user.id;
-    const requestedSpaceIds = overrides.requestedSpaceIds ?? [];
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    const requestedSpaceIds = overrides.requestedSpaceIds ?? [globalSpace.id];
     const manuallyRequestedSpaceIds = overrides.manuallyRequestedSpaceIds ?? [];
     const attachedKnowledge = overrides.attachedKnowledge ?? [];
     const mcpServerViews = overrides.mcpServerViews ?? [];

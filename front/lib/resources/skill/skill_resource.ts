@@ -332,6 +332,11 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
  * a skill's availability to `users_and_agents`, or moving it off that value, MUST require
  * `hasWorkspacePermission("make_discoverable", "skill")` on top of `publish`.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:backend;security] skill-stored-global-space
+ * Production callers creating skills or recomputing requestedSpaceIds must include the
+ * workspace's global space exactly once. Other update callers must preserve the stored IDs.
+ */
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
@@ -671,13 +676,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return new Err(new Error("Some MCP server views are missing."));
     }
 
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const createdSuggestedSkill = await this.makeNew(
       auth,
       {
         ...blob,
         status: "suggested",
         editedBy: null,
-        requestedSpaceIds: [],
+        requestedSpaceIds: [globalSpace.id],
       },
       {
         mcpServerViews,

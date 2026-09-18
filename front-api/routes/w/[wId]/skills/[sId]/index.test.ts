@@ -568,7 +568,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
   });
 
   it("should successfully update the description", async () => {
-    const { workspace, skill, requestUserAuth } = await setupTest({
+    const { workspace, skill, requestUserAuth, globalSpace } = await setupTest({
       requestUserRole: "admin",
     });
 
@@ -598,6 +598,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.agentFacingDescription).toBe(newDescription);
+    expect(updatedSkill?.requestedSpaceIds).toEqual([globalSpace.id]);
   });
 
   it("updates availability, giving it priority over the deprecated isDefault", async () => {
@@ -878,9 +879,10 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
   });
 
   it("should update requestedSpaceIds when adding a tool from a new space", async () => {
-    const { workspace, skill, requestUser, requestUserAuth } = await setupTest({
-      requestUserRole: "admin",
-    });
+    const { workspace, skill, requestUser, requestUserAuth, globalSpace } =
+      await setupTest({
+        requestUserRole: "admin",
+      });
 
     const space1 = await SpaceFactory.regular(workspace);
     await space1.addMembers(requestUserAuth, { userIds: [requestUser.sId] });
@@ -924,16 +926,21 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     expect(data).not.toHaveProperty("error");
     expect(response.status).toBe(200);
     expect(data.skill.tools).toHaveLength(2);
-    expect(data.skill.requestedSpaceIds).toHaveLength(2);
+    expect(data.skill.requestedSpaceIds).toHaveLength(3);
     expect(data.skill.requestedSpaceIds).toContain(space1.sId);
     expect(data.skill.requestedSpaceIds).toContain(space2.sId);
+    expect(data.skill.requestedSpaceIds).toContain(globalSpace.sId);
 
     const updatedSkill = await SkillResource.fetchById(
       requestUserAuth,
       skill.sId
     );
     expect(updatedSkill).not.toBeNull();
-    expect(updatedSkill?.requestedSpaceIds).toHaveLength(2);
+    expect(updatedSkill?.requestedSpaceIds).toEqual([
+      space1.id,
+      space2.id,
+      globalSpace.id,
+    ]);
   });
 
   it("should include additionalRequestedSpaceIds when updating a skill", async () => {

@@ -12,6 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -211,6 +212,7 @@ export async function importSkillsFromFiles(
   const editorUsers = editorUsersResult.value;
 
   const user = auth.user();
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const imported: SkillResource[] = [];
   const updated: SkillResource[] = [];
   const skipped: { name: string; message: string }[] = [];
@@ -311,7 +313,7 @@ export async function importSkillsFromFiles(
           instructions: skill.instructions,
           instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
           editedBy: user?.id ?? null,
-          requestedSpaceIds: [],
+          requestedSpaceIds: [globalSpace.id],
           icon,
           source,
           sourceMetadata: { filePath: skill.skillMdPath },

@@ -361,6 +361,10 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
         skillMap.set(skill.id, skill);
       }
       const skillsToUpdate = Array.from(skillMap.values());
+      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
+        auth,
+        t
+      );
 
       // Create sets for quick lookup.
       const mcpServerViewIdSet = new Set(mcpServerViewIds);
@@ -412,6 +416,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           ...computedRequestedSpaceIds, // Tools and attached knowledge.
           ...referencedSkillSpaceIds, // Nested skills.
           ...manuallyRequestedSpaceIds, // Picked by hand.
+          globalSpace.id,
         ]);
 
         // Log an error if the deleted space is still in requestedSpaceIds.
