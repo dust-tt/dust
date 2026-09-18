@@ -42,11 +42,10 @@ export async function launchIndexUserSearchWorkflow({
 }: {
   userId: string;
 }): Promise<Result<undefined, Error>> {
-  const client = await getTemporalClientForFrontNamespace();
-
   const workflowId = makeIndexUserSearchWorkflowId({ userId });
 
   try {
+    const client = await getTemporalClientForFrontNamespace();
     await client.workflow.signalWithStart(indexUserSearchWorkflow, {
       args: [{ userId }],
       taskQueue: QUEUE_NAME,
@@ -79,10 +78,10 @@ export async function launchIndexSkillSearchWorkflow({
   workspaceId: string;
   skillId: string;
 }): Promise<Result<undefined, Error>> {
-  const client = await getTemporalClientForFrontNamespace();
   const workflowId = makeIndexSkillSearchWorkflowId({ workspaceId, skillId });
 
   try {
+    const client = await getTemporalClientForFrontNamespace();
     await client.workflow.signalWithStart(indexSkillSearchWorkflow, {
       args: [{ workspaceId, skillId }],
       taskQueue: QUEUE_NAME,
@@ -112,10 +111,10 @@ export async function launchDeleteSkillSearchWorkflow({
   workspaceId: string;
   skillId: string;
 }): Promise<Result<undefined, Error>> {
-  const client = await getTemporalClientForFrontNamespace();
   const workflowId = makeDeleteSkillSearchWorkflowId({ workspaceId, skillId });
 
   try {
+    const client = await getTemporalClientForFrontNamespace();
     await client.workflow.start(deleteSkillSearchWorkflow, {
       args: [{ workspaceId, skillId }],
       taskQueue: QUEUE_NAME,
@@ -138,10 +137,10 @@ export async function launchDeleteWorkspaceSkillSearchWorkflow({
 }: {
   workspaceId: string;
 }): Promise<Result<undefined, Error>> {
-  const client = await getTemporalClientForFrontNamespace();
   const workflowId = makeDeleteWorkspaceSkillSearchWorkflowId({ workspaceId });
 
   try {
+    const client = await getTemporalClientForFrontNamespace();
     await client.workflow.start(deleteWorkspaceSkillSearchWorkflow, {
       args: [{ workspaceId }],
       taskQueue: QUEUE_NAME,
@@ -166,10 +165,10 @@ export async function launchIndexAgentSearchWorkflow({
   workspaceId: string;
   agentId: string;
 }): Promise<Result<undefined, Error>> {
-  const client = await getTemporalClientForFrontNamespace();
   const workflowId = makeIndexAgentSearchWorkflowId({ workspaceId, agentId });
 
   try {
+    const client = await getTemporalClientForFrontNamespace();
     await client.workflow.signalWithStart(indexAgentSearchWorkflow, {
       args: [{ workspaceId, agentId }],
       taskQueue: QUEUE_NAME,
@@ -199,10 +198,10 @@ export async function launchDeleteAgentSearchWorkflow({
   workspaceId: string;
   agentId: string;
 }): Promise<Result<undefined, Error>> {
-  const client = await getTemporalClientForFrontNamespace();
   const workflowId = makeDeleteAgentSearchWorkflowId({ workspaceId, agentId });
 
   try {
+    const client = await getTemporalClientForFrontNamespace();
     await client.workflow.start(deleteAgentSearchWorkflow, {
       args: [{ workspaceId, agentId }],
       taskQueue: QUEUE_NAME,
@@ -225,10 +224,10 @@ export async function launchDeleteWorkspaceAgentSearchWorkflow({
 }: {
   workspaceId: string;
 }): Promise<Result<undefined, Error>> {
-  const client = await getTemporalClientForFrontNamespace();
   const workflowId = makeDeleteWorkspaceAgentSearchWorkflowId({ workspaceId });
 
   try {
+    const client = await getTemporalClientForFrontNamespace();
     await client.workflow.start(deleteWorkspaceAgentSearchWorkflow, {
       args: [{ workspaceId }],
       taskQueue: QUEUE_NAME,
@@ -249,8 +248,8 @@ export async function launchDeleteWorkspaceAgentSearchWorkflow({
 export async function launchSearchUsageSchedule(): Promise<
   Result<undefined, Error>
 > {
-  const client = await getTemporalClientForFrontNamespace();
   try {
+    const client = await getTemporalClientForFrontNamespace();
     await client.schedule.create({
       scheduleId: SEARCH_USAGE_SCHEDULE_ID,
       action: {
@@ -273,8 +272,8 @@ export async function launchSearchUsageSchedule(): Promise<
 export async function launchWorkspaceSearchUsageWorkflow(
   workspaceId: string
 ): Promise<Result<undefined, Error>> {
-  const client = await getTemporalClientForFrontNamespace();
   try {
+    const client = await getTemporalClientForFrontNamespace();
     await client.workflow.start(refreshWorkspaceSearchUsageWorkflow, {
       workflowId: `search-usage-${workspaceId}`,
       args: [{ workspaceId }],
