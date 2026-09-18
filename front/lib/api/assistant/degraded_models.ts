@@ -53,6 +53,23 @@ export async function refreshDegradedModelIds(): Promise<ReadonlySet<string>> {
  * router filters degraded endpoints itself, a model served from another healthy
  * host should stay in the streams and only the degraded endpoint be skipped.
  */
+// The pod that just wrote a degradation row must skip (or unskip) that model
+// on the next AUTO resolve. Do not wait for the 60s background refresh, and
+// do not read Postgres on the resolve path.
+export function applyDegradedEndpointCacheUpdate(
+  updates: ReadonlyArray<{ modelId: string; degraded: boolean }>
+): void {
+  const next = new Set(cachedDegradedModelIds);
+  for (const update of updates) {
+    if (update.degraded) {
+      next.add(update.modelId);
+    } else {
+      next.delete(update.modelId);
+    }
+  }
+  cachedDegradedModelIds = next;
+}
+
 export function getDegradedModelIds(): ReadonlySet<string> {
   const now = Date.now();
   if (!refreshPromise && now - lastRefreshStartedAtMs > REFRESH_INTERVAL_MS) {
