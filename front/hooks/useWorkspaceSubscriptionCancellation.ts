@@ -1,43 +1,10 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { WorkspaceMigrationStatus } from "@app/lib/api/billing/migration_lifecycle";
 import { clientFetch } from "@app/lib/egress/client";
-import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { useCallback, useState } from "react";
-import type { Fetcher } from "swr";
 
-/**
- * Read the workspace's scheduled legacy → Business migration state (whether a
- * pending Business contract is staged, and for which date). Skips the fetch when
- * `disabled` (e.g. the workspace isn't a migration candidate).
- */
-export function useWorkspaceMigration({
-  workspaceId,
-  disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const migrationFetcher: Fetcher<WorkspaceMigrationStatus> = fetcher;
+type SubscriptionCancellationAction = "cancel" | "resume";
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/metronome/migration`,
-    migrationFetcher,
-    { disabled }
-  );
-
-  return {
-    pendingMigrationDate: data?.pendingMigrationDate ?? null,
-    willBeRefundedOnEnd: data?.willBeRefundedOnEnd ?? false,
-    isMigrationLoading: !error && !data && !disabled,
-    isMigrationError: error,
-    mutateMigration: mutate,
-  };
-}
-
-type MigrationLifecycleAction = "cancel" | "resume";
-
-function useMigrationLifecycleAction({
+function useSubscriptionCancellationAction({
   workspaceId,
   action,
   errorTitle,
@@ -45,7 +12,7 @@ function useMigrationLifecycleAction({
   successDescription,
 }: {
   workspaceId: string;
-  action: MigrationLifecycleAction;
+  action: SubscriptionCancellationAction;
   errorTitle: string;
   successTitle: string;
   successDescription: string;
@@ -60,7 +27,7 @@ function useMigrationLifecycleAction({
     setIsApplying(true);
     try {
       const res = await clientFetch(
-        `/api/w/${workspaceId}/metronome/migration`,
+        `/api/w/${workspaceId}/metronome/cancellation`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -99,12 +66,12 @@ function useMigrationLifecycleAction({
   return { apply, isApplying };
 }
 
-export function useCancelWorkspaceMigration({
+export function useCancelWorkspaceSubscription({
   workspaceId,
 }: {
   workspaceId: string;
 }) {
-  const { apply, isApplying } = useMigrationLifecycleAction({
+  const { apply, isApplying } = useSubscriptionCancellationAction({
     workspaceId,
     action: "cancel",
     errorTitle: "Cancellation failed",
@@ -113,26 +80,25 @@ export function useCancelWorkspaceMigration({
       "Your subscription will end at the end of the current period.",
   });
   return {
-    cancelMigration: apply,
-    isCancellingMigration: isApplying,
+    cancelSubscription: apply,
+    isCancellingSubscription: isApplying,
   };
 }
 
-export function useResumeWorkspaceMigration({
+export function useResumeWorkspaceSubscription({
   workspaceId,
 }: {
   workspaceId: string;
 }) {
-  const { apply, isApplying } = useMigrationLifecycleAction({
+  const { apply, isApplying } = useSubscriptionCancellationAction({
     workspaceId,
     action: "resume",
     errorTitle: "Resume failed",
     successTitle: "Subscription resumed",
-    successDescription:
-      "Your migration to the new pricing has been re-scheduled.",
+    successDescription: "Your subscription has been resumed.",
   });
   return {
-    resumeMigration: apply,
-    isResumingMigration: isApplying,
+    resumeSubscription: apply,
+    isResumingSubscription: isApplying,
   };
 }
