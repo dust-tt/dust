@@ -6,9 +6,9 @@
 // other directory; nothing here wraps those calls.
 //
 // The path is resolved from the environment front sets per exec and is never
-// hardcoded here (front's `frame-data-files-dir-single-source` contract). It is
-// read through podEnv() rather than process.env so a resident worker serving
-// two invocations resolves each against its own environment.
+// hardcoded here (front's `frame-persistent-files-dir-single-source` contract).
+// It is read through podEnv() rather than process.env so a resident worker
+// serving two invocations resolves each against its own environment.
 //
 // Two properties of the folder shape how it should be used:
 //

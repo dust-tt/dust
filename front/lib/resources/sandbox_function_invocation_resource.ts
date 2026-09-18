@@ -61,7 +61,7 @@ import type {
 } from "@app/types/api/sandbox_functions";
 import {
   FRAME_PERSISTENT_FILES_DIR_ENV,
-  getFrameDataFilesMountPoint,
+  getFramePersistentFilesMountPoint,
   getFramePublicationDescriptorMountPoint,
   getFramePublicationFunctionsMountPoint,
   sandboxDatabaseExecEnvVars,
@@ -829,9 +829,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             envVars: {
               DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
               DUST_FUNCTIONS_DIR: functionsDirectory,
-              [FRAME_PERSISTENT_FILES_DIR_ENV]: getFrameDataFilesMountPoint(
-                frame.sId
-              ),
+              [FRAME_PERSISTENT_FILES_DIR_ENV]:
+                getFramePersistentFilesMountPoint(frame.sId),
               // The app prefix comes from the slug, so `db("chat")` in the bundle resolves to this
               // app's own database without the source naming the app.
               ...databaseEnvVars,
