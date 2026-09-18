@@ -53,7 +53,7 @@
     "skill_ids": {
       "type": "keyword"
     },
-    "tool_ids": {
+    "mcp_server_view_ids": {
       "type": "keyword"
     },
     "tag_ids": {

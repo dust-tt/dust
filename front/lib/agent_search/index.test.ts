@@ -48,7 +48,7 @@ const document: AgentSearchDocument = {
   updated_at: "2026-08-01T00:00:00.000Z",
   description: "Description",
   skill_ids: [],
-  tool_ids: [],
+  mcp_server_view_ids: [],
   tag_ids: [],
   feedback_positive_count: 3,
   feedback_negative_count: 1,
