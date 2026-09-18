@@ -30,6 +30,25 @@ async function seedRevokedEditor() {
     auth,
     original.sId
   );
+  const originalModel = await AgentConfigurationModel.findOne({
+    where: { id: original.id, workspaceId: workspace.id },
+  });
+  assert(originalModel);
+  const agentModel = await AgentConfigurationModel.findOne({
+    where: { id: agent.id, workspaceId: workspace.id },
+  });
+  assert(agentModel);
+  // Reproduce a pre-migration agent whose editor group is linked to every version.
+  const seededLegacy = await GroupResource.makeNewAgentEditorsGroup(
+    auth,
+    originalModel,
+    { authorId: user.id }
+  );
+  const latestLink = await seededLegacy.addGroupToAgentConfiguration({
+    auth,
+    agentConfiguration: agentModel,
+  });
+  assert(latestLink.isOk());
   const legacy = await GroupResource.findEditorGroupForAgent(auth, agent);
   assert(legacy.isOk());
   const resource = AgentResource.fromAgentConfiguration(auth, agent);
