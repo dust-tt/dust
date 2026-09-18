@@ -1,4 +1,3 @@
-import type { AgentMessageConsumptionMode } from "@app/lib/api/assistant/consumption/mode";
 import {
   AGENT_MESSAGE_CONSUMPTION_BILLS_FLAG,
   AGENT_MESSAGE_CONSUMPTION_WRITES_FLAG,
@@ -7,6 +6,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type { AgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
 
 export { AGENT_MESSAGE_CONSUMPTION_WRITES_FLAG } from "@app/lib/api/assistant/consumption/mode";
 

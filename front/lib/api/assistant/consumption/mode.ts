@@ -1,8 +1,6 @@
 import type { AgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
-export type { AgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
-
 export const AGENT_MESSAGE_CONSUMPTION_WRITES_FLAG: WhitelistableFeature =
   "agent_message_consumption_writes";
 export const AGENT_MESSAGE_CONSUMPTION_BILLS_FLAG: WhitelistableFeature =
