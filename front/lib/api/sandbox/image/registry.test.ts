@@ -113,6 +113,35 @@ describe("sandbox image registry", () => {
     expect(serviceUnit).not.toContain("Environment=DD_API_KEY");
   });
 
+  test("installs the Oxlint allocator without preloading it for other commands", () => {
+    const image = getDustBaseImage();
+    const runCommands = getRunCommands(image.operations);
+    const launcher = getCopiedContent(
+      getCopyOperations(image.operations),
+      "/opt/bin/oxlint"
+    );
+
+    expect(runCommands).toContain(
+      "apt-get update && apt-get install -y libjemalloc2"
+    );
+    expect(runCommands).toContain(
+      "chown root:root /opt/bin/oxlint && chmod 755 /opt/bin/oxlint"
+    );
+    expect(launcher).toContain(
+      'LD_PRELOAD="$jemalloc${LD_PRELOAD:+:$LD_PRELOAD}"'
+    );
+    expect(launcher).toContain(
+      'exec /usr/local/bin/node /opt/npm-global/lib/node_modules/oxlint/bin/oxlint "$@"'
+    );
+    expect(image.runEnv).not.toHaveProperty("LD_PRELOAD");
+    for (const operation of image.operations) {
+      if (operation.type === "env") {
+        expect(operation.vars).not.toHaveProperty("LD_PRELOAD");
+      }
+    }
+    expect(runCommands.join("\n")).not.toContain("vm.overcommit_memory");
+  });
+
   test("creates the dormant proxied user and shared-path permissions", () => {
     const operations = getDustBaseImageOperations();
     const runCommands = getRunCommands(operations);

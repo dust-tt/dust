@@ -58,6 +58,7 @@ const LIBREOFFICE_PPA = "ppa:libreoffice/ppa";
 const LITESTREAM_VERSION = "0.5.13";
 const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
 const LITESTREAM_LOCAL_DIR = path.resolve(__dirname, "litestream");
+const OXLINT_LOCAL_DIR = path.resolve(__dirname, "oxlint");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
 const TOKEN_LOCAL_DIR = path.resolve(__dirname, "token");
@@ -502,6 +503,14 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
         "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3 drizzle-orm@0.45.2 drizzle-kit@0.31.10 @libsql/client@0.17.4 oxlint@1.83.0 oxlint-tsgolint@7.0.2001 oxlint-tailwindcss@1.12.0",
     }
   )
+  .runCmd("apt-get update && apt-get install -y libjemalloc2", { user: "root" })
+  // /opt/bin comes before npm's bin directory in the sandbox PATH.
+  .copy(getLocalContent(OXLINT_LOCAL_DIR, "oxlint.sh"), "/opt/bin/oxlint", {
+    user: "root",
+  })
+  .runCmd("chown root:root /opt/bin/oxlint && chmod 755 /opt/bin/oxlint", {
+    user: "root",
+  })
   .runCmd(
     `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
       `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +
