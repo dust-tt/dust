@@ -1,4 +1,6 @@
+import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { isSelfHostedImageWithValidContentType } from "@app/lib/api/assistant/configuration/agent_image";
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
@@ -55,7 +57,10 @@ import type {
   AgentStatus,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
-import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
+import {
+  isAgentStatus,
+  MAX_STEPS_USE_PER_RUN_LIMIT,
+} from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
   ModelIdType,
@@ -87,6 +92,11 @@ const AGENT_SEARCH_INDEXATION_CONCURRENCY = 8;
 // Legacy `canEdit` also allows changing the editor set, so the author fallback mirrors the full
 // editor role rather than granting write alone.
 const AGENT_EDITOR_VERBS: GrantVerb[] = ["read", "write", "admin"];
+
+// Each agent in a bulk model update goes through a full save (new version + tools/skills recreated),
+// so keep the parallelism low: enough to keep a large selection responsive, not enough to flood the
+// connection pool.
+const BULK_UPDATE_MODEL_CONCURRENCY = 4;
 
 // Human workspace admins manage editors but must grant themselves editor access to change the agent.
 // The admin role alone does not read a hidden agent (see the `hidden-agent-content` contract).
@@ -131,9 +141,10 @@ type AgentResourceExtraBlob = {
   content: AgentResourceContent | null;
 };
 
-// The outcome of a bulk in-place mutation (`bulkUpdateScope`/`bulkUpdateModel`): the agents whose
-// current version was written, and the requested ids that were skipped (not resolvable, not
-// editable by the caller, or archived). Reported back so callers can tell the UI what was applied.
+// The outcome of a bulk mutation (`bulkUpdateScope` writes the scope in place; `bulkUpdateModel`
+// saves a new version): the agents that were written, and the requested ids that were skipped (not
+// resolvable, not editable by the caller, archived, or failed to save). Reported back so callers
+// can tell the UI what was applied.
 export type BulkAgentUpdateResult = {
   updatedAgentIds: string[];
   skippedAgentIds: string[];
@@ -286,7 +297,11 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  * MUST NOT allow editing. For human and system-key callers the workspace `admin` role alone (which
  * grants `admin`, not `write`, on agents they do not edit) MUST NOT allow editing either. Regular
  * API keys are the sole exception: the admin role grants them `write` (see `admin-key-agent-write`),
- * so an admin key may edit an agent it holds no editor grant on.
+ * so an admin key may edit an agent it holds no editor grant on. This requirement is scoped to
+ * `updateConfiguration`: the self-gated governance path `bulkUpdateModel` saves a new version through
+ * `_saveConfiguration` directly, admitting `write` OR `admin` (see `model-change-requires-edit`), so a
+ * workspace admin MAY re-model an agent they do not edit; that path MUST remain a model-only re-save
+ * of the agent as-is and MUST NOT change any other part of its definition.
  */
 export class AgentResource
   extends BaseResource<AgentModel>
@@ -1059,7 +1074,9 @@ export class AgentResource
       await this.loadResource(workspaceModelId, { sId: agentIds })
     ).filter(
       (r) =>
-        auth.can("publish", r) && (auth.can("write", r) || auth.can("admin", r))
+        r.status !== "archived" &&
+        auth.can("publish", r) &&
+        (auth.can("write", r) || auth.can("admin", r))
     );
     const updatedAgentIds = resources.map((r) => r.sId);
     const updatedIdSet = new Set(updatedAgentIds);
@@ -1130,6 +1147,143 @@ export class AgentResource
       transaction.afterCommit(applySideEffects);
     } else {
       await applySideEffects();
+    }
+
+    return { updatedAgentIds, skippedAgentIds };
+  }
+
+  // Builds the save params that recreate this agent's current version as-is — its full configuration,
+  // including tags, editors, tools and skills. Override a field on the result to save a new version
+  // that changes only that (e.g. the model in `bulkUpdateModel`). `this` must be `full`.
+  async buildResaveParams(
+    auth: Authenticator
+  ): Promise<SaveAgentConfigurationParams> {
+    // Loaded custom agents are never global, and their stored status is always an `AgentStatus`
+    // (the `disabled_*` values are global-only); narrow both from the resource's wider types.
+    assert(this.scope !== "global");
+    if (!isAgentStatus(this.status)) {
+      throw new Error(
+        `Unexpected: non-global agent ${this.sId} has status "${this.status}".`
+      );
+    }
+
+    const [tags, editors, skills] = await Promise.all([
+      TagResource.listForAgent(auth, this.agentConfigurationModelId),
+      this.listEditors(auth),
+      // No space filtering: tools and skills are carried over as-is, so re-saving an agent behind a
+      // space the caller cannot read keeps them rather than dropping them.
+      this.listSkills(auth, { permissionFiltering: "dangerously_skip" }),
+    ]);
+    const actionsByConfigId = await fetchMCPServerActionConfigurations(auth, {
+      configurationModelIds: [this.agentConfigurationModelId],
+      variant: "full",
+    });
+    const actions = (
+      actionsByConfigId.get(this.agentConfigurationModelId) ?? []
+    ).filter(isServerSideMCPServerConfiguration);
+
+    return {
+      name: this.name,
+      description: this.description,
+      instructions: this.content.instructions,
+      instructionsHtml: this.content.instructionsHtml,
+      pictureUrl: this.pictureUrl,
+      status: this.status,
+      scope: this.scope,
+      model: this.modelConfiguration,
+      templateId: this.content.templateId
+        ? TemplateResource.modelIdToSId({ id: this.content.templateId })
+        : null,
+      requestedSpaceIds: this.requestedSpaceIds,
+      tags: tags.map((tag) => tag.toJSON()),
+      editors: (editors ?? []).map((editor) => editor.toJSON()),
+      // Preserve the version's author rather than re-attributing it to the caller.
+      authorId: this.versionAuthorId ?? auth.getNonNullableUser().id,
+      reinforcement: this.content.reinforcement,
+      actions,
+      skills,
+    };
+  }
+
+  // Saves a new version of each editable agent with the model swapped and everything else carried
+  // over unchanged. Self-gated (`write || admin`) then saved via the ungated `_saveConfiguration`,
+  // so an admin can re-model agents they do not edit (see `agent-edit-requires-write`).
+  /**
+   * @cc [owner:tdraier,label:security] model-change-requires-edit
+   * Only callers who hold `write` or `admin` on an agent (per `getAllowedVerbs`) may change its
+   * model: the loaded rows MUST be filtered by `auth.can("write", r) || auth.can("admin", r)` and
+   * the model of any agent the caller cannot edit MUST NOT be written.
+   */
+  static async bulkUpdateModel(
+    auth: Authenticator,
+    agentIds: string[],
+    model: {
+      providerId: ModelProviderIdType;
+      modelId: ModelIdType;
+      reasoningEffort: ReasoningEffort;
+      responseFormat?: string;
+    }
+  ): Promise<BulkAgentUpdateResult> {
+    if (agentIds.length === 0) {
+      return { updatedAgentIds: [], skippedAgentIds: [] };
+    }
+
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const resources = (
+      await this.loadResource(workspaceModelId, { sId: agentIds })
+    ).filter(
+      (r) =>
+        r.status !== "archived" &&
+        (auth.can("write", r) || auth.can("admin", r))
+    );
+    const editableIdSet = new Set(resources.map((r) => r.sId));
+    const skippedAgentIds = agentIds.filter((id) => !editableIdSet.has(id));
+    if (resources.length === 0) {
+      return { updatedAgentIds: [], skippedAgentIds };
+    }
+
+    const saveResults = await concurrentExecutor(
+      resources,
+      async (r): Promise<{ sId: string; isUpdated: boolean }> => {
+        const params = await r.buildResaveParams(auth);
+        const res = await AgentResource._saveConfiguration(auth, {
+          ...params,
+          agentConfigurationId: r.sId,
+          model: {
+            ...params.model,
+            providerId: model.providerId,
+            modelId: model.modelId,
+            reasoningEffort: model.reasoningEffort,
+            ...(model.responseFormat !== undefined
+              ? { responseFormat: model.responseFormat }
+              : {}),
+          },
+        });
+
+        if (res.isErr()) {
+          logger.warn(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              agentConfigurationId: r.sId,
+              modelId: model.modelId,
+              error: res.error,
+            },
+            "Skipped agent while setting the model on a batch of agents"
+          );
+        }
+
+        return { sId: r.sId, isUpdated: res.isOk() };
+      },
+      { concurrency: BULK_UPDATE_MODEL_CONCURRENCY }
+    );
+
+    const updatedAgentIds = saveResults
+      .filter((result) => result.isUpdated)
+      .map((result) => result.sId);
+    for (const result of saveResults) {
+      if (!result.isUpdated) {
+        skippedAgentIds.push(result.sId);
+      }
     }
 
     return { updatedAgentIds, skippedAgentIds };

@@ -49,6 +49,10 @@ export const AGENT_STATUSES = [
 ] as const;
 export type AgentStatus = (typeof AGENT_STATUSES)[number];
 
+export function isAgentStatus(status: string): status is AgentStatus {
+  return AGENT_STATUSES.some((agentStatus) => agentStatus === status);
+}
+
 const AGENT_CONFIGURATION_STATUSES = [
   "active",
   "archived",
