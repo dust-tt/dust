@@ -1,4 +1,4 @@
-import { WebClient } from "@slack/web-api";
+import { ErrorCode, WebClient } from "@slack/web-api";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock(import("@connectors/lib/throttle"), () => ({
@@ -15,6 +15,13 @@ import { getSlackBotInfoFromMessage } from "./slack_client";
 const connectorId = 123;
 const channelId = "C123";
 const messageTs = "1700000002.000001";
+
+function makeSlackPlatformError(error: string) {
+  return Object.assign(new Error(error), {
+    code: ErrorCode.PlatformError,
+    data: { error, ok: false },
+  });
+}
 
 function makeSlackClient(messages: Record<string, unknown>[]) {
   const slackClient = new WebClient("test-token");
@@ -76,19 +83,32 @@ describe("getSlackBotInfoFromMessage", () => {
     expect(info?.real_name).toBe("Onboarding requests");
   });
 
-  it("throws on a Slack error response", async () => {
+  it("returns null when Slack reports the message as gone", async () => {
     const slackClient = new WebClient("test-token");
-    vi.spyOn(slackClient.conversations, "replies").mockResolvedValue({
-      ok: false,
-      error: "thread_not_found",
+    vi.spyOn(slackClient.conversations, "replies").mockRejectedValue(
+      makeSlackPlatformError("thread_not_found")
+    );
+
+    const info = await getSlackBotInfoFromMessage(connectorId, slackClient, {
+      channelId,
+      messageTs,
     });
+
+    expect(info).toBeNull();
+  });
+
+  it("propagates other Slack errors", async () => {
+    const slackClient = new WebClient("test-token");
+    vi.spyOn(slackClient.conversations, "replies").mockRejectedValue(
+      makeSlackPlatformError("channel_not_found")
+    );
 
     await expect(
       getSlackBotInfoFromMessage(connectorId, slackClient, {
         channelId,
         messageTs,
       })
-    ).rejects.toThrow("thread_not_found");
+    ).rejects.toThrow("channel_not_found");
   });
 
   it("ignores messages with another ts", async () => {

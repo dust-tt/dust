@@ -18,6 +18,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
 import { WebClient } from "@slack/web-api";
+import type { ConversationsRepliesResponse } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 import { z } from "zod";
 
 // Timeout in ms for all network requests;
@@ -285,6 +286,8 @@ export function makeSlackBotUserInfo({
   };
 }
 
+const SLACK_MESSAGE_GONE_ERRORS = ["thread_not_found", "message_not_found"];
+
 const SlackBotMessageSchema = z.object({
   ts: z.string().optional(),
   username: z.string().optional(),
@@ -310,22 +313,30 @@ export async function getSlackBotInfoFromMessage(
     channelId,
     useCase: "bot",
   });
-  const res = await throttleWithRedis(
-    RATE_LIMITS["conversations.replies"],
-    `${connectorId}-conversations-replies`,
-    { canBeIgnored: false },
-    () =>
-      slackClient.conversations.replies({
-        channel: channelId,
-        ts: messageTs,
-      }),
-    { source: "getSlackBotInfoFromMessage" }
-  );
+  let res: ConversationsRepliesResponse | undefined;
+  try {
+    res = await throttleWithRedis(
+      RATE_LIMITS["conversations.replies"],
+      `${connectorId}-conversations-replies`,
+      { canBeIgnored: false },
+      () =>
+        slackClient.conversations.replies({
+          channel: channelId,
+          ts: messageTs,
+        }),
+      { source: "getSlackBotInfoFromMessage" }
+    );
+  } catch (e) {
+    if (
+      isSlackWebAPIPlatformError(e) &&
+      SLACK_MESSAGE_GONE_ERRORS.includes(e.data.error)
+    ) {
+      return null;
+    }
+    throw e;
+  }
   if (!res) {
     throw new Error("Unexpected undefined response from conversations.replies");
-  }
-  if (res.error) {
-    throw new Error(res.error);
   }
 
   const message = (res.messages ?? [])
