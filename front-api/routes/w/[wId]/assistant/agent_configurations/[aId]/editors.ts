@@ -74,48 +74,15 @@ app.get(
       });
     }
 
-    const editorsResult = await getAgentEditors(
-      auth,
-      agent,
-      "getAgentEditorsRoute"
-    );
+    const editorsResult = await getAgentEditors(auth, agent);
     if (editorsResult.isErr()) {
-      switch (editorsResult.error.code) {
-        case "unauthorized":
-          return apiError(ctx, {
-            status_code: 401,
-            api_error: {
-              type: "workspace_auth_error",
-              message: "You are not authorized to update the agent editors.",
-            },
-          });
-        case "invalid_id":
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Some of the passed ids are invalid.",
-            },
-          });
-        case "group_not_found":
-          return apiError(ctx, {
-            status_code: 404,
-            api_error: {
-              type: "group_not_found",
-              message: "Unable to find the editor group for the agent.",
-            },
-          });
-        case "internal_error":
-          return apiError(ctx, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: editorsResult.error.message,
-            },
-          });
-        default:
-          assertNever(editorsResult.error.code);
-      }
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "group_not_found",
+          message: "Unable to find the editor group for the agent.",
+        },
+      });
     }
 
     // Any workspace member can read the editors of an agent.
@@ -352,11 +319,7 @@ app.patch(
       }
     }
 
-    const updatedMembers = await getAgentEditors(
-      auth,
-      agent,
-      "patchAgentEditorsResponse"
-    );
+    const updatedMembers = await getAgentEditors(auth, agent);
     if (updatedMembers.isErr()) {
       throw updatedMembers.error;
     }

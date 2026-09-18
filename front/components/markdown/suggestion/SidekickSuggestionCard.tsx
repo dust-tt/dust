@@ -24,6 +24,7 @@ import type {
 import { defaultSelectionConfiguration } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
+  AgentCreateSuggestionType,
   AgentInstructionsSuggestionType,
   AgentKnowledgeSuggestionWithRelationsType,
   AgentModelSuggestionWithRelationsType,
@@ -48,7 +49,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import { memo, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
-function mapSuggestionStateToCardState(
+export function mapSuggestionStateToCardState(
   state: AgentSuggestionState
 ): ActionCardState {
   switch (state) {
@@ -667,6 +668,33 @@ function KnowledgeSuggestionCard({
   );
 }
 
+interface CreateAgentSuggestionCardProps {
+  agentSuggestion: AgentCreateSuggestionType;
+}
+
+function CreateAgentSuggestionCard({
+  agentSuggestion,
+}: CreateAgentSuggestionCardProps) {
+  const { suggestion, state, analysis } = agentSuggestion;
+  const cardState = mapSuggestionStateToCardState(state);
+  const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
+
+  return (
+    <ActionCardBlock
+      title={`Create "${suggestion.name}" agent`}
+      applyLabel="Accept"
+      acceptedTitle={`"${suggestion.name}" agent creation accepted`}
+      visual={<Avatar icon={getIcon("ActionRobotIcon")} size="sm" />}
+      description={analysis ?? suggestion.description}
+      state={cardState}
+      rejectedTitle={`"${suggestion.name}" agent creation rejected`}
+      actionsPosition="header"
+      onClickAccept={() => void acceptSuggestion(agentSuggestion)}
+      onClickReject={() => void rejectSuggestion(agentSuggestion)}
+    />
+  );
+}
+
 interface SuggestionCardProps {
   agentSuggestion: AgentSuggestionWithRelationsType;
 }
@@ -696,6 +724,8 @@ export function SidekickSuggestionCard({
       return <ModelSuggestionCard agentSuggestion={agentSuggestion} />;
     case "knowledge":
       return <KnowledgeSuggestionCard agentSuggestion={agentSuggestion} />;
+    case "create":
+      return <CreateAgentSuggestionCard agentSuggestion={agentSuggestion} />;
     default:
       assertNeverAndIgnore(agentSuggestion);
       return null;

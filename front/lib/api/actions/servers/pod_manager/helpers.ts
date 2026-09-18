@@ -11,7 +11,10 @@ import {
   isSandboxFunctionRunContext,
 } from "@app/lib/actions/types";
 import type { DataSourceFilter } from "@app/lib/api/assistant/configuration/types";
-import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import {
+  contentNodeAttachmentsDataSourceConfigurations,
+  isContentNodeAttachmentType,
+} from "@app/lib/api/assistant/conversation/attachments";
 import {
   getProjectConversationFolderInternalId,
   listProjectContextAttachments,
@@ -70,25 +73,13 @@ export async function buildProjectRetrieveDataSources(
   }
 
   const attachments = await listProjectContextAttachments(auth, space);
-  const seenContentNodeKeys = new Set<string>();
-  for (const attachment of attachments) {
-    if (!isContentNodeAttachmentType(attachment)) {
-      continue;
-    }
-    const key = `${attachment.nodeDataSourceViewId}:${attachment.nodeId}`;
-    if (seenContentNodeKeys.has(key)) {
-      continue;
-    }
-    seenContentNodeKeys.add(key);
+  const contentNodeConfigs = contentNodeAttachmentsDataSourceConfigurations(
+    owner.sId,
+    attachments.filter(isContentNodeAttachmentType)
+  );
+  for (const cfg of contentNodeConfigs) {
     dataSources.push({
-      uri: getDataSourceURI({
-        workspaceId: owner.sId,
-        dataSourceViewId: attachment.nodeDataSourceViewId,
-        filter: {
-          parents: { in: [attachment.nodeId], not: [] },
-          tags: null,
-        },
-      }),
+      uri: getDataSourceURI(cfg),
       mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE,
     });
   }

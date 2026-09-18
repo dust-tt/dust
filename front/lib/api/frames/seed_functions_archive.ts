@@ -9,10 +9,10 @@ const DSBX_BIN_PATH = "/opt/bin/dsbx";
 const SEED_TIMEOUT_MS = 60 * 1000;
 
 /**
- * Best-effort: wake the frame sandbox (if needed), extract this publication's
- * `functions.tar` into the local warm archives dir, and fill the per-sha
- * bundle cache for every slug so the first warm/cold invoke does not pay
- * gcsfuse. Never throws — callers fire and forget after a successful publish.
+ * Best-effort: wake the frame sandbox (if needed), materialize this
+ * publication's functions locally, and start the publication worker with
+ * every slug already imported so the first fast invoke is a socket round
+ * trip. Never throws — callers fire and forget after a successful publish.
  */
 export async function seedFramePublicationFunctionsArchive(
   auth: Authenticator,
@@ -76,7 +76,7 @@ export async function seedFramePublicationFunctionsArchive(
     }
     logger.info(
       logCtx,
-      "Seeded functions.tar extract and per-sha bundle cache"
+      "Seeded publication worker (local bundles + eager import)"
     );
   } catch (err) {
     logger.warn(

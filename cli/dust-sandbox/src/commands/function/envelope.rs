@@ -32,17 +32,6 @@ pub enum RunnerKind {
     Cold,
 }
 
-/// Whether a warm worker served the invocation from a bundle it had already
-/// imported, or paid the import on this request. Observability for the
-/// pool's affinity routing: a high `fresh` share means functions keep
-/// landing on workers that do not hold their bundle.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum ImportKind {
-    Cached,
-    Fresh,
-}
-
 /// Where a cold run resolved the handler path from.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -62,9 +51,10 @@ pub struct TimingsMs {
     /// treats timingsMs as opaque, so this cannot break the wire contract.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runner_kind: Option<RunnerKind>,
-    /// Additive, warm runs only: see [`ImportKind`].
+    /// Warm path: time to ensure the publication worker is ready (spawn +
+    /// preload when the previous worker had idled out; ~0 when already up).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub import_kind: Option<ImportKind>,
+    pub ensure: Option<u64>,
     /// Time spent in `try_warm_run` before a Miss (cold path only).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub warm_attempt: Option<u64>,
@@ -77,8 +67,8 @@ pub struct TimingsMs {
     /// includes import + handler. Warm path omits this.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub child: Option<u64>,
-    /// Dynamic `import()` of the function bundle (cold: in the Bun child;
-    /// warm: ensureBundle fresh import, usually ~0 when cached).
+    /// Dynamic `import()` of the function bundle (cold Bun child only;
+    /// warm workers preload at start so this is omitted there).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub import: Option<u64>,
     /// Handler `fetch` + response parse.
@@ -133,12 +123,12 @@ mod tests {
                 total: 12,
                 runner: 8,
                 runner_kind: Some(RunnerKind::Warm),
-                import_kind: Some(ImportKind::Cached),
+                ensure: Some(1),
                 warm_attempt: None,
                 resolve: None,
                 resolve_kind: None,
                 child: None,
-                import: Some(3),
+                import: None,
                 handler: Some(2),
             }),
         );
@@ -154,8 +144,7 @@ mod tests {
                     "total": 12,
                     "runner": 8,
                     "runnerKind": "warm",
-                    "importKind": "cached",
-                    "import": 3,
+                    "ensure": 1,
                     "handler": 2,
                 },
             })

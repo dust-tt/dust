@@ -6,6 +6,11 @@ import {
 import type { SkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import type { Authenticator } from "@app/lib/auth";
+import type { AppliedSkillInstructions } from "@app/lib/editor/skill_instructions_html";
+import {
+  applyInstructionEditsToHtml,
+  convertMarkdownToBlockHtml,
+} from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
 import { pruneConflictingSkillEditorsSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -13,6 +18,7 @@ import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestio
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
 import {
   isEditorsSkillSuggestion,
   parseSkillSuggestionData,
@@ -25,6 +31,7 @@ import {
 interface SkillEdits {
   agentFacingDescription?: string;
   editors?: { addUserIds: string[]; removeUserIds: string[] };
+  instructionEdits?: SkillInstructionEditItemType[];
 }
 
 function editsForSuggestion(
@@ -37,18 +44,10 @@ function editsForSuggestion(
 
   switch (data.kind) {
     case "edit":
-      if (data.suggestion.instructionEdits?.length) {
-        return new Err(
-          new DustError(
-            "invalid_request_error",
-            "Instruction edits cannot be applied to the skill yet."
-          )
-        );
-      }
-
       return new Ok({
         agentFacingDescription:
           data.suggestion.agentFacingDescriptionEdit?.content,
+        instructionEdits: data.suggestion.instructionEdits,
       });
 
     case "editors":
@@ -69,14 +68,18 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
     undefined
   );
 
+  // Concatenated in suggestion order: every accepted edit is applied, each to its own block.
+  const instructionEdits = edits.flatMap((e) => e.instructionEdits ?? []);
+
   // Union, not last-wins: approving two suggestions must apply both editor changes.
   const editorsEdits = edits.flatMap((e) => e.editors ?? []);
   if (editorsEdits.length === 0) {
-    return { agentFacingDescription };
+    return { agentFacingDescription, instructionEdits };
   }
 
   return {
     agentFacingDescription,
+    instructionEdits,
     editors: {
       addUserIds: [...new Set(editorsEdits.flatMap((e) => e.addUserIds))],
       removeUserIds: [...new Set(editorsEdits.flatMap((e) => e.removeUserIds))],
@@ -84,32 +87,61 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
   };
 }
 
-function hasSkillFieldEdits({ agentFacingDescription }: SkillEdits): boolean {
-  return agentFacingDescription !== undefined;
+function hasSkillFieldEdits({
+  agentFacingDescription,
+  instructionEdits,
+}: SkillEdits): boolean {
+  return (
+    agentFacingDescription !== undefined || (instructionEdits?.length ?? 0) > 0
+  );
 }
 
-async function updateSkill(
+function resolveInstructions(
+  skill: SkillResource,
+  instructionEdits: SkillInstructionEditItemType[] | undefined
+): Result<
+  AppliedSkillInstructions | undefined,
+  DustError<"invalid_request_error">
+> {
+  if (!instructionEdits?.length) {
+    return new Ok(undefined);
+  }
+  const instructionsHtml =
+    skill.instructionsHtml ?? convertMarkdownToBlockHtml("");
+
+  return applyInstructionEditsToHtml(instructionsHtml, instructionEdits);
+}
+
+async function applySkillFieldEdits(
   auth: Authenticator,
   skill: SkillResource,
-  edits: SkillEdits
-): Promise<void> {
+  { agentFacingDescription, instructionEdits }: SkillEdits
+): Promise<Result<undefined, DustError<"invalid_request_error">>> {
+  const instructions = resolveInstructions(skill, instructionEdits);
+  if (instructions.isErr()) {
+    return instructions;
+  }
+
   const attachedKnowledge = await skill.getAttachedKnowledge(auth);
 
   // `updateSkill` replaces the whole skill, so every field no suggestion touched is carried over
   // from the current values.
   await skill.updateSkill(auth, {
     agentFacingDescription:
-      edits.agentFacingDescription ?? skill.agentFacingDescription,
+      agentFacingDescription ?? skill.agentFacingDescription,
     attachedKnowledge,
     icon: skill.icon,
-    instructions: skill.instructions,
-    instructionsHtml: skill.instructionsHtml,
+    instructions: instructions.value?.instructions ?? skill.instructions,
+    instructionsHtml:
+      instructions.value?.instructionsHtml ?? skill.instructionsHtml,
     manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
     mcpServerViews: skill.mcpServerViews,
     name: skill.name,
     requestedSpaceIds: skill.requestedSpaceIds,
     userFacingDescription: skill.userFacingDescription,
   });
+
+  return new Ok(undefined);
 }
 
 // Adding before removing to prevent orphaning the skill
@@ -194,7 +226,10 @@ export async function applySkillSuggestions(
 
   // `updateSkill` saves a version, so a batch that only moves editors must not call it.
   if (hasSkillFieldEdits(edits)) {
-    await updateSkill(auth, skill, edits);
+    const updateRes = await applySkillFieldEdits(auth, skill, edits);
+    if (updateRes.isErr()) {
+      return updateRes;
+    }
   }
 
   if (editorsChange) {

@@ -20,6 +20,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type { EndpointConfig, Where } from "@app/lib/llms/types/filter";
@@ -32,7 +33,6 @@ import {
   buildReinforcedSkillsLLMParams,
   classifySkillToolCalls,
 } from "@app/lib/reinforcement/run_reinforced_analysis";
-import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import {
   DESCRIBE_MCP_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,

@@ -10,6 +10,8 @@ export const BUILDING_AGENTS_AND_SKILLS_SERVER_NAME =
 export const DESCRIBE_SKILL_TOOL_NAME = "describe_skill" as const;
 export const SUGGEST_SKILL_UPDATE_TOOL_NAME = "suggest_skill_update" as const;
 export const SUGGEST_SKILL_EDITORS_TOOL_NAME = "suggest_skill_editors" as const;
+export const SUGGEST_AGENT_CREATION_TOOL_NAME =
+  "suggest_agent_creation" as const;
 
 // Bounds the O(n²) pairwise conflict check in hasSuggestionSelfConflict; larger rewrites
 // should target the instructions root block instead.
@@ -84,6 +86,35 @@ export type SuggestSkillEditorsArgs = z.infer<
   typeof SUGGEST_SKILL_EDITORS_INPUT_SCHEMA
 >;
 
+export const SUGGEST_AGENT_CREATION_DESCRIPTION =
+  "Suggest creating a new agent in this workspace: a named assistant with its own instructions. " +
+  "The change is not applied directly: it is recorded as a pending suggestion that the creator " +
+  "can review, accept, or reject.";
+
+export const SUGGEST_AGENT_CREATION_INPUT_SCHEMA = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("Unique, human-readable agent name (no leading '@')."),
+  description: z
+    .string()
+    .trim()
+    .min(1)
+    .describe(
+      "Short description of what the agent does, shown to users browsing agents."
+    ),
+  instructions: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("The agent's instructions, as HTML."),
+});
+
+export type SuggestAgentCreationArgs = z.infer<
+  typeof SUGGEST_AGENT_CREATION_INPUT_SCHEMA
+>;
+
 export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   {
     name: DESCRIBE_SKILL_TOOL_NAME,
@@ -129,6 +160,18 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting skill editors change",
       done: "Suggest skill editors change",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_AGENT_CREATION_TOOL_NAME,
+    description: SUGGEST_AGENT_CREATION_DESCRIPTION,
+    schema: SUGGEST_AGENT_CREATION_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting a new agent",
+      done: "Suggest new agent",
     },
     toolCostCategory: "basic",
     freeUsage: true,

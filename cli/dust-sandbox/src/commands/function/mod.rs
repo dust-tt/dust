@@ -13,6 +13,7 @@ mod archive;
 mod build;
 mod envelope;
 mod get;
+mod publication;
 mod run;
 mod warm;
 
@@ -21,21 +22,16 @@ pub use envelope::ResultDelivery;
 pub use get::cmd_function_get;
 pub use run::cmd_function_run;
 
-/// Eagerly materialize `$DUST_FUNCTIONS_DIR`'s sibling `functions.tar`: extract
-/// into the local warm archives dir and fill `bundles/<sha>.js` for every
-/// slug. Idempotent. Intended for publish-time seed so the first warm/cold
-/// invoke does not pay the tar download or a fuse ensureBundle.
-pub fn cmd_function_materialize_archive() -> Result<()> {
-    let dir = functions_dir().map_err(emit_error)?;
-    match archive::ensure_functions_archive_extracted(&dir) {
-        Some(_) => {
+/// Publish-time seed: extract `functions.tar` (or legacy-copy from fuse) and,
+/// when warm is enabled, start the publication worker with every slug already
+/// imported. Idempotent.
+pub async fn cmd_function_materialize_archive() -> Result<()> {
+    match publication::materialize_publication().await {
+        Ok(()) => {
             println!("{}", serde_json::json!({ "ok": true }));
             Ok(())
         }
-        None => Err(emit_error(anyhow!(
-            "failed to materialize functions.tar next to {}",
-            dir.display()
-        ))),
+        Err(msg) => Err(emit_error(anyhow!(msg))),
     }
 }
 
@@ -92,9 +88,8 @@ pub enum FunctionCommand {
         /// Output path for the extracted JSON-Schema contract
         out_schema: String,
     },
-    /// Copy + extract `$DUST_FUNCTIONS_DIR`'s sibling `functions.tar` and
-    /// populate the per-sha bundle cache for every slug so warm and cold
-    /// skips the fuse download.
+    /// Seed this publication: extract `functions.tar` (or legacy-copy) and
+    /// start the publication worker with every slug imported.
     MaterializeArchive,
 }
 
@@ -314,7 +309,7 @@ pub(crate) async fn spawn_runner(
 /// NODE_PATH for the runner child: the global npm modules first, then any
 /// inherited entries. NODE_PATH is additive, so a missing dir (local dev) falls
 /// back to normal node_modules resolution.
-fn harness_node_path() -> String {
+pub(crate) fn harness_node_path() -> String {
     match std::env::var("NODE_PATH") {
         Ok(existing) if !existing.is_empty() => {
             format!("{FUNCTIONS_GLOBAL_NODE_MODULES}:{existing}")

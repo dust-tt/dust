@@ -3008,7 +3008,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    * @cc [owner:philipperolet,label:backend;concurrency] cancel-unavailable-agent-message
    * After an agent loop loses access to its data, cancel only its workspace-scoped message
    * version if still created; under the conversation lock, clear the running flag only if
-   * that transition applied and no current agent message is running.
+   * that transition applied and no current agent message is running. Return the cancellation
+   * timestamp when the transition applied, and null otherwise.
    */
   static async cancelUnavailableAgentMessage(
     auth: Authenticator,
@@ -3021,7 +3022,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       agentMessageId: string;
       agentMessageVersion: number;
     }
-  ): Promise<void> {
+  ): Promise<Date | null> {
     // Deletion or a permissions change may remove the loop's original access. This internal
     // cleanup stays scoped to its workspace and message; it never returns conversation content.
     const conversation = await this.fetchById(auth, conversationId, {
@@ -3029,11 +3030,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       dangerouslySkipPermissionFiltering: true,
     });
     if (!conversation) {
-      return;
+      return null;
     }
 
     const workspaceId = auth.getNonNullableWorkspace().id;
-    await withTransaction(async (transaction) => {
+    return withTransaction(async (transaction) => {
       await getConversationRankVersionLock(auth, conversation, transaction);
       const message = await MessageModel.findOne({
         where: {
@@ -3045,28 +3046,30 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         transaction,
       });
       if (!message?.agentMessageId) {
-        return;
+        return null;
       }
 
+      const completedAt = new Date();
       const [updatedCount] = await AgentMessageModel.update(
-        { status: "cancelled", completedAt: new Date() },
+        { status: "cancelled", completedAt },
         {
           where: { id: message.agentMessageId, workspaceId, status: "created" },
           transaction,
         }
       );
-      if (
-        updatedCount === 0 ||
-        (await conversation.getRunningAgentMessage(auth, { transaction }))
-      ) {
-        return;
+      if (updatedCount === 0) {
+        return null;
       }
 
-      await this.setIsRunningAgentLoop(auth, {
-        conversation: conversation.toJSON(),
-        isRunningAgentLoop: false,
-        transaction,
-      });
+      if (!(await conversation.getRunningAgentMessage(auth, { transaction }))) {
+        await this.setIsRunningAgentLoop(auth, {
+          conversation: conversation.toJSON(),
+          isRunningAgentLoop: false,
+          transaction,
+        });
+      }
+
+      return completedAt;
     });
   }
 

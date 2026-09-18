@@ -36,6 +36,7 @@ export function useFramePermissions({
 
   return {
     isFrameAuthor: data?.isFrameAuthor ?? false,
+    packageRoot: data?.packageRoot ?? null,
     isFramePermissionsLoading: !disabled && !data && !error,
     isFramePermissionsError: error,
   };

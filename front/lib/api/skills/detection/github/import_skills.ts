@@ -17,7 +17,7 @@ import { validateSkillsForImport } from "@app/lib/api/skills/detection/validate_
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { SkillNameSchema } from "@app/lib/api/skills/schemas";
 import type { Authenticator } from "@app/lib/auth";
-import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";

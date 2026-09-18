@@ -1,23 +1,29 @@
 /**
- * Markdown directive plugin for sidekick suggestions.
+ * Markdown directive plugin for agent suggestions.
  *
  * This module provides remark-directive plugins for parsing and rendering
- * suggestion directives in markdown content, enabling the :agent_suggestion[]{sId=xxx kind=yyy} syntax.
+ * suggestion directives in markdown content, enabling the
+ * :agent_suggestion[]{sId=xxx kind=yyy agentId=zzz} syntax.
  */
 
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import {
+  mapSuggestionStateToCardState,
   SidekickSuggestionCard,
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/SidekickSuggestionCard";
+import { getIcon } from "@app/components/resources/resources_icons";
+import { useAgentSuggestions } from "@app/lib/swr/agent_suggestions";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
+import type { LightWorkspaceType } from "@app/types/user";
+import { ActionCardBlock, Avatar } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 import { SKIP, visit } from "unist-util-visit";
 
 /**
- * Remark directive plugin for parsing sidekick suggestion directives.
+ * Remark directive plugin for parsing agent suggestion directives.
  *
- * Transforms `:agent_suggestion[]{sId=xxx kind=yyy}` into a custom HTML element
+ * Transforms `:agent_suggestion[]{sId=xxx kind=yyy agentId=zzz}` into a custom HTML element
  * that can be rendered by the suggestion card component.
  */
 export function sidekickSuggestionDirective() {
@@ -30,6 +36,7 @@ export function sidekickSuggestionDirective() {
         data.hProperties = {
           sId: node.attributes.sId,
           kind: node.attributes.kind,
+          agentId: node.attributes.agentId,
         };
       }
     });
@@ -131,4 +138,71 @@ export function getSidekickSuggestionPlugin() {
   };
 
   return SidekickSuggestionPlugin;
+}
+
+interface ConversationAgentSuggestionProps {
+  owner: LightWorkspaceType;
+  agentId: string;
+  sId: string;
+}
+
+function ConversationAgentSuggestion({
+  owner,
+  agentId,
+  sId,
+}: ConversationAgentSuggestionProps) {
+  const { suggestions, isSuggestionsLoading } = useAgentSuggestions({
+    agentConfigurationId: agentId,
+    workspaceId: owner.sId,
+  });
+
+  if (isSuggestionsLoading) {
+    return <SuggestionCardSkeleton kind="create" />;
+  }
+
+  const suggestion = suggestions.find((s) => s.sId === sId);
+  if (!suggestion || suggestion.kind !== "create") {
+    return null;
+  }
+
+  const cardState =
+    suggestion.state === "pending"
+      ? "disabled"
+      : mapSuggestionStateToCardState(suggestion.state);
+
+  return (
+    <div data-suggestion-s-id={sId}>
+      <ActionCardBlock
+        title={`Create "${suggestion.suggestion.name}" agent`}
+        applyLabel="Accept"
+        acceptedTitle={`"${suggestion.suggestion.name}" agent creation accepted`}
+        rejectedTitle={`"${suggestion.suggestion.name}" agent creation rejected`}
+        visual={<Avatar icon={getIcon("ActionRobotIcon")} size="sm" />}
+        description={suggestion.analysis ?? suggestion.suggestion.description}
+        state={cardState}
+        actionsPosition="header"
+      />
+    </div>
+  );
+}
+
+interface ConversationAgentSuggestionPluginProps {
+  sId?: string;
+  kind?: AgentSuggestionKind;
+  agentId?: string;
+}
+
+export function getConversationAgentSuggestionPlugin(
+  owner: LightWorkspaceType
+) {
+  const ConversationAgentSuggestionPlugin = ({
+    sId,
+    kind,
+    agentId,
+  }: ConversationAgentSuggestionPluginProps) =>
+    sId && kind === "create" && agentId ? (
+      <ConversationAgentSuggestion owner={owner} agentId={agentId} sId={sId} />
+    ) : null;
+
+  return ConversationAgentSuggestionPlugin;
 }

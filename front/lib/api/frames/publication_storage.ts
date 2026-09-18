@@ -75,6 +75,7 @@ export class FramePublicationError extends Error {
       | "invalid_frame"
       | "invalid_function_artifact"
       | "invalid_function_reference"
+      | "invalid_package_file_ref"
       | "invalid_manifest"
       | "invalid_publication"
       | "invalid_source"
@@ -747,8 +748,9 @@ export async function publishFramePublication(
     return new Err(error);
   }
 
-  // Eagerly materialize functions.tar off gcsfuse when the publication has
-  // functions. Fire-and-forget: never block or fail publish on seed errors.
+  // Eagerly materialize publication bundles and start the publication worker
+  // (eager import) when the publication has functions. Fire-and-forget: never
+  // block or fail publish on seed errors.
   if (functionArtifacts.length > 0) {
     void seedFramePublicationFunctionsArchive(auth, {
       frame,

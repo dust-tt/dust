@@ -1,28 +1,26 @@
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
-import { getAgentsEditors, getEditors } from "@app/lib/api/assistant/editors";
-import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
+import {
+  getAgentEditors,
+  getAgentsEditors,
+  getEditors,
+} from "@app/lib/api/assistant/editors";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import assert from "assert";
-import { afterEach, expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
-it.each([
-  false,
-  true,
-])("selects editor lists and configuration context (grants: %s)", async (grants) => {
+it("serves single, batch, and context editor reads from grants", async () => {
   const { authenticator, user } = await createResourceTest({ role: "user" });
   const agent = await AgentConfigurationFactory.createTestAgent(authenticator, {
     scope: "hidden",
   });
-  await FeatureFlagFactory.basic(authenticator, "group_permissions_shadow");
+
+  // The author holds the editor grant created alongside the agent.
+  expect((await getEditors(authenticator, agent)).map(({ id }) => id)).toEqual([
+    user.id,
+  ]);
 
   const resource = AgentResource.fromAgentConfiguration(authenticator, agent);
   assert(resource.id !== null);
@@ -37,38 +35,29 @@ it.each([
   );
   assert(revokeResult.isOk());
 
-  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
-  const warn = vi.spyOn(logger, "warn");
-  const editors = await getEditors(authenticator, agent);
+  // Revoking the grant drops the editor from all three read paths.
+  expect(await getEditors(authenticator, agent)).toEqual([]);
 
-  const expectedEditorIds = grants ? [] : [user.id];
-  expect(editors.map((editor) => editor.id)).toEqual(expectedEditorIds);
   const batch = await getAgentsEditors(authenticator, [agent]);
-  expect(batch[agent.sId].map((editor) => editor.id)).toEqual(
-    expectedEditorIds
-  );
+  expect(batch[agent.sId]).toEqual([]);
+
   const context = await getAgentConfigurationContext(authenticator, agent.sId);
   assert(context.isOk());
-  expect(context.value.editorUsers.map((editor) => editor.id)).toEqual(
-    expectedEditorIds
-  );
+  expect(context.value.editorUsers).toEqual([]);
+});
 
-  expect(warn).toHaveBeenCalledWith(
-    expect.objectContaining({
-      check: "agent_editors",
-      legacyResult: [user.id],
-      candidateResult: [],
-      servedSource: grants ? "grants" : "legacy",
-    }),
-    "group_permissions_shadow_mismatch"
-  );
-  expect(warn).toHaveBeenCalledWith(
-    expect.objectContaining({
-      check: "agent_editors_batch",
-      legacyResult: [[agent.sId, [user.id]]],
-      candidateResult: [[agent.sId, []]],
-      servedSource: grants ? "grants" : "legacy",
-    }),
-    "group_permissions_shadow_mismatch"
-  );
+it("reports global agents as having no editor group", async () => {
+  const { authenticator } = await createResourceTest({ role: "user" });
+  const agent = await AgentConfigurationFactory.createTestAgent(authenticator, {
+    scope: "hidden",
+  });
+  const globalAgent = { ...agent, scope: "global" as const };
+
+  const result = await getAgentEditors(authenticator, globalAgent);
+  assert(result.isErr());
+  expect(result.error.code).toBe("group_not_found");
+
+  // `getEditors` swallows the error, and the batch read skips global agents.
+  expect(await getEditors(authenticator, globalAgent)).toEqual([]);
+  expect(await getAgentsEditors(authenticator, [globalAgent])).toEqual({});
 });

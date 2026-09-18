@@ -79,7 +79,10 @@ describe("framesSkill.fetchInstructions", () => {
       'bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME"'
     );
     expect(instructions).toContain("Fix those errors before");
-    expect(instructions).toContain("refuses to overwrite custom configs");
+    expect(instructions).toContain(
+      "keeps generated configs on local sandbox disk"
+    );
+    expect(instructions).toContain("configs untouched");
     expect(instructions).toContain(
       "Frame sharing and use rights are configured by the user in the Dust UI"
     );

@@ -1,4 +1,4 @@
-import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
 import { GetSkillHistoryQuerySchema } from "@app/types/api/skill";

@@ -98,6 +98,7 @@ const ResultTimingsSchema = z
     runner: z.number().optional(),
     runnerKind: z.enum(["warm", "cold"]).optional(),
     importKind: z.enum(["cached", "fresh"]).optional(),
+    ensure: z.number().optional(),
     warmAttempt: z.number().optional(),
     resolve: z.number().optional(),
     resolveKind: z.enum(["cache", "gcsfuse"]).optional(),

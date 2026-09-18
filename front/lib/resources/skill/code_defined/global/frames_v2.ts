@@ -392,8 +392,8 @@ The skill files stay in the conversation even when the Frame lives in a Pod. The
 the Viz types and reports type and lint errors with file, line and column. Fix those errors before
 publishing. A failed check returns a nonzero exit code.
 
-It creates \`tsconfig.json\` and \`.oxlintrc.json\` in the Frame folder and refreshes its generated
-configs on later runs. It refuses to overwrite custom configs. Keep server functions in
+It keeps generated configs on local sandbox disk and leaves the Frame source and existing
+configs untouched. Keep server functions in
 \`functions/\` and database schemas in \`databases/\`, which are excluded from UI linting.
 
 ## Publish a Frame
@@ -406,11 +406,13 @@ atomically:
 dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
 
-Publishing runs the manifest, UI, function-build, database-contract, Tailwind, and
-function-reference checks. If any fails, no partial publication becomes active: fix the reported
-error and rerun. Tailwind arbitrary values such as \`h-[600px]\` are errors, not warnings: use
-predefined classes or the \`style\` prop. Do not run \`dsbx frame validate\` immediately before
-publishing: it repeats the same server build.
+Publishing runs the manifest, UI, function-build, database-contract, Tailwind,
+function-reference, and in-package \`useFile\` path checks. If any fails, no partial publication
+becomes active: fix the reported error and rerun. Tailwind arbitrary values such as \`h-[600px]\`
+are errors, not warnings: use predefined classes or the \`style\` prop. Absolute scoped paths that
+point at files inside this Frame package (for example \`conversation-…/MyFrame/data.csv\` in
+\`useFile\`) must be rewritten to \`./data.csv\` before publish. Do not run \`dsbx frame validate\`
+immediately before publishing: it repeats the same server build.
 
 To run the same checks without storing or activating a publication or reconciling Frame-owned
 databases, for example while the active publication must keep working, use:
