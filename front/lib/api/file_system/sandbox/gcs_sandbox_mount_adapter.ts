@@ -438,6 +438,9 @@ export function buildMountCommand({
       if (target.readOnly) {
         mountOptions.push("ro");
       }
+      // These mounts have multiple independent writers/readers. gcsfuse only invalidates the
+      // client that performed a mutation, so workload caches can hide writes from Front or
+      // another sandbox for up to one second. Publication and state replica mounts stay uncached.
       const cacheTtlSeconds = target.mountProfile === "workload" ? 1 : 0;
 
       const flags = [
