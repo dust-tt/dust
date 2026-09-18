@@ -146,7 +146,6 @@ describe("credit spend checkpoint pause resolution", () => {
     expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
         startStep: 3,
-        startAsToolFreeGracefulStop: false,
         waitForCompletion: true,
         agentLoopArgs: expect.objectContaining({
           agentMessageId,
@@ -182,38 +181,30 @@ describe("credit spend checkpoint pause resolution", () => {
     expect(await getStatus()).toBe("paused");
   });
 
-  it("decline stops the pause and relaunches the loop as a tool-free graceful stop", async () => {
+  it("decline stops the pause and cancels the message without relaunching the loop", async () => {
     const res = await declineCreditSpendCheckpointPause(auth, conversation, {
       messageId: agentMessageId,
     });
 
     expect(res.isOk()).toBe(true);
     expect(await getStatus()).toBe("stopped");
+    expect(mockLaunchAgentLoopWorkflow).not.toHaveBeenCalled();
 
-    expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledWith(
-      expect.objectContaining({
-        startStep: 3,
-        startAsToolFreeGracefulStop: true,
-        waitForCompletion: true,
-        agentLoopArgs: expect.objectContaining({
-          agentMessageId,
-          conversationId: conversation.sId,
-        }),
-      })
+    const messageRes = await ConversationResource.getMessageByIdInConversation(
+      auth,
+      conversation.toJSON(),
+      agentMessageId
     );
-  });
+    if (messageRes.isErr()) {
+      throw messageRes.error;
+    }
+    expect(messageRes.value.agentMessage?.status).toBe("cancelled");
 
-  it("decline puts the message back to paused when the launch fails", async () => {
-    mockLaunchAgentLoopWorkflow.mockResolvedValue(
-      new Err(new Error("temporal unavailable"))
-    );
-
-    const res = await declineCreditSpendCheckpointPause(auth, conversation, {
-      messageId: agentMessageId,
-    });
-
-    expect(res.isErr()).toBe(true);
-    expect(await getStatus()).toBe("paused");
+    const { actionRequired } =
+      await ConversationResource.getActionRequiredAndLastReadAtForUser(
+        auth,
+        conversation.id
+      );
+    expect(actionRequired).toBe(false);
   });
 });

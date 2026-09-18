@@ -1,5 +1,6 @@
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
+import { finalizeAgentMessagesWithoutWorkflow } from "@app/lib/api/cancel";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -102,36 +103,33 @@ function nextStep(agentMessage: AgentMessageType): number {
 /**
  * @cc [owner:avervaet,label:backend;concurrency] checkpoint-single-resolution
  * A pause MUST be resolved at most once: the `paused` status is transitioned with a conditional
- * update and, when another resolution already applied, the call MUST return `Ok` without
- * relaunching anything.
+ * update and, when another resolution already applied, the call MUST return `Ok` without doing
+ * anything else.
  */
 /**
  * @cc [owner:avervaet,label:backend] checkpoint-resume-next-step
- * Resolving a pause MUST relaunch the loop at the step after the message's highest persisted
- * step content, transitioning the message off `paused` first. If the launch fails, the message
- * MUST be put back to `paused` so the user can retry.
+ * Continuing MUST relaunch the loop at the step after the message's highest persisted step
+ * content, transitioning the message off `paused` first. If the launch fails, the message MUST
+ * be put back to `paused` so the user can retry.
  */
-async function relaunchAfterCheckpointResolution(
+export async function continueCreditSpendCheckpointPause(
   auth: Authenticator,
   conversation: ConversationResource,
-  {
-    agentLoopArgs,
-    agentMessage,
-    resolvedStatus,
-    startAsToolFreeGracefulStop,
-  }: {
-    agentLoopArgs: AgentLoopArgs;
-    agentMessage: AgentMessageType;
-    resolvedStatus: "acknowledged" | "stopped";
-    startAsToolFreeGracefulStop: boolean;
-  }
+  { messageId }: { messageId: string }
 ): Promise<Result<void, DustError | Error>> {
+  const foundRes = await findPausedAgentMessage(auth, conversation, {
+    messageId,
+  });
+  if (foundRes.isErr()) {
+    return foundRes;
+  }
+  const { agentLoopArgs, agentMessage } = foundRes.value;
   const agentMessageModelId: ModelId = agentMessage.agentMessageId;
 
   const { applied } =
     await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
       auth,
-      { agentMessageModelId, from: "paused", to: resolvedStatus }
+      { agentMessageModelId, from: "paused", to: "acknowledged" }
     );
   if (!applied) {
     logger.info(
@@ -145,7 +143,6 @@ async function relaunchAfterCheckpointResolution(
     auth,
     agentLoopArgs,
     startStep: nextStep(agentMessage),
-    startAsToolFreeGracefulStop,
     // Avoid racing with the workflow that just paused: wait for its run to be reported done
     // before starting the resumed one.
     waitForCompletion: true,
@@ -155,7 +152,7 @@ async function relaunchAfterCheckpointResolution(
     // it, so put it back in its paused state and let the user retry.
     await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
       auth,
-      { agentMessageModelId, from: resolvedStatus, to: "paused" }
+      { agentMessageModelId, from: "acknowledged", to: "paused" }
     );
     return new Err(launchRes.error);
   }
@@ -163,36 +160,13 @@ async function relaunchAfterCheckpointResolution(
   return new Ok(undefined);
 }
 
-export async function continueCreditSpendCheckpointPause(
-  auth: Authenticator,
-  conversation: ConversationResource,
-  { messageId }: { messageId: string }
-): Promise<Result<void, DustError | Error>> {
-  const foundRes = await findPausedAgentMessage(auth, conversation, {
-    messageId,
-  });
-  if (foundRes.isErr()) {
-    return foundRes;
-  }
-
-  return relaunchAfterCheckpointResolution(auth, conversation, {
-    ...foundRes.value,
-    resolvedStatus: "acknowledged",
-    startAsToolFreeGracefulStop: false,
-  });
-}
-
 /**
- * @cc [owner:avervaet,label:backend;product] checkpoint-decline-wrap-up
- * Declining MUST produce the wrap-up recap through the loop's own tool-free graceful-stop step
- * (see `tool-free-graceful-stop-start`) rather than a bespoke LLM call, so it goes through the
- * loop's normal persistence, streaming, and per-execution-scoped finalize side effects.
- */
-/**
- * @cc [owner:avervaet,label:backend;product] checkpoint-decline-status-distinct
- * Declining MUST transition `creditSpendCheckpointStatus` to `"stopped"`, a value distinct from
- * `null`, so a later reader can tell a message that was declined at the checkpoint apart from one
- * that was never paused.
+ * @cc [owner:avervaet,label:backend;product] checkpoint-decline-cancels
+ * Declining MUST NOT call the model again: the message is finalized as `cancelled` directly,
+ * with no workflow involved, through the same path a stop uses when the loop cannot be
+ * signalled. The checkpoint status MUST be transitioned to `"stopped"` before that finalization,
+ * since finalizing only clears a `paused` status, so the decision stays readable afterwards and
+ * distinct from a message that was never paused or was stopped some other way.
  */
 export async function declineCreditSpendCheckpointPause(
   auth: Authenticator,
@@ -205,10 +179,32 @@ export async function declineCreditSpendCheckpointPause(
   if (foundRes.isErr()) {
     return foundRes;
   }
+  const { agentMessage } = foundRes.value;
 
-  return relaunchAfterCheckpointResolution(auth, conversation, {
-    ...foundRes.value,
-    resolvedStatus: "stopped",
-    startAsToolFreeGracefulStop: true,
+  const { applied } =
+    await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
+      auth,
+      {
+        agentMessageModelId: agentMessage.agentMessageId,
+        from: "paused",
+        to: "stopped",
+      }
+    );
+  if (!applied) {
+    logger.info(
+      { agentMessageId: agentMessage.sId, conversationId: conversation.sId },
+      "Spend checkpoint pause already resolved"
+    );
+    return new Ok(undefined);
+  }
+
+  await finalizeAgentMessagesWithoutWorkflow(auth, {
+    conversation,
+    messageIds: [agentMessage.sId],
+    status: "cancelled",
   });
+  // The pause flagged the conversation as waiting on the user; nothing is anymore.
+  await ConversationResource.clearActionRequired(auth, conversation.sId);
+
+  return new Ok(undefined);
 }
