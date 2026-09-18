@@ -48,6 +48,13 @@ export function getDegradedModelTooltip(displayName: string): string {
   return `${displayName} is unstable right now. You may want to select another model.`;
 }
 
+export function getTierFallbackTooltip(
+  tierName: string,
+  replacementModelName: string
+): string {
+  return `${tierName} is temporarily using ${replacementModelName} while its preferred model is unstable.`;
+}
+
 /**
  * @cc [owner:Nils-Fedrigo,label:product] regional-flag-follows-availability
  * The picker shows `region`'s hosting flag on a model if and only if that
