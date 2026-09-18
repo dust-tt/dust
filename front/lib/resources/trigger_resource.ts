@@ -132,8 +132,8 @@ export interface TriggerResource extends ReadonlyAttributesType<TriggerModel> {}
  * credit pool instead of the user's own. A trigger MUST NOT be created with, or switched to,
  * `executionMode: "workspace_pool"` unless the caller holds
  * `hasWorkspacePermission("use_workspace_pool", "trigger")`. It says nothing about who may edit
- * the trigger. Dust staff acting through a Poke plugin are exempt: `forceSetExecutionMode` moves a
- * trigger between pools regardless of plan and permission.
+ * the trigger. Dust staff acting through a Poke plugin are exempt via `dangerouslySetExecutionMode`,
+ * governed by `dangerous-execution-mode-bypass`.
  */
 export class TriggerResource extends BaseResource<TriggerModel> {
   static model: ModelStatic<TriggerModel> = TriggerModel;
@@ -1341,7 +1341,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return this.updateExecutionMode(auth, executionMode);
   }
 
-  async forceSetExecutionMode(
+  /**
+   * @cc [owner:adrsimon,label:security;product] dangerous-execution-mode-bypass
+   * `dangerouslySetExecutionMode` MUST only be called from internal staff tooling (Poke plugins
+   * gated on a Dust staff role). It skips the editor check, the plan check and the
+   * `use_workspace_pool` permission check enforced by `setExecutionMode`, so any user-facing path
+   * MUST use `setExecutionMode` instead.
+   */
+  async dangerouslySetExecutionMode(
     auth: Authenticator,
     executionMode: TriggerExecutionMode
   ): Promise<Result<undefined, Error>> {
