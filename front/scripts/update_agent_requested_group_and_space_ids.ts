@@ -99,11 +99,11 @@ async function updateAgentRequestedSpaceIds(
       });
 
     const currentRequestedSpaceIds = agentConfiguration.requestedSpaceIds.map(
-      (spaceSId) => {
-        const modelId = getResourceIdFromSId(spaceSId);
+      (spaceId) => {
+        const modelId = getResourceIdFromSId(spaceId);
         if (modelId === null) {
           throw new Error(
-            `Invalid space sId: ${spaceSId} for agent ${agent.sId}`
+            `Invalid space sId: ${spaceId} for agent ${agent.sId}`
           );
         }
         return modelId;

@@ -1900,13 +1900,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return result;
     }
 
-    const sIdById = new Map<ModelId, string>(
+    const conversationIdByModelId = new Map<ModelId, string>(
       conversations.map((c) => [c.id, c.sId])
     );
 
     const agentToConvIds = new Map<string, Set<string>>();
     for (const p of participations) {
-      const convId = sIdById.get(p.message!.conversationId);
+      const convId = conversationIdByModelId.get(p.message!.conversationId);
       if (!convId) {
         continue;
       }
@@ -1953,7 +1953,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         qualifyingConvIds = new Set([
           ...nonTriggered.map((c) => c.sId),
           ...triggeredWithUserMessages
-            .map((m) => sIdById.get(m.conversationId))
+            .map((m) => conversationIdByModelId.get(m.conversationId))
             .filter((sId): sId is string => sId !== undefined),
         ]);
       }

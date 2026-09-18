@@ -175,13 +175,13 @@ export class InternalMCPServerInMemoryResource {
       // 100 tries to avoid an infinite loop.
       for (let i = 1; i < 100; i++) {
         const prefix = Math.floor(Math.random() * 1000000);
-        const tempSid = internalMCPServerNameToSId({
+        const tempId = internalMCPServerNameToSId({
           name,
           workspaceId: auth.getNonNullableWorkspace().id,
           prefix,
         });
-        if (!alreadyUsedIds.some((r) => r.internalMCPServerId === tempSid)) {
-          sid = tempSid;
+        if (!alreadyUsedIds.some((r) => r.internalMCPServerId === tempId)) {
+          sid = tempId;
           break;
         }
       }
