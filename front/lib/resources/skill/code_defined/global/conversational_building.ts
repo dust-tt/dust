@@ -79,8 +79,10 @@ Tools operate on entity ids, not names. Use these tools to get up-to-date inform
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_agents\`: find all agents and resolve a name to an id.
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_skills\`: find all skills and resolve a name to an id.
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.get_agent_details\`: an agent's full configuration (instructions, model, skills, tools, knowledge).
+- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_tools\`: find the tools that can be equipped on agents and skills and resolve a name to an id.
+- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.get_tool_details\`: a tool's description and the functions it exposes with their parameters. Use it before referencing a tool in a suggestion.
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_workspace_members\`: information about members (pass \`userIds\` to look up specific people, e.g. to change a skill's editors).
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.describe_skill\`: a skill's name, agent-facing description and instructions as HTML whose blocks carry a \`data-block-id\`. ALWAYS use this before editing a skill; the block ids are required to target edits.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.describe_skill\`: a custom skill's name, settings, and instructions as HTML whose blocks carry a \`data-block-id\`. Call it to get any info about a skill before acting on it; the block ids are required to target edits.
 
 When editing an entity, repeat the discovery on EVERY turn of the conversation before suggesting anything.
 The user may have accepted, rejected or edited suggestions between two turns, so any configuration retrieved earlier may be outdated.
@@ -161,11 +163,7 @@ ${skillAgentFacingDescriptionGuidanceBody({ evidenceOnly: false })}
   }),
 
   tools: `<tools>
-Discovery (see <discovery_step>):
-- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_agents\`: inventory agents, resolve names to ids.
-- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_skills\`: inventory skills, resolve names to ids.
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.describe_skill\`: a custom skill's name, settings, and instructions as HTML with block ids. Call it to get any info about a skill before acting on it.
-- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_workspace_members\`: members with role and job function; pass \`userIds\` to look up specific people.
+Discovery (see <discovery_step>)
 
 Skill suggestions:
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_update\`: instruction edits (block-targeted, see <block_aware_editing>) and/or an agent-facing description replacement for one skill. Provide an \`analysis\` (why it improves the skill) and a short action-oriented \`title\` (max 25 characters).
@@ -182,7 +180,7 @@ Agent suggestions:
 
 /**
  * TODO in tools section:
- * Research tools to search knowledge, list tools, get tools details.
+ * Research tools to search knowledge.
  * Agent feedback and usage insights
  */
 

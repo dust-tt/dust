@@ -2672,6 +2672,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "get_tool_details": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "list_agents": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -2681,6 +2685,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
     "list_skills": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_tools": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -3513,9 +3521,11 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_agent_details": "never_ask",
     "get_group_members": "never_ask",
     "get_skill_details": "never_ask",
+    "get_tool_details": "never_ask",
     "list_agents": "never_ask",
     "list_groups": "never_ask",
     "list_skills": "never_ask",
+    "list_tools": "never_ask",
     "list_workspace_members": "never_ask",
     "update_group_members": "high",
   },
