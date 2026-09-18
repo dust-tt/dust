@@ -16,6 +16,7 @@ import {
   useAgentSuggestionActions,
   useAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect } from "react";
@@ -180,6 +181,12 @@ function ConversationAgentSuggestion({
       mutateSuggestions,
     });
 
+  const { agentConfiguration } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: agentId,
+    disabled: kind !== "delete",
+  });
+
   if (isSuggestionsLoading) {
     return <SuggestionCardSkeleton kind={kind} />;
   }
@@ -193,6 +200,7 @@ function ConversationAgentSuggestion({
     <div data-suggestion-s-id={sId}>
       <AgentSuggestionActionCard
         agentSuggestion={suggestion}
+        pictureUrl={agentConfiguration?.pictureUrl}
         disabled={isSuggestionPending(suggestion)}
         onAccept={() => void acceptSuggestion(suggestion)}
         onReject={() => void rejectSuggestion(suggestion)}

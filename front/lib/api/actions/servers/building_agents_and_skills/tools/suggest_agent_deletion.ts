@@ -77,7 +77,7 @@ export async function suggestAgentDeletion(
         agent,
         {
           kind: "delete",
-          suggestion: { name: agent.name, pictureUrl: agent.pictureUrl },
+          suggestion: { name: agent.name },
           analysis: analysis ?? null,
           state: "pending",
           conversationId: null,

@@ -37,26 +37,21 @@ interface AgentSuggestionActionCardProps {
   onReject: () => void;
   /** Forces the busy/disabled visual, e.g. while an accept/reject request is in flight. */
   disabled?: boolean;
+  pictureUrl?: string;
 }
 
-/**
- * @cc [owner:avervaet,label:react;architecture] no-suggestion-context-dependency
- * This card MUST NOT read from any context or provider, and MUST NOT fetch its own data: it is
- * rendered from multiple call sites with different data sources and no guarantee of a shared
- * provider between them. Accept and reject MUST come in as `onAccept`/`onReject` props.
- */
 export function AgentSuggestionActionCard({
   agentSuggestion,
   onAccept,
   onReject,
   disabled,
+  pictureUrl,
 }: AgentSuggestionActionCardProps) {
   const { kind, suggestion, state, analysis } = agentSuggestion;
   const cardState = disabled
     ? "disabled"
     : mapSuggestionStateToCardState(state);
   const name = suggestion.name;
-  const pictureUrl = kind === "delete" ? suggestion.pictureUrl : undefined;
 
   const labels =
     kind === "create"

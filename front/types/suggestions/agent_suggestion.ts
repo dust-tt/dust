@@ -100,7 +100,6 @@ const CreateSuggestionSchema = z.object({
 
 const DeleteSuggestionSchema = z.object({
   name: z.string().trim().min(1).describe("Name of the agent to delete."),
-  pictureUrl: z.string().optional(),
 });
 
 const KNOWLEDGE_SUGGESTION_METHODS = ["search", "query_tables"] as const;

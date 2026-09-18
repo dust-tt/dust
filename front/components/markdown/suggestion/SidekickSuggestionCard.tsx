@@ -663,10 +663,17 @@ function ConnectedAgentSuggestionActionCard({
   agentSuggestion,
 }: ConnectedAgentSuggestionActionCardProps) {
   const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
+  const { getValues } = useFormContext<AgentBuilderFormData>();
+
+  const pictureUrl =
+    agentSuggestion.kind === "delete"
+      ? getValues("agentSettings.pictureUrl")
+      : undefined;
 
   return (
     <AgentSuggestionActionCard
       agentSuggestion={agentSuggestion}
+      pictureUrl={pictureUrl}
       onAccept={() => void acceptSuggestion(agentSuggestion)}
       onReject={() => void rejectSuggestion(agentSuggestion)}
     />
