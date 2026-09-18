@@ -1,7 +1,4 @@
-import {
-  shadowCanAdminAgent,
-  shadowEditableAgents,
-} from "@app/lib/api/assistant/agent_permissions";
+import { filterEditableAgents } from "@app/lib/api/assistant/agent_permissions";
 import {
   enrichAgentConfigurations,
   getModelForAgentConfiguration,
@@ -1682,13 +1679,9 @@ export async function updateAgentPermissions(
     return editorGroupRes;
   }
 
-  const canAdministrate = await shadowCanAdminAgent(
-    auth,
-    agent,
-    async () =>
-      auth.isAdmin() ||
-      (await editorGroupRes.value.isMember(auth.getNonNullableUser())),
-    "updateAgentPermissions"
+  const canAdministrate = auth.can(
+    "admin",
+    AgentResource.fromAgentConfiguration(auth, agent)
   );
 
   try {
@@ -1696,7 +1689,6 @@ export async function updateAgentPermissions(
       const agentResource = AgentResource.fromAgentConfiguration(auth, agent);
 
       if (usersToAdd.length > 0) {
-        // The rollout switch selects the permission source for both editor writes.
         if (!canAdministrate) {
           return new Err(
             new DustError(
@@ -1720,7 +1712,6 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
-        // The rollout switch selects the permission source for both editor writes.
         if (!canAdministrate) {
           return new Err(
             new DustError(
@@ -1902,11 +1893,7 @@ export async function updateAgentConfigurationsScope(
     );
   }
 
-  const editableAgents = await shadowEditableAgents(
-    auth,
-    agentConfigs,
-    "updateAgentConfigurationsScope"
-  );
+  const editableAgents = filterEditableAgents(auth, agentConfigs);
   if (editableAgents.length === 0) {
     return new Ok(undefined);
   }

@@ -129,18 +129,15 @@ describe.each([
     );
   });
 
-  it("does not report the space read gate as a permission mismatch", async () => {
+  it("denies read and edit on an agent backed by an unreadable space", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "user",
     });
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const restrictedSpace = await SpaceFactory.regular(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       { scope: "hidden", requestedSpaceIds: [restrictedSpace.id] }
     );
-    await FeatureFlagFactory.basic(authenticator, "group_permissions_shadow");
-    const warn = vi.spyOn(logger, "warn");
 
     const configuration = await getAgentConfiguration(authenticator, {
       agentId: agent.sId,
@@ -148,23 +145,14 @@ describe.each([
       dangerouslySkipPermissionFiltering: true,
     });
 
-    // Grants deny read and write on an agent backed by a space the editor cannot read.
-    expect(configuration).toMatchObject(
-      grants
-        ? { canRead: false, canEdit: false }
-        : { canRead: true, canEdit: true }
-    );
-    expect(warn).not.toHaveBeenCalledWith(
-      expect.objectContaining({ check: "agent_permissions" }),
-      "group_permissions_shadow_mismatch"
-    );
+    // The space read gate denies read and write even to the agent's own editor.
+    expect(configuration).toMatchObject({ canRead: false, canEdit: false });
   });
 
-  it("does not report the space read gate for a scoped system key without the admin role", async () => {
+  it("denies a scoped system key without the admin role on an unreadable space", async () => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const restrictedSpace = await SpaceFactory.regular(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
@@ -179,14 +167,12 @@ describe.each([
       resourceType: "agent",
       resourceId: resource.id,
     });
-    await FeatureFlagFactory.basic(authenticator, "group_permissions_shadow");
     const auth = await Authenticator.fromKey(
       await KeyFactory.system(systemGroup),
       workspace.sId,
       [group.sId],
       "user"
     );
-    const warn = vi.spyOn(logger, "warn");
 
     const configuration = await getAgentConfiguration(auth, {
       agentId: agent.sId,
@@ -195,10 +181,6 @@ describe.each([
     });
 
     expect(configuration).toMatchObject({ canRead: false, canEdit: false });
-    expect(warn).not.toHaveBeenCalledWith(
-      expect.objectContaining({ check: "agent_permissions" }),
-      "group_permissions_shadow_mismatch"
-    );
   });
 
   it("respects the agent grants of a scoped system key", async () => {
