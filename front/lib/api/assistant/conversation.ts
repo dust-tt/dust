@@ -3520,6 +3520,8 @@ export async function updateAgentMessageWithFinalStatus(
   }
 
   if (newAgentMessage) {
+    await publishAgentMessagesEvents(conversation, [newAgentMessage]);
+
     void emitAuditLogEvent({
       auth: promotedAuth,
       action: "agent.executed",
@@ -3539,13 +3541,18 @@ export async function updateAgentMessageWithFinalStatus(
       },
     });
 
-    const finalAgentMessages = await runAgentLoopWorkflow({
+    const [finalAgentMessage] = await runAgentLoopWorkflow({
       auth: promotedAuth,
       agentMessages: [newAgentMessage],
       conversation,
       userMessage: promotedUserMessages[promotedUserMessages.length - 1],
     });
-    await publishAgentMessagesEvents(conversation, finalAgentMessages);
+    if (
+      finalAgentMessage &&
+      finalAgentMessage.status !== newAgentMessage.status
+    ) {
+      await publishAgentMessagesEvents(conversation, [finalAgentMessage]);
+    }
   }
 
   // The agent message will never resume: tools still waiting on user input (e.g. a manual
