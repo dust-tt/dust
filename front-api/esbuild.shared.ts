@@ -1,56 +1,40 @@
-import datadogEsbuildPlugin from "dd-trace/esbuild";
 import type esbuild from "esbuild";
 
-export const OPTIONAL_NATIVE_PACKAGES = [
-  "@datadog/libdatadog",
-  "@datadog/native-appsec",
-  "@datadog/native-iast-taint-tracking",
-  "@datadog/native-metrics",
-  "@datadog/pprof",
-  "@datadog/wasm-js-rewriter",
-  "unix-dgram",
-];
+// ESM-only packages that Node 22 cannot correctly `require()` at runtime
+// (it wraps the default export in `{ default: ... }`, breaking the
+// library's internal validation). Bundle these via esbuild instead of
+// externalizing them, so CJS/ESM interop is resolved at build time.
+//
+// Add new entries here as we discover them during migration.
+export const ESM_ONLY_PACKAGES = ["libphonenumber-js"];
 
-// Native addons and wasm: esbuild cannot inline a .node binary, and the loaders
-// resolve their platform package at runtime.
-export const NATIVE_PACKAGES = [
-  ...OPTIONAL_NATIVE_PACKAGES,
-  "@img/*",
-  "@napi-rs/*",
-  "blake3",
-  "keytar",
-  "msgpackr",
-  "re2-wasm",
-  "sharp",
-  "snowflake-sdk",
-];
-
-// Resolved at runtime from a variable path, so esbuild cannot follow them.
-export const DYNAMIC_REQUIRE_PACKAGES = [
-  // Each of these resolves a path at runtime (require.resolve, or
-  // createRequire(import.meta.url)), which esbuild cannot rewrite.
-  "@temporalio/interceptors-opentelemetry",
-  "esbuild",
-  "jsdom",
-  "prettier",
-  "tinyglobby",
-];
-
-export const OPTIONAL_PACKAGES = [
-  "@openfeature/core",
-  "@openfeature/server-sdk",
-  "bufferutil",
-  "encoding",
-  "pg-hstore",
-  "pg-native",
-  "utf-8-validate",
-];
-
-export const EXTERNAL_PACKAGES = [
-  ...NATIVE_PACKAGES,
-  ...DYNAMIC_REQUIRE_PACKAGES,
-  ...OPTIONAL_PACKAGES,
-];
+// Externalize every node_modules import (`bare specifier`, i.e. doesn't
+// start with `.` or `/`) by default, except for the packages above which
+// esbuild bundles inline. This replaces the broader `packages: "external"`
+// option which had no way to opt specific packages back into bundling.
+export const bundleEsmPlugin: esbuild.Plugin = {
+  name: "bundle-esm-packages",
+  setup(build) {
+    build.onResolve({ filter: /^[^./]/ }, (args) => {
+      // Path aliases (`@app/*`, `@front-api/*`) point at source code we want
+      // to bundle, not at node_modules. Skip them so esbuild's alias
+      // resolution applies and the resolved path gets bundled normally.
+      if (
+        args.path.startsWith("@app/") ||
+        args.path.startsWith("@front-api/")
+      ) {
+        return;
+      }
+      const pkg = args.path.startsWith("@")
+        ? args.path.split("/").slice(0, 2).join("/")
+        : args.path.split("/")[0];
+      if (ESM_ONLY_PACKAGES.includes(pkg)) {
+        return;
+      }
+      return { external: true };
+    });
+  },
+};
 
 export interface BuildTarget {
   name: string;
@@ -81,8 +65,7 @@ export function getBaseBuildOptions(target: BuildTarget): esbuild.BuildOptions {
     alias: {
       "@app": "../front",
     },
-    external: EXTERNAL_PACKAGES,
-    plugins: target.name === "server" ? [datadogEsbuildPlugin] : undefined,
+    plugins: [bundleEsmPlugin],
     logLevel: "info",
     metafile: true,
     minifyIdentifiers: false,

@@ -1,7 +1,5 @@
-import "./lib/tracer-init";
-
-// Logs a "sign of life" before OpenTelemetry instrumentation and the app module
-// graph load, so startup probe failures leave a trace in the logs.
+// Imported first: logs a "sign of life" before instrumentation and the app
+// module graph load, so startup probe failures leave a trace in the logs.
 import "./lib/startup-log";
 import "./lib/tracer-config";
 import "./lib/instrumentation-config";
