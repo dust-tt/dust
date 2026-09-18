@@ -245,8 +245,7 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     name: SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
     description:
       "Suggest a new user-facing description for an existing custom Skill: the short text " +
-      "members read when browsing skills. The change is not applied directly: it is recorded " +
-      "as a pending suggestion that the skill's editors can review, accept, or reject.",
+      "members read when browsing skills.",
     schema: SUGGEST_SKILL_USER_FACING_DESCRIPTION_INPUT_SCHEMA.shape,
     stake: "never_ask",
     displayLabels: {

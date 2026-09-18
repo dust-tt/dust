@@ -58,6 +58,7 @@ export function SkillBuilderSuggestionsPanel({
       switch (suggestion.kind) {
         case "edit":
           break;
+        // These are conversational building suggestion only, not supported in the builder.
         case "editors":
         case "user_facing_description":
           return;
