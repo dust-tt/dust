@@ -120,16 +120,6 @@ app.patch(
       });
     }
 
-    if (applyToSkill && !skill.canWrite(auth)) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message: "Only editors can modify this skill.",
-        },
-      });
-    }
-
     const suggestions = await SkillSuggestionResource.fetchByIds(
       auth,
       suggestionIds
@@ -141,6 +131,22 @@ app.patch(
         api_error: {
           type: "agent_suggestion_not_found",
           message: "One or more skill suggestions were not found.",
+        },
+      });
+    }
+
+    const requiresWrite = suggestions.some((s) => s.kind !== "delete");
+    const isAuthorizedToApply = requiresWrite
+      ? skill.canWrite(auth)
+      : skill.canAdministrate(auth);
+    if (applyToSkill && !isAuthorizedToApply) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: requiresWrite
+            ? "Only editors can modify this skill."
+            : "Only editors of this skill or workspace admins can delete it.",
         },
       });
     }
