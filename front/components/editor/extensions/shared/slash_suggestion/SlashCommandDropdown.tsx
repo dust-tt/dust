@@ -356,7 +356,10 @@ export const SlashCommandDropdown = forwardRef<
           side="bottom"
           sideOffset={4}
           onEscapeKeyDown={handleEscapeKeyDown}
-          onInteractOutside={onClose}
+          onPointerDownOutside={onClose}
+          // The editor takes focus back after every selection (tiptap focuses on the next frame),
+          // which Radix reports as focus leaving the layer; that must not dismiss the menu.
+          onFocusOutside={(event) => event.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
           scrollHighlightedItemIntoView
