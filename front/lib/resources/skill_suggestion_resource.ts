@@ -164,14 +164,12 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       ...new Set(suggestions.map((s) => s.skillConfigurationId)),
     ];
 
-    // A suggestion's skill can be archived by the time it is read back (e.g. a `delete`
-    // suggestion archives its own target on accept), so widen past the active-only default:
-    // otherwise the very suggestion whose state was just approved would disappear from the
-    // response. `canAdministrate` below still gates visibility the same way for any status.
+    // Include non-active skills (a suggestion's target skill can be archived by now), and skip
+    // hydrating tools since only sId and canAdministrate() are needed below.
     const skillResources = await SkillResource.fetchByModelIds(
       auth,
       skillConfigIds,
-      { status: ["active", "archived", "suggested"] }
+      { status: ["active", "archived", "suggested"], withTools: false }
     );
 
     const skillResourceByModelId = new Map(

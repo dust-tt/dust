@@ -13,14 +13,6 @@ import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-/**
- * @cc [owner:avervaet,label:product;security] no-direct-deletion
- * `suggestSkillDeletion` MUST NOT archive or delete the skill: it only records a `pending`
- * `delete` suggestion targeting an active skill the caller could archive through the manual
- * route (editor or admin, see `validateSkillDeletion`). Older pending `delete` suggestions on
- * the same skill are marked `outdated` so a single proposal is open at a time. Archiving is a
- * separate, human-reviewed step.
- */
 export async function suggestSkillDeletion(
   auth: Authenticator,
   { skillId, analysis }: SuggestSkillDeletionArgs
