@@ -163,6 +163,10 @@ owner, upload date, a label — and store the path in it, never the contents.
 
 ## Authoring a function
 
+When adding a function, write its source file and add its name, description and entryPoint to
+\`manifest.functions\` before running the linter. Use that same name in the UI hook. The linter
+reads the local manifest, so the function does not need to be published yet.
+
 Each function is a TypeScript module that:
 
 - exports a \`schema\` object with a description and Zod \`input\` and \`output\` schemas, plus an
@@ -399,6 +403,11 @@ configs untouched. Keep server functions in
 The linter also checks UI and backend source for absolute scoped paths to files inside the Frame.
 Use the suggested \`./…\` path so those references still work when the Frame moves.
 
+A literal function name passed to \`useFrameFunction\` or \`useFrameFunctionMutation\` must be
+declared in \`manifest.functions\`. The linter also checks their legacy Pod aliases and reports
+the call's file, line, column and the declared names. Fix a typo in the call or add the new
+function to the manifest. Names computed at run time are not checked.
+
 ## Publish a Frame
 
 There is no separate v2 function publish. Publish the manifest once; the UI source, all declared
@@ -409,11 +418,11 @@ atomically:
 dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
 
-Publishing runs the manifest, UI, function-build, database-contract, Tailwind,
-and function-reference checks. If any fails, no partial publication
+Publishing runs the manifest, UI, function-build, database-contract and Tailwind checks.
+If any fails, no partial publication
 becomes active: fix the reported error and rerun. Tailwind arbitrary values such as \`h-[600px]\`
 are errors, not warnings: use predefined classes or the \`style\` prop. Run the attached linter
-before publishing to check in-package file paths. Do not run \`dsbx frame validate\`
+before publishing to check in-package file paths and function names. Do not run \`dsbx frame validate\`
 immediately before publishing: it repeats the same server build.
 
 To run the same checks without storing or activating a publication or reconciling Frame-owned
@@ -422,11 +431,6 @@ databases, for example while the active publication must keep working, use:
 \`\`\`bash
 dsbx frame validate /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
-
-A function name passed to \`useFrameFunction\` or \`useFrameFunctionMutation\` as a literal must be a
-bare name declared in this manifest; otherwise \`publish\` and \`validate\` fail, listing the
-declared names, instead of the call failing once a viewer triggers it. A name computed at run time
-is not checked.
 
 Use these commands instead of \`bun build\` or an ad hoc regex scan: those do not use the Frame
 build context and report unrelated or noisy failures.

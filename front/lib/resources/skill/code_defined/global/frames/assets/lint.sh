@@ -9,7 +9,7 @@ fi
 # GCS Fuse makes repeated config reads slow. Cache the skill files on local disk.
 checker_cache=${DUST_FRAME_CHECKER_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/dust/frame-checker}
 # Bump whenever this script, its configs or bundled rules change to refresh cached checkers.
-checker_version=2
+checker_version=3
 checker="$checker_cache/checker-$checker_version"
 if [ "$0" != "$checker/lint.sh" ]; then
   if [ ! -f "$checker/lint.sh" ]; then
@@ -48,6 +48,12 @@ cache=${DUST_FRAME_TYPES_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/dust/frame-types
 if [ ! -f "$project/manifest.json" ] && [ ! -f "$project/index.tsx" ]; then
   echo "Expected a Frame folder containing manifest.json or index.tsx" >&2
   exit 1
+fi
+
+# Legacy Frames have no manifest and can call functions declared elsewhere.
+functions=null
+if [ -f "$project/manifest.json" ]; then
+  functions=$(jq -ce '(.functions // []) | map(.name)' "$project/manifest.json")
 fi
 
 manifest=$(curl --fail --silent --show-error --location --max-time 30 \
@@ -106,22 +112,27 @@ find "$work" -type d -exec chmod u+w {} +
 lint_config=$(find "$work" -type l -print0 | jq -Rs \
   --arg root "$work/" --arg frameRoot "$frame_root" \
   --arg plugin "$templates/frame-rules.cjs" --argjson modules "$modules" \
+  --argjson functions "$functions" \
   --arg tailwindPlugin "$tailwind_plugin" \
   --slurpfile config "$templates/oxlintrc.json" '
     split("\u0000")[:-1] | map({key: ltrimstr($root), value: true}) | from_entries as $files |
     $config[0] | .jsPlugins[0].specifier = $plugin | .jsPlugins[1] = $tailwindPlugin |
     .rules["dust/relative-package-files"] = ["error", {frameRoot: $frameRoot, packageFiles: $files}] |
+    .rules["dust/declared-frame-functions"] = (if $functions == null then "off" else ["error", $functions] end) |
     .rules["no-restricted-imports"][1].patterns[0].group += ($modules | map("!" + .))')
 # Remove the config symlinks before writing so the originals stay untouched.
 find "$work" -type l \( -name tsconfig.json -o -name .oxlintrc.json \) -delete
 jq --arg config "$types/tsconfig.json" '.extends = $config' \
   "$templates/tsconfig.json" > "$work/tsconfig.json"
-printf '%s\n' "$lint_config" > "$work/.oxlintrc.json"
+# JS plugin rules ignore --allow, so select the rules in the config for each pass.
+jq '.rules |= with_entries(select(.key == "dust/relative-package-files"))' \
+  <<< "$lint_config" > "$work/.oxlintrc.json"
 
 cd -- "$work"
 # Check package paths in backend code too, without loading UI types for those files.
 oxlint --allow all --deny dust/relative-package-files \
   --disable-nested-config --format unix --config .oxlintrc.json .
+jq 'del(.rules["dust/relative-package-files"])' <<< "$lint_config" > .oxlintrc.json
 oxlint --type-aware --type-check --disable-nested-config --format unix \
-  --allow dust/relative-package-files --ignore-pattern 'functions/**' \
+  --ignore-pattern 'functions/**' \
   --ignore-pattern 'databases/**' --config .oxlintrc.json .

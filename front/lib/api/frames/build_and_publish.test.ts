@@ -238,7 +238,7 @@ describe("buildAndPublishFramePublication", () => {
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
-  it("refuses to publish a UI that calls an undeclared function", async () => {
+  it("leaves function-name authoring checks to the Frame linter", async () => {
     const { auth, conversation, frame } = await setup();
 
     const result = await buildAndPublishFramePublication(auth, {
@@ -259,16 +259,12 @@ describe("buildAndPublishFramePublication", () => {
       ],
     });
 
-    expect(result.isErr() && result.error).toMatchObject({
-      code: "invalid_function_reference",
-    });
-    // The reference check runs before any build work, so nothing was bundled or stored.
-    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    expect(result.isOk()).toBe(true);
     expect(ensureConversationSandboxReadyWithScope).not.toHaveBeenCalled();
     expect(
       (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
         ?.activePublicationId
-    ).toBeUndefined();
+    ).toBe(result.isOk() ? result.value.publicationId : undefined);
   });
 
   it("builds and publishes the UI without starting a sandbox", async () => {
