@@ -1,4 +1,7 @@
-import { CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import {
+  CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
+  CREDIT_PRICED_ENTERPRISE_PILOT_PLAN_CODE,
+} from "@app/lib/plans/plan_codes";
 import type { MembershipSeatType } from "@app/types/memberships";
 
 // Hardcoded pre-fill templates for the Switch Contract poke dialog. Selecting a
@@ -52,6 +55,10 @@ export type SwitchContractTemplate = {
   // Sets the contract end date to start + duration (via the "Set duration"
   // toggle), which also drives the commitment period.
   duration?: { value: number; unit: ContractDurationUnit };
+  // How Metronome collects Stripe invoices for the customer. `send_invoice`
+  // emails the invoice for manual payment; `charge_automatically` charges the
+  // card on file. Only takes effect when a Stripe customer is wired in.
+  stripeCollectionMethod?: "charge_automatically" | "send_invoice";
   netPaymentTermsDays?: number;
   defaultDiscountPercent?: number;
   usageCapCredits?: number;
@@ -83,13 +90,39 @@ export type SwitchContractTemplate = {
 
 export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
   {
-    id: "enterprise-free-pilot-2w",
-    name: "Free pilot — 2 weeks",
-    description:
-      "Enterprise pooled, 2-week commitment, free workspace seats, 10k free credits.",
+    id: "enterprise-pooled",
+    name: "Enterprise pooled",
+    description: "Enterprise Pooled, yearly workspace seats, pooled credits.",
     package: { tier: "enterprise", namePattern: "pooled" },
     planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
     startMode: "select",
+    stripeCollectionMethod: "send_invoice",
+    seats: {
+      workspace_yearly: { selected: true },
+    },
+  },
+  {
+    id: "enterprise-seat-based",
+    name: "Enterprise seat-based",
+    description: "Enterprise Seat-based, yearly Pro/Max per-user seats.",
+    package: { tier: "enterprise", namePattern: "seat-based" },
+    planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
+    startMode: "select",
+    stripeCollectionMethod: "send_invoice",
+    seats: {
+      pro_yearly: { selected: true },
+      max_yearly: { selected: true },
+    },
+  },
+  {
+    id: "enterprise-free-pilot-2w",
+    name: "Free pilot — 2 weeks",
+    description:
+      "Enterprise pooled, 2-week commitment, free workspace seats, 10k free credits per committed seat.",
+    package: { tier: "enterprise", namePattern: "pooled" },
+    planCode: CREDIT_PRICED_ENTERPRISE_PILOT_PLAN_CODE,
+    startMode: "select",
+    stripeCollectionMethod: "send_invoice",
     duration: { value: 2, unit: "weeks" },
     defaultPoolCapCredits: 10000,
     seats: {
@@ -98,6 +131,7 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     initialCredits: {
       amountCredits: 10000,
       invoiceAmount: 0,
+      perUser: true,
       paymentSchedule: { frequency: "one_time" },
     },
   },
@@ -107,8 +141,9 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     description:
       "Enterprise pooled, 2-month commitment, workspace seats at 600/year, first 2 weeks free, 10k initial credits per committed seat.",
     package: { tier: "enterprise", namePattern: "pooled" },
-    planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
+    planCode: CREDIT_PRICED_ENTERPRISE_PILOT_PLAN_CODE,
     startMode: "select",
+    stripeCollectionMethod: "send_invoice",
     duration: { value: 2, unit: "months" },
     defaultPoolCapCredits: 10000,
     // First 2 weeks offered for free.
@@ -127,5 +162,22 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
       perUser: true,
       paymentSchedule: { frequency: "one_time" },
     },
+  },
+  {
+    id: "partner",
+    name: "Partner",
+    description:
+      "Partner Demo Enterprise, free pooled platform seats, monthly shared free credit pool.",
+    package: { tier: "enterprise", namePattern: "partner" },
+    planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
+    startMode: "select",
+    stripeCollectionMethod: "send_invoice",
+    // Partner Demo entitles the monthly (pooled) workspace seat at $0.
+    seats: {
+      workspace: { selected: true, rate: 0 },
+    },
+    // Shared monthly free pool granted at the contract level; adjust per deal.
+    recurringFreeCredit: 10000,
+    defaultPoolCapCredits: 10000,
   },
 ];

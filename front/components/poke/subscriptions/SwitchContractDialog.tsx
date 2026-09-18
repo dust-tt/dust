@@ -568,6 +568,12 @@ export default function SwitchContractDialog({
       if (template.startingAt !== undefined) {
         form.setValue("startingAt", template.startingAt);
       }
+      if (template.stripeCollectionMethod !== undefined) {
+        form.setValue(
+          "stripeCollectionMethod",
+          template.stripeCollectionMethod
+        );
+      }
       if (template.netPaymentTermsDays !== undefined) {
         form.setValue("netPaymentTermsDays", template.netPaymentTermsDays);
       }
