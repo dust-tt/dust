@@ -332,6 +332,11 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
  * a skill's availability to `users_and_agents`, or moving it off that value, MUST require
  * `hasWorkspacePermission("make_discoverable", "skill")` on top of `publish`.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:backend;security] skill-stored-global-space
+ * Creation, requestedSpaceIds updates, and new version snapshots must store the workspace's
+ * global space exactly once alongside all requested spaces, even when callers omit it.
+ */
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
@@ -542,9 +547,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Use a transaction to ensure all creations succeed or all are rolled back.
     const skillResource = await withTransaction(async (transaction) => {
+      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
+        auth,
+        transaction
+      );
       const skill = await this.model.create(
         {
           ...blob,
+          requestedSpaceIds: uniq([...blob.requestedSpaceIds, globalSpace.id]),
           instructionsHtml: blob.instructionsHtml ?? null,
           workspaceId: owner.id,
         },
@@ -3312,7 +3322,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       manuallyRequestedSpaceIds,
       name,
       reinforcement,
-      requestedSpaceIds,
+      requestedSpaceIds: requestedSpaceIdsFromCaller,
       source,
       sourceMetadata,
       status,
@@ -3372,6 +3382,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const previousStatus = this.status;
 
     const referencingSkillIds = await withTransaction(async (transaction) => {
+      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
+        auth,
+        transaction
+      );
+      const requestedSpaceIds = uniq([
+        ...requestedSpaceIdsFromCaller,
+        globalSpace.id,
+      ]);
       // Save the current version before updating.
       await this.saveVersion(auth, { transaction });
 
@@ -4779,6 +4797,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
+      auth,
+      transaction
+    );
     const skillIds = skills.map((skill) => skill.id);
 
     // Fetch current MCP server configuration IDs for all skills.
@@ -4839,7 +4861,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         userFacingDescription: skill.userFacingDescription,
         instructions: skill.instructions,
         instructionsHtml: skill.instructionsHtml,
-        requestedSpaceIds: skill.requestedSpaceIds,
+        requestedSpaceIds: uniq([...skill.requestedSpaceIds, globalSpace.id]),
         manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
         editedBy: skill.editedBy,
         mcpServerViewIds: (mcpServerConfigsBySkillId[skill.id] ?? []).map(
