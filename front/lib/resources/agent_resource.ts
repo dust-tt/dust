@@ -114,8 +114,8 @@ export interface FullAgentResource extends AgentResource {
 // It comes in two shapes, discriminated by `variant`:
 // - `light`: identity + `agentConfigurationModelId`/`scope`/`name`/`description`/`status`/
 //   `pictureUrl`/`versionAuthorId`/`requestedSpaceIds`/`modelConfiguration`, built without a query
-//   from a configuration already in hand. These core fields are not read-gated — they are carried by every resource — and are
-//   sufficient for permission decisions.
+//   from a configuration already in hand. These core fields are not read-gated — they are carried
+//   by every resource — and are sufficient for permission decisions.
 // - `full`: additionally carries `content` (every remaining `AgentConfigurationModel` column of the
 //   resolved version). Produced by the access-controlled `fetch*` resolvers.
 /**
@@ -176,8 +176,6 @@ export class AgentResource
   // carried by `light` resources too. Only `fetch*`-built resources carry the real date: the `from*`
   // factories have no `agents` row in hand and stamp a placeholder (see `fromAgentConfiguration`).
   readonly createdAt: Date;
-  // The `agent_configurations` row of the resolved version. A core field, not `content`: the tables
-  // keyed by it (skills, tools, tags) are read by callers who cannot read the agent itself.
   readonly agentConfigurationModelId: ModelId;
   readonly scope: AgentConfigurationScope;
   readonly name: string;
