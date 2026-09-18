@@ -1,9 +1,6 @@
 import { SKILL_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  buildSkillSearchQuery,
-  getSkillSearchReadableSpaceIds,
-} from "@app/lib/skill_search/query";
+import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
 import { buildSkillDefaultSort } from "@app/lib/skill_search/ranking";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import type {
@@ -25,7 +22,7 @@ export {
  * database reads. Permission-bearing document changes are eventually consistent; full-skill
  * access remains separately authorized. Callers must authorize admin-only redaction upstream.
  * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
- * Preserve Elasticsearch hit order without exposing scores in skill listings.
+ * Preserve Elasticsearch hit order without exposing scores or readability flags in skill listings.
  * Request _source and omit hits without source documents.
  */
 export async function searchSkills(
@@ -62,18 +59,10 @@ export async function searchSkills(
   }
 
   const { hits } = result.value.hits;
-  const spaceIds =
-    permissionFiltering === "redact_unreadable"
-      ? getSkillSearchReadableSpaceIds(auth)
-      : null;
-  const readableSpaceIds = spaceIds === null ? null : new Set(spaceIds);
 
   return new Ok(
-    removeNulls(hits.map((hit) => hit._source)).map((document) => ({
-      ...toSkillListItem(document),
-      canRead:
-        readableSpaceIds === null ||
-        document.requested_space_ids.every((id) => readableSpaceIds.has(id)),
-    }))
+    removeNulls(hits.map((hit) => hit._source)).map((document) =>
+      toSkillListItem(document)
+    )
   );
 }

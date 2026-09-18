@@ -42,7 +42,6 @@ import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_c
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
-import { z } from "zod";
 
 async function mockHits(
   auth: Authenticator,
@@ -429,11 +428,7 @@ describe("custom skill search", () => {
         archived.sId,
       ]);
       const listing = both[0];
-      expect(
-        SkillListItemSchema.extend({ canRead: z.boolean() })
-          .strict()
-          .parse(listing)
-      ).toEqual({
+      expect(SkillListItemSchema.strict().parse(listing)).toEqual({
         sId: active.sId,
         status: "active",
         name: "Indexed name",
@@ -445,7 +440,6 @@ describe("custom skill search", () => {
         availability: "workspace_users",
         activeUsersCount: null,
         updatedAt: active.updatedAt.getTime(),
-        canRead: true,
       });
       expect(SkillSchema.safeParse(listing).success).toBe(false);
       expect(mockSearch.mock.lastCall![0]).toMatchObject({
@@ -465,7 +459,7 @@ describe("custom skill search", () => {
   it.each([
     "regular",
     "project",
-  ] as const)("marks unreadable %s listings for admins without hydration", async (kind) => {
+  ] as const)("returns unreadable %s listings for admins without hydration", async (kind) => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -484,11 +478,9 @@ describe("custom skill search", () => {
       searchTerm: "",
       permissionFiltering: "redact_unreadable",
     });
-    expect(redacted).toEqual({
-      ...toSkillListItem(document),
-      canRead: false,
-    });
-    expect(redacted.canRead).toBe(false);
+    expect(SkillListItemSchema.strict().parse(redacted)).toEqual(
+      toSkillListItem(document)
+    );
     expect(mockSearch.mock.lastCall![0].query.bool.filter).toEqual([
       { term: { workspace_id: workspace.sId } },
       { terms: { status: ["active"] } },
@@ -576,7 +568,7 @@ describe("custom skill search", () => {
       searchTerm: "",
       permissionFiltering: "redact_unreadable",
     });
-    expect(redacted.map((skill) => skill.canRead)).toEqual([true, true]);
+    expect(redacted).toEqual(candidates);
   });
 
   it("requires indexed editorship even with a type-wide skill grant", async () => {
