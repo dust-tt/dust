@@ -43,6 +43,7 @@ export async function searchSkills(
   }
 ) {
   const workspaceId = auth.getNonNullableWorkspace().sId;
+
   const result = await withEs((client) =>
     client.search<SkillSearchDocument>({
       index: SKILL_SEARCH_ALIAS_NAME,
@@ -65,7 +66,9 @@ export async function searchSkills(
   if (result.isErr()) {
     return result;
   }
+
   const { hits } = result.value.hits;
+
   const candidates: SkillSearchCandidate[] = [];
   for (const hit of hits) {
     const document = hit._source;
@@ -74,12 +77,14 @@ export async function searchSkills(
         new ElasticsearchError("query_error", "Missing skill search document")
       );
     }
+
     const [score, name, skillId] = hit.sort!;
     candidates.push({
       sort: [score, name, skillId],
       skill: { ...toSkillListItem(document), score },
     });
   }
+
   return new Ok({
     candidates,
     exhausted: hits.length < limit,
