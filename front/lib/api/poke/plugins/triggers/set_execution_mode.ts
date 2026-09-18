@@ -1,12 +1,10 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
-import { isTriggerExecutionMode } from "@app/types/assistant/triggers";
+import {
+  isTriggerExecutionMode,
+  TRIGGER_EXECUTION_MODES,
+} from "@app/types/assistant/triggers";
+import { mapToEnumValues } from "@app/types/poke/plugins";
 import { Err, Ok } from "@app/types/shared/result";
-
-const EXECUTION_MODE_LABELS: Record<TriggerExecutionMode, string> = {
-  user_pool: "User pool",
-  workspace_pool: "Workspace pool",
-};
 
 export const setTriggerExecutionModePlugin = createPlugin({
   manifest: {
@@ -20,27 +18,14 @@ export const setTriggerExecutionModePlugin = createPlugin({
         type: "enum",
         label: "Execution Mode",
         description: "Credit pool the trigger's executions are charged to",
-        values: [],
-        async: true,
+        values: mapToEnumValues(TRIGGER_EXECUTION_MODES, (mode) => ({
+          label: mode,
+          value: mode,
+        })),
         multiple: false,
       },
     },
     requiredRoles: ["support"],
-  },
-  populateAsyncArgs: async (auth, resource) => {
-    if (!resource) {
-      return new Err(new Error("Trigger not found"));
-    }
-
-    return new Ok({
-      executionMode: Object.entries(EXECUTION_MODE_LABELS).map(
-        ([value, label]) => ({
-          label,
-          value,
-          checked: resource.executionMode === value,
-        })
-      ),
-    });
   },
   execute: async (auth, resource, args) => {
     if (!resource) {
@@ -59,7 +44,7 @@ export const setTriggerExecutionModePlugin = createPlugin({
 
     return new Ok({
       display: "text",
-      value: `Trigger "${resource.name}" is now charged to the ${EXECUTION_MODE_LABELS[executionMode].toLowerCase()}.`,
+      value: `Trigger "${resource.name}" is now charged to the ${executionMode}.`,
     });
   },
 });
