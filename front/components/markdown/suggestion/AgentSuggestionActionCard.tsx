@@ -56,6 +56,7 @@ export function AgentSuggestionActionCard({
     ? "disabled"
     : mapSuggestionStateToCardState(state);
   const name = suggestion.name;
+  const pictureUrl = kind === "delete" ? suggestion.pictureUrl : undefined;
 
   const labels =
     kind === "create"
@@ -78,7 +79,13 @@ export function AgentSuggestionActionCard({
       applyLabel="Accept"
       acceptedTitle={labels.acceptedTitle}
       rejectedTitle={labels.rejectedTitle}
-      visual={<Avatar icon={getIcon("ActionRobotIcon")} size="sm" />}
+      visual={
+        pictureUrl ? (
+          <Avatar visual={pictureUrl} size="sm" />
+        ) : (
+          <Avatar icon={getIcon("ActionRobotIcon")} size="sm" />
+        )
+      }
       description={labels.description}
       state={cardState}
       actionsPosition="header"
