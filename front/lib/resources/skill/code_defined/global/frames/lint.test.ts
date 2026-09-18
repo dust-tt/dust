@@ -26,7 +26,7 @@ afterEach(async () => {
   }
 });
 
-async function fixture() {
+async function fixture(frameRoot = "conversation-conv_123/My Frame") {
   const root = await mkdtemp(path.join(tmpdir(), "frame-lint-"));
   cleanup.push(() => rm(root, { recursive: true, force: true }));
   const project = path.join(root, "My Frame");
@@ -96,12 +96,14 @@ async function fixture() {
     archive,
     requests,
     skill,
+    frameRoot,
     url: `http://127.0.0.1:${address.port}`,
   };
 }
 
 async function lint(context: Awaited<ReturnType<typeof fixture>>) {
   vi.stubEnv("DUST_VIZ_URL", context.url);
+  vi.stubEnv("DUST_FRAME_ROOT", context.frameRoot);
   vi.stubEnv("DUST_FRAME_TYPES_CACHE", path.join(context.root, "cache"));
   vi.stubEnv(
     "DUST_FRAME_CHECKER_CACHE",
@@ -159,6 +161,7 @@ test("lints current source, skips backend folders and reuses local checker files
   ]);
   await rm(path.join(context.skill, "tsconfig.json"));
   await rm(path.join(context.skill, "oxlintrc.json"));
+  await rm(path.join(context.skill, "frame-rules.cjs"));
   await writeFile(
     path.join(context.project, "value.ts"),
     "export const value = 42\n"
@@ -186,6 +189,77 @@ test("rejects corrupted downloads before creating configs or caching types", asy
   expect(result.stderr).toContain("checksum mismatch");
   expect(await readdir(path.join(context.root, "cache"))).toEqual([]);
   expect(await readdir(context.project)).toEqual(["index.tsx"]);
+});
+
+test.each([
+  "conversation-conv_123",
+  "pod-pod_123",
+])("reports in-package paths in UI and backend code under %s", async (scope) => {
+  const frameRoot = `${scope}/My Frame`;
+  const context = await fixture(frameRoot);
+  const oldChecker = path.join(context.root, "checker-cache", "checker");
+  await mkdir(oldChecker, { recursive: true });
+  await writeFile(path.join(oldChecker, "lint.sh"), "exit 0\n");
+  await writeFile(path.join(context.project, "data.csv"), "value\n42\n");
+  await writeFile(
+    path.join(context.project, "jsx.d.ts"),
+    "declare namespace JSX { interface IntrinsicElements { img: { src: string } } }\n"
+  );
+  const source = [
+    `export const data = "${frameRoot}/data.csv"`,
+    `export const template = \`${frameRoot}/data.csv\``,
+    `export default () => <img src="${frameRoot}/data.csv" />`,
+  ].join("\n");
+  await writeFile(path.join(context.project, "index.tsx"), source);
+  await mkdir(path.join(context.project, "functions"));
+  await writeFile(
+    path.join(context.project, "functions/read.ts"),
+    `import "server-only-library"\nexport const data = "${frameRoot}/data.csv"\n`
+  );
+
+  const broken = await lint(context);
+  expect(broken.exitCode).toBe(1);
+  expect(broken.stdout, broken.stderr).toContain("index.tsx:1:21:");
+  expect(broken.stdout).toContain("index.tsx:2:25:");
+  expect(broken.stdout).toContain("index.tsx:3:31:");
+  expect(broken.stdout).toContain("functions/read.ts:2:21:");
+  expect(broken.stdout).toContain("dust(relative-package-files)");
+  expect(broken.stdout).toContain('Use "./data.csv"');
+  expect(broken.stdout).not.toContain("TS2307");
+  expect(await readFile(path.join(context.project, "index.tsx"), "utf8")).toBe(
+    source
+  );
+
+  await writeFile(
+    path.join(context.project, "index.tsx"),
+    [
+      'export const relative = "./data.csv"',
+      'export const fileId = "fil_ABCDEFGHIJ"',
+      'export const external = "conversation-conv_123/other.csv"',
+      `export const otherFrame = "${frameRoot}2/data.csv"`,
+      'export const otherConversation = "conversation-other/My Frame/data.csv"',
+      `export const missing = "${frameRoot}/missing.csv"`,
+      `// "${frameRoot}/data.csv"`,
+      'export default () => <img src="./data.csv" />',
+    ].join("\n")
+  );
+  await writeFile(
+    path.join(context.project, "functions/read.ts"),
+    'import "server-only-library"\nexport const data = "./data.csv"\n'
+  );
+  const valid = await lint(context);
+  expect(valid.exitCode, valid.stdout + valid.stderr).toBe(0);
+  expect(await readdir(path.join(context.root, "cache"))).toEqual([
+    "a".repeat(64),
+  ]);
+});
+
+test("requires the original scoped root when linting a local copy", async () => {
+  const context = await fixture("");
+  const result = await lint(context);
+  expect(result.exitCode).toBe(1);
+  expect(result.stderr).toContain("Set DUST_FRAME_ROOT");
+  expect(context.requests).toEqual([]);
 });
 
 test("checks read-only source without changing or using project configs", async () => {

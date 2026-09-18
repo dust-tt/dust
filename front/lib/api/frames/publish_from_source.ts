@@ -288,7 +288,6 @@ async function readFrameV2SourceWithSourceLockHeld(
 ): Promise<
   Result<
     {
-      frameRoot: string;
       manifest: FrameManifest;
       sourceFiles: FramePublicationSourceFile[];
     },
@@ -426,7 +425,6 @@ async function readFrameV2SourceWithSourceLockHeld(
   }
 
   return new Ok({
-    frameRoot: sourceDirectoryPath,
     manifest: manifestResult.value,
     sourceFiles,
   });
@@ -462,7 +460,6 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
   return buildAndPublishFramePublication(auth, {
     conversation,
     frame,
-    frameRoot: source.value.frameRoot,
     manifest: source.value.manifest,
     sourceFiles: source.value.sourceFiles,
     publishedByAgentConfigurationId,
@@ -688,7 +685,6 @@ export async function validateFrameV2FromSource(
 
     return validateFramePublication(auth, {
       conversation,
-      frameRoot: source.value.frameRoot,
       manifest: source.value.manifest,
       sourceFiles: source.value.sourceFiles,
     });
