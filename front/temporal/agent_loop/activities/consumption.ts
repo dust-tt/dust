@@ -33,9 +33,11 @@ async function resolveExecutionEntryContext(
     return null;
   }
   const rootCreditContext =
-    await ConversationResource.fetchAgentMessageCreditContext(auth, {
-      agentMessageId: rootAgentMessageId,
-    });
+    agentMessageId === rootAgentMessageId
+      ? creditContext
+      : await ConversationResource.fetchAgentMessageCreditContext(auth, {
+          agentMessageId: rootAgentMessageId,
+        });
   if (!rootCreditContext) {
     return null;
   }
