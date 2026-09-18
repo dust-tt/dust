@@ -2,32 +2,21 @@ import {
   archiveAgentConfiguration,
   getAgentConfiguration,
   getAgentConfigurationForDetails,
-  updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getEditors } from "@app/lib/api/assistant/editors";
-import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import assert from "assert";
-import { afterEach, expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
-it.each(["legacy", "grants"])("selects %s for agent views", async (mode) => {
-  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(
-    mode === "legacy"
-  );
+it("uses agent grants for list, manage and archived views", async () => {
   const { authenticator: authorAuth, workspace } = await createResourceTest({
     role: "user",
   });
@@ -69,10 +58,6 @@ it.each(["legacy", "grants"])("selects %s for agent views", async (mode) => {
     member.sId,
     workspace.sId
   );
-  const selected = mode === "grants" ? grantAgent : legacyAgent;
-  const excluded = mode === "grants" ? legacyAgent : grantAgent;
-  await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
-  const warn = vi.spyOn(logger, "warn");
 
   for (const view of ["list", "manage"] as const) {
     const agents = await getAgentConfigurationsForView({
@@ -80,18 +65,8 @@ it.each(["legacy", "grants"])("selects %s for agent views", async (mode) => {
       agentsGetView: view,
       variant: "light",
     });
-    expect(agents.map((agent) => agent.sId)).toContain(selected.sId);
-    expect(agents.map((agent) => agent.sId)).not.toContain(excluded.sId);
-    await vi.waitFor(() =>
-      expect(warn).toHaveBeenCalledWith(
-        expect.objectContaining({
-          check: "agent_view",
-          view,
-          servedSource: mode,
-        }),
-        "group_permissions_shadow_mismatch"
-      )
-    );
+    expect(agents.map((agent) => agent.sId)).toContain(grantAgent.sId);
+    expect(agents.map((agent) => agent.sId)).not.toContain(legacyAgent.sId);
   }
   await archiveAgentConfiguration(authorAuth, legacyAgent.sId);
   await archiveAgentConfiguration(authorAuth, grantAgent.sId);
@@ -100,17 +75,7 @@ it.each(["legacy", "grants"])("selects %s for agent views", async (mode) => {
     agentsGetView: "archived",
     variant: "light",
   });
-  expect(archived.map((agent) => agent.sId)).toEqual([selected.sId]);
-  await vi.waitFor(() =>
-    expect(warn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        check: "agent_view",
-        view: "archived",
-        servedSource: mode,
-      }),
-      "group_permissions_shadow_mismatch"
-    )
-  );
+  expect(archived.map((agent) => agent.sId)).toEqual([grantAgent.sId]);
 });
 
 it("keeps author access and admin redaction when grants are enabled", async () => {
@@ -134,7 +99,6 @@ it("keeps author access and admin redaction when grants are enabled", async () =
       })
     ).isOk()
   );
-  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(false);
   const legacyGroup = await GroupResource.findEditorGroupForAgent(
     authorAuth,
     agent
@@ -169,41 +133,4 @@ it("keeps author access and admin redaction when grants are enabled", async () =
       AgentResource.fromAgentConfiguration(adminAuth, agent)
     )
   ).toBe(true);
-});
-
-it("loads legacy memberships when rollback starts during a view read", async () => {
-  const { authenticator: auth, workspace } = await createResourceTest({
-    role: "user",
-  });
-  const agent = await AgentConfigurationFactory.createTestAgent(auth, {
-    scope: "hidden",
-  });
-  const editor = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, editor, { role: "user" });
-  assert(
-    (
-      await updateAgentPermissions(auth, {
-        agent,
-        usersToAdd: [editor.toJSON()],
-        usersToRemove: [],
-      })
-    ).isOk()
-  );
-  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(false);
-  const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
-    editor.sId,
-    workspace.sId
-  );
-  vi.spyOn(legacyAcls, "isLegacyAclsEnabled")
-    .mockReturnValueOnce(false)
-    .mockReturnValue(true);
-  const agents = await getAgentConfigurationsForView({
-    auth: editorAuth,
-    agentsGetView: "list",
-    variant: "light",
-  });
-  expect(agents.find((entry) => entry.sId === agent.sId)).toMatchObject({
-    canRead: true,
-    canEdit: true,
-  });
 });

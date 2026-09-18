@@ -532,31 +532,6 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * TODO(governance): to be removed, replaced by permissions checks
-   */
-  static async findAgentIdsForGroups(
-    auth: Authenticator,
-    groupIds: ModelId[]
-  ): Promise<{ agentConfigurationId: ModelId; groupId: ModelId }[]> {
-    const owner = auth.getNonNullableWorkspace();
-
-    const groupAgents = await GroupAgentModel.findAll({
-      where: {
-        groupId: {
-          [Op.in]: groupIds,
-        },
-        workspaceId: owner.id,
-      },
-      attributes: ["agentConfigurationId", "groupId"],
-    });
-
-    return groupAgents.map((ga) => ({
-      agentConfigurationId: ga.agentConfigurationId,
-      groupId: ga.groupId,
-    }));
-  }
-
-  /**
    * TODO(governance): to be removed, replaced by findRegularAutoGroupForGrant/listRegularAutoGroupsForResource
    * Finds the specific editor group associated with an agent configuration.
    */
