@@ -241,6 +241,18 @@ pub struct CallToolResponse {
     pub result: CallToolResult,
 }
 
+/// Phase breakdown for one `dsbx tools` call (POST + poll + optional offload).
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolCallTimingsMs {
+    pub post: u64,
+    pub poll: u64,
+    /// Time spent resolving offloaded content blocks after a successful poll.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offload: Option<u64>,
+    pub total: u64,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CallToolResult {
@@ -251,6 +263,10 @@ pub struct CallToolResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub structured_content: Option<serde_json::Value>,
     pub is_error: bool,
+    /// Diagnostics only: optional so older consumers ignore unknown fields and
+    /// `--json` without timings stays a valid CallToolResult.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timings_ms: Option<ToolCallTimingsMs>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -419,6 +435,7 @@ mod tests {
             content: vec![serde_json::json!({"type": "text", "text": "hello"})],
             structured_content: None,
             is_error: false,
+            timings_ms: None,
         };
 
         let value: serde_json::Value =
@@ -441,6 +458,7 @@ mod tests {
             content: vec![serde_json::json!({"type": "text", "text": "hello"})],
             structured_content: Some(serde_json::json!({"items": [1, 2], "nextCursor": "abc"})),
             is_error: false,
+            timings_ms: None,
         };
 
         let value: serde_json::Value =
@@ -478,6 +496,7 @@ mod tests {
             content,
             structured_content: None,
             is_error: false,
+            timings_ms: None,
         };
         let value: serde_json::Value =
             serde_json::from_str(&serde_json::to_string(&result).expect("should serialize"))
@@ -501,6 +520,7 @@ mod tests {
             })],
             structured_content: None,
             is_error: true,
+            timings_ms: None,
         };
 
         let value: serde_json::Value =

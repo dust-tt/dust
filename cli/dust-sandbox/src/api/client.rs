@@ -370,6 +370,7 @@ impl DustApiClient {
                             content,
                             structured_content,
                             is_error,
+                            timings_ms: None,
                         },
                     });
                 }
@@ -383,15 +384,27 @@ impl DustApiClient {
         tool_name: &str,
         arguments: Option<serde_json::Value>,
     ) -> anyhow::Result<CallToolResponse> {
+        let started = Instant::now();
         let body = CallToolRequest {
             server_view_id: view_id.to_string(),
             tool_name: tool_name.to_string(),
             arguments,
         };
+        let post_started = Instant::now();
         let CallToolPostResponse::Pending { action_id } =
             self.post("sandbox/actions/call", &body).await?;
+        let post_ms = post_started.elapsed().as_millis() as u64;
 
-        self.poll_action_result(&action_id).await
+        let poll_started = Instant::now();
+        let mut response = self.poll_action_result(&action_id).await?;
+        let poll_ms = poll_started.elapsed().as_millis() as u64;
+        response.result.timings_ms = Some(super::types::ToolCallTimingsMs {
+            post: post_ms,
+            poll: poll_ms,
+            offload: None,
+            total: started.elapsed().as_millis() as u64,
+        });
+        Ok(response)
     }
 }
 

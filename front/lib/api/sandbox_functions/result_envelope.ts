@@ -103,8 +103,25 @@ const ResultTimingsSchema = z
     resolve: z.number().optional(),
     resolveKind: z.enum(["cache", "gcsfuse"]).optional(),
     child: z.number().optional(),
+    archive: z.number().optional(),
     import: z.number().optional(),
     handler: z.number().optional(),
+    tools: z
+      .object({
+        total: z.number(),
+        count: z.number(),
+        calls: z.array(
+          z.object({
+            server: z.string(),
+            tool: z.string(),
+            post: z.number(),
+            poll: z.number(),
+            offload: z.number().optional(),
+            total: z.number(),
+          })
+        ),
+      })
+      .optional(),
   })
   .passthrough();
 
