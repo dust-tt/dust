@@ -24,6 +24,7 @@ import {
   MAX_ARCHIVE_UPLOAD_SIZE_BYTES,
 } from "@app/lib/api/files/folder_extract";
 import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
+import type { PostExtractArchiveResponseBody } from "@app/types/api/file_system/types";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { DustFileSystemError } from "@app/types/file_system";
 import {
@@ -614,7 +615,9 @@ app.post(
 
     requestDustProjectIncrementalSyncForScopedPath(auth, canonicalPath);
 
-    return ctx.json(extractResult.value);
+    const body: PostExtractArchiveResponseBody = extractResult.value;
+
+    return ctx.json(body);
   }
 );
 
