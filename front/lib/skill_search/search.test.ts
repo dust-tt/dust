@@ -123,18 +123,65 @@ describe("custom skill search", () => {
             },
           },
           {
-            terms_set: {
-              requested_space_ids: {
-                terms: [globalSpace.sId, conversationsSpace.sId].sort(),
-                minimum_should_match_script: {
-                  source: "doc['requested_space_ids'].size()",
+            bool: {
+              should: [
+                {
+                  bool: {
+                    must_not: [{ exists: { field: "requested_space_ids" } }],
+                  },
                 },
-              },
+                {
+                  terms_set: {
+                    requested_space_ids: {
+                      terms: [globalSpace.sId, conversationsSpace.sId].sort(),
+                      minimum_should_match_script: {
+                        source: "doc['requested_space_ids'].size()",
+                      },
+                    },
+                  },
+                },
+              ],
+              minimum_should_match: 1,
             },
           },
         ],
       },
     });
+  });
+
+  it("keeps skills without requested spaces workspace-scoped without database queries", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "user",
+    });
+    const other = await createResourceTest({ role: "user" });
+    const skill = await SkillFactory.create(auth, {
+      requestedSpaceIds: [],
+    });
+    const foreign = await SkillFactory.create(other.authenticator, {
+      requestedSpaceIds: [],
+    });
+    const foreignDocuments = await SkillFactory.createSearchDocuments(
+      other.authenticator,
+      [foreign]
+    );
+    await mockHits(auth, [skill], foreignDocuments);
+    const onQuery = vi.fn();
+    frontSequelize.addHook("afterQuery", "skill-search-no-db", onQuery);
+    try {
+      const result = await searchSkills(auth, { searchTerm: "", limit: 10 });
+      assert(result.isOk());
+      expect(result.value.map((item) => item.sId)).toEqual([skill.sId]);
+      expect(mockSearch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          index: "front.skills",
+          query: buildSkillSearchQuery(auth, { searchTerm: "" }),
+          size: 10,
+        })
+      );
+      expect(onQuery).not.toHaveBeenCalled();
+    } finally {
+      frontSequelize.removeHook("afterQuery", "skill-search-no-db");
+    }
   });
 
   it.each([
@@ -158,6 +205,29 @@ describe("custom skill search", () => {
       { terms: { availability: ["users_and_agents"] } },
       ...(editedByMe ? [editor] : []),
     ]);
+  });
+
+  it("defaults to active skills and allows selecting archived skills without requested spaces", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "user",
+    });
+    const active = await SkillFactory.create(auth, {
+      requestedSpaceIds: [],
+    });
+    const archived = await SkillFactory.create(auth, {
+      status: "archived",
+      requestedSpaceIds: [],
+    });
+    await mockHits(auth, [active, archived]);
+
+    const defaults = await searchListings(auth);
+    expect(defaults.map((skill) => skill.sId)).toEqual([active.sId]);
+
+    const both = await searchListings(auth, {
+      searchTerm: "",
+      filters: { status: ["active", "archived"] },
+    });
+    expect(both.map((skill) => skill.sId)).toEqual([active.sId, archived.sId]);
   });
 
   it.each(
@@ -187,6 +257,7 @@ describe("custom skill search", () => {
     const extraSpace = await SpaceFactory.regular(workspace);
     await SpaceFactory.attachGroup(extraSpace, globalGroup);
     const spaceCases = [
+      { spaces: [], readable: true },
       { spaces: [globalSpace], readable: true },
       { spaces: [readableSpace], readable: true },
       { spaces: [readableSpace, extraSpace], readable: true },
@@ -200,7 +271,7 @@ describe("custom skill search", () => {
     ];
     const skills: SkillResource[] = [];
     const expectedIds: string[] = [];
-    // Bounded matrix: 5 space cases × 3 pod cases × 3 availabilities × 2 editor states.
+    // Bounded matrix: 6 space cases × 3 pod cases × 3 availabilities × 2 editor states.
     for (const space of spaceCases) {
       for (const pod of podCases) {
         for (const availability of SKILL_AVAILABILITIES) {
@@ -237,7 +308,8 @@ describe("custom skill search", () => {
     expect(candidates).toHaveLength(expectedIds.length);
     expect(mockSearch).toHaveBeenCalledOnce();
     const filters = mockSearch.mock.lastCall![0].query.bool.filter;
-    const terms = filters.at(-1).terms_set.requested_space_ids.terms;
+    const terms =
+      filters.at(-1).bool.should[1].terms_set.requested_space_ids.terms;
     expect(terms).toEqual(
       expect.arrayContaining([
         readableSpace.sId,
@@ -458,6 +530,16 @@ describe("custom skill search", () => {
       globalSpace,
       conversationsSpace,
     } = await createResourceTest({ role: "user" });
+    const unrestricted = await SkillFactory.create(auth, {
+      name: "No required spaces",
+      requestedSpaceIds: [],
+    });
+    const restricted = await SkillFactory.create(auth, {
+      name: "Requires the global space",
+      requestedSpaceIds: [globalSpace.id],
+    });
+    await mockHits(auth, [unrestricted, restricted]);
+
     await globalSpace.writeGroupPermissions(auth, { members: [], editors: [] });
     await conversationsSpace.writeGroupPermissions(auth, {
       members: [],
@@ -471,15 +553,27 @@ describe("custom skill search", () => {
     expect(
       buildSkillSearchQuery(auth, { searchTerm: "" }).bool?.filter
     ).toContainEqual({
-      terms_set: {
-        requested_space_ids: {
-          terms: [],
-          minimum_should_match_script: {
-            source: "doc['requested_space_ids'].size()",
+      bool: {
+        should: [
+          {
+            bool: { must_not: [{ exists: { field: "requested_space_ids" } }] },
           },
-        },
+          {
+            terms_set: {
+              requested_space_ids: {
+                terms: [],
+                minimum_should_match_script: {
+                  source: "doc['requested_space_ids'].size()",
+                },
+              },
+            },
+          },
+        ],
+        minimum_should_match: 1,
       },
     });
+    const withoutGrants = await searchListings(auth);
+    expect(withoutGrants.map((skill) => skill.sId)).toEqual([unrestricted.sId]);
 
     await grantWorkspacePermission(workspace, user, {
       grantType: "*",
@@ -492,6 +586,11 @@ describe("custom skill search", () => {
     ).toContainEqual({
       match_all: {},
     });
+    const withAllGrants = await searchListings(auth);
+    expect(withAllGrants.map((skill) => skill.sId)).toEqual([
+      unrestricted.sId,
+      restricted.sId,
+    ]);
   });
 
   it("does not require a separate skill read grant", async () => {

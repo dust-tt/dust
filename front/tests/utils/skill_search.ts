@@ -8,6 +8,9 @@ export function matchesSkillSearchFilters(
   query: estypes.QueryDslQueryContainer
 ): boolean {
   const values = (field: string) => [document[field]].flat();
+  if (query.exists) {
+    return values(query.exists.field).some((value) => value != null);
+  }
   if (query.bool) {
     const { filter = [], must = [], must_not = [], should = [] } = query.bool;
     const matches = (clause: estypes.QueryDslQueryContainer) =>
