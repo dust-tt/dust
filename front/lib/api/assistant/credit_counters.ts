@@ -24,6 +24,11 @@ import {
 import logger from "@app/logger/logger";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
+/**
+ * @cc [owner:id13,label:backend;product] fair-use-settled-consumption
+ * When the plan has a per-user AWU limit, the supplied credit amount MUST be recorded against the
+ * same fair-use Redis key read by message enforcement and usage status.
+ */
 export async function recordAgentMessageCreditCounters(
   auth: Authenticator,
   {

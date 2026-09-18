@@ -138,6 +138,17 @@ describe("finalize consumption prerequisites", () => {
     );
   });
 
+  it("does not run the legacy credit counter path in live mode", async () => {
+    await finalizeSuccessfulAgentLoopActivity(
+      authType,
+      agentLoopArgs,
+      consumptionContext
+    );
+
+    expect(mocks.computeCredits).not.toHaveBeenCalled();
+    expect(mocks.attribution).not.toHaveBeenCalled();
+  });
+
   it("does not publish finalization when the skill snapshot fails", async () => {
     const error = new Error("skill snapshot failed");
     mocks.snapshotSkills.mockRejectedValue(error);

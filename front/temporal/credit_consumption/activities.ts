@@ -334,6 +334,12 @@ export async function recoverPendingConsumptionWorkflowsActivity(): Promise<Reco
   return { hasMore, signalledCount };
 }
 
+/**
+ * @cc [owner:id13,label:backend;product] live-settlement-credit-counters
+ * Every live execution bill MUST record its settled event credit amount through
+ * `recordAgentMessageCreditCounters` with an execution-stable idempotency key, regardless of
+ * whether the workspace has a Metronome customer.
+ */
 export async function billExecutionActivity(
   authType: AuthenticatorType,
   {
