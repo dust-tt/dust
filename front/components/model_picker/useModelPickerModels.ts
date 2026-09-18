@@ -59,6 +59,7 @@ export function useModelPickerModels({
   const {
     models,
     streams,
+    fallbackStreamIds: allFallbackStreamIds,
     degradedModelIds: allDegradedModelIds,
     isModelsLoading,
   } = useModels({
@@ -67,6 +68,9 @@ export function useModelPickerModels({
   });
   const degradedModelIds = showDegradations
     ? allDegradedModelIds
+    : EMPTY_DEGRADED_MODEL_IDS;
+  const fallbackStreamIds = showDegradations
+    ? allFallbackStreamIds
     : EMPTY_DEGRADED_MODEL_IDS;
 
   // The region whose flag the picker shows next to the models hosted there. EU
@@ -156,6 +160,7 @@ export function useModelPickerModels({
     allModels,
     streamModels,
     degradedModelIds,
+    fallbackStreamIds,
     isModelsLoading,
     lockPremiumEfforts,
   };
