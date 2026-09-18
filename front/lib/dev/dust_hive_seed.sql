@@ -89,6 +89,17 @@ inserted_global_group AS (
   RETURNING id, "workspaceId"
 ),
 
+-- Step 3c: Create the global space member group. Mirrors SpaceResource.makeGlobalSpaceMemberGroup
+-- (front/lib/resources/space_resource.ts): the `regular_auto` group holding the people granted
+-- write on Company Data, which SpaceResource.fetchManualMemberGroup asserts exists. Keep the name
+-- in sync with SPACE_GROUP_PREFIX + GLOBAL_SPACE_NAME (front/types/groups.ts).
+inserted_global_space_member_group AS (
+  INSERT INTO groups ("workspaceId", name, kind, "workOSGroupId", "createdAt", "updatedAt")
+  SELECT id, 'Group for space Company Data', 'regular_auto', NULL, NOW(), NOW()
+  FROM inserted_workspace
+  RETURNING id, "workspaceId"
+),
+
 -- Step 4a: Create system space
 inserted_system_space AS (
   INSERT INTO vaults ("workspaceId", name, kind, "createdAt", "updatedAt")
@@ -137,10 +148,10 @@ inserted_group_permissions AS (
 
 -- Step 5e: Seed instance-level space group_permissions for the default spaces. Mirrors
 -- SpaceResource.writeGroupPermissions / spaceGroupRoles (front/lib/resources/space_resource.ts),
--- which real space provisioning runs but this raw-SQL seed bypasses. Without these rows, space
--- access resolves to nothing once use_legacy_acls is off (the default post-migration). Keep in sync
--- with spaceGroupRoles: system space => system group 'member'; global and conversations spaces =>
--- global group 'reader'.
+-- which real space provisioning runs but this raw-SQL seed bypasses. Keep in sync with spaceGroupRoles:
+-- * system space => system group 'member'
+-- * global and conversations spaces => global group 'reader'
+-- * global space => its member group 'member'
 inserted_space_group_permissions AS (
   INSERT INTO group_permissions (
     "workspaceId", "groupId", "grantType", "resourceType", "resourceId", "createdAt", "updatedAt"
@@ -151,6 +162,10 @@ inserted_space_group_permissions AS (
   UNION ALL
   SELECT gg."workspaceId", gg.id, 'reader', 'space', gs.id, NOW(), NOW()
   FROM inserted_global_group gg
+  CROSS JOIN inserted_global_space gs
+  UNION ALL
+  SELECT mg."workspaceId", mg.id, 'member', 'space', gs.id, NOW(), NOW()
+  FROM inserted_global_space_member_group mg
   CROSS JOIN inserted_global_space gs
   UNION ALL
   SELECT gg."workspaceId", gg.id, 'reader', 'space', cs.id, NOW(), NOW()
