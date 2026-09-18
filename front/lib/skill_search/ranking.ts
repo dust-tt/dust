@@ -3,8 +3,7 @@ import type { estypes } from "@elastic/elasticsearch";
 export function buildSkillDefaultSort(): estypes.Sort {
   return [
     { _score: { order: "desc" } },
-    // Name and skill ID are tie-breakers for results with the same score.
-    { "name.keyword": { order: "asc" } },
+    // Skill ID is the tie-breaker.
     { skill_id: { order: "asc" } },
   ];
 }
@@ -12,8 +11,7 @@ export function buildSkillDefaultSort(): estypes.Sort {
 /**
  * @cc [owner:aubin-tchoi,label:product] indexed-skill-name-matching
  * Name matching uses both autocomplete fields and Elasticsearch relevance, without
- * description matching or usage boosts. The ICU-folded keyword field and skill ID
- * break relevance ties.
+ * description matching or usage boosts. Skill ID breaks relevance ties.
  */
 export function buildSkillNameAutocompleteQuery(
   searchTerm: string

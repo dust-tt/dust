@@ -1,6 +1,7 @@
 import type { SkillPermissionFilteringMode } from "@app/lib/resources/skill/skill_resource";
 import type {
   SkillAvailability,
+  SkillListItemType,
   SkillStatus,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
@@ -28,6 +29,12 @@ export interface SkillSearchFilters {
   editedByMe?: true;
   availability?: SkillAvailability[];
 }
+
+export type SearchSkillsResponseBody = {
+  skills: SkillListItemType[];
+  hasMore: boolean;
+  nextCursor: string | null;
+};
 
 /**
  * @cc [owner:aubin-tchoi,label:api] skill-usage-compatibility
