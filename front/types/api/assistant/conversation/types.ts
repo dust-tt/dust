@@ -17,6 +17,15 @@ export type GetConversationsResponseBody = {
   lastValue: string | null;
 };
 
+export type OngoingAgentLoopType = {
+  conversationId: string;
+  messageId: string;
+};
+
+export type GetOngoingAgentLoopsResponseBody = {
+  agentLoops: OngoingAgentLoopType[];
+};
+
 export type PostConversationsResponseBody = {
   conversation: ConversationType;
   message?: UserMessageType;

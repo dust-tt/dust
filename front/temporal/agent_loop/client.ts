@@ -135,7 +135,9 @@ export async function launchAgentLoopWorkflow({
         workspaceId: [workspaceId],
       },
       memo: {
+        agentMessageId,
         conversationId,
+        userId: authType.userId,
         workspaceId,
       },
     });
