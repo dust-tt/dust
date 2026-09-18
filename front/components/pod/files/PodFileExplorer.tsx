@@ -456,6 +456,10 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
 
       setIsExtractingArchives(true);
       try {
+        // Sequential on purpose: each call ships an archive the server buffers in memory and
+        // expands into storage, so concurrent extracts multiply peak memory for no real gain —
+        // a selection is nearly always a single archive. If this ever needs fanning out, use
+        // ConcurrentExecutor rather than Promise.all (see `bounded-promise-all`).
         for (const archive of archives) {
           await extractPodArchive({ archive, destCanonicalPath });
         }
