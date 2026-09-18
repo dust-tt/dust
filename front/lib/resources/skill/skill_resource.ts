@@ -4620,21 +4620,32 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Serialize a custom skill fetched with tools, deriving user sIds from supplied editor
    * resources; perform no I/O and never include private skill content.
    */
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;security] skill-search-global-space
+   * requested_space_ids must include the workspace's global space exactly once, even when it
+   * is absent from the skill's stored requestedSpaceIds, and preserve all requested spaces.
+   */
   toSearchDocument(
     workspace: LightWorkspaceType,
     {
       lastEditedByUser,
       editors,
       activeUsersCount,
+      globalSpace,
     }: {
       lastEditedByUser: UserResource | null;
       editors: UserResource[];
       activeUsersCount: number | null;
+      globalSpace: SpaceResource;
     }
   ): SkillSearchDocument {
     assert(
       !this.codeDefinedSkillId && this.workspaceId === workspace.id,
       "Search documents require a custom skill in the workspace."
+    );
+    assert(
+      globalSpace.isGlobal() && globalSpace.workspaceId === workspace.id,
+      "Search documents require the workspace's global space."
     );
     return {
       workspace_id: workspace.sId,
@@ -4646,7 +4657,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       icon: this.icon,
       last_edited_by_user_id: lastEditedByUser?.sId ?? null,
       editor_ids: uniq(editors.map((editor) => editor.sId)).sort(),
-      requested_space_ids: this.requestedSpaceIds.map((id) =>
+      requested_space_ids: uniq([
+        ...this.requestedSpaceIds,
+        globalSpace.id,
+      ]).map((id) =>
         SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
       ),
       mcp_server_view_ids: uniq(

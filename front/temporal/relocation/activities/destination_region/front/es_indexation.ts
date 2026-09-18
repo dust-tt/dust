@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { indexSkillDocument } from "@app/lib/skill_search";
@@ -133,6 +134,7 @@ export async function recreateSkillSearchIndex({
     lastEditors.map((user) => [user.id, user])
   );
   const workspace = auth.getNonNullableWorkspace();
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const results = await concurrentExecutor(
     skills,
     async (skill) => {
@@ -143,6 +145,7 @@ export async function recreateSkillSearchIndex({
             ? null
             : (lastEditorByModelId.get(skill.editedBy) ?? null),
         activeUsersCount: 0,
+        globalSpace,
       });
       const result = await indexSkillDocument(document);
       if (result.isErr()) {

@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -117,10 +118,12 @@ export async function indexSkillSearchActivity({
   if (skill.editedBy) {
     lastEditor = await UserResource.fetchByModelId(skill.editedBy);
   }
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const document = skill.toSearchDocument(auth.getNonNullableWorkspace(), {
     editors: editors ?? [],
     lastEditedByUser: lastEditor,
     activeUsersCount: 0,
+    globalSpace,
   });
   const result = await indexSkillDocument(document);
   if (result.isErr()) {
