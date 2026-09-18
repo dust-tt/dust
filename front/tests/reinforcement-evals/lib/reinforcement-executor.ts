@@ -273,7 +273,7 @@ function simulateExploratoryTool(
       if (!skillConfig) {
         return `Skill not found: ${skillId}`;
       }
-      return formatSkillContext(makeSkillType(skillConfig));
+      return formatSkillContext(makeSkillType(skillConfig), "full");
     }
     case "search_knowledge": {
       const nodes = workspaceContext.searchKnowledgeNodes ?? [];

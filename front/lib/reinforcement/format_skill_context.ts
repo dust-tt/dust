@@ -3,10 +3,14 @@ import { stripToolTagPresentationAttributes } from "@app/lib/tools/format";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { escapeXml } from "@app/types/shared/utils/string_utils";
 
-export function formatSkillContext(skill: SkillType): string {
-  const userDescBlock = skill.userFacingDescription
-    ? `<userFacingDescription>${escapeXml(skill.userFacingDescription)}</userFacingDescription>`
-    : "";
+export function formatSkillContext(
+  skill: SkillType,
+  content: "light" | "full"
+): string {
+  const userDescBlock =
+    content === "full" && skill.userFacingDescription
+      ? `<userFacingDescription>${escapeXml(skill.userFacingDescription)}</userFacingDescription>`
+      : "";
 
   const descBlock = skill.agentFacingDescription
     ? `<agentFacingDescription>${escapeXml(skill.agentFacingDescription)}</agentFacingDescription>`
@@ -18,5 +22,10 @@ export function formatSkillContext(skill: SkillType): string {
       )}</instructions>`
     : "";
 
-  return `<skill ID="${escapeXml(skill.sId)}" name="${escapeXml(skill.name)}" availability="${skill.availability}" reinforcement="${skill.reinforcement}">${userDescBlock}${descBlock}${instructionsBlock}</skill>`;
+  const settingsAttrs =
+    content === "full"
+      ? ` availability="${skill.availability}" reinforcement="${skill.reinforcement}"`
+      : "";
+
+  return `<skill ID="${escapeXml(skill.sId)}" name="${escapeXml(skill.name)}"${settingsAttrs}>${userDescBlock}${descBlock}${instructionsBlock}</skill>`;
 }
