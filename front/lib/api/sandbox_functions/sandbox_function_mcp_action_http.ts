@@ -77,7 +77,7 @@ export function httpStatusForSandboxFunctionMCPActionResponse(
       return 200;
     case "rejected":
       return 403;
-    default:
-      assertNever(response.status);
   }
+  // Unreachable when the union is exhaustive; fails the build if a status is added.
+  return assertNever(response);
 }
