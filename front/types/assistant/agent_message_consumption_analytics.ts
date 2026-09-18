@@ -66,9 +66,8 @@ export type AgentMessageConsumptionAnalyticsInput =
 
 export type ConsumptionAnalyticsSource = Pick<
   AgentMessageConsumptionAnalyticsInput,
-  "items" | "reconciliationSource"
+  "billedCredits" | "items" | "reconciliationSource"
 > & {
-  billedCredits: number | null;
   completedAt: Date;
   context: AgentMessageConsumptionAnalyticsContext;
 };

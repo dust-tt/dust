@@ -184,6 +184,10 @@ async function loadSettledAttributionAnalyticsInput(
   if (!agentMessage.completedAt) {
     throw new Error("Settled agent message is missing completedAt");
   }
+  const { costCredits } = agentMessage;
+  if (costCredits === null) {
+    throw new Error("Billed agent message is missing costCredits");
+  }
   const items =
     await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
       agentMessageModelIds: [agentMessage.agentMessageModelId],
@@ -193,7 +197,7 @@ async function loadSettledAttributionAnalyticsInput(
   return loadAnalyticsInputFromSource(auth, {
     preloadedActions,
     source: {
-      billedCredits: agentMessage.costCredits,
+      billedCredits: costCredits,
       completedAt: agentMessage.completedAt,
       context,
       items,
@@ -289,9 +293,6 @@ async function loadAnalyticsInputFromSource(
     auth,
     triggeringUserMessage.apiKeyModelId
   );
-  if (billedCredits === null) {
-    throw new Error("Billed agent message is missing costCredits");
-  }
   const actions =
     preloadedActions ??
     (await AgentMCPActionResource.listByAgentMessageIds(auth, [
