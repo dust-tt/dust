@@ -106,7 +106,7 @@ function createFrameSandboxAdapter(): GCSSandboxMountAdapter {
 }
 
 describe("buildMountCommand", () => {
-  test("workload profile disables caches for shared mutable files", () => {
+  test("workload profile caches shared mutable files for one second", () => {
     const command = renderRootCommand(
       buildMountCommand({ bucket: "bucket-x", target: workloadTarget() })
     );
@@ -117,9 +117,9 @@ describe("buildMountCommand", () => {
     expect(command).toContain("-o allow_other");
     expect(command).toContain("--file-mode=666");
     expect(command).toContain("--dir-mode=777");
-    expect(command).toContain("--kernel-list-cache-ttl-secs=0");
-    expect(command).toContain("--metadata-cache-ttl-secs=0");
-    expect(command).toContain("--metadata-cache-negative-ttl-secs=0");
+    expect(command).toContain("--kernel-list-cache-ttl-secs=1");
+    expect(command).toContain("--metadata-cache-ttl-secs=1");
+    expect(command).toContain("--metadata-cache-negative-ttl-secs=1");
     expect(command).toContain("--only-dir w/ws1/pods/spc1/files");
     expect(command).toContain("--enable-hns=false");
     expect(command).toContain("bucket-x /files/pod-spc1");
@@ -203,7 +203,7 @@ describe("pod files mount wiring", () => {
     expect(serializedRules).not.toContain("/state/");
   });
 
-  test("the real pod files mount disables directory list caching", async () => {
+  test("the real pod files mount caches listings and metadata for one second", async () => {
     vi.clearAllMocks();
     mockMintDownscopedGcsToken.mockResolvedValue(
       new Ok({ accessToken: "token", expiresInSeconds: 3600 })
@@ -224,9 +224,9 @@ describe("pod files mount wiring", () => {
         command.includes("/files/pod-spc1")
     );
 
-    expect(podFilesCommand).toContain("--kernel-list-cache-ttl-secs=0");
-    expect(podFilesCommand).toContain("--metadata-cache-ttl-secs=0");
-    expect(podFilesCommand).toContain("--metadata-cache-negative-ttl-secs=0");
+    expect(podFilesCommand).toContain("--kernel-list-cache-ttl-secs=1");
+    expect(podFilesCommand).toContain("--metadata-cache-ttl-secs=1");
+    expect(podFilesCommand).toContain("--metadata-cache-negative-ttl-secs=1");
   });
 });
 
