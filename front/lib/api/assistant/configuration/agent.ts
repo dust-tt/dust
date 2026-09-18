@@ -1098,6 +1098,7 @@ export async function updateAgentPermissions(
     DustError<
       | "internal_error"
       | "unauthorized"
+      | "user_not_found"
       | "user_not_member"
       | "user_already_member"
       | "invalid_request_error"
@@ -1250,6 +1251,9 @@ export async function updateAgentPermissions(
     return new Ok(undefined);
   } catch (error) {
     // Catch errors thrown from within the transaction
+    if (error instanceof DustError && error.code === "user_not_found") {
+      return new Err(error);
+    }
     return new Err(normalizeAsInternalDustError(error));
   }
 }
