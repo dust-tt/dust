@@ -1,5 +1,6 @@
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { ConfirmContext } from "@app/components/Confirm";
+import type { KnowledgeBrowserItem } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import {
@@ -14,6 +15,7 @@ import {
 } from "@app/components/data_source_view/context/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { isRemoteDatabase } from "@app/lib/data_sources";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Checkbox, cn, Icon, Separator, Spinner } from "@dust-tt/sparkle";
 import type { ComponentType, ReactNode } from "react";
 import { Fragment, useCallback, useContext, useMemo } from "react";
@@ -24,6 +26,36 @@ export interface DataSourceListItem {
   icon?: ComponentType;
   entry: NavigationHistoryEntryType;
   onClick?: () => void;
+}
+
+function toNavigationHistoryEntry(
+  item: KnowledgeBrowserItem
+): NavigationHistoryEntryType {
+  switch (item.kind) {
+    case "space":
+      return { type: "space", space: item.space };
+    case "category":
+      return { type: "category", category: item.category };
+    case "data_source":
+      return {
+        type: "data_source",
+        dataSourceView: item.dataSourceView,
+        tagsFilter: null,
+      };
+    case "node":
+      return { type: "node", node: item.node, tagsFilter: null };
+    default:
+      assertNeverAndIgnore(item);
+      return item; // Non reachable
+  }
+}
+
+export function toDataSourceListItem(
+  item: KnowledgeBrowserItem,
+  onClick: (() => void) | undefined
+): DataSourceListItem {
+  const { id, title, icon } = item;
+  return { id, title, icon, onClick, entry: toNavigationHistoryEntry(item) };
 }
 
 interface DataSourceListProps {
