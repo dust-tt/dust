@@ -7,6 +7,7 @@ import type {
 import type {
   AgentActionSuccessEvent,
   AgentContextPrunedEvent,
+  AgentCreditSpendCheckpointUpdatedEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageConsumptionUpdatedEvent,
@@ -38,6 +39,7 @@ export type AgentMessageEvents =
   | AgentMessageGracefullyStoppedEvent
   | AgentMessageSuccessEvent
   | AgentToolCallStartedEvent
+  | AgentCreditSpendCheckpointUpdatedEvent
   | GenerationTokensEvent
   | ToolErrorEvent
   | AgentLoopToolAskUserQuestionEvent

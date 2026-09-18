@@ -13,6 +13,7 @@ import {
   declineCreditSpendCheckpointPause,
 } from "@app/lib/api/assistant/conversation/credit_spend_checkpoint_pause";
 import { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -206,5 +207,36 @@ describe("credit spend checkpoint pause resolution", () => {
         conversation.id
       );
     expect(actionRequired).toBe(false);
+  });
+
+  it("continue puts the message back to paused when the launch throws", async () => {
+    mockLaunchAgentLoopWorkflow.mockRejectedValue(
+      new Error("temporal connection lost")
+    );
+
+    const res = await continueCreditSpendCheckpointPause(auth, conversation, {
+      messageId: agentMessageId,
+    });
+
+    expect(res.isErr()).toBe(true);
+    expect(await getStatus()).toBe("paused");
+  });
+
+  it("continue leaves the message resolved when a workflow is already running for it", async () => {
+    mockLaunchAgentLoopWorkflow.mockResolvedValue(
+      new Err(
+        new DustError(
+          "agent_loop_already_running",
+          "Agent loop already running for this message."
+        )
+      )
+    );
+
+    const res = await continueCreditSpendCheckpointPause(auth, conversation, {
+      messageId: agentMessageId,
+    });
+
+    expect(res.isErr()).toBe(true);
+    expect(await getStatus()).toBe("acknowledged");
   });
 });
