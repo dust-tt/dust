@@ -30,20 +30,3 @@ export async function getAgentMessageConsumptionMode(
   }
   return consumptionModeFromFeatureFlags(featureFlags);
 }
-
-export function resolveAgentMessageConsumptionMode(
-  auth: Authenticator,
-  { mode }: { mode: AgentMessageConsumptionMode }
-): AgentMessageConsumptionMode {
-  if (mode === "off") {
-    return mode;
-  }
-  if (mode === "live" && !auth.getNonNullableWorkspace().metronomeCustomerId) {
-    logger.error(
-      { workspaceId: auth.getNonNullableWorkspace().sId },
-      "[Consumption] Live mode requires a Metronome customer."
-    );
-    return "shadow";
-  }
-  return mode;
-}

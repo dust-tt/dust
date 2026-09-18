@@ -108,7 +108,21 @@ describe("consumption execution events", () => {
     expect(mocks.signal).toHaveBeenCalledOnce();
   });
 
-  it("snapshots live billing when the execution starts", async () => {
+  it("snapshots live billing without a Metronome customer", async () => {
+    const workspace = await WorkspaceResource.makeNew({
+      sId: "workspace-without-metronome",
+      name: "Workspace without Metronome",
+      description: null,
+      workOSOrganizationId: null,
+      metronomeCustomerId: null,
+    });
+    auth = new Authenticator({
+      workspace,
+      role: "admin",
+      groupModelIds: [],
+      authMethod: "internal",
+      permissions: GroupPermissions.empty(),
+    });
     mocks.getFeatureFlags.mockResolvedValue([
       "agent_message_consumption_writes",
       "agent_message_consumption_bills",

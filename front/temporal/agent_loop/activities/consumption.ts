@@ -1,7 +1,4 @@
-import {
-  getAgentMessageConsumptionMode,
-  resolveAgentMessageConsumptionMode,
-} from "@app/lib/api/assistant/consumption/mode_switch";
+import { getAgentMessageConsumptionMode } from "@app/lib/api/assistant/consumption/mode_switch";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -95,11 +92,7 @@ export async function recordExecutionStarted(
   const existingMode = await fetchExecutionStartedMode(auth, context);
   const mode =
     existingMode ??
-    (startStep === 0
-      ? resolveAgentMessageConsumptionMode(auth, {
-          mode: await getAgentMessageConsumptionMode(auth),
-        })
-      : "off");
+    (startStep === 0 ? await getAgentMessageConsumptionMode(auth) : "off");
   if (mode === "off") {
     return false;
   }
