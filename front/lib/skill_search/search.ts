@@ -5,6 +5,7 @@ import { buildSkillDefaultSort } from "@app/lib/skill_search/ranking";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import type { SkillSearchFilters } from "@app/types/api/skills";
 import { Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 
 export {
@@ -19,7 +20,7 @@ export {
  * access remains separately authorized. Unreadable listings must not be returned.
  * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
  * Preserve Elasticsearch hit order without exposing scores in skill listings.
- * The index must retain _source and the query must request it for every hit.
+ * Request _source and omit hits without source documents.
  */
 export async function searchSkills(
   auth: Authenticator,
@@ -48,5 +49,9 @@ export async function searchSkills(
 
   const { hits } = result.value.hits;
 
-  return new Ok(hits.map((hit) => toSkillListItem(hit._source!)));
+  return new Ok(
+    removeNulls(hits.map((hit) => hit._source)).map((document) =>
+      toSkillListItem(document)
+    )
+  );
 }

@@ -352,6 +352,33 @@ describe("custom skill search", () => {
     }
   });
 
+  it("omits hits without source documents and preserves hit order", async () => {
+    const { authenticator: auth, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+    const first = await SkillFactory.create(auth, {
+      name: "First",
+      requestedSpaceIds: [globalSpace.id],
+    });
+    const second = await SkillFactory.create(auth, {
+      name: "Second",
+      requestedSpaceIds: [globalSpace.id],
+    });
+    const documents = await mockHits(auth, [first, second]);
+    const expected = await searchListings(auth);
+    const hits = documents.map((document) => ({
+      _source: document,
+      sort: [1, document.name, document.skill_id],
+    }));
+    mockSearch.mockResolvedValue({
+      hits: {
+        hits: [hits[0], { sort: [1, "Missing", "missing-skill"] }, hits[1]],
+      },
+    });
+
+    expect(await searchListings(auth)).toEqual(expected);
+  });
+
   it("returns only indexed listing metadata without querying the database", async () => {
     const { authenticator: auth, globalSpace } = await createResourceTest({
       role: "admin",
