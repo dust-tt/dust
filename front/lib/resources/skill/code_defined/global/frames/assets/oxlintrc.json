@@ -1,0 +1,25 @@
+{
+  "plugins": ["typescript", "react"],
+  "categories": { "correctness": "off" },
+  "ignorePatterns": ["functions/**", "databases/**", "node_modules/**"],
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "react/rules-of-hooks": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": [
+              "*", "!*/", "!./**", "!../**", "!fil_*",
+              "!conversation-*", "!conversation-*/**", "!pod-*", "!pod-*/**",
+              "!conversation/**", "!pod/**", "!project/**"
+            ],
+            "caseSensitive": true,
+            "message": "Use a library exposed by Viz, a relative UI import or a Dust file reference"
+          }
+        ]
+      }
+    ]
+  }
+}

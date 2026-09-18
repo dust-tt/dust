@@ -39,6 +39,7 @@ export default function Frame() {
   return <main>...</main>;
 }
 EOF
+bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME" &&
 dsbx frame publish "$FRAME/manifest.json"
 \`\`\`
 
@@ -379,6 +380,22 @@ allow downloads, so building an anchor with a \`download\` attribute and clickin
 nothing — no error to catch. Do not offer a download button. Render the contents in the UI
 instead: an \`<img>\` for an image, formatted text for data, a table for rows.
 
+## Check the Frame UI
+
+For a v2 Frame, run the attached linter on its folder before publishing:
+
+\`\`\`bash
+bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME"
+\`\`\`
+
+The skill files stay in the conversation even when the Frame lives in a Pod. The script fetches
+the Viz types and reports type and lint errors with file, line and column. Fix those errors before
+publishing. A failed check returns a nonzero exit code.
+
+It keeps generated configs on local sandbox disk and leaves the Frame source and existing
+configs untouched. Keep server functions in
+\`functions/\` and database schemas in \`databases/\`, which are excluded from UI linting.
+
 ## Publish a Frame
 
 There is no separate v2 function publish. Publish the manifest once; the UI source, all declared
@@ -394,8 +411,8 @@ function-reference, and in-package \`useFile\` path checks. If any fails, no par
 becomes active: fix the reported error and rerun. Tailwind arbitrary values such as \`h-[600px]\`
 are errors, not warnings: use predefined classes or the \`style\` prop. Absolute scoped paths that
 point at files inside this Frame package (for example \`conversation-…/MyFrame/data.csv\` in
-\`useFile\`) must be rewritten to \`./data.csv\` before publish. Do not run a separate validation
-pass first: it repeats the same build and only adds latency.
+\`useFile\`) must be rewritten to \`./data.csv\` before publish. Do not run \`dsbx frame validate\`
+immediately before publishing: it repeats the same server build.
 
 To run the same checks without storing or activating a publication or reconciling Frame-owned
 databases, for example while the active publication must keep working, use:
@@ -443,8 +460,8 @@ initial scope.
 ## Editing
 
 Use the Computer to edit Frame source. Never run concurrent file mutations against the same path:
-read the current file, apply one edit, then start the next edit to that file. Apply the edit and
-run \`dsbx frame publish\` in the same Computer command.
+read the current file, apply one edit, then start the next edit to that file. Apply the edit, run
+the UI linter for v2 Frames, and run \`dsbx frame publish\` in the same Computer command.
 
 When fixing a validation or runtime problem, preserve working structure and make the smallest
 targeted edit. Do not replace an entire UI or function for a localized state, schema, or styling bug.
