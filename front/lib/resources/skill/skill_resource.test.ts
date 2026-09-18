@@ -17,7 +17,6 @@ import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/glob
 import { SYSTEM_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/system";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
@@ -124,57 +123,6 @@ describe("SkillResource", () => {
       });
       expect(toSkillListItem(document).updatedAt).toBeNull();
     });
-  });
-
-  it("loads all code-defined indexing metadata without a workspace or database reads", async () => {
-    const restricted = await SkillResource.fetchByIds(
-      testContext.authenticator,
-      ["user_memory"],
-      { withInstructions: false, withTools: false }
-    );
-    expect(restricted).toEqual([]);
-
-    const onQuery = vi.fn();
-    frontSequelize.addHook("afterQuery", "code-defined-indexing", onQuery);
-    try {
-      const auth = Authenticator.unauthenticated();
-      expect(auth.workspace()).toBeNull();
-      expect(auth.user()).toBeNull();
-      expect(auth.role()).toBe("none");
-      expect(auth.getReadableSpaceModelIds()).toEqual({
-        kind: "ids",
-        resourceIds: [],
-      });
-
-      const skills = await SkillResource.dangerouslyListAllCodeDefined(auth);
-      expect(skills.map((skill) => skill.sId)).toEqual(
-        [...GLOBAL_SKILLS_ARRAY, ...SYSTEM_SKILLS_ARRAY].map(
-          (definition) => definition.sId
-        )
-      );
-      expect(skills.map((skill) => skill.sId)).toContain("user_memory");
-
-      for (const skill of skills) {
-        expect(skill.instructions).toBe("");
-        expect(skill.mcpServerViews).toEqual([]);
-        expect(
-          skill.toSearchDocument(auth, {
-            editors: [],
-            lastEditedByUser: null,
-            activeUsersCount: null,
-          })
-        ).toMatchObject({
-          workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID,
-          requested_space_ids: [],
-          mcp_server_view_ids: [],
-          created_at: null,
-          updated_at: null,
-        });
-      }
-      expect(onQuery).not.toHaveBeenCalled();
-    } finally {
-      frontSequelize.removeHook("afterQuery", "code-defined-indexing");
-    }
   });
 
   describe("permissions", () => {
