@@ -8,6 +8,8 @@ import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
 import type { SkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
+import type { SkillReinforcementChange } from "@app/lib/api/skills/reinforcement_change";
+import { validateSkillReinforcementChange } from "@app/lib/api/skills/reinforcement_change";
 import { findSkillEditorsWithoutAccessToSpaceIds } from "@app/lib/api/skills/space_requirements";
 import type { Authenticator } from "@app/lib/auth";
 import type { AppliedSkillInstructions } from "@app/lib/editor/skill_instructions_html";
@@ -21,6 +23,7 @@ import {
   pruneConflictingSkillAvailabilitySuggestions,
   pruneConflictingSkillEditorsSuggestions,
   pruneConflictingSkillNameSuggestions,
+  pruneConflictingSkillReinforcementModeSuggestions,
   pruneConflictingSkillUserFacingDescriptionSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -29,7 +32,10 @@ import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_reso
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { extractToolTags } from "@app/lib/tools/format";
-import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
+import type {
+  SkillAvailability,
+  SkillReinforcementMode,
+} from "@app/types/assistant/skill_configuration_constants";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -40,6 +46,7 @@ import {
   isAvailabilitySkillSuggestion,
   isEditorsSkillSuggestion,
   isNameSkillSuggestion,
+  isReinforcementModeSkillSuggestion,
   isUserFacingDescriptionSkillSuggestion,
   parseSkillSuggestionData,
 } from "@app/types/suggestions/skill_suggestion";
@@ -47,10 +54,11 @@ import uniq from "lodash/uniq";
 
 /**
  * What a suggestion asks to change on the skill. `editors` is not a skill field: it is written as
- * per-user grants, so it travels here but is applied separately from `updateSkill`. `archive` is
- * not a field either: it is a terminal status change applied through `skill.archive`, never
- * combined with other edits in practice, but folded in here so a mixed batch still fails loudly
- * instead of silently dropping the deletion.
+ * per-user grants, so it travels here but is applied separately from `updateSkill`. So is
+ * `reinforcement`: the manual route writes it through `updateReinforcement` without a version.
+ * `archive` is not a field either: it is a terminal status change applied through `skill.archive`,
+ * never combined with other edits in practice, but folded in here so a mixed batch still fails
+ * loudly instead of silently dropping the deletion.
  */
 interface SkillEdits {
   agentFacingDescription?: string;
@@ -60,6 +68,7 @@ interface SkillEdits {
   editors?: { addUserIds: string[]; removeUserIds: string[] };
   instructionEdits?: SkillInstructionEditItemType[];
   archive?: boolean;
+  reinforcement?: SkillReinforcementMode;
 }
 
 function editsForSuggestion(
@@ -103,6 +112,9 @@ function editsForSuggestion(
         userFacingDescription: data.suggestion.userFacingDescription,
       });
 
+    case "reinforcement":
+      return new Ok({ reinforcement: data.suggestion.reinforcement });
+
     default:
       assertNever(data);
   }
@@ -129,6 +141,10 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
     (merged, next) => next.availability ?? merged,
     undefined
   );
+  const reinforcement = edits.reduce<SkillReinforcementMode | undefined>(
+    (merged, next) => next.reinforcement ?? merged,
+    undefined
+  );
 
   // Concatenated in suggestion order: every accepted edit is applied, each to its own block.
   const instructionEdits = edits.flatMap((e) => e.instructionEdits ?? []);
@@ -145,6 +161,7 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
       availability,
       instructionEdits,
       archive,
+      reinforcement,
     };
   }
 
@@ -155,6 +172,7 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
     availability,
     instructionEdits,
     archive,
+    reinforcement,
     editors: {
       addUserIds: [...new Set(editorsEdits.flatMap((e) => e.addUserIds))],
       removeUserIds: [...new Set(editorsEdits.flatMap((e) => e.removeUserIds))],
@@ -431,6 +449,31 @@ async function applyEditorsChange(
   return new Ok(undefined);
 }
 
+async function applyReinforcementChange(
+  auth: Authenticator,
+  skill: SkillResource,
+  { reinforcement }: SkillReinforcementChange
+): Promise<void> {
+  if (reinforcement === skill.reinforcement) {
+    return;
+  }
+
+  await skill.updateReinforcement(reinforcement);
+
+  void emitAuditLogEvent({
+    auth,
+    action: "skill.self_improvement_updated",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      { type: "skill", id: skill.sId, name: skill.name },
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      reinforcement: String(reinforcement),
+    },
+  });
+}
+
 export async function applySkillSuggestions(
   auth: Authenticator,
   {
@@ -503,6 +546,20 @@ export async function applySkillSuggestions(
     }
   }
 
+  let reinforcementChange: SkillReinforcementChange | null = null;
+  if (edits.reinforcement !== undefined) {
+    const validation = await validateSkillReinforcementChange(auth, skill, {
+      reinforcement: edits.reinforcement,
+    });
+    if (validation.isErr()) {
+      return new Err(
+        new DustError("invalid_request_error", validation.error.message)
+      );
+    }
+
+    reinforcementChange = validation.value;
+  }
+
   // TODO(achilleburah): make the editor change and skill update atomic so if editors changes fails,
   //  the skill update is rolled back.
 
@@ -542,6 +599,15 @@ export async function applySkillSuggestions(
       auth,
       skill,
       suggestions.filter(isEditorsSkillSuggestion)
+    );
+  }
+
+  if (reinforcementChange) {
+    await applyReinforcementChange(auth, skill, reinforcementChange);
+    await pruneConflictingSkillReinforcementModeSuggestions(
+      auth,
+      skill,
+      suggestions.filter(isReinforcementModeSkillSuggestion)
     );
   }
 

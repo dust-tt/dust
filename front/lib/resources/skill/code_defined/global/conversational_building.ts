@@ -205,6 +205,8 @@ Skill suggestions:
 - \`${buildingToolName(SUGGEST_SKILL_NAME_TOOL_NAME)}\`: rename a skill. A name already carried by another active skill of the workspace is refused.
 - \`${buildingToolName(SUGGEST_SKILL_DELETION_TOOL_NAME)}\`: propose deleting an existing custom skill by \`skillId\`.
 - \`${buildingToolName(SUGGEST_SKILL_AVAILABILITY_TOOL_NAME)}\`: change who a skill is available to (\`editors\`, \`workspace_users\` or \`users_and_agents\`). Requires the workspace permission to publish skills.
+- \`${buildingToolName(BUILDING_AGENTS_AND_SKILLS_SERVER_NAME)}\`: turn a skill's self-improvement \`on\`, \`off\` or back to \`auto\`.
+
 
 Agent suggestions:
 - \`${buildingToolName(SUGGEST_AGENT_CREATION_TOOL_NAME)}\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`.

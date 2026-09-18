@@ -215,6 +215,28 @@ describe("SkillSuggestionResource", () => {
       });
     });
 
+    it("should create and fetch a reinforcement suggestion by id", async () => {
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          kind: "reinforcement",
+          suggestion: { reinforcement: "off" },
+          source: "conversational",
+        }
+      );
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.kind).toBe("reinforcement");
+      expect(fetched?.toJSON()).toMatchObject({
+        kind: "reinforcement",
+        suggestion: { reinforcement: "off" },
+      });
+    });
+
     it("should fetch multiple suggestions by ids", async () => {
       const s1 = await SkillSuggestionFactory.create(authenticator, skill);
       const s2 = await SkillSuggestionFactory.create(authenticator, skill);

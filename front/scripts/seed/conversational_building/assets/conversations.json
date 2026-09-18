@@ -74,6 +74,16 @@
           "sId": "ConvBuildingAMsg07",
           "content": "Yes: the skill is currently available to members and agents, which lets agents pick it on their own. Making it available to members only keeps it in everyone's composer while agents stop discovering it:\n\n:skill_suggestion[]{sId=__SKILL_AVAILABILITY_SUGGESTION_SID__ kind=availability skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting this requires the permission to publish skills."
         }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg08",
+          "content": "Last thing: we are rewriting the meeting template this month, so the automatic suggestions it gets are all based on the old format. Can we pause those for now?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg08",
+          "content": "Yes. Here is a change that turns self-improvement off for this skill until the rewrite lands:\n\n:skill_suggestion[]{sId=__SKILL_REINFORCEMENT_SUGGESTION_SID__ kind=reinforcement skillId=__MEETING_NOTES_SKILL_SID__}\n\nTurn it back on from the skill's settings once the new template is in place."
+        }
       }
     ]
   }

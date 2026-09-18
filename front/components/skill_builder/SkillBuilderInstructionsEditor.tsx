@@ -671,6 +671,7 @@ export function SkillBuilderInstructionsEditor({
         case "delete":
         case "editors":
         case "name":
+        case "reinforcement":
         case "user_facing_description":
           continue;
         case "edit":

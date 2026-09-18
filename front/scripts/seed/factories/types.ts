@@ -15,6 +15,7 @@ import type {
   SkillEditorsSuggestionType,
   SkillEditSuggestionType,
   SkillNameSuggestionType,
+  SkillReinforcementModeSuggestionType,
   SkillSuggestionSource,
   SkillSuggestionState,
   SkillUserFacingDescriptionSuggestionType,
@@ -118,13 +119,20 @@ export interface SkillAvailabilitySuggestionAsset
   suggestion: SkillAvailabilitySuggestionType;
 }
 
+export interface SkillReinforcementModeSuggestionAsset
+  extends BaseSkillSuggestionAsset {
+  kind: "reinforcement";
+  suggestion: SkillReinforcementModeSuggestionType;
+}
+
 export type SkillSuggestionAsset =
   | SkillEditSuggestionAsset
   | SkillEditorsSuggestionAsset
   | SkillUserFacingDescriptionSuggestionAsset
   | SkillNameSuggestionAsset
   | SkillDeleteSuggestionAsset
-  | SkillAvailabilitySuggestionAsset;
+  | SkillAvailabilitySuggestionAsset
+  | SkillReinforcementModeSuggestionAsset;
 
 export interface SuggestedSkillAsset {
   name: string;

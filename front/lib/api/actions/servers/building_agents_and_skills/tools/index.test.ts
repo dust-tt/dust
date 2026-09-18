@@ -11,6 +11,7 @@ import {
   SUGGEST_SKILL_DELETION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
   SUGGEST_SKILL_NAME_TOOL_NAME,
+  SUGGEST_SKILL_REINFORCEMENT_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
   SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
@@ -2102,6 +2103,180 @@ describe("building_agents_and_skills tools", () => {
       });
 
       expectMcpError(result, "auto-discoverable");
+    });
+  });
+
+  describe(SUGGEST_SKILL_REINFORCEMENT_TOOL_NAME, () => {
+    const suggestReinforcement = async (
+      auth: Authenticator,
+      args: {
+        skillId: string;
+        reinforcement: "auto" | "on" | "off";
+        title?: string;
+      }
+    ) =>
+      getTool(SUGGEST_SKILL_REINFORCEMENT_TOOL_NAME).handler(
+        args,
+        makeExtra(auth)
+      );
+
+    it("creates a pending conversational suggestion without changing the mode", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const skill = await seedSkill(authenticator, { name: "Improving" });
+      expect(skill.reinforcement).toBe("on");
+
+      const result = await suggestReinforcement(authenticator, {
+        skillId: skill.sId,
+        reinforcement: "off",
+        title: "Pause self-improvement",
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const suggestionId = extractSuggestionId(
+        result.value[0].text,
+        "reinforcement"
+      );
+
+      const suggestion = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?.title).toBe("Pause self-improvement");
+      expect(suggestion?.toJSON()).toMatchObject({
+        kind: "reinforcement",
+        suggestion: { reinforcement: "off" },
+      });
+
+      const reloaded = await SkillResource.fetchById(authenticator, skill.sId);
+      expect(reloaded?.reinforcement).toBe("on");
+    });
+
+    it("outdates every other pending self-improvement suggestion, leaving other kinds alone", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const skill = await seedSkill(authenticator, { name: "Conflicting" });
+      const edit = await SkillSuggestionFactory.createEdit(
+        authenticator,
+        skill,
+        { source: "conversational" }
+      );
+      const idOf = async (reinforcement: "auto" | "off") => {
+        const result = await suggestReinforcement(authenticator, {
+          skillId: skill.sId,
+          reinforcement,
+        });
+        if (result.isErr() || result.value[0]?.type !== "text") {
+          throw new Error("Expected the suggestion to be created.");
+        }
+        return extractSuggestionId(result.value[0].text, "reinforcement");
+      };
+      const stateOf = async (suggestionId: string) =>
+        (await SkillSuggestionResource.fetchById(authenticator, suggestionId))
+          ?.state;
+
+      const firstId = await idOf("off");
+      const secondId = await idOf("auto");
+
+      expect(await stateOf(firstId)).toBe("outdated");
+      expect(await stateOf(secondId)).toBe("pending");
+      expect(await stateOf(edit.sId)).toBe("pending");
+    });
+
+    it("rejects a workspace admin who is not an editor, creating no row", async () => {
+      const { authenticator: ownerAuth, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(ownerAuth, { name: "Not Mine" });
+      const admin = await addMember(workspace, "admin");
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        admin.sId,
+        workspace.sId
+      );
+
+      const result = await suggestReinforcement(adminAuth, {
+        skillId: skill.sId,
+        reinforcement: "off",
+      });
+
+      expectMcpError(result, "added as an editor");
+      const suggestions =
+        await SkillSuggestionResource.listBySkillConfigurationId(
+          ownerAuth,
+          skill.sId,
+          { sources: ["conversational"] }
+        );
+      expect(suggestions).toHaveLength(0);
+    });
+
+    it("rejects an archived skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const skill = await seedSkill(authenticator, {
+        name: "Archived",
+        status: "archived",
+      });
+
+      const result = await suggestReinforcement(authenticator, {
+        skillId: skill.sId,
+        reinforcement: "off",
+      });
+
+      expectMcpError(result, "archived");
+    });
+
+    it("rejects a skill id that is not a custom skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const result = await suggestReinforcement(authenticator, {
+        skillId: "not_a_skill",
+        reinforcement: "off",
+      });
+
+      expectMcpError(result, "Only custom workspace skills");
+    });
+
+    it("rejects the skill's current mode", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const skill = await seedSkill(authenticator, { name: "Unchanged" });
+
+      const result = await suggestReinforcement(authenticator, {
+        skillId: skill.sId,
+        reinforcement: "on",
+      });
+
+      expectMcpError(result, "already");
+    });
+
+    it("rejects a non-admin editor when the skill's self-improvement is locked", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Locked" });
+      await skill.updateSelfImprovementLock(true);
+
+      const result = await suggestReinforcement(authenticator, {
+        skillId: skill.sId,
+        reinforcement: "off",
+      });
+
+      expectMcpError(result, "locked");
+    });
+
+    it("lets an admin editor suggest a change on a locked skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const skill = await seedSkill(authenticator, { name: "Locked Admin" });
+      await skill.updateSelfImprovementLock(true);
+
+      const result = await suggestReinforcement(authenticator, {
+        skillId: skill.sId,
+        reinforcement: "off",
+      });
+
+      expect(result.isOk()).toBe(true);
     });
   });
 });

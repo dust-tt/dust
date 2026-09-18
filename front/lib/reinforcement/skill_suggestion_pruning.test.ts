@@ -6,6 +6,7 @@ import {
   pruneConflictingSkillEditorsSuggestions,
   pruneConflictingSkillEditSuggestions,
   pruneConflictingSkillNameSuggestions,
+  pruneConflictingSkillReinforcementModeSuggestions,
   pruneConflictingSkillUserFacingDescriptionSuggestions,
   pruneOutdatedSkillEditSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -20,6 +21,7 @@ import {
   isEditorsSkillSuggestion,
   isEditSkillSuggestion,
   isNameSkillSuggestion,
+  isReinforcementModeSkillSuggestion,
   isUserFacingDescriptionSkillSuggestion,
 } from "@app/types/suggestions/skill_suggestion";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -780,6 +782,79 @@ describe("pruneConflictingSkillAvailabilitySuggestions", () => {
 
     expect(await stateOf(edit.sId)).toBe("pending");
     expect(await stateOf(otherSkillAvailability.sId)).toBe("pending");
+    expect(await stateOf(approved.sId)).toBe("approved");
+  });
+});
+
+describe("pruneConflictingSkillReinforcementModeSuggestions", () => {
+  let authenticator: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["authenticator"];
+
+  beforeEach(async () => {
+    ({ authenticator } = await createResourceTest({ role: "admin" }));
+  });
+
+  const createReinforcement = async (
+    skill: Awaited<ReturnType<typeof SkillFactory.create>>,
+    reinforcement: "auto" | "on" | "off"
+  ) => {
+    const created = await SkillSuggestionFactory.create(authenticator, skill, {
+      kind: "reinforcement",
+      suggestion: { reinforcement },
+      source: "conversational",
+    });
+    if (!isReinforcementModeSkillSuggestion(created)) {
+      throw new Error("The factory did not create a reinforcement suggestion.");
+    }
+
+    return created;
+  };
+
+  const stateOf = async (sId: string) =>
+    (await SkillSuggestionResource.fetchById(authenticator, sId))?.state;
+
+  it("outdates every other pending self-improvement suggestion on the skill", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const older = await createReinforcement(skill, "off");
+    const newer = await createReinforcement(skill, "auto");
+
+    await pruneConflictingSkillReinforcementModeSuggestions(
+      authenticator,
+      skill,
+      [newer]
+    );
+
+    expect(await stateOf(older.sId)).toBe("outdated");
+    expect(await stateOf(newer.sId)).toBe("pending");
+  });
+
+  it("keeps suggestions of other kinds, other skills and non-pending states", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const otherSkill = await SkillFactory.create(authenticator, {
+      name: "Other Test Skill",
+    });
+    const edit = await SkillSuggestionFactory.createEdit(authenticator, skill);
+    const otherSkillReinforcement = await createReinforcement(
+      otherSkill,
+      "off"
+    );
+    const approved = await createReinforcement(skill, "off");
+    await SkillSuggestionResource.bulkUpdateState(
+      authenticator,
+      [approved],
+      "approved"
+    );
+    const newer = await createReinforcement(skill, "auto");
+
+    await pruneConflictingSkillReinforcementModeSuggestions(
+      authenticator,
+      skill,
+      [newer]
+    );
+
+    expect(await stateOf(edit.sId)).toBe("pending");
+    expect(await stateOf(otherSkillReinforcement.sId)).toBe("pending");
     expect(await stateOf(approved.sId)).toBe("approved");
   });
 });

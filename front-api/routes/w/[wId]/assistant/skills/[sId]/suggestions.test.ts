@@ -1903,3 +1903,93 @@ describe("PATCH with applyToSkill (availability)", () => {
     expect(states).toEqual(["outdated", "pending"]);
   });
 });
+
+describe("PATCH with applyToSkill (reinforcement)", () => {
+  async function setupWithFlag(role: MembershipRoleType) {
+    const context = await setup({ role });
+    await FeatureFlagFactory.basic(context.auth, "conversational_building");
+
+    return context;
+  }
+
+  async function reinforcementSuggestion(
+    auth: Authenticator,
+    skill: SkillResource,
+    reinforcement: "auto" | "on" | "off"
+  ) {
+    return SkillSuggestionFactory.create(auth, skill, {
+      kind: "reinforcement",
+      source: "conversational",
+      state: "pending",
+      suggestion: { reinforcement },
+    });
+  }
+
+  it("changes the self-improvement mode without saving a version", async () => {
+    const { workspace, auth, skill } = await setupWithFlag("admin");
+    expect(skill.reinforcement).toBe("on");
+    const suggestion = await reinforcementSuggestion(auth, skill, "off");
+    const versionsBefore = (await skill.listVersions(auth)).length;
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.reinforcement).toBe("off");
+    expect((await skill.listVersions(auth)).length).toBe(versionsBefore);
+  });
+
+  it("returns 400 when a non-admin approves on a skill whose self-improvement is locked", async () => {
+    const { workspace, auth, skill } = await setupWithFlag("user");
+    const suggestion = await reinforcementSuggestion(auth, skill, "off");
+    await skill.updateSelfImprovementLock(true);
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain("locked");
+
+    const reloaded = await SkillSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(reloaded?.state).toBe("pending");
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.reinforcement).toBe("on");
+  });
+
+  it("outdates the other pending self-improvement suggestions only", async () => {
+    const { workspace, auth, skill } = await setupWithFlag("admin");
+    const approved = await reinforcementSuggestion(auth, skill, "off");
+    const conflicting = await reinforcementSuggestion(auth, skill, "auto");
+    const edit = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [approved.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const states = await Promise.all(
+      [conflicting, edit].map(
+        async (suggestion) =>
+          (await SkillSuggestionResource.fetchById(auth, suggestion.sId))?.state
+      )
+    );
+    expect(states).toEqual(["outdated", "pending"]);
+  });
+});

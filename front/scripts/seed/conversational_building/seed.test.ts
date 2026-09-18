@@ -72,8 +72,8 @@ describe("conversational building seed script integration test", () => {
       [user.sId, LUKE_USER_SID].toSorted()
     );
 
-    // Nine pending conversational suggestions.
-    expect(skillSuggestions.size).toBe(9);
+    // Ten pending conversational suggestions.
+    expect(skillSuggestions.size).toBe(10);
     const listed = await SkillSuggestionResource.listBySkillConfigurationId(
       authenticator,
       skill!.sId,
@@ -88,6 +88,7 @@ describe("conversational building seed script integration test", () => {
       "edit",
       "editors",
       "name",
+      "reinforcement",
       "user_facing_description",
     ]);
     expect(listed.every((s) => s.toJSON().state === "pending")).toBe(true);
@@ -152,6 +153,14 @@ describe("conversational building seed script integration test", () => {
       );
     }
 
+    const reinforcementSuggestion = skillSuggestions
+      .get("skillReinforcement")!
+      .toJSON();
+    expect(reinforcementSuggestion.kind).toBe("reinforcement");
+    if (reinforcementSuggestion.kind === "reinforcement") {
+      expect(reinforcementSuggestion.suggestion.reinforcement).toBe("off");
+    }
+
     // The conversation embeds each suggestion as a directive, with no leftover placeholder.
     const conversation = await ConversationResource.fetchById(
       authenticator,
@@ -162,7 +171,7 @@ describe("conversational building seed script integration test", () => {
       authenticator,
       conversation!
     );
-    expect(agentMessageIds).toHaveLength(7);
+    expect(agentMessageIds).toHaveLength(8);
     expect(text).not.toContain("__");
     for (const suggestion of skillSuggestions.values()) {
       expect(text).toContain(
@@ -174,7 +183,7 @@ describe("conversational building seed script integration test", () => {
     const rerun = await seedConversationalBuilding(ctx);
     expect(rerun.skills.get(SKILL_NAME)!.sId).toBe(skill!.sId);
     expect(rerun.toolView!.sId).toBe(toolView!.sId);
-    expect(rerun.skillSuggestions.size).toBe(9);
+    expect(rerun.skillSuggestions.size).toBe(10);
     for (const [id, suggestion] of skillSuggestions) {
       expect(rerun.skillSuggestions.get(id)!.sId).not.toBe(suggestion.sId);
     }
@@ -186,7 +195,7 @@ describe("conversational building seed script integration test", () => {
           { sources: ["conversational"] }
         )
       ).length
-    ).toBe(9);
+    ).toBe(10);
 
     const rerunConversation = await ConversationResource.fetchById(
       authenticator,
