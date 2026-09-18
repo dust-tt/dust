@@ -1,3 +1,7 @@
+@cc [owner:philipperolet,label:security;backend] access-control-verbs-documented
+Every resource implementing `WithAccessControl` (`getAllowedVerbs`) MUST carry a code contract on
+its resource class defining what each of its verbs authorizes.
+
 @cc [owner:philipperolet,label:security;backend] permission-checked-fetch
 A resource with permissioning is one implementing `WithAccessControl` (`getAllowedVerbs`).
 A method that fetches or lists such resources MUST either:

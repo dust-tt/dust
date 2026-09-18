@@ -210,6 +210,8 @@ export abstract class ResourceWithSpace<
     return auth.can("write", this);
   }
 
+  // TODO: Make `canFetch` use `BaseResource.canFetch` and remove this caller-side exception after
+  // adding permission-filtering coverage for the `ResourceWithSpace` fetch and list methods.
   /**
    * @cc [owner:philipperolet,label:security;backend] space-verbs-checked-by-callers
    * Because `canFetch` here checks only the workspace, a fetch result may hold resources living in
