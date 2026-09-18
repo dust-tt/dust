@@ -77,13 +77,13 @@ export function CreditSpendCheckpointPausedCard({
     >
       <div className="flex items-center gap-2">
         <Avatar icon={PieChart01} size="sm" />
-        <div className="heading-base">Keep going?</div>
+        <div className="heading-base">Paused to avoid excessive credit use</div>
       </div>
 
       <div className="text-base text-muted-foreground">
         {displayedCredits !== null
-          ? `This task has used ${formatCreditValue(displayedCredits)} so far and is paused. Continue running it?`
-          : "This task is paused because it has used a lot of credits. Continue running it?"}
+          ? `This task has used ${formatCreditValue(displayedCredits)} so far. Continue running it?`
+          : "This task has used a lot of credits. Continue running it?"}
       </div>
 
       {canCurrentUserRespond ? (
