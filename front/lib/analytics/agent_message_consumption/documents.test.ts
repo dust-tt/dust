@@ -318,6 +318,9 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       CONSUMPTION_RECONCILIATION_SOURCE.Stored
     );
     expect(
+      result.value.every((document) => document.completed_at === null)
+    ).toBe(true);
+    expect(
       result.value.find((document) => document.consumption_type === "tool")
     ).toMatchObject({
       attribution_version: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,

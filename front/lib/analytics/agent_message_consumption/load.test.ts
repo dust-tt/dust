@@ -278,7 +278,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     expect(input).toMatchObject({
       agentMessageId: context.agentMessage.sId,
       billedCredits: 1.5,
-      completedAt: expect.any(Date),
+      completedAt: null,
       messageStatus: "created",
     });
   });

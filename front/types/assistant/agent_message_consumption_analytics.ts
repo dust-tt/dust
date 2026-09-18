@@ -37,7 +37,7 @@ export type ConsumptionAnalyticsMessageMetadata = {
   agent: AgentMessageConsumptionAnalyticsAgent;
   agentMessageId: string;
   apiKeyName: string | null;
-  completedAt: Date;
+  completedAt: Date | null;
   contextOrigin: UserMessageOrigin | null;
   conversationId: string;
   messageStatus: AgentMessageStatus;
@@ -66,9 +66,8 @@ export type AgentMessageConsumptionAnalyticsInput =
 
 export type ConsumptionAnalyticsSource = Pick<
   AgentMessageConsumptionAnalyticsInput,
-  "billedCredits" | "items" | "reconciliationSource"
+  "billedCredits" | "completedAt" | "items" | "reconciliationSource"
 > & {
-  completedAt: Date;
   context: AgentMessageConsumptionAnalyticsContext;
 };
 

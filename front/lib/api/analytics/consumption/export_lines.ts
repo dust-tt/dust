@@ -69,6 +69,17 @@ type ConsumptionLineExportRow = {
   executionTimeMs: number;
 };
 
+type CompletedConsumptionAnalyticsData =
+  AgentMessageConsumptionAnalyticsData & {
+    completed_at: string;
+  };
+
+function hasCompletedAt(
+  document: AgentMessageConsumptionAnalyticsData
+): document is CompletedConsumptionAnalyticsData {
+  return document.completed_at !== null;
+}
+
 const CONSUMPTION_LINE_EXPORT_HEADERS: (keyof ConsumptionLineExportRow)[] = [
   "completedAt",
   "conversationId",
@@ -189,11 +200,16 @@ async function fetchAllConsumptionDocuments(
   return new Ok(allDocs);
 }
 
+/**
+ * @cc [owner:id13,label:backend;data-integrity] completed-consumption-export
+ * Consumption line exports MUST omit unfinished snapshots whose `completed_at` is `null`.
+ */
 async function buildConsumptionLineExportRows(
   auth: Authenticator,
   docs: AgentMessageConsumptionAnalyticsData[],
   labelCache?: DimensionLabelCache
 ): Promise<ConsumptionLineExportRow[]> {
+  const completedDocs = docs.filter(hasCompletedAt);
   const resolve = labelCache
     ? (dimension: ConsumptionTopDimension, keys: string[]) =>
         resolveAndCache(auth, labelCache, dimension, keys)
@@ -210,29 +226,37 @@ async function buildConsumptionLineExportRows(
     sourceLabels,
     triggerLabels,
   ] = await Promise.all([
-    resolve("agent", [...new Set(docs.map((doc) => doc.agent.attributed_id))]),
-    resolve("user", [...new Set(removeNulls(docs.map((doc) => doc.user?.id)))]),
+    resolve("agent", [
+      ...new Set(completedDocs.map((doc) => doc.agent.attributed_id)),
+    ]),
+    resolve("user", [
+      ...new Set(removeNulls(completedDocs.map((doc) => doc.user?.id))),
+    ]),
     resolve("model", [
-      ...new Set(removeNulls(docs.map((doc) => doc.model?.model_id))),
+      ...new Set(removeNulls(completedDocs.map((doc) => doc.model?.model_id))),
     ]),
     resolve("tool", [
-      ...new Set(removeNulls(docs.map((doc) => doc.tool?.server_name))),
+      ...new Set(
+        removeNulls(completedDocs.map((doc) => doc.tool?.server_name))
+      ),
     ]),
     resolve("skill", [
-      ...new Set(docs.flatMap((doc) => doc.tool?.attributed_skill_ids ?? [])),
+      ...new Set(
+        completedDocs.flatMap((doc) => doc.tool?.attributed_skill_ids ?? [])
+      ),
     ]),
     resolve("group", [
-      ...new Set(docs.flatMap((doc) => doc.user?.group_ids ?? [])),
+      ...new Set(completedDocs.flatMap((doc) => doc.user?.group_ids ?? [])),
     ]),
     resolve("source", [
-      ...new Set(removeNulls(docs.map((doc) => doc.context_origin))),
+      ...new Set(removeNulls(completedDocs.map((doc) => doc.context_origin))),
     ]),
     resolve("trigger", [
-      ...new Set(removeNulls(docs.map((doc) => doc.trigger_id))),
+      ...new Set(removeNulls(completedDocs.map((doc) => doc.trigger_id))),
     ]),
   ]);
 
-  return docs.map((doc) => {
+  return completedDocs.map((doc) => {
     const { agent, model, user, tool } = doc;
     const agentId = agent.attributed_id;
     // Older documents indexed before these buckets shipped don't carry them.

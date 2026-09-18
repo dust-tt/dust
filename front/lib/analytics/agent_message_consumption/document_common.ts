@@ -51,6 +51,11 @@ export function modelForUsage(
   };
 }
 
+/**
+ * @cc [owner:id13,label:backend;data-integrity] consumption-document-completion-time
+ * `completed_at` MUST be the ISO representation of the message completion time, or `null` when the
+ * message has not completed.
+ */
 export function makeBaseDocument(
   metadata: ConsumptionAnalyticsMessageMetadata,
   {
@@ -72,7 +77,7 @@ export function makeBaseDocument(
     agent_message_id: metadata.agentMessageId,
     api_key_name: metadata.apiKeyName,
     attribution_version: attributionVersion,
-    completed_at: metadata.completedAt.toISOString(),
+    completed_at: metadata.completedAt?.toISOString() ?? null,
     consumption_key: consumptionKey,
     context_origin: metadata.contextOrigin,
     conversation_id: metadata.conversationId,

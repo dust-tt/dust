@@ -105,11 +105,11 @@ async function loadAgentTagIds(
 
 async function loadAnalyticsUser({
   auth,
-  completedAt,
+  at,
   userId,
 }: {
   auth: Authenticator;
-  completedAt: Date;
+  at: Date;
   userId: string | null;
 }): Promise<AgentMessageConsumptionAnalyticsUser | null> {
   if (userId === null) {
@@ -129,12 +129,12 @@ async function loadAnalyticsUser({
       auth,
       user,
       groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS],
-      at: completedAt,
+      at,
     }),
     MembershipResource.getActiveSeatTypeForUserModelId({
       workspace,
       userModelId: user.id,
-      at: completedAt,
+      at,
     }),
   ]);
 
@@ -149,6 +149,12 @@ async function loadAnalyticsUser({
  * @cc [owner:id13,label:backend;data-integrity] consumption-analytics-source-identity
  * Settled attribution MUST load a terminal message by public ID and use its authoritative message
  * cost. Incremental consumption MUST load by model ID and derive its cost from ledger items.
+ */
+/**
+ * @cc [owner:id13,label:backend;data-integrity] consumption-analytics-completion-time
+ * Analytics completion time MUST equal the message's stored completion time. An unfinished
+ * incremental snapshot MUST keep completion time `null`; message creation time MUST NOT substitute
+ * for it.
  */
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
@@ -244,7 +250,7 @@ async function loadConsumptionAnalyticsInput(
     preloadedActions,
     source: {
       billedCredits,
-      completedAt: agentMessage.completedAt ?? agentMessage.createdAt,
+      completedAt: agentMessage.completedAt,
       context,
       items,
       reconciliationSource: CONSUMPTION_RECONCILIATION_SOURCE.Stored,
@@ -333,7 +339,7 @@ async function loadAnalyticsInputFromSource(
   const agentTagIds = await loadAgentTagIds(auth, agentMessage);
   const user = await loadAnalyticsUser({
     auth,
-    completedAt,
+    at: completedAt ?? agentMessage.createdAt,
     userId: triggeringUserMessage.userId,
   });
 
