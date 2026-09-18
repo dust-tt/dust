@@ -210,6 +210,14 @@ app.patch(
               message: updateRes.error.message,
             },
           });
+        case "user_not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "user_not_found",
+              message: "The user was not found in the workspace.",
+            },
+          });
         case "user_not_member":
           return apiError(ctx, {
             status_code: 409,

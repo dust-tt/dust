@@ -73,9 +73,7 @@ describe("fetchAgentExportRows", () => {
       name: "Multi-author agent",
     });
 
-    // Make B an editor through the production path so B holds `write`: this both adds B to the
-    // legacy editor group and grants the `editor` permission (the `regular_auto` grant that actually
-    // confers `write`); adding B to the editor group alone would not.
+    // Make B an editor through the production path so B receives the grant that confers `write`.
     const addEditorResult = await updateAgentPermissions(authorAAuth, {
       agent,
       usersToAdd: [authorB.toJSON()],
