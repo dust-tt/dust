@@ -1113,7 +1113,7 @@ export class AgentResource
 
   /**
    * Skills equipped on this agent: the `AgentSkillModel` rows of a custom agent, the code-defined
-   * skills a global agent declares (in declaration order).
+   * skills a global agent declares.
    */
   /**
    * @cc [owner:sfriquet,label:backend] agent-skills-by-scope
@@ -1129,7 +1129,7 @@ export class AgentResource
     fetchContext: SkillFetchContext = {}
   ): Promise<SkillResource[]> {
     if (this.scope === "global") {
-      return SkillResource.listCodeDefinedSkills(
+      return SkillResource.fetchByIds(
         auth,
         this.codeDefinedSkillIds,
         fetchContext

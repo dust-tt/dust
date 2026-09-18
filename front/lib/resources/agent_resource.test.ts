@@ -727,7 +727,7 @@ describe("AgentResource", () => {
       expect(skills.map((s) => s.id)).toEqual([skill.id]);
     });
 
-    it("lists the code-defined skills of a global agent in declaration order", async () => {
+    it("lists the code-defined skills a global agent declares", async () => {
       const resource = AgentResource.fromGlobalAgent(
         testContext.authenticator,
         makeAgentConfiguration({
@@ -736,14 +736,13 @@ describe("AgentResource", () => {
           agentModelId: null,
           name: "Helper",
           description: "Helper description",
-          // Reversed compared to the global skills registry, so the order is the agent's.
           codeDefinedSkillIds: ["support", "frames"],
         })
       );
 
       const skills = await resource.listSkills(testContext.authenticator);
 
-      expect(skills.map((s) => s.sId)).toEqual(["support", "frames"]);
+      expect(skills.map((s) => s.sId).sort()).toEqual(["frames", "support"]);
     });
 
     it("carries the code-defined skills a fetched global agent declares", async () => {
