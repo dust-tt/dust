@@ -442,6 +442,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "fabiencelier",
   },
+  knowledge_browser: {
+    description:
+      "Browse spaces and folders from the knowledge pickers of the composer and skill builder instead of searching only",
+    stage: "dust_only",
+    owner: "smb2268",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";

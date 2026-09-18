@@ -1,12 +1,12 @@
 import config from "@app/lib/api/config";
 import {
   getContentNodeFromCoreNode,
-  NON_REMOTE_DATABASE_TABLE_MIME_TYPES,
   NON_SEARCHABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { normalizeUrlForSourceUrlSearch } from "@app/lib/connectors";
+import { NON_REMOTE_DATABASE_TABLE_MIME_TYPES } from "@app/lib/content_nodes_constants";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
