@@ -1,5 +1,6 @@
 import type {
   SkillAvailability,
+  SkillStatus,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
   SkillWithoutInstructionsAndToolsWithRelationsType,
@@ -15,7 +16,7 @@ export type GetSkillsResponseBody = {
 // OR within a dimension, AND across dimensions. Selection never replaces ACLs.
 export interface SkillSearchFilters {
   // Omitted means active only. Suggested skills are never searchable.
-  status?: ("active" | "archived")[];
+  status?: Extract<SkillStatus, "active" | "archived">[];
   mcpServerViewIds?: string[];
   // Supports "edited by me", but not "not edited by me".
   editedByMe?: true;
