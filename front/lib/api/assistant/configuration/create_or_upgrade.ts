@@ -268,7 +268,7 @@ export async function createOrUpgradeAgentConfiguration({
         jsonSchema: action.jsonSchema,
         dustProject: action.dustProject,
       } as ServerSideMCPServerConfigurationType,
-      savedConfig
+      agentConfigurationRes.value
     );
     if (res.isErr()) {
       logger.error(

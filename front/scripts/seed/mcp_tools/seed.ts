@@ -6,6 +6,7 @@ import { SEARCH_SERVER_NAME } from "@app/lib/api/actions/servers/search/metadata
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -207,7 +208,7 @@ async function createAgentWithTool({
       dustProject: null,
       jsonSchema: agent.jsonSchema,
     } satisfies UnsavedServerSideMCPServerConfigurationType,
-    agentResult.value
+    AgentResource.fromAgentConfiguration(auth, agentResult.value)
   );
   if (actionResult.isErr()) {
     throw actionResult.error;
