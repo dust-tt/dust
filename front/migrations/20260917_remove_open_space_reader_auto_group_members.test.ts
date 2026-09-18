@@ -65,13 +65,13 @@ async function memberIdsOf(
   return memberships[group.id] ?? [];
 }
 
-async function autoGroupGrantOf(space: SpaceResource, groupId: number) {
+async function autoGroupGrantOf(space: SpaceResource, groupModelId: number) {
   return GroupPermissionModel.findOne({
     where: {
       workspaceId: space.workspaceId,
       resourceType: "space",
       resourceId: space.id,
-      groupId,
+      groupId: groupModelId,
     },
   });
 }

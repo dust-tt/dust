@@ -105,49 +105,53 @@ export async function removeWorkspaceStaleOpenSpaceMembers(
     "Open regular spaces with members behind a regular_auto reader grant"
   );
 
-  const now = new Date();
   for (const group of nonEmptyGroups) {
-    const userModelIds = userModelIdsByGroupModelId[group.id];
     const space = spaceByGroupModelId.get(group.id);
-    const context = {
-      workspaceId: workspace.sId,
-      spaceId: space?.sId,
-      spaceName: space?.name,
-      groupId: group.sId,
-      userIds: removeNulls(
-        userModelIds.map((id) => usersByModelId.get(id)?.sId ?? null)
-      ),
-    };
-
-    if (!execute) {
-      logger.info(context, "Dry run: would remove members of an open space");
-      continue;
-    }
-
-    // `GroupResource.dangerouslyRemoveMembers` refuses the whole batch as soon as one user has left
-    // the workspace, so the rows are ended here the same way it ends them, followed by the per-user
-    // group cache invalidation it would have done.
-    await GroupMembershipModel.update(
-      { endAt: now },
+    logger.info(
       {
-        where: {
-          groupId: group.id,
-          userId: userModelIds,
-          workspaceId: workspace.id,
-          status: "active",
-          startAt: { [Op.lte]: now },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
-        },
-      }
+        workspaceId: workspace.sId,
+        spaceId: space?.sId,
+        spaceName: space?.name,
+        groupId: group.sId,
+        userIds: removeNulls(
+          userModelIdsByGroupModelId[group.id].map(
+            (id) => usersByModelId.get(id)?.sId ?? null
+          )
+        ),
+      },
+      execute
+        ? "Removing members of an open space"
+        : "Dry run: would remove members of an open space"
     );
-    for (const userModelId of userModelIds) {
-      await GroupResource.invalidateGroupIdsCacheForUser({
-        user: { id: userModelId },
-        workspace: { id: workspace.id },
-      });
-    }
+  }
 
-    logger.info(context, "Removed members of an open space");
+  if (!execute) {
+    return;
+  }
+
+  // `GroupResource.dangerouslyRemoveMembers` refuses the whole batch as soon as one user has left
+  // the workspace, so the rows are ended here the same way it ends them — one update for every
+  // selected group of the workspace — followed by the per-user group cache invalidation it would
+  // have done.
+  const now = new Date();
+  await GroupMembershipModel.update(
+    { endAt: now },
+    {
+      where: {
+        groupId: nonEmptyGroups.map((group) => group.id),
+        userId: allUserModelIds,
+        workspaceId: workspace.id,
+        status: "active",
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      },
+    }
+  );
+  for (const userModelId of allUserModelIds) {
+    await GroupResource.invalidateGroupIdsCacheForUser({
+      user: { id: userModelId },
+      workspace: { id: workspace.id },
+    });
   }
 }
 
