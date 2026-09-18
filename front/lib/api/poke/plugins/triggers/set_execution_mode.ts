@@ -37,7 +37,7 @@ export const setTriggerExecutionModePlugin = createPlugin({
       return new Err(new Error("Invalid execution mode"));
     }
 
-    const res = await resource.dangerouslySetExecutionMode(auth, executionMode);
+    const res = await resource.setExecutionMode(auth, executionMode);
     if (res.isErr()) {
       return new Err(res.error);
     }
