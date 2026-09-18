@@ -120,6 +120,7 @@ export const AttachContextSubMenuDropdown = forwardRef<
         isLoading={isLoading}
         loadingMessage={loadingMessage}
         items={slashItems}
+        onClose={onClose}
         subMenuNavigation={{
           label: activeFrame.command.label,
           onBack,
