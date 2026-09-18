@@ -4,6 +4,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { getNamespace } from "@app/tests/utils/test_cls";
+import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
 import type { LightWorkspaceType } from "@app/types/user";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -203,7 +204,7 @@ describe("AgentMessageConsumptionEventResource append", () => {
     const appendStarted = (
       idempotencyKey: string,
       runKey: string,
-      consumptionMode: "shadow" | "live"
+      consumptionMode: EnabledAgentMessageConsumptionMode
     ) =>
       withTransaction((transaction) =>
         AgentMessageConsumptionEventResource.append(auth, {

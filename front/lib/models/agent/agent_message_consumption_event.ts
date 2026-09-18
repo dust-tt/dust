@@ -2,16 +2,12 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
+import { ENABLED_AGENT_MESSAGE_CONSUMPTION_MODES } from "@app/types/assistant/agent_message_consumption";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { CreationOptional } from "sequelize";
-
-const ENABLED_CONSUMPTION_MODES = [
-  "shadow",
-  "live",
-] as const satisfies readonly EnabledAgentMessageConsumptionMode[];
 
 function validateConsumptionEventShape(
   this: AgentMessageConsumptionEventModel
@@ -138,7 +134,7 @@ AgentMessageConsumptionEventModel.init(
     consumptionMode: {
       type: DataTypes.STRING(16),
       allowNull: true,
-      validate: { isIn: [ENABLED_CONSUMPTION_MODES] },
+      validate: { isIn: [ENABLED_AGENT_MESSAGE_CONSUMPTION_MODES] },
     },
   },
   {
