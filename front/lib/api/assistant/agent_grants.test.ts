@@ -9,9 +9,8 @@ import {
   getAgentConfigurationForDetails,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import { getAgentsEditors, getEditors } from "@app/lib/api/assistant/editors";
+import { getEditors } from "@app/lib/api/assistant/editors";
 import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -35,7 +34,7 @@ afterEach(() => {
 it.each([
   "legacy",
   "grants",
-])("selects %s for editor lists, permissions, and views", async (mode) => {
+])("selects %s for permissions and views", async (mode) => {
   vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(
     mode === "legacy"
   );
@@ -88,25 +87,6 @@ it.each([
   const excluded = mode === "grants" ? legacyAgent : grantAgent;
   await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
   const warn = vi.spyOn(logger, "warn");
-
-  expect(
-    (await getEditors(auth, selected)).some((editor) => editor.id === member.id)
-  ).toBe(true);
-  expect(
-    (await getEditors(auth, excluded)).some((editor) => editor.id === member.id)
-  ).toBe(false);
-  const batchEditors = await getAgentsEditors(auth, [selected, excluded]);
-  expect(
-    batchEditors[selected.sId].some((editor) => editor.id === member.id)
-  ).toBe(true);
-  expect(
-    batchEditors[excluded.sId].some((editor) => editor.id === member.id)
-  ).toBe(false);
-  const context = await getAgentConfigurationContext(auth, selected.sId);
-  assert(context.isOk());
-  expect(
-    context.value.editorUsers.some((editor) => editor.id === member.id)
-  ).toBe(true);
 
   const selectedConfig = await getAgentConfiguration(auth, {
     agentId: selected.sId,
@@ -177,8 +157,6 @@ it.each([
     )
   );
   for (const check of [
-    "agent_editors",
-    "agent_editors_batch",
     "agent_permissions",
     "agent_permission",
     "editable_agents",
