@@ -463,7 +463,7 @@ describe("ensureConversationSandboxReady", () => {
     expect(sandbox.lastRuntimeRefreshAt).toEqual(recentRefreshAt);
   });
 
-  it("mounts Frame publications and durable state with Frame-owned egress", async () => {
+  it("mounts Frame publications, durable state and files with Frame-owned egress", async () => {
     const frame = await FileFactory.create(auth, null, {
       contentType: frameV2ContentType,
       fileName: "manifest.json",
@@ -496,9 +496,15 @@ describe("ensureConversationSandboxReady", () => {
           readOnly: true,
         },
         {
-          kind: "frame_state",
+          kind: "frame_database_replicas",
           frameId: frame.sId,
           sandboxMountPoint: "/sandbox-state/replica",
+          readOnly: false,
+        },
+        {
+          kind: "frame_data_files",
+          frameId: frame.sId,
+          sandboxMountPoint: `/frames/${frame.sId}/files`,
           readOnly: false,
         },
       ],

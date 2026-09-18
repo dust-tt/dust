@@ -50,7 +50,7 @@ const mounts: FileSystemMount[] = [
 
 const sandboxOnlyMounts: SandboxOnlyMount[] = [
   {
-    kind: "frame_state",
+    kind: "frame_database_replicas",
     frameId: "fil_frame1",
     sandboxMountPoint: "/sandbox-state/replica",
     readOnly: false,

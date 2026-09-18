@@ -236,16 +236,17 @@ describe("Frame sandbox mount wiring", () => {
     process.env.DUST_PRIVATE_UPLOADS_BUCKET ??= "test-private-uploads";
   });
 
-  test("grants only stable Frame publication and state prefixes", () => {
+  test("grants only stable Frame publication, state and files prefixes", () => {
     const rules = createFrameSandboxAdapter().getAccessBoundaryRules();
 
-    expect(rules).toHaveLength(2);
+    expect(rules).toHaveLength(3);
     expect(rules.every((tokenRules) => tokenRules.length === 3)).toBe(true);
     const serializedRules = JSON.stringify(rules);
     expect(serializedRules).toContain("w/ws1/frames/fil_frame/publications/");
     expect(serializedRules).toContain(
       "w/ws1/frames/fil_frame/state/databases/"
     );
+    expect(serializedRules).toContain("w/ws1/frames/fil_frame/state/files/");
     expect(serializedRules).not.toContain("/conversations/");
     expect(serializedRules).not.toContain("/pods/");
   });
