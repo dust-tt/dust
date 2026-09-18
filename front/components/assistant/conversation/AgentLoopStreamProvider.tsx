@@ -30,6 +30,11 @@ function OngoingAgentLoopConnection({
       `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/events?lastEventId=${getAgentLoopEventId(lastEvent)}`,
     [conversationId, messageId, owner.sId]
   );
+  const buildLongPollURL = useCallback(
+    (lastEvent: string | null) =>
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/events/poll?lastEventId=${getAgentLoopEventId(lastEvent)}`,
+    [conversationId, messageId, owner.sId]
+  );
   const onEvent = useCallback(
     (event: string) => {
       if (isTerminalAgentLoopEvent(event)) {
@@ -41,6 +46,8 @@ function OngoingAgentLoopConnection({
 
   useEventSource(buildURL, onEvent, `message-${messageId}`, {
     workspaceId: owner.sId,
+    buildLongPollURL,
+    getEventId: getAgentLoopEventId,
     isTerminalEvent: isTerminalAgentLoopEvent,
     keepAliveOnUnmount: true,
     replayBufferedEventsOnMount: true,
@@ -58,14 +65,15 @@ function OngoingAgentLoopConnection({
  * Keeps SSE connections alive for user-launched agent loops when their conversation UI is not
  * mounted. Temporal workflows maintain the Redis registry that backs the polling endpoint.
  *
- * Redis registry --> 3 s API poll --> headless SSE subscriber
- *                                          |
- *                                          v
+ * Redis registry --> 3 s API poll --> headless stream subscriber
+ *                                           |
+ *                           SSE + handshake | long poll fallback
+ *                                           v
  * Conversation UI <-- replay and dedupe <-- EventSourceManager
  *
  * The provider creates one headless subscriber per registered message. The global manager shares
- * that connection with the conversation UI and replays buffered events when the UI mounts. Polling
- * keeps the subscribers in sync with the registry, and a terminal event refreshes it immediately.
+ * that stream with the conversation UI and replays buffered events when the UI mounts. Registry
+ * polling keeps the subscribers in sync, and a terminal event refreshes it immediately.
  */
 /**
  * @cc [owner:id13,label:concurrency;reliability] ongoing-loop-retry-after-refresh
