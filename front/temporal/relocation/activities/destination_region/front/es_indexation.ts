@@ -135,7 +135,7 @@ export async function recreateSkillSearchIndex({
   const results = await concurrentExecutor(
     skills,
     async (skill) => {
-      const document = skill.toSearchDocument({
+      const document = skill.toSearchDocument(auth, {
         editors: editorsBySkillId.get(skill.sId) ?? [],
         lastEditedByUser:
           skill.editedBy === null

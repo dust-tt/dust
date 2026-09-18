@@ -53,7 +53,6 @@ import type {
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
-  CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
   getResourceIdFromSId,
   getResourceNameAndIdFromSId,
   isResourceSId,
@@ -177,7 +176,7 @@ export type SkillFetchContext = {
     }
 );
 
-type SkillResourceConstructorOptions = { workspace: { sId: string } } & (
+type SkillResourceConstructorOptions =
   | {
       codeDefinedSkillId: string;
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
@@ -198,8 +197,7 @@ type SkillResourceConstructorOptions = { workspace: { sId: string } } & (
       files?: readonly CodeDefinedSkillFile[];
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
-    }
-);
+    };
 
 type SkillVersionCreationAttributes =
   CreationAttributes<SkillConfigurationModel> & {
@@ -349,7 +347,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   readonly version: number | null = null;
 
   private readonly codeDefinedSkillId: string | null;
-  private readonly searchWorkspaceId: string;
   // Only meaningful for global skills: whether their instructions may be
   // serialized to the front-end. Custom skills always expose their own.
   private readonly exposeInstructions: boolean;
@@ -372,7 +369,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       files,
       mcpServerConfigurations,
       version,
-      workspace,
     }: SkillResourceConstructorOptions
   ) {
     super(SkillConfigurationModel, blob);
@@ -384,7 +380,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     this.codeDefinedSkillId = codeDefinedSkillId ?? null;
     this._mcpServerConfigurations = mcpServerConfigurations;
     this.version = version ?? null;
-    this.searchWorkspaceId = workspace.sId;
   }
 
   get sId(): string {
@@ -602,7 +597,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         });
 
       const skillResource = new this(this.model, skill.get(), {
-        workspace: owner,
         dataSourceConfigurations,
         fileAttachments,
         mcpServerConfigurations: mcpServerViews.map((view) => ({
@@ -953,7 +947,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         );
 
         const resource = new this(this.model, customSkillAttributes, {
-          workspace,
           mcpServerConfigurations: skillMCPServerViews.map((view) => ({
             view,
           })),
@@ -2348,28 +2341,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         : def.instructions
       : "";
 
-    return this.fromCodeDefinedSkill(def, {
-      workspaceModelId: workspaceId,
-      requestedSpaceIds: requestedSpaceModelIds,
-      instructions,
-      mcpServerConfigurations,
-    });
-  }
-
-  static fromCodeDefinedSkill(
-    def: SkillDefinition,
-    {
-      workspaceModelId = CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID,
-      requestedSpaceIds = [],
-      instructions = "",
-      mcpServerConfigurations = [],
-    }: {
-      workspaceModelId?: ModelId;
-      requestedSpaceIds?: ModelId[];
-      instructions?: string;
-      mcpServerConfigurations?: SkillMCPServerConfiguration[];
-    } = {}
-  ): SkillResource {
     return new SkillResource(
       this.model,
       {
@@ -2382,16 +2353,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         instructions,
         instructionsHtml: null,
         name: def.name,
-        requestedSpaceIds,
+        requestedSpaceIds: requestedSpaceModelIds,
         manuallyRequestedSpaceIds: [],
         status: "active",
         updatedAt: new Date(),
-        workspaceId: workspaceModelId,
+        workspaceId,
         icon: def.icon,
         source: null,
         sourceMetadata: null,
-        availability:
-          def.kind === "system" ? "workspace_users" : "users_and_agents",
+        availability: SystemSkillsRegistry.isSystemSkill(def.sId)
+          ? "workspace_users"
+          : "users_and_agents",
         favoriteCount: 0,
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
@@ -2400,7 +2372,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         selfImprovementLock: false,
       },
       {
-        workspace: { sId: CODE_DEFINED_SKILLS_WORKSPACE_ID },
         // Global skills do not have data source configurations.
         dataSourceConfigurations: [],
         exposeInstructions: def.exposeInstructions,
@@ -2760,7 +2731,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           selfImprovementLock: versionModel.selfImprovementLock,
         },
         {
-          workspace,
           // We ignore data source configurations for historical versions.
           // As when the user saves we re-compute those from the nodes.
           dataSourceConfigurations: [],
@@ -4705,21 +4675,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   /**
    * @cc [owner:aubin-tchoi,label:backend;security] skill-search-serialization
    * Serialize listing metadata without I/O or private content; fetch custom skills with tools.
-   * Code-defined skills
-   * use the global namespace, without workspace-specific relationships, usage or dates.
+   * Custom skills use the authenticator's workspace; code-defined skills use the global namespace,
+   * without workspace-specific relationships, usage or dates.
    */
-  toSearchDocument({
-    lastEditedByUser,
-    editors,
-    activeUsersCount,
-  }: {
-    lastEditedByUser: UserResource | null;
-    editors: UserResource[];
-    activeUsersCount: number | null;
-  }): SkillSearchDocument {
+  toSearchDocument(
+    auth: Authenticator,
+    {
+      lastEditedByUser,
+      editors,
+      activeUsersCount,
+    }: {
+      lastEditedByUser: UserResource | null;
+      editors: UserResource[];
+      activeUsersCount: number | null;
+    }
+  ): SkillSearchDocument {
     const isCodeDefined = this.codeDefinedSkillId !== null;
     return {
-      workspace_id: this.searchWorkspaceId,
+      workspace_id: isCodeDefined
+        ? CODE_DEFINED_SKILLS_WORKSPACE_ID
+        : auth.getNonNullableWorkspace().sId,
       skill_id: this.sId,
       status: this.status,
       availability: this.availability,

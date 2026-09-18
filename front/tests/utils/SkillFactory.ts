@@ -50,7 +50,7 @@ export class SkillFactory {
       lastEditors.map((user) => [user.id, user])
     );
     return skills.map((skill) =>
-      skill.toSearchDocument({
+      skill.toSearchDocument(auth, {
         editors: editors.get(skill.sId) ?? [],
         lastEditedByUser:
           skill.editedBy === null

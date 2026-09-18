@@ -66,7 +66,7 @@ describe("SkillResource", () => {
       const fetched = await SkillResource.fetchById(auth, skill.sId);
       assert(fetched);
 
-      const document = fetched.toSearchDocument({
+      const document = fetched.toSearchDocument(auth, {
         editors: [user],
         lastEditedByUser: user,
         activeUsersCount: 4,
@@ -88,13 +88,16 @@ describe("SkillResource", () => {
     it.each([
       GLOBAL_SKILLS_ARRAY[0],
       SYSTEM_SKILLS_ARRAY[0],
-    ])("serializes $kind definitions without workspace-specific metadata", (definition) => {
-      const { workspace, globalSpace, user } = testContext;
-      const skill = SkillResource.fromCodeDefinedSkill(definition, {
-        workspaceModelId: workspace.id,
-        requestedSpaceIds: [globalSpace.id],
+    ])("serializes $kind definitions without workspace-specific metadata", async (definition) => {
+      const { authenticator: auth, globalSpace, user } = testContext;
+      const skill = await SkillResource.fetchById(auth, definition.sId, {
+        effectiveSpaceIds: [globalSpace.sId],
+        withInstructions: false,
+        withTools: false,
       });
-      const document = skill.toSearchDocument({
+      assert(skill);
+
+      const document = skill.toSearchDocument(auth, {
         editors: [user],
         lastEditedByUser: user,
         activeUsersCount: 4,
@@ -119,13 +122,6 @@ describe("SkillResource", () => {
         updated_at: null,
       });
       expect(toSkillListItem(document).updatedAt).toBeNull();
-      expect(
-        SkillResource.fromCodeDefinedSkill(definition).toSearchDocument({
-          editors: [],
-          lastEditedByUser: null,
-          activeUsersCount: null,
-        })
-      ).toEqual(document);
     });
   });
 
