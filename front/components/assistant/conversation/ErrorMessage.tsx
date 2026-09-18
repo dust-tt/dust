@@ -86,7 +86,7 @@ export function ErrorMessage({
     >
       <div className="whitespace-normal break-words">
         {retryTierName
-          ? `${failedProviderName} couldn't complete this reply. Retry will use ${retryTierName}.`
+          ? `This model didn't finish. Retry will use the ${retryTierName} model tier.`
           : error.message}
         {isContextWindowExceeded && (
           <>
@@ -107,7 +107,9 @@ export function ErrorMessage({
           variant="outline"
           size="xs"
           icon={RefreshCw02}
-          label={retryTierName ? `Retry with ${retryTierName}` : "Retry"}
+          label={
+            retryTierName ? `Retry with ${retryTierName} model tier` : "Retry"
+          }
           onClick={() => void retry()}
           isLoading={isRetrying}
           disabled={isRetrying}
