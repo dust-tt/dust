@@ -9,9 +9,9 @@ import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/S
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import {
-  AgentCreateOrDeleteSuggestionCard,
+  AgentSuggestionActionCard,
   mapSuggestionStateToCardState,
-} from "@app/components/markdown/suggestion/AgentCreateOrDeleteSuggestionCard";
+} from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -657,7 +657,7 @@ interface ConnectedCreateOrDeleteSuggestionCardProps {
   agentSuggestion: AgentCreateSuggestionType | AgentDeleteSuggestionType;
 }
 
-// Thin wiring so `AgentCreateOrDeleteSuggestionCard` stays context-free and shareable with the
+// Thin wiring so `AgentSuggestionActionCard` stays context-free and shareable with the
 // conversation view, which has no `SidekickSuggestionsContext` to pull accept/reject from.
 function ConnectedCreateOrDeleteSuggestionCard({
   agentSuggestion,
@@ -665,7 +665,7 @@ function ConnectedCreateOrDeleteSuggestionCard({
   const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
 
   return (
-    <AgentCreateOrDeleteSuggestionCard
+    <AgentSuggestionActionCard
       agentSuggestion={agentSuggestion}
       onAccept={() => void acceptSuggestion(agentSuggestion)}
       onReject={() => void rejectSuggestion(agentSuggestion)}

@@ -7,7 +7,7 @@
  */
 
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
-import { AgentCreateOrDeleteSuggestionCard } from "@app/components/markdown/suggestion/AgentCreateOrDeleteSuggestionCard";
+import { AgentSuggestionActionCard } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import {
   SidekickSuggestionCard,
   SuggestionCardSkeleton,
@@ -189,7 +189,7 @@ function ConversationAgentSuggestion({
 
   return (
     <div data-suggestion-s-id={sId}>
-      <AgentCreateOrDeleteSuggestionCard
+      <AgentSuggestionActionCard
         agentSuggestion={{
           ...suggestion,
           state: resolveSuggestionState(suggestion),

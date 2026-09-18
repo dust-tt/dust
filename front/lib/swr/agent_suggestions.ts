@@ -125,16 +125,6 @@ export function usePatchAgentSuggestions({
   return { patchSuggestions };
 }
 
-/**
- * Accept/reject a suggestion without depending on any specific SWR cache shape or on a
- * `SidekickSuggestionsContext`-style provider. Meant for surfaces (like a plain conversation
- * message) that just need working buttons on a suggestion card, not the sidekick's richer
- * bookkeeping (editor sync, pending/outdated list splitting, refetch debouncing).
- *
- * Tracks an optimistic state override per suggestion id locally, reverting it if the request
- * fails, so callers can compute the card's displayed state as `overrides[sId] ?? suggestion.state`
- * without needing to touch their own suggestions list.
- */
 export function useAgentSuggestionActions({
   agentConfigurationId,
   workspaceId,

@@ -36,7 +36,7 @@ export function mapSuggestionStateToCardState(
   }
 }
 
-interface AgentCreateOrDeleteSuggestionCardProps {
+interface AgentSuggestionActionCardProps {
   agentSuggestion: AgentCreateSuggestionType | AgentDeleteSuggestionType;
   onAccept: () => void;
   onReject: () => void;
@@ -44,16 +44,16 @@ interface AgentCreateOrDeleteSuggestionCardProps {
 
 /**
  * @cc [owner:avervaet,label:react;architecture] no-suggestion-context-dependency
- * `AgentCreateOrDeleteSuggestionCard` MUST NOT read from `SidekickSuggestionsContext` or any other
+ * `AgentSuggestionActionCard` MUST NOT read from `SidekickSuggestionsContext` or any other
  * provider, and MUST NOT fetch its own data: it is rendered by both the agent builder sidekick and
  * plain conversation messages, which have different data sources and no shared provider. Accept and
  * reject MUST come in as `onAccept`/`onReject` props.
  */
-export function AgentCreateOrDeleteSuggestionCard({
+export function AgentSuggestionActionCard({
   agentSuggestion,
   onAccept,
   onReject,
-}: AgentCreateOrDeleteSuggestionCardProps) {
+}: AgentSuggestionActionCardProps) {
   const { kind, suggestion, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const name = suggestion.name;
