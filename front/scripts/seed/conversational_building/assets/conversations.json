@@ -24,6 +24,16 @@
           "sId": "ConvBuildingAMsg02",
           "content": "Here is the editors change: it adds **Leila Organa** as an editor of the skill and removes **Luke Skyward**.\n\n:skill_suggestion[]{sId=__SKILL_EDITORS_SUGGESTION_SID__ kind=editors skillId=__MEETING_NOTES_SKILL_SID__}\n\nOnce accepted, Leila will be able to edit the skill's instructions and description, and Luke will no longer see it in his skills to maintain."
         }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg03",
+          "content": "Two more things. Notes often end with \"let's meet again next week\" and nobody books it. And summaries are full of acronyms like OKR or DRI that people outside the team don't get."
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg03",
+          "content": "Here are two more edits.\n\nFirst, when the notes mention a follow-up meeting, the skill can offer to schedule it with the **Team Calendar** tool using the attendees and date from the notes:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_TOOL_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nSecond, the skill can look acronyms up in the **Team Glossary** and expand them on first use in the summary:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_KNOWLEDGE_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nBoth edits keep the rest of the instructions unchanged."
+        }
       }
     ]
   }

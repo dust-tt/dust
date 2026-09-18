@@ -158,6 +158,14 @@ export interface DataSourceAsset {
   documents: DataSourceDocumentAsset[];
 }
 
+export interface RemoteMCPToolAsset {
+  // Used as the remote server's cached name; existing servers are matched on it.
+  name: string;
+  description: string;
+  url: string;
+  tools: { name: string; description: string }[];
+}
+
 export interface TemplateAsset {
   handle: string;
   userFacingDescription: string;
