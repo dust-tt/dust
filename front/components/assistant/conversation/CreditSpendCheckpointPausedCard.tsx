@@ -1,6 +1,7 @@
+import { useAgentMessageConsumption } from "@app/hooks/conversations/useAgentMessageConsumption";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import type { CreditSpendCheckpointDecision } from "@app/lib/api/assistant/conversation/credit_spend_checkpoint_pause";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { formatCreditValue } from "@app/lib/client/credits";
 import { useResolveCreditSpendCheckpoint } from "@app/lib/swr/tool_actions";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -30,6 +31,7 @@ export function CreditSpendCheckpointPausedCard({
   creditsUsed,
 }: CreditSpendCheckpointPausedCardProps) {
   const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [submittingDecision, setSubmittingDecision] =
     useState<CreditSpendCheckpointDecision | null>(null);
@@ -38,6 +40,14 @@ export function CreditSpendCheckpointPausedCard({
     owner,
     onError: setErrorMessage,
   });
+
+  const { consumption } = useAgentMessageConsumption({
+    conversationId,
+    workspaceId: owner.sId,
+    messageId,
+    disabled: !hasFeature("conversation_consumption_details"),
+  });
+  const displayedCredits = consumption?.totalBilledCredits ?? creditsUsed;
 
   const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({
     parentUserId: triggeringUser?.sId,
@@ -71,8 +81,8 @@ export function CreditSpendCheckpointPausedCard({
       </div>
 
       <div className="text-base text-muted-foreground">
-        {creditsUsed !== null
-          ? `This task has used ${formatCreditValue(creditsUsed)} so far and is paused. Continue running it?`
+        {displayedCredits !== null
+          ? `This task has used ${formatCreditValue(displayedCredits)} so far and is paused. Continue running it?`
           : "This task is paused because it has used a lot of credits. Continue running it?"}
       </div>
 
