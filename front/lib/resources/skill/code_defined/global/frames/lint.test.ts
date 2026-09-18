@@ -1,6 +1,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  chmod,
   mkdir,
   mkdtemp,
   readdir,
@@ -101,6 +102,10 @@ async function fixture() {
 async function lint(context: Awaited<ReturnType<typeof fixture>>) {
   vi.stubEnv("DUST_VIZ_URL", context.url);
   vi.stubEnv("DUST_FRAME_TYPES_CACHE", path.join(context.root, "cache"));
+  vi.stubEnv(
+    "DUST_FRAME_CHECKER_CACHE",
+    path.join(context.root, "checker-cache")
+  );
   const child = spawn(
     "bash",
     [path.join(context.skill, "lint.sh"), context.project],
@@ -123,7 +128,7 @@ async function lint(context: Awaited<ReturnType<typeof fixture>>) {
   return { stdout, stderr, exitCode };
 }
 
-test("lints source in place, skips backend folders and refreshes cached types", async () => {
+test("lints current source, skips backend folders and reuses local checker files", async () => {
   const context = await fixture();
   await writeFile(
     path.join(context.project, "index.tsx"),
@@ -145,6 +150,14 @@ test("lints source in place, skips backend folders and refreshes cached types", 
   expect(broken.stdout).toContain("value.ts:2:14:");
   expect(broken.stdout).toContain("TS2322");
   expect(broken.stdout).not.toContain("server.ts");
+  expect(await readdir(context.project)).toEqual([
+    "databases",
+    "functions",
+    "index.tsx",
+    "value.ts",
+  ]);
+  await rm(path.join(context.skill, "tsconfig.json"));
+  await rm(path.join(context.skill, "oxlintrc.json"));
   await writeFile(
     path.join(context.project, "value.ts"),
     "export const value = 42\n"
@@ -174,15 +187,46 @@ test("rejects corrupted downloads before creating configs or caching types", asy
   expect(await readdir(context.project)).toEqual(["index.tsx"]);
 });
 
-test("refuses to replace an existing project config", async () => {
+test("checks read-only source without changing or using project configs", async () => {
   const context = await fixture();
-  const config = '{"compilerOptions":{"strict":false}}';
-  await writeFile(path.join(context.project, "tsconfig.json"), config);
-  const result = await lint(context);
-  expect(result.exitCode).toBe(1);
-  expect(result.stderr).toContain("Refusing to replace");
-  expect(
-    await readFile(path.join(context.project, "tsconfig.json"), "utf8")
-  ).toBe(config);
-  expect(context.requests).toEqual([]);
+  const files = {
+    "index.tsx":
+      "import { value } from './ui/value'; export default () => value\n",
+    "tsconfig.json": '{"compilerOptions":{"noCheck":true},"exclude":["**/*"]}',
+    ".oxlintrc.json": '{"ignorePatterns":["**/*"]}',
+    "ui/value.ts": "export const value: number = 'wrong'\n",
+    "ui/tsconfig.json": '{"compilerOptions":{"noCheck":true}}',
+  };
+  for (const [name, content] of Object.entries(files)) {
+    const file = path.join(context.project, name);
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, content);
+    await chmod(file, 0o444);
+  }
+  await chmod(path.join(context.project, "ui"), 0o555);
+  await chmod(context.project, 0o555);
+  try {
+    const result = await lint(context);
+    expect(result.exitCode).toBe(1);
+    expect(result.stdout).toContain("ui/value.ts:1:14:");
+    expect(result.stdout).toContain("TS2322");
+    expect(result.stderr).toBe("");
+    for (const [name, content] of Object.entries(files)) {
+      expect(await readFile(path.join(context.project, name), "utf8")).toBe(
+        content
+      );
+    }
+    expect(await readdir(context.project)).toEqual([
+      ".oxlintrc.json",
+      "index.tsx",
+      "tsconfig.json",
+      "ui",
+    ]);
+    expect(await readdir(path.join(context.root, "cache"))).toEqual([
+      "a".repeat(64),
+    ]);
+  } finally {
+    await chmod(context.project, 0o755);
+    await chmod(path.join(context.project, "ui"), 0o755);
+  }
 });
