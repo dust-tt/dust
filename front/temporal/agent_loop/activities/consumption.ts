@@ -2,7 +2,6 @@ import { getAgentMessageConsumptionMode } from "@app/lib/api/assistant/consumpti
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { signalConsumptionEventsAppended } from "@app/temporal/credit_consumption/client";
 import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
@@ -99,18 +98,15 @@ export async function recordExecutionStarted(
     return false;
   }
 
-  await withTransaction(async (transaction) => {
-    await AgentMessageConsumptionEventResource.append(auth, {
-      event: {
-        kind: "execution_started",
-        idempotencyKey: `execution:${runKey}:started`,
-        runKey: context.runKey,
-        rootAgentMessageId: context.rootAgentMessageId,
-        agentMessageModelId: context.agentMessageModelId,
-        consumptionMode: mode,
-      },
-      transaction,
-    });
+  await AgentMessageConsumptionEventResource.append(auth, {
+    event: {
+      kind: "execution_started",
+      idempotencyKey: `execution:${runKey}:started`,
+      runKey: context.runKey,
+      rootAgentMessageId: context.rootAgentMessageId,
+      agentMessageModelId: context.agentMessageModelId,
+      consumptionMode: mode,
+    },
   });
 
   const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
@@ -134,19 +130,16 @@ export async function recordExecutionFinalized(
   if (consumptionMode === null) {
     return null;
   }
-  await withTransaction(async (transaction) => {
-    await AgentMessageConsumptionEventResource.append(auth, {
-      event: {
-        kind: "execution_finalized",
-        idempotencyKey: `execution:${context.runKey}:finalized`,
-        runKey: context.runKey,
-        rootAgentMessageId: context.rootAgentMessageId,
-        agentMessageModelId: context.agentMessageModelId,
-        status: context.status,
-        consumptionMode,
-      },
-      transaction,
-    });
+  await AgentMessageConsumptionEventResource.append(auth, {
+    event: {
+      kind: "execution_finalized",
+      idempotencyKey: `execution:${context.runKey}:finalized`,
+      runKey: context.runKey,
+      rootAgentMessageId: context.rootAgentMessageId,
+      agentMessageModelId: context.agentMessageModelId,
+      status: context.status,
+      consumptionMode,
+    },
   });
 
   const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
