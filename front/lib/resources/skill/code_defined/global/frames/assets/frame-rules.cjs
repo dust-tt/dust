@@ -20,7 +20,7 @@ module.exports = {
         ],
         messages: {
           relative:
-            'Use "./{{path}}" instead of "{{found}}" so this Frame still works after it moves',
+            'File "{{found}}" is inside this Frame package. Use "./{{path}}" so the reference still works when the Frame moves.',
         },
       },
       create(context) {
