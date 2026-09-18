@@ -1,23 +1,50 @@
+import { useBrowsableSpaces } from "@app/components/data_source_view/browser/useBrowsableSpaces";
+import { useKnowledgeBrowserItems } from "@app/components/data_source_view/browser/useKnowledgeBrowserItems";
+import { useKnowledgeBrowserNavigation } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
 import { AttachContextSlashMenuItemIcon } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSlashMenuItemIcon";
 import type { AttachContextSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 import {
   isAttachContextSlashCommand,
   SELECT_ATTACH_CONTEXT_SLASH_COMMAND_ACTION,
 } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
+import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type {
   ContextSlashSearchSelection,
   ContextSlashSearchUseCase,
 } from "@app/components/editor/extensions/shared/slash_suggestion/contextSlashSearchTypes";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import {
+  buildBrowseCommands,
+  buildRootBrowseSections,
+  getKnowledgeBrowserBreadcrumbItems,
+  isLoadMoreKnowledgeBrowserSlashCommand,
+  isNavigateKnowledgeBrowserSlashCommand,
+  navigateToKnowledgeBrowserItem,
+} from "@app/components/editor/extensions/shared/slash_suggestion/knowledgeBrowserSlashCommands";
+import type {
+  SlashCommand,
+  SlashCommandDropdownRef,
+} from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { SlashMenuStackFrame } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import type { AttachContextSlashMenuItem } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems";
 import { useAttachContextSlashMenuItems } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Breadcrumbs } from "@dust-tt/sparkle";
 import type { SuggestionProps } from "@tiptap/suggestion";
-import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from "react";
 
 export { SELECT_ATTACH_CONTEXT_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
+
+const BROWSE_EMPTY_MESSAGE = "Nothing to browse here";
 
 function toSlashCommandItem(
   item: AttachContextSlashMenuItem
@@ -30,6 +57,48 @@ function toSlashCommandItem(
     id: item.id,
     label: item.label,
   };
+}
+
+// What the list shows: the browsed level, or the search results.
+type SubMenuMode = "browse" | "search";
+
+function getSubMenuMode({
+  isBrowserEnabled,
+  query,
+}: {
+  isBrowserEnabled: boolean;
+  query: string;
+}): SubMenuMode {
+  return isBrowserEnabled && query.trim().length === 0 ? "browse" : "search";
+}
+
+type SubMenuListProps =
+  | { items: SlashCommand[] }
+  | { sections: SlashCommandSection[] };
+
+function getSubMenuListProps({
+  mode,
+  isRoot,
+  browseSections,
+  browseCommands,
+  searchCommands,
+}: {
+  mode: SubMenuMode;
+  isRoot: boolean;
+  browseSections: SlashCommandSection[];
+  browseCommands: SlashCommand[];
+  searchCommands: SlashCommand[];
+}): SubMenuListProps {
+  switch (mode) {
+    case "search":
+      return { items: searchCommands };
+    case "browse":
+      // The root renders labelled sections; they carry their own loading state.
+      return isRoot ? { sections: browseSections } : { items: browseCommands };
+    default:
+      assertNeverAndIgnore(mode);
+      return { items: searchCommands };
+  }
 }
 
 interface AttachContextSubMenuDropdownProps
@@ -51,6 +120,16 @@ interface AttachContextSubMenuDropdownRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
 }
 
+/**
+ * @cc [owner:smb2268,label:product] browse-when-query-empty
+ * With the `knowledge_browser` feature enabled and an empty query the sub-menu MUST list the
+ * current navigation level of the knowledge browser (spaces at the root, then categories, data
+ * source views and folder contents) and MUST switch to the search results as soon as the query is
+ * non-empty, keeping the navigation state. Back and Escape MUST leave the sub-menu from any level;
+ * Backspace on an empty query MUST go up one level while below the root (skipping levels the pod
+ * shortcut owns) and leave the sub-menu from the root. Without the feature the sub-menu MUST
+ * behave as a search-only menu.
+ */
 export const AttachContextSubMenuDropdown = forwardRef<
   AttachContextSubMenuDropdownRef,
   AttachContextSubMenuDropdownProps
@@ -70,23 +149,107 @@ export const AttachContextSubMenuDropdown = forwardRef<
     },
     ref
   ) => {
-    const dropdownRef = useRef<{
-      onKeyDown: (props: { event: KeyboardEvent }) => boolean;
-    }>(null);
+    const dropdownRef = useRef<SlashCommandDropdownRef>(null);
 
-    const { emptyMessage, isLoading, items, loadingMessage } =
-      useAttachContextSlashMenuItems({
-        conversationId,
-        owner,
-        query,
-        spaceId,
-        useCase,
-      });
+    const { hasFeature } = useFeatureFlags();
+    const isBrowserEnabled = hasFeature("knowledge_browser");
+    const excludeNonRemoteDatabaseTables = useCase === "skill-builder";
 
-    const slashItems = useMemo(() => items.map(toSlashCommandItem), [items]);
+    const {
+      emptyMessage,
+      isLoading,
+      items,
+      loadingMessage,
+      spaces: scopedSpaces,
+    } = useAttachContextSlashMenuItems({
+      conversationId,
+      owner,
+      query,
+      spaceId,
+      useCase,
+    });
+
+    // `scopedSpaces` is what the search may look into; like the Agent Builder, the browser only
+    // offers the subset that holds something to browse.
+    const { spaces, isLoading: isBrowsableSpacesLoading } = useBrowsableSpaces({
+      owner,
+      spaces: scopedSpaces,
+      enabled: isBrowserEnabled,
+    });
+
+    const navigation = useKnowledgeBrowserNavigation({
+      spaces,
+      enabled: isBrowserEnabled,
+    });
+    const { navigationHistory, navigateTo, navigateUp } = navigation;
+    const currentEntry = navigationHistory[navigationHistory.length - 1];
+    const canNavigateUp = navigationHistory.length > 1;
+    const mode = getSubMenuMode({ isBrowserEnabled, query });
+
+    const browser = useKnowledgeBrowserItems({
+      owner,
+      spaces,
+      navigationHistory,
+      viewType: "all",
+      excludeNonRemoteDatabaseTables,
+    });
+
+    const isBrowseLoading =
+      isLoading || isBrowsableSpacesLoading || browser.isLoading;
+    const browseSections = useMemo(
+      () =>
+        buildRootBrowseSections(browser.items, { isLoading: isBrowseLoading }),
+      [browser.items, isBrowseLoading]
+    );
+    const attachNode = useCallback(
+      (node: DataSourceViewContentNode) =>
+        onSelect({ kind: "knowledge", node }),
+      [onSelect]
+    );
+    const browseCommands = useMemo(
+      () =>
+        buildBrowseCommands(browser.items, {
+          onAttachNode: attachNode,
+          hasMore: browser.hasMore,
+          isLoadingMore: browser.isLoadingMore,
+        }),
+      [attachNode, browser.items, browser.hasMore, browser.isLoadingMore]
+    );
+    const searchCommands = useMemo(
+      () => items.map(toSlashCommandItem),
+      [items]
+    );
+
+    const breadcrumbs = useMemo(
+      () =>
+        isBrowserEnabled && canNavigateUp ? (
+          // Keep the editor focused: a focused breadcrumb button would trap focus in the menu.
+          <div
+            className="px-2 py-1"
+            onMouseDown={(event) => event.preventDefault()}
+          >
+            <Breadcrumbs
+              items={getKnowledgeBrowserBreadcrumbItems(
+                navigationHistory,
+                navigateTo
+              )}
+              size="xs"
+              truncateLengthMiddle={8}
+              truncateLengthEnd={18}
+            />
+          </div>
+        ) : undefined,
+      [canNavigateUp, isBrowserEnabled, navigateTo, navigationHistory]
+    );
 
     const handleSelect = (item: SlashCommand) => {
-      if (isAttachContextSlashCommand(item)) {
+      if (isNavigateKnowledgeBrowserSlashCommand(item)) {
+        navigateToKnowledgeBrowserItem(item.data.item, navigation);
+      } else if (isLoadMoreKnowledgeBrowserSlashCommand(item)) {
+        if (!browser.isLoadingMore) {
+          void browser.loadMore();
+        }
+      } else if (isAttachContextSlashCommand(item)) {
         onSelect(item.data.selection);
       }
     };
@@ -95,16 +258,34 @@ export const AttachContextSubMenuDropdown = forwardRef<
       ref,
       () => ({
         onKeyDown: ({ event }) => {
+          // Shift+Enter attaches a highlighted folder instead of entering it.
+          if (event.key === "Enter" && event.shiftKey) {
+            const highlighted = dropdownRef.current?.getHighlightedItem?.();
+            if (
+              highlighted &&
+              isNavigateKnowledgeBrowserSlashCommand(highlighted) &&
+              highlighted.data.item.kind === "node"
+            ) {
+              event.preventDefault();
+              attachNode(highlighted.data.item.node);
+              return true;
+            }
+          }
+
           if (event.key === "Backspace" && query.trim().length === 0) {
             event.preventDefault();
-            onClose();
+            if (canNavigateUp) {
+              navigateUp();
+            } else {
+              onClose();
+            }
             return true;
           }
 
           return dropdownRef.current?.onKeyDown({ event }) ?? false;
         },
       }),
-      [onClose, query]
+      [attachNode, canNavigateUp, navigateUp, onClose, query]
     );
 
     return (
@@ -112,11 +293,18 @@ export const AttachContextSubMenuDropdown = forwardRef<
         ref={dropdownRef}
         clientRect={clientRect}
         command={handleSelect}
-        emptyMessage={emptyMessage}
-        isLoading={isLoading}
-        loadingMessage={loadingMessage}
-        items={slashItems}
+        emptyMessage={mode === "browse" ? BROWSE_EMPTY_MESSAGE : emptyMessage}
+        headerContent={breadcrumbs}
+        isLoading={mode === "browse" ? isBrowseLoading : isLoading}
+        loadingMessage={mode === "browse" ? undefined : loadingMessage}
         onClose={onClose}
+        {...getSubMenuListProps({
+          mode,
+          isRoot: currentEntry.type === "root",
+          browseSections,
+          browseCommands,
+          searchCommands,
+        })}
         subMenuNavigation={{
           label: activeFrame.command.label,
           onBack,

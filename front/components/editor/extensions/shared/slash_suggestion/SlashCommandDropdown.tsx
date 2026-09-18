@@ -19,6 +19,7 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
+  Icon,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -56,12 +57,22 @@ function SlashCommandDropdownLoadingState({ message }: { message: string }) {
   );
 }
 
+export interface SlashCommandEndAction {
+  label: string;
+  onSelect: () => void;
+}
+
 export interface SlashCommand {
   action: string;
   // Command-specific payload, opaque to the dropdown. Consumers narrow it back with type guards
   // (e.g. isSkillSlashCommand) when handling selection or details.
   data?: unknown;
   description?: string;
+  // A secondary action shown at the row's end on hover or highlight (e.g. "Add" on a folder row
+  // whose main action navigates into it).
+  endAction?: SlashCommandEndAction;
+  // A trailing hint icon, always visible (e.g. a chevron on rows that navigate).
+  endIcon?: React.ComponentType<any>;
   // Whether the item exposes a details affordance (the "…" button) when onItemDetails is provided.
   hasDetails?: boolean;
   icon: React.ComponentType<any>;
@@ -82,6 +93,9 @@ export interface SlashCommandDropdownProps
   defaultSelectedItemId?: string | null;
   emptyMessage?: string;
   header?: string;
+  // Rendered at the top of the list, after the sub-menu "Back" row when there is one (e.g. the
+  // breadcrumbs of a browsable sub-menu).
+  headerContent?: React.ReactNode;
   isLoading?: boolean;
   items?: SlashCommand[];
   loadingMessage?: string;
@@ -95,6 +109,9 @@ export interface SlashCommandDropdownProps
 
 export interface SlashCommandDropdownRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
+  // The row the keyboard would act on, null when the "Back" row or nothing is highlighted.
+  // Optional so wrappers that only forward key handling keep satisfying the type.
+  getHighlightedItem?: () => SlashCommand | null;
 }
 
 const SUB_MENU_BACK_ITEM_ID = "slash-sub-menu-back";
@@ -153,6 +170,69 @@ function getPointerHighlightProps(
   };
 }
 
+// Trailing content of a row: the details "…" button and/or the end action appear on hover or
+// highlight; the end icon is always visible. Returns undefined when the row has none, because the
+// menu item widens its grid for any truthy `endComponent`, even one that renders nothing.
+function getSlashCommandEndComponent({
+  item,
+  isHighlighted,
+  onItemDetails,
+}: {
+  item: SlashCommand;
+  isHighlighted: boolean;
+  onItemDetails?: (item: SlashCommand) => void;
+}): React.ReactNode | undefined {
+  const canShowDetails = !!onItemDetails && !!item.hasDetails;
+  if (!canShowDetails && !item.endAction && !item.endIcon) {
+    return undefined;
+  }
+  const revealClassName = cn(
+    "opacity-0 group-focus-within:opacity-100",
+    isHighlighted && "opacity-100"
+  );
+  return (
+    <div className="flex items-center gap-1">
+      {canShowDetails ? (
+        <Button
+          icon={DotsHorizontal}
+          variant="outline"
+          size="mini"
+          className={revealClassName}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onItemDetails?.(item);
+          }}
+        />
+      ) : null}
+      {item.endAction ? (
+        // Plain text on the row's own hover shade, per the design: no second background or pill.
+        <button
+          type="button"
+          className={cn(
+            revealClassName,
+            "rounded px-1 text-sm text-muted-foreground hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            item.endAction?.onSelect();
+          }}
+        >
+          {item.endAction.label}
+        </button>
+      ) : null}
+      {item.endIcon ? (
+        <Icon
+          visual={item.endIcon}
+          size="xs"
+          className="text-muted-foreground"
+        />
+      ) : null}
+    </div>
+  );
+}
+
 export const SlashCommandDropdown = forwardRef<
   SlashCommandDropdownRef,
   SlashCommandDropdownProps
@@ -166,6 +246,7 @@ export const SlashCommandDropdown = forwardRef<
       defaultSelectedItemId,
       emptyMessage = DEFAULT_EMPTY_MESSAGE,
       header,
+      headerContent,
       isLoading = false,
       listMaxHeightClassName = DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME,
       loadingMessage = SLASH_COMMAND_DEFAULT_LOADING_MESSAGE,
@@ -246,6 +327,12 @@ export const SlashCommandDropdown = forwardRef<
     useImperativeHandle(
       ref,
       () => ({
+        getHighlightedItem: () => {
+          const itemIndex = subMenuNavigation
+            ? selectedIndex - 1
+            : selectedIndex;
+          return items[itemIndex] ?? null;
+        },
         onKeyDown: ({ event }) => {
           if (selectableCount === 0 && !showLoadingPlaceholder) {
             return false;
@@ -293,6 +380,7 @@ export const SlashCommandDropdown = forwardRef<
         },
       }),
       [
+        items,
         selectEntry,
         selectableCount,
         selectedIndex,
@@ -402,12 +490,13 @@ export const SlashCommandDropdown = forwardRef<
                   )}
                 />
               ) : null}
+              {headerContent}
               {sections ? (
                 (() => {
                   let flatIndex = 0;
 
                   const renderItem = (item: SlashCommand, index: number) => {
-                    const canShowDetails = !!onItemDetails && !!item.hasDetails;
+                    const entryIndex = subMenuNavigation ? index + 1 : index;
                     const menuItem = (
                       <DropdownMenuItem
                         icon={item.icon}
@@ -415,28 +504,15 @@ export const SlashCommandDropdown = forwardRef<
                         label={item.label}
                         description={item.description}
                         truncateText
-                        endComponent={
-                          canShowDetails ? (
-                            <Button
-                              icon={DotsHorizontal}
-                              variant="outline"
-                              size="mini"
-                              className={cn(
-                                "opacity-0 group-focus-within:opacity-100",
-                                index === selectedIndex && "opacity-100"
-                              )}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                onItemDetails?.(item);
-                              }}
-                            />
-                          ) : undefined
-                        }
-                        onClick={() => selectEntry(index)}
+                        endComponent={getSlashCommandEndComponent({
+                          item,
+                          isHighlighted: entryIndex === selectedIndex,
+                          onItemDetails,
+                        })}
+                        onClick={() => selectEntry(entryIndex)}
                         {...getPointerHighlightProps(
                           item,
-                          index,
+                          entryIndex,
                           setSelectedIndex
                         )}
                         onFocus={(event) => {
@@ -447,11 +523,11 @@ export const SlashCommandDropdown = forwardRef<
                             // Menu items focus on pointer move, which would bypass the tooltip delay.
                             event.stopPropagation();
                           }
-                          setSelectedIndex(index);
+                          setSelectedIndex(entryIndex);
                         }}
                         className={cn(
                           "group",
-                          index === selectedIndex &&
+                          entryIndex === selectedIndex &&
                             "bg-muted-background [transition-duration:0ms]"
                         )}
                       />
@@ -493,6 +569,21 @@ export const SlashCommandDropdown = forwardRef<
                             flatIndex += 1;
                             return renderItem(item, index);
                           })}
+                          {section.items.length === 0 && section.isLoading ? (
+                            <SlashCommandDropdownLoadingState
+                              message={
+                                section.loadingMessage ??
+                                SLASH_COMMAND_DEFAULT_LOADING_MESSAGE
+                              }
+                            />
+                          ) : null}
+                          {section.items.length === 0 &&
+                          !section.isLoading &&
+                          section.emptyMessage ? (
+                            <div className="px-3 py-2 text-sm text-muted-foreground">
+                              {section.emptyMessage}
+                            </div>
+                          ) : null}
                         </Fragment>
                       ))}
                       {showLoadingPlaceholder ? (
@@ -519,7 +610,6 @@ export const SlashCommandDropdown = forwardRef<
               ) : (
                 items.map((item, index) => {
                   const entryIndex = subMenuNavigation ? index + 1 : index;
-                  const canShowDetails = !!onItemDetails && !!item.hasDetails;
                   const menuItem = (
                     <DropdownMenuItem
                       icon={item.icon}
@@ -527,24 +617,11 @@ export const SlashCommandDropdown = forwardRef<
                       label={item.label}
                       description={item.description}
                       truncateText
-                      endComponent={
-                        canShowDetails ? (
-                          <Button
-                            icon={DotsHorizontal}
-                            variant="outline"
-                            size="mini"
-                            className={cn(
-                              "opacity-0 group-focus-within:opacity-100",
-                              entryIndex === selectedIndex && "opacity-100"
-                            )}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              e.preventDefault();
-                              onItemDetails?.(item);
-                            }}
-                          />
-                        ) : undefined
-                      }
+                      endComponent={getSlashCommandEndComponent({
+                        item,
+                        isHighlighted: entryIndex === selectedIndex,
+                        onItemDetails,
+                      })}
                       onClick={() => selectEntry(entryIndex)}
                       {...getPointerHighlightProps(
                         item,
