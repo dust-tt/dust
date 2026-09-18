@@ -6,11 +6,6 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { QueryTypes } from "sequelize";
 
-/**
- * @cc [owner:aubin-tchoi,label:backend;security] backfill-skill-global-space
- * Only execute mode may append the workspace's global space to skills and saved versions
- * missing it. Preserve existing spaces and other fields; repeated runs must not add duplicates.
- */
 export async function backfillSkillGlobalSpace({
   workspace,
   execute,
