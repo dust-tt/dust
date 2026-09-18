@@ -1482,7 +1482,9 @@ export class AgentResource
               { transaction: t, authorId }
             );
             await auth.refresh({ transaction: t });
-            // No need to check on permission here since it was done a few lines above.
+            // Authorization is enforced upstream: this branch is only reached through `makeNew`,
+            // which requires the `create` capability (see `agent-create-capability`). The assertion
+            // above additionally guarantees the author is among the editors or an admin.
             const setMembersRes = await group.dangerouslySetMembers(auth, {
               users: editors,
               transaction: t,
@@ -1520,8 +1522,11 @@ export class AgentResource
               }
             }
 
-            // Authorization is enforced by the `editors.some(...) || isAdmin(owner)`
-            // assertion earlier in this transaction; no need to re-check here.
+            // Authorization is enforced upstream: this branch is only reached through
+            // `updateConfiguration`, which requires `write` on this agent before saving a new
+            // version (see `agent-edit-requires-write`). Editing the editor set is part of editing
+            // the agent, so it is covered by that same `write` gate; the assertion above only
+            // guarantees the author invariant.
             const setMembersRes = await group.dangerouslySetMembers(auth, {
               users: editors,
               transaction: t,
