@@ -2,6 +2,9 @@
 
 `npm run build:runtime-types` generates the declarations for the libraries exposed to Frame UI
 source. Viz runs it before production builds and when starting the development server.
+When the Front workspace is present, the builder also copies the archive and manifest into
+Front's Frame skill assets for local development. The standalone Viz Docker build skips this
+copy. The generated Front directory is excluded from Git and Docker build contexts.
 
 `build.ts` coordinates the pipeline. `runtime.ts` inspects the shared import factory,
 `dependencies.ts` collects existing declarations, and `bundle.ts` runs tsup. `config.ts` creates

@@ -38,8 +38,10 @@ For sandbox use in development, build the Viz declarations before starting Front
 npm -w viz run build:runtime-types
 ```
 
-Front attaches the generated manifest and archive as `frame-runtime.json` and `frame-runtime.tgz`
-when running in development. The archive is about 760 KiB and is not checked into Git. The lint
+The Viz builder copies the manifest and archive into `assets/frame-runtime/` in Front's Frame skill.
+Front reads these through the same asset resolver as `lint.sh`, then attaches them as
+`frame-runtime.json` and `frame-runtime.tgz` when running in development. The generated directory
+is excluded from Git and Docker build contexts. The archive is about 760 KiB. The lint
 script copies both to local disk on first use and verifies them with the same checksum and size
 checks as downloads. It makes no Viz requests and needs no Viz tunnel or `DUST_VIZ_URL`.
 

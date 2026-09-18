@@ -4,6 +4,12 @@ import { existsSync, readFileSync } from "fs";
 import path from "path";
 import { z } from "zod";
 
+function getAssetPath(fileName: string): string {
+  return require.resolve(
+    `@dust-tt/front/lib/resources/skill/code_defined/global/frames/assets/${fileName}`
+  );
+}
+
 /**
  * @cc [owner:flvndvd,label:product] frame-local-types-development-only
  * Locally built Viz declarations MUST only be attached in development. If no local manifest
@@ -15,8 +21,10 @@ function getLocalRuntimeTypes(): CodeDefinedSkillFile[] {
     return [];
   }
 
-  // API and worker dev commands run from their workspaces, both beside viz.
-  const directory = path.resolve("../viz/public/frame-runtime");
+  const directory = path.join(
+    path.dirname(getAssetPath("lint.sh")),
+    "frame-runtime"
+  );
   const manifestPath = path.join(directory, "manifest.json");
   if (!existsSync(manifestPath)) {
     return [];
@@ -48,12 +56,7 @@ const CHECKER_FILES: readonly CodeDefinedSkillFile[] = [
   fileName,
   contentType,
   // Package resolution works in both source and bundled server entry points.
-  content: readFileSync(
-    require.resolve(
-      `@dust-tt/front/lib/resources/skill/code_defined/global/frames/assets/${fileName}`
-    ),
-    "utf8"
-  ),
+  content: readFileSync(getAssetPath(fileName), "utf8"),
 }));
 
 /**
