@@ -51,7 +51,7 @@ function agentLoopDataInPod(spaceId: string | null): AgentLoopExecutionData {
 }
 
 describe("framesSkill.fetchInstructions", () => {
-  it("uses the dsbx lifecycle and keeps the remaining MCP tools under Frames v2", async () => {
+  it("uses the dsbx lifecycle and restricts the MCP server under Frames v2", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "frames_v2");
 
@@ -139,7 +139,7 @@ describe("framesSkill.fetchInstructions", () => {
         auth,
         "interactive_content"
       )
-    ).resolves.toBe(false);
+    ).resolves.toBe(true);
   });
 
   it("teaches the computer-first flow when the Computer is enabled", async () => {

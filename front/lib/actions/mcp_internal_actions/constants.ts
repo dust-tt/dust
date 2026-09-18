@@ -302,6 +302,10 @@ function ensureUniqueToolNames<
   return servers;
 }
 
+/**
+ * @cc [owner:flvndvd,label:product] frames-v2-disables-interactive-content
+ * The interactive_content server MUST be restricted exactly when frames_v2 is enabled.
+ */
 export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
   // Note:
   // ids should be stable, do not change them when moving internal servers to production as it would break existing agents.
@@ -564,7 +568,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     id: 23,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
-    isRestricted: undefined,
+    isRestricted: ({ featureFlags }) => featureFlags.includes("frames_v2"),
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
