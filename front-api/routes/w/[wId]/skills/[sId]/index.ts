@@ -1,3 +1,5 @@
+import type { SkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
+import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
 import {
   AttachedKnowledgeSchema,
@@ -206,54 +208,6 @@ app.patch(
 
     const body = ctx.req.valid("json");
 
-    // Resolve the requested availability once: isDefault is a deprecated alias; an explicit
-    // availability takes priority over it.
-    const requestedAvailability =
-      body.availability ??
-      (body.isDefault !== undefined
-        ? availabilityFromIsDefault(body.isDefault)
-        : undefined);
-
-    const availabilityChanged =
-      requestedAvailability !== undefined &&
-      requestedAvailability !== skill.availability;
-
-    // Changing a skill's availability requires the workspace-level permission to publish
-    // skills — even for editors.
-    if (
-      availabilityChanged &&
-      !(await auth.hasWorkspacePermission("publish", "skill"))
-    ) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message:
-            "You don't have permission to change this skill's availability.",
-        },
-      });
-    }
-
-    // without make skill discoverable permission, a user can neither make a skill
-    // auto-discoverable nor change an already auto-discoverable skill's availability.
-    const involvesAutoDiscoverable =
-      requestedAvailability === "users_and_agents" ||
-      skill.availability === "users_and_agents";
-    if (
-      availabilityChanged &&
-      involvesAutoDiscoverable &&
-      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
-    ) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message:
-            "You don't have permission to change this skill's auto-discoverable status.",
-        },
-      });
-    }
-
     const archivedError = rejectArchivedSkill(ctx, skill);
     if (archivedError) {
       return archivedError;
@@ -269,6 +223,48 @@ app.patch(
           message: "Only editors can modify this skill.",
         },
       });
+    }
+
+    // Resolve the requested availability once: isDefault is a deprecated alias; an explicit
+    // availability takes priority over it.
+    const requestedAvailability =
+      body.availability ??
+      (body.isDefault !== undefined
+        ? availabilityFromIsDefault(body.isDefault)
+        : undefined);
+
+    let availabilityChange: SkillAvailabilityChange | null = null;
+    if (requestedAvailability !== undefined) {
+      const availabilityValidation = await validateSkillAvailabilityChange(
+        auth,
+        skill,
+        { availability: requestedAvailability }
+      );
+      if (availabilityValidation.isErr()) {
+        switch (availabilityValidation.error.code) {
+          case "not_authorized":
+          case "publish_denied":
+          case "make_discoverable_denied":
+            return apiError(ctx, {
+              status_code: 403,
+              api_error: {
+                type: "app_auth_error",
+                message: availabilityValidation.error.message,
+              },
+            });
+          case "archived":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: availabilityValidation.error.message,
+              },
+            });
+          default:
+            assertNever(availabilityValidation.error.code);
+        }
+      }
+      availabilityChange = availabilityValidation.value;
     }
 
     const nameValidation = await validateSkillNameChange(auth, skill, {
@@ -492,7 +488,7 @@ app.patch(
       icon: body.icon,
       instructions: body.instructions,
       instructionsHtml: body.instructionsHtml,
-      availability: requestedAvailability,
+      availability: availabilityChange?.availability,
       manuallyRequestedSpaceIds: additionalRequestedSpaceIds,
       mcpServerViews,
       name,

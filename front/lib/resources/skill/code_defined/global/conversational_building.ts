@@ -172,6 +172,7 @@ Skill suggestions:
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_user_facing_description\`: replace the user-facing description of a skill, the short text members read when browsing skills.
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_name\`: rename a skill. A name already carried by another active skill of the workspace is refused.
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_deletion\`: propose deleting an existing custom skill by \`skillId\`.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_availability\`: change who a skill is available to (\`editors\`, \`workspace_users\` or \`users_and_agents\`). Requires the workspace permission to publish skills.
 
 Agent suggestions:
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_creation\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`.

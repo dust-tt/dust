@@ -1,5 +1,6 @@
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { SkillFieldEditSection } from "@app/components/skill_builder/SkillFieldEditSection";
+import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
 import { SuggestedSkillEditors } from "@app/components/skill_builder/SuggestedSkillEditors";
 import { SuggestedSkillName } from "@app/components/skill_builder/SuggestedSkillName";
 import { SuggestedSkillUserFacingDescription } from "@app/components/skill_builder/SuggestedSkillUserFacingDescription";
@@ -320,6 +321,15 @@ function SuggestionDetails({
     case "delete":
       return (
         <DeleteSuggestionSection
+          skillId={suggestion.skillConfigurationId}
+          workspaceId={workspaceId}
+        />
+      );
+
+    case "availability":
+      return (
+        <SuggestedSkillAvailability
+          suggestion={suggestion.suggestion}
           skillId={suggestion.skillConfigurationId}
           workspaceId={workspaceId}
         />

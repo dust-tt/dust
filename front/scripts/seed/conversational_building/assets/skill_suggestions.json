@@ -121,5 +121,18 @@
     "state": "pending",
     "source": "conversational",
     "suggestion": {}
+  },
+  {
+    "id": "skillAvailability",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "availability",
+    "title": "Stop agents from auto-picking it",
+    "analysis": "Agents keep discovering this skill on their own and applying it to messages that are not meeting notes. Keeping it available to members, but not to agents, lets people choose it when it fits.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "availability": "workspace_users"
+    }
   }
 ]
