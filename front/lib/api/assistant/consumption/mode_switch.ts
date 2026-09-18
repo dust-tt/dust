@@ -1,14 +1,8 @@
-import {
-  AGENT_MESSAGE_CONSUMPTION_BILLS_FLAG,
-  AGENT_MESSAGE_CONSUMPTION_WRITES_FLAG,
-  consumptionModeFromFeatureFlags,
-} from "@app/lib/api/assistant/consumption/mode";
+import { consumptionModeFromFeatureFlags } from "@app/lib/api/assistant/consumption/mode";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { AgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
-
-export { AGENT_MESSAGE_CONSUMPTION_WRITES_FLAG } from "@app/lib/api/assistant/consumption/mode";
 
 /**
  * @cc [owner:id13,label:product;backend] credit-consumption-mode-switch
@@ -20,8 +14,8 @@ export async function getAgentMessageConsumptionMode(
 ): Promise<AgentMessageConsumptionMode> {
   const featureFlags = await getFeatureFlags(auth);
   if (
-    featureFlags.includes(AGENT_MESSAGE_CONSUMPTION_BILLS_FLAG) &&
-    !featureFlags.includes(AGENT_MESSAGE_CONSUMPTION_WRITES_FLAG)
+    featureFlags.includes("agent_message_consumption_bills") &&
+    !featureFlags.includes("agent_message_consumption_writes")
   ) {
     logger.error(
       { workspaceId: auth.getNonNullableWorkspace().sId },
