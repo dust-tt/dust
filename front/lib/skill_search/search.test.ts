@@ -489,12 +489,10 @@ describe("custom skill search", () => {
       canRead: false,
     });
     expect(redacted.canRead).toBe(false);
-    expect(mockSearch.mock.lastCall![0].query.bool.must[0].bool.filter).toEqual(
-      [
-        { term: { workspace_id: workspace.sId } },
-        { terms: { status: ["active"] } },
-      ]
-    );
+    expect(mockSearch.mock.lastCall![0].query.bool.filter).toEqual([
+      { term: { workspace_id: workspace.sId } },
+      { terms: { status: ["active"] } },
+    ]);
   });
 
   it.each([
