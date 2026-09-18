@@ -1,32 +1,32 @@
 import {
+  AGENT_SEARCH_ALIAS_NAME,
   ElasticsearchError,
-  SKILL_SEARCH_ALIAS_NAME,
   withEs,
 } from "@app/lib/api/elasticsearch";
+import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 
-export function makeSkillDocumentId({
+export function makeAgentDocumentId({
   workspaceId,
-  skillId,
+  agentId,
 }: {
   workspaceId: string;
-  skillId: string;
+  agentId: string;
 }): string {
-  return `${workspaceId}_${skillId}`;
+  return `${workspaceId}_${agentId}`;
 }
 
-export async function indexSkillDocument(
-  document: SkillSearchDocument
+export async function indexAgentDocument(
+  document: AgentSearchDocument
 ): Promise<Result<void, ElasticsearchError>> {
   return withEs(async (client) => {
     const { active_users_count, ...fields } = document;
     await client.update({
-      index: SKILL_SEARCH_ALIAS_NAME,
-      id: makeSkillDocumentId({
+      index: AGENT_SEARCH_ALIAS_NAME,
+      id: makeAgentDocumentId({
         workspaceId: document.workspace_id,
-        skillId: document.skill_id,
+        agentId: document.agent_id,
       }),
       doc: fields,
       upsert: { ...fields, active_users_count },
@@ -35,21 +35,21 @@ export async function indexSkillDocument(
   });
 }
 
-export async function deleteSkillDocument({
+export async function deleteAgentDocument({
   workspaceId,
-  skillId,
+  agentId,
 }: {
   workspaceId: string;
-  skillId: string;
+  agentId: string;
 }): Promise<Result<void, ElasticsearchError>> {
   return withEs(async (client) => {
     await client.deleteByQuery({
-      index: SKILL_SEARCH_ALIAS_NAME,
+      index: AGENT_SEARCH_ALIAS_NAME,
       query: {
         bool: {
           filter: [
             { term: { workspace_id: workspaceId } },
-            { term: { skill_id: skillId } },
+            { term: { agent_id: agentId } },
           ],
         },
       },
@@ -58,42 +58,42 @@ export async function deleteSkillDocument({
   });
 }
 
-export async function deleteWorkspaceSkillDocuments({
+export async function deleteWorkspaceAgentDocuments({
   workspaceId,
 }: {
   workspaceId: string;
 }): Promise<Result<void, ElasticsearchError>> {
   return withEs(async (client) => {
     await client.deleteByQuery({
-      index: SKILL_SEARCH_ALIAS_NAME,
+      index: AGENT_SEARCH_ALIAS_NAME,
       query: { term: { workspace_id: workspaceId } },
       refresh: false,
     });
   });
 }
 
-export async function updateSkillSearchActiveUsers({
+export async function updateAgentSearchActiveUsers({
   workspaceId,
-  skillIds,
+  agentIds,
   activeUsers,
 }: {
   workspaceId: string;
-  skillIds: string[];
+  agentIds: string[];
   activeUsers: Record<string, number>;
 }): Promise<Result<void, ElasticsearchError>> {
-  if (skillIds.length === 0) {
+  if (agentIds.length === 0) {
     return new Ok(undefined);
   }
 
-  const operations = skillIds.flatMap((skillId) => [
+  const operations = agentIds.flatMap((agentId) => [
     {
       update: {
-        _index: SKILL_SEARCH_ALIAS_NAME,
-        _id: makeSkillDocumentId({ workspaceId, skillId }),
+        _index: AGENT_SEARCH_ALIAS_NAME,
+        _id: makeAgentDocumentId({ workspaceId, agentId }),
         retry_on_conflict: 3,
       },
     },
-    { doc: { active_users_count: activeUsers[skillId] ?? 0 } },
+    { doc: { active_users_count: activeUsers[agentId] ?? 0 } },
   ]);
 
   const bulkRes = await withEs((client) => client.bulk({ operations }));
@@ -110,7 +110,7 @@ export async function updateSkillSearchActiveUsers({
     return new Err(
       new ElasticsearchError(
         "query_error",
-        `Failed to update ${failures.length} skill usage snapshots`
+        `Failed to update ${failures.length} agent usage snapshots`
       )
     );
   }
