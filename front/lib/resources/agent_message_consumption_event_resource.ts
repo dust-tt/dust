@@ -181,6 +181,37 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
     return rows.map((row) => new this(this.model, row.get()));
   }
 
+  /**
+   * @cc [owner:id13,label:backend;product] latest-started-execution-snapshot
+   * The lookup MUST return the root agent message ID and consumption mode from the highest-ID
+   * execution-started event for the requested workspace and agent message. It MUST return `null`
+   * when that event is absent or has no consumption mode.
+   */
+  static async fetchLatestExecutionStartedForAgentMessage(
+    auth: Authenticator,
+    { agentMessageModelId }: { agentMessageModelId: ModelId }
+  ): Promise<{
+    rootAgentMessageId: ModelId;
+    consumptionMode: EnabledAgentMessageConsumptionMode;
+  } | null> {
+    const row = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentMessageId: agentMessageModelId,
+        kind: "execution_started",
+      },
+      order: [["id", "DESC"]],
+    });
+    if (row === null || row.consumptionMode === null) {
+      return null;
+    }
+
+    return {
+      rootAgentMessageId: row.rootAgentMessageId,
+      consumptionMode: row.consumptionMode,
+    };
+  }
+
   static async fetchByEventKey(
     auth: Authenticator,
     { eventKey }: { eventKey: string }

@@ -16,7 +16,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 type ExecutionEntryContext = {
   agentMessageModelId: ModelId;
   rootAgentMessageId: ModelId;
-  rootAgentMessagePublicId: string;
   runKey: string;
   status: AgentMessageStatus;
 };
@@ -47,12 +46,39 @@ async function resolveExecutionEntryContext(
   return {
     agentMessageModelId: creditContext.agentMessageModelId,
     rootAgentMessageId: rootCreditContext.agentMessageModelId,
-    rootAgentMessagePublicId: rootAgentMessageId,
     runKey,
     status: creditContext.status,
   };
 }
 
+async function fetchExecutionStartedMode(
+  auth: Authenticator,
+  context: ExecutionEntryContext
+): Promise<EnabledAgentMessageConsumptionMode | null> {
+  const executionStarted =
+    await AgentMessageConsumptionEventResource.fetchLatestExecutionStartedForAgentMessage(
+      auth,
+      { agentMessageModelId: context.agentMessageModelId }
+    );
+  if (executionStarted) {
+    return executionStarted.consumptionMode;
+  }
+  if (context.agentMessageModelId === context.rootAgentMessageId) {
+    return null;
+  }
+  const rootExecutionStarted =
+    await AgentMessageConsumptionEventResource.fetchLatestExecutionStartedForAgentMessage(
+      auth,
+      { agentMessageModelId: context.rootAgentMessageId }
+    );
+  return rootExecutionStarted?.consumptionMode ?? null;
+}
+
+/**
+ * @cc [owner:id13,label:backend;product] consumption-mode-event-snapshot
+ * An existing execution-started event MUST determine the mode. Without one, only an initial
+ * execution may evaluate feature flags; resumed executions MUST remain on legacy billing.
+ */
 export async function recordExecutionStarted(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs,
@@ -66,26 +92,19 @@ export async function recordExecutionStarted(
   if (!context) {
     return false;
   }
-  const proposedMode =
-    startStep === 0
+  const existingMode = await fetchExecutionStartedMode(auth, context);
+  const mode =
+    existingMode ??
+    (startStep === 0
       ? resolveAgentMessageConsumptionMode(auth, {
           mode: await getAgentMessageConsumptionMode(auth),
         })
-      : "off";
+      : "off");
+  if (mode === "off") {
+    return false;
+  }
 
-  const started = await withTransaction(async (transaction) => {
-    const mode = await ConversationResource.getOrSetAgentMessageConsumptionMode(
-      auth,
-      {
-        agentMessageId: context.rootAgentMessagePublicId,
-        mode: proposedMode,
-        transaction,
-      }
-    );
-    if (mode === null || mode === "off") {
-      return false;
-    }
-
+  await withTransaction(async (transaction) => {
     await AgentMessageConsumptionEventResource.append(auth, {
       event: {
         kind: "execution_started",
@@ -97,11 +116,7 @@ export async function recordExecutionStarted(
       },
       transaction,
     });
-    return true;
   });
-  if (!started) {
-    return false;
-  }
 
   const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
     runKey: context.runKey,
@@ -120,11 +135,8 @@ export async function recordExecutionFinalized(
   if (!context) {
     return null;
   }
-  const consumptionMode =
-    await ConversationResource.fetchAgentMessageConsumptionMode(auth, {
-      agentMessageId: context.rootAgentMessagePublicId,
-    });
-  if (consumptionMode === null || consumptionMode === "off") {
+  const consumptionMode = await fetchExecutionStartedMode(auth, context);
+  if (consumptionMode === null) {
     return null;
   }
   await withTransaction(async (transaction) => {
