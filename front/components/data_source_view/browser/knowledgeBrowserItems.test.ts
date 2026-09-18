@@ -4,79 +4,13 @@ import {
   buildNodeItems,
   buildSpaceItems,
 } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
+import {
+  makeDataSourceViewFixture as makeDataSourceView,
+  makeContentNodeFixture as makeNode,
+  makeSpaceFixture as makeSpace,
+} from "@app/tests/utils/content_node_test_fixtures";
 import type { RichSpaceType } from "@app/types/api/spaces";
-import type {
-  DataSourceViewContentNode,
-  DataSourceViewType,
-} from "@app/types/data_source_view";
-import type { EnrichedSpaceType } from "@app/types/space";
 import { describe, expect, it } from "vitest";
-
-function makeSpace(
-  overrides: Partial<EnrichedSpaceType> & Pick<EnrichedSpaceType, "sId">
-): EnrichedSpaceType {
-  return {
-    createdAt: 0,
-    updatedAt: 0,
-    kind: "regular",
-    name: overrides.sId,
-    groupIds: [],
-    isRestricted: false,
-    ...overrides,
-  };
-}
-
-function makeDataSourceView(
-  sId: string,
-  overrides: Partial<DataSourceViewType["dataSource"]> = {}
-): DataSourceViewType {
-  return {
-    category: "managed",
-    createdAt: 0,
-    dataSource: {
-      id: 1,
-      sId: `ds-${sId}`,
-      createdAt: 0,
-      name: sId,
-      description: null,
-      assistantDefaultSelected: false,
-      dustAPIProjectId: "p1",
-      dustAPIDataSourceId: "d1",
-      connectorId: null,
-      connectorProvider: null,
-      ...overrides,
-    },
-    id: 1,
-    kind: "default",
-    parentsIn: null,
-    sId,
-    spaceId: "space1",
-    updatedAt: 0,
-  };
-}
-
-function makeNode(
-  internalId: string,
-  overrides: Partial<DataSourceViewContentNode> = {}
-): DataSourceViewContentNode {
-  return {
-    childrenCount: 0,
-    expandable: false,
-    internalId,
-    lastUpdatedAt: null,
-    mimeType: "text/plain",
-    parentInternalId: null,
-    parentInternalIds: null,
-    parentTitle: null,
-    permission: "read",
-    providerVisibility: null,
-    sourceUrl: null,
-    title: internalId,
-    type: "document",
-    dataSourceView: makeDataSourceView("dsv1"),
-    ...overrides,
-  };
-}
 
 const usage: RichSpaceType["categories"][string]["usage"] = {
   count: 0,
@@ -163,17 +97,50 @@ describe("buildDataSourceViewItems", () => {
 });
 
 describe("buildNodeItems", () => {
+  const doc = makeNode("doc");
+  const sheet = makeNode("sheet", { mimeType: "text/csv", type: "table" });
+  const folder = makeNode("folder", { type: "folder", expandable: true });
+
   it("keeps every node and reports expandability", () => {
-    const items = buildNodeItems(
-      [
-        makeNode("doc"),
-        makeNode("folder", { type: "folder", expandable: true }),
-      ],
-      { isTopLevelInView: true }
-    );
+    const items = buildNodeItems([doc, sheet, folder], {
+      isTopLevelInView: true,
+    });
     expect(items.map((item) => [item.id, item.expandable])).toEqual([
       ["doc", false],
+      ["sheet", false],
       ["folder", true],
     ]);
+  });
+
+  it("describes folders by item count and files by space and freshness", () => {
+    const items = buildNodeItems(
+      [
+        makeNode("doc", { lastUpdatedAt: Date.now() - 6 * 24 * 3600 * 1000 }),
+        makeNode("fresh"),
+        makeNode("folder", {
+          type: "folder",
+          expandable: true,
+          childrenCount: 5,
+        }),
+        makeNode("one", { type: "folder", expandable: true, childrenCount: 1 }),
+        makeNode("empty", { type: "folder", expandable: true }),
+      ],
+      { isTopLevelInView: true, spaceName: "Series C" }
+    );
+    expect(items.map((item) => item.description)).toEqual([
+      "Series C · Updated 6d ago",
+      "Series C",
+      "5 items",
+      "1 item",
+      undefined,
+    ]);
+  });
+
+  it("drops non-remote database tables when asked", () => {
+    const items = buildNodeItems([doc, sheet, folder], {
+      isTopLevelInView: true,
+      excludeNonRemoteDatabaseTables: true,
+    });
+    expect(items.map((item) => item.id)).toEqual(["doc", "folder"]);
   });
 });

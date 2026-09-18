@@ -1,11 +1,13 @@
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import { NON_REMOTE_DATABASE_TABLE_MIME_TYPES } from "@app/lib/content_nodes_constants";
 import {
   getDataSourceNameFromView,
   isRemoteDatabase,
 } from "@app/lib/data_sources";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import { CATEGORY_DETAILS, getSpaceIcon } from "@app/lib/spaces";
+import { timeAgoFrom } from "@app/lib/utils";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import {
   DATA_SOURCE_VIEW_CATEGORIES,
@@ -19,6 +21,7 @@ import type {
 } from "@app/types/data_source_view";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { EnrichedSpaceType } from "@app/types/space";
 import { SPACE_KINDS } from "@app/types/space";
 import { Folder } from "@dust-tt/sparkle";
@@ -28,6 +31,7 @@ interface KnowledgeBrowserItemBase {
   id: string;
   title: string;
   icon: ComponentType;
+  description?: string;
 }
 
 // One row of the knowledge browser: what the row stands for and what it displays. Rows are
@@ -51,6 +55,14 @@ export type KnowledgeBrowserItem =
       node: DataSourceViewContentNode;
       expandable: boolean;
     });
+
+export const KNOWLEDGE_BROWSER_GROUP_LABELS: Record<
+  Extract<KnowledgeBrowserItem, { kind: "space" }>["group"],
+  string
+> = {
+  spaces: "From spaces",
+  pods: "From Pods",
+};
 
 /**
  * @cc [owner:smb2268,label:product] spaces-grouped-and-ordered
@@ -152,18 +164,59 @@ export function buildDataSourceViewItems(
     .toSorted((a, b) => a.title.localeCompare(b.title));
 }
 
+// "5 items" for containers, "Space · Updated 6d ago" for leaves, trimmed to what is known.
+function getNodeDescription(
+  node: DataSourceViewContentNode,
+  spaceName: string | undefined
+): string | undefined {
+  if (node.expandable) {
+    return node.childrenCount > 0
+      ? `${node.childrenCount} item${pluralize(node.childrenCount)}`
+      : undefined;
+  }
+  const parts = [
+    spaceName,
+    node.lastUpdatedAt
+      ? `Updated ${timeAgoFrom(node.lastUpdatedAt)} ago`
+      : undefined,
+  ].filter((part) => part !== undefined);
+  return parts.length > 0 ? parts.join(" · ") : undefined;
+}
+
+/**
+ * @cc [owner:smb2268,label:product] non-remote-database-tables-excluded
+ * When `excludeNonRemoteDatabaseTables` is true, nodes whose `mimeType` is one of
+ * `NON_REMOTE_DATABASE_TABLE_MIME_TYPES` MUST be omitted, matching the same option of the
+ * knowledge search. Otherwise every node is kept, in the given order.
+ */
 export function buildNodeItems(
   nodes: DataSourceViewContentNode[],
-  { isTopLevelInView }: { isTopLevelInView: boolean }
+  {
+    isTopLevelInView,
+    excludeNonRemoteDatabaseTables = false,
+    spaceName,
+  }: {
+    isTopLevelInView: boolean;
+    excludeNonRemoteDatabaseTables?: boolean;
+    spaceName?: string;
+  }
 ): Extract<KnowledgeBrowserItem, { kind: "node" }>[] {
-  return nodes.map((node) => ({
-    kind: "node" as const,
-    id: node.internalId,
-    title: getDisplayTitleForDataSourceViewContentNode(node, {
-      disambiguate: isTopLevelInView,
-    }),
-    icon: getVisualForDataSourceViewContentNode(node),
-    node,
-    expandable: node.expandable,
-  }));
+  return nodes
+    .filter(
+      (node) =>
+        !excludeNonRemoteDatabaseTables ||
+        !node.mimeType ||
+        !NON_REMOTE_DATABASE_TABLE_MIME_TYPES.includes(node.mimeType)
+    )
+    .map((node) => ({
+      kind: "node" as const,
+      id: node.internalId,
+      title: getDisplayTitleForDataSourceViewContentNode(node, {
+        disambiguate: isTopLevelInView,
+      }),
+      description: getNodeDescription(node, spaceName),
+      icon: getVisualForDataSourceViewContentNode(node),
+      node,
+      expandable: node.expandable,
+    }));
 }
