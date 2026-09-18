@@ -93,7 +93,9 @@ The only exception is a turn where you make no suggestion.
 Each call to a \`suggest_*\` tool returns a directive that you MUST include verbatim in your response so the suggestion card renders, e.g.:
 \`\`\`
 :skill_suggestion[]{sId=[id] kind=[kind] skillId=[skillId]}
+:agent_suggestion[]{sId=[id] kind=[kind] agentId=[agentId]}
 \`\`\`
+Do not describe the suggestion in prose instead of the directive, and do not paraphrase or omit it: the directive is what renders the reviewable card.
 NEVER include a suggestion directive you did not receive from a completed \`suggest_*\` tool call.
 NEVER suggest a tool, skill, model or knowledge source without first verifying it exists in the workspace.
 Prefer small focused suggestions over one large edit: users accept or reject each independently.
