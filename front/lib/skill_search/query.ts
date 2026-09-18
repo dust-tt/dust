@@ -1,20 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { buildSkillMatchQuery } from "@app/lib/skill_search/ranking";
-import type {
-  SkillSearchFilters,
-  SkillSearchOptions,
-} from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
-import { z } from "zod";
-
-export const MAX_SKILL_SEARCH_RESULTS = 150;
-export const SkillSearchSortSchema = z.tuple([
-  z.number().finite(),
-  z.string(),
-  z.string(),
-]);
-export type SkillSearchSort = z.infer<typeof SkillSearchSortSchema>;
 
 // Null represents a type-wide read grant; do not enumerate resources in that case.
 export function getSkillSearchReadableSpaceIds(auth: Authenticator) {
@@ -74,50 +60,21 @@ function buildAvailabilityFilter(
   };
 }
 
-function buildSelectionFilters(
-  auth: Authenticator,
-  filters: SkillSearchFilters
-): estypes.QueryDslQueryContainer[] {
-  const selected: estypes.QueryDslQueryContainer[] = [];
-  for (const [field, values] of [
-    ["mcp_server_view_ids", filters.toolIds],
-    ["availability", filters.availability],
-  ] as const) {
-    if (values?.length) {
-      selected.push({ terms: { [field]: [...new Set(values)].sort() } });
-    }
-  }
-  if (filters.editedByMe) {
-    selected.push(buildEditorFilter(auth));
-  }
-  return selected;
-}
-
 /**
  * @cc [owner:aubin-tchoi,label:security] workspace-scoped-skill-search
- * Every query is workspace- and lifecycle-scoped, defaulting to active skills, and requires
- * every requested space and editor visibility.
+ * Every query is scoped to the caller's workspace and requires every requested space
+ * and editor visibility. Permissions come from hydrated grants, without database reads.
  */
 export function prepareSkillSearchQuery(
-  auth: Authenticator,
-  searchTerm: string,
-  { filters = {} }: Pick<SkillSearchOptions, "filters"> = {}
+  auth: Authenticator
 ): estypes.QueryDslQueryContainer {
-  const readableSpaceIds = getSkillSearchReadableSpaceIds(auth);
   return {
     bool: {
       filter: [
         { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
-        {
-          terms: {
-            status: [...new Set(filters.status ?? ["active"])].sort(),
-          },
-        },
         buildAvailabilityFilter(auth),
-        buildSpaceAccessFilter(readableSpaceIds),
-        ...buildSelectionFilters(auth, filters),
+        buildSpaceAccessFilter(getSkillSearchReadableSpaceIds(auth)),
       ],
-      must: [buildSkillMatchQuery(searchTerm)],
     },
   };
 }

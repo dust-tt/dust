@@ -1,6 +1,4 @@
 import type {
-  SkillAvailability,
-  SkillListItemType,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
   SkillWithoutInstructionsAndToolsWithRelationsType,
@@ -12,24 +10,6 @@ export type GetSkillsResponseBody = {
     isFavorite?: boolean;
   })[];
 };
-
-export type SkillSearchResult = SkillListItemType & {
-  score: number;
-};
-
-// OR within a dimension, AND across dimensions. Selection never replaces ACLs.
-export interface SkillSearchFilters {
-  // Omitted means active only. Suggested skills are never searchable.
-  status?: ("active" | "archived")[];
-  toolIds?: string[];
-  editedByMe?: true;
-  availability?: SkillAvailability[];
-}
-
-export interface SkillSearchOptions {
-  searchTerm: string;
-  filters?: SkillSearchFilters;
-}
 
 /**
  * @cc [owner:aubin-tchoi,label:api] skill-usage-compatibility
