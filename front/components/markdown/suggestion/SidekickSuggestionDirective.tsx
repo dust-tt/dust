@@ -167,20 +167,18 @@ function ConversationAgentSuggestion({
   kind,
   sId,
 }: ConversationAgentSuggestionProps) {
-  const { suggestions, isSuggestionsLoading } = useAgentSuggestions({
-    agentConfigurationId: agentId,
-    workspaceId: owner.sId,
-  });
+  const { suggestions, isSuggestionsLoading, mutateSuggestions } =
+    useAgentSuggestions({
+      agentConfigurationId: agentId,
+      workspaceId: owner.sId,
+    });
 
-  const {
-    resolveSuggestionState,
-    isSuggestionPending,
-    acceptSuggestion,
-    rejectSuggestion,
-  } = useAgentSuggestionActions({
-    agentConfigurationId: agentId,
-    workspaceId: owner.sId,
-  });
+  const { isSuggestionPending, acceptSuggestion, rejectSuggestion } =
+    useAgentSuggestionActions({
+      agentConfigurationId: agentId,
+      workspaceId: owner.sId,
+      mutateSuggestions,
+    });
 
   if (isSuggestionsLoading) {
     return <SuggestionCardSkeleton kind={kind} />;
@@ -194,10 +192,7 @@ function ConversationAgentSuggestion({
   return (
     <div data-suggestion-s-id={sId}>
       <AgentSuggestionActionCard
-        agentSuggestion={{
-          ...suggestion,
-          state: resolveSuggestionState(suggestion),
-        }}
+        agentSuggestion={suggestion}
         disabled={isSuggestionPending(suggestion)}
         onAccept={() => void acceptSuggestion(suggestion)}
         onReject={() => void rejectSuggestion(suggestion)}

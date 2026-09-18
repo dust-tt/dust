@@ -128,24 +128,19 @@ export function usePatchAgentSuggestions({
 export function useAgentSuggestionActions({
   agentConfigurationId,
   workspaceId,
+  mutateSuggestions,
 }: {
   agentConfigurationId: string | null;
   workspaceId: string;
+  mutateSuggestions: ReturnType<
+    typeof useAgentSuggestions
+  >["mutateSuggestions"];
 }) {
   const { patchSuggestions } = usePatchAgentSuggestions({
     agentConfigurationId,
     workspaceId,
   });
-  const [overrides, setOverrides] = useState<
-    Record<string, AgentSuggestionState>
-  >({});
   const [pendingIds, setPendingIds] = useState<Record<string, boolean>>({});
-
-  const resolveSuggestionState = useCallback(
-    (suggestion: { sId: string; state: AgentSuggestionState }) =>
-      overrides[suggestion.sId] ?? suggestion.state,
-    [overrides]
-  );
 
   const isSuggestionPending = useCallback(
     (suggestion: { sId: string }) => pendingIds[suggestion.sId] ?? false,
@@ -175,10 +170,19 @@ export function useAgentSuggestionActions({
         return false;
       }
 
-      setOverrides((current) => ({ ...current, [suggestion.sId]: nextState }));
+      const reviewedById = new Map(result.suggestions.map((s) => [s.sId, s]));
+      void mutateSuggestions(
+        (current) => ({
+          suggestions: (current?.suggestions ?? []).map(
+            (s) => reviewedById.get(s.sId) ?? s
+          ),
+        }),
+        { revalidate: false }
+      );
+
       return true;
     },
-    [patchSuggestions]
+    [patchSuggestions, mutateSuggestions]
   );
 
   // `create`/`delete` are only ever applied server-side on accept, and only when `applyToAgent`
@@ -194,7 +198,6 @@ export function useAgentSuggestionActions({
   );
 
   return {
-    resolveSuggestionState,
     isSuggestionPending,
     acceptSuggestion,
     rejectSuggestion,
