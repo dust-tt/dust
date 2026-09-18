@@ -94,6 +94,58 @@ describe("custom skill search permissions", () => {
     }
   });
 
+  it.each([
+    true,
+    undefined,
+  ] as const)("adds selection filters without replacing ACLs (editedByMe=%s)", async (editedByMe) => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const base = buildSkillSearchQuery(auth);
+    const query = buildSkillSearchQuery(auth, {
+      filters: {
+        toolIds: ["view-2", "view-1", "view-2"],
+        availability: ["users_and_agents"],
+        editedByMe,
+      },
+    });
+    const editor = { term: { editor_ids: auth.getNonNullableUser().sId } };
+    expect(query.bool?.filter).toEqual([
+      ...[base.bool?.filter].flat(),
+      { terms: { mcp_server_view_ids: ["view-1", "view-2"] } },
+      { terms: { availability: ["users_and_agents"] } },
+      ...(editedByMe ? [editor] : []),
+    ]);
+  });
+
+  it("defaults to active skills and allows selecting archived skills", async () => {
+    const { authenticator: auth, globalSpace } = await createResourceTest({
+      role: "user",
+    });
+    const active = await SkillFactory.create(auth, {
+      requestedSpaceIds: [globalSpace.id],
+    });
+    const archived = await SkillFactory.create(auth, {
+      status: "archived",
+      requestedSpaceIds: [globalSpace.id],
+    });
+    await mockHits(auth, [active, archived]);
+
+    const defaults = await searchSkills(auth, { limit: 10 });
+    assert(defaults.isOk());
+    expect(
+      defaults.value.hits.hits.map((hit) => hit._source?.skill_id)
+    ).toEqual([active.sId]);
+
+    const both = await searchSkills(auth, {
+      limit: 10,
+      filters: { status: ["active", "archived"] },
+    });
+    assert(both.isOk());
+    expect(both.value.hits.hits.map((hit) => hit._source?.skill_id)).toEqual([
+      active.sId,
+      archived.sId,
+    ]);
+  });
+
   it.each(
     (["user", "builder", "manager", "admin"] as const).flatMap((role) =>
       (["active", "archived"] as const).map((status) => ({ role, status }))
@@ -163,7 +215,10 @@ describe("custom skill search permissions", () => {
     await auth.refresh();
     // The ES mock applies the generated filters before returning hits.
     await mockHits(auth, skills);
-    const result = await searchSkills(auth, { limit: 200 });
+    const result = await searchSkills(auth, {
+      limit: 200,
+      filters: { status: [status] },
+    });
     assert(result.isOk());
     const { hits } = result.value.hits;
     expect(
@@ -182,8 +237,8 @@ describe("custom skill search permissions", () => {
     );
     expect(terms).not.toContain(deniedSpace.sId);
     expect(terms).not.toContain(deniedPod.sId);
-    expect(filters).toHaveLength(3);
-    expect(filters[1].bool.should[1]).toEqual({
+    expect(filters).toHaveLength(4);
+    expect(filters[2].bool.should[1]).toEqual({
       term: { editor_ids: user.sId },
     });
   }, 30_000);
