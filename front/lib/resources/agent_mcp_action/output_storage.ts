@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { REDIS_CACHE_CONCURRENCY } from "@app/lib/api/redis";
+import {
+  getRedisCacheClient,
+  REDIS_CACHE_CONCURRENCY,
+} from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -154,18 +157,24 @@ const fetchGcsContentCached = cacheWithRedis(
   }
 );
 
-const warmOneGcsContent = warmCacheWithRedis(
+const stageOneGcsContent = warmCacheWithRedis(
   fetchGcsContent,
   gcsContentCacheKey,
   { ttlMs: GCS_CONTENT_CACHE_TTL_MS }
 );
 
-export async function warmGcsContentCache(
+/**
+ * Stages MCP output item content in Redis under the same keys readers use
+ * (`fetchGcsContentCached`). Call before returning from createOutputItems so
+ * consumers can read without waiting on GCS. Replaces post-GCS cache warming.
+ */
+export async function stageMcpOutputContentCache(
   auth: Authenticator,
   items: Array<{
     itemId: ModelId;
-    gcsPath: string;
     content: OutputContent;
+    /** Unused for the key; pass the eventual GCS path when known, else "". */
+    gcsPath?: string;
   }>
 ): Promise<void> {
   if (items.length === 0) {
@@ -173,12 +182,15 @@ export async function warmGcsContentCache(
   }
   await concurrentExecutor(
     items,
-    async ({ itemId, gcsPath, content }) => {
-      await warmOneGcsContent(content, auth, gcsPath, itemId);
+    async ({ itemId, gcsPath = "", content }) => {
+      await stageOneGcsContent(content, auth, gcsPath, itemId);
     },
     { concurrency: REDIS_CACHE_CONCURRENCY }
   );
 }
+
+/** @deprecated Use {@link stageMcpOutputContentCache}. */
+export const warmGcsContentCache = stageMcpOutputContentCache;
 
 /**
  * Fetches content for a single item from cache (LRU) or GCS.
@@ -329,4 +341,45 @@ export async function deleteActionOutputsFromGcs(
   );
 
   return deleteContentsFromGcs(uncoveredPaths);
+}
+
+// --- Sandbox-function action output staging (same Redis cache, action-scoped key) ---
+
+export const SANDBOX_FUNCTION_ACTION_OUTPUT_CACHE_TTL_MS =
+  GCS_CONTENT_CACHE_TTL_MS;
+
+function sandboxFunctionActionOutputCacheKey(actionSId: string): string {
+  // Action sIds are globally unique; one blob per sandbox-function MCP action.
+  return `cacheWithRedis-sandboxFunctionActionOutput-sfa_output:${actionSId}:v1`;
+}
+
+/**
+ * Stages the full sandbox-function action output envelope in Redis so poll
+ * `readOutput` can return before the GCS write finishes.
+ */
+export async function stageSandboxFunctionActionOutput(
+  _auth: Authenticator,
+  actionSId: string,
+  output: unknown
+): Promise<void> {
+  const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
+  const key = sandboxFunctionActionOutputCacheKey(actionSId);
+  await redisCli.set(key, JSON.stringify(output), {
+    PX: SANDBOX_FUNCTION_ACTION_OUTPUT_CACHE_TTL_MS,
+  });
+}
+
+/**
+ * Reads a staged sandbox-function action output, if still within TTL.
+ */
+export async function readStagedSandboxFunctionActionOutput(
+  actionSId: string
+): Promise<unknown | null> {
+  const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
+  const key = sandboxFunctionActionOutputCacheKey(actionSId);
+  const raw = await redisCli.get(key);
+  if (raw === null) {
+    return null;
+  }
+  return JSON.parse(raw) as unknown;
 }
