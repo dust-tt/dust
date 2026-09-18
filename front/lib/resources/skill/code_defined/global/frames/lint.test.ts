@@ -64,7 +64,7 @@ async function fixture(frameRoot = "conversation-conv_123/My Frame") {
   const manifest = {
     version: 1,
     id: "a".repeat(64),
-    modules: ["react"],
+    modules: ["react", "@dust/react-hooks"],
     tarballSha256: checksum,
     sizeBytes: archive.length,
     path: `/frame-runtime/${checksum}.tgz`,
@@ -130,6 +130,165 @@ async function lint(context: Awaited<ReturnType<typeof fixture>>) {
   });
   return { stdout, stderr, exitCode };
 }
+
+async function addFunctionHooks(context: Awaited<ReturnType<typeof fixture>>) {
+  await writeFile(
+    path.join(context.project, "hooks.d.ts"),
+    `declare module "@dust/react-hooks" {
+  export function useFrameFunction(name: string, args: object): unknown
+  export function useFrameFunctionMutation(name: string): unknown
+  export { useFrameFunction as usePodFunction, useFrameFunctionMutation as usePodFunctionMutation }
+  export function callFunction(name: string): unknown
+}\n`
+  );
+}
+
+async function writeManifest(
+  context: Awaited<ReturnType<typeof fixture>>,
+  names: string[]
+) {
+  await writeFile(
+    path.join(context.project, "manifest.json"),
+    JSON.stringify({
+      version: 1,
+      name: "Tasks",
+      description: "Track tasks",
+      functions: names.map((name) => ({
+        name,
+        description: name,
+        entryPoint: `functions/${name}.ts`,
+      })),
+    })
+  );
+}
+
+test("checks function names across UI files and reads manifest edits on each run", async () => {
+  const context = await fixture();
+  await addFunctionHooks(context);
+  await writeManifest(context, ["add-task", "list-tasks"]);
+  await writeFile(
+    path.join(context.project, "index.tsx"),
+    [
+      'import { useFrameFunction, useFrameFunctionMutation as useMutation } from "@dust/react-hooks"',
+      'import TaskList from "./components/TaskList"',
+      'import Other from "./other"',
+      "export default function App() {",
+      '  useFrameFunction("add-tasks", {})',
+      '  useMutation("missing-mutation")',
+      "  return [TaskList, Other]",
+      "}",
+    ].join("\n")
+  );
+  await mkdir(path.join(context.project, "components"));
+  await writeFile(
+    path.join(context.project, "components/TaskList.tsx"),
+    [
+      'import * as hooks from "@dust/react-hooks"',
+      "export default function TaskList() {",
+      '  hooks.usePodFunction("missing-legacy", {})',
+      "  hooks.usePodFunctionMutation(`missing-legacy-mutation`)",
+      "  return null",
+      "}",
+    ].join("\n")
+  );
+  await writeFile(
+    path.join(context.project, "other.jsx"),
+    'import { useFrameFunction as useFunction } from "@dust/react-hooks"\n' +
+      'export default function Other() { useFunction("missing-alias", {}); return null }\n'
+  );
+
+  const broken = await lint(context);
+  expect(broken.exitCode).toBe(1);
+  expect(broken.stdout, broken.stderr).toContain("index.tsx:5:20:");
+  expect(broken.stdout).toContain("components/TaskList.tsx:3:24:");
+  expect(broken.stdout).toContain("other.jsx:2:47:");
+  expect(broken.stdout).toContain("dust(declared-frame-functions)");
+  expect(broken.stdout).toContain(
+    "Declared functions: 'add-task', 'list-tasks'."
+  );
+  for (const call of [
+    "useFrameFunction('add-tasks')",
+    "useFrameFunctionMutation('missing-mutation')",
+    "usePodFunction('missing-legacy')",
+    "usePodFunctionMutation('missing-legacy-mutation')",
+    "useFrameFunction('missing-alias')",
+  ]) {
+    expect(broken.stdout).toContain(call);
+  }
+
+  await writeManifest(context, [
+    "add-tasks",
+    "missing-mutation",
+    "missing-legacy",
+    "missing-legacy-mutation",
+    "missing-alias",
+  ]);
+  const fixed = await lint(context);
+  expect(fixed.exitCode, fixed.stdout + fixed.stderr).toBe(0);
+});
+
+test("ignores computed names, unrelated hooks, shadowed imports and backend code", async () => {
+  const context = await fixture();
+  await addFunctionHooks(context);
+  await writeManifest(context, ["list-tasks"]);
+  await writeFile(
+    path.join(context.project, "index.tsx"),
+    `import { useFrameFunction, callFunction } from "@dust/react-hooks"
+import * as hooks from "@dust/react-hooks"
+import { useFrameFunction as useLocalFunction } from "./local-hooks"
+export default function App({ name }: { name: string }) {
+  useFrameFunction("list-tasks", {})
+  hooks.useFrameFunction("list-tasks", {})
+  useFrameFunction(name, {})
+  useFrameFunction(\`prefix-\${name}\`, {})
+  useLocalFunction("not-a-frame-function")
+  callFunction("unchecked")
+  return null
+}
+export function Shadow({ useFrameFunction }: { useFrameFunction: (name: string) => void }) {
+  useFrameFunction("shadowed")
+  return null
+}
+export function NamespaceShadow({ hooks }: { hooks: { useFrameFunction: (name: string) => void } }) {
+  hooks.useFrameFunction("shadowed-namespace")
+  return null
+}\n`
+  );
+  await writeFile(
+    path.join(context.project, "local-hooks.ts"),
+    "export const useFrameFunction = (name: string) => name\n"
+  );
+  await mkdir(path.join(context.project, "functions"));
+  await writeFile(
+    path.join(context.project, "functions/backend.ts"),
+    'import { useFrameFunction } from "@dust/react-hooks"\n' +
+      'export const run = () => useFrameFunction("backend-only", {})\n'
+  );
+  const result = await lint(context);
+  expect(result.exitCode, result.stdout + result.stderr).toBe(0);
+});
+
+test("skips legacy Frames without a manifest but rejects missing declarations in a manifest", async () => {
+  const context = await fixture();
+  await addFunctionHooks(context);
+  await writeFile(
+    path.join(context.project, "index.tsx"),
+    'import { useFrameFunction } from "@dust/react-hooks"\n' +
+      'export default function App() { useFrameFunction("list-tasks", {}); return null }\n'
+  );
+  const legacy = await lint(context);
+  expect(legacy.exitCode, legacy.stdout + legacy.stderr).toBe(0);
+  await writeFile(path.join(context.project, "manifest.json"), "{}\n");
+  const broken = await lint(context);
+  expect(broken.exitCode).toBe(1);
+  expect(broken.stdout).toContain(
+    "This Frame's manifest declares no functions."
+  );
+  await writeFile(path.join(context.project, "manifest.json"), "{invalid\n");
+  const malformed = await lint(context);
+  expect(malformed.exitCode).not.toBe(0);
+  expect(malformed.stderr).toContain("parse error");
+});
 
 test("lints current source, skips backend folders and reuses local checker files", async () => {
   const context = await fixture();

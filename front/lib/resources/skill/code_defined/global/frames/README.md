@@ -27,6 +27,12 @@ paths to files inside the Frame and suggests the portable `./…` form. This rep
 publish-time package-path validator. It uses a local file listing, so checking each reference
 does not make another GCS Fuse request. External scoped paths and file IDs remain supported.
 
+The `dust/declared-frame-functions` rule checks literal function names passed to `useFrameFunction`,
+`useFrameFunctionMutation` and their legacy Pod aliases against `manifest.json`. It follows named,
+aliased and namespace imports from `@dust/react-hooks` and lists the declared functions on errors.
+Computed names and legacy Frames without a manifest are skipped. This replaces the function-name
+check at publish time. Declared function entry points are still built when publishing.
+
 The temporary directory is removed after linting. Source files and existing project configs
 are left untouched. Project configs do not override the checker settings.
 
