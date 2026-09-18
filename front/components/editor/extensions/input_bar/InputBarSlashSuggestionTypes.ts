@@ -5,6 +5,7 @@ export type InputBarSlashCommandId =
   | "attach-knowledge"
   | "compact"
   | "pick-model"
+  | "select-spaces"
   | "upload-file";
 
 /** Run commands backed by `INPUT_BAR_SLASH_COMMANDS` (icon, label, handler via `onSelectRef`). */
@@ -18,6 +19,7 @@ export const INPUT_BAR_SLASH_COMMAND_ORDER: InputBarSlashCommandId[] = [
   "compact",
   "upload-file",
   "attach-knowledge",
+  "select-spaces",
   "pick-model",
 ];
 

@@ -9,6 +9,7 @@ import {
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { isAllowedSlashQuery } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
+import type { SelectableConversationSpaceType } from "@app/types/assistant/conversation";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WorkspaceType } from "@app/types/user";
 import { PluginKey } from "@tiptap/pm/state";
@@ -30,6 +31,8 @@ interface InputBarSlashSuggestionExtensionOptions {
   enabledRef: RefObject<boolean>;
   includeAttachKnowledgeRef: RefObject<boolean>;
   includePickModelRef: RefObject<boolean>;
+  includeSelectSpacesRef: RefObject<boolean>;
+  isSelectableSpacesLoadingRef: RefObject<boolean>;
   onActiveChangeRef?: RefObject<((active: boolean) => void) | undefined>;
   onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
   onModelSelectRef: RefObject<((selection: Selection) => void) | undefined>;
@@ -37,8 +40,13 @@ interface InputBarSlashSuggestionExtensionOptions {
     ((node: DataSourceViewContentNode) => void) | undefined
   >;
   onSelectRef: RefObject<((item: SlashCommand) => void) | undefined>;
+  onSpaceSelectRef: RefObject<
+    ((space: SelectableConversationSpaceType) => void) | undefined
+  >;
   owner?: WorkspaceType;
+  selectableSpacesRef: RefObject<SelectableConversationSpaceType[]>;
   selectedMCPServerViewIdsRef: RefObject<Set<string>>;
+  selectedSpaceIdsRef: RefObject<string[]>;
   slashCommandsRef: RefObject<InputBarSlashCommand[]>;
   spaceIdRef: RefObject<string | null | undefined>;
 }
@@ -65,11 +73,16 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     enabledRef: { current: false },
     includeAttachKnowledgeRef: { current: false },
     includePickModelRef: { current: false },
+    includeSelectSpacesRef: { current: false },
+    isSelectableSpacesLoadingRef: { current: false },
     onModelSelectRef: { current: undefined },
     onNodeSelectRef: { current: undefined },
     onSelectRef: { current: undefined },
+    onSpaceSelectRef: { current: undefined },
     onDetailsRef: { current: undefined },
+    selectableSpacesRef: { current: [] },
     selectedMCPServerViewIdsRef: { current: new Set<string>() },
+    selectedSpaceIdsRef: { current: [] },
     slashCommandsRef: { current: [] },
     spaceIdRef: { current: null },
   },
@@ -107,11 +120,16 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     conversationIdRef: options.conversationIdRef,
     includeAttachKnowledgeRef: options.includeAttachKnowledgeRef,
     includePickModelRef: options.includePickModelRef,
+    includeSelectSpacesRef: options.includeSelectSpacesRef,
+    isSelectableSpacesLoadingRef: options.isSelectableSpacesLoadingRef,
     onDetailsRef: options.onDetailsRef,
     onModelSelectRef: options.onModelSelectRef,
     onNodeSelectRef: options.onNodeSelectRef,
+    onSpaceSelectRef: options.onSpaceSelectRef,
     owner: options.owner,
+    selectableSpacesRef: options.selectableSpacesRef,
     selectedMCPServerViewIdsRef: options.selectedMCPServerViewIdsRef,
+    selectedSpaceIdsRef: options.selectedSpaceIdsRef,
     slashCommandsRef: options.slashCommandsRef,
     spaceIdRef: options.spaceIdRef,
   }),
