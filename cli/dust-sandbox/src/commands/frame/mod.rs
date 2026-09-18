@@ -1,6 +1,5 @@
 mod call;
 mod create;
-mod lint;
 mod publish;
 mod register;
 mod share_link;
@@ -13,7 +12,6 @@ use clap::Subcommand;
 
 pub use call::run as cmd_frame_call;
 pub use create::run as cmd_frame_create;
-pub use lint::{run as cmd_frame_lint, LintArgs};
 pub use publish::run as cmd_frame_publish;
 pub use register::run as cmd_frame_register;
 pub use share_link::run as cmd_frame_share_link;
@@ -24,8 +22,6 @@ const FILES_ROOT: &str = "/files";
 
 #[derive(Subcommand)]
 pub enum FrameCommand {
-    /// Lint and type-check Frame UI source locally
-    Lint(LintArgs),
     /// Invoke a named function from a Frame's active publication
     Call {
         /// Frame ID, or absolute path to its folder or manifest under /files

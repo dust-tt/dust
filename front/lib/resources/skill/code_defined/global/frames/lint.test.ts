@@ -1,20 +1,25 @@
-import { afterEach, expect, test } from "bun:test";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
-  mkdtemp,
   mkdir,
-  readFile,
+  mkdtemp,
   readdir,
+  readFile,
   rm,
   writeFile,
 } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { FRAME_SKILL_FILES } from "@app/lib/resources/skill/code_defined/global/frames/files";
+import { isString } from "@app/types/shared/utils/general";
+import assert from "assert";
+import { afterEach, expect, test, vi } from "vitest";
 
 const cleanup: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   for (const clean of cleanup.splice(0)) {
     await clean();
   }
@@ -25,6 +30,11 @@ async function fixture() {
   cleanup.push(() => rm(root, { recursive: true, force: true }));
   const project = path.join(root, "My Frame");
   const types = path.join(root, "types");
+  const skill = path.join(root, "skills", "Create Frames");
+  await mkdir(skill, { recursive: true });
+  for (const file of FRAME_SKILL_FILES) {
+    await writeFile(path.join(skill, file.fileName), file.content);
+  }
   await mkdir(project);
   await mkdir(types);
   await writeFile(path.join(project, "index.tsx"), "export default () => 42\n");
@@ -58,50 +68,58 @@ async function fixture() {
     path: `/frame-runtime/${checksum}.tgz`,
   };
   const requests: string[] = [];
-  const server = Bun.serve({
-    port: 0,
-    hostname: "127.0.0.1",
-    fetch: (request) => {
-      const url = new URL(request.url);
-      requests.push(url.pathname);
-      expect(request.headers.has("authorization")).toBe(false);
-      if (url.pathname === "/frame-runtime/manifest.json") {
-        return Response.json(manifest);
-      }
-      return new Response(archive);
-    },
+  const server = createServer((request, response) => {
+    const url = request.url ?? "";
+    requests.push(url);
+    expect(request.headers.authorization).toBeUndefined();
+    response.end(
+      url === "/frame-runtime/manifest.json"
+        ? JSON.stringify(manifest)
+        : archive
+    );
   });
-  cleanup.push(async () => {
-    await server.stop(true);
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
   });
+  cleanup.push(
+    () => new Promise<void>((resolve) => server.close(() => resolve()))
+  );
+  const address = server.address();
+  assert(address && !isString(address));
   return {
     root,
     project,
     manifest,
     archive,
     requests,
-    url: server.url.toString(),
+    skill,
+    url: `http://127.0.0.1:${address.port}`,
   };
 }
 
 async function lint(context: Awaited<ReturnType<typeof fixture>>) {
-  const child = Bun.spawn(
-    ["bash", path.join(import.meta.dir, "lint.sh"), context.project],
+  vi.stubEnv("DUST_VIZ_URL", context.url);
+  vi.stubEnv("DUST_FRAME_TYPES_CACHE", path.join(context.root, "cache"));
+  const child = spawn(
+    "bash",
+    [path.join(context.skill, "lint.sh"), context.project],
     {
-      env: {
-        ...Bun.env,
-        DUST_VIZ_URL: context.url,
-        DUST_FRAME_TYPES_CACHE: path.join(context.root, "cache"),
-      },
-      stdout: "pipe",
-      stderr: "pipe",
+      stdio: ["ignore", "pipe", "pipe"],
     }
   );
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited,
-  ]);
+  let stdout = "";
+  let stderr = "";
+  child.stdout.setEncoding("utf8").on("data", (data: string) => {
+    stdout += data;
+  });
+  child.stderr.setEncoding("utf8").on("data", (data: string) => {
+    stderr += data;
+  });
+  const exitCode = await new Promise<number | null>((resolve, reject) => {
+    child.once("error", reject);
+    child.once("close", resolve);
+  });
   return { stdout, stderr, exitCode };
 }
 

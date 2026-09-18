@@ -76,6 +76,11 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("does not test the Frame");
     expect(instructions).toContain("dsbx frame validate");
     expect(instructions).toContain(
+      'bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME"'
+    );
+    expect(instructions).toContain("Fix those errors before");
+    expect(instructions).toContain("refuses to overwrite custom configs");
+    expect(instructions).toContain(
       "Frame sharing and use rights are configured by the user in the Dust UI"
     );
     expect(instructions).toContain("This command is read-only");

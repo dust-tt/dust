@@ -52,6 +52,8 @@ jobs:
           postgresql port: 5433
       - name: Install Sandbox
         run: sudo apt-get update && sudo apt-get install -y ripgrep fd-find sd
+      - name: Install Frame lint tools
+        run: npm install --global oxlint@1.83.0 oxlint-tsgolint@7.0.2001
       - name: Run Tests
         working-directory: front
         env:

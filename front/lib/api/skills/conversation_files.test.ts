@@ -1,5 +1,6 @@
 import { upsertSkillFilesToConversation } from "@app/lib/api/skills/conversation_files";
 import type { Authenticator } from "@app/lib/auth";
+import { FRAME_SKILL_FILES } from "@app/lib/resources/skill/code_defined/global/frames/files";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SKILL_ICON } from "@app/lib/skill";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -68,6 +69,41 @@ async function createSkillFileAttachment(
 }
 
 describe("upsertSkillFilesToConversation", () => {
+  it("loads the Frame checker and its configs as skill attachments", async () => {
+    const { auth, workspace, conversation } =
+      await setupConversationAndSkillPermissions();
+    const skill = await SkillResource.fetchById(auth, "frames");
+    assert(skill);
+    expect(skill.getCodeDefinedFiles()).toEqual(FRAME_SKILL_FILES);
+    fileStorageMock.setFileExists(() => false);
+
+    const result = await upsertSkillFilesToConversation(auth, {
+      skill,
+      conversation,
+    });
+
+    assert(result.isOk());
+    expect(result.value.loadedPaths).toEqual(
+      ["lint.sh", "tsconfig.json", "oxlintrc.json"].map(
+        (fileName) =>
+          `conversation-${conversation.sId}/skills/Create Frames/${fileName}`
+      )
+    );
+    for (const file of FRAME_SKILL_FILES) {
+      expect(fileStorageMock.saveFileCalls).toContainEqual({
+        filePath: gcsPathForSkillFile({
+          workspaceId: workspace.sId,
+          conversationId: conversation.sId,
+          skillName: skill.name,
+          fileName: file.fileName,
+        }),
+        content: Buffer.from(file.content),
+        contentType: file.contentType,
+      });
+    }
+    expect(fileStorageMock.readStreamCalls).toHaveLength(0);
+  });
+
   it("writes every missing skill file and returns their scoped paths", async () => {
     const { auth, user, workspace, conversation } =
       await setupConversationAndSkillPermissions();
