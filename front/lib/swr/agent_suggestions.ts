@@ -155,11 +155,16 @@ export function useAgentSuggestionActions({
   const setSuggestionState = useCallback(
     async (
       suggestion: { sId: string },
-      nextState: Extract<AgentSuggestionState, "approved" | "rejected">
+      nextState: Extract<AgentSuggestionState, "approved" | "rejected">,
+      options?: { applyToAgent?: boolean }
     ): Promise<boolean> => {
       setPendingIds((current) => ({ ...current, [suggestion.sId]: true }));
 
-      const result = await patchSuggestions([suggestion.sId], nextState);
+      const result = await patchSuggestions(
+        [suggestion.sId],
+        nextState,
+        options
+      );
 
       setPendingIds((current) => {
         const { [suggestion.sId]: _removed, ...rest } = current;
@@ -176,8 +181,11 @@ export function useAgentSuggestionActions({
     [patchSuggestions]
   );
 
+  // `create`/`delete` are only ever applied server-side on accept, and only when `applyToAgent`
+  // is set: the route otherwise just records the review without touching the agent.
   const acceptSuggestion = useCallback(
-    (suggestion: { sId: string }) => setSuggestionState(suggestion, "approved"),
+    (suggestion: { sId: string }) =>
+      setSuggestionState(suggestion, "approved", { applyToAgent: true }),
     [setSuggestionState]
   );
   const rejectSuggestion = useCallback(
