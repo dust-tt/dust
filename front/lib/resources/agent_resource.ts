@@ -187,8 +187,9 @@ export interface FullAgentResource extends AgentResource {
  *   Slack channels, archiving and restoring.
  * - `admin`: managing the agent's editors. `admin` alone MUST NOT allow changing the definition,
  *   and `write` alone MUST NOT allow changing the editors.
- * Holding another verb may make the agent fetchable, but without `read` only its light core fields
- * may be exposed (see `unreadable-agent-is-light`).
+ * Holding any verb makes the agent fetchable, but without `read` only its light core fields may be
+ * exposed (see `unreadable-agent-is-light`). The explicit `admin_can_see_private_entities` admin
+ * override is the only exception and may expose the full configuration.
  * Global (code-defined) agents are `read`-only, for the roles in their audience.
  */
 /**
