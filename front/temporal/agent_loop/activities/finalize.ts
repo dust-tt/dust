@@ -19,7 +19,7 @@ import {
   finalizeInterruption,
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
-import { recordExecutionFinalized } from "@app/temporal/agent_loop/activities/consumption";
+import { recordExecutionFinalized as recordConsumptionExecutionFinalized } from "@app/temporal/agent_loop/activities/consumption";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import {
   activationNewConversationNotification,
@@ -66,13 +66,17 @@ async function launchAgentMessageConsumptionAttributionAfterPersistingInputs(
   await launchAgentMessageConsumptionAttribution(auth, agentLoopArgs);
 }
 
-async function snapshotSkillsAndRecordExecutionFinalized(
+async function recordExecutionFinalized(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs,
   consumptionContext?: AgentMessageConsumptionExecutionContext | null,
 ): Promise<EnabledAgentMessageConsumptionMode | null> {
   await snapshotAgentMessageSkills(auth, agentLoopArgs);
-  return recordExecutionFinalized(auth, agentLoopArgs, consumptionContext);
+  return recordConsumptionExecutionFinalized(
+    auth,
+    agentLoopArgs,
+    consumptionContext
+  );
 }
 
 export async function finalizeSuccessfulAgentLoopActivity(
@@ -82,7 +86,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  const consumptionMode = await snapshotSkillsAndRecordExecutionFinalized(
+  const consumptionMode = await recordExecutionFinalized(
     auth,
     agentLoopArgs,
     consumptionContext,
@@ -124,7 +128,7 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  const consumptionMode = await snapshotSkillsAndRecordExecutionFinalized(
+  const consumptionMode = await recordExecutionFinalized(
     auth,
     agentLoopArgs,
     consumptionContext,
@@ -166,7 +170,7 @@ export async function finalizeInterruptedAgentLoopActivity(
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  const consumptionMode = await snapshotSkillsAndRecordExecutionFinalized(
+  const consumptionMode = await recordExecutionFinalized(
     auth,
     agentLoopArgs,
     consumptionContext,
@@ -200,7 +204,7 @@ export async function finalizeCancelledAgentLoopActivity(
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  const consumptionMode = await snapshotSkillsAndRecordExecutionFinalized(
+  const consumptionMode = await recordExecutionFinalized(
     auth,
     agentLoopArgs,
     consumptionContext,
@@ -237,7 +241,7 @@ export async function finalizeCreditStoppedAgentLoopActivity(
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  const consumptionMode = await snapshotSkillsAndRecordExecutionFinalized(
+  const consumptionMode = await recordExecutionFinalized(
     auth,
     agentLoopArgs,
     consumptionContext,
@@ -344,7 +348,7 @@ export async function finalizeErroredAgentLoopActivity(
     });
   }
 
-  const consumptionMode = await snapshotSkillsAndRecordExecutionFinalized(
+  const consumptionMode = await recordExecutionFinalized(
     auth,
     agentLoopArgs,
     consumptionContext,
