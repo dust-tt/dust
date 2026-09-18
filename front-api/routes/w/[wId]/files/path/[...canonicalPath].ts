@@ -17,6 +17,12 @@ import {
   planFolderArchive,
   streamFolderArchive,
 } from "@app/lib/api/files/folder_archive";
+import {
+  extractArchiveToFolder,
+  type FolderExtractError,
+  isFolderExtractError,
+  MAX_ARCHIVE_UPLOAD_SIZE_BYTES,
+} from "@app/lib/api/files/folder_extract";
 import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { DustFileSystemError } from "@app/types/file_system";
@@ -51,6 +57,7 @@ const ParamsSchema = z.object({
  *   HEAD   /api/w/:wId/files/path/{...canonicalPath}                    metadata only
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"rename", fileName }
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"move",   dest }
+ *   POST   /api/w/:wId/files/path/{...canonicalPath}?action=extract    expand a ZIP into the folder
  *   PUT    /api/w/:wId/files/path/{...canonicalPath}                    replace text content
  *   DELETE /api/w/:wId/files/path/{...canonicalPath}
  */
@@ -505,6 +512,109 @@ app.patch(
     }
 
     return new Response(null, { status: 200 });
+  }
+);
+
+function archiveTooLargeError(ctx: Context) {
+  return apiError(ctx, {
+    status_code: 413,
+    api_error: {
+      type: "invalid_request_error",
+      message: `Archive exceeds the ${MAX_ARCHIVE_UPLOAD_SIZE_BYTES / (1024 * 1024)} MB upload limit.`,
+    },
+  });
+}
+
+const extractBodyLimit = honoBodyLimit({
+  maxSize: MAX_ARCHIVE_UPLOAD_SIZE_BYTES,
+  onError: archiveTooLargeError,
+});
+
+function mapFolderExtractError(
+  error: FolderExtractError
+): APIErrorWithContentfulStatusCode {
+  const { code } = error;
+  switch (code) {
+    case "invalid_archive":
+    case "unsafe_entry_path":
+      return {
+        status_code: 400,
+        api_error: { type: "invalid_request_error", message: error.message },
+      };
+
+    case "too_many_entries":
+    case "too_large":
+      return {
+        status_code: 413,
+        api_error: { type: "invalid_request_error", message: error.message },
+      };
+
+    default:
+      return assertNever(code);
+  }
+}
+
+/** @ignoreswagger */
+app.post(
+  "/:canonicalPath{.+}",
+  extractBodyLimit,
+  validate("param", ParamsSchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { canonicalPath } = ctx.req.valid("param");
+
+    if (ctx.req.query("action") !== "extract") {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Unsupported action: expected `?action=extract`.",
+        },
+      });
+    }
+
+    // The destination is a folder, so a bare mount root is a valid target.
+    const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath, {
+      allowMountRoot: true,
+    });
+    if (err) {
+      return err;
+    }
+
+    let archiveBuffer: ArrayBuffer;
+    try {
+      archiveBuffer = await ctx.req.arrayBuffer();
+    } catch (err) {
+      if (isBodyLimitError(err)) {
+        return archiveTooLargeError(ctx);
+      }
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Failed to read request body.",
+        },
+      });
+    }
+
+    const extractResult = await extractArchiveToFolder(
+      dustFs,
+      canonicalPath,
+      Buffer.from(archiveBuffer)
+    );
+    if (extractResult.isErr()) {
+      const error = extractResult.error;
+      return apiError(
+        ctx,
+        isFolderExtractError(error)
+          ? mapFolderExtractError(error)
+          : mapDustFsError(error)
+      );
+    }
+
+    requestDustProjectIncrementalSyncForScopedPath(auth, canonicalPath);
+
+    return ctx.json(extractResult.value);
   }
 );
 
