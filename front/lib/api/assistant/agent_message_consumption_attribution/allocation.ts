@@ -6,6 +6,8 @@ import type {
   RunResource,
   RunUsageWithRunKeyType,
 } from "@app/lib/resources/run_resource";
+import type { ConsumptionReconciliationSource } from "@app/types/assistant/agent_message_consumption_analytics";
+import { CONSUMPTION_RECONCILIATION_SOURCE } from "@app/types/assistant/agent_message_consumption_analytics";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -15,13 +17,6 @@ const FIRST_ATTRIBUTION_VERSION_WITH_TOOL_ROWS = 2;
 export type ReconciledCreditAmounts = {
   byItem: ReadonlyMap<AgentMessageConsumptionItemResource, number>;
 };
-
-export enum ConsumptionReconciliationSource {
-  /** Derive input credits from the authoritative bill while preserving non-input credits. */
-  Derived = "derived",
-  /** Use the reconciled credit amounts stored on the consumption items. */
-  Stored = "stored",
-}
 
 export type MessageConsumptionAllocation<
   TUsage extends RunUsageWithRunKeyType = RunUsageWithRunKeyType,
@@ -336,7 +331,7 @@ function buildMessageConsumptionAllocationForVersion<
   }
 
   const reconciledCreditAmounts =
-    reconciliationSource === ConsumptionReconciliationSource.Stored
+    reconciliationSource === CONSUMPTION_RECONCILIATION_SOURCE.Stored
       ? reconcileStoredCredits({ items, billedCredits })
       : reconcileInputCredits({ items, billedCredits });
   if (!reconciledCreditAmounts) {
@@ -445,7 +440,7 @@ export function buildLatestMessageConsumptionAllocation<
     billedCredits,
     dustRunIds,
     items,
-    reconciliationSource: ConsumptionReconciliationSource.Derived,
+    reconciliationSource: CONSUMPTION_RECONCILIATION_SOURCE.Derived,
     runs,
     usages,
   });
@@ -474,7 +469,7 @@ export function buildStoredMessageConsumptionAllocation<
     billedCredits,
     dustRunIds,
     items,
-    reconciliationSource: ConsumptionReconciliationSource.Stored,
+    reconciliationSource: CONSUMPTION_RECONCILIATION_SOURCE.Stored,
     runs,
     usages,
   });

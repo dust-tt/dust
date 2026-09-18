@@ -1,7 +1,6 @@
 import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/documents";
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
-import { ConsumptionReconciliationSource } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/consumption/version";
 import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
@@ -21,6 +20,7 @@ import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { CONSUMPTION_RECONCILIATION_SOURCE } from "@app/types/assistant/agent_message_consumption_analytics";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
@@ -315,7 +315,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     }
 
     expect(input.reconciliationSource).toBe(
-      ConsumptionReconciliationSource.Stored
+      CONSUMPTION_RECONCILIATION_SOURCE.Stored
     );
     expect(
       result.value.find((document) => document.consumption_type === "tool")

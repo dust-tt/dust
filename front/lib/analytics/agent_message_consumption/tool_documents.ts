@@ -3,14 +3,14 @@ import {
   modelForUsage,
   reconciledCreditMicroForItem,
 } from "@app/lib/analytics/agent_message_consumption/document_common";
-import type {
-  AgentMessageConsumptionAnalyticsInput,
-  BilledRunUsage,
-} from "@app/lib/analytics/agent_message_consumption/load";
 import type { MessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { skillIdsAttributedToAction } from "@app/lib/api/assistant/agent_message_consumption_attribution/skill_attribution";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentMessageToolConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
+import type {
+  AgentMessageConsumptionAnalyticsInput,
+  BilledRunUsage,
+} from "@app/types/assistant/agent_message_consumption_analytics";
 import type { AgentMessageConsumptionAnalyticsToolData } from "@app/types/assistant/analytics";
 import assert from "assert";
 

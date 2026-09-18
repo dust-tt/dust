@@ -1,4 +1,3 @@
-import { ConsumptionReconciliationSource } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { getEnabledSkillIdsFromAction } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
 import { INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/consumption/version";
@@ -14,7 +13,6 @@ import {
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
-import type { AgentMessageConsumptionAnalyticsContext } from "@app/lib/resources/conversation_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -26,19 +24,19 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
-  AgentMessageAnalyticsModel,
-  AgentMessageConsumptionAnalyticsAgent,
-  AgentMessageConsumptionAnalyticsUsageType,
-  AgentMessageConsumptionAnalyticsUser,
-} from "@app/types/assistant/analytics";
+  AgentMessageConsumptionAnalyticsInput,
+  BilledRunUsage,
+  ConsumptionAnalyticsSource,
+  LoadAgentMessageConsumptionAnalyticsInputOptions,
+  LoadConsumptionOptions,
+  LoadSettledAttributionOptions,
+} from "@app/types/assistant/agent_message_consumption_analytics";
+import { CONSUMPTION_RECONCILIATION_SOURCE } from "@app/types/assistant/agent_message_consumption_analytics";
+import type { AgentMessageConsumptionAnalyticsUser } from "@app/types/assistant/analytics";
 import {
   getAgentUsageAttributedId,
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
-import type {
-  AgentMessageStatus,
-  UserMessageOrigin,
-} from "@app/types/assistant/conversation";
 import {
   AGENT_MESSAGE_STATUSES_TO_TRACK,
   isTerminalAgentMessageStatus,
@@ -47,41 +45,6 @@ import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
-
-export type BilledRunUsage = RunUsageWithRunKeyType & {
-  usageType: AgentMessageConsumptionAnalyticsUsageType;
-};
-
-export type ConsumptionAnalyticsMessageMetadata = {
-  agent: AgentMessageConsumptionAnalyticsAgent;
-  agentMessageId: string;
-  apiKeyName: string | null;
-  completedAt: Date;
-  contextOrigin: UserMessageOrigin | null;
-  conversationId: string;
-  messageStatus: AgentMessageStatus;
-  messageVersion: number;
-  model: AgentMessageAnalyticsModel | null;
-  parentMessageId: string | null;
-  spaceId: string | null;
-  triggerId: string | null;
-  user: AgentMessageConsumptionAnalyticsUser | null;
-  workspaceId: string;
-};
-
-export type AgentMessageConsumptionAnalyticsInput =
-  ConsumptionAnalyticsMessageMetadata & {
-    actions: AgentMCPActionResource[];
-    billedCredits: number;
-    dustRunIds: string[];
-    enabledSkillIdsByActionId: ReadonlyMap<string, string[]>;
-    items: AgentMessageConsumptionItemResource[];
-    runs: RunResource[];
-    skills: SkillResource[];
-    stepContents: AgentStepContentResource[];
-    usages: BilledRunUsage[];
-    reconciliationSource: ConsumptionReconciliationSource;
-  };
 
 // We only account for billed usage types in the analytics pipeline.
 function isBilledRunUsage(
@@ -182,31 +145,6 @@ async function loadAnalyticsUser({
   };
 }
 
-type ConsumptionAnalyticsSource = Pick<
-  AgentMessageConsumptionAnalyticsInput,
-  "items" | "reconciliationSource"
-> & {
-  billedCredits: number | null;
-  completedAt: Date;
-  context: AgentMessageConsumptionAnalyticsContext;
-};
-
-type LoadSettledAttributionOptions = {
-  agentMessageId: string;
-  preloadedActions?: AgentMCPActionResource[];
-  source?: "settled_attribution";
-};
-
-type LoadConsumptionOptions = {
-  agentMessageModelId: ModelId;
-  preloadedActions?: AgentMCPActionResource[];
-  source: "consumption";
-};
-
-type LoadAgentMessageConsumptionAnalyticsInputOptions =
-  | LoadSettledAttributionOptions
-  | LoadConsumptionOptions;
-
 /**
  * @cc [owner:id13,label:backend;data-integrity] consumption-analytics-source-identity
  * Settled attribution MUST load a terminal message by public ID and use its authoritative message
@@ -259,7 +197,7 @@ async function loadSettledAttributionAnalyticsInput(
       completedAt: agentMessage.completedAt,
       context,
       items,
-      reconciliationSource: ConsumptionReconciliationSource.Derived,
+      reconciliationSource: CONSUMPTION_RECONCILIATION_SOURCE.Derived,
     },
   });
 }
@@ -305,7 +243,7 @@ async function loadConsumptionAnalyticsInput(
       completedAt: agentMessage.completedAt ?? agentMessage.createdAt,
       context,
       items,
-      reconciliationSource: ConsumptionReconciliationSource.Stored,
+      reconciliationSource: CONSUMPTION_RECONCILIATION_SOURCE.Stored,
     },
   });
 }
