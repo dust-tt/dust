@@ -122,6 +122,8 @@ export const AgentMessageMarkdown = ({
       compactSpacing={compactSpacing}
       forcedTextSize={forcedTextSize}
       canCopyQuotes={canCopyQuotes}
+      // Agent output is read-only, so task lists render as step badges rather than checkboxes.
+      taskListVariant="step"
     />
   );
 };
