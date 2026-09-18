@@ -81,26 +81,12 @@
         "front-api/**/*.{js,jsx,ts,tsx}",
         "connectors/src/**/*.{js,jsx,ts,tsx}",
         "cli/dust-cli/**/*.{js,jsx,ts,tsx}",
-        "extension/**/*.{js,jsx,ts,tsx}",
-        "!front/hooks/useNotification.ts"
+        "extension/**/*.{js,jsx,ts,tsx}"
       ],
-      "linter": {
-        "rules": {
-          "style": {
-            "noRestrictedImports": {
-              "level": "error",
-              "options": {
-                "paths": {
-                  "@dust-tt/sparkle": {
-                    "importNames": ["useSendNotification"],
-                    "message": "Import useSendNotification from '@app/hooks/useNotification' instead."
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+      "plugins": [
+        "./.grit/patterns/noBulkLodash.grit",
+        "./.grit/patterns/noDirectSparkleNotification.grit"
+      ]
     },
     {
       "includes": [

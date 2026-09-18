@@ -8,11 +8,11 @@ import {
   TRIAL_DURATION_DAYS,
 } from "@app/lib/plans/trial/constants";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import type { CountryCode } from "libphonenumber-js/min";
+import type { Country } from "react-phone-number-input";
 
 export type GetVerifyResponseBody = {
   isEligibleForTrial: boolean;
-  initialCountryCode: CountryCode;
+  initialCountryCode: Country;
 };
 
 /**

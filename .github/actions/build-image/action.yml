@@ -32,10 +32,6 @@ inputs:
   dd_client_token:
     description: "Datadog client token"
     required: false
-  report_bundle_metrics:
-    description: "Report bundle sizes to Datadog"
-    required: false
-    default: "false"
   commit_sha:
     description: "Commit SHA"
     required: true
@@ -206,10 +202,6 @@ runs:
             --set "*.args.DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust"
             --set "*.args.DD_GIT_COMMIT_SHA=${{ inputs.commit_sha_long }}"
           )
-
-          if [[ "${{ inputs.report_bundle_metrics }}" == "true" ]]; then
-            BAKE_OVERRIDES+=(--set "front-api.args.REPORT_BUNDLE_METRICS=true")
-          fi
 
           # Convert the build arguments collected above to Bake target overrides.
           for ((i = 1; i < ${#build_args[@]}; i += 2)); do

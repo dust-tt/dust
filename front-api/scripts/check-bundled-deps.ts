@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { isBuiltin } from "node:module";
+import { builtinModules } from "node:module";
 
 import esbuild from "esbuild";
 
@@ -7,13 +7,11 @@ import {
   BUILD_TARGETS,
   type BuildTarget,
   getBaseBuildOptions,
-  OPTIONAL_NATIVE_PACKAGES,
-  OPTIONAL_PACKAGES,
 } from "../esbuild.shared";
 
-// The server bundle leaves the packages in `EXTERNAL_PACKAGES` on disk,
-// including ones reached through the `@app/*` alias into `front`'s source.
-// Those `require()` calls
+// esbuild externalizes every bare-specifier import by default (see
+// `bundleEsmPlugin` in esbuild.shared.ts), including ones reached only
+// through the `@app/*` alias into `front`'s source. Those `require()` calls
 // are resolved by Node from front-api's own node_modules at runtime, so an
 // externalized package that isn't a declared front-api dependency instead
 // resolves by walking up to whatever happens to be hoisted at the repo
@@ -53,7 +51,7 @@ async function findUndeclaredExternalDeps(
     output.imports
       .filter((imp) => imp.external)
       .map((imp) => packageNameFromImportPath(imp.path))
-      .filter((pkg) => !isBuiltin(pkg))
+      .filter((pkg) => !builtinModules.includes(pkg.replace(/^node:/, "")))
   );
 
   return [...externalPackages].filter((pkg) => !declaredDeps.has(pkg)).sort();
@@ -65,12 +63,7 @@ async function main() {
   const baselineAllowlist: string[] = JSON.parse(
     readFileSync(BASELINE_ALLOWLIST_PATH, "utf-8")
   );
-  const accepted = new Set([
-    ...declaredDeps,
-    ...baselineAllowlist,
-    ...OPTIONAL_NATIVE_PACKAGES,
-    ...OPTIONAL_PACKAGES,
-  ]);
+  const accepted = new Set([...declaredDeps, ...baselineAllowlist]);
 
   const results = await Promise.all(
     BUILD_TARGETS.map(async (target) => ({
@@ -83,13 +76,12 @@ async function main() {
 
   if (failures.length > 0) {
     console.error(
-      "The generated bundles still contain runtime require() calls for these\n" +
-        "packages, but front-api does not declare them as dependencies. This can\n" +
-        "work by accident in a hoisted monorepo install, then fail in a clean or\n" +
-        "production install when Node finds a different transitive version or no\n" +
-        "package at all. Add each package to front-api/package.json's dependencies\n" +
-        "so npm guarantees that it is present in front-api's runtime dependency\n" +
-        `tree. Existing exceptions live in ${BASELINE_ALLOWLIST_PATH}.\n\n`
+      "The following packages are require()'d at runtime by the bundled\n" +
+        "front-api output but are not declared in front-api/package.json's\n" +
+        `\`dependencies\` and are not in ${BASELINE_ALLOWLIST_PATH}.\n` +
+        "Declare each one explicitly in front-api's `dependencies` so it\n" +
+        "resolves from front-api's own node_modules instead of depending\n" +
+        "on hoisting:\n"
     );
     for (const { target, undeclared } of failures) {
       console.error(`  ${target}: ${undeclared.join(", ")}`);
