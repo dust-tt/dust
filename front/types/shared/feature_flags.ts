@@ -200,6 +200,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "davidebbo",
   },
+  automatic_model_health_routing: {
+    description:
+      "Let a model-health breach seen on this workspace's traffic degrade the endpoint",
+    stage: "dust_only",
+    owner: "frankaloia",
+  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",

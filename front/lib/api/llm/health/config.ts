@@ -18,6 +18,11 @@ export const MIN_DEGRADED_DURATION_MS = 10 * 60 * 1000;
 // Consecutive synthetic probes that must all succeed to declare a recovery.
 export const PROBES_PER_RECOVERY = 3;
 
+// Failed probes renew every MIN_DEGRADED_DURATION_MS. Twice that interval lets
+// one delayed activity finish without routing traffic back to an unhealthy
+// endpoint, while still restoring traffic if its recovery workflow dies.
+export const DEGRADATION_LEASE_MS = MIN_DEGRADED_DURATION_MS * 2;
+
 // How often one endpoint may be evaluated, per pod: during an outage error
 // writes land hundreds of times a second on the same endpoint.
 export const MIN_EVALUATION_INTERVAL_MS = 5_000;

@@ -1,6 +1,8 @@
+import { DEGRADATION_LEASE_MS } from "@app/lib/api/llm/health/config";
 import { probeEndpoint } from "@app/lib/api/llm/health/probe";
 import { logModelHealthTransition } from "@app/lib/api/llm/health/transitions";
 import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
+import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 
 export async function probeEndpointActivity(
   endpoint: DegradedModelEndpointType
@@ -11,10 +13,17 @@ export async function probeEndpointActivity(
 export async function logModelHealthRecoveryActivity({
   endpoint,
   degradedForMs,
+  persistDegradation,
 }: {
   endpoint: DegradedModelEndpointType;
   degradedForMs: number;
+  persistDegradation: boolean;
 }): Promise<void> {
+  if (persistDegradation) {
+    await ModelDegradationResource.updateDegradedEndpoints([
+      { ...endpoint, degraded: false },
+    ]);
+  }
   logModelHealthTransition({
     endpoint,
     transition: "recovered",
@@ -25,13 +34,23 @@ export async function logModelHealthRecoveryActivity({
 export async function logModelHealthProbeFailedActivity({
   endpoint,
   degradedForMs,
+  persistDegradation,
 }: {
   endpoint: DegradedModelEndpointType;
   degradedForMs: number;
+  persistDegradation: boolean;
 }): Promise<void> {
+  let expiresAt: Date | undefined;
+  if (persistDegradation) {
+    expiresAt = new Date(Date.now() + DEGRADATION_LEASE_MS);
+    await ModelDegradationResource.updateDegradedEndpoints([
+      { ...endpoint, degraded: true, expiresAt },
+    ]);
+  }
   logModelHealthTransition({
     endpoint,
     transition: "probe_failed",
     degradedForMs,
+    expiresAt,
   });
 }

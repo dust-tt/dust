@@ -24,10 +24,8 @@ const {
  * Recovery for one degraded endpoint.
  *
  * Started by whichever pod detected the breach; the deterministic workflow id
- * makes concurrent starts collapse into this single run, and its existence is
- * what "degraded" means while it lasts. Because that is the only state, this
- * run's start time is also the moment the endpoint became degraded, which is
- * what the detection guard reads back off `describe()`.
+ * makes concurrent starts collapse into this single run. Postgres stores the
+ * endpoint's serving state while this workflow owns recovery checks.
  *
  * Every round waits `MIN_DEGRADED_DURATION_MS` on a durable Temporal timer --
  * a worker restart mid-wait costs nothing -- and then probes once. The timer
@@ -35,12 +33,13 @@ const {
  * failed rounds: a dead endpoint sees one round every ten minutes rather than
  * as fast as it can refuse them.
  *
- * After `MAX_PROBE_ROUNDS` the run simply ends, logging no transition. The
- * endpoint stops being degraded because the workflow id frees up, so an outage
- * still in progress is re-detected from the counters and opens a fresh run.
+ * After `MAX_PROBE_ROUNDS` the run ends without clearing its last failed-probe
+ * renewal. That lease expires on its own; an outage still in progress is
+ * re-detected from the counters and opens a fresh run.
  */
 export async function modelHealthRecoveryWorkflow(
-  endpoint: DegradedModelEndpointType
+  endpoint: DegradedModelEndpointType,
+  persistDegradation: boolean
 ): Promise<void> {
   const startedAtMs = Date.now();
 
@@ -51,10 +50,18 @@ export async function modelHealthRecoveryWorkflow(
     const degradedForMs = Date.now() - startedAtMs;
 
     if (healthy) {
-      await logModelHealthRecoveryActivity({ endpoint, degradedForMs });
+      await logModelHealthRecoveryActivity({
+        endpoint,
+        degradedForMs,
+        persistDegradation,
+      });
       return;
     }
 
-    await logModelHealthProbeFailedActivity({ endpoint, degradedForMs });
+    await logModelHealthProbeFailedActivity({
+      endpoint,
+      degradedForMs,
+      persistDegradation,
+    });
   }
 }

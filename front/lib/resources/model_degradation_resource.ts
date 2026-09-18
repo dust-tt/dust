@@ -64,9 +64,10 @@ export class ModelDegradationResource extends BaseResource<ModelDegradationModel
     });
 
     const named = updates.map(endpointOf);
-    const toDegrade = updates
-      .filter(({ degraded }) => degraded)
-      .map(endpointOf);
+    const toDegrade = updates.flatMap(
+      ({ degraded, modelId, providerId, host, expiresAt }) =>
+        degraded ? [{ modelId, providerId, host, expiresAt }] : []
+    );
 
     await frontSequelize.transaction(async (transaction) => {
       await ModelDegradationModel.destroy({
