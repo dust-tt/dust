@@ -17,6 +17,7 @@ export interface SkillSearchFilters {
   // Omitted means active only. Suggested skills are never searchable.
   status?: ("active" | "archived")[];
   mcpServerViewIds?: string[];
+  // Supports "edited by me", but not "not edited by me".
   editedByMe?: true;
   availability?: SkillAvailability[];
 }
