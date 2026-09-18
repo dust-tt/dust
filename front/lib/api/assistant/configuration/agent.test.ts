@@ -39,6 +39,7 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
@@ -123,6 +124,78 @@ describe.each([
       canRead: dangerouslyRequestAllGroups,
       canEdit: dangerouslyRequestAllGroups,
     });
+    expect(warn).not.toHaveBeenCalledWith(
+      expect.objectContaining({ check: "agent_permissions" }),
+      "group_permissions_shadow_mismatch"
+    );
+  });
+
+  it("does not report the space read gate as a permission mismatch", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "user",
+    });
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { scope: "hidden", requestedSpaceIds: [restrictedSpace.id] }
+    );
+    await FeatureFlagFactory.basic(authenticator, "group_permissions_shadow");
+    const warn = vi.spyOn(logger, "warn");
+
+    const configuration = await getAgentConfiguration(authenticator, {
+      agentId: agent.sId,
+      variant: "light",
+      dangerouslySkipPermissionFiltering: true,
+    });
+
+    // Grants deny read and write on an agent backed by a space the editor cannot read.
+    expect(configuration).toMatchObject(
+      grants
+        ? { canRead: false, canEdit: false }
+        : { canRead: true, canEdit: true }
+    );
+    expect(warn).not.toHaveBeenCalledWith(
+      expect.objectContaining({ check: "agent_permissions" }),
+      "group_permissions_shadow_mismatch"
+    );
+  });
+
+  it("does not report the space read gate for a scoped system key without the admin role", async () => {
+    const { authenticator, workspace, systemGroup } = await createResourceTest({
+      role: "admin",
+    });
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { scope: "hidden", requestedSpaceIds: [restrictedSpace.id] }
+    );
+    const group = await GroupFactory.regularManual(workspace, "Agent editors");
+    const resource = AgentResource.fromAgentConfiguration(authenticator, agent);
+    assert(resource.id !== null);
+    await GroupPermissionResource.grant(authenticator, {
+      group,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: resource.id,
+    });
+    await FeatureFlagFactory.basic(authenticator, "group_permissions_shadow");
+    const auth = await Authenticator.fromKey(
+      await KeyFactory.system(systemGroup),
+      workspace.sId,
+      [group.sId],
+      "user"
+    );
+    const warn = vi.spyOn(logger, "warn");
+
+    const configuration = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+      dangerouslySkipPermissionFiltering: true,
+    });
+
+    expect(configuration).toMatchObject({ canRead: false, canEdit: false });
     expect(warn).not.toHaveBeenCalledWith(
       expect.objectContaining({ check: "agent_permissions" }),
       "group_permissions_shadow_mismatch"

@@ -1,13 +1,16 @@
 import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   deleteSkillDocument,
   deleteWorkspaceSkillDocuments,
   indexSkillDocument,
+  updateSkillSearchActiveUsers,
 } from "@app/lib/skill_search";
+import { fetchSearchActiveUsers } from "@app/lib/skill_search/usage";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -146,5 +149,46 @@ export async function deleteWorkspaceSkillSearchActivity({
   const deleteResult = await deleteWorkspaceSkillDocuments({ workspaceId });
   if (deleteResult.isErr()) {
     throw deleteResult.error;
+  }
+}
+
+export async function listWorkspaceIdsActivity(): Promise<string[]> {
+  const workspaces = await WorkspaceResource.listAll("ASC");
+  const subscriptions =
+    await SubscriptionResource.fetchActiveByWorkspacesModelId(
+      workspaces.map((workspace) => workspace.id)
+    );
+  return workspaces
+    .filter((workspace) => subscriptions[workspace.id].status === "active")
+    .map((workspace) => workspace.sId);
+}
+
+export async function refreshWorkspaceSearchUsageActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<void> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const activeUsers = await fetchSearchActiveUsers(auth, {
+    evaluatedAtMs: Date.now(),
+  });
+  if (activeUsers.isErr()) {
+    throw activeUsers.error;
+  }
+  const skills = await SkillResource.listByWorkspace(auth, {
+    permissionFiltering: "redact_unreadable",
+    status: ["active", "archived"],
+    onlyCustom: true,
+    withInstructions: false,
+    withTools: false,
+    withFileAttachments: false,
+  });
+  const updated = await updateSkillSearchActiveUsers({
+    workspaceId,
+    skillIds: skills.map((skill) => skill.sId),
+    activeUsers: activeUsers.value,
+  });
+  if (updated.isErr()) {
+    throw updated.error;
   }
 }

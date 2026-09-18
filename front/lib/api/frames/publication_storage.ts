@@ -5,7 +5,12 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
+import {
+  buildFrameFunctionsTarArchive,
+  FRAME_FUNCTIONS_ARCHIVE_CONTENT_TYPE,
+} from "@app/lib/api/frames/functions_archive";
 import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import { seedFramePublicationFunctionsArchive } from "@app/lib/api/frames/seed_functions_archive";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
@@ -21,6 +26,7 @@ import type { FramePublicationFunctionDefinition } from "@app/lib/resources/sand
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import type { FramePublicationDescriptor } from "@app/types/api/frame_publication";
@@ -32,6 +38,7 @@ import {
 import {
   getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
+  getFramePublicationFunctionsArchivePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
@@ -300,7 +307,11 @@ export async function storeFramePublication(
   }
   const descriptor = descriptorResult.data;
 
-  const publicationFiles = [
+  const publicationFiles: Array<{
+    filePath: string;
+    content: string | Buffer;
+    contentType: string;
+  }> = [
     {
       filePath: getFramePublicationUiBundlePath(identity),
       content: uiBundleCode,
@@ -315,6 +326,23 @@ export async function storeFramePublication(
       contentType: sandboxFunctionContentType,
     })),
   ];
+
+  // Additive cold-path archive: one object so invocation can skip listing the
+  // uncached gcsfuse functions/ directory. Per-function objects stay for
+  // poke/debug and as the resolve fallback when the archive is absent.
+  if (functionArtifacts.length > 0) {
+    const functionsArchive = await buildFrameFunctionsTarArchive(
+      functionArtifacts.map((artifact) => ({
+        name: artifact.name,
+        content: artifact.bundleCode,
+      }))
+    );
+    publicationFiles.push({
+      filePath: getFramePublicationFunctionsArchivePath(identity),
+      content: functionsArchive,
+      contentType: FRAME_FUNCTIONS_ARCHIVE_CONTENT_TYPE,
+    });
+  }
 
   await concurrentExecutor(
     publicationFiles,
@@ -717,6 +745,25 @@ export async function publishFramePublication(
       );
     }
     return new Err(error);
+  }
+
+  // Eagerly materialize functions.tar off gcsfuse when the publication has
+  // functions. Fire-and-forget: never block or fail publish on seed errors.
+  if (functionArtifacts.length > 0) {
+    void seedFramePublicationFunctionsArchive(auth, {
+      frame,
+      publicationId: publication.value.publicationId,
+    }).catch((err) => {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          frameId: frame.sId,
+          publicationId: publication.value.publicationId,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        "Unhandled functions.tar seed rejection"
+      );
+    });
   }
 
   return publication;

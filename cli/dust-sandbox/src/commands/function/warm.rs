@@ -99,10 +99,21 @@ struct WarmFrame {
     outcome: Option<serde_json::Value>,
     #[serde(default, rename = "importKind")]
     import_kind: Option<ImportKind>,
+    #[serde(default, rename = "timingsMs")]
+    timings_ms: Option<WarmPhaseTimings>,
     #[serde(default)]
     stale: bool,
     #[serde(default)]
     error: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WarmPhaseTimings {
+    #[serde(default)]
+    pub import: Option<u64>,
+    #[serde(default)]
+    pub handler: Option<u64>,
 }
 
 /// The outcome of asking the warm pool to run an invocation.
@@ -115,7 +126,11 @@ pub enum WarmRun {
     /// was lost: past the ack the cold path is off the table, because
     /// re-running a function that may already have fired its side effects is
     /// worse than failing the invocation.
-    Outcome(serde_json::Value, Option<ImportKind>),
+    Outcome(
+        serde_json::Value,
+        Option<ImportKind>,
+        Option<WarmPhaseTimings>,
+    ),
     /// No usable warm worker (home slot not running, stale bundle, protocol
     /// mismatch, ownership refusal, first frame overdue...). Nothing
     /// executed; run cold.
@@ -153,7 +168,7 @@ fn warm_dir() -> Option<PathBuf> {
 /// Creates the warm dir if needed and verifies it is exactly ours: a real
 /// directory (not a symlink), owned by our euid, mode 0700. Returns None —
 /// meaning "stay cold" — on any deviation.
-fn ensure_trusted_warm_dir() -> Option<PathBuf> {
+pub(crate) fn ensure_trusted_warm_dir() -> Option<PathBuf> {
     let dir = warm_dir()?;
     let mut builder = std::fs::DirBuilder::new();
     builder.mode(0o700);
@@ -293,13 +308,6 @@ pub fn populate_bundle_cache(handler: &Path, sha256: &str) {
     if !is_valid_bundle_sha256(sha256) {
         return;
     }
-    let Some(dir) = bundle_cache_dir() else {
-        return;
-    };
-    let target = dir.join(format!("{sha256}.js"));
-    if std::fs::metadata(&target).is_ok() {
-        return;
-    }
     let Ok(bytes) = std::fs::read(handler) else {
         return;
     };
@@ -308,16 +316,76 @@ pub fn populate_bundle_cache(handler: &Path, sha256: &str) {
     if actual != sha256 {
         return;
     }
+    if write_bundle_cache_entry(&bytes, sha256) {
+        if let Some(dir) = bundle_cache_dir() {
+            prune_bundle_cache(&dir, BUNDLE_CACHE_MAX_AGE);
+        }
+    }
+}
+
+/// Eagerly hash every function bundle under `dir` into the content-addressed
+/// cache (keyed by content sha256). Used after extracting a publication's
+/// `functions.tar` so every slug is warm/cold-ready without a per-function
+/// fuse touch. Best-effort and idempotent.
+pub fn populate_bundle_caches_from_dir(dir: &Path) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let mut wrote_any = false;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        // Skip markers / junk; archive entries are `<slug>.{ts,js,...}`.
+        if name.starts_with('.') {
+            continue;
+        }
+        let Ok(bytes) = std::fs::read(&path) else {
+            continue;
+        };
+        let digest = ring::digest::digest(&ring::digest::SHA256, &bytes);
+        let sha256: String = digest.as_ref().iter().map(|b| format!("{b:02x}")).collect();
+        if write_bundle_cache_entry(&bytes, &sha256) {
+            wrote_any = true;
+        }
+    }
+    if wrote_any {
+        if let Some(cache_dir) = bundle_cache_dir() {
+            prune_bundle_cache(&cache_dir, BUNDLE_CACHE_MAX_AGE);
+        }
+    }
+}
+
+/// Write `bytes` under `bundles/<sha256>.js`. Returns whether a new entry was
+/// created. Caller must have verified `sha256` matches `bytes`.
+fn write_bundle_cache_entry(bytes: &[u8], sha256: &str) -> bool {
+    if !is_valid_bundle_sha256(sha256) {
+        return false;
+    }
+    let Some(dir) = bundle_cache_dir() else {
+        return false;
+    };
+    let target = dir.join(format!("{sha256}.js"));
+    if std::fs::metadata(&target).is_ok() {
+        return false;
+    }
     // Write-then-rename so a concurrent dsbx never observes (or imports) a
     // half-written bundle.
     let tmp = dir.join(format!("{sha256}.js.tmp-{}", std::process::id()));
-    if std::fs::write(&tmp, &bytes).is_err() {
-        return;
+    if std::fs::write(&tmp, bytes).is_err() {
+        return false;
     }
-    let _ = std::fs::rename(&tmp, &target);
-    // A populate happens once per publish per sandbox: cheap enough a spot
-    // to keep the cache bounded.
-    prune_bundle_cache(&dir, BUNDLE_CACHE_MAX_AGE);
+    match std::fs::rename(&tmp, &target) {
+        Ok(()) => true,
+        Err(_) => {
+            let _ = std::fs::remove_file(&tmp);
+            false
+        }
+    }
 }
 
 /// Removes cache entries whose mtime is older than `max_age`. Best-effort.
@@ -454,7 +522,11 @@ async fn roundtrip(mut stream: UnixStream, name: &str, input: &str) -> Result<Wa
         // Single-frame outcome: a pre-execution classification such as
         // bad_input or overloaded, delivered without an ack. Nothing
         // executed, and the outcome is the invocation's result.
-        return Ok(WarmRun::Outcome(outcome, frame.import_kind));
+        return Ok(WarmRun::Outcome(
+            outcome,
+            frame.import_kind,
+            frame.timings_ms,
+        ));
     }
     if !frame.ack {
         return Ok(WarmRun::Miss);
@@ -465,7 +537,7 @@ async fn roundtrip(mut stream: UnixStream, name: &str, input: &str) -> Result<Wa
     let mut second = String::new();
     match tokio::time::timeout(WARM_RESPONSE_TIMEOUT, reader.read_line(&mut second)).await {
         Ok(Ok(0)) | Ok(Err(_)) | Err(_) => {
-            return Ok(WarmRun::Outcome(lost_outcome_after_ack(), None))
+            return Ok(WarmRun::Outcome(lost_outcome_after_ack(), None, None))
         }
         Ok(Ok(_)) => {}
     }
@@ -474,9 +546,10 @@ async fn roundtrip(mut stream: UnixStream, name: &str, input: &str) -> Result<Wa
             v: WARM_PROTOCOL_VERSION,
             outcome: Some(outcome),
             import_kind,
+            timings_ms,
             ..
-        }) => Ok(WarmRun::Outcome(outcome, import_kind)),
-        _ => Ok(WarmRun::Outcome(lost_outcome_after_ack(), None)),
+        }) => Ok(WarmRun::Outcome(outcome, import_kind, timings_ms)),
+        _ => Ok(WarmRun::Outcome(lost_outcome_after_ack(), None, None)),
     }
 }
 
@@ -655,7 +728,7 @@ export default {{
         let deadline = std::time::Instant::now() + Duration::from_secs(15);
         let (outcome, import_kind) = loop {
             match try_warm_run("greet", &input).await {
-                WarmRun::Outcome(outcome, import_kind) => break (outcome, import_kind),
+                WarmRun::Outcome(outcome, import_kind, _) => break (outcome, import_kind),
                 WarmRun::Miss if std::time::Instant::now() < deadline => {
                     tokio::time::sleep(Duration::from_millis(50)).await;
                 }
@@ -670,7 +743,7 @@ export default {{
 
         // A repeat invocation is served from the cached import.
         match try_warm_run("greet", &input).await {
-            WarmRun::Outcome(_, import_kind) => {
+            WarmRun::Outcome(_, import_kind, _) => {
                 assert_eq!(import_kind, Some(ImportKind::Cached));
             }
             WarmRun::Miss => panic!("second warm attempt missed"),
@@ -682,7 +755,7 @@ export default {{
         let environment_handler = bundle_dir.path().join("greet__environment.ts");
         std::fs::write(&environment_handler, environment_fixture()).expect("environment fixture");
         match try_warm_run("greet__environment", &input).await {
-            WarmRun::Outcome(outcome, _) => {
+            WarmRun::Outcome(outcome, _, _) => {
                 assert_eq!(
                     outcome,
                     serde_json::json!({
@@ -704,7 +777,7 @@ export default {{
         let sibling = bundle_dir.path().join("greet__aux.ts");
         std::fs::write(&sibling, HELLO_FIXTURE).expect("sibling fixture");
         match try_warm_run("greet__aux", &input).await {
-            WarmRun::Outcome(outcome, import_kind) => {
+            WarmRun::Outcome(outcome, import_kind, _) => {
                 assert_eq!(
                     outcome,
                     serde_json::json!({ "ok": true, "output": { "hello": "warm" } })

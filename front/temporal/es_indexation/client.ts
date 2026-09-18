@@ -10,6 +10,10 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import {
+  ScheduleAlreadyRunning,
+  ScheduleOverlapPolicy,
+} from "@temporalio/client";
 
 import { indexSkillSearchSignal, indexUserSearchSignal } from "./signals";
 import {
@@ -17,7 +21,11 @@ import {
   deleteWorkspaceSkillSearchWorkflow,
   indexSkillSearchWorkflow,
   indexUserSearchWorkflow,
+  refreshSearchUsageWorkflow,
+  refreshWorkspaceSearchUsageWorkflow,
 } from "./workflows";
+
+const SEARCH_USAGE_SCHEDULE_ID = "search-usage-daily";
 
 export async function launchIndexUserSearchWorkflow({
   userId,
@@ -139,4 +147,44 @@ export async function launchDeleteWorkspaceSkillSearchWorkflow({
 
     return new Err(normalizeError(e));
   }
+}
+
+export async function launchSearchUsageSchedule(): Promise<
+  Result<undefined, Error>
+> {
+  const client = await getTemporalClientForFrontNamespace();
+  try {
+    await client.schedule.create({
+      scheduleId: SEARCH_USAGE_SCHEDULE_ID,
+      action: {
+        type: "startWorkflow",
+        workflowType: refreshSearchUsageWorkflow,
+        args: [],
+        taskQueue: QUEUE_NAME,
+      },
+      spec: { calendars: [{ hour: 3, minute: 0 }], timezone: "UTC" },
+      policies: { overlap: ScheduleOverlapPolicy.BUFFER_ONE },
+    });
+  } catch (error) {
+    if (!(error instanceof ScheduleAlreadyRunning)) {
+      return new Err(normalizeError(error));
+    }
+  }
+  return new Ok(undefined);
+}
+
+export async function launchWorkspaceSearchUsageWorkflow(
+  workspaceId: string
+): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  try {
+    await client.workflow.start(refreshWorkspaceSearchUsageWorkflow, {
+      workflowId: `search-usage-${workspaceId}`,
+      args: [{ workspaceId }],
+      taskQueue: QUEUE_NAME,
+    });
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+  return new Ok(undefined);
 }

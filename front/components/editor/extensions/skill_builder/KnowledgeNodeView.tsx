@@ -1,4 +1,3 @@
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import {
   InlineKnowledgeChip,
   KnowledgeErrorChip,
@@ -6,6 +5,7 @@ import {
 import type { KnowledgeNodeAttributes } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceView } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -30,15 +30,16 @@ export {
 interface KnowledgeDisplayProps {
   item: KnowledgeItem;
   owner: LightWorkspaceType;
-  isSpacesLoading?: boolean;
   onRemove?: () => void;
   updateAttributes: (attrs: Partial<KnowledgeNodeAttributes>) => void;
 }
 
+// Fetches the content node for base items (e.g. restored from a draft's
+// serialized <knowledge> tag) and hydrates the node attrs so the chip gets its
+// icon back; full items render directly.
 function KnowledgeDisplayComponent({
   item,
   owner,
-  isSpacesLoading = false,
   onRemove,
   updateAttributes,
 }: KnowledgeDisplayProps) {
@@ -46,7 +47,7 @@ function KnowledgeDisplayComponent({
 
   const { dataSourceView, isDataSourceViewError } = useSpaceDataSourceView({
     dataSourceViewId: item.dataSourceViewId,
-    disabled: !needsFetch || isSpacesLoading,
+    disabled: !needsFetch,
     owner,
     spaceId: item.spaceId,
   });
@@ -122,7 +123,7 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
   node,
   updateAttributes,
 }) => {
-  const { owner, isSpacesLoading } = useSpacesContext();
+  const { workspace } = useAuth();
   const { selectedItems } = node.attrs as KnowledgeNodeAttributes;
 
   const handleRemove = useCallback(
@@ -133,6 +134,9 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
     [deleteNode]
   );
 
+  // Clean up empty knowledge nodes (e.g. a dismissed search state or malformed
+  // paste): an empty node renders as null and isn't serialized, so drop it from
+  // the editable doc rather than leaving an invisible orphan.
   useLayoutEffect(() => {
     if (selectedItems.length === 0 && editor.isEditable) {
       deleteNode();
@@ -147,8 +151,7 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
     <NodeViewWrapper className="inline-flex align-middle" data-drag-handle="">
       <KnowledgeDisplayComponent
         item={selectedItems[0]}
-        owner={owner}
-        isSpacesLoading={isSpacesLoading}
+        owner={workspace}
         onRemove={editor.isEditable ? handleRemove : undefined}
         updateAttributes={updateAttributes}
       />

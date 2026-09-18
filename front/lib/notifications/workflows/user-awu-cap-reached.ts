@@ -77,7 +77,7 @@ export const userAwuCapReachedWorkflow = workflow(
  * Fire-and-forget — errors are logged but don't block the caller.
  */
 export function notifyUserAwuCapReached({
-  userSId,
+  userId,
   userEmail,
   userFirstName,
   userLastName,
@@ -86,7 +86,7 @@ export function notifyUserAwuCapReached({
   capAwuCredits,
   isBlocked,
 }: {
-  userSId: string;
+  userId: string;
   userEmail: string;
   userFirstName: string | null;
   userLastName: string | null;
@@ -109,7 +109,7 @@ export function notifyUserAwuCapReached({
           {
             workflowId: USER_AWU_CAP_REACHED_TRIGGER_ID,
             to: {
-              subscriberId: userSId,
+              subscriberId: userId,
               email: userEmail,
               firstName: userFirstName ?? undefined,
               lastName: userLastName ?? undefined,
@@ -122,14 +122,14 @@ export function notifyUserAwuCapReached({
     .then((r) => {
       if (r.result.some((res) => !!res.error?.length)) {
         logger.error(
-          { workspaceId, userSId, capAwuCredits },
+          { workspaceId, userId, capAwuCredits },
           "Failed to trigger user AWU cap reached notification"
         );
       }
     })
     .catch((err) => {
       logger.error(
-        { err, workspaceId, userSId, capAwuCredits },
+        { err, workspaceId, userId, capAwuCredits },
         "Failed to trigger user AWU cap reached notification"
       );
     });

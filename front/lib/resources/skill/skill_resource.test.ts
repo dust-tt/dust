@@ -2451,7 +2451,7 @@ describe("SkillResource", () => {
       } as const;
       await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(
         testContext.authenticator,
-        { serverSId: server.sId, ...toolMetadata }
+        { serverId: server.sId, ...toolMetadata }
       );
       const serverView = await MCPServerViewFactory.create(
         testContext.workspace,

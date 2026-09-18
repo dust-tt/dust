@@ -1,6 +1,6 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentUserRelationModel } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -21,11 +21,8 @@ export async function setAgentUserFavorite({
     Error
   >
 > {
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "light",
-  });
-  if (!agentConfiguration) {
+  const agentConfiguration = await AgentResource.fetchById(auth, agentId);
+  if (!agentConfiguration || !auth.can("read", agentConfiguration)) {
     return new Err(new Error(`Could not find agent configuration ${agentId}`));
   }
 

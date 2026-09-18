@@ -109,6 +109,17 @@ export function getFramePublicationFunctionsMountPoint({
   return `${getFramePublicationsMountPoint(frameId)}/${publicationId}/functions`;
 }
 
+/** Sibling archive of that functions directory (cold materialization). */
+export function getFramePublicationFunctionsArchiveMountPoint({
+  frameId,
+  publicationId,
+}: {
+  frameId: string;
+  publicationId: string;
+}): string {
+  return `${getFramePublicationsMountPoint(frameId)}/${publicationId}/functions.tar`;
+}
+
 /** Exact immutable publication descriptor selected for one Frame invocation. */
 export function getFramePublicationDescriptorMountPoint({
   frameId,
@@ -159,7 +170,7 @@ const SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
  * rollout for no gain.
  */
 export function sandboxDatabaseExecEnvVars({
-  framePublicationDescriptorPath,
+  framePublicationDescriptorPath, // TODO (frames v2) - remove this once we have published the new build.
 }: {
   framePublicationDescriptorPath?: string;
 } = {}): {

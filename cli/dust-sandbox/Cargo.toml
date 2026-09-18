@@ -1,6 +1,6 @@
 [package]
 name = "dust-sandbox"
-version = "0.1.59"
+version = "0.1.60"
 edition = "2021"
 
 [[bin]]
@@ -33,6 +33,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 x509-parser = "0.16"
 uuid = { version = "1", features = ["v4"] }
+tar = "0.4"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 fuser = { version = "0.18", default-features = false }

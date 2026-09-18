@@ -48,6 +48,7 @@ import {
   DESCRIBE_SKILL_TOOL_NAME,
 } from "@app/lib/reinforcement/types";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -285,6 +286,7 @@ async function createInstructionSuggestions({
         suggestion: suggestionData,
         analysis: analysis ?? null,
         state: "pending",
+        source: "sidekick",
         conversationId: conversation?.id ?? null,
       }
     );
@@ -434,6 +436,7 @@ async function createToolsSuggestions({
         suggestion,
         analysis: analysis ?? null,
         state: "pending",
+        source: "sidekick",
         conversationId: conversation?.id ?? null,
       }
     );
@@ -537,6 +540,7 @@ async function createSkillsSuggestions({
         suggestion: { action, skillId },
         analysis: analysis ?? null,
         state: "pending",
+        source: "sidekick",
         conversationId: conversation?.id ?? null,
       }
     );
@@ -1008,12 +1012,12 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
 
     // Validate that the sub-agent exists and is accessible.
     const { action, subAgentId } = params;
-    const subAgentConfiguration = await getAgentConfiguration(auth, {
-      agentId: subAgentId,
-      variant: "light",
-    });
+    const subAgentConfiguration = await AgentResource.fetchById(
+      auth,
+      subAgentId
+    );
 
-    if (!subAgentConfiguration) {
+    if (!subAgentConfiguration || !auth.can("read", subAgentConfiguration)) {
       return new Err(
         new MCPError(
           `The sub-agent ID "${subAgentId}" is invalid or not accessible.`,
@@ -1095,6 +1099,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
             suggestion,
             analysis: params.analysis ?? null,
             state: "pending",
+            source: "sidekick",
           }
         );
 
@@ -1226,6 +1231,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
           suggestion: params.suggestion,
           analysis: params.analysis ?? null,
           state: "pending",
+          source: "sidekick",
         }
       );
 
@@ -1454,6 +1460,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
             suggestion,
             analysis: params.analysis ?? null,
             state: "pending",
+            source: "sidekick",
           }
         );
 

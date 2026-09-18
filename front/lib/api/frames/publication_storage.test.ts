@@ -7,6 +7,7 @@ import {
   publishFramePublication,
   storeFramePublication,
 } from "@app/lib/api/frames/publication_storage";
+import { seedFramePublicationFunctionsArchive } from "@app/lib/api/frames/seed_functions_archive";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
@@ -32,6 +33,7 @@ import { FramePublicationDescriptorSchema } from "@app/types/api/frame_publicati
 import {
   getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
+  getFramePublicationFunctionsArchivePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -46,6 +48,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/frames/database_reconciliation", () => ({
   reconcileFramePublicationDatabases: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/frames/seed_functions_archive", () => ({
+  seedFramePublicationFunctionsArchive: vi.fn().mockResolvedValue(undefined),
 }));
 
 async function setupFrame({
@@ -162,6 +168,8 @@ beforeEach(() => {
   vi.mocked(reconcileFramePublicationDatabases).mockResolvedValue(
     new Ok(undefined)
   );
+  vi.mocked(seedFramePublicationFunctionsArchive).mockClear();
+  vi.mocked(seedFramePublicationFunctionsArchive).mockResolvedValue(undefined);
   fileStorageMock.reset();
 });
 
@@ -239,20 +247,28 @@ describe("storeFramePublication", () => {
       ...identity,
       functionName: "add-task",
     });
+    const archivePath = getFramePublicationFunctionsArchivePath(identity);
     const savedPaths = fileStorageMock.saveFileCalls.map(
       ({ filePath }) => filePath
     );
 
     expect(savedPaths).toContain(bundlePath);
+    expect(savedPaths).toContain(archivePath);
     expect(savedPaths.at(-1)).toBe(getFramePublicationDescriptorPath(identity));
     expect(fileStorageMock.getObject(bundlePath)).toBe(
       functionArtifacts[0].bundleCode
     );
+    expect(fileStorageMock.getObject(archivePath)).toBeTruthy();
     expect(
       fileStorageMock.saveFileCalls.find(
         ({ filePath }) => filePath === bundlePath
       )?.contentType
     ).toBe(sandboxFunctionContentType);
+    expect(
+      fileStorageMock.saveFileCalls.find(
+        ({ filePath }) => filePath === archivePath
+      )?.contentType
+    ).toBe("application/x-tar");
     const descriptor = await loadFramePublicationDescriptor(auth, {
       frame,
       publicationId: result.value.publicationId,
@@ -966,6 +982,30 @@ describe("publishFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       published.value.publicationId
     );
+    expect(seedFramePublicationFunctionsArchive).not.toHaveBeenCalled();
+  });
+
+  it("fire-and-forgets functions.tar seed when the publication has functions", async () => {
+    const { auth, frame } = await setupFrame();
+
+    const published = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles: sourceFilesWithFunction,
+      uiBundleCode,
+    });
+
+    expect(published.isOk()).toBe(true);
+    if (published.isErr()) {
+      return;
+    }
+    // Allow the voided promise to settle.
+    await Promise.resolve();
+    expect(seedFramePublicationFunctionsArchive).toHaveBeenCalledWith(auth, {
+      frame,
+      publicationId: published.value.publicationId,
+    });
   });
 
   it("reconciles declared databases before activation", async () => {

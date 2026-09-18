@@ -7,6 +7,11 @@
  * - Plain text with @ symbols
  */
 
+import {
+  getFirstKnowledgeItem,
+  isFullKnowledgeItem,
+  serializeKnowledgeTag,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import type { SkillReference } from "@app/lib/skills/format";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import type { ToolReference } from "@app/lib/tools/format";
@@ -17,6 +22,7 @@ import type {
   RichMention,
   UserMention,
 } from "@app/types/assistant/mentions";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { JSONContent } from "@tiptap/react";
@@ -120,14 +126,16 @@ export function extractFromEditorJSON(node?: JSONContent): {
   mentions: RichMention[];
   skills: SkillReference[];
   tools: ToolReference[];
+  knowledge: DataSourceViewContentNode[];
 } {
   let textContent = "";
   let mentions: RichMention[] = [];
   let skills: SkillReference[] = [];
   let tools: ToolReference[] = [];
+  let knowledge: DataSourceViewContentNode[] = [];
 
   if (!node) {
-    return { text: textContent, mentions, skills, tools };
+    return { text: textContent, mentions, skills, tools, knowledge };
   }
 
   // Check if the node is of type 'text' and concatenate its text.
@@ -189,6 +197,16 @@ export function extractFromEditorJSON(node?: JSONContent): {
     }
   }
 
+  if (node.type === "knowledgeNode") {
+    const item = getFirstKnowledgeItem(node.attrs ?? {});
+    if (item) {
+      if (isFullKnowledgeItem(item)) {
+        knowledge.push(item.node);
+      }
+      textContent += serializeKnowledgeTag(item);
+    }
+  }
+
   // If the node is a 'hardBreak' or a 'paragraph', add a newline character.
   if (node.type && ["hardBreak", "paragraph"].includes(node.type)) {
     textContent += "\n";
@@ -208,8 +226,9 @@ export function extractFromEditorJSON(node?: JSONContent): {
       mentions = mentions.concat(childResult.mentions);
       skills = skills.concat(childResult.skills);
       tools = tools.concat(childResult.tools);
+      knowledge = knowledge.concat(childResult.knowledge);
     });
   }
 
-  return { text: textContent, mentions, skills, tools };
+  return { text: textContent, mentions, skills, tools, knowledge };
 }

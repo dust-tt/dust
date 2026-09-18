@@ -143,10 +143,10 @@ const InstructionsSuggestionCard = memo(
 
 function isToolAlreadyAdded(
   currentActions: AgentBuilderFormData["actions"],
-  toolSId: string
+  toolId: string
 ): boolean {
   return currentActions.some(
-    (action) => action.configuration.mcpServerViewId === toolSId
+    (action) => action.configuration.mcpServerViewId === toolId
   );
 }
 

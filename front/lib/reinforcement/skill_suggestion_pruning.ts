@@ -167,30 +167,41 @@ export async function pruneConflictingSkillEditSuggestions(
 
 /**
  * @cc [owner:achilleburah,label:product] prune-conflicting-editors-suggestions
- * Creating a pending `editors` suggestion MUST mark every other pending `editors` suggestion for
- * the same skill `outdated` when both add the same user or both remove the same user. Adding a
- * user in one and removing them in the other is not a conflict: both stay pending for review.
+ * Recording a new `editors` suggestion, or applying one to the skill, MUST mark every other
+ * pending `editors` suggestion for the same skill `outdated` when both add the same user or both
+ * remove the same user. Adding a user in one and removing them in the other is not a conflict:
+ * both stay pending for review. Approving a suggestion without applying it changes nothing on the
+ * skill and prunes nothing.
  */
 export async function pruneConflictingSkillEditorsSuggestions(
   auth: Authenticator,
   skill: SkillResource,
-  newSuggestion: SkillSuggestionResource & SkillEditorsSuggestionData
+  newSuggestions: (SkillSuggestionResource & SkillEditorsSuggestionData)[]
 ): Promise<void> {
+  if (newSuggestions.length === 0) {
+    return;
+  }
+
+  const excluded = new Set(newSuggestions.map((s) => s.sId));
   const pendingEditorSuggestions = (
     await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
       states: ["pending"],
-      kind: "editors",
+      kinds: ["editors"],
       sources: PRUNED_SOURCES,
     })
   )
     .filter(isEditorsSkillSuggestion)
-    .filter((s) => s.sId !== newSuggestion.sId);
+    .filter((s) => !excluded.has(s.sId));
   if (pendingEditorSuggestions.length === 0) {
     return;
   }
 
-  const newAddUserIds = new Set(newSuggestion.suggestion.addUserIds);
-  const newRemoveUserIds = new Set(newSuggestion.suggestion.removeUserIds);
+  const newAddUserIds = new Set(
+    newSuggestions.flatMap((s) => s.suggestion.addUserIds)
+  );
+  const newRemoveUserIds = new Set(
+    newSuggestions.flatMap((s) => s.suggestion.removeUserIds)
+  );
 
   const toMarkOutdated = pendingEditorSuggestions.filter((row) => {
     const editors = row.suggestion;

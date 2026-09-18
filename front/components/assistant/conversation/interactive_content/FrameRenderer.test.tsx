@@ -2,7 +2,13 @@ import { FrameRenderer } from "@app/components/assistant/conversation/interactiv
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { EditTextFn } from "@app/types/assistant/visualization";
 import type { LightWorkspaceType } from "@app/types/user";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -92,6 +98,12 @@ vi.mock("@app/lib/swr/files", () => ({
     error: null,
     mutateFileContent: mocks.mutateFileContent,
   }),
+  useFileContentByUrl: () => ({
+    fileContent: "export default function FrameV2() {}",
+    isNotFound: false,
+    isFileContentLoading: false,
+    fileContentError: null,
+  }),
   useFileMetadata: () => ({
     fileMetadata: {
       fileName: "manifest.json",
@@ -161,6 +173,29 @@ afterEach(() => {
 });
 
 describe("FrameRenderer", () => {
+  it("shows the Frame v2 source when switching to code", async () => {
+    const { container } = render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="v2"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch to Code" }));
+
+    await waitFor(() => {
+      expect(container).toHaveTextContent(
+        "export default function FrameV2() {}"
+      );
+    });
+    expect(
+      screen.getByRole("button", { name: "Switch to Rendering" })
+    ).toBeInTheDocument();
+  });
+
   it("enables inline editing for a Frame v2 author", () => {
     render(
       <FrameRenderer

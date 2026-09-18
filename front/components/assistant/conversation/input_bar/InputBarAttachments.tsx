@@ -24,10 +24,11 @@ import {
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
+import { isSupportedImageContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isFolder, isWebsite } from "@dust-tt/client";
-import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
+import { CitationGrid, cn, DoubleIcon, Icon } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 
 interface FileAttachmentsProps {
@@ -44,6 +45,22 @@ interface InputBarAttachmentsProps {
   files: FileAttachmentsProps;
   nodes?: NodeAttachmentsProps;
   disable?: boolean;
+}
+
+const ATTACHMENTS_ROW_CLASS_NAME = "border-b border-separator px-3 pb-3 pt-3";
+
+function getAttachmentIconSize(hasImageAttachment: boolean) {
+  return hasImageAttachment ? "md" : "sm";
+}
+
+// An image is previewable once uploaded (preview URL and file id), and counts
+// as one while uploading so the row does not switch layout mid-upload.
+function isImageAttachment(attachment: FileAttachment): boolean {
+  return (
+    isSupportedImageContentType(attachment.contentType) &&
+    (attachment.isUploading ||
+      (!!attachment.sourceUrl && attachment.fileId !== null))
+  );
 }
 
 export function InputBarAttachments({
@@ -106,8 +123,13 @@ export function InputBarAttachments({
     return fileService.fileBlobs.map((blob) => createFileAttachment(blob));
   }, [fileService, createFileAttachment]);
 
+  // Image previews need a tall row anyway, so every attachment keeps its
+  // card next to them. Without images, attachments collapse into chips.
+  const hasImageAttachment = fileAttachments.some(isImageAttachment);
+
   // Convert content nodes to NodeAttachment objects
   const nodeAttachments: NodeAttachment[] = useMemo(() => {
+    const iconSize = getAttachmentIconSize(hasImageAttachment);
     return (
       nodes?.items.map((node) => {
         const logo = getConnectorProviderLogoWithFallback({
@@ -120,12 +142,12 @@ export function InputBarAttachments({
 
         const isWebsiteOrFolder = isWebsite(dataSource) || isFolder(dataSource);
         const visual = isWebsiteOrFolder ? (
-          <Icon visual={logo} size="md" />
+          <Icon visual={logo} size={iconSize} />
         ) : (
           <DoubleIcon
             mainIcon={getVisualForDataSourceViewContentNode(node)}
             secondaryIcon={logo}
-            size="md"
+            size={iconSize}
           />
         );
 
@@ -142,7 +164,7 @@ export function InputBarAttachments({
         };
       }) ?? []
     );
-  }, [nodes, spacesMap, disable]);
+  }, [nodes, spacesMap, disable, hasImageAttachment]);
 
   const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
 
@@ -150,17 +172,24 @@ export function InputBarAttachments({
     return null;
   }
 
-  return (
-    <CitationGrid className="border-b border-separator px-3 pb-3 pt-3">
-      {allAttachments.map((attachment, index) => {
-        const attachmentCitation = attachmentToAttachmentCitation(attachment);
-        return (
-          <AttachmentCitation
-            key={index}
-            attachmentCitation={attachmentCitation}
-          />
-        );
+  const iconSize = getAttachmentIconSize(hasImageAttachment);
+  const citations = allAttachments.map((attachment) => (
+    <AttachmentCitation
+      key={attachment.id}
+      attachmentCitation={attachmentToAttachmentCitation(attachment, {
+        iconSize,
       })}
+      variant={hasImageAttachment ? "card" : "chip"}
+    />
+  ));
+
+  return hasImageAttachment ? (
+    <CitationGrid className={ATTACHMENTS_ROW_CLASS_NAME}>
+      {citations}
     </CitationGrid>
+  ) : (
+    <div className={cn("flex flex-wrap gap-2", ATTACHMENTS_ROW_CLASS_NAME)}>
+      {citations}
+    </div>
   );
 }

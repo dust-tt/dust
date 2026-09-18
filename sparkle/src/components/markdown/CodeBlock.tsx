@@ -143,6 +143,18 @@ const codeStyle = {
   },
 };
 
+// Mirrors `codeStyle.hljs` (padding, font-size, colors) so while we are loading
+// syntax hightligter we can reserve the similar height
+const codeBlockFallbackStyle: React.CSSProperties = {
+  display: "block",
+  overflowX: "auto",
+  padding: "1em",
+  margin: 0,
+  color: "var(--color-foreground)",
+  backgroundColor: "transparent",
+  fontSize: "0.875rem",
+};
+
 interface CodeBlockProps {
   children?: React.ReactNode;
   /** CSS class; the language is derived from a `language-<lang>` token (e.g. "language-typescript"). */
@@ -180,9 +192,25 @@ export function CodeBlock({
     py: "python",
   };
   const languageToUse = languageOverrides[language] || language;
+  const code = String(children).replace(/\n$/, "");
 
   return !inline ? (
-    <Suspense fallback={<div />}>
+    <Suspense
+      fallback={
+        // Reserve the block's real height while the highlighter loads
+        <div className="text-foreground">
+          <pre
+            className="cursor-text"
+            style={{
+              ...codeBlockFallbackStyle,
+              whiteSpace: wrapLongLines ? "pre-wrap" : "pre",
+            }}
+          >
+            {code}
+          </pre>
+        </div>
+      }
+    >
       <div className="text-foreground">
         <SyntaxHighlighter
           wrapLongLines={wrapLongLines}
@@ -192,7 +220,7 @@ export function CodeBlock({
           PreTag="div"
           className="cursor-text"
         >
-          {String(children).replace(/\n$/, "")}
+          {code}
         </SyntaxHighlighter>
       </div>
     </Suspense>

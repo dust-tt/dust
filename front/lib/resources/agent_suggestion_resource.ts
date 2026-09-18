@@ -129,6 +129,12 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     return result;
   }
 
+  /**
+   * @cc [owner:avervaet,label:product] explicit-suggestion-source
+   * Callers MUST pass `source` reflecting the surface that proposed the suggestion.
+   * The column's `sidekick` database default exists only to cover rows
+   * inserted before this contract, not as a fallback for new call sites.
+   */
   static async createSuggestionForAgent(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType,

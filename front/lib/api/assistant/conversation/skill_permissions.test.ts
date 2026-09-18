@@ -46,9 +46,9 @@ describe("updateConversationRequirementsForSkills", () => {
   });
 
   const fetchConversationWithoutContent = async (
-    conversationSId: string
+    conversationId: string
   ): Promise<ConversationWithoutContentType> => {
-    const result = await getConversation(auth, conversationSId);
+    const result = await getConversation(auth, conversationId);
     if (result.isErr()) {
       throw new Error("Failed to fetch conversation");
     }

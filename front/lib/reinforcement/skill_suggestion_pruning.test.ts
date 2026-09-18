@@ -497,7 +497,9 @@ describe("pruneConflictingSkillEditorsSuggestions", () => {
       addUserIds: ["usr_a", "usr_b"],
     });
 
-    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, newer);
+    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, [
+      newer,
+    ]);
 
     expect(await stateOf(older.sId)).toBe("outdated");
     expect(await stateOf(newer.sId)).toBe("pending");
@@ -508,7 +510,9 @@ describe("pruneConflictingSkillEditorsSuggestions", () => {
     const older = await createEditors(skill, { removeUserIds: ["usr_a"] });
     const newer = await createEditors(skill, { removeUserIds: ["usr_a"] });
 
-    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, newer);
+    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, [
+      newer,
+    ]);
 
     expect(await stateOf(older.sId)).toBe("outdated");
     expect(await stateOf(newer.sId)).toBe("pending");
@@ -519,11 +523,9 @@ describe("pruneConflictingSkillEditorsSuggestions", () => {
     const removal = await createEditors(skill, { removeUserIds: ["usr_a"] });
     const addition = await createEditors(skill, { addUserIds: ["usr_a"] });
 
-    await pruneConflictingSkillEditorsSuggestions(
-      authenticator,
-      skill,
-      addition
-    );
+    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, [
+      addition,
+    ]);
 
     expect(await stateOf(removal.sId)).toBe("pending");
     expect(await stateOf(addition.sId)).toBe("pending");
@@ -540,7 +542,9 @@ describe("pruneConflictingSkillEditorsSuggestions", () => {
     });
     const newer = await createEditors(skill, { addUserIds: ["usr_a"] });
 
-    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, newer);
+    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, [
+      newer,
+    ]);
 
     expect(await stateOf(otherUser.sId)).toBe("pending");
     expect(await stateOf(sameUserOtherSkill.sId)).toBe("pending");
@@ -557,7 +561,9 @@ describe("pruneConflictingSkillEditorsSuggestions", () => {
     );
     const newer = await createEditors(skill, { addUserIds: ["usr_a"] });
 
-    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, newer);
+    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, [
+      newer,
+    ]);
 
     expect(await stateOf(edit.sId)).toBe("pending");
     expect(await stateOf(approved.sId)).toBe("approved");

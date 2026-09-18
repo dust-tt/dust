@@ -75,7 +75,7 @@ export async function suggestSkillEditors(
   );
 
   if (isEditorsSkillSuggestion(created)) {
-    await pruneConflictingSkillEditorsSuggestions(auth, skill, created);
+    await pruneConflictingSkillEditorsSuggestions(auth, skill, [created]);
   }
 
   return new Ok(created);
