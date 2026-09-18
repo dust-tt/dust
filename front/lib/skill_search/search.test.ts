@@ -15,14 +15,12 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
   };
 });
 
+import { searchSkills } from "@app/lib/api/skills/search";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import {
-  buildSkillSearchQuery,
-  searchSkills,
-} from "@app/lib/skill_search/search";
+import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -78,10 +76,9 @@ async function searchListings(
   const result = await searchSkills(auth, {
     ...options,
     limit: 200,
-    permissionFiltering: options.permissionFiltering,
   });
   assert(result.isOk());
-  return result.value;
+  return result.value.skills;
 }
 
 describe("custom skill search", () => {
@@ -383,6 +380,19 @@ describe("custom skill search", () => {
     });
 
     expect(await searchListings(auth)).toEqual(expected);
+
+    const page = await searchSkills(auth, {
+      searchTerm: "",
+      limit: 2,
+    });
+    assert(page.isOk());
+    expect(page.value).toEqual({
+      skills: [expected[0]],
+      hasMore: true,
+      nextCursor: Buffer.from(
+        JSON.stringify([1, "Missing", "missing-skill"])
+      ).toString("base64url"),
+    });
   });
 
   it("returns only indexed listing metadata without querying the database", async () => {
@@ -598,5 +608,46 @@ describe("custom skill search", () => {
         filters: { editedByMe: true },
       }).bool?.filter
     ).toContainEqual({ term: { editor_ids: user.sId } });
+  });
+
+  it.each([
+    0, 1, 2, 3,
+  ])("returns page metadata from the last returned hit with %s hits", async (hitCount) => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const skills: SkillResource[] = [];
+    for (const name of ["ÉclairBot", "ReportBot", "WeatherBot"]) {
+      const skill = await SkillFactory.create(auth, { name });
+      skills.push(skill);
+    }
+    const documents = await SkillFactory.createSearchDocuments(auth, skills);
+    const sortNames = ["eclairbot", "reportbot", "weatherbot"];
+    const hits = documents.slice(0, hitCount).map((document, index) => ({
+      _source: document,
+      sort: [3 - index, sortNames[index], document.skill_id, true, null],
+    }));
+    mockSearch.mockResolvedValue({ hits: { hits } });
+
+    const result = await searchSkills(auth, {
+      searchTerm: "",
+      cursor: Buffer.from(
+        JSON.stringify([4, "previous", "previous-id"])
+      ).toString("base64url"),
+      limit: 2,
+    });
+    assert(result.isOk());
+
+    const lastSort = hits[Math.min(hitCount, 2) - 1]?.sort;
+    expect(result.value).toEqual({
+      skills: hits.slice(0, 2).map((hit) => toSkillListItem(hit._source)),
+      hasMore: hitCount > 2,
+      nextCursor: lastSort
+        ? Buffer.from(JSON.stringify(lastSort)).toString("base64url")
+        : null,
+    });
+    expect(mockSearch).toHaveBeenCalledOnce();
+    expect(mockSearch.mock.lastCall![0]).toMatchObject({
+      size: 3,
+      search_after: [4, "previous", "previous-id"],
+    });
   });
 });
