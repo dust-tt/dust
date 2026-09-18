@@ -62,15 +62,17 @@ function tokensEvent(text: string): MessageStreamEvent {
   };
 }
 
-function creditSpendCheckpointEvent(paused: boolean): MessageStreamEvent {
+function creditSpendCheckpointEvent(
+  status: "paused" | "acknowledged"
+): MessageStreamEvent {
   return {
-    eventId: `checkpoint-${paused}`,
+    eventId: `checkpoint-${status}`,
     data: {
       type: "agent_credit_spend_checkpoint_updated",
       created: 0,
       configurationId: "dust",
       messageId: "msg",
-      paused,
+      status,
       step: 0,
     },
   };
@@ -209,9 +211,9 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
 
     vi.mocked(getMessagesEvents).mockImplementation(
       asyncIteratorFrom([
-        creditSpendCheckpointEvent(true),
+        creditSpendCheckpointEvent("paused"),
         tokensEvent("kept"),
-        creditSpendCheckpointEvent(false),
+        creditSpendCheckpointEvent("acknowledged"),
       ])
     );
 
