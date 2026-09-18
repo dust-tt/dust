@@ -1247,8 +1247,8 @@ export function createProjectManagerTools(
           originMessageId = toolContext.runContext.agentMessage.sId;
         }
         if (isSandboxFunctionRunContext(toolContext?.runContext)) {
-          timezone =
-            toolContext.runContext.invocation.context?.timezone ?? timezone;
+          const context = await toolContext.runContext.invocation.getContext();
+          timezone = context?.timezone ?? timezone;
         }
 
         // Get agent configuration name & profile picture URL
