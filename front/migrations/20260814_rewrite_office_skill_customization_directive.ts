@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
-import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { parseSkillTag } from "@app/lib/skills/format";
 import type { Logger } from "@app/logger/logger";

@@ -1,3 +1,9 @@
+import {
+  findBlockByBlockId,
+  parseHTMLToBlocks,
+  parseInstructionsHtml,
+  replaceBlock,
+} from "@app/lib/editor/instruction_blocks";
 import { KNOWLEDGE_TAG_REGEX } from "@app/lib/editor/knowledge_node_constants";
 import {
   BLOCK_ID_ATTRIBUTE,
@@ -6,13 +12,24 @@ import {
   SKILL_NODE_TYPE,
   TOOL_NODE_TYPE,
 } from "@app/lib/editor/node_constants";
-import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
+import {
+  postProcessMarkdown,
+  preprocessMarkdownForEditor,
+} from "@app/lib/editor/skill_instructions_preprocessing";
+import { DustError } from "@app/lib/error";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import { parseSkillReferenceTag } from "@app/lib/skills/format";
 import { parseToolTag } from "@app/lib/tools/format";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { JSONContent } from "@tiptap/core";
 import type { MarkdownManager } from "@tiptap/markdown";
+import type {
+  DOMParser as ProseMirrorDOMParser,
+  Node as ProseMirrorNode,
+} from "@tiptap/pm/model";
+import type { Transform } from "@tiptap/pm/transform";
 import type { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 
 // The editor schema, tiptap, prosemirror and cheerio are only needed once
@@ -26,6 +43,10 @@ export interface MarkdownPipeline {
   markdownManager: MarkdownManager;
   renderToHTMLString: typeof renderToHTMLString;
   cheerio: typeof import("cheerio");
+  // Stands in for the browser's `document`, which the schema's DOM parser needs to read HTML.
+  document: Document;
+  domParser: ProseMirrorDOMParser;
+  createTransform: (doc: ProseMirrorNode) => Transform;
 }
 
 let markdownPipeline: MarkdownPipeline | undefined;
@@ -40,8 +61,15 @@ function getMarkdownPipeline(): MarkdownPipeline {
   if (!markdownPipeline) {
     const { buildSkillInstructionsExtensionsForServer } =
       require("@app/lib/editor/build_skill_instructions_extensions_server") as typeof import("@app/lib/editor/build_skill_instructions_extensions_server");
+    const { getSchema } =
+      require("@tiptap/core") as typeof import("@tiptap/core");
     const { MarkdownManager } =
       require("@tiptap/markdown") as typeof import("@tiptap/markdown");
+    const { DOMParser } =
+      require("@tiptap/pm/model") as typeof import("@tiptap/pm/model");
+    const { Transform } =
+      require("@tiptap/pm/transform") as typeof import("@tiptap/pm/transform");
+    const { JSDOM } = require("jsdom") as typeof import("jsdom");
     const extensions = buildSkillInstructionsExtensionsForServer();
 
     markdownPipeline = {
@@ -51,6 +79,9 @@ function getMarkdownPipeline(): MarkdownPipeline {
         require("@tiptap/static-renderer/pm/html-string") as typeof import("@tiptap/static-renderer/pm/html-string")
       ).renderToHTMLString,
       cheerio: require("cheerio") as typeof import("cheerio"),
+      document: new JSDOM("").window.document,
+      domParser: DOMParser.fromSchema(getSchema(extensions)),
+      createTransform: (doc) => new Transform(doc),
     };
   }
 
@@ -239,4 +270,74 @@ export function convertMarkdownToBlockHtml(markdown: string): string {
   });
 
   return stripPresentationAttributes(rendered);
+}
+
+export interface AppliedSkillInstructions {
+  instructions: string;
+  instructionsHtml: string;
+}
+
+export function applyInstructionEditsToHtml(
+  instructionsHtml: string,
+  edits: { targetBlockId: string; content: string }[]
+): Result<AppliedSkillInstructions, DustError<"invalid_request_error">> {
+  const {
+    createTransform,
+    document,
+    domParser,
+    extensions,
+    markdownManager,
+    renderToHTMLString,
+  } = getMarkdownPipeline();
+
+  let doc = parseInstructionsHtml(instructionsHtml, { document, domParser });
+
+  for (const { targetBlockId, content } of edits) {
+    // Ids are cleared because the model is asked for the block "including the wrapping tag", so the
+    // content routinely repeats the target's `data-block-id`. The browser's `UniqueID` plugin
+    // regenerates duplicates on the next transaction; nothing does that here, and duplicate ids
+    // make later edits target an ambiguous block. `addBlockIds` mints the cleared ones fresh.
+    const newBlocks = parseHTMLToBlocks(content, targetBlockId, {
+      clearBlockIds: true,
+      document,
+      domParser,
+    });
+    if (newBlocks.length === 0) {
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          `The edit targeting "${targetBlockId}" has no content.`
+        )
+      );
+    }
+
+    const target = findBlockByBlockId(doc, targetBlockId);
+    if (!target) {
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          `The instructions no longer contain the block "${targetBlockId}" this edit targets.`
+        )
+      );
+    }
+
+    const tr = createTransform(doc);
+    replaceBlock(tr, target, newBlocks);
+
+    doc = tr.doc;
+  }
+
+  // The browser assigns ids through a ProseMirror plugin, which never runs without an editor.
+  const json: JSONContent = doc.toJSON();
+  addBlockIds(json);
+
+  return new Ok({
+    instructions: postProcessMarkdown(markdownManager.serialize(json)).trim(),
+    instructionsHtml: stripPresentationAttributes(
+      renderToHTMLString({
+        content: prepareNodesForStaticRenderer(json),
+        extensions,
+      })
+    ),
+  });
 }
