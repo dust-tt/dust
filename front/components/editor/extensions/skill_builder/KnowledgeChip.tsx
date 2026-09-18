@@ -1,6 +1,10 @@
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
+import {
+  isFolder,
+  isPodFilesDataSource,
+  isWebsite,
+} from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/lib/swr/search";
 import {
   AlertCircle,
@@ -33,7 +37,8 @@ export function KnowledgeChip({
 }: KnowledgeChipProps) {
   const icon =
     isWebsite(node.dataSourceView.dataSource) ||
-    isFolder(node.dataSourceView.dataSource)
+    isFolder(node.dataSourceView.dataSource) ||
+    isPodFilesDataSource(node.dataSourceView.dataSource)
       ? getVisualForDataSourceViewContentNode(node)
       : () => (
           <DoubleIcon
@@ -72,7 +77,8 @@ interface InlineKnowledgeIconProps {
 function InlineKnowledgeIcon({ node }: InlineKnowledgeIconProps) {
   if (
     isWebsite(node.dataSourceView.dataSource) ||
-    isFolder(node.dataSourceView.dataSource)
+    isFolder(node.dataSourceView.dataSource) ||
+    isPodFilesDataSource(node.dataSourceView.dataSource)
   ) {
     return (
       <Icon visual={getVisualForDataSourceViewContentNode(node)} size="xs" />
