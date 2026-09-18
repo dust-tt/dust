@@ -360,12 +360,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "frankaloia",
   },
-  group_permissions_shadow: {
-    description:
-      "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
-    stage: "dust_only",
-    owner: "philipperolet",
-  },
   user_memory: {
     description:
       "Enable the user_memory internal MCP server: agents can store and retrieve per-user memory in a user-scoped filesystem.",

@@ -10,7 +10,6 @@ import {
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getEditors } from "@app/lib/api/assistant/editors";
-import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
@@ -26,13 +25,11 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
-import logger from "@app/logger/logger";
 import * as scheduleClient from "@app/temporal/triggers/schedule_client";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
@@ -50,25 +47,20 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe.each([
-  false,
-  true,
-])("getAgentConfigurations (grants: %s)", (grants) => {
+describe("getAgentConfigurations", () => {
   it.each([
     "system key",
     "Poke",
-  ] as const)("reports %s edit access without a permission shadow mismatch", async (caller) => {
+  ] as const)("reports %s edit access", async (caller) => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       {
         scope: "hidden",
       }
     );
-    await FeatureFlagFactory.basic(authenticator, "group_permissions_shadow");
     const auth =
       caller === "system key"
         ? await Authenticator.fromKey(
@@ -79,21 +71,12 @@ describe.each([
             wId: workspace.sId,
             pokePrincipal: { email: "operator@dust.tt", name: "Operator" },
           });
-    const warn = vi.spyOn(logger, "warn");
-    try {
-      const configuration = await getAgentConfiguration(auth, {
-        agentId: agent.sId,
-        variant: "light",
-      });
+    const configuration = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
 
-      expect(configuration).toMatchObject({ canRead: true, canEdit: true });
-      expect(warn).not.toHaveBeenCalledWith(
-        expect.objectContaining({ check: "agent_permissions" }),
-        "group_permissions_shadow_mismatch"
-      );
-    } finally {
-      warn.mockRestore();
-    }
+    expect(configuration).toMatchObject({ canRead: true, canEdit: true });
   });
 
   it.each([
@@ -103,7 +86,6 @@ describe.each([
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       { scope: "hidden" }
@@ -111,8 +93,6 @@ describe.each([
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId, {
       dangerouslyRequestAllGroups,
     });
-    await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
-    const warn = vi.spyOn(logger, "warn");
 
     const configuration = await getAgentConfiguration(auth, {
       agentId: agent.sId,
@@ -123,10 +103,6 @@ describe.each([
       canRead: dangerouslyRequestAllGroups,
       canEdit: dangerouslyRequestAllGroups,
     });
-    expect(warn).not.toHaveBeenCalledWith(
-      expect.objectContaining({ check: "agent_permissions" }),
-      "group_permissions_shadow_mismatch"
-    );
   });
 
   it("denies read and edit on an agent backed by an unreadable space", async () => {
@@ -199,7 +175,6 @@ describe.each([
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const otherAgent = await AgentConfigurationFactory.createTestAgent(
@@ -236,7 +211,6 @@ describe.each([
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const admin = await UserFactory.basic();
@@ -1329,10 +1303,7 @@ describe("updateAgentConfigurationsScope", () => {
     expect(row!.scope).toBe("hidden");
   });
 
-  it.each([
-    false,
-    true,
-  ])("disables non-editor triggers when hiding an agent (grants: %s)", async (grants) => {
+  it("disables non-editor triggers when hiding an agent", async () => {
     const test = await createResourceTest({
       plan: "creditPriced",
       role: "admin",
@@ -1408,8 +1379,6 @@ describe("updateAgentConfigurationsScope", () => {
         })
       ).isOk()
     ).toBe(true);
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
-
     const result = await updateAgentConfigurationsScope(
       authenticator,
       [agent.sId],
@@ -1701,7 +1670,6 @@ it("revokes grant-only editors when saving the complete editor set", async () =>
       })
     ).isOk()
   );
-  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(false);
   await AgentConfigurationFactory.updateTestAgent(auth, agent.sId);
   expect((await getEditors(auth, agent)).map((user) => user.id)).not.toContain(
     editor.id
