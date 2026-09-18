@@ -498,6 +498,21 @@ export const SlashCommandDropdown = forwardRef<
                             flatIndex += 1;
                             return renderItem(item, index);
                           })}
+                          {section.items.length === 0 && section.isLoading ? (
+                            <SlashCommandDropdownLoadingState
+                              message={
+                                section.loadingMessage ??
+                                SLASH_COMMAND_DEFAULT_LOADING_MESSAGE
+                              }
+                            />
+                          ) : null}
+                          {section.items.length === 0 &&
+                          !section.isLoading &&
+                          section.emptyMessage ? (
+                            <div className="px-3 py-2 text-sm text-muted-foreground">
+                              {section.emptyMessage}
+                            </div>
+                          ) : null}
                         </Fragment>
                       ))}
                       {showLoadingPlaceholder ? (
