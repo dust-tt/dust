@@ -11,19 +11,18 @@ import {
 } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { makeSkillAuthoringResultOutput } from "@app/lib/api/actions/servers/skill_authoring/rendering";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
-import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
-import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
+import { findDisallowedSpecialTagChanges } from "@app/lib/api/skills/instructions_special_tags";
+import {
+  suggestSkillIconOrDefault,
+  validateSkillCreation,
+} from "@app/lib/api/skills/skill_creation";
 import type { Authenticator } from "@app/lib/auth";
-import { extractKnowledgeTagSignatures } from "@app/lib/editor/knowledge_node_constants";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
-import { extractToolTags, serializeToolTag } from "@app/lib/tools/format";
-import logger from "@app/logger/logger";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import {
   isCustomResourceIconType,
@@ -42,23 +41,6 @@ function requireInteractiveUser(
         "Skill authoring requires an interactive builder user context."
       )
     );
-  }
-
-  return new Ok(user);
-}
-
-async function requireCreateSkillPermission(
-  auth: Authenticator
-): Promise<Result<UserResource, MCPError>> {
-  const user = auth.user();
-  if (!user) {
-    return new Err(
-      new MCPError("Skill authoring requires an interactive user context.")
-    );
-  }
-
-  if (!(await auth.hasWorkspacePermission("create", "skill"))) {
-    return new Err(new MCPError("Creating skills is restricted."));
   }
 
   return new Ok(user);
@@ -87,152 +69,6 @@ function makeJsonText(value: unknown) {
   };
 }
 
-type SimilarSkillSummary = {
-  sId: string;
-  name: string;
-  agentFacingDescription: string;
-};
-
-async function findSimilarSkillSummaries(
-  auth: Authenticator,
-  naturalDescription: string
-): Promise<Result<SimilarSkillSummary[], MCPError>> {
-  const result = await getSimilarSkills(auth, {
-    naturalDescription,
-    excludeSkillId: null,
-  });
-
-  if (result.isErr()) {
-    logger.warn(
-      { err: result.error },
-      "Failed to check for similar skills before creating skill"
-    );
-    return new Err(
-      new MCPError(
-        "Could not check whether a similar skill already exists. Retry, or set " +
-          "`bypassSimilarSkillCheck` to true only if the user explicitly wants " +
-          "to create a separate skill."
-      )
-    );
-  }
-
-  const similarSkillIds = result.value.similar_skills;
-  if (similarSkillIds.length === 0) {
-    return new Ok([]);
-  }
-
-  const skills = await SkillResource.fetchByIds(auth, similarSkillIds);
-  const skillsById = new Map<string, SkillResource>();
-  for (const skill of skills) {
-    skillsById.set(skill.sId, skill);
-  }
-
-  const summaries: SimilarSkillSummary[] = [];
-  for (const skillId of similarSkillIds) {
-    const skill = skillsById.get(skillId);
-    if (skill) {
-      summaries.push({
-        sId: skill.sId,
-        name: skill.name,
-        agentFacingDescription: skill.agentFacingDescription,
-      });
-    }
-  }
-
-  return new Ok(summaries);
-}
-
-function makeSimilarSkillsErrorMessage(
-  similarSkills: SimilarSkillSummary[]
-): string {
-  const summaries = similarSkills
-    .map(
-      (skill) =>
-        `- ${skill.name} (${skill.sId}): ${skill.agentFacingDescription}`
-    )
-    .join("\n");
-
-  return (
-    "Similar skills already exist. Reuse or update them instead of creating a " +
-    `duplicate skill:\n${summaries}\n` +
-    "If the user explicitly wants a separate skill, call `create_skill` again " +
-    "with `bypassSimilarSkillCheck` set to true."
-  );
-}
-
-const SPECIAL_TAG_CATEGORIES = ["nested skills", "knowledge", "tools"] as const;
-type SpecialTagCategory = (typeof SPECIAL_TAG_CATEGORIES)[number];
-
-// Skills can embed special tags in their instructions that the builder wires up:
-// nested skill references, knowledge, and tools. The agent only ever sees them as
-// opaque markup, and the two groups follow different rules:
-//   - Nested skill references are re-derived from the instructions on every save,
-//     so the agent may freely add them (they get wired). Removing one would
-//     silently unlink a skill the builder attached, so a drop is disallowed.
-//   - Knowledge and tool tags cannot be wired from text alone; their attachments
-//     are carried over from the existing skill untouched. So adding, dropping, or
-//     altering one desyncs the markup from the real attachments, and any change is
-//     disallowed.
-// A freshly created agent skill has no attachments at all, so on create every
-// special tag is a phantom and is rejected outright (see the create handler).
-function extractSpecialTagSignatures(
-  content: string
-): Record<SpecialTagCategory, string[]> {
-  return {
-    "nested skills": extractUniqueSkillReferenceIds(content),
-    knowledge: extractKnowledgeTagSignatures(content),
-    tools: extractToolTags(content).map((tool) => serializeToolTag(tool)),
-  };
-}
-
-// Returns true if any value in `values` is absent from `from`.
-function isMissingAnySignature(values: string[], from: string[]): boolean {
-  const fromSet = new Set(from);
-  return values.some((value) => !fromSet.has(value));
-}
-
-// Returns the special tag categories present in `content`. Used on create, where
-// the skill has no attachments and so cannot carry any special tag.
-function findSpecialTagsPresent(content: string): SpecialTagCategory[] {
-  const signatures = extractSpecialTagSignatures(content);
-  return SPECIAL_TAG_CATEGORIES.filter(
-    (category) => signatures[category].length > 0
-  );
-}
-
-// Returns the special tag categories whose change between `before` and `after`
-// the agent is not allowed to make (see the rules above): a dropped nested skill
-// reference, or any added, dropped, or altered knowledge or tool tag.
-function findDisallowedSpecialTagChanges(
-  before: string,
-  after: string
-): SpecialTagCategory[] {
-  const beforeSignatures = extractSpecialTagSignatures(before);
-  const afterSignatures = extractSpecialTagSignatures(after);
-
-  const disallowed: SpecialTagCategory[] = [];
-  if (
-    isMissingAnySignature(
-      beforeSignatures["nested skills"],
-      afterSignatures["nested skills"]
-    )
-  ) {
-    disallowed.push("nested skills");
-  }
-  for (const category of ["knowledge", "tools"] as const) {
-    const beforeValues = beforeSignatures[category];
-    const afterValues = afterSignatures[category];
-    if (
-      isMissingAnySignature(beforeValues, afterValues) ||
-      isMissingAnySignature(afterValues, beforeValues)
-    ) {
-      disallowed.push(category);
-    }
-  }
-
-  return disallowed;
-}
-
 export async function createSkill(
   auth: Authenticator,
   {
@@ -244,72 +80,28 @@ export async function createSkill(
     userFacingDescription,
   }: CreateSkillArgs
 ): Promise<Result<SkillResource, MCPError>> {
-  const user = await requireCreateSkillPermission(auth);
-  if (user.isErr()) {
-    return new Err(user.error);
+  const validation = await validateSkillCreation(auth, {
+    name,
+    userFacingDescription,
+    agentFacingDescription,
+    instructions,
+    bypassSimilarSkillCheck,
+  });
+  if (validation.isErr()) {
+    return new Err(new MCPError(validation.error.message));
   }
-
-  const trimmedName = name.trim();
-  if (!trimmedName) {
-    return new Err(new MCPError("Skill name cannot be empty."));
-  }
-
-  // A new skill has no attachments, so any special tag in the instructions
-  // would be dead markup. Keep created skills instructions-only.
-  const specialTags = findSpecialTagsPresent(instructions);
-  if (specialTags.length > 0) {
-    return new Err(
-      new MCPError(
-        `The instructions contain special tags (${specialTags.join(", ")}) ` +
-          "that are wired up in the builder, not authored as plain text. Create " +
-          "instructions-only skills; nested skills, knowledge, and tools must be " +
-          "attached in the builder."
-      )
-    );
-  }
-
-  const existingSkill = await SkillResource.fetchByName(auth, trimmedName);
-  if (existingSkill) {
-    return new Err(
-      new MCPError(`A skill with the name "${trimmedName}" already exists.`)
-    );
-  }
-
-  if (bypassSimilarSkillCheck !== true) {
-    const similarSkills = await findSimilarSkillSummaries(
-      auth,
-      agentFacingDescription
-    );
-    if (similarSkills.isErr()) {
-      return new Err(similarSkills.error);
-    }
-    if (similarSkills.value.length > 0) {
-      return new Err(
-        new MCPError(makeSimilarSkillsErrorMessage(similarSkills.value))
-      );
-    }
-  }
+  const { user, name: trimmedName } = validation.value;
 
   // Ignore an invalid agent-supplied icon and fall back to a suggestion
   // rather than persisting a name that renders as a broken glyph.
-  let resolvedIcon = icon && isValidSkillIcon(icon) ? icon : null;
-  if (!resolvedIcon) {
-    const iconResult = await getSkillIconSuggestion(auth, {
-      name: trimmedName,
-      instructions,
-      agentFacingDescription,
-    });
-
-    if (iconResult.isOk()) {
-      resolvedIcon = iconResult.value;
-    } else {
-      logger.warn(
-        { err: iconResult.error },
-        "Failed to generate icon suggestion for skill"
-      );
-      resolvedIcon = "ActionListIcon";
-    }
-  }
+  const resolvedIcon =
+    icon && isValidSkillIcon(icon)
+      ? icon
+      : await suggestSkillIconOrDefault(auth, {
+          name: trimmedName,
+          instructions,
+          agentFacingDescription,
+        });
 
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const skill = await SkillResource.makeNew(
@@ -321,7 +113,7 @@ export async function createSkill(
       userFacingDescription,
       instructions,
       instructionsHtml: convertMarkdownToBlockHtml(instructions),
-      editedBy: user.value.id,
+      editedBy: user.id,
       requestedSpaceIds: [globalSpace.id],
       icon: resolvedIcon,
       source: "agent",

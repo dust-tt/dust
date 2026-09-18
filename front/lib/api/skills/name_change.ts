@@ -28,7 +28,7 @@ export interface SkillNameChange {
  * @cc [owner:achilleburah,label:security;product] same-rules-as-manual-rename
  * A rename MUST pass exactly when a manual edit by the same caller would: caller can write the
  * skill, skill not archived, raw name within the length limit before trimming, trimmed name
- * non-empty, and no other active skill in the workspace already carrying it. The returned name
+ * non-empty, and no other unarchived skill in the workspace already carrying it. The returned name
  * is always the trimmed value, never the raw input.
  */
 export async function validateSkillNameChange(

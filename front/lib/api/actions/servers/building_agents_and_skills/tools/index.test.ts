@@ -4,6 +4,7 @@ import {
   SUGGEST_AGENT_CREATION_INPUT_SCHEMA,
   SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_AGENT_DELETION_TOOL_NAME,
+  SUGGEST_SKILL_CREATION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
   SUGGEST_SKILL_NAME_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
@@ -19,6 +20,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -27,14 +29,33 @@ import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
+import { Err, Ok } from "@app/types/shared/result";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { SKILL_SUGGESTION_KINDS } from "@app/types/suggestions/skill_suggestion";
 import type { WorkspaceType } from "@app/types/user";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Both LLM calls behind suggest_skill_creation are stubbed so the tests stay hermetic.
+vi.mock("@app/lib/api/skills/icon_suggestion", async () => {
+  const { Ok } = await import("@app/types/shared/result");
+  return {
+    getSkillIconSuggestion: async () => new Ok("ActionBrainIcon"),
+  };
+});
+
+vi.mock("@app/lib/api/skills/existing_skill_checker", () => ({
+  getSimilarSkills: vi.fn(),
+}));
+
+import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import { TOOLS } from "./index";
+
+const mockGetSimilarSkills = vi.mocked(getSimilarSkills);
+
+setupSkillInstructionsMarkdownPipeline();
 
 const SKILL_SUGGESTION_DIRECTIVE_REGEX = new RegExp(
   `^:skill_suggestion\\[\\]\\{sId=(\\S+) kind=(${SKILL_SUGGESTION_KINDS.join("|")}) skillId=(\\S+)\\}$`
@@ -101,6 +122,18 @@ function extractDirective(
     throw new Error(`Unexpected tool output: ${text}`);
   }
   return { suggestionId: match[1], skillId: match[3] };
+}
+
+// A `user` membership does not grant create/skill by itself; the tool checks that grant.
+async function createSkillCreatorTest() {
+  const result = await createResourceTest({ role: "user" });
+  await grantWorkspacePermission(result.workspace, result.user, {
+    grantType: "create",
+    resourceType: "skill",
+  });
+  await result.authenticator.refresh();
+
+  return result;
 }
 
 async function addMember(
@@ -1310,6 +1343,178 @@ describe("building_agents_and_skills tools", () => {
       });
 
       expectMcpError(result, "already exists");
+    });
+  });
+
+  describe(SUGGEST_SKILL_CREATION_TOOL_NAME, () => {
+    beforeEach(() => {
+      mockGetSimilarSkills.mockReset();
+      mockGetSimilarSkills.mockResolvedValue(new Ok({ similar_skills: [] }));
+    });
+
+    const creationArgs = {
+      name: "Incident Summary",
+      userFacingDescription: "Summarize incidents.",
+      agentFacingDescription: "Use when writing incident summaries.",
+      instructions:
+        "<h2>Steps</h2><p>Collect impact, timeline, root cause, and follow-ups.</p>",
+      analysis: "The team writes incident summaries by hand every week.",
+      title: "Add incident summary",
+    };
+
+    async function suggestCreation(
+      auth: Authenticator,
+      overrides: Partial<typeof creationArgs> & {
+        bypassSimilarSkillCheck?: boolean;
+      } = {}
+    ) {
+      return getTool(SUGGEST_SKILL_CREATION_TOOL_NAME).handler(
+        { ...creationArgs, ...overrides },
+        makeExtra(auth)
+      );
+    }
+
+    it("drafts a suggested skill and records a pending create suggestion targeting it", async () => {
+      const { authenticator } = await createSkillCreatorTest();
+
+      const result = await suggestCreation(authenticator);
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const { suggestionId, skillId } = extractDirective(
+        result.value[0].text,
+        "create"
+      );
+
+      const globalSpace =
+        await SpaceResource.fetchWorkspaceGlobalSpace(authenticator);
+      const draft = await SkillResource.fetchById(authenticator, skillId);
+      expect(draft?.status).toBe("suggested");
+      expect(draft?.name).toBe("Incident Summary");
+      expect(draft?.source).toBe("agent");
+      expect(draft?.icon).toBe("ActionBrainIcon");
+      expect(draft?.requestedSpaceIds).toEqual([globalSpace.id]);
+      expect(draft?.instructions).toBe(
+        "## Steps\n\nCollect impact, timeline, root cause, and follow-ups."
+      );
+      expect(draft?.instructionsHtml).toContain('<h2 data-block-id="');
+      const editors = (await draft?.listEditors(authenticator)) ?? [];
+      expect(editors.map((u) => u.sId)).toEqual([
+        authenticator.getNonNullableUser().sId,
+      ]);
+
+      const suggestion = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      expect(suggestion?.skillConfigurationSId).toBe(skillId);
+      expect(suggestion?.toJSON()).toMatchObject({
+        kind: "create",
+        state: "pending",
+        source: "conversational",
+        title: "Add incident summary",
+        analysis: "The team writes incident summaries by hand every week.",
+        suggestion: { name: "Incident Summary" },
+      });
+    });
+
+    it("rejects a caller without the create permission, drafting nothing", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await suggestCreation(authenticator);
+
+      expectMcpError(result, "restricted");
+      expect(
+        await SkillResource.fetchByName(authenticator, "Incident Summary")
+      ).toBeNull();
+    });
+
+    it("rejects an empty name", async () => {
+      const { authenticator } = await createSkillCreatorTest();
+
+      const result = await suggestCreation(authenticator, { name: "   " });
+
+      expectMcpError(result, "cannot be empty");
+    });
+
+    it("rejects a user-facing description longer than the column allows", async () => {
+      const { authenticator } = await createSkillCreatorTest();
+
+      const result = await suggestCreation(authenticator, {
+        userFacingDescription: "a".repeat(
+          USER_FACING_DESCRIPTION_MAX_LENGTH + 1
+        ),
+      });
+
+      expectMcpError(result, `at most ${USER_FACING_DESCRIPTION_MAX_LENGTH}`);
+    });
+
+    it("rejects instructions embedding a knowledge tag", async () => {
+      const { authenticator } = await createSkillCreatorTest();
+
+      const result = await suggestCreation(authenticator, {
+        instructions:
+          '<p>Follow <knowledge id="node-1" title="Runbook" space="s1" dsv="d1" /> when replying.</p>',
+      });
+
+      expectMcpError(result, "special tags");
+      expect(
+        await SkillResource.fetchByName(authenticator, "Incident Summary")
+      ).toBeNull();
+    });
+
+    it("rejects a name already used by an active skill", async () => {
+      const { authenticator } = await createSkillCreatorTest();
+      await seedSkill(authenticator, { name: "Incident Summary" });
+
+      const result = await suggestCreation(authenticator);
+
+      expectMcpError(result, "already exists");
+    });
+
+    it("rejects a name already held by an earlier draft", async () => {
+      const { authenticator } = await createSkillCreatorTest();
+      expect((await suggestCreation(authenticator)).isOk()).toBe(true);
+
+      const result = await suggestCreation(authenticator);
+
+      expectMcpError(result, "already exists");
+    });
+
+    it("refuses when similar skills exist unless the check is bypassed", async () => {
+      const { authenticator } = await createSkillCreatorTest();
+      const existing = await seedSkill(authenticator, {
+        name: "Postmortem Writer",
+      });
+      mockGetSimilarSkills.mockResolvedValue(
+        new Ok({ similar_skills: [existing.sId] })
+      );
+
+      const refused = await suggestCreation(authenticator);
+      expectMcpError(refused, "Postmortem Writer");
+      expectMcpError(refused, "bypassSimilarSkillCheck");
+      expect(
+        await SkillResource.fetchByName(authenticator, "Incident Summary")
+      ).toBeNull();
+
+      const bypassed = await suggestCreation(authenticator, {
+        bypassSimilarSkillCheck: true,
+      });
+      expect(bypassed.isOk()).toBe(true);
+    });
+
+    it("fails when the similarity check cannot run", async () => {
+      const { authenticator } = await createSkillCreatorTest();
+      mockGetSimilarSkills.mockResolvedValue(new Err(new Error("boom")));
+
+      const result = await suggestCreation(authenticator);
+
+      expectMcpError(result, "Could not check");
     });
   });
 });

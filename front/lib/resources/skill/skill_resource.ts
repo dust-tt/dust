@@ -1242,6 +1242,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
+  // Uniqueness is enforced on (workspaceId, name, status), and accepting a suggested draft
+  // turns it active, so a name held by a draft is not free either.
   static async isNameTaken(
     auth: Authenticator,
     name: string,
@@ -1251,7 +1253,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         name,
-        status: "active",
+        status: { [Op.ne]: "archived" },
         ...(excludeSkillModelId !== undefined
           ? { id: { [Op.ne]: excludeSkillModelId } }
           : {}),

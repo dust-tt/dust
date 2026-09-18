@@ -281,14 +281,7 @@ export function applyInstructionEditsToHtml(
   instructionsHtml: string,
   edits: { targetBlockId: string; content: string }[]
 ): Result<AppliedSkillInstructions, DustError<"invalid_request_error">> {
-  const {
-    createTransform,
-    document,
-    domParser,
-    extensions,
-    markdownManager,
-    renderToHTMLString,
-  } = getMarkdownPipeline();
+  const { createTransform, document, domParser } = getMarkdownPipeline();
 
   let doc = parseInstructionsHtml(instructionsHtml, { document, domParser });
 
@@ -331,7 +324,32 @@ export function applyInstructionEditsToHtml(
   const json: JSONContent = doc.toJSON();
   addBlockIds(json);
 
-  return new Ok({
+  return new Ok(renderSkillInstructions(json));
+}
+
+/**
+ * Convert agent-authored instructions HTML into both stored forms: `instructions` (markdown,
+ * what agents read at run time) and `instructionsHtml` (block-structured, what the builder edits).
+ */
+export function convertHtmlToSkillInstructions(
+  html: string
+): AppliedSkillInstructions {
+  const { document, domParser } = getMarkdownPipeline();
+
+  const json: JSONContent = parseInstructionsHtml(html, {
+    document,
+    domParser,
+  }).toJSON();
+  addBlockIds(json);
+
+  return renderSkillInstructions(json);
+}
+
+function renderSkillInstructions(json: JSONContent): AppliedSkillInstructions {
+  const { extensions, markdownManager, renderToHTMLString } =
+    getMarkdownPipeline();
+
+  return {
     instructions: postProcessMarkdown(markdownManager.serialize(json)).trim(),
     instructionsHtml: stripPresentationAttributes(
       renderToHTMLString({
@@ -339,5 +357,5 @@ export function applyInstructionEditsToHtml(
         extensions,
       })
     ),
-  });
+  };
 }
