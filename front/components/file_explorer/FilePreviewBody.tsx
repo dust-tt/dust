@@ -1,5 +1,7 @@
 import type { FilePreviewContentData } from "@app/components/file_explorer/FilePreviewContent";
 import { FilePreviewContent } from "@app/components/file_explorer/FilePreviewContent";
+import type { FilePreviewDownloadAction } from "@app/components/file_explorer/FilePreviewFallback";
+import { FilePreviewFallback } from "@app/components/file_explorer/FilePreviewFallback";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import type { MarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
@@ -21,6 +23,7 @@ export function filePreviewLayoutClassName(
 }
 
 interface FilePreviewBodyProps {
+  download?: FilePreviewDownloadAction;
   entry: FileEntry | null;
   fileUrl: string | null;
   isFullWidth?: boolean;
@@ -31,6 +34,7 @@ interface FilePreviewBodyProps {
 }
 
 export function FilePreviewBody({
+  download,
   entry,
   fileUrl,
   isFullWidth,
@@ -51,23 +55,19 @@ export function FilePreviewBody({
 
   if (isTooLarge) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-muted-foreground">
-          This file is too large to preview (
-          {fileSizeToHumanReadable(sizeBytes, 1)}). Download it to view its
-          contents.
-        </p>
-      </div>
+      <FilePreviewFallback
+        download={download}
+        message={`This file is too large to preview (${fileSizeToHumanReadable(sizeBytes, 1)}).`}
+      />
     );
   }
 
   if (hasError) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-muted-foreground">
-          Unable to preview this file. You can download it instead.
-        </p>
-      </div>
+      <FilePreviewFallback
+        download={download}
+        message="Unable to preview this file."
+      />
     );
   }
 

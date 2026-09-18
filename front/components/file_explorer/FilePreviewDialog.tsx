@@ -151,6 +151,10 @@ export function FilePreviewDialog({
           )}
         >
           <FilePreviewBody
+            download={{
+              onClick: () => void handleDownload(),
+              isLoading: isDownloading,
+            }}
             entry={entry}
             fileUrl={fileUrl}
             markdown={markdown}

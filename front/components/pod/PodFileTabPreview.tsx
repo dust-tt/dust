@@ -2,6 +2,7 @@ import {
   FilePreviewContent,
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
+import { FilePreviewFallback } from "@app/components/file_explorer/FilePreviewFallback";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
@@ -9,6 +10,7 @@ import { MissingPodFileTabCallout } from "@app/components/pod/MissingPodFileTabC
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getFilePathContentApiPath,
+  getFilePathDownloadUrl,
   getFilePathViewUrl,
   useFileMetadataFromPath,
   writeFileContentByPath,
@@ -239,19 +241,15 @@ export function PodFileTabPreview({
           </div>
         )}
         {isTooLarge ? (
-          <div className="flex flex-1 items-center justify-center p-8">
-            <p className="text-sm text-muted-foreground">
-              This file is too large to preview (
-              {fileSizeToHumanReadable(sizeBytes, 1)}). Download it to view its
-              contents.
-            </p>
-          </div>
+          <FilePreviewFallback
+            download={{ href: getFilePathDownloadUrl(owner, filePath) }}
+            message={`This file is too large to preview (${fileSizeToHumanReadable(sizeBytes, 1)}).`}
+          />
         ) : hasError ? (
-          <div className="flex flex-1 items-center justify-center p-8">
-            <p className="text-sm text-muted-foreground">
-              Unable to preview this file.
-            </p>
-          </div>
+          <FilePreviewFallback
+            download={{ href: getFilePathDownloadUrl(owner, filePath) }}
+            message="Unable to preview this file."
+          />
         ) : (
           <div
             className={cn(

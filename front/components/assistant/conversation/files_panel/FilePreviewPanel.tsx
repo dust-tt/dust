@@ -214,6 +214,7 @@ export function FilePreviewPanel({
           </div>
         )}
         <FilePreviewBody
+          download={{ href: urls.downloadUrl }}
           entry={entry}
           fileUrl={urls.baseUrl}
           isFullWidth
