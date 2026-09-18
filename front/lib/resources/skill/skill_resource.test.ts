@@ -679,33 +679,6 @@ describe("SkillResource", () => {
   });
 
   describe("updateSkill", () => {
-    it("adds the global space to legacy skill updates while preserving the previous version", async () => {
-      const { authenticator, globalSpace } = testContext;
-      const skill = await SkillFactory.create(authenticator, {
-        requestedSpaceIds: [],
-      });
-      await skill.updateSkill(authenticator, {
-        name: skill.name,
-        agentFacingDescription: skill.agentFacingDescription,
-        userFacingDescription: skill.userFacingDescription,
-        instructions: skill.instructions,
-        icon: skill.icon,
-        mcpServerViews: [],
-        attachedKnowledge: [],
-        manuallyRequestedSpaceIds: [],
-        requestedSpaceIds: [],
-      });
-
-      const storedSkill = await SkillResource.fetchById(
-        authenticator,
-        skill.sId
-      );
-      expect(storedSkill?.requestedSpaceIds).toEqual([globalSpace.id]);
-      const versions = await skill.listVersions(authenticator);
-      expect(versions).toHaveLength(1);
-      expect(versions[0].requestedSpaceIds).toEqual([]);
-    });
-
     it("updates availability and derives the serialized isDefault from it", async () => {
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
@@ -735,9 +708,6 @@ describe("SkillResource", () => {
         skillResource.sId
       );
       expect(updatedSkill?.availability).toBe("users_and_agents");
-      expect(updatedSkill?.requestedSpaceIds).toEqual([
-        testContext.globalSpace.id,
-      ]);
       expect(updatedSkill?.toJSON(testContext.authenticator).isDefault).toBe(
         true
       );
@@ -760,9 +730,6 @@ describe("SkillResource", () => {
         skillResource.sId
       );
       expect(revertedSkill?.availability).toBe("workspace_users");
-      expect(revertedSkill?.requestedSpaceIds).toEqual([
-        testContext.globalSpace.id,
-      ]);
       expect(revertedSkill?.toJSON(testContext.authenticator).isDefault).toBe(
         false
       );

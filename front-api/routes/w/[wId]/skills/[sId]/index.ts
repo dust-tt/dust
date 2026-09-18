@@ -404,11 +404,13 @@ app.patch(
     // A skill requests a space for one of four reasons: one of its tools lives there, some of its
     // attached knowledge does, a skill it references requests it, or a person picked it by hand.
     // Only the last one is stored; the other three are derived, and disappear with what pulled
-    // them in.
+    // them in. The global space is always required.
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const requestedSpaceIds = uniq([
       ...computedRequestedSpaceIds, // Tools and attached knowledge.
       ...referencedSkillSpaceIds, // Nested skills.
       ...additionalRequestedSpaceIds, // Picked by hand.
+      globalSpace.id,
     ]);
 
     // Adding a restricted space can lock out editors that are already on the skill. `updateSkill`

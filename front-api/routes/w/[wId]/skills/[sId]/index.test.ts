@@ -568,7 +568,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
   });
 
   it("should successfully update the description", async () => {
-    const { workspace, skill, requestUserAuth } = await setupTest({
+    const { workspace, skill, requestUserAuth, globalSpace } = await setupTest({
       requestUserRole: "admin",
     });
 
@@ -598,6 +598,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.agentFacingDescription).toBe(newDescription);
+    expect(updatedSkill?.requestedSpaceIds).toEqual([globalSpace.id]);
   });
 
   it("updates availability, giving it priority over the deprecated isDefault", async () => {

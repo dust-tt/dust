@@ -334,8 +334,8 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
  */
 /**
  * @cc [owner:aubin-tchoi,label:backend;security] skill-stored-global-space
- * requestedSpaceIds updates must store the workspace's global space exactly once
- * alongside all requested spaces, even when callers omit it.
+ * Production callers creating skills or recomputing requestedSpaceIds must include the
+ * workspace's global space exactly once. Other update callers must preserve the stored IDs.
  */
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
@@ -3318,7 +3318,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       manuallyRequestedSpaceIds,
       name,
       reinforcement,
-      requestedSpaceIds: requestedSpaceIdsFromCaller,
+      requestedSpaceIds,
       source,
       sourceMetadata,
       status,
@@ -3378,14 +3378,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const previousStatus = this.status;
 
     const referencingSkillIds = await withTransaction(async (transaction) => {
-      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
-        auth,
-        transaction
-      );
-      const requestedSpaceIds = uniq([
-        ...requestedSpaceIdsFromCaller,
-        globalSpace.id,
-      ]);
       // Save the current version before updating.
       await this.saveVersion(auth, { transaction });
 
