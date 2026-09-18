@@ -11,7 +11,6 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
@@ -1066,6 +1065,11 @@ export async function batchHardDeletePendingAgentConfigurations(
 /**
  * Updates the permissions (editors) for an agent configuration.
  */
+/**
+ * @cc [owner:philipperolet,label:security;product] editor-removal-uses-grants
+ * Removing an editor MUST validate membership against the grant-backed editor set and revoke that
+ * grant. A user without an editor grant MUST return `user_not_member`.
+ */
 export async function updateAgentPermissions(
   auth: Authenticator,
   {
@@ -1152,32 +1156,29 @@ export async function updateAgentPermissions(
             )
           );
         }
-        let legacyUsersToRemove = usersToRemove;
-        if (!isLegacyAclsEnabled()) {
-          const editors = await agentResource.listEditors(auth, {
-            transaction: t,
-          });
-          assert(editors !== null);
-          const editorIds = new Set(editors.map((editor) => editor.id));
-          if (usersToRemove.some((user) => !editorIds.has(user.id))) {
-            return new Err(
-              new DustError(
-                "user_not_member",
-                "Cannot remove: user is not an agent editor"
-              )
-            );
-          }
-          const legacyEditors = await editorGroupRes.value.getActiveMembers(
-            auth,
-            { transaction: t }
-          );
-          const legacyEditorIds = new Set(
-            legacyEditors.map((editor) => editor.id)
-          );
-          legacyUsersToRemove = usersToRemove.filter((user) =>
-            legacyEditorIds.has(user.id)
+        const editors = await agentResource.listEditors(auth, {
+          transaction: t,
+        });
+        assert(editors !== null);
+        const editorIds = new Set(editors.map((editor) => editor.id));
+        if (usersToRemove.some((user) => !editorIds.has(user.id))) {
+          return new Err(
+            new DustError(
+              "user_not_member",
+              "Cannot remove: user is not an agent editor"
+            )
           );
         }
+        const legacyEditors = await editorGroupRes.value.getActiveMembers(
+          auth,
+          { transaction: t }
+        );
+        const legacyEditorIds = new Set(
+          legacyEditors.map((editor) => editor.id)
+        );
+        const legacyUsersToRemove = usersToRemove.filter((user) =>
+          legacyEditorIds.has(user.id)
+        );
         const removeRes = await editorGroupRes.value.dangerouslyRemoveMembers(
           auth,
           {
