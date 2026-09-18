@@ -182,13 +182,13 @@ describe("credit spend checkpoint pause resolution", () => {
     expect(await getStatus()).toBe("paused");
   });
 
-  it("decline clears the pause and relaunches the loop as a tool-free graceful stop", async () => {
+  it("decline stops the pause and relaunches the loop as a tool-free graceful stop", async () => {
     const res = await declineCreditSpendCheckpointPause(auth, conversation, {
       messageId: agentMessageId,
     });
 
     expect(res.isOk()).toBe(true);
-    expect(await getStatus()).toBeNull();
+    expect(await getStatus()).toBe("stopped");
 
     expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
     expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledWith(
