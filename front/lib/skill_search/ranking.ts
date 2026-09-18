@@ -1,5 +1,14 @@
 import type { estypes } from "@elastic/elasticsearch";
 
+export function buildSkillDefaultSort(): estypes.Sort {
+  return [
+    { _score: { order: "desc" } },
+    // Name and skill ID are tie-breakers for results with the same score.
+    { "name.keyword": { order: "asc" } },
+    { skill_id: { order: "asc" } },
+  ];
+}
+
 /**
  * @cc [owner:aubin-tchoi,label:product] indexed-skill-name-matching
  * Name matching uses both autocomplete fields and Elasticsearch relevance, without

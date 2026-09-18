@@ -4,6 +4,7 @@ import {
   withEs,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { buildSkillDefaultSort } from "@app/lib/skill_search/ranking";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import type { SkillSearchResult } from "@app/types/api/skills";
 import { Err, Ok } from "@app/types/shared/result";
@@ -45,11 +46,7 @@ export async function searchSkills(
         },
       },
       size: limit,
-      sort: [
-        { _score: { order: "desc" } },
-        { "name.keyword": { order: "asc" } },
-        { skill_id: { order: "asc" } },
-      ],
+      sort: buildSkillDefaultSort(),
     })
   );
   if (result.isErr()) {
