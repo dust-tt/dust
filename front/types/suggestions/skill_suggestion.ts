@@ -1,4 +1,5 @@
 import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
+import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { z } from "zod";
 
@@ -53,6 +54,7 @@ export const SKILL_SUGGESTION_KINDS = [
   "edit",
   "editors",
   "user_facing_description",
+  "name",
 ] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
@@ -158,10 +160,21 @@ export type SkillUserFacingDescriptionSuggestionType = z.infer<
   typeof SkillUserFacingDescriptionSuggestionSchema
 >;
 
+export const SkillNameSuggestionSchema = z.object({
+  name: z
+    .string()
+    .min(1)
+    .max(SKILL_NAME_MAX_LENGTH)
+    .describe("The full new name that will replace the current one."),
+});
+
+export type SkillNameSuggestionType = z.infer<typeof SkillNameSuggestionSchema>;
+
 export type SkillSuggestionPayload =
   | SkillEditSuggestionType
   | SkillEditorsSuggestionType
-  | SkillUserFacingDescriptionSuggestionType;
+  | SkillUserFacingDescriptionSuggestionType
+  | SkillNameSuggestionType;
 
 const SkillEditSuggestionDataSchema = z.object({
   kind: z.literal("edit"),
@@ -178,10 +191,16 @@ const SkillUserFacingDescriptionSuggestionDataSchema = z.object({
   suggestion: SkillUserFacingDescriptionSuggestionSchema,
 });
 
+const SkillNameSuggestionDataSchema = z.object({
+  kind: z.literal("name"),
+  suggestion: SkillNameSuggestionSchema,
+});
+
 const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillEditSuggestionDataSchema,
   SkillEditorsSuggestionDataSchema,
   SkillUserFacingDescriptionSuggestionDataSchema,
+  SkillNameSuggestionDataSchema,
 ]);
 
 type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
@@ -203,6 +222,11 @@ export type SkillEditorsSuggestionData = Extract<
 export type SkillUserFacingDescriptionSuggestionData = Extract<
   SkillSuggestionData,
   { kind: "user_facing_description" }
+>;
+
+export type SkillNameSuggestionData = Extract<
+  SkillSuggestionData,
+  { kind: "name" }
 >;
 
 // `kind` and `suggestion` are separate columns, so narrowing one without the other would lie about
@@ -241,6 +265,12 @@ export function isUserFacingDescriptionSkillSuggestion<
   T extends { kind: SkillSuggestionKind; suggestion: unknown },
 >(carrier: T): carrier is T & SkillUserFacingDescriptionSuggestionData {
   return isSkillSuggestionOfKind(carrier, "user_facing_description");
+}
+
+export function isNameSkillSuggestion<
+  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+>(carrier: T): carrier is T & SkillNameSuggestionData {
+  return isSkillSuggestionOfKind(carrier, "name");
 }
 
 const SkillSuggestionUpdatedBySchema = z.object({

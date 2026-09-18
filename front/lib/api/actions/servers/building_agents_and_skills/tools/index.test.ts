@@ -5,6 +5,7 @@ import {
   SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_AGENT_DELETION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
+  SUGGEST_SKILL_NAME_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
   SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
@@ -27,6 +28,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { SKILL_SUGGESTION_KINDS } from "@app/types/suggestions/skill_suggestion";
 import type { WorkspaceType } from "@app/types/user";
@@ -1092,6 +1094,189 @@ describe("building_agents_and_skills tools", () => {
       );
 
       expectMcpError(result, `at most ${USER_FACING_DESCRIPTION_MAX_LENGTH}`);
+    });
+  });
+
+  describe(SUGGEST_SKILL_NAME_TOOL_NAME, () => {
+    const suggestName = async (
+      auth: Authenticator,
+      args: { skillId: string; name: string; title?: string }
+    ) => getTool(SUGGEST_SKILL_NAME_TOOL_NAME).handler(args, makeExtra(auth));
+
+    it("creates a pending conversational suggestion with the trimmed name, without renaming", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Old Name" });
+
+      const result = await suggestName(authenticator, {
+        skillId: skill.sId,
+        name: "  New Name  ",
+        title: "Rename skill",
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const suggestionId = extractSuggestionId(result.value[0].text, "name");
+
+      const suggestion = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?.title).toBe("Rename skill");
+      expect(suggestion?.toJSON()).toMatchObject({
+        kind: "name",
+        suggestion: { name: "New Name" },
+      });
+
+      const reloaded = await SkillResource.fetchById(authenticator, skill.sId);
+      expect(reloaded?.name).toBe("Old Name");
+    });
+
+    it("outdates every other pending rename, leaving other kinds alone", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Renamed Twice" });
+      const edit = await SkillSuggestionFactory.createEdit(
+        authenticator,
+        skill,
+        { source: "conversational" }
+      );
+      const idOf = async (name: string) => {
+        const result = await suggestName(authenticator, {
+          skillId: skill.sId,
+          name,
+        });
+        if (result.isErr() || result.value[0]?.type !== "text") {
+          throw new Error("Expected the suggestion to be created.");
+        }
+        return extractSuggestionId(result.value[0].text, "name");
+      };
+      const stateOf = async (suggestionId: string) =>
+        (await SkillSuggestionResource.fetchById(authenticator, suggestionId))
+          ?.state;
+
+      const firstId = await idOf("First Name");
+      const secondId = await idOf("Second Name");
+
+      expect(await stateOf(firstId)).toBe("outdated");
+      expect(await stateOf(secondId)).toBe("pending");
+      expect(await stateOf(edit.sId)).toBe("pending");
+    });
+
+    it("rejects a caller who is not an editor, creating no row", async () => {
+      const { authenticator: ownerAuth, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(ownerAuth, { name: "Not Mine" });
+      const outsider = await addMember(workspace);
+      const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        outsider.sId,
+        workspace.sId
+      );
+
+      const result = await suggestName(outsiderAuth, {
+        skillId: skill.sId,
+        name: "Hijacked",
+      });
+
+      expectMcpError(result, "Only editors of this skill can rename it");
+      const suggestions =
+        await SkillSuggestionResource.listBySkillConfigurationId(
+          ownerAuth,
+          skill.sId,
+          { sources: ["conversational"] }
+        );
+      expect(suggestions).toHaveLength(0);
+    });
+
+    it("rejects an archived skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Archived",
+        status: "archived",
+      });
+
+      const result = await suggestName(authenticator, {
+        skillId: skill.sId,
+        name: "Revived",
+      });
+
+      expectMcpError(result, "archived");
+    });
+
+    it("rejects a skill id that is not a custom skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await suggestName(authenticator, {
+        skillId: "not_a_skill",
+        name: "Anything",
+      });
+
+      expectMcpError(result, "Only custom workspace skills");
+    });
+
+    it("rejects a blank name", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Blank" });
+
+      const result = await suggestName(authenticator, {
+        skillId: skill.sId,
+        name: "   ",
+      });
+
+      expectMcpError(result, "cannot be empty");
+    });
+
+    it("rejects a name over the maximum length", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Too Long" });
+
+      const result = await suggestName(authenticator, {
+        skillId: skill.sId,
+        name: "a".repeat(SKILL_NAME_MAX_LENGTH + 1),
+      });
+
+      expectMcpError(result, `at most ${SKILL_NAME_MAX_LENGTH}`);
+    });
+
+    it("rejects the skill's current name", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Same Name" });
+
+      const result = await suggestName(authenticator, {
+        skillId: skill.sId,
+        name: "Same Name",
+      });
+
+      expectMcpError(result, "already named");
+    });
+
+    it("rejects the name of another active skill, even one the caller cannot read", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(authenticator, { name: "Mine" });
+      const other = await addMember(workspace);
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        other.sId,
+        workspace.sId
+      );
+      await SkillFactory.create(otherAuth, {
+        name: "Hidden Homonym",
+        availability: "editors",
+      });
+
+      const result = await suggestName(authenticator, {
+        skillId: skill.sId,
+        name: "Hidden Homonym",
+      });
+
+      expectMcpError(result, "already exists");
     });
   });
 });

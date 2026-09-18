@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import type { SkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
+import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
 import type { Authenticator } from "@app/lib/auth";
 import type { AppliedSkillInstructions } from "@app/lib/editor/skill_instructions_html";
 import {
@@ -14,6 +15,7 @@ import {
 import { DustError } from "@app/lib/error";
 import {
   pruneConflictingSkillEditorsSuggestions,
+  pruneConflictingSkillNameSuggestions,
   pruneConflictingSkillUserFacingDescriptionSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -24,9 +26,11 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
 import {
   isEditorsSkillSuggestion,
+  isNameSkillSuggestion,
   isUserFacingDescriptionSkillSuggestion,
   parseSkillSuggestionData,
 } from "@app/types/suggestions/skill_suggestion";
+import { UniqueConstraintError } from "sequelize";
 
 /**
  * What a suggestion asks to change on the skill. `editors` is not a skill field: it is written as
@@ -35,6 +39,7 @@ import {
 interface SkillEdits {
   agentFacingDescription?: string;
   userFacingDescription?: string;
+  name?: string;
   editors?: { addUserIds: string[]; removeUserIds: string[] };
   instructionEdits?: SkillInstructionEditItemType[];
 }
@@ -63,6 +68,9 @@ function editsForSuggestion(
         userFacingDescription: data.suggestion.userFacingDescription,
       });
 
+    case "name":
+      return new Ok({ name: data.suggestion.name });
+
     default:
       assertNever(data);
   }
@@ -81,6 +89,10 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
     (merged, next) => next.userFacingDescription ?? merged,
     undefined
   );
+  const name = edits.reduce<string | undefined>(
+    (merged, next) => next.name ?? merged,
+    undefined
+  );
 
   // Concatenated in suggestion order: every accepted edit is applied, each to its own block.
   const instructionEdits = edits.flatMap((e) => e.instructionEdits ?? []);
@@ -88,12 +100,18 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
   // Union, not last-wins: approving two suggestions must apply both editor changes.
   const editorsEdits = edits.flatMap((e) => e.editors ?? []);
   if (editorsEdits.length === 0) {
-    return { agentFacingDescription, userFacingDescription, instructionEdits };
+    return {
+      agentFacingDescription,
+      userFacingDescription,
+      name,
+      instructionEdits,
+    };
   }
 
   return {
     agentFacingDescription,
     userFacingDescription,
+    name,
     instructionEdits,
     editors: {
       addUserIds: [...new Set(editorsEdits.flatMap((e) => e.addUserIds))],
@@ -105,11 +123,13 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
 function hasSkillFieldEdits({
   agentFacingDescription,
   userFacingDescription,
+  name,
   instructionEdits,
 }: SkillEdits): boolean {
   return (
     agentFacingDescription !== undefined ||
     userFacingDescription !== undefined ||
+    name !== undefined ||
     (instructionEdits?.length ?? 0) > 0
   );
 }
@@ -136,6 +156,7 @@ async function applySkillFieldEdits(
   {
     agentFacingDescription,
     userFacingDescription,
+    name,
     instructionEdits,
   }: SkillEdits
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
@@ -158,7 +179,7 @@ async function applySkillFieldEdits(
       instructions.value?.instructionsHtml ?? skill.instructionsHtml,
     manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
     mcpServerViews: skill.mcpServerViews,
-    name: skill.name,
+    name: name ?? skill.name,
     requestedSpaceIds: skill.requestedSpaceIds,
     userFacingDescription: userFacingDescription ?? skill.userFacingDescription,
   });
@@ -225,7 +246,20 @@ export async function applySkillSuggestions(
     perSuggestionEdits.push(suggestionEdits.value);
   }
 
-  const edits = mergeSkillEdits(perSuggestionEdits);
+  let edits = mergeSkillEdits(perSuggestionEdits);
+
+  if (edits.name !== undefined) {
+    const validation = await validateSkillNameChange(auth, skill, {
+      name: edits.name,
+    });
+    if (validation.isErr()) {
+      return new Err(
+        new DustError("invalid_request_error", validation.error.message)
+      );
+    }
+    // Write the validator's trimmed name, never the raw suggestion payload.
+    edits = { ...edits, name: validation.value.name };
+  }
 
   let editorsChange: SkillEditorsChange | null = null;
   if (edits.editors) {
@@ -248,14 +282,33 @@ export async function applySkillSuggestions(
 
   // `updateSkill` saves a version, so a batch that only moves editors must not call it.
   if (hasSkillFieldEdits(edits)) {
-    const updateRes = await applySkillFieldEdits(auth, skill, edits);
-    if (updateRes.isErr()) {
-      return updateRes;
+    // The name was validated above, but a concurrent rename or creation can still take it before
+    // the write lands; the unique index is the last word.
+    try {
+      const updateRes = await applySkillFieldEdits(auth, skill, edits);
+      if (updateRes.isErr()) {
+        return updateRes;
+      }
+    } catch (error) {
+      if (error instanceof UniqueConstraintError && edits.name !== undefined) {
+        return new Err(
+          new DustError(
+            "invalid_request_error",
+            `A skill with the name "${edits.name}" already exists.`
+          )
+        );
+      }
+      throw error;
     }
     await pruneConflictingSkillUserFacingDescriptionSuggestions(
       auth,
       skill,
       suggestions.filter(isUserFacingDescriptionSkillSuggestion)
+    );
+    await pruneConflictingSkillNameSuggestions(
+      auth,
+      skill,
+      suggestions.filter(isNameSkillSuggestion)
     );
   }
 
