@@ -845,10 +845,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: string }
   ): Promise<AgentMessageModel["creditSpendCheckpointStatus"] | null> {
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-
     const agentMessageRow = await MessageModel.findOne({
-      where: { sId: agentMessageId, workspaceId: workspaceModelId },
+      where: {
+        sId: agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
       attributes: ["id"],
       include: [
         {
@@ -881,6 +882,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       }
     );
+  }
+
+  // Conditional so concurrent resolutions of the same pause cannot both apply.
+  static async transitionAgentMessageCreditSpendCheckpointStatus(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      from,
+      to,
+    }: {
+      agentMessageModelId: ModelId;
+      from: AgentMessageModel["creditSpendCheckpointStatus"];
+      to: AgentMessageModel["creditSpendCheckpointStatus"];
+    }
+  ): Promise<{ applied: boolean }> {
+    const [updatedCount] = await AgentMessageModel.update(
+      { creditSpendCheckpointStatus: to },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          creditSpendCheckpointStatus: from,
+        },
+      }
+    );
+
+    return { applied: updatedCount > 0 };
   }
 
   /**
