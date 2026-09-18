@@ -14,6 +14,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
+import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import logger from "@app/logger/logger";
 import type {
   DeleteSkillResponseBody,
@@ -54,7 +55,7 @@ const ParamsSchema = z.object({
 const PatchSkillRequestBodySchema = z.object({
   name: SkillNameSchema,
   agentFacingDescription: z.string(),
-  userFacingDescription: z.string(),
+  userFacingDescription: z.string().max(USER_FACING_DESCRIPTION_MAX_LENGTH),
   instructions: z.string(),
   icon: z.string().nullable(),
   tools: z.array(

@@ -5,6 +5,7 @@ import {
 } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -512,6 +513,33 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
       const body = await response.json();
       expect(body.error.message).toContain("at most 256 characters");
     }
+  });
+
+  it("returns 400 for a user-facing description over the column length", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest();
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: skill.name,
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "a".repeat(USER_FACING_DESCRIPTION_MAX_LENGTH + 1),
+      instructions: "Instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      `${USER_FACING_DESCRIPTION_MAX_LENGTH}`
+    );
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.userFacingDescription).toBe(
+      skill.userFacingDescription
+    );
   });
 
   it("should return 400 for invalid MCP server view ID", async () => {

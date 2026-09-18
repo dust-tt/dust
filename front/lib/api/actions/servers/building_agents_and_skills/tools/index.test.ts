@@ -6,6 +6,7 @@ import {
   SUGGEST_AGENT_DELETION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
+  SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import {
   archiveAgentConfiguration,
@@ -17,6 +18,7 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -909,6 +911,187 @@ describe("building_agents_and_skills tools", () => {
         makeExtra(authenticator)
       );
       expectMcpError(result, "active agents");
+    });
+  });
+
+  describe(SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME, () => {
+    it("creates a pending conversational suggestion without touching the skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Described For Users",
+        userFacingDescription: "Formats notes.",
+      });
+
+      const result = await getTool(
+        SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+      ).handler(
+        {
+          skillId: skill.sId,
+          userFacingDescription:
+            "Paste notes, get a summary with action items.",
+          analysis: "Members should know what they get back.",
+          title: "Clarify description",
+        },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const suggestionId = extractSuggestionId(
+        result.value[0].text,
+        "user_facing_description"
+      );
+
+      const suggestion = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?.kind).toBe("user_facing_description");
+      expect(suggestion?.title).toBe("Clarify description");
+      expect(suggestion?.toJSON()).toMatchObject({
+        kind: "user_facing_description",
+        suggestion: {
+          userFacingDescription:
+            "Paste notes, get a summary with action items.",
+        },
+      });
+
+      const reloaded = await SkillResource.fetchById(authenticator, skill.sId);
+      expect(reloaded?.userFacingDescription).toBe("Formats notes.");
+    });
+
+    it("outdates every other pending description suggestion, leaving edit suggestions alone", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Conflicting" });
+      const edit = await SkillSuggestionFactory.createEdit(
+        authenticator,
+        skill,
+        { source: "conversational" }
+      );
+
+      const suggest = async (userFacingDescription: string) => {
+        const result = await getTool(
+          SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+        ).handler(
+          { skillId: skill.sId, userFacingDescription },
+          makeExtra(authenticator)
+        );
+        if (result.isErr() || result.value[0]?.type !== "text") {
+          throw new Error("Expected the suggestion to be created.");
+        }
+        return extractSuggestionId(
+          result.value[0].text,
+          "user_facing_description"
+        );
+      };
+      const stateOf = async (suggestionId: string) =>
+        (await SkillSuggestionResource.fetchById(authenticator, suggestionId))
+          ?.state;
+
+      const firstId = await suggest("First wording.");
+      const secondId = await suggest("Second wording.");
+
+      expect(await stateOf(firstId)).toBe("outdated");
+      expect(await stateOf(secondId)).toBe("pending");
+      expect(await stateOf(edit.sId)).toBe("pending");
+    });
+
+    it("rejects a caller who is not an editor, creating no row", async () => {
+      const { authenticator: ownerAuth, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(ownerAuth, { name: "Not Mine" });
+      const outsider = await addMember(workspace);
+      const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        outsider.sId,
+        workspace.sId
+      );
+
+      const result = await getTool(
+        SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+      ).handler(
+        { skillId: skill.sId, userFacingDescription: "Anything." },
+        makeExtra(outsiderAuth)
+      );
+
+      expectMcpError(result, "added as an editor");
+      const suggestions =
+        await SkillSuggestionResource.listBySkillConfigurationId(
+          ownerAuth,
+          skill.sId,
+          { sources: ["conversational"] }
+        );
+      expect(suggestions).toHaveLength(0);
+    });
+
+    it("rejects an archived skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Archived",
+        status: "archived",
+      });
+
+      const result = await getTool(
+        SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+      ).handler(
+        { skillId: skill.sId, userFacingDescription: "Anything." },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "archived");
+    });
+
+    it("rejects a skill id that is not a custom skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await getTool(
+        SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+      ).handler(
+        { skillId: "not_a_skill", userFacingDescription: "Anything." },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "Only custom workspace skills");
+    });
+
+    it("rejects an empty description", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Empty" });
+
+      const result = await getTool(
+        SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+      ).handler(
+        { skillId: skill.sId, userFacingDescription: "" },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "non-empty");
+    });
+
+    it("rejects a description longer than the column allows", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Too Long" });
+
+      const result = await getTool(
+        SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+      ).handler(
+        {
+          skillId: skill.sId,
+          userFacingDescription: "a".repeat(
+            USER_FACING_DESCRIPTION_MAX_LENGTH + 1
+          ),
+        },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, `at most ${USER_FACING_DESCRIPTION_MAX_LENGTH}`);
     });
   });
 });

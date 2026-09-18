@@ -168,6 +168,7 @@ Discovery (see <discovery_step>):
 Skill suggestions:
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_update\`: instruction edits (block-targeted, see <block_aware_editing>) and/or an agent-facing description replacement for one skill. Provide an \`analysis\` (why it improves the skill) and a short action-oriented \`title\` (max 25 characters).
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_editors\`: add or remove editors of a skill by user id. A change that would leave the skill without any editor is refused.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_user_facing_description\`: replace the user-facing description of a skill, the short text members read when browsing skills. Call \`describe_skill\` first to see the current one.
 
 Agent suggestions:
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_creation\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`.

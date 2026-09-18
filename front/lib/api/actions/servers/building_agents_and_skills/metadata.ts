@@ -1,5 +1,8 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
+import {
+  AGENT_FACING_DESCRIPTION_MAX_LENGTH,
+  USER_FACING_DESCRIPTION_MAX_LENGTH,
+} from "@app/lib/skills/labels";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { SkillInstructionEditItemSchema } from "@app/types/suggestions/skill_suggestion";
 import { z } from "zod";
@@ -14,6 +17,8 @@ export const SUGGEST_AGENT_CREATION_TOOL_NAME =
   "suggest_agent_creation" as const;
 export const SUGGEST_AGENT_DELETION_TOOL_NAME =
   "suggest_agent_deletion" as const;
+export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME =
+  "suggest_skill_user_facing_description" as const;
 
 // Bounds the O(n²) pairwise conflict check in hasSuggestionSelfConflict; larger rewrites
 // should target the instructions root block instead.
@@ -131,6 +136,37 @@ export type SuggestAgentDeletionArgs = z.infer<
   typeof SUGGEST_AGENT_DELETION_INPUT_SCHEMA
 >;
 
+export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_INPUT_SCHEMA = z.object({
+  skillId: z
+    .string()
+    .describe(
+      "The id of the custom skill whose user-facing description to change."
+    ),
+  userFacingDescription: z
+    .string()
+    .min(1)
+    .max(USER_FACING_DESCRIPTION_MAX_LENGTH)
+    .describe(
+      "The full new user-facing description (replaces the current one): the short text " +
+        `members read when browsing skills, at most ${USER_FACING_DESCRIPTION_MAX_LENGTH} characters.`
+    ),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Why this description is clearer for members."),
+  title: z
+    .string()
+    .max(25)
+    .optional()
+    .describe(
+      "A short, action-oriented user-facing title for this suggestion (at most 25 characters)."
+    ),
+});
+
+export type SuggestSkillUserFacingDescriptionArgs = z.infer<
+  typeof SUGGEST_SKILL_USER_FACING_DESCRIPTION_INPUT_SCHEMA
+>;
+
 export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   {
     name: DESCRIBE_SKILL_TOOL_NAME,
@@ -201,6 +237,21 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting agent deletion",
       done: "Suggest agent deletion",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
+    description:
+      "Suggest a new user-facing description for an existing custom Skill: the short text " +
+      "members read when browsing skills. The change is not applied directly: it is recorded " +
+      "as a pending suggestion that the skill's editors can review, accept, or reject.",
+    schema: SUGGEST_SKILL_USER_FACING_DESCRIPTION_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting skill description",
+      done: "Suggest skill description",
     },
     toolCostCategory: "basic",
     freeUsage: true,

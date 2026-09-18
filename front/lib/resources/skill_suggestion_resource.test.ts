@@ -96,6 +96,28 @@ describe("SkillSuggestionResource", () => {
       expect(fetched?.kind).toBe("edit");
     });
 
+    it("should create and fetch a user_facing_description suggestion by id", async () => {
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          kind: "user_facing_description",
+          suggestion: { userFacingDescription: "Paste notes, get a summary." },
+          source: "conversational",
+        }
+      );
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.kind).toBe("user_facing_description");
+      expect(fetched?.toJSON()).toMatchObject({
+        kind: "user_facing_description",
+        suggestion: { userFacingDescription: "Paste notes, get a summary." },
+      });
+    });
+
     it("should fetch multiple suggestions by ids", async () => {
       const s1 = await SkillSuggestionFactory.create(authenticator, skill);
       const s2 = await SkillSuggestionFactory.create(authenticator, skill);

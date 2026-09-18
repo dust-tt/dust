@@ -1,11 +1,12 @@
 import { getBlockOuterHtml } from "@app/components/shared/utils";
+import { SkillFieldEditSection } from "@app/components/skill_builder/SkillFieldEditSection";
 import { SuggestedSkillEditors } from "@app/components/skill_builder/SuggestedSkillEditors";
+import { SuggestedSkillUserFacingDescription } from "@app/components/skill_builder/SuggestedSkillUserFacingDescription";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
 import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
-  SkillAgentFacingDescriptionEditType,
   SkillInstructionEditItemType,
   SkillSuggestionState,
   SkillSuggestionType,
@@ -104,34 +105,6 @@ function ReviewedSuggestionCard({ suggestion }: ReviewedSuggestionCardProps) {
         </span>
       </div>
     </Card>
-  );
-}
-
-interface AgentFacingDescriptionEditSectionProps {
-  edit: SkillAgentFacingDescriptionEditType;
-  currentAgentFacingDescription: string;
-}
-
-function AgentFacingDescriptionEditSection({
-  edit,
-  currentAgentFacingDescription,
-}: AgentFacingDescriptionEditSectionProps) {
-  return (
-    <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-foreground">
-        Description change
-      </span>
-      <DiffBlock>
-        <div className="flex flex-col gap-1 p-3 text-sm">
-          {currentAgentFacingDescription && (
-            <p className="text-muted-foreground line-through">
-              {currentAgentFacingDescription}
-            </p>
-          )}
-          <p className="text-foreground">{edit.content}</p>
-        </div>
-      </DiffBlock>
-    </div>
   );
 }
 
@@ -265,9 +238,10 @@ function SuggestionDetails({
       return (
         <>
           {agentFacingDescriptionEdit && (
-            <AgentFacingDescriptionEditSection
-              edit={agentFacingDescriptionEdit}
-              currentAgentFacingDescription={getCurrentAgentFacingDescription()}
+            <SkillFieldEditSection
+              label="Description change"
+              currentValue={getCurrentAgentFacingDescription()}
+              newValue={agentFacingDescriptionEdit.content}
             />
           )}
 
@@ -293,6 +267,15 @@ function SuggestionDetails({
       return (
         <SuggestedSkillEditors
           suggestion={suggestion.suggestion}
+          workspaceId={workspaceId}
+        />
+      );
+
+    case "user_facing_description":
+      return (
+        <SuggestedSkillUserFacingDescription
+          suggestion={suggestion.suggestion}
+          skillId={suggestion.skillConfigurationId}
           workspaceId={workspaceId}
         />
       );

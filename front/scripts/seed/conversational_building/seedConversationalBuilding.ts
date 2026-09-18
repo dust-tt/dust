@@ -142,6 +142,9 @@ export async function seedConversationalBuilding(
       __SKILL_EDIT_TOOL_SUGGESTION_SID__: suggestionSId("skillEditTool"),
       __SKILL_EDIT_KNOWLEDGE_SUGGESTION_SID__:
         suggestionSId("skillEditKnowledge"),
+      __SKILL_USER_FACING_DESCRIPTION_SUGGESTION_SID__: suggestionSId(
+        "skillUserFacingDescription"
+      ),
     },
     additionalUsers: createdUsers,
   });

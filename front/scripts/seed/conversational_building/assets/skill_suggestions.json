@@ -84,5 +84,18 @@
         }
       ]
     }
+  },
+  {
+    "id": "skillUserFacingDescription",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "user_facing_description",
+    "title": "Describe the skill for members",
+    "analysis": "Members browsing skills only see the user-facing description. It should say what to paste in and what comes back, not just what the skill does internally.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "userFacingDescription": "Paste raw meeting notes, a call transcript or a Slack thread and get back a clean summary with the decisions and the action items, each with an owner and a due date."
+    }
   }
 ]
