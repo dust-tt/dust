@@ -833,7 +833,6 @@ export type RetrievalDocumentPublicType = z.infer<
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "activation_force_nudge"
   | "advanced_notion_management"
-  | "analytics_conversation_panel"
   | "agent_message_consumption_bills"
   | "agent_message_consumption_writes"
   | "custom_model_feature"

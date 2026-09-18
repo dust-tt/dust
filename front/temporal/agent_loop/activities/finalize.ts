@@ -20,7 +20,7 @@ import {
   finalizeInterruption,
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
-import { recordExecutionFinalized } from "@app/temporal/agent_loop/activities/consumption";
+import { recordExecutionFinalized as recordConsumptionExecutionFinalized } from "@app/temporal/agent_loop/activities/consumption";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import {
   activationNewConversationNotification,
@@ -49,12 +49,12 @@ async function launchAgentMessageConsumptionAttributionAfterPersistingInputs(
   await launchAgentMessageConsumptionAttribution(auth, agentLoopArgs);
 }
 
-async function recordExecutionFinalizedAfterSkillSnapshot(
+async function recordExecutionFinalized(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
-): Promise<void> {
+): ReturnType<typeof recordConsumptionExecutionFinalized> {
   await snapshotAgentMessageSkills(auth, agentLoopArgs);
-  await recordExecutionFinalized(auth, agentLoopArgs);
+  return recordConsumptionExecutionFinalized(auth, agentLoopArgs);
 }
 
 export async function finalizeSuccessfulAgentLoopActivity(
@@ -63,7 +63,10 @@ export async function finalizeSuccessfulAgentLoopActivity(
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  await recordExecutionFinalizedAfterSkillSnapshot(auth, agentLoopArgs);
+  const consumptionResult = await recordExecutionFinalized(auth, agentLoopArgs);
+  if (consumptionResult.isErr()) {
+    throw consumptionResult.error;
+  }
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
@@ -102,7 +105,10 @@ async function launchStoppedLoopSideEffects(
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  await recordExecutionFinalizedAfterSkillSnapshot(auth, agentLoopArgs);
+  const consumptionResult = await recordExecutionFinalized(auth, agentLoopArgs);
+  if (consumptionResult.isErr()) {
+    throw consumptionResult.error;
+  }
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
@@ -141,7 +147,10 @@ export async function finalizeCancelledAgentLoopActivity(
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  await recordExecutionFinalizedAfterSkillSnapshot(auth, agentLoopArgs);
+  const consumptionResult = await recordExecutionFinalized(auth, agentLoopArgs);
+  if (consumptionResult.isErr()) {
+    throw consumptionResult.error;
+  }
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
@@ -167,7 +176,10 @@ export async function finalizeCreditStoppedAgentLoopActivity(
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
-  await recordExecutionFinalizedAfterSkillSnapshot(auth, agentLoopArgs);
+  const consumptionResult = await recordExecutionFinalized(auth, agentLoopArgs);
+  if (consumptionResult.isErr()) {
+    throw consumptionResult.error;
+  }
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
@@ -271,7 +283,10 @@ export async function finalizeErroredAgentLoopActivity(
     });
   }
 
-  await recordExecutionFinalizedAfterSkillSnapshot(auth, agentLoopArgs);
+  const consumptionResult = await recordExecutionFinalized(auth, agentLoopArgs);
+  if (consumptionResult.isErr()) {
+    throw consumptionResult.error;
+  }
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),

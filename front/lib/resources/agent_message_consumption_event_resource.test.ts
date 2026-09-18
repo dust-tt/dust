@@ -50,7 +50,7 @@ describe("AgentMessageConsumptionEventResource pending events", () => {
             kind: "items_changed",
             idempotencyKey,
             runKey,
-            rootAgentMessageId: 7,
+            rootAgentMessageModelId: 7,
             agentMessageModelId: 8,
             consumptionItemIds: [11],
           },
@@ -106,7 +106,7 @@ describe("AgentMessageConsumptionEventResource append", () => {
           kind: "items_changed",
           idempotencyKey: "items:changed",
           runKey: "run",
-          rootAgentMessageId: 7,
+          rootAgentMessageModelId: 7,
           agentMessageModelId: 8,
           consumptionItemIds: [11, 12],
         },
@@ -132,7 +132,7 @@ describe("AgentMessageConsumptionEventResource append", () => {
             kind: "items_changed",
             idempotencyKey: "items:retry",
             runKey: "run",
-            rootAgentMessageId: 7,
+            rootAgentMessageModelId: 7,
             agentMessageModelId: 8,
             consumptionItemIds: [11],
           },
@@ -154,7 +154,7 @@ describe("AgentMessageConsumptionEventResource append", () => {
             kind: "items_changed",
             idempotencyKey: "items:collision",
             runKey,
-            rootAgentMessageId: 7,
+            rootAgentMessageModelId: 7,
             agentMessageModelId: 8,
             consumptionItemIds: [11],
           },
@@ -183,7 +183,7 @@ describe("AgentMessageConsumptionEventResource append", () => {
           kind: "items_changed",
           idempotencyKey: "items:rollback",
           runKey: "run",
-          rootAgentMessageId: 7,
+          rootAgentMessageModelId: 7,
           agentMessageModelId: 8,
           consumptionItemIds: [11],
         },
@@ -206,16 +206,19 @@ describe("AgentMessageConsumptionEventResource append", () => {
       runKey: string,
       consumptionMode: EnabledAgentMessageConsumptionMode
     ) =>
-      AgentMessageConsumptionEventResource.append(auth, {
-        event: {
-          kind: "execution_started",
-          idempotencyKey,
-          runKey,
-          rootAgentMessageId: 7,
-          agentMessageModelId: 8,
-          consumptionMode,
-        },
-      });
+      withTransaction((transaction) =>
+        AgentMessageConsumptionEventResource.append(auth, {
+          event: {
+            kind: "execution_started",
+            idempotencyKey,
+            runKey,
+            rootAgentMessageModelId: 7,
+            agentMessageModelId: 8,
+            consumptionMode,
+          },
+          transaction,
+        })
+      );
     await appendStarted("execution:first:started", "first", "shadow");
     await appendStarted("execution:second:started", "second", "live");
 
@@ -225,7 +228,7 @@ describe("AgentMessageConsumptionEventResource append", () => {
         { agentMessageModelId: 8 }
       )
     ).resolves.toEqual({
-      rootAgentMessageId: 7,
+      rootAgentMessageModelId: 7,
       consumptionMode: "live",
     });
     await expect(

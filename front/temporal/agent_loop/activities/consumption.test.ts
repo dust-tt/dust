@@ -1,11 +1,11 @@
 import { Authenticator } from "@app/lib/auth";
-import { GroupPermissions } from "@app/lib/resources/group_permission_registry";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   recordExecutionFinalized,
   recordExecutionStarted,
 } from "@app/temporal/agent_loop/activities/consumption";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -56,20 +56,10 @@ const agentLoopArgs = {
 describe("consumption execution events", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    const workspace = await WorkspaceResource.makeNew({
-      sId: "workspace",
-      name: "Workspace",
-      description: null,
-      workOSOrganizationId: null,
+    const workspace = await WorkspaceFactory.basic({
       metronomeCustomerId: "customer",
     });
-    auth = new Authenticator({
-      workspace,
-      role: "admin",
-      groupModelIds: [],
-      authMethod: "internal",
-      permissions: GroupPermissions.empty(),
-    });
+    auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     mocks.fetchCreditContext.mockImplementation(
       async (_auth, { agentMessageId }) => ({
         agentMessageModelId: agentMessageId === "root-message" ? 24 : 42,
@@ -80,12 +70,12 @@ describe("consumption execution events", () => {
       "agent_message_consumption_writes",
     ]);
     mocks.fetchLatestExecutionStarted.mockResolvedValue(null);
-    mocks.signal.mockResolvedValue({ isErr: () => false });
+    mocks.signal.mockResolvedValue(new Ok(undefined));
   });
 
   it("opens an execution while its message is still running", async () => {
     await recordExecutionStarted(auth, agentLoopArgs, {
-      startStep: 0,
+      canInitializeConsumption: true,
     });
 
     expect(mocks.append).toHaveBeenCalledWith(auth, {
@@ -93,10 +83,11 @@ describe("consumption execution events", () => {
         kind: "execution_started",
         idempotencyKey: "execution:execution:started",
         runKey: "execution",
-        rootAgentMessageId: 24,
+        rootAgentMessageModelId: 24,
         agentMessageModelId: 42,
         consumptionMode: "shadow",
       },
+      transaction: expect.anything(),
     });
     expect(mocks.signal).toHaveBeenCalledOnce();
   });
@@ -108,34 +99,24 @@ describe("consumption execution events", () => {
         ...agentLoopArgs,
         rootAgentMessageId: agentLoopArgs.agentMessageId,
       },
-      { startStep: 0 }
+      { canInitializeConsumption: true }
     );
 
     expect(mocks.fetchCreditContext).toHaveBeenCalledOnce();
   });
 
   it("snapshots live billing without a Metronome customer", async () => {
-    const workspace = await WorkspaceResource.makeNew({
-      sId: "workspace-without-metronome",
-      name: "Workspace without Metronome",
-      description: null,
-      workOSOrganizationId: null,
+    const workspace = await WorkspaceFactory.basic({
       metronomeCustomerId: null,
     });
-    auth = new Authenticator({
-      workspace,
-      role: "admin",
-      groupModelIds: [],
-      authMethod: "internal",
-      permissions: GroupPermissions.empty(),
-    });
+    auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     mocks.getFeatureFlags.mockResolvedValue([
       "agent_message_consumption_writes",
       "agent_message_consumption_bills",
     ]);
 
     await recordExecutionStarted(auth, agentLoopArgs, {
-      startStep: 0,
+      canInitializeConsumption: true,
     });
 
     expect(mocks.append).toHaveBeenCalledWith(
@@ -149,12 +130,12 @@ describe("consumption execution events", () => {
   it("reuses the execution-started mode when the start activity retries", async () => {
     mocks.getFeatureFlags.mockResolvedValue([]);
     mocks.fetchLatestExecutionStarted.mockResolvedValue({
-      rootAgentMessageId: 24,
+      rootAgentMessageModelId: 24,
       consumptionMode: "live",
     });
 
     await recordExecutionStarted(auth, agentLoopArgs, {
-      startStep: 0,
+      canInitializeConsumption: true,
     });
 
     expect(mocks.append).toHaveBeenCalledWith(
@@ -170,9 +151,9 @@ describe("consumption execution events", () => {
     expect(mocks.getFeatureFlags).not.toHaveBeenCalled();
   });
 
-  it("keeps a pre-rollout resumed message on the existing pipeline", async () => {
+  it("keeps a pre-rollout step-zero resume on the existing pipeline", async () => {
     await recordExecutionStarted(auth, agentLoopArgs, {
-      startStep: 2,
+      canInitializeConsumption: false,
     });
 
     expect(mocks.getFeatureFlags).not.toHaveBeenCalled();
@@ -182,7 +163,7 @@ describe("consumption execution events", () => {
 
   it("closes an execution paused for approval", async () => {
     mocks.fetchLatestExecutionStarted.mockResolvedValue({
-      rootAgentMessageId: 24,
+      rootAgentMessageModelId: 24,
       consumptionMode: "shadow",
     });
 
@@ -193,25 +174,26 @@ describe("consumption execution events", () => {
         kind: "execution_finalized",
         idempotencyKey: "execution:execution:finalized",
         runKey: "execution",
-        rootAgentMessageId: 24,
+        rootAgentMessageModelId: 24,
         agentMessageModelId: 42,
         consumptionMode: "shadow",
         status: "created",
       },
+      transaction: expect.anything(),
     });
     expect(mocks.signal).toHaveBeenCalledOnce();
   });
 
   it("keeps the execution-started mode when feature flags change", async () => {
     mocks.fetchLatestExecutionStarted.mockResolvedValue({
-      rootAgentMessageId: 24,
+      rootAgentMessageModelId: 24,
       consumptionMode: "live",
     });
     mocks.getFeatureFlags.mockResolvedValue([]);
 
-    await expect(recordExecutionFinalized(auth, agentLoopArgs)).resolves.toBe(
-      "live"
-    );
+    const result = await recordExecutionFinalized(auth, agentLoopArgs);
+
+    expect(result).toEqual(new Ok("live"));
     expect(mocks.append).toHaveBeenCalledWith(
       auth,
       expect.objectContaining({
@@ -222,10 +204,34 @@ describe("consumption execution events", () => {
   });
 
   it("does not finalize consumption without an execution-started event", async () => {
-    await expect(recordExecutionFinalized(auth, agentLoopArgs)).resolves.toBe(
-      null
-    );
+    await expect(
+      recordExecutionFinalized(auth, agentLoopArgs)
+    ).resolves.toEqual(new Ok(null));
     expect(mocks.append).not.toHaveBeenCalled();
     expect(mocks.signal).not.toHaveBeenCalled();
+  });
+
+  it("returns start signaling failures", async () => {
+    const error = new Error("signal failed");
+    mocks.signal.mockResolvedValue(new Err(error));
+
+    await expect(
+      recordExecutionStarted(auth, agentLoopArgs, {
+        canInitializeConsumption: true,
+      })
+    ).resolves.toEqual(new Err(error));
+  });
+
+  it("returns finalization signaling failures", async () => {
+    const error = new Error("signal failed");
+    mocks.fetchLatestExecutionStarted.mockResolvedValue({
+      rootAgentMessageModelId: 24,
+      consumptionMode: "shadow",
+    });
+    mocks.signal.mockResolvedValue(new Err(error));
+
+    await expect(
+      recordExecutionFinalized(auth, agentLoopArgs)
+    ).resolves.toEqual(new Err(error));
   });
 });

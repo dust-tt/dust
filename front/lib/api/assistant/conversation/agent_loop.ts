@@ -63,6 +63,8 @@ export const runAgentLoopWorkflow = async ({
           userMessageVersion: userMessage.version,
           userMessageOrigin: userMessage.context.origin,
         },
+        // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
+        canInitializeConsumption: true,
         startStep: 0,
       });
 
