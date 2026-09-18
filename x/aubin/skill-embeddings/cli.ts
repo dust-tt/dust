@@ -11,6 +11,7 @@ import { analyze } from "./analysis";
 import type { EmbeddingData } from "./data";
 import {
   embedSkills,
+  EMBEDDING_TOKEN_LIMIT,
   extractSkills,
   readEmbeddings,
   reuseEmbeddings,
@@ -130,12 +131,12 @@ export async function fetchEmbeddings(
   client: OpenAI,
   model: string,
   dimensions: number,
-  texts: string[],
+  inputs: number[][],
 ): Promise<number[][]> {
   const response = await client.embeddings.create({
     model,
     dimensions,
-    input: texts,
+    input: inputs,
     encoding_format: "float",
   });
   const ordered = response.data.toSorted((a, b) => a.index - b.index);
@@ -246,6 +247,9 @@ async function main() {
       skills: skills.length,
       cached: skills.length - missing,
       pending: missing,
+      chunkedSkills: data.skills.filter(
+        (skill) => skill.tokenCount > EMBEDDING_TOKEN_LIMIT,
+      ).length,
       tokens: data.skills
         .filter((skill) => !skill.embedding)
         .reduce((sum, skill) => sum + skill.tokenCount, 0),
@@ -271,11 +275,11 @@ async function main() {
   const completed = await embedSkills(
     data,
     path,
-    async (texts) => {
+    async (inputs) => {
       if (!client) {
         throw new Error("Missing embedding client.");
       }
-      return fetchEmbeddings(client, model, dimensions, texts);
+      return fetchEmbeddings(client, model, dimensions, inputs);
     },
     (complete, total) =>
       logger.info({ complete, total }, "Saved embedding checkpoint"),

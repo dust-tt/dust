@@ -53,7 +53,7 @@ internal IDs are excluded from the embedding text.
 | `analysis.json`   | L2-normalized vectors, PCA coordinates and explained variance, cluster assignments and diagnostics    |
 | `index.html`      | Offline interactive report, including its data                                                        |
 
-`embeddings.json` is checkpointed after each successful batch of up to 16 skills,
+`embeddings.json` is checkpointed after each successful batch of up to 16 chunks,
 **before** PCA or report generation. Rerun the same command to resume an interrupted
 run. Only new or changed texts are embedded again. A different workspace, API
 origin, model, or dimension requires a separate `--out` directory. Run one process
@@ -62,7 +62,12 @@ per output directory at a time.
 The default is OpenAI `text-embedding-3-large` with 1536 dimensions. You can compare
 it with `--model text-embedding-3-small`, or use `--dimensions 3072` with the large
 model. Texts go to OpenAI's embedding API. Inputs over 8191 `cl100k_base` tokens
-produce an actionable error; nothing is silently truncated or summarized. To
+are split into consecutive token chunks. Their vectors are combined using a mean
+weighted by each chunk's token count, so every token contributes. The output records
+`embeddingAggregation: "token-weighted-mean-v1"` and keeps `chunkEmbeddings` for
+long skills, including partial progress for interrupted runs. This pooling can
+smooth over distinct topics within a long skill; it is not a single model embedding
+of the entire text. Nothing is silently truncated or summarized. To
 experiment with edited content, save a public skills API response locally and pass
 `--input skills.json --workspace YOUR_WORKSPACE_ID --out /tmp/edited-skills`.
 

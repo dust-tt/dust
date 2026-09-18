@@ -4,6 +4,8 @@ import { dirname } from "node:path";
 import { encode } from "gpt-tokenizer/encoding/cl100k_base";
 import { z } from "zod";
 
+export const EMBEDDING_TOKEN_LIMIT = 8191;
+
 const NamedText = z.object({ name: z.string(), description: z.string() });
 const ToolView = z.object({
   name: z.string().nullable(),
@@ -53,8 +55,14 @@ export const EmbeddingFile = z.object({
     "synthetic-demo",
   ]),
   dimensions: z.number().int().positive(),
+  embeddingAggregation: z.literal("token-weighted-mean-v1").optional(),
   createdAt: z.string(),
-  skills: z.array(SkillText.extend({ embedding: Vector.optional() })),
+  skills: z.array(
+    SkillText.extend({
+      embedding: Vector.optional(),
+      chunkEmbeddings: z.array(Vector).optional(),
+    }),
+  ),
 });
 export type EmbeddingData = z.infer<typeof EmbeddingFile>;
 export type TextRecord = z.infer<typeof SkillText>;
@@ -115,13 +123,7 @@ export function extractSkills(payload: unknown): TextRecord[] {
             : "None"
         }`,
       ].join("\n\n");
-      // Reject long input rather than silently remove instructions or tools from the experiment.
       const tokenCount = encode(text, { disallowedSpecial: new Set() }).length;
-      if (tokenCount > 8191) {
-        throw new Error(
-          `Skill ${skill.sId} is ${tokenCount} tokens (limit 8191). Shorten it in an exported input file before embedding.`,
-        );
-      }
       return {
         id: skill.sId,
         name: skill.name,
@@ -150,14 +152,28 @@ export async function readEmbeddings(path: string): Promise<EmbeddingData> {
       );
     }
     ids.add(skill.id);
+    const vectors = [
+      ...(skill.chunkEmbeddings ?? []),
+      ...(skill.embedding ? [skill.embedding] : []),
+    ];
     if (
-      skill.embedding &&
-      (skill.embedding.length !== data.dimensions ||
-        !skill.embedding.some((value) => value !== 0))
+      vectors.some(
+        (vector) =>
+          vector.length !== data.dimensions ||
+          !vector.some((value) => value !== 0),
+      )
     ) {
       throw new Error(
         `Invalid embedding dimensions or zero vector for ${skill.id}.`,
       );
+    }
+    const chunks = skill.chunkEmbeddings?.length ?? 0;
+    const expectedChunks = Math.ceil(skill.tokenCount / EMBEDDING_TOKEN_LIMIT);
+    if (
+      chunks > expectedChunks ||
+      (chunks === expectedChunks && !skill.embedding)
+    ) {
+      throw new Error(`Invalid saved chunk count for ${skill.id}.`);
     }
   }
   return data;
@@ -168,23 +184,54 @@ export async function readEmbeddings(path: string): Promise<EmbeddingData> {
  * Embeddings must be saved after each successful batch and before projection or report generation.
  * Reuse is permitted only for matching workspace, endpoint, model, dimensions, and exact text hash.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] complete-text-chunking
+ * Every input token must be embedded exactly once in chunks of at most 8191 tokens.
+ * A skill vector is the token-count-weighted mean of its chunk vectors. Completed chunks
+ * must be checkpointed and reused on resume, even when a skill is not yet fully embedded.
+ */
 export async function embedSkills(
   data: EmbeddingData,
   path: string,
-  embed: (texts: string[]) => Promise<number[][]>,
+  embed: (inputs: number[][]) => Promise<number[][]>,
   progress: (complete: number, total: number) => void,
 ): Promise<EmbeddingData> {
-  let current = { ...data, skills: data.skills.map((skill) => ({ ...skill })) };
+  let current: EmbeddingData = {
+    ...data,
+    embeddingAggregation: "token-weighted-mean-v1",
+    skills: data.skills.map((skill) => ({ ...skill })),
+  };
   await saveJson(path, current);
-  const pending = current.skills.filter((skill) => !skill.embedding);
+  const pending: { id: string; tokens: number[] }[] = [];
+  for (const skill of current.skills) {
+    if (skill.embedding) {
+      continue;
+    }
+    const tokens = encode(skill.text, { disallowedSpecial: new Set() });
+    if (tokens.length !== skill.tokenCount) {
+      throw new Error(`Token count mismatch for ${skill.id}.`);
+    }
+    const savedChunks = skill.chunkEmbeddings?.length ?? 0;
+    for (
+      let start = savedChunks * EMBEDDING_TOKEN_LIMIT;
+      start < tokens.length;
+      start += EMBEDDING_TOKEN_LIMIT
+    ) {
+      pending.push({
+        id: skill.id,
+        tokens: tokens.slice(start, start + EMBEDDING_TOKEN_LIMIT),
+      });
+    }
+  }
   // At most 16 * 8191 tokens, below the provider's per-request token limit.
   for (let start = 0; start < pending.length; start += 16) {
     const batch = pending.slice(start, start + 16);
-    const vectors = await embed(batch.map((skill) => skill.text));
+    const vectors = await embed(batch.map((chunk) => chunk.tokens));
     const validated = z.array(Vector).length(batch.length).parse(vectors);
-    const byId = new Map(
-      batch.map((skill, index) => [skill.id, validated[index]]),
-    );
+    const byId = new Map<string, number[][]>();
+    batch.forEach((chunk, index) => {
+      byId.set(chunk.id, [...(byId.get(chunk.id) ?? []), validated[index]]);
+    });
     if (
       validated.some(
         (vector) =>
@@ -198,10 +245,35 @@ export async function embedSkills(
     }
     current = {
       ...current,
-      skills: current.skills.map((skill) => ({
-        ...skill,
-        embedding: byId.get(skill.id) ?? skill.embedding,
-      })),
+      skills: current.skills.map((skill) => {
+        const received = byId.get(skill.id);
+        if (!received) {
+          return skill;
+        }
+        const chunks = [...(skill.chunkEmbeddings ?? []), ...received];
+        const complete =
+          chunks.length === Math.ceil(skill.tokenCount / EMBEDDING_TOKEN_LIMIT);
+        const embedding = complete
+          ? chunks[0].map(
+              (_, dimension) =>
+                chunks.reduce(
+                  (sum, vector, index) =>
+                    sum +
+                    vector[dimension] *
+                      Math.min(
+                        EMBEDDING_TOKEN_LIMIT,
+                        skill.tokenCount - index * EMBEDDING_TOKEN_LIMIT,
+                      ),
+                  0,
+                ) / skill.tokenCount,
+            )
+          : undefined;
+        return {
+          ...skill,
+          embedding: complete && chunks.length === 1 ? chunks[0] : embedding,
+          chunkEmbeddings: chunks.length > 1 || !complete ? chunks : undefined,
+        };
+      }),
     };
     await saveJson(path, current);
     progress(
@@ -236,6 +308,10 @@ export function reuseEmbeddings(
         embedding:
           previous?.textHash === skill.textHash
             ? previous.embedding
+            : undefined,
+        chunkEmbeddings:
+          previous?.textHash === skill.textHash
+            ? previous.chunkEmbeddings
             : undefined,
       };
     }),

@@ -29,9 +29,13 @@ const extent =
     ...coordinates.flatMap(([x, y]) => [Math.abs(x), Math.abs(y)]),
   ) * 1.18;
 const color = (label) => palette[label % palette.length];
+const chunkedSkills = dataset.skills.filter(
+  (skill) => (skill.chunkEmbeddings?.length ?? 0) > 1,
+).length;
 
 byId("subtitle").textContent =
-  `${dataset.workspace} · ${dataset.skills.length} skills · ${dataset.model} · ${dataset.dimensions} dimensions`;
+  `${dataset.workspace} · ${dataset.skills.length} skills · ${dataset.model} · ${dataset.dimensions} dimensions` +
+  (chunkedSkills ? ` · ${chunkedSkills} skills pooled from chunks` : "");
 byId("variance").textContent =
   `${(dataset.explainedVariance.reduce((sum, value) => sum + value, 0) * 100).toFixed(1)}%`;
 byId("silhouette-label").textContent =
@@ -200,7 +204,10 @@ function selectSkill(index) {
   byId("detail-name").textContent = skill.name;
   byId("detail-description").textContent = skill.description;
   byId("detail-meta").textContent =
-    `Cluster ${experiment.labels[index] + 1} · ${skill.tokenCount} tokens · ${skill.id}`;
+    `Cluster ${experiment.labels[index] + 1} · ${skill.tokenCount} tokens · ${skill.id}` +
+    (skill.chunkEmbeddings?.length > 1
+      ? ` · Mean of ${skill.chunkEmbeddings.length} chunks, weighted by token count`
+      : "");
   byId("detail-text").textContent = skill.text;
   const neighbors = dataset.skills
     .map((other, otherIndex) => ({
