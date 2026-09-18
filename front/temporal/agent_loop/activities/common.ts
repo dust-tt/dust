@@ -1011,7 +1011,7 @@ export async function finalizeCreditSpendCheckpointPause(
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      paused: true,
+      status: "paused",
     },
   });
   logger.info(

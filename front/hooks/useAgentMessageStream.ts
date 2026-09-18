@@ -700,21 +700,23 @@ export function useAgentMessageStream({
           break;
 
         // Both the pause and its resolution are streamed, so replayed history lands on the state
-        // the server persisted: nothing runs while paused, the loop is relaunched once resolved.
+        // the server persisted: nothing runs while paused, the loop only runs again once
+        // acknowledged. A decline is followed by the terminal cancelled event.
         case "agent_credit_spend_checkpoint_updated": {
-          const { paused } = eventPayload.data;
+          const { status } = eventPayload.data;
           methods.data.map((m) =>
             isAgentMessageWithStreaming(m) && m.sId === sId
               ? {
                   ...m,
-                  pausedAtCreditSpendCheckpoint: paused,
-                  streaming: paused
-                    ? {
-                        ...m.streaming,
-                        agentState: "done",
-                        pendingToolCalls: [],
-                      }
-                    : { ...m.streaming, agentState: "thinking" },
+                  creditSpendCheckpointStatus: status,
+                  streaming:
+                    status === "acknowledged"
+                      ? { ...m.streaming, agentState: "thinking" }
+                      : {
+                          ...m.streaming,
+                          agentState: "done",
+                          pendingToolCalls: [],
+                        },
                 }
               : m
           );

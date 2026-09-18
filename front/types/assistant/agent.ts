@@ -6,6 +6,7 @@ import { MCPServerConfigurationSchema } from "@app/lib/actions/mcp_schemas";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentMessageType,
+  CreditSpendCheckpointStatus,
   InlineActivityStep,
 } from "@app/types/assistant/conversation";
 import type { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
@@ -480,11 +481,11 @@ export type AgentContextPrunedEvent = {
 };
 
 // Emitted when the loop pauses on a credit spend checkpoint, and again once a decision has been
-// recorded and the loop relaunched.
+// recorded.
 export type AgentCreditSpendCheckpointUpdatedEvent = {
   type: "agent_credit_spend_checkpoint_updated";
   created: number;
   configurationId: string;
   messageId: string;
-  paused: boolean;
+  status: CreditSpendCheckpointStatus;
 };

@@ -4,6 +4,7 @@ import type { CreditSpendCheckpointDecision } from "@app/lib/api/assistant/conve
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { formatCreditValue } from "@app/lib/client/credits";
 import { useResolveCreditSpendCheckpoint } from "@app/lib/swr/tool_actions";
+import type { CreditSpendCheckpointStatus } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Avatar,
@@ -19,6 +20,7 @@ interface CreditSpendCheckpointPausedCardProps {
   owner: LightWorkspaceType;
   conversationId: string;
   messageId: string;
+  status: Extract<CreditSpendCheckpointStatus, "paused" | "stopped">;
   triggeringUser: UserType | null;
   creditsUsed: number | null;
 }
@@ -27,6 +29,7 @@ export function CreditSpendCheckpointPausedCard({
   owner,
   conversationId,
   messageId,
+  status,
   triggeringUser,
   creditsUsed,
 }: CreditSpendCheckpointPausedCardProps) {
@@ -68,6 +71,29 @@ export function CreditSpendCheckpointPausedCard({
       setSubmittingDecision(null);
     }
   };
+
+  if (status === "stopped") {
+    const stoppedBy = triggeringUser?.fullName ?? "the user";
+    return (
+      <Card
+        variant="secondary"
+        containerClassName="w-full max-w-xl"
+        className="flex flex-col shadow gap-2"
+      >
+        <div className="flex items-center gap-2">
+          <Avatar icon={PieChart01} size="sm" />
+          <div className="heading-base">
+            Stopped to avoid excessive credit use
+          </div>
+        </div>
+        <div className="text-base text-muted-foreground">
+          {displayedCredits !== null
+            ? `${stoppedBy} stopped this task after it used ${formatCreditValue(displayedCredits)}.`
+            : `${stoppedBy} stopped this task because it was using a lot of credits.`}
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card

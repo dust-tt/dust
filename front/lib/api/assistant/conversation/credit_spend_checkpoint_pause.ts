@@ -184,7 +184,7 @@ export async function continueCreditSpendCheckpointPause(
       created: Date.now(),
       configurationId: agentMessage.configuration.sId,
       messageId: agentMessage.sId,
-      paused: false,
+      status: "acknowledged",
     },
   });
 
@@ -228,6 +228,20 @@ export async function declineCreditSpendCheckpointPause(
     );
     return new Ok(undefined);
   }
+
+  // Published before the terminal event, which closes the message stream: viewers need the
+  // decision to render the resolved checkpoint.
+  await publishConversationRelatedEvent({
+    conversationId: conversation.sId,
+    step: nextStep(agentMessage) - 1,
+    event: {
+      type: "agent_credit_spend_checkpoint_updated",
+      created: Date.now(),
+      configurationId: agentMessage.configuration.sId,
+      messageId: agentMessage.sId,
+      status: "stopped",
+    },
+  });
 
   await finalizeAgentMessagesWithoutWorkflow(auth, {
     conversation,

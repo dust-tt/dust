@@ -1263,13 +1263,21 @@ function AgentMessageContent({
 
   const blockedAction = getFirstBlockedActionForMessage(sId);
 
+  // Shown while the loop waits on the user, and kept once the user declined so the transcript
+  // says why the message ended there. An acknowledged pause leaves no trace.
+  const creditSpendCheckpointStatus =
+    agentMessage.creditSpendCheckpointStatus === "paused" &&
+    agentMessage.status !== "created"
+      ? null
+      : agentMessage.creditSpendCheckpointStatus;
   const creditSpendCheckpointPausedElement =
-    agentMessage.pausedAtCreditSpendCheckpoint &&
-    agentMessage.status === "created" ? (
+    creditSpendCheckpointStatus === "paused" ||
+    creditSpendCheckpointStatus === "stopped" ? (
       <CreditSpendCheckpointPausedCard
         owner={owner}
         conversationId={conversationId}
         messageId={sId}
+        status={creditSpendCheckpointStatus}
         triggeringUser={triggeringUser}
         creditsUsed={
           agentMessage.costCredits !== null
@@ -1537,9 +1545,10 @@ function AgentMessageContent({
          * Cancelled messages render the standard message footer (feedback + full menu,
          * including Retry), so we only show the "Generation stopped." note here.
          */}
-        {agentMessage.status === "cancelled" && (
-          <div className="text-sm text-faint">Generation stopped.</div>
-        )}
+        {agentMessage.status === "cancelled" &&
+          creditSpendCheckpointStatus !== "stopped" && (
+            <div className="text-sm text-faint">Generation stopped.</div>
+          )}
         {agentMessage.status === "interrupted" && (
           <div className="flex flex-col gap-2">
             <div className="text-sm text-faint">
