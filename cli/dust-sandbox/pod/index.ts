@@ -4,7 +4,8 @@
  * Surfaces:
  * - `db(name)`: the pod's SQLite state databases, through Drizzle (./db.ts).
  * - `currentUser()`: the workspace-scoped user attributed to this invocation.
- * - `filesDir()`: path of the Frame's durable files folder (./files.ts).
+ * - `persistentFilesDir()`: path of the Frame's persistent files folder
+ *   (./files.ts).
  * - `podEnv(name)`: the invocation's environment (./context.ts).
  * - `resolveToolTextContent(block)`: full text of a tool output block,
  *   resolving offloaded content through its descriptor (./tool_output.ts).
