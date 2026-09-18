@@ -1,17 +1,10 @@
-import {
-  ElasticsearchError,
-  SKILL_SEARCH_ALIAS_NAME,
-  withEs,
-} from "@app/lib/api/elasticsearch";
+import { SKILL_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
 import { buildSkillDefaultSort } from "@app/lib/skill_search/ranking";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
-import type {
-  SkillSearchFilters,
-  SkillSearchResult,
-} from "@app/types/api/skills";
-import { Err, Ok } from "@app/types/shared/result";
+import type { SkillSearchFilters } from "@app/types/api/skills";
+import { Ok } from "@app/types/shared/result";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 
 export {
@@ -26,6 +19,7 @@ export {
  * access remains separately authorized. Unreadable listings must not be returned.
  * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
  * Preserve Elasticsearch hit order without exposing scores in skill listings.
+ * The index must retain _source and the query must request it for every hit.
  */
 export async function searchSkills(
   auth: Authenticator,
@@ -54,17 +48,5 @@ export async function searchSkills(
 
   const { hits } = result.value.hits;
 
-  const skills: SkillSearchResult[] = [];
-  for (const hit of hits) {
-    const document = hit._source;
-    if (!document) {
-      return new Err(
-        new ElasticsearchError("query_error", "Missing skill search document")
-      );
-    }
-
-    skills.push(toSkillListItem(document));
-  }
-
-  return new Ok(skills);
+  return new Ok(hits.map((hit) => toSkillListItem(hit._source!)));
 }

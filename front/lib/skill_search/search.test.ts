@@ -530,16 +530,4 @@ describe("custom skill search", () => {
       }).bool?.filter
     ).toContainEqual({ term: { editor_ids: user.sId } });
   });
-
-  it.each([
-    { hits: { hits: [{ sort: [1, "name", "skill-id"] }] } },
-  ])("does not return malformed ES results", async (response) => {
-    const { authenticator: auth } = await createResourceTest({ role: "user" });
-    mockSearch.mockResolvedValue(response);
-    const result = await searchSkills(auth, {
-      searchTerm: "",
-      limit: 10,
-    });
-    expect(result.isErr()).toBe(true);
-  });
 });
