@@ -334,8 +334,8 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
  */
 /**
  * @cc [owner:aubin-tchoi,label:backend;security] skill-stored-global-space
- * requestedSpaceIds updates and new version snapshots must store the workspace's
- * global space exactly once alongside all requested spaces, even when callers omit it.
+ * requestedSpaceIds updates must store the workspace's global space exactly once
+ * alongside all requested spaces, even when callers omit it.
  */
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
@@ -4779,10 +4779,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
-      auth,
-      transaction
-    );
     const skillIds = skills.map((skill) => skill.id);
 
     // Fetch current MCP server configuration IDs for all skills.
@@ -4843,7 +4839,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         userFacingDescription: skill.userFacingDescription,
         instructions: skill.instructions,
         instructionsHtml: skill.instructionsHtml,
-        requestedSpaceIds: uniq([...skill.requestedSpaceIds, globalSpace.id]),
+        requestedSpaceIds: skill.requestedSpaceIds,
         manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
         editedBy: skill.editedBy,
         mcpServerViewIds: (mcpServerConfigsBySkillId[skill.id] ?? []).map(

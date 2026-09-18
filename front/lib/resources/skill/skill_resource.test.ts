@@ -679,7 +679,7 @@ describe("SkillResource", () => {
   });
 
   describe("updateSkill", () => {
-    it("adds the global space to legacy skill updates and version snapshots", async () => {
+    it("adds the global space to legacy skill updates while preserving the previous version", async () => {
       const { authenticator, globalSpace } = testContext;
       const skill = await SkillFactory.create(authenticator, {
         requestedSpaceIds: [],
@@ -703,7 +703,7 @@ describe("SkillResource", () => {
       expect(storedSkill?.requestedSpaceIds).toEqual([globalSpace.id]);
       const versions = await skill.listVersions(authenticator);
       expect(versions).toHaveLength(1);
-      expect(versions[0].requestedSpaceIds).toEqual([globalSpace.id]);
+      expect(versions[0].requestedSpaceIds).toEqual([]);
     });
 
     it("updates availability and derives the serialized isDefault from it", async () => {
