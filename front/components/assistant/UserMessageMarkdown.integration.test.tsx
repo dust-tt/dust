@@ -102,6 +102,7 @@ const mockMessage = {
     profilePictureUrl: null,
   },
   content: "Test message",
+  contentFragments: [],
   createdAt: 123456789,
 } as any;
 
@@ -319,6 +320,55 @@ Quote text
       );
       // The component should render with content node mention directive processed
       expect(container).toBeInTheDocument();
+    });
+
+    it("links content node mentions to the attached fragment's source url", () => {
+      const sourceUrl =
+        "https://docs.google.com/spreadsheets/d/1/edit?gid=0#gid=0";
+      const message = {
+        ...mockMessage,
+        content: "see :content_node_mention[Goodies Stock] please",
+        contentFragments: [
+          {
+            type: "content_fragment",
+            contentFragmentType: "content_node",
+            title: "Goodies Stock",
+            sourceUrl,
+            nodeId: "gdrive-1",
+          },
+          {
+            type: "content_fragment",
+            contentFragmentType: "file",
+            title: "Goodies Stock",
+            sourceUrl: "https://example.com/should-not-win",
+          },
+        ],
+      };
+      const { container } = render(
+        <UserMessageMarkdown
+          owner={mockOwner}
+          message={message}
+          isLastMessage={false}
+        />
+      );
+      expect(container.textContent).toBe("see Goodies Stock please");
+      expect(container.querySelector("a")).toHaveAttribute("href", sourceUrl);
+    });
+
+    it("renders content node mentions without a link when no fragment matches", () => {
+      const message = {
+        ...mockMessage,
+        content: "see :content_node_mention[Goodies Stock] please",
+      };
+      const { container } = render(
+        <UserMessageMarkdown
+          owner={mockOwner}
+          message={message}
+          isLastMessage={false}
+        />
+      );
+      expect(container.textContent).toBe("see Goodies Stock please");
+      expect(container.querySelector("a")).toBeNull();
     });
 
     it("renders project task directives", () => {

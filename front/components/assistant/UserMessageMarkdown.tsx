@@ -13,6 +13,7 @@ import {
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
+import type { ContentNodeMentionBlockProps } from "@app/components/markdown/ContentNodeMentionBlock";
 import {
   ContentNodeMentionBlock,
   contentNodeMentionDirective,
@@ -88,7 +89,19 @@ export const UserMessageMarkdown = ({
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
       mention_user: getUserMentionPlugin(owner),
-      content_node_mention: ContentNodeMentionBlock,
+      content_node_mention: ({ title, url }: ContentNodeMentionBlockProps) => {
+        // The directive carries no url; the attached fragment has the source url.
+        const fragment = message.contentFragments
+          .filter(isContentNodeContentFragment)
+          .find((f) => f.title === title && f.sourceUrl);
+
+        return (
+          <ContentNodeMentionBlock
+            title={title}
+            url={fragment?.sourceUrl ?? url}
+          />
+        );
+      },
       pasted_attachment: PastedAttachmentBlock,
       file_preview: getFilePreviewPlugin(),
       skill: ({ id, icon, name }: AttachmentChipDirectiveProps) => {

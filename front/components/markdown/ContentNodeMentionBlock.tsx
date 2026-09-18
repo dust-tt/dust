@@ -3,13 +3,15 @@ import { AttachmentChip } from "@dust-tt/sparkle";
 import React from "react";
 import { visit } from "unist-util-visit";
 
+export interface ContentNodeMentionBlockProps {
+  title: string;
+  url?: string;
+}
+
 export function ContentNodeMentionBlock({
   title,
   url,
-}: {
-  title: string;
-  url: string;
-}) {
+}: ContentNodeMentionBlockProps) {
   return (
     <AttachmentChip label={title} href={url} target="_blank" color="primary" />
   );
