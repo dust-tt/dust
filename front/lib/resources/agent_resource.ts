@@ -32,6 +32,7 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
 import type {
   AgentConfigurationBaseType,
   AgentConfigurationScope,
@@ -57,9 +58,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
-import type { UserType } from "@app/types/user";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import assert from "assert";
+import uniq from "lodash/uniq";
 import type { Attributes, Transaction } from "sequelize";
 import { Op, UniqueConstraintError, ValidationError } from "sequelize";
 
@@ -220,6 +222,8 @@ export class AgentResource
   // carried by `light` resources too. Only `fetch*`-built resources carry the real date: the `from*`
   // factories have no `agents` row in hand and stamp a placeholder (see `fromAgentConfiguration`).
   readonly createdAt: Date;
+  // Bumped whenever the agent's `currentVersion` pointer moves, so it tracks the last edit.
+  readonly updatedAt: Date;
   readonly agentConfigurationModelId: ModelId;
   readonly scope: AgentConfigurationScope;
   readonly name: string;
@@ -247,6 +251,7 @@ export class AgentResource
     this.sId = blob.sId;
     this.workspaceId = blob.workspaceId;
     this.createdAt = blob.createdAt;
+    this.updatedAt = blob.updatedAt;
     this.agentConfigurationModelId = extra.agentConfigurationModelId;
     this.scope = extra.scope;
     this.name = extra.name;
@@ -1049,6 +1054,64 @@ export class AgentResource
     }
 
     return verbs;
+  }
+
+  /**
+   * @cc [owner:sfriquet,label:backend;security] agent-search-serialization
+   * Serialize a custom agent from its core fields, deriving user sIds from supplied editor
+   * resources; perform no I/O and never include private agent content.
+   */
+  toSearchDocument(
+    workspace: LightWorkspaceType,
+    {
+      activeUsersCount,
+      editors,
+      favoriteCount,
+      feedbackNegativeCount,
+      feedbackPositiveCount,
+      lastEditedByUser,
+      mcpServerViewIds,
+      skillIds,
+      tagIds,
+    }: {
+      activeUsersCount: number | null;
+      editors: UserResource[];
+      favoriteCount: number;
+      feedbackNegativeCount: number;
+      feedbackPositiveCount: number;
+      lastEditedByUser: UserResource | null;
+      mcpServerViewIds: string[];
+      skillIds: string[];
+      tagIds: string[];
+    }
+  ): AgentSearchDocument {
+    assert(
+      this.scope !== "global" && this.workspaceId === workspace.id,
+      "Search documents require a custom agent in the workspace."
+    );
+    return {
+      workspace_id: workspace.sId,
+      agent_id: this.sId,
+      status: this.status,
+      scope: this.scope,
+      name: this.name,
+      picture_url: this.pictureUrl,
+      last_edited_by_user_id: lastEditedByUser?.sId ?? null,
+      editor_ids: uniq(editors.map((editor) => editor.sId)).sort(),
+      requested_space_ids: this.requestedSpaceIds.map((id) =>
+        SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
+      ),
+      created_at: this.createdAt.toISOString(),
+      updated_at: this.updatedAt.toISOString(),
+      description: this.description,
+      skill_ids: uniq(skillIds).sort(),
+      mcp_server_view_ids: uniq(mcpServerViewIds).sort(),
+      tag_ids: uniq(tagIds).sort(),
+      feedback_positive_count: feedbackPositiveCount,
+      feedback_negative_count: feedbackNegativeCount,
+      active_users_count: activeUsersCount,
+      favorite_count: favoriteCount,
+    };
   }
 
   toJSON(): AgentConfigurationBaseType {
