@@ -1,7 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { buildSkillNameAutocompleteQuery } from "@app/lib/skill_search/ranking";
 import type { SkillSearchFilters } from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
+
+export const MAX_SKILL_SEARCH_RESULTS = 100;
 
 // Null represents a type-wide read grant; do not enumerate resources in that case.
 export function getSkillSearchReadableSpaceIds(auth: Authenticator) {
@@ -87,7 +90,13 @@ function buildSelectionFilters(
  */
 export function buildSkillSearchQuery(
   auth: Authenticator,
-  { filters = {} }: { filters?: SkillSearchFilters } = {}
+  {
+    searchTerm,
+    filters = {},
+  }: {
+    searchTerm: string;
+    filters?: SkillSearchFilters;
+  }
 ): estypes.QueryDslQueryContainer {
   return {
     bool: {
@@ -100,6 +109,7 @@ export function buildSkillSearchQuery(
         buildSpaceAccessFilter(getSkillSearchReadableSpaceIds(auth)),
         ...buildSelectionFilters(auth, filters),
       ],
+      must: [buildSkillNameAutocompleteQuery(searchTerm)],
     },
   };
 }

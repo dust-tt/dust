@@ -1,29 +1,57 @@
-import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { SKILL_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
+import { buildSkillDefaultSort } from "@app/lib/skill_search/ranking";
+import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import type { SkillSearchFilters } from "@app/types/api/skills";
-import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
-import type { estypes } from "@elastic/elasticsearch";
+
+export {
+  buildSkillSearchQuery,
+  MAX_SKILL_SEARCH_RESULTS,
+} from "@app/lib/skill_search/query";
 
 /**
  * @cc [owner:aubin-tchoi,label:security;performance] indexed-skill-search-listings
- * Search only the caller's workspace with all required space and editor permissions.
- * Return indexed documents without database reads. Skill-side permission changes are
- * eventually consistent until reindexing; full-skill access is separately authorized.
+ * Return only workspace-scoped indexed metadata using the caller's hydrated grants, with no
+ * database reads. Permission-bearing document changes are eventually consistent; full-skill
+ * access remains separately authorized. Unreadable listings must not be returned.
+ * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
+ * Preserve Elasticsearch hit order without exposing scores in skill listings.
+ * Request _source and omit hits without source documents.
  */
 export async function searchSkills(
   auth: Authenticator,
-  { limit, filters }: { limit: number; filters?: SkillSearchFilters }
-): Promise<
-  Result<estypes.SearchResponse<SkillSearchDocument>, ElasticsearchError>
-> {
-  return withEs((client) =>
+  {
+    searchTerm,
+    filters,
+    limit,
+  }: {
+    searchTerm: string;
+    filters?: SkillSearchFilters;
+    limit: number;
+  }
+) {
+  const result = await withEs((client) =>
     client.search<SkillSearchDocument>({
       index: SKILL_SEARCH_ALIAS_NAME,
-      query: buildSkillSearchQuery(auth, { filters }),
+      _source: true,
+      query: buildSkillSearchQuery(auth, { searchTerm, filters }),
       size: limit,
+      sort: buildSkillDefaultSort(),
     })
+  );
+  if (result.isErr()) {
+    return result;
+  }
+
+  const { hits } = result.value.hits;
+
+  return new Ok(
+    removeNulls(hits.map((hit) => hit._source)).map((document) =>
+      toSkillListItem(document)
+    )
   );
 }
