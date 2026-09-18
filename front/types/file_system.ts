@@ -59,7 +59,7 @@ export type FileSystemMount = {
  * A mount that exists only inside the sandbox filesystem and is never exposed through the
  * scoped-path API (the agent's file tools never see it). Used for prefixes the sandbox must
  * access but that are not an agent-visible namespace, e.g. published sandbox-function bundles,
- * the sandbox-state Litestream replica, or a Frame's durable files folder.
+ * the sandbox-state Litestream replica, or a Frame's persistent files folder.
  */
 type SandboxOnlyMountConfig = {
   sandboxMountPoint: string;
@@ -70,7 +70,7 @@ export type SandboxOnlyMount = SandboxOnlyMountConfig &
   (
     | { kind: "frame_publications"; frameId: string }
     | { kind: "frame_database_replicas"; frameId: string }
-    | { kind: "frame_data_files"; frameId: string }
+    | { kind: "frame_persistent_files"; frameId: string }
   );
 
 export type DustFileSystemErrorCode =

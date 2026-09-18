@@ -502,7 +502,7 @@ describe("ensureConversationSandboxReady", () => {
           readOnly: false,
         },
         {
-          kind: "frame_data_files",
+          kind: "frame_persistent_files",
           frameId: frame.sId,
           sandboxMountPoint: `/frames/${frame.sId}/files`,
           readOnly: false,

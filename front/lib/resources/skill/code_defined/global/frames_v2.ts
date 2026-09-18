@@ -153,13 +153,13 @@ the Frame: task lists, trackers, backlogs, inventories, logs, notes, comments, f
 anything else users can add, edit, reorder, assign, or delete. Keep only throwaway UI state such as
 the selected tab, filter, or sort order in the React component.
 
-Use the Frame's files folder for unstructured data: uploaded images, generated documents,
-Markdown notes, anything that is a file rather than a row. Never store file bytes in a database
-column, base64 included. They count against the database's 1 GiB cap, and every read of that table
-then carries the payload even when the caller only wanted the metadata. Most Frames need nothing
-but the folder to hold their files. A Frame database holds rows, files or no files; add a table
-about files only when the Frame must query them by something a path does not carry — owner, upload
-date, a label — and store the path in it, never the contents.
+Use the Frame's persistent files folder for unstructured data: uploaded images, generated
+documents, Markdown notes, anything that is a file rather than a row. Never store file bytes in a
+database column, base64 included. They count against the database's 1 GiB cap, and every read of
+that table then carries the payload even when the caller only wanted the metadata. Most Frames
+need nothing but the folder to hold their files. A Frame database holds rows, files or no files;
+add a table about files only when the Frame must query them by something a path does not carry —
+owner, upload date, a label — and store the path in it, never the contents.
 
 ## Authoring a function
 
@@ -310,11 +310,11 @@ client-side conditions are not access control.
 
 ## Storing files in a Frame
 
-A Frame owns one durable folder in its sandbox, kept for the lifetime of the Frame. \`filesDir()\`
-from \`@dust/pod\` returns its absolute path; use it with \`node:fs\` like any other directory, for
-whatever the Frame needs to keep: uploads, generated artifacts, cached tool results. It is not part
-of the Frame source, so its contents exist only at run time and you cannot read them while
-authoring.
+A Frame owns one persistent folder in its sandbox, kept for the lifetime of the Frame.
+\`persistentFilesDir()\` from \`@dust/pod\` returns its absolute path; use it with \`node:fs\` like
+any other directory, for whatever the Frame needs to keep: uploads, generated artifacts, cached
+tool results. It is not part of the Frame source, so its contents exist only at run time and you
+cannot read them while authoring.
 
 It is remote object storage, not local disk:
 
@@ -325,7 +325,8 @@ It is remote object storage, not local disk:
   \`.png\`, \`.jpeg\`, \`.json\`, \`.txt\`, and \`.csv\`.
 - A path segment from a viewer can contain \`..\` and resolve above the folder, where the write
   succeeds onto disk the Frame loses when its sandbox recycles. Check the resolved path is still
-  under \`filesDir()\`, and derive per-user paths from \`currentUser().sId\` rather than from input.
+  under \`persistentFilesDir()\`, and derive per-user paths from \`currentUser().sId\` rather than
+  from input.
 
 Moving a stored file through a function is bounded separately from the folder itself. A function
 result is capped at 5 MB, which limits both the upload a function can accept and the file it can
