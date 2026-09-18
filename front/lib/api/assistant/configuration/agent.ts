@@ -9,7 +9,6 @@ import {
   redactPrivateAgentConfigurationFields,
 } from "@app/lib/api/assistant/configuration/helpers";
 import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
-import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
@@ -1882,9 +1881,10 @@ export async function updateAgentConfigurationsScope(
     return new Ok(undefined);
   }
 
-  // Admins may publish or unpublish any agent of the workspace, including the ones built on
-  // spaces they cannot read (the manage agents page lists those behind "Show hidden agents").
-  // Changing the scope touches nothing the spaces protect.
+  // Publishing/unpublishing needs the workspace `publish` capability (checked below) plus edit
+  // rights on each agent. Admins may additionally act on agents built on spaces they cannot read
+  // (the manage agents page lists those behind "Show hidden agents"); changing the scope touches
+  // nothing the spaces protect.
   const agentConfigs = await getAgentConfigurations(auth, {
     agentIds,
     variant: "light",
@@ -1911,110 +1911,16 @@ export async function updateAgentConfigurationsScope(
     return new Ok(undefined);
   }
 
-  const batchNeedsPublishPermission = editableAgents.some((a) =>
-    needsPublishPermission({
-      currentScope: a.scope,
-      newScope: scope,
-      isActive: a.status === "active",
-    })
+  // Authorization for the scope write — the `publish` capability plus `write`/`admin` on each agent
+  // — is enforced inside `AgentResource.bulkUpdateScope` (see the `scope-change-requires-edit-and-
+  // publish` contract), which skips any agent the caller is not allowed to (un)publish.
+  await AgentResource.bulkUpdateScope(
+    auth,
+    editableAgents.map((a) => a.sId),
+    scope
   );
-  if (batchNeedsPublishPermission) {
-    const { canPublish, message } = await canPublishAgent(auth);
-    if (!canPublish) {
-      return new Err(
-        new Error(message ?? "You don't have permission to publish agents.")
-      );
-    }
-  }
-
-  // Snapshot previous scopes before the bulk UPDATE so downstream logic doesn't depend on
-  // the in-memory agent objects being untouched by the static Sequelize update.
-  const previousScopeByAgentId = new Map(
-    editableAgents.map((a) => [a.sId, a.scope])
-  );
-
-  await AgentConfigurationModel.update(
-    { scope },
-    {
-      where: {
-        id: { [Op.in]: editableAgents.map((a) => a.id) },
-      },
-    }
-  );
-
-  for (const agentConfig of editableAgents) {
-    void emitAuditLogEvent({
-      auth,
-      action: "agent.scope_changed",
-      targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        buildAuditLogTarget("agent", agentConfig),
-      ],
-      context: getAuditLogContext(auth),
-      metadata: {
-        agent_name: agentConfig.name,
-        previous_scope:
-          previousScopeByAgentId.get(agentConfig.sId) ?? agentConfig.scope,
-        new_scope: scope,
-      },
-    });
-  }
-
-  // When scope changes from visible to hidden, disable triggers for non-editors.
-  // Non-editors will no longer have access to the hidden agent.
-  if (scope === "hidden") {
-    const transitioningAgents = editableAgents.filter(
-      (a) => previousScopeByAgentId.get(a.sId) === "visible"
-    );
-    if (transitioningAgents.length > 0) {
-      await disableTriggersForNonEditors(auth, transitioningAgents);
-    }
-  }
 
   return new Ok(undefined);
-}
-
-async function disableTriggersForNonEditors(
-  auth: Authenticator,
-  agents: LightAgentConfigurationType[]
-): Promise<void> {
-  const triggers = await TriggerResource.listByAgentConfigurationIds(
-    auth,
-    agents.map((a) => a.sId)
-  );
-  if (triggers.length === 0) {
-    return;
-  }
-
-  const editorsByAgentId = await getAgentsEditors(auth, agents);
-  // Fetch members once per agent, with a batched lookup shared by both permission sources.
-  const editorModelIdsByAgentId = new Map(
-    Object.entries(editorsByAgentId).map(([agentId, editors]) => [
-      agentId,
-      new Set(editors.map((editor) => editor.id)),
-    ])
-  );
-  const triggersToDisable = triggers.filter(
-    (trigger) =>
-      !editorModelIdsByAgentId
-        .get(trigger.agentConfigurationId)
-        ?.has(trigger.editor)
-  );
-
-  if (triggersToDisable.length === 0) {
-    return;
-  }
-
-  const res = await TriggerResource.disableMany(auth, triggersToDisable);
-  if (res.isErr()) {
-    logger.error(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        error: res.error,
-      },
-      "Failed to disable triggers when changing agent scope to hidden"
-    );
-  }
 }
 
 export async function filterAgentsByRequestedSpaces(

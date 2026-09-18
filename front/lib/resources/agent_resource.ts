@@ -1,5 +1,10 @@
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
@@ -16,7 +21,9 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationBaseType,
   AgentConfigurationScope,
@@ -88,6 +95,14 @@ type AgentResourceExtraBlob = {
   requestedSpaceIds: ModelId[];
   modelConfiguration: AgentModelConfigurationType;
   content: AgentResourceContent | null;
+};
+
+// The outcome of a bulk in-place mutation (`bulkUpdateScope`/`bulkUpdateModel`): the agents whose
+// current version was written, and the requested ids that were skipped (not resolvable, not
+// editable by the caller, or archived). Reported back so callers can tell the UI what was applied.
+export type BulkAgentUpdateResult = {
+  updatedAgentIds: string[];
+  skippedAgentIds: string[];
 };
 
 // A `full` resource always exposes its `content`.
@@ -698,6 +713,151 @@ export class AgentResource
     });
 
     return new Ok(undefined);
+  }
+
+  // Rescopes the agents the caller is allowed to (un)publish, emits the `agent.scope_changed` audit
+  // event, and on hide disables the triggers of non-editors. `loadResource` resolves rows
+  // caller-independently so an editor/admin is not blocked on agents backed by spaces they cannot
+  // read ("Show hidden agents").
+  /**
+   * @cc [owner:tdraier,label:security;product] scope-change-requires-edit-and-publish
+   * (Un)publishing an agent — changing its scope — requires BOTH the `publish` agent capability AND
+   * `write` or `admin` on the agent. Both MUST be enforced here, on the resource, and are the sole
+   * authorization for a scope write: the loaded rows MUST be filtered by
+   * `auth.can("publish", r) && (auth.can("write", r) || auth.can("admin", r))`, and the scope of an
+   * agent the caller does not fully satisfy MUST NOT be written. `publish` is a workspace-wide
+   * capability that `getGovernanceGrantVerbs` folds into every instance's verbs, so it resolves
+   * per-resource via `auth.can("publish", r)` (it is grant-backed, never role-derived).
+   */
+  /**
+   * @cc [owner:tdraier,label:security] hide-disables-non-editor-triggers
+   * When an agent transitions `visible` -> `hidden`, every trigger whose editor is no longer an
+   * editor of that agent MUST be disabled (non-editors lose access to a hidden agent); triggers of
+   * current editors MUST remain untouched.
+   */
+  static async bulkUpdateScope(
+    auth: Authenticator,
+    agentIds: string[],
+    scope: Exclude<AgentConfigurationScope, "global">,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<BulkAgentUpdateResult> {
+    if (agentIds.length === 0) {
+      return { updatedAgentIds: [], skippedAgentIds: [] };
+    }
+
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const resources = (
+      await this.loadResource(workspaceModelId, { sId: agentIds })
+    ).filter(
+      (r) =>
+        auth.can("publish", r) && (auth.can("write", r) || auth.can("admin", r))
+    );
+    const updatedAgentIds = resources.map((r) => r.sId);
+    const updatedIdSet = new Set(updatedAgentIds);
+    const skippedAgentIds = agentIds.filter((id) => !updatedIdSet.has(id));
+    if (resources.length === 0) {
+      return { updatedAgentIds, skippedAgentIds };
+    }
+
+    // Snapshot previous scopes before the bulk UPDATE: the static Sequelize update does not touch the
+    // in-memory resources, but the trigger step below depends on which agents transitioned.
+    const previousScopeByAgentId = new Map(
+      resources.map((r) => [r.sId, r.scope])
+    );
+
+    await AgentConfigurationModel.update(
+      { scope },
+      {
+        where: {
+          id: {
+            [Op.in]: resources.map((r) => r.content.agentConfigurationModelId),
+          },
+          workspaceId: workspaceModelId,
+        },
+        transaction,
+      }
+    );
+
+    // Audit and trigger-disable are post-mutation side effects: they must reflect a durable scope
+    // change, so defer them until a supplied transaction commits (run inline when there is none).
+    const applySideEffects = async () => {
+      for (const resource of resources) {
+        void emitAuditLogEvent({
+          auth,
+          action: "agent.scope_changed",
+          targets: [
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+            buildAuditLogTarget("agent", resource),
+          ],
+          context: getAuditLogContext(auth),
+          metadata: {
+            agent_name: resource.name,
+            previous_scope:
+              previousScopeByAgentId.get(resource.sId) ?? resource.scope,
+            new_scope: scope,
+          },
+        });
+      }
+
+      // Hiding an agent removes non-editors' access to it, so their triggers must be disabled.
+      if (scope === "hidden") {
+        const transitioningAgents = resources.filter(
+          (r) => previousScopeByAgentId.get(r.sId) === "visible"
+        );
+        if (transitioningAgents.length > 0) {
+          await this.disableTriggersForNonEditors(auth, transitioningAgents);
+        }
+      }
+    };
+
+    if (transaction) {
+      transaction.afterCommit(applySideEffects);
+    } else {
+      await applySideEffects();
+    }
+
+    return { updatedAgentIds, skippedAgentIds };
+  }
+
+  private static async disableTriggersForNonEditors(
+    auth: Authenticator,
+    agents: AgentResource[]
+  ): Promise<void> {
+    const triggers = await TriggerResource.listByAgentConfigurationIds(
+      auth,
+      agents.map((a) => a.sId)
+    );
+    if (triggers.length === 0) {
+      return;
+    }
+
+    const editorsByAgentId = await this.batchListEditors(auth, agents);
+    const editorModelIdsByAgentId = new Map(
+      [...editorsByAgentId].map(([agentId, editors]) => [
+        agentId,
+        new Set((editors ?? []).map((editor) => editor.id)),
+      ])
+    );
+    const triggersToDisable = triggers.filter(
+      (trigger) =>
+        !editorModelIdsByAgentId
+          .get(trigger.agentConfigurationId)
+          ?.has(trigger.editor)
+    );
+    if (triggersToDisable.length === 0) {
+      return;
+    }
+
+    const res = await TriggerResource.disableMany(auth, triggersToDisable);
+    if (res.isErr()) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          error: res.error,
+        },
+        "Failed to disable triggers when changing agent scope to hidden"
+      );
+    }
   }
 
   /**
