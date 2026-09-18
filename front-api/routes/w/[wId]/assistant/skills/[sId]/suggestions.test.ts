@@ -961,6 +961,42 @@ describe("PATCH with applyToSkill", () => {
     );
   });
 
+  it("allows an admin who is not an editor to approve and apply a delete suggestion", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "user",
+    });
+    const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const skill = await SkillFactory.create(ownerAuth, {
+      name: "Skill Pending Deletion",
+    });
+    await ownerAuth.refresh();
+    const suggestion = await SkillSuggestionFactory.create(ownerAuth, skill, {
+      state: "pending",
+      kind: "delete",
+      suggestion: { name: skill.name },
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await SkillResource.fetchById(ownerAuth, skill.sId, {
+      onlyActive: false,
+    });
+    expect(updated?.status).toBe("archived");
+  });
+
   it("rejects applying with a state other than approved", async () => {
     const { workspace, auth, skill } = await setup();
     const suggestion = await SkillSuggestionFactory.create(auth, skill, {

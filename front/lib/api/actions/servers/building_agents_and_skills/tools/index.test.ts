@@ -1416,6 +1416,24 @@ describe("building_agents_and_skills tools", () => {
       expectMcpError(result, "editors of this skill or workspace admins");
     });
 
+    it("allows a workspace admin who is not an editor to create a delete suggestion", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(authenticator, { name: "Admin Only" });
+      const admin = await addMember(workspace, "admin");
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        admin.sId,
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(adminAuth)
+      );
+      expect(result.isOk()).toBe(true);
+    });
+
     it("returns an MCPError for an archived skill", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
       const skill = await seedSkill(authenticator, {
