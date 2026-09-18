@@ -1,11 +1,11 @@
-import type {
-  BilledRunUsage,
-  ConsumptionAnalyticsMessageMetadata,
-} from "@app/lib/analytics/agent_message_consumption/load";
 import { normalizeOrigin } from "@app/lib/api/analytics/source_labels";
 import type { MessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import type { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
+import type {
+  BilledRunUsage,
+  ConsumptionAnalyticsMessageMetadata,
+} from "@app/types/assistant/agent_message_consumption_analytics";
 import type {
   AgentMessageAnalyticsModel,
   AgentMessageConsumptionAnalyticsData,
@@ -51,6 +51,11 @@ export function modelForUsage(
   };
 }
 
+/**
+ * @cc [owner:id13,label:backend;data-integrity] consumption-document-completion-time
+ * `completed_at` MUST be the ISO representation of the message completion time, or `null` when the
+ * message has not completed.
+ */
 export function makeBaseDocument(
   metadata: ConsumptionAnalyticsMessageMetadata,
   {
@@ -72,7 +77,7 @@ export function makeBaseDocument(
     agent_message_id: metadata.agentMessageId,
     api_key_name: metadata.apiKeyName,
     attribution_version: attributionVersion,
-    completed_at: metadata.completedAt.toISOString(),
+    completed_at: metadata.completedAt?.toISOString() ?? null,
     consumption_key: consumptionKey,
     context_origin: metadata.contextOrigin,
     conversation_id: metadata.conversationId,

@@ -1,3 +1,4 @@
+import { INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/consumption/version";
 import { MAX_CONVERSATION_DEPTH } from "@app/lib/api/assistant/conversation/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
@@ -71,6 +72,31 @@ export type CompletedAgentMessageConsumptionItem =
   | CompletedRunOutputConsumptionItem
   | CompletedToolConsumptionItem;
 
+type ConsumptionModelRowBase = {
+  runUsageModelId: ModelId;
+  inputTokensCount: number | null;
+  outputTokensCount: number | null;
+  grossAttributedCreditAmountMicro: number;
+  reconciledCreditAmountMicro: number;
+};
+
+export type ConsumptionModelRow = ConsumptionModelRowBase & {
+  itemType: "input" | "output" | "reasoning";
+};
+
+export type ConsumptionPendingToolRow = {
+  agentMCPActionModelId: ModelId;
+  runUsageModelId: ModelId;
+  outputTokensCount: number;
+  grossAttributedCreditAmountMicro: number;
+  reconciledCreditAmountMicro: number;
+};
+
+export type InsertedConsumptionRow = {
+  consumptionItemId: ModelId;
+  itemKey: string;
+};
+
 type ConsumptionItemEvidenceAttributes = Pick<
   Attributes<AgentMessageConsumptionItemModel>,
   | "inputTokensCount"
@@ -81,6 +107,70 @@ type ConsumptionItemEvidenceAttributes = Pick<
 
 type ConsumptionItemCreationAttributes =
   CreationAttributes<AgentMessageConsumptionItemModel>;
+
+type ConsumptionItemCreationContext = {
+  workspaceId: ModelId;
+  conversationModelId: ModelId;
+  agentMessageModelId: ModelId;
+  runKey: string;
+  now: Date;
+};
+
+function modelConsumptionItemCreationAttributes({
+  context,
+  row,
+}: {
+  context: ConsumptionItemCreationContext;
+  row: ConsumptionModelRow;
+}): ConsumptionItemCreationAttributes {
+  return {
+    workspaceId: context.workspaceId,
+    conversationId: context.conversationModelId,
+    agentMessageId: context.agentMessageModelId,
+    runUsageId: row.runUsageModelId,
+    agentMCPActionId: null,
+    itemKey: `run-usage:${row.runUsageModelId}:${row.itemType}`,
+    itemType: row.itemType,
+    runKey: context.runKey,
+    attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+    inputTokensCount: row.inputTokensCount,
+    outputTokensCount: row.outputTokensCount,
+    grossAttributedCreditAmountMicro: row.grossAttributedCreditAmountMicro,
+    reconciledCreditAmountMicro: row.reconciledCreditAmountMicro,
+    directCreditAmountMicro: null,
+    completedAt: context.now,
+    createdAt: context.now,
+    updatedAt: context.now,
+  };
+}
+
+function pendingToolConsumptionItemCreationAttributes({
+  context,
+  row,
+}: {
+  context: ConsumptionItemCreationContext;
+  row: ConsumptionPendingToolRow;
+}): ConsumptionItemCreationAttributes {
+  return {
+    workspaceId: context.workspaceId,
+    conversationId: context.conversationModelId,
+    agentMessageId: context.agentMessageModelId,
+    runUsageId: row.runUsageModelId,
+    agentMCPActionId: row.agentMCPActionModelId,
+    itemKey: `tool-action:${row.agentMCPActionModelId}`,
+    itemType: "tool",
+    runKey: context.runKey,
+    attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+    inputTokensCount: null,
+    outputTokensCount: row.outputTokensCount,
+    grossAttributedCreditAmountMicro: row.grossAttributedCreditAmountMicro,
+    reconciledCreditAmountMicro: row.reconciledCreditAmountMicro,
+    directCreditAmountMicro: null,
+    completedAt: null,
+    createdAt: context.now,
+    updatedAt: context.now,
+  };
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMessageConsumptionItemResource
@@ -549,6 +639,154 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         );
       }
     }, transaction);
+  }
+
+  static async insertConsumptionRows(
+    auth: Authenticator,
+    {
+      conversationModelId,
+      agentMessageModelId,
+      runKey,
+      modelRows,
+      pendingToolRows,
+      transaction,
+    }: {
+      conversationModelId: ModelId;
+      agentMessageModelId: ModelId;
+      runKey: string;
+      modelRows: ConsumptionModelRow[];
+      pendingToolRows: ConsumptionPendingToolRow[];
+      transaction?: Transaction;
+    }
+  ): Promise<InsertedConsumptionRow[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const now = new Date();
+    const context: ConsumptionItemCreationContext = {
+      workspaceId,
+      conversationModelId,
+      agentMessageModelId,
+      runKey,
+      now,
+    };
+
+    const rows: ConsumptionItemCreationAttributes[] = [
+      ...modelRows.map((row) =>
+        modelConsumptionItemCreationAttributes({ context, row })
+      ),
+      ...pendingToolRows.map((row) =>
+        pendingToolConsumptionItemCreationAttributes({ context, row })
+      ),
+    ];
+    if (rows.length === 0) {
+      return [];
+    }
+
+    const insertedRows = await this.model.bulkCreate(rows, {
+      ignoreDuplicates: true,
+      returning: ["id", "itemKey"],
+      transaction,
+      validate: true,
+    });
+
+    return insertedRows
+      .filter((row) => Boolean(row.id))
+      .map((row) => ({ consumptionItemId: row.id, itemKey: row.itemKey }));
+  }
+
+  static async addReconciledCreditAmounts(
+    auth: Authenticator,
+    {
+      creditAmountMicroDeltaByConsumptionItemId,
+      transaction,
+    }: {
+      creditAmountMicroDeltaByConsumptionItemId: ReadonlyMap<ModelId, number>;
+      transaction: Transaction;
+    }
+  ): Promise<void> {
+    const deltas = [...creditAmountMicroDeltaByConsumptionItemId].filter(
+      ([, creditAmountMicroDelta]) => creditAmountMicroDelta !== 0
+    );
+    if (deltas.length === 0) {
+      return;
+    }
+
+    const rows = await this.model.findAll({
+      where: {
+        id: deltas.map(([consumptionItemId]) => consumptionItemId),
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+    const creditAmountMicroDeltaById = new Map(deltas);
+    const updatedAt = new Date();
+
+    await this.model.bulkCreate(
+      rows.map((row) => {
+        const creditAmountMicroDelta = creditAmountMicroDeltaById.get(row.id);
+        assert(
+          creditAmountMicroDelta !== undefined,
+          "A fetched consumption item must have a credit delta"
+        );
+        return {
+          ...row.get(),
+          reconciledCreditAmountMicro:
+            (row.reconciledCreditAmountMicro ?? 0) + creditAmountMicroDelta,
+          updatedAt,
+        };
+      }),
+      {
+        updateOnDuplicate: ["reconciledCreditAmountMicro", "updatedAt"],
+        transaction,
+        validate: true,
+      }
+    );
+  }
+
+  static async listConsumptionToolResultsPendingConsumption(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      transaction,
+    }: {
+      agentMessageModelId: ModelId;
+      transaction?: Transaction;
+    }
+  ): Promise<AgentMessageToolConsumptionItemResource[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const previousModelRowCreatedAt = await this.model.max<
+      Date,
+      AgentMessageConsumptionItemModel
+    >("createdAt", {
+      where: {
+        workspaceId,
+        agentMessageId: agentMessageModelId,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        itemType: { [Op.in]: ["input", "output", "reasoning"] },
+      },
+      transaction,
+    });
+
+    const toolRows = await this.model.findAll({
+      where: {
+        workspaceId,
+        agentMessageId: agentMessageModelId,
+        attributionVersion: INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
+        itemType: "tool",
+        inputTokensCount: { [Op.gt]: 0 },
+        completedAt: previousModelRowCreatedAt
+          ? { [Op.gt]: previousModelRowCreatedAt }
+          : { [Op.ne]: null },
+      },
+      order: [["id", "ASC"]],
+      transaction,
+    });
+
+    return toolRows.flatMap((row) => {
+      const item = new this(this.model, row.get());
+      return item.isToolItem() ? [item] : [];
+    });
   }
 
   static async setReconciledCreditAmounts(

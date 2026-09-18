@@ -285,6 +285,28 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
   }
 
   /**
+   * @cc [owner:id13,label:backend] committed-projection-version
+   * The projection version MUST be the greatest committed event ID for the requested workspace and
+   * agent message, and the lookup MUST fail when no such event exists.
+   */
+  static async maxIdForAgentMessage(
+    auth: Authenticator,
+    { agentMessageModelId }: { agentMessageModelId: ModelId }
+  ): Promise<ModelId> {
+    const maxId = await this.model.max("id", {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentMessageId: agentMessageModelId,
+      },
+    });
+    assert(
+      typeof maxId === "number" && Number.isSafeInteger(maxId) && maxId > 0,
+      "Consumption event is missing its committed Elasticsearch version"
+    );
+    return maxId;
+  }
+
+  /**
    * @cc [owner:id13,label:backend] retention-owned-deletion
    * Individual resource deletion MUST fail; persisted events may be removed only by explicit agent
    * message or workspace teardown methods, or by bounded retention cleanup.
