@@ -15,6 +15,9 @@ export function toSkillListItem(
     editorIds: document.editor_ids,
     availability: document.availability,
     activeUsersCount: document.active_users_count,
-    updatedAt: new Date(document.updated_at).getTime(),
+    updatedAt:
+      document.updated_at === null
+        ? null
+        : new Date(document.updated_at).getTime(),
   };
 }

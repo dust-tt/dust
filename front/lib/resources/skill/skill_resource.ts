@@ -59,6 +59,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
 import {
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
@@ -4673,11 +4674,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * @cc [owner:aubin-tchoi,label:backend;security] skill-search-serialization
-   * Serialize a custom skill fetched with tools, deriving user sIds from supplied editor
-   * resources; perform no I/O and never include private skill content.
+   * Serialize listing metadata without I/O or private content; fetch custom skills with tools.
+   * Custom skills use the authenticator's workspace; code-defined skills use the global namespace,
+   * without workspace-specific relationships, usage or dates.
    */
   toSearchDocument(
-    workspace: LightWorkspaceType,
+    auth: Authenticator,
     {
       lastEditedByUser,
       editors,
@@ -4688,30 +4690,35 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       activeUsersCount: number | null;
     }
   ): SkillSearchDocument {
-    assert(
-      !this.codeDefinedSkillId && this.workspaceId === workspace.id,
-      "Search documents require a custom skill in the workspace."
-    );
+    const isCodeDefined = this.codeDefinedSkillId !== null;
     return {
-      workspace_id: workspace.sId,
+      workspace_id: isCodeDefined
+        ? CODE_DEFINED_SKILLS_WORKSPACE_ID
+        : auth.getNonNullableWorkspace().sId,
       skill_id: this.sId,
       status: this.status,
       availability: this.availability,
       name: this.name,
       description: this.userFacingDescription,
       icon: this.icon,
-      last_edited_by_user_id: lastEditedByUser?.sId ?? null,
-      editor_ids: uniq(editors.map((editor) => editor.sId)).sort(),
-      requested_space_ids: this.requestedSpaceIds.map((id) =>
-        SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
-      ),
-      mcp_server_view_ids: uniq(
-        this.mcpServerViews.map((view) => view.sId)
-      ).sort(),
-      active_users_count: activeUsersCount,
+      last_edited_by_user_id: isCodeDefined
+        ? null
+        : (lastEditedByUser?.sId ?? null),
+      editor_ids: isCodeDefined
+        ? []
+        : uniq(editors.map((editor) => editor.sId)).sort(),
+      requested_space_ids: isCodeDefined
+        ? []
+        : this.requestedSpaceIds.map((id) =>
+            SpaceResource.modelIdToSId({ id, workspaceId: this.workspaceId })
+          ),
+      mcp_server_view_ids: isCodeDefined
+        ? []
+        : uniq(this.mcpServerViews.map((view) => view.sId)).sort(),
+      active_users_count: isCodeDefined ? null : activeUsersCount,
       favorite_count: this.favoriteCount,
-      created_at: this.createdAt.toISOString(),
-      updated_at: this.updatedAt.toISOString(),
+      created_at: isCodeDefined ? null : this.createdAt.toISOString(),
+      updated_at: isCodeDefined ? null : this.updatedAt.toISOString(),
     };
   }
 
