@@ -627,9 +627,7 @@ async function handleDataSourceWithProvider({
           owner.name
         }\` sId: \`${owner.sId}\` connectorId: \`${
           connectorsRes.value.id
-        }\` provider: \`${provider}\` trialing: \`${
-          auth.subscription()?.trialing ? "true" : "false"
-        }\``,
+        }\` provider: \`${provider}\``,
       });
     }
   } catch (error) {

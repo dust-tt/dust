@@ -55,7 +55,6 @@ export function renderPlanFromModel({
       },
       canUseProduct: plan.canUseProduct,
     },
-    trialPeriodDays: plan.trialPeriodDays,
     isByok: plan.isByok,
     isAuditLogsAllowed: plan.isAuditLogsAllowed,
     hasAdvancedModelAccess: plan.hasAdvancedModelAccess,
@@ -73,7 +72,6 @@ export function renderSubscriptionFromModels({
 }): SubscriptionType {
   return {
     status: activeSubscription?.status ?? "active",
-    trialing: activeSubscription?.trialing === true,
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     sId: activeSubscription?.sId || null,
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

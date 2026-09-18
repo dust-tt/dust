@@ -186,14 +186,13 @@ inserted_membership AS (
 -- Step 7: Create subscription (uses required_plan from Step 0)
 inserted_subscription AS (
   INSERT INTO subscriptions (
-    "workspaceId", "sId", status, trialing, "paymentFailingSince",
+    "workspaceId", "sId", status, "paymentFailingSince",
     "startDate", "endDate", "planId", "stripeSubscriptionId", "createdAt", "updatedAt"
   )
   SELECT
     w.id,
     :subscriptionId,
     'active',
-    false,
     NULL,
     NOW(),
     NULL,

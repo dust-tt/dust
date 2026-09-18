@@ -49,21 +49,13 @@ import {
 import { Separator } from "@radix-ui/react-select";
 import { format } from "date-fns/format";
 
-type SubscriptionStatus =
-  | "paymentFailed"
-  | "trialing"
-  | "ended"
-  | "active"
-  | "inconsistent";
+type SubscriptionStatus = "paymentFailed" | "ended" | "active" | "inconsistent";
 
 function getSubscriptionDisplayStatus(
   subscription: SubscriptionType
 ): SubscriptionStatus {
   if (subscription.paymentFailingSince !== null) {
     return "paymentFailed";
-  }
-  if (subscription.trialing) {
-    return "trialing";
   }
 
   if (subscription.status === "active") {
@@ -90,11 +82,6 @@ const STATUS_CONFIG: Record<
     chipColor: "info",
     chipLabel: "Past Due",
     cardClass: "border-info-200 bg-info-50",
-  },
-  trialing: {
-    chipColor: "highlight",
-    chipLabel: "Trialing",
-    cardClass: "border-highlight-200 bg-highlight-50",
   },
   ended: {
     chipColor: "warning",
@@ -190,10 +177,6 @@ function SubscriptionDetailsTable({
         <PokeTableRow>
           <PokeTableCell>Plan Code</PokeTableCell>
           <PokeTableCell>{subscription.plan.code}</PokeTableCell>
-        </PokeTableRow>
-        <PokeTableRow>
-          <PokeTableCell>Is in Trial?</PokeTableCell>
-          <PokeTableCell>{subscription.trialing ? "✅" : "❌"}</PokeTableCell>
         </PokeTableRow>
         <PokeTableRow>
           <PokeTableCell>Stripe Subscription Id</PokeTableCell>
