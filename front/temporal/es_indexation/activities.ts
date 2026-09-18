@@ -1,7 +1,17 @@
+import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import {
+  deleteAgentDocument,
+  deleteWorkspaceAgentDocuments,
+  indexAgentDocument,
+} from "@app/lib/agent_search";
 import { Authenticator } from "@app/lib/auth";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { fetchSearchActiveUsers } from "@app/lib/search_usage/usage";
@@ -147,6 +157,103 @@ export async function deleteWorkspaceSkillSearchActivity({
   workspaceId: string;
 }): Promise<void> {
   const deleteResult = await deleteWorkspaceSkillDocuments({ workspaceId });
+  if (deleteResult.isErr()) {
+    throw deleteResult.error;
+  }
+}
+
+/**
+ * @cc [owner:sfriquet,label:backend;security] searchable-agent-index-projection
+ * Index custom agents that are out of the builder, including those the internal admin cannot read.
+ */
+export async function indexAgentSearchActivity({
+  workspaceId,
+  agentId,
+}: {
+  workspaceId: string;
+  agentId: string;
+}): Promise<void> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const agent = await AgentResource.fetchById(auth, agentId);
+  // Global agents are code-defined, and draft and pending agents are not indexed: they only exist
+  // inside the builder, behind its "try" button or before the first save.
+  if (
+    !agent ||
+    agent.scope === "global" ||
+    agent.status === "draft" ||
+    agent.status === "pending"
+  ) {
+    return;
+  }
+
+  const editors = await agent.listEditors(auth);
+  const skills = await agent.listSkills(auth, {
+    permissionFiltering: "redact_unreadable",
+  });
+  const tagsByConfigurationId = await TagResource.listForAgents(auth, [
+    agent.agentConfigurationModelId,
+  ]);
+  const actionsByConfigurationId = await fetchMCPServerActionConfigurations(
+    auth,
+    {
+      configurationModelIds: [agent.agentConfigurationModelId],
+      variant: "full",
+    }
+  );
+  const feedback =
+    await AgentMessageFeedbackResource.getFeedbackCountForAssistant(
+      auth,
+      agent.sId
+    );
+  const favoriteCount = await agent.countFavorites(auth);
+
+  const lastEditedByUser = agent.versionAuthorId
+    ? await UserResource.fetchByModelId(agent.versionAuthorId)
+    : null;
+
+  const document = agent.toSearchDocument(auth.getNonNullableWorkspace(), {
+    activeUsersCount: null,
+    editors: editors ?? [],
+    favoriteCount,
+    feedbackNegativeCount: feedback.negative,
+    feedbackPositiveCount: feedback.positive,
+    lastEditedByUser,
+    mcpServerViewIds: (
+      actionsByConfigurationId.get(agent.agentConfigurationModelId) ?? []
+    )
+      .filter(isServerSideMCPServerConfiguration)
+      .map((action) => action.mcpServerViewId),
+    skillIds: skills.map((skill) => skill.sId),
+    tagIds: (tagsByConfigurationId[agent.agentConfigurationModelId] ?? []).map(
+      (tag) => tag.sId
+    ),
+  });
+
+  const result = await indexAgentDocument(document);
+  if (result.isErr()) {
+    throw result.error;
+  }
+}
+
+export async function deleteAgentSearchActivity({
+  workspaceId,
+  agentId,
+}: {
+  workspaceId: string;
+  agentId: string;
+}): Promise<void> {
+  const deleteResult = await deleteAgentDocument({ workspaceId, agentId });
+  if (deleteResult.isErr()) {
+    throw deleteResult.error;
+  }
+}
+
+export async function deleteWorkspaceAgentSearchActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<void> {
+  const deleteResult = await deleteWorkspaceAgentDocuments({ workspaceId });
   if (deleteResult.isErr()) {
     throw deleteResult.error;
   }

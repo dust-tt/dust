@@ -769,6 +769,17 @@ export class AgentResource
     return new Ok(undefined);
   }
 
+  // The agent's favorite relations are keyed by `sId`, so the count spans every version.
+  async countFavorites(auth: Authenticator): Promise<number> {
+    return AgentUserRelationModel.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentConfiguration: this.sId,
+        favorite: true,
+      },
+    });
+  }
+
   // Rescopes the agents the caller is allowed to (un)publish, emits the `agent.scope_changed` audit
   // event, and on hide disables the triggers of non-editors. `loadResource` resolves rows
   // caller-independently so an editor/admin is not blocked on agents backed by spaces they cannot
