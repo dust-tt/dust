@@ -3,9 +3,11 @@ import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Transaction } from "sequelize";
 
+const MAX_CACHE_TTL_MS = 7 * ONE_DAY_MS;
 const SPIN_WAIT_INTERVAL_MS = 100;
 
 // JSON-serializable primitive types.
@@ -139,14 +141,14 @@ export function cacheWithRedis<T, Args extends unknown[]>(
 ): (...args: Args) => Promise<JsonSerializable<T> | null> {
   // A static ttlMs is validated eagerly, same as before. A function ttlMs can only be
   // validated once the args are known, so that case is checked per-call below instead.
-  if (typeof ttlMs === "number" && ttlMs > 60 * 60 * 24 * 1000) {
-    throw new Error("ttlMs should be less than 24 hours");
+  if (typeof ttlMs === "number" && ttlMs > MAX_CACHE_TTL_MS) {
+    throw new Error("ttlMs should be at most 7 days");
   }
 
   return async function (...args: Args): Promise<JsonSerializable<T> | null> {
     const resolvedTtlMs = typeof ttlMs === "function" ? ttlMs(...args) : ttlMs;
-    if (resolvedTtlMs !== undefined && resolvedTtlMs > 60 * 60 * 24 * 1000) {
-      throw new Error("ttlMs should be less than 24 hours");
+    if (resolvedTtlMs !== undefined && resolvedTtlMs > MAX_CACHE_TTL_MS) {
+      throw new Error("ttlMs should be at most 7 days");
     }
 
     const newKey = getCacheKey(fn, resolver, args, cacheId);
@@ -308,8 +310,8 @@ export function warmCacheWithRedis<T, Args extends unknown[]>(
   resolver: KeyResolver<Args>,
   { ttlMs }: { ttlMs?: number } = {}
 ): (value: JsonSerializable<T>, ...args: Args) => Promise<void> {
-  if (ttlMs !== undefined && ttlMs > 60 * 60 * 24 * 1000) {
-    throw new Error("ttlMs should be less than 24 hours");
+  if (ttlMs !== undefined && ttlMs > MAX_CACHE_TTL_MS) {
+    throw new Error("ttlMs should be at most 7 days");
   }
   return async function (
     value: JsonSerializable<T>,

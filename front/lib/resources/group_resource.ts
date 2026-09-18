@@ -63,6 +63,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -85,6 +86,7 @@ import { col, fn, Op, QueryTypes } from "sequelize";
 
 const LAST_GROUP_MEMBER_ERROR_MESSAGE =
   "A group must always keep at least one member. To remove everyone, delete the group instead.";
+const GROUP_IDS_CACHE_TTL_MS = 7 * ONE_DAY_MS;
 
 type CachedGroup = {
   id: ModelId;
@@ -223,7 +225,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
-  // One-hour TTL, so a membership change missed by an invalidation is never served indefinitely.
+  // Seven-day TTL, so a membership change missed by an invalidation is never served indefinitely.
   private static dangerouslyListUserGroupsForAuthCached = cacheWithRedis(
     ({
       user,
@@ -237,7 +239,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         workspace,
       }),
     GroupResource.groupIdsCacheKeyResolver,
-    { cacheNullValues: false, ttlMs: 60 * 60 * 1000 }
+    { cacheNullValues: false, ttlMs: GROUP_IDS_CACHE_TTL_MS }
   );
 
   private static _invalidateGroupIdsCacheForUser = invalidateCacheWithRedis(

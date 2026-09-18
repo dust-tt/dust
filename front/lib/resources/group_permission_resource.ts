@@ -30,6 +30,7 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -45,8 +46,8 @@ import { z } from "zod";
 
 // Grants are cached in a Redis hash per workspace, one field per groupId, so a caller reads its
 // own groups and fills only what is missing. Readers fill with HSETNX and mutations delete after
-// commit, so a stale in-flight read cannot replace a fresher value. The hash expires one hour after
-// its creation, so an entry missed by an invalidation is never served indefinitely.
+// commit, so a stale in-flight read cannot replace a fresher value. The hash expires seven days
+// after its creation, so an entry missed by an invalidation is never served indefinitely.
 
 export type GroupGrant = {
   groupId: ModelId;
@@ -57,6 +58,7 @@ export type GroupGrant = {
 
 // Bump to orphan hashes written under the previous field encoding.
 const CACHE_SCHEMA_VERSION = 2;
+const GRANTS_CACHE_TTL_SECONDS = (7 * ONE_DAY_MS) / 1000;
 
 type SerializedGrant = [GrantType, GroupPermissionResourceType, number];
 
@@ -790,7 +792,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         multi.hSetNX(key, field, value);
       }
       // `NX`: only the fill that creates the hash sets its expiry, later fills do not extend it.
-      multi.expire(key, 60 * 60, "NX");
+      multi.expire(key, GRANTS_CACHE_TTL_SECONDS, "NX");
       await multi.exec();
 
       return [...grants, ...loaded];
