@@ -60,13 +60,16 @@ type PublicMessageConsumptionAllocationInput<
 > = Omit<MessageConsumptionAllocationInput<TUsage>, "reconciliationSource">;
 
 /**
- * Makes the attribution additive with the authoritative bill without changing stored evidence.
- *
- * Tool rows already represent the causal first-use cost of emitting a tool call and carrying its
- * new result into the next model input. We keep every non-input attribution unchanged. The model's
- * ordinary `input` bucket contains reused conversation context, so it is the single explicit
- * reconciliation seam. Input rows share the reconciled remainder in proportion to their gross
- * cost, using deterministic integer microcredit rounding.
+ * @cc [owner:id13,label:backend;data-integrity] derived-credit-conservation
+ * A successful reconciliation MUST preserve every non-input gross credit amount and allocate the
+ * remaining billed credits across input items so all returned amounts sum exactly to the bill. It
+ * MUST return `null` when the fixed non-input amounts exceed the bill or when a non-zero remainder
+ * cannot be allocated to input items.
+ */
+/**
+ * @cc [owner:id13,label:backend;data-integrity] deterministic-input-allocation
+ * Input credits MUST be allocated proportionally to gross input credits in integer microcredits.
+ * Rounding remainders MUST go to the largest fractional shares, using source order to break ties.
  */
 function reconcileInputCredits({
   items,
@@ -152,6 +155,16 @@ function reconcileInputCredits({
   };
 }
 
+/**
+ * @cc [owner:id13,label:backend;data-integrity] stored-credit-completeness
+ * Reconciliation MUST return `null` unless every item has a stored reconciled credit amount.
+ */
+/**
+ * @cc [owner:id13,label:backend;data-integrity] stored-credit-conservation
+ * Reconciliation MUST return an allocation only when the stored item amounts sum exactly to the
+ * expected billed credits in integer microcredits. A mismatch MUST return `null` so the caller
+ * rejects the inconsistent attribution version.
+ */
 function reconcileStoredCredits({
   items,
   billedCredits,
@@ -167,16 +180,22 @@ function reconcileStoredCredits({
     byItem.set(item, item.reconciledCreditAmountMicro);
   }
 
-  const reconciledCreditAmountMicro = [...byItem.values()].reduce(
+  const storedTotalCreditAmountMicro = [...byItem.values()].reduce(
     (total, amount) => total + amount,
     0
   );
-  return reconciledCreditAmountMicro ===
-    roundCreditsToMicroCredits(billedCredits)
+  const expectedTotalCreditAmountMicro =
+    roundCreditsToMicroCredits(billedCredits);
+  return storedTotalCreditAmountMicro === expectedTotalCreditAmountMicro
     ? { byItem }
     : null;
 }
 
+/**
+ * @cc [owner:id13,label:backend;data-integrity] complete-model-attribution
+ * Model attribution MUST be complete only when every message usage has input and output items, plus
+ * a reasoning item whenever that usage reports reasoning tokens.
+ */
 function hasCompleteModelAttribution(
   items: AgentMessageConsumptionItemResource[],
   usages: RunUsageWithRunKeyType[]
@@ -204,6 +223,12 @@ function hasCompleteModelAttribution(
   });
 }
 
+/**
+ * @cc [owner:id13,label:backend;data-integrity] complete-tool-attribution
+ * Tool attribution MUST be complete only when every action attached to a run with message usage has
+ * an item, every item that names an action refers to a supplied action, and every such final action
+ * has a completed item.
+ */
 function hasCompleteToolAttribution({
   actions,
   items,
@@ -251,6 +276,12 @@ function hasCompleteToolAttribution({
   return true;
 }
 
+/**
+ * @cc [owner:id13,label:backend;data-integrity] version-allocation-acceptance
+ * An attribution version MUST be accepted only when it has message items and run IDs, at least one
+ * matching message usage, complete model and tool attribution, and a successful credit
+ * reconciliation.
+ */
 function buildMessageConsumptionAllocationForVersion<
   TUsage extends RunUsageWithRunKeyType,
 >({
@@ -363,6 +394,11 @@ function buildMessageConsumptionAllocationForVersion<
   });
 }
 
+/**
+ * @cc [owner:id13,label:backend;data-integrity] newest-consistent-attribution
+ * Attribution versions MUST be evaluated from newest to oldest. The first complete, reconciled
+ * version MUST be returned; a rejected newer version MUST NOT prevent fallback to an older one.
+ */
 function buildMessageConsumptionAllocation<
   TUsage extends RunUsageWithRunKeyType,
 >({
