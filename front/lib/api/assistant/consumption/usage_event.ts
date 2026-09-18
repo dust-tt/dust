@@ -14,6 +14,11 @@ import logger from "@app/logger/logger";
 import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 
+/**
+ * @cc [owner:id13,label:backend;product] metronome-customer-boundary
+ * A workspace without a Metronome customer MUST return without loading usage context or emitting
+ * a Metronome event.
+ */
 export async function emitAgentMessageUsageEvent(
   auth: Authenticator,
   {
@@ -33,6 +38,9 @@ export async function emitAgentMessageUsageEvent(
   }
 ): Promise<void> {
   const workspace = auth.getNonNullableWorkspace();
+  if (!workspace.metronomeCustomerId) {
+    return;
+  }
 
   const context = await ConversationResource.fetchAgentMessageUsageEventContext(
     auth,
