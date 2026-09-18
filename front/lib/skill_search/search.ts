@@ -2,6 +2,7 @@ import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { SKILL_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
+import type { SkillSearchFilters } from "@app/types/api/skills";
 import type { Result } from "@app/types/shared/result";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";
@@ -14,14 +15,14 @@ import type { estypes } from "@elastic/elasticsearch";
  */
 export async function searchSkills(
   auth: Authenticator,
-  { limit }: { limit: number }
+  { limit, filters }: { limit: number; filters?: SkillSearchFilters }
 ): Promise<
   Result<estypes.SearchResponse<SkillSearchDocument>, ElasticsearchError>
 > {
   return withEs((client) =>
     client.search<SkillSearchDocument>({
       index: SKILL_SEARCH_ALIAS_NAME,
-      query: buildSkillSearchQuery(auth),
+      query: buildSkillSearchQuery(auth, { filters }),
       size: limit,
     })
   );

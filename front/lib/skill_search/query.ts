@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SkillSearchFilters } from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
 
 // Null represents a type-wide read grant; do not enumerate resources in that case.
@@ -60,20 +61,44 @@ function buildAvailabilityFilter(
   };
 }
 
+function buildSelectionFilters(
+  auth: Authenticator,
+  filters: SkillSearchFilters
+): estypes.QueryDslQueryContainer[] {
+  const selected: estypes.QueryDslQueryContainer[] = [];
+  for (const [field, values] of [
+    ["mcp_server_view_ids", filters.mcpServerViewIds],
+    ["availability", filters.availability],
+  ] as const) {
+    if (values?.length) {
+      selected.push({ terms: { [field]: [...new Set(values)].sort() } });
+    }
+  }
+  if (filters.editedByMe) {
+    selected.push(buildEditorFilter(auth));
+  }
+  return selected;
+}
+
 /**
  * @cc [owner:aubin-tchoi,label:security] workspace-scoped-skill-search
- * Every query is scoped to the caller's workspace and requires every requested space
- * and editor visibility. Permissions come from hydrated grants, without database reads.
+ * Every query is workspace- and lifecycle-scoped, defaulting to active skills, and requires
+ * every requested space and editor visibility. Selection filters never replace permissions.
  */
 export function buildSkillSearchQuery(
-  auth: Authenticator
+  auth: Authenticator,
+  { filters = {} }: { filters?: SkillSearchFilters } = {}
 ): estypes.QueryDslQueryContainer {
   return {
     bool: {
       filter: [
         { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
+        {
+          terms: { status: [...new Set(filters.status ?? ["active"])].sort() },
+        },
         buildAvailabilityFilter(auth),
         buildSpaceAccessFilter(getSkillSearchReadableSpaceIds(auth)),
+        ...buildSelectionFilters(auth, filters),
       ],
     },
   };
