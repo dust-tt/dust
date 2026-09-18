@@ -1,3 +1,7 @@
+import {
+  createPendingAgentConfiguration,
+  getAgentConfiguration,
+} from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -5,11 +9,16 @@ import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+
+beforeAll(() => {
+  setupSkillInstructionsMarkdownPipeline();
+});
 
 async function setupTest(options: { role?: MembershipRoleType } = {}) {
   const role = options.role ?? "user";
@@ -480,6 +489,165 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/suggestions", () =
     expect(response.status).toBe(403);
     expect((await response.json()).error.type).toBe(
       "agent_group_permission_error"
+    );
+  });
+});
+
+describe("PATCH with applyToAgent", () => {
+  async function setupPendingAgent() {
+    // Admins hold the create-agent capability the placeholder needs.
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const pending = await createPendingAgentConfiguration(auth);
+    if (pending.isErr()) {
+      throw pending.error;
+    }
+    const agent = await getAgentConfiguration(auth, {
+      agentId: pending.value.sId,
+      variant: "light",
+    });
+    if (!agent) {
+      throw new Error("Pending agent not found.");
+    }
+    return { workspace, auth, agent };
+  }
+
+  it("turns the pending placeholder into an active hidden agent", async () => {
+    const { workspace, auth, agent } = await setupPendingAgent();
+    const suggestion = await AgentSuggestionFactory.createCreate(auth, agent, {
+      suggestion: {
+        name: "Incident Helper",
+        description: "Helps triage incidents.",
+        instructions: "<p>Collect <strong>impact</strong> and timeline.</p>",
+      },
+    });
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const created = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "full",
+    });
+    expect(created).toMatchObject({
+      sId: agent.sId,
+      status: "active",
+      scope: "hidden",
+      name: "Incident Helper",
+      description: "Helps triage incidents.",
+      instructions: "Collect **impact** and timeline.",
+    });
+    expect(created?.instructionsHtml).toContain("data-block-id");
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns 400 when the caller lost the create-agent capability", async () => {
+    const { workspace, auth, agent } = await setupPendingAgent();
+    const suggestion = await AgentSuggestionFactory.createCreate(auth, agent);
+
+    // The capability was held when the placeholder was created; simulate it being revoked since.
+    vi.spyOn(
+      Authenticator.prototype,
+      "hasWorkspacePermission"
+    ).mockResolvedValue(false);
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain("restricted");
+
+    const placeholder = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(placeholder?.status).toBe("pending");
+  });
+
+  it("returns 400 and leaves the suggestion pending when the target is not a placeholder", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const suggestion = await AgentSuggestionFactory.createCreate(auth, agent);
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "already been created"
+    );
+    const fetched = await AgentSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(fetched?.state).toBe("pending");
+  });
+
+  it("returns 400 for kinds that cannot be applied server-side", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const suggestion = await AgentSuggestionFactory.createInstructions(
+      auth,
+      agent
+    );
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "cannot be applied server-side"
+    );
+  });
+
+  it("returns 400 when applying with a non-approved state", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const suggestion = await AgentSuggestionFactory.createCreate(auth, agent);
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "rejected",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "Only an approved suggestion"
+    );
+  });
+
+  it("returns 400 when the suggestion was already reviewed", async () => {
+    const { workspace, auth, agent } = await setupPendingAgent();
+    const suggestion = await AgentSuggestionFactory.createCreate(auth, agent, {
+      state: "rejected",
+    });
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "already been reviewed"
     );
   });
 });
