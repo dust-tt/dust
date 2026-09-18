@@ -25,8 +25,14 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages/:mId/retry", ()
     );
   }
 
-  it("keeps accepting the previous client's empty JSON body", async () => {
+  it("rejects an empty JSON body", async () => {
     const response = await retryRequest();
+
+    expect(response.status).toBe(400);
+  });
+
+  it("accepts an empty JSON object", async () => {
+    const response = await retryRequest("{}");
 
     expect(response.status).toBe(404);
   });

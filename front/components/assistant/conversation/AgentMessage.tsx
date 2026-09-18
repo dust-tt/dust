@@ -1389,7 +1389,6 @@ function AgentMessageContent({
           code: "stream_error",
           metadata: {},
         }}
-        owner={owner}
         retryHandler={() =>
           reloadMessage({ conversationId, messageId: agentMessage.sId })
         }
@@ -1569,8 +1568,8 @@ function AgentMessageContent({
                 metadata: {},
               }
             }
-            owner={owner}
             failedModel={agentMessage.resolvedModel ?? undefined}
+            modelResolutionMethod={agentMessage.modelResolutionMethod}
             retryHandler={async (modelSelection) =>
               retryHandler({
                 conversationId,

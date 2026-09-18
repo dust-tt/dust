@@ -4,8 +4,8 @@ import {
   getEffortStopTooltip,
   getInitialEffort,
   getModelTier,
+  getPinnedModelRetryTier,
   getTierLockReason,
-  isDegradedModelFailure,
   isModelHostedInRegion,
   isPremiumModel,
   isTierResolvedModelHostedInRegion,
@@ -41,8 +41,12 @@ import { describe, expect, it } from "vitest";
 const GATED = { lockPremiumEfforts: true };
 const UNGATED = { lockPremiumEfforts: false };
 
-describe("isDegradedModelFailure", () => {
-  const degradedModelIds = new Set([CLAUDE_SONNET_5_MODEL_ID]);
+describe("getPinnedModelRetryTier", () => {
+  const sonnetLight = {
+    providerId: "anthropic" as const,
+    modelId: CLAUDE_SONNET_5_MODEL_ID,
+    reasoningEffort: "light" as const,
+  };
 
   for (const errorCategory of [
     "retryable_model_error",
@@ -50,35 +54,65 @@ describe("isDegradedModelFailure", () => {
     "stream_error",
     "empty_content",
   ] as const) {
-    it(`recognizes ${errorCategory}`, () => {
+    it(`offers the model's tier for ${errorCategory}`, () => {
       expect(
-        isDegradedModelFailure({
-          failedModelId: CLAUDE_SONNET_5_MODEL_ID,
+        getPinnedModelRetryTier({
+          failedModel: sonnetLight,
+          modelResolutionMethod: "user",
           errorCategory,
-          degradedModelIds,
         })
-      ).toBe(true);
+      ).toBe("fast");
     });
   }
 
-  it("rejects non-model errors even if the failed model is degraded", () => {
+  it("offers the tier for an agent-configured pinned model", () => {
     expect(
-      isDegradedModelFailure({
-        failedModelId: CLAUDE_SONNET_5_MODEL_ID,
-        errorCategory: "context_window_exceeded",
-        degradedModelIds,
+      getPinnedModelRetryTier({
+        failedModel: sonnetLight,
+        modelResolutionMethod: "agent",
+        errorCategory: "provider_internal_error",
       })
-    ).toBe(false);
+    ).toBe("fast");
   });
 
-  it("requires the failed model to be currently degraded", () => {
+  it("offers the tier when the resolution method is unknown", () => {
     expect(
-      isDegradedModelFailure({
-        failedModelId: CLAUDE_OPUS_4_8_MODEL_ID,
-        errorCategory: "retryable_model_error",
-        degradedModelIds,
+      getPinnedModelRetryTier({
+        failedModel: sonnetLight,
+        modelResolutionMethod: null,
+        errorCategory: "provider_internal_error",
       })
-    ).toBe(false);
+    ).toBe("fast");
+  });
+
+  it("does not offer a tier for stream-resolved failures", () => {
+    expect(
+      getPinnedModelRetryTier({
+        failedModel: sonnetLight,
+        modelResolutionMethod: "auto",
+        errorCategory: "provider_internal_error",
+      })
+    ).toBeNull();
+  });
+
+  it("does not offer a tier after a fair-use downgrade", () => {
+    expect(
+      getPinnedModelRetryTier({
+        failedModel: sonnetLight,
+        modelResolutionMethod: "fair_use_downgrade",
+        errorCategory: "provider_internal_error",
+      })
+    ).toBeNull();
+  });
+
+  it("rejects non-model errors", () => {
+    expect(
+      getPinnedModelRetryTier({
+        failedModel: sonnetLight,
+        modelResolutionMethod: "user",
+        errorCategory: "context_window_exceeded",
+      })
+    ).toBeNull();
   });
 });
 

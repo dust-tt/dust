@@ -1843,6 +1843,8 @@ export async function retryAgentMessage(
     await refreshDegradedModelIds();
   }
 
+  // A stream selection (pinned-model tier retry) is re-resolved against the
+  // refreshed degraded set. No override preserves the failed concrete model.
   let retryModelResolution: AgentMessageModelResolution = modelSelection
     ? await resolveModelForMentionedAgent(auth, {
         configuration: message.configuration,

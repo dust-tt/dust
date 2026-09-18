@@ -14,6 +14,7 @@ import {
   AUTO_MODEL_ID,
   isModelStreamId,
 } from "@app/types/assistant/models/auto";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import {
   getTierForModel,
   STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
@@ -23,8 +24,10 @@ import type {
   ModelConfigurationType,
   ModelIdType,
   ModelMakerIdType,
+  ModelResolutionMethodType,
   ModelSelectionType,
   ReasoningEffort,
+  ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { RegionType } from "@app/types/region";
@@ -48,31 +51,59 @@ export function getDegradedModelTooltip(displayName: string): string {
   return `${displayName} is unstable right now. You may want to select another model.`;
 }
 
+const PINNED_MODEL_RETRY_ERROR_CATEGORIES = [
+  "retryable_model_error",
+  "provider_internal_error",
+  "stream_error",
+  "empty_content",
+] as const;
+
+const PICKER_TIER_BY_MODELS_TIER: Record<ModelsTierName, ModelTierId> = {
+  cost_efficient: "fast",
+  balanced: "standard",
+  premium: "complex",
+};
+
 /**
- * @cc [owner:frankaloia,label:product;error-handling] degraded-retry-offers-a-choice
- * When a model-related failure's model is degraded per the client's current models catalog AND a
- * live input-bar picker is publishing its shown selection, the failure UI MUST offer switching
- * and retry with that published selection. Every other retry MUST send no model override.
- * Catalog freshness and the failed model's preservation are not client guarantees; the server
- * enforces them at retry time (see `retry-model-selection` on `retryAgentMessage`).
+ * @cc [owner:frankaloia,label:product;error-handling] pinned-model-retry-uses-tier
+ * When a model-related failure ran a pinned (non-stream) model, the failure UI MUST offer retry
+ * on that model's tier and send that tier as `modelSelection`. It MUST NOT read or write the
+ * input-bar picker. Stream-resolved failures and every other retry MUST send no override.
+ * Stream resolution consults the current degraded set server-side (`retry-model-selection`).
  */
-export function isDegradedModelFailure({
-  failedModelId,
+export function getPinnedModelRetryTier({
+  failedModel,
+  modelResolutionMethod,
   errorCategory,
-  degradedModelIds,
 }: {
-  failedModelId: string | undefined;
+  failedModel: ResolvedRequestedModel | undefined;
+  modelResolutionMethod: ModelResolutionMethodType | null | undefined;
   errorCategory: unknown;
-  degradedModelIds: ReadonlySet<string>;
-}): boolean {
-  return (
-    failedModelId !== undefined &&
-    degradedModelIds.has(failedModelId) &&
-    (errorCategory === "retryable_model_error" ||
-      errorCategory === "provider_internal_error" ||
-      errorCategory === "stream_error" ||
-      errorCategory === "empty_content")
+}): ModelTierId | null {
+  if (!failedModel) {
+    return null;
+  }
+  if (
+    modelResolutionMethod === "fair_use_downgrade" ||
+    (modelResolutionMethod !== undefined &&
+      modelResolutionMethod !== null &&
+      isModelStreamId(modelResolutionMethod))
+  ) {
+    return null;
+  }
+  if (
+    !(PINNED_MODEL_RETRY_ERROR_CATEGORIES as readonly string[]).includes(
+      errorCategory as string
+    )
+  ) {
+    return null;
+  }
+
+  const tierName = getTierForModel(
+    failedModel.modelId,
+    failedModel.reasoningEffort
   );
+  return tierName ? PICKER_TIER_BY_MODELS_TIER[tierName] : null;
 }
 
 /**
