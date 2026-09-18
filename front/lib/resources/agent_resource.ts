@@ -1,16 +1,21 @@
+import { isSelfHostedImageWithValidContentType } from "@app/lib/api/assistant/configuration/agent_image";
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import {
   AgentConfigurationModel,
   AgentModel,
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
+import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -20,9 +25,12 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationBaseType,
@@ -31,9 +39,12 @@ import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
   AgentReinforcementMode,
+  AgentStatus,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
 import type {
@@ -45,10 +56,12 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
+import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import assert from "assert";
 import type { Attributes, Transaction } from "sequelize";
-import { Op } from "sequelize";
+import { Op, UniqueConstraintError, ValidationError } from "sequelize";
 
 // Legacy `canEdit` also allows changing the editor set, so the author fallback mirrors the full
 // editor role rather than granting write alone.
@@ -103,6 +116,27 @@ type AgentResourceExtraBlob = {
 export type BulkAgentUpdateResult = {
   updatedAgentIds: string[];
   skippedAgentIds: string[];
+};
+
+// The inputs to save a custom agent configuration (create a new agent or a new version), minus the
+// agent identity — `makeNew` creates a new one, `updateConfiguration` targets `this` agent. The
+// orchestrator (`createOrUpgradeAgentConfiguration`) validates and assembles this, then delegates
+// action/skill creation on top.
+export type SaveAgentConfigurationParams = {
+  name: string;
+  description: string;
+  instructions: string | null;
+  instructionsHtml: string | null;
+  pictureUrl: string;
+  status: AgentStatus;
+  scope: Exclude<AgentConfigurationScope, "global">;
+  model: AgentModelConfigurationType;
+  templateId: string | null;
+  requestedSpaceIds: ModelId[];
+  tags: TagType[];
+  editors: UserType[];
+  authorId: ModelId;
+  reinforcement?: AgentReinforcementMode;
 };
 
 // A `full` resource always exposes its `content`.
@@ -166,6 +200,16 @@ export interface FullAgentResource extends AgentResource {
  * agent without changing that, or changing the scope of a draft, pending or archived agent, MUST
  * NOT require it. Protected tags and linking Slack channels to an agent are gated by it too.
  */
+/**
+ * @cc [owner:tdraier,label:security] agent-edit-requires-write
+ * Saving a new configuration version of an existing agent (`updateConfiguration`) MUST require
+ * `write` on that agent (`auth.can("write", this)`), enforced inside the resource — callers may
+ * double-check, but MUST NOT be the sole gate. `read` alone (any member can read a visible agent)
+ * MUST NOT allow editing. For human and system-key callers the workspace `admin` role alone (which
+ * grants `admin`, not `write`, on agents they do not edit) MUST NOT allow editing either. Regular
+ * API keys are the sole exception: the admin role grants them `write` (see `admin-key-agent-write`),
+ * so an admin key may edit an agent it holds no editor grant on.
+ */
 export class AgentResource
   extends BaseResource<AgentModel>
   implements WithAccessControl
@@ -181,7 +225,7 @@ export class AgentResource
   readonly description: string;
   readonly status: AgentConfigurationStatus;
   readonly pictureUrl: string;
-  private readonly versionAuthorId: ModelId | null;
+  readonly versionAuthorId: ModelId | null;
   private readonly requestedSpaceIds: ModelId[];
   readonly modelConfiguration: AgentModelConfigurationType;
   // Mutable so a light resource can be enriched to full in place once read access is confirmed
@@ -1048,6 +1092,560 @@ export class AgentResource
         this._verbs.has("write") &&
         (!this._isRegularApiKey || this.status === "active"),
     };
+  }
+
+  // Creates a brand-new custom agent: its `AgentModel` identity, first `AgentConfigurationModel`
+  // version, editor group and tags. The orchestrator delegates action/skill creation on top.
+  // Bringing a new agent into the workspace requires the type-wide `create` capability, enforced
+  // here (see the `agent-create-capability` contract).
+  static async makeNew(
+    auth: Authenticator,
+    params: SaveAgentConfigurationParams,
+    transaction?: Transaction
+  ): Promise<Result<AgentResource, Error>> {
+    if (!(await auth.hasWorkspacePermission("create", "agent"))) {
+      return new Err(new Error("Creating agents is restricted."));
+    }
+
+    return this._saveConfiguration(
+      auth,
+      { ...params, agentConfigurationId: undefined },
+      transaction
+    );
+  }
+
+  // Creates a new configuration version on `this` agent: archives the prior version and moves the
+  // `currentVersion` pointer (or updates a pending agent in place). Editing an agent requires
+  // `write` on it, enforced here on `this` (see the `agent-edit-requires-write` contract): the
+  // caller resolves the agent first (e.g. `fetchById`), and only an editor may save a new version.
+  async updateConfiguration(
+    auth: Authenticator,
+    params: SaveAgentConfigurationParams,
+    transaction?: Transaction
+  ): Promise<Result<AgentResource, Error>> {
+    if (!auth.can("write", this)) {
+      return new Err(
+        new Error("You don't have permission to edit this agent.")
+      );
+    }
+
+    return AgentResource._saveConfiguration(
+      auth,
+      { ...params, agentConfigurationId: this.sId },
+      transaction
+    );
+  }
+
+  private static async _saveConfiguration(
+    auth: Authenticator,
+    {
+      name,
+      description,
+      instructions,
+      instructionsHtml,
+      pictureUrl,
+      status,
+      scope,
+      model,
+      agentConfigurationId,
+      templateId,
+      requestedSpaceIds,
+      tags,
+      editors,
+      authorId,
+      reinforcement,
+    }: {
+      name: string;
+      description: string;
+      instructions: string | null;
+      instructionsHtml: string | null;
+      pictureUrl: string;
+      status: AgentStatus;
+      scope: Exclude<AgentConfigurationScope, "global">;
+      model: AgentModelConfigurationType;
+      agentConfigurationId?: string;
+      templateId: string | null;
+      requestedSpaceIds: number[];
+      tags: TagType[];
+      editors: UserType[];
+      authorId: ModelId;
+      reinforcement?: AgentReinforcementMode;
+    },
+    transaction?: Transaction
+  ): Promise<Result<AgentResource, Error>> {
+    const owner = auth.workspace();
+    if (!owner) {
+      throw new Error("Unexpected `auth` without `workspace`.");
+    }
+
+    const isValidPictureUrl =
+      await isSelfHostedImageWithValidContentType(pictureUrl);
+    if (!isValidPictureUrl) {
+      return new Err(new Error("Invalid picture url."));
+    }
+
+    if (model.responseFormat) {
+      const formatValidation = validateResponseFormat(model.responseFormat);
+      if (!formatValidation.isValid) {
+        return new Err(
+          new Error(`Invalid response format: ${formatValidation.errorMessage}`)
+        );
+      }
+    }
+
+    let version = 0;
+
+    // Track removed editors so their triggers can be disabled if this save leaves the agent hidden.
+    let removedEditors: UserType[] = [];
+    // The scope the agent has before this write. A new agent starts hidden, so saving it
+    // visible counts as publishing.
+    let currentScope: AgentConfigurationScope = "hidden";
+    if (agentConfigurationId) {
+      const existingAgent = await AgentConfigurationModel.findOne({
+        where: { sId: agentConfigurationId, workspaceId: owner.id },
+        order: [["version", "DESC"]],
+        attributes: ["scope"],
+        limit: 1,
+      });
+      if (existingAgent) {
+        currentScope = existingAgent.scope;
+      }
+    }
+
+    // With only `hidden`/`visible` scopes for custom agents, a scope change on an active agent is
+    // exactly a publish (→ visible) or unpublish (→ hidden), both of which need publish permission.
+    if (status === "active" && currentScope !== scope) {
+      const canPublish = await auth.hasWorkspacePermission("publish", "agent");
+      if (!canPublish) {
+        return new Err(
+          new Error("You don't have permission to publish agents.")
+        );
+      }
+    }
+
+    try {
+      let template: TemplateResource | null = null;
+      if (templateId) {
+        template = await TemplateResource.fetchByExternalId(templateId);
+      }
+      const performCreation = async (
+        t: Transaction
+      ): Promise<AgentConfigurationModel> => {
+        let existingAgent = null;
+
+        if (agentConfigurationId) {
+          existingAgent = await AgentConfigurationModel.findOne({
+            where: {
+              sId: agentConfigurationId,
+              workspaceId: owner.id,
+            },
+            attributes: [
+              "agentId",
+              "scope",
+              "version",
+              "id",
+              "sId",
+              "status",
+              "authorId",
+              "workspaceId",
+              "createdAt",
+              "reinforcement",
+            ],
+            order: [["version", "DESC"]],
+            transaction: t,
+            limit: 1,
+          });
+
+          if (existingAgent) {
+            if (existingAgent.status === "archived") {
+              throw new Error(
+                "An archived agent cannot be updated. Restore it first."
+              );
+            }
+
+            // Handle pending agent: update in place (don't bump version, preserve id for FK relationships)
+            // Otherwise: archive old versions and bump version
+            if (existingAgent.status === "pending") {
+              if (existingAgent.authorId === authorId) {
+                const timeToCreationMs =
+                  Date.now() - existingAgent.createdAt.getTime();
+                logger.info(
+                  {
+                    agentId: existingAgent.sId,
+                    workspaceId: owner.sId,
+                    timeToCreationMs,
+                  },
+                  "Agent created from pending status"
+                );
+              } else {
+                throw new Error(
+                  "Cannot update a pending agent owned by another user."
+                );
+              }
+            } else {
+              // Regular update: bump version and archive old versions
+              version = existingAgent.version + 1;
+              await AgentConfigurationModel.update(
+                { status: "archived" },
+                {
+                  where: {
+                    sId: agentConfigurationId,
+                    workspaceId: owner.id,
+                  },
+                  transaction: t,
+                }
+              );
+            }
+          }
+        }
+
+        // `existingAgent` is null both when no `agentConfigurationId` was given and when one was
+        // given but didn't match a real row — the latter would otherwise let a caller bypass the
+        // capability check by passing a nonexistent id and taking the "create new" branch below.
+        if (!existingAgent) {
+          const canCreate = await auth.hasWorkspacePermission(
+            "create",
+            "agent"
+          );
+          if (!canCreate) {
+            throw new Error("Creating agents is restricted.");
+          }
+        }
+
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        const sId = agentConfigurationId || generateRandomModelSId();
+        let agentModelId = existingAgent?.agentId;
+        if (!agentModelId) {
+          const [agentIdentity] = await AgentModel.findOrCreate({
+            where: { sId, workspaceId: owner.id },
+            defaults: { sId, workspaceId: owner.id },
+            transaction: t,
+          });
+          agentModelId = agentIdentity.id;
+          await AgentConfigurationModel.update(
+            { agentId: agentModelId },
+            {
+              where: { sId, workspaceId: owner.id },
+              transaction: t,
+            }
+          );
+        }
+
+        // Create or update Agent config.
+        let agentConfigurationInstance: AgentConfigurationModel;
+
+        if (existingAgent && existingAgent.status === "pending") {
+          // Update pending agent in place to preserve id (and FK relationships like suggestions)
+          await AgentConfigurationModel.update(
+            {
+              version,
+              status,
+              scope,
+              name,
+              description,
+              instructions,
+              instructionsHtml,
+              providerId: model.providerId,
+              modelId: model.modelId,
+              temperature: model.temperature,
+              reasoningEffort: model.reasoningEffort,
+              maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+              pictureUrl,
+              authorId,
+              templateId: template?.id,
+              requestedSpaceIds: requestedSpaceIds,
+              responseFormat: model.responseFormat,
+              reinforcement:
+                reinforcement ?? existingAgent.reinforcement ?? "auto",
+            },
+            {
+              where: {
+                id: existingAgent.id,
+                workspaceId: owner.id,
+              },
+              transaction: t,
+            }
+          );
+          // Reload the updated instance
+          const updatedAgent = await AgentConfigurationModel.findOne({
+            where: {
+              id: existingAgent.id,
+              workspaceId: owner.id,
+            },
+            transaction: t,
+          });
+          if (!updatedAgent) {
+            throw new Error("Failed to reload updated agent configuration");
+          }
+          agentConfigurationInstance = updatedAgent;
+        } else {
+          // Create new agent config
+          agentConfigurationInstance = await AgentConfigurationModel.create(
+            {
+              sId,
+              agentId: agentModelId,
+              version,
+              status,
+              scope,
+              name,
+              description,
+              instructions,
+              instructionsHtml,
+              providerId: model.providerId,
+              modelId: model.modelId,
+              temperature: model.temperature,
+              reasoningEffort: model.reasoningEffort,
+              maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+              pictureUrl,
+              workspaceId: owner.id,
+              authorId,
+              templateId: template?.id,
+              requestedSpaceIds: requestedSpaceIds,
+              responseFormat: model.responseFormat,
+              reinforcement:
+                reinforcement ?? existingAgent?.reinforcement ?? "auto",
+            },
+            {
+              transaction: t,
+            }
+          );
+        }
+
+        // A brand-new agent already starts at version 0; an upgrade moves the pointer.
+        if (agentConfigurationInstance.version !== 0) {
+          await AgentResource.fromAgentConfigurationModel(
+            auth,
+            agentConfigurationInstance
+          ).setCurrentConfiguration(auth, agentConfigurationInstance, {
+            transaction: t,
+          });
+        }
+
+        const canManageProtectedTags = await auth.hasWorkspacePermission(
+          "publish",
+          "agent"
+        );
+
+        const existingTags = existingAgent
+          ? await TagResource.listForAgent(auth, existingAgent.id)
+          : [];
+        const existingReservedTags = existingTags
+          .filter((t) => t.kind === "protected")
+          .map((t) => t.sId);
+        if (
+          !canManageProtectedTags &&
+          !existingReservedTags.every((reservedTagId) =>
+            tags.some((tag) => tag.sId === reservedTagId)
+          )
+        ) {
+          throw new Error("Cannot remove reserved tag from agent");
+        }
+
+        if (status === "active") {
+          const tagResources = await TagResource.fetchByIds(
+            auth,
+            tags.map((tag) => tag.sId)
+          );
+          const tagResourceById = new Map(
+            tagResources.map((tagResource) => [tagResource.sId, tagResource])
+          );
+
+          for (const tag of tags) {
+            const tagResource = tagResourceById.get(tag.sId);
+            if (tagResource) {
+              if (
+                !canManageProtectedTags &&
+                tagResource.kind === "protected" &&
+                !existingReservedTags.includes(tagResource.sId)
+              ) {
+                throw new Error("Cannot add reserved tag to agent");
+              }
+              await TagAgentModel.create(
+                {
+                  workspaceId: owner.id,
+                  tagId: tagResource.id,
+                  agentConfigurationId: agentConfigurationInstance.id,
+                },
+                { transaction: t }
+              );
+            }
+          }
+
+          assert(
+            editors.some((e) => e.id === authorId) || isAdmin(owner),
+            "Unexpected: author must be in editor group or admin"
+          );
+          if (!existingAgent) {
+            const group = await GroupResource.makeNewAgentEditorsGroup(
+              auth,
+              agentConfigurationInstance,
+              { transaction: t, authorId }
+            );
+            await auth.refresh({ transaction: t });
+            // Authorization is enforced upstream: this branch is only reached through `makeNew`,
+            // which requires the `create` capability (see `agent-create-capability`). The assertion
+            // above additionally guarantees the author is among the editors or an admin.
+            const setMembersRes = await group.dangerouslySetMembers(auth, {
+              users: editors,
+              transaction: t,
+            });
+            if (setMembersRes.isErr()) {
+              throw setMembersRes.error;
+            }
+          } else {
+            const group = await GroupResource.fetchByAgentConfiguration({
+              auth,
+              agentConfiguration: existingAgent,
+            });
+            if (!group) {
+              throw new Error(
+                "Unexpected: agent should have exactly one editor group."
+              );
+            }
+            // For pending agents updated in place, the group is already linked to the same agent ID
+            // For regular updates, we need to link the group to the new agent configuration
+            if (existingAgent.id !== agentConfigurationInstance.id) {
+              const result = await group.addGroupToAgentConfiguration({
+                auth,
+                agentConfiguration: agentConfigurationInstance,
+                transaction: t,
+              });
+              if (result.isErr()) {
+                logger.error(
+                  {
+                    workspaceId: owner.sId,
+                    agentConfigurationId: existingAgent.sId,
+                  },
+                  `Error adding group to agent ${existingAgent.sId}: ${result.error}`
+                );
+                throw result.error;
+              }
+            }
+
+            // Authorization is enforced upstream: this branch is only reached through
+            // `updateConfiguration`, which requires `write` on this agent before saving a new
+            // version (see `agent-edit-requires-write`). Editing the editor set is part of editing
+            // the agent, so it is covered by that same `write` gate; the assertion above only
+            // guarantees the author invariant.
+            const setMembersRes = await group.dangerouslySetMembers(auth, {
+              users: editors,
+              transaction: t,
+            });
+            if (setMembersRes.isErr()) {
+              logger.error(
+                {
+                  workspaceId: owner.sId,
+                  agentConfigurationId: existingAgent.sId,
+                },
+                `Error setting members to agent ${existingAgent.sId}: ${setMembersRes.error}`
+              );
+              throw setMembersRes.error;
+            }
+            removedEditors = setMembersRes.value.removedUsers;
+          }
+
+          const agentResource = AgentResource.fromAgentConfigurationModel(
+            auth,
+            agentConfigurationInstance
+          );
+          await agentResource.grantEditors(auth, { editors, transaction: t });
+          if (!isLegacyAclsEnabled()) {
+            const currentEditors = await agentResource.listEditors(auth, {
+              transaction: t,
+            });
+            assert(currentEditors !== null);
+            const editorIds = new Set(editors.map((editor) => editor.id));
+            removedEditors = currentEditors
+              .filter((editor) => !editorIds.has(editor.id))
+              .map((editor) => editor.toJSON());
+          }
+          await agentResource.revokeEditors(auth, {
+            editors: removedEditors,
+            transaction: t,
+          });
+        }
+
+        return agentConfigurationInstance;
+      };
+
+      const agent = await withTransaction(performCreation, transaction);
+
+      // Resolve the saved agent through the access-controlled resolver. In every real path the caller
+      // is the author (or otherwise holds read), so this is the `full` agent they just wrote.
+      const resource = await AgentResource.fetchById(auth, agent.sId);
+      if (resource === null) {
+        return new Err(
+          new Error("Unexpected: the saved agent could not be resolved.")
+        );
+      }
+
+      // Recording the recent author reads the current version, so it needs the full resource.
+      if (resource.isFull()) {
+        await agentConfigurationWasUpdatedBy({ agent: resource, auth });
+      }
+
+      // Disable triggers for editors who were removed from a hidden agent.
+      if (removedEditors.length > 0 && scope === "hidden") {
+        const triggersToDisableRes =
+          await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
+            agentConfigurationId: resource.sId,
+            editorIds: removedEditors.map((editor) => editor.id),
+          });
+        if (triggersToDisableRes.isOk()) {
+          for (const trigger of triggersToDisableRes.value) {
+            const disableResult = await trigger.disable(auth);
+            if (disableResult.isErr()) {
+              logger.error(
+                {
+                  workspaceId: owner.sId,
+                  agentConfigurationId: resource.sId,
+                  triggerId: trigger.sId,
+                  error: disableResult.error,
+                },
+                `Failed to disable trigger ${trigger.sId} when removing editor from agent ${resource.sId}`
+              );
+            }
+          }
+        }
+      }
+
+      if (resource.status === "active") {
+        const isCreate = !agentConfigurationId || version === 0;
+        void emitAuditLogEvent({
+          auth,
+          action: isCreate ? "agent.created" : "agent.updated",
+          targets: [
+            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+            buildAuditLogTarget("agent", resource),
+          ],
+          context: getAuditLogContext(auth),
+          metadata: {
+            agent_name: resource.name,
+            scope: scope,
+            model: `${model.providerId}/${model.modelId}`,
+          },
+        });
+      }
+
+      return new Ok(resource);
+    } catch (error) {
+      if (error instanceof UniqueConstraintError) {
+        return new Err(new Error("An agent with this name already exists."));
+      }
+      if (error instanceof ValidationError) {
+        return new Err(new Error(error.message));
+      }
+      if (error instanceof SyntaxError) {
+        return new Err(new Error(error.message));
+      }
+      if (error instanceof DustError) {
+        return new Err(error);
+      }
+      if (error instanceof Error) {
+        return new Err(error);
+      }
+      throw error;
+    }
   }
 
   toLogJSON(): ResourceLogJSON {

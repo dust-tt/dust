@@ -1,7 +1,6 @@
 import {
   archiveAgentConfiguration,
   cleanupAgentScopedResourcesForHardDeletion,
-  createAgentConfiguration,
   createPendingAgentConfiguration,
   getAgentConfiguration,
   getAgentConfigurations,
@@ -39,6 +38,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
@@ -136,7 +136,13 @@ describe.each([
     const restrictedSpace = await SpaceFactory.regular(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
-      { scope: "hidden", requestedSpaceIds: [restrictedSpace.id] }
+      { scope: "hidden" }
+    );
+    // Put the agent behind the restricted space after creation: nobody can create an agent on a
+    // space they cannot read, but an existing agent can end up on one the caller cannot read.
+    await AgentConfigurationModel.update(
+      { requestedSpaceIds: [restrictedSpace.id] },
+      { where: { sId: agent.sId, workspaceId: workspace.id } }
     );
 
     const configuration = await getAgentConfiguration(authenticator, {
@@ -156,7 +162,13 @@ describe.each([
     const restrictedSpace = await SpaceFactory.regular(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
-      { scope: "hidden", requestedSpaceIds: [restrictedSpace.id] }
+      { scope: "hidden" }
+    );
+    // Put the agent behind the restricted space after creation: nobody can create an agent on a
+    // space they cannot read, but an existing agent can end up on one the caller cannot read.
+    await AgentConfigurationModel.update(
+      { requestedSpaceIds: [restrictedSpace.id] },
+      { where: { sId: agent.sId, workspaceId: workspace.id } }
     );
     const group = await GroupFactory.regularManual(workspace, "Agent editors");
     const resource = AgentResource.fromAgentConfiguration(authenticator, agent);
@@ -425,7 +437,7 @@ describe("stable agent identities", () => {
   });
 });
 
-describe("createAgentConfiguration with pending agent", () => {
+describe("saveAgentConfiguration with pending agent", () => {
   it("converts pending agent to active when agentConfigurationId points to a pending agent", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",
@@ -474,7 +486,7 @@ describe("createAgentConfiguration with pending agent", () => {
     ).toEqual([user.sId]);
 
     // Convert the pending agent to active by passing its sId as agentConfigurationId
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "My New Agent",
       description: "A test agent",
       instructions: "Test instructions",
@@ -530,14 +542,16 @@ describe("createAgentConfiguration with pending agent", () => {
     ).toEqual([user.sId]);
   });
 
-  it("creates new agent if agentConfigurationId does not exist", async () => {
+  it("returns an error when agentConfigurationId does not exist", async () => {
     const { authenticator, user } = await createResourceTest({
       role: "admin",
     });
 
     const nonExistentId = generateRandomModelSId();
 
-    const result = await createAgentConfiguration(authenticator, {
+    // `updateConfiguration` is an instance method reached through a read-gated fetch, so an id that
+    // resolves to no agent cannot be saved (it no longer falls through to creating a new agent).
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Fallback Agent",
       description: "Test",
       instructions: null,
@@ -558,12 +572,9 @@ describe("createAgentConfiguration with pending agent", () => {
       authorId: user.id,
     });
 
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      // Should have created a new agent with the provided sId
-      expect(result.value.sId).toBe(nonExistentId);
-      expect(result.value.name).toBe("Fallback Agent");
-      expect(result.value.status).toBe("active");
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("Agent configuration not found.");
     }
   });
 
@@ -593,7 +604,7 @@ describe("createAgentConfiguration with pending agent", () => {
     const { sId: pendingId } = otherPendingAgentRes.value;
 
     // Should return an error because pending agents owned by other users cannot be updated
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "My Agent",
       description: "Test",
       instructions: null,
@@ -614,11 +625,11 @@ describe("createAgentConfiguration with pending agent", () => {
       authorId: user.id,
     });
 
+    // The caller is not the author, an editor, nor a reader of the other user's (hidden) pending
+    // agent, so the read-gated fetch in front of `updateConfiguration` rejects the save.
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain(
-        "Cannot update a pending agent owned by another user."
-      );
+      expect(result.error.message).toContain("Agent configuration not found.");
     }
   });
 
@@ -631,7 +642,7 @@ describe("createAgentConfiguration with pending agent", () => {
     const existingAgent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Updated Agent",
       description: "Test",
       instructions: null,
@@ -693,7 +704,7 @@ describe("createAgentConfiguration with pending agent", () => {
       }
     );
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Agent From Pending With Suggestions",
       description: "Test agent",
       instructions: "Test instructions",
@@ -754,7 +765,7 @@ describe("create agent capability", () => {
     const { workspace } = await createResourceTest({ role: "admin" });
     const { authenticator, user } = await memberAuthInGroup(workspace);
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Unauthorized Agent",
       description: "Test",
       instructions: null,
@@ -784,7 +795,7 @@ describe("create agent capability", () => {
     const { workspace } = await createResourceTest({ role: "admin" });
     const { authenticator, user } = await memberAuthInGroup(workspace);
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Unauthorized Agent",
       description: "Test",
       instructions: null,
@@ -797,7 +808,9 @@ describe("create agent capability", () => {
         modelId: "claude-sonnet-4-5-20250929",
         temperature: 0.7,
       },
-      // Doesn't match any real row, so this would otherwise take the "create new" branch.
+      // Doesn't match any real row. The read-gated fetch in front of `updateConfiguration` returns
+      // nothing, so the save is rejected before it could reach the create branch — the id cannot be
+      // used to bypass the create-agent capability.
       agentConfigurationId: generateRandomModelSId(),
       templateId: null,
       requestedSpaceIds: [],
@@ -808,7 +821,7 @@ describe("create agent capability", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toBe("Creating agents is restricted.");
+      expect(result.error.message).toContain("Agent configuration not found.");
     }
   });
 
@@ -824,7 +837,7 @@ describe("create agent capability", () => {
     });
     const { authenticator, user } = await memberAuthInGroup(workspace, group);
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Authorized Agent",
       description: "Test",
       instructions: null,
@@ -857,17 +870,24 @@ describe("create agent capability", () => {
     );
     const { authenticator, user } = await memberAuthInGroup(workspace);
     // No capability grant for this user; only editing rights on the existing agent matter here.
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+    // Grant the agent's `editor` role (read + write + admin) so the user can read the agent — a
+    // prerequisite for saving it — and is authorized to edit it without the create capability.
+    const editResource = AgentResource.fromAgentConfiguration(
       adminAuth,
       existingAgent
     );
-    if (editorGroupRes.isErr()) {
-      throw editorGroupRes.error;
+    const grantRes = await GroupPermissionResource.grantToUser(adminAuth, {
+      user: user.toJSON(),
+      resourceType: "agent",
+      resourceId: editResource.id,
+      grantType: "editor",
+    });
+    if (grantRes.isErr()) {
+      throw grantRes.error;
     }
-    await GroupFactory.withMembers(adminAuth, editorGroupRes.value, [user]);
     await authenticator.refresh();
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Updated Agent",
       description: "Test",
       instructions: null,
@@ -1462,7 +1482,7 @@ describe("publish agent capability", () => {
     user: Awaited<ReturnType<typeof UserFactory.basic>>,
     scope: "hidden" | "visible"
   ) {
-    return createAgentConfiguration(auth, {
+    return saveAgentConfiguration(auth, {
       name: agent.name,
       description: "Test",
       instructions: null,

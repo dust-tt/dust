@@ -1,4 +1,3 @@
-import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getActiveWorkspaceAgentConfiguration } from "@app/lib/api/assistant/configuration/context";
 import { getAgentConfigurationAsYAMLConfig } from "@app/lib/api/assistant/configuration/yaml_export";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
@@ -12,6 +11,7 @@ import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -36,7 +36,7 @@ async function createPatchableAgent({
   const tag = await TagFactory.create(workspace, { name: "yaml-import-test" });
   const template = await TemplateFactory.published();
 
-  const createResult = await createAgentConfiguration(auth, {
+  const createResult = await saveAgentConfiguration(auth, {
     name: "YAML import test agent",
     description: "Initial description",
     instructions: "Initial instructions",
@@ -367,7 +367,7 @@ describe("patchAgentConfigurationFromJSON", () => {
     const space = await SpaceFactory.regular(workspace);
     await SpaceFactory.attachGroup(space, globalGroup);
 
-    const createResult = await createAgentConfiguration(authenticator, {
+    const createResult = await saveAgentConfiguration(authenticator, {
       name: "YAML export test agent",
       description: "Initial description",
       instructions: "Initial instructions",
