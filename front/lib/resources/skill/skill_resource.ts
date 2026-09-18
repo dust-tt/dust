@@ -162,7 +162,7 @@ export type SkillPermissionFilteringMode =
   | "redact_unreadable"
   | "dangerously_skip";
 
-type SkillFetchContext = {
+export type SkillFetchContext = {
   permissionFiltering?: SkillPermissionFilteringMode;
 } & (
   | {
@@ -1510,6 +1510,35 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
+   * Skills of a non-global agent addressed by its `agent_configurations` row model id, for callers
+   * holding an agent's identity rather than a rendered configuration (see `AgentResource.listSkills`).
+   */
+  static async listByAgentConfigurationModelId(
+    auth: Authenticator,
+    agentConfigurationModelId: ModelId,
+    {
+      agentLoopData,
+      effectiveSpaceIds,
+      permissionFiltering,
+    }: SkillFetchContext = {}
+  ): Promise<SkillResource[]> {
+    const refs = await this.getSkillReferencesByAgentConfigurationModelId(
+      auth,
+      agentConfigurationModelId
+    );
+
+    if (refs.length === 0) {
+      return [];
+    }
+
+    return this.fetchBySkillReferences(auth, refs, {
+      agentLoopData,
+      effectiveSpaceIds,
+      permissionFiltering,
+    });
+  }
+
+  /**
    * Batched version of listByAgentConfiguration. Performs 2 SQL queries.
    * Does not support global agents as we rely on the ID for mapping: they all share the same
    * model id and hold no `AgentSkillModel` row. Their skills are code-defined, so resolve them
@@ -1590,8 +1619,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Returns skill references for an agent configuration.
    * For global agents, returns references from the config's `codeDefinedSkillIds` field.
    * For non-global agents, queries the database.
-   * TODO(2026-01-30 agent-resource): move this to an AgentResource that would bundle the logic
-   *   about loading skills and will expose a unified interface.
+   * TODO(2026-01-30 agent-resource): fold the global branch into `AgentResource.listSkills`, which
+   *   already covers custom agents, so the resource exposes a unified interface.
    */
   static async getSkillReferencesForAgent(
     auth: Authenticator,
@@ -1615,12 +1644,33 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    const workspace = auth.getNonNullableWorkspace();
+    return this.getSkillReferencesByAgentConfigurationModelId(
+      auth,
+      agentConfiguration.id
+    );
+  }
 
+  /**
+   * @cc [owner:sfriquet,label:backend] skill-references-by-configuration-model-id
+   * `agentConfigurationModelId` MUST designate an `agent_configurations` row: an `AgentResource`
+   * passes its `agentConfigurationModelId`, NOT its `id`, which designates the `agents` row. Global
+   * agents MUST NOT be passed: they hold no `AgentSkillModel` row and share the `id: -1` sentinel
+   * (see `agent-resource-identity`), so their code-defined skills are resolved by
+   * `getSkillReferencesForAgent` instead.
+   */
+  private static async getSkillReferencesByAgentConfigurationModelId(
+    auth: Authenticator,
+    agentConfigurationModelId: ModelId
+  ): Promise<
+    {
+      customSkillId: ModelId | null;
+      globalSkillId: string | null;
+    }[]
+  > {
     const agentSkills = await AgentSkillModel.findAll({
       where: {
-        agentConfigurationId: agentConfiguration.id,
-        workspaceId: workspace.id,
+        agentConfigurationId: agentConfigurationModelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 

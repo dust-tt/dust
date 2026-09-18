@@ -22,6 +22,8 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { SkillFetchContext } from "@app/lib/resources/skill/skill_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -1053,6 +1055,32 @@ export class AgentResource
     }
 
     return verbs;
+  }
+
+  /**
+   * Skills equipped on this agent. Custom agents only: a global agent's skills are code-defined and
+   * are not carried by the resource (`fromGlobalAgent` builds from the `light` configuration, which
+   * has no `codeDefinedSkillIds`).
+   */
+  async listSkills(
+    auth: Authenticator,
+    fetchContext: SkillFetchContext = {}
+  ): Promise<SkillResource[]> {
+    // TODO(2026-09-18 agent-resource): support global agents. `fromGlobalAgent` already receives
+    //   `codeDefinedSkillIds` — `getGlobalAgents` sets them in every variant — but drops them:
+    //   carry them as a core field (a global resource is always `light`, so `content` is not an
+    //   option) and branch here on `scope`, resolving them with `SkillResource.fetchByIds` in
+    //   declaration order. That also retires the global branch of `getSkillReferencesForAgent`.
+    assert(
+      this.scope !== "global",
+      "Unexpected: `listSkills` called on a global AgentResource"
+    );
+
+    return SkillResource.listByAgentConfigurationModelId(
+      auth,
+      this.agentConfigurationModelId,
+      fetchContext
+    );
   }
 
   /**
