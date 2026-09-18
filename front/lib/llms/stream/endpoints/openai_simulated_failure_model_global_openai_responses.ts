@@ -1,3 +1,4 @@
+import { isSimulatedFailureModelDegraded } from "@app/lib/api/llm/simulated_failure_model";
 import { WithDustSimulatedFailureModelConfig } from "@app/lib/llms/providers/openai/models/simulated_failure_model";
 import { defineDustStreamEndpoint } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { OpenAISimulatedFailureModelGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_simulated_failure_model_global_openai_responses";
@@ -23,8 +24,10 @@ function syntheticModelUnavailableError(): InternalServerError {
 
 /**
  * @cc [owner:frankaloia,label:error-handling;testing] synthetic-model-wrapper
- * This endpoint MUST throw a provider-classified, retryable 503 before yielding
- * any model output and MUST NOT mutate serving degradation state directly.
+ * Conversation streams MUST 503 with a provider-classified retryable error
+ * while this endpoint is not degraded, so the breaker can trip. Once a
+ * degradation row exists, streams MUST call the Mini delegate and MUST
+ * NOT mutate serving degradation state directly.
  */
 export class DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream extends WithDustSimulatedFailureModelConfig(
   OpenAISimulatedFailureModelGlobalOpenAIResponsesStream
@@ -34,8 +37,13 @@ export class DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream extends 
   };
 
   override async *streamRaw(
-    _input: ResponseCreateParams
+    input: ResponseCreateParams
   ): AsyncGenerator<ResponseStreamEvent> {
+    if (await isSimulatedFailureModelDegraded()) {
+      yield* super.streamRaw(input);
+      return;
+    }
+
     throw syntheticModelUnavailableError();
   }
 }
