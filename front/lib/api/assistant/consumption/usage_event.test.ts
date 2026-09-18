@@ -21,6 +21,7 @@ vi.mock("@app/lib/resources/conversation_resource", () => ({
 const bill = {
   eventCreditAmount: 12,
   costCredits: 12,
+  userMessageOrigin: "web",
   runUsageModelIds: [],
   actionModelIds: [],
 } satisfies ExecutionBill;

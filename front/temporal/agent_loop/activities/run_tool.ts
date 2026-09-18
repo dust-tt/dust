@@ -289,7 +289,7 @@ async function recordToolCompletionConsumptionItem(
     if (!legacyConsumptionContext) {
       return;
     }
-    rootAgentMessageId = legacyConsumptionContext.rootAgentMessageId;
+    rootAgentMessageId = legacyConsumptionContext.rootAgentMessageModelId;
     runKey = legacyConsumptionContext.runKey;
   }
   if (rootAgentMessageId === undefined) {

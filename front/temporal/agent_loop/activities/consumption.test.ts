@@ -107,13 +107,13 @@ describe("consumption execution events", () => {
   });
 
   it("reuses the message credit context for a root execution", async () => {
+    const rootExecutionArgs = {
+      ...legacyAgentLoopArgs,
+      agentMessageId: legacyAgentLoopArgs.rootAgentMessageId,
+    };
     await recordExecutionStarted(
       auth,
-      {
-        ...agentLoopArgs,
-        rootAgentMessageId: agentLoopArgs.agentMessageId,
-        runKey: "execution",
-      },
+      rootExecutionArgs,
       { canInitializeConsumption: true }
     );
 

@@ -66,6 +66,8 @@ async function launchAgentMessageConsumptionAttributionAfterPersistingInputs(
   await launchAgentMessageConsumptionAttribution(auth, agentLoopArgs);
 }
 
+// TODO(credit-consumption): Move this into the finalization Promise.all once
+// consumptionMode is removed and the new pipeline is the default.
 async function recordExecutionFinalized(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs,
