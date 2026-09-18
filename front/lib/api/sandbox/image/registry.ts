@@ -26,7 +26,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.114";
+const DUST_BASE_IMAGE_VERSION = "0.8.115";
 const DSBX_CLI_VERSION = "0.1.61";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
@@ -460,6 +460,12 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
         runtime: "node",
       },
       {
+        name: "oxlint-tailwindcss",
+        version: "1.12.0",
+        description: "Tailwind CSS lint rules for Frames",
+        runtime: "node",
+      },
+      {
         name: "pptxgenjs",
         version: "4.0.1",
         description: "PowerPoint generation library",
@@ -493,7 +499,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     ],
     {
       installCmd:
-        "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3 drizzle-orm@0.45.2 drizzle-kit@0.31.10 @libsql/client@0.17.4 oxlint@1.83.0 oxlint-tsgolint@7.0.2001",
+        "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3 drizzle-orm@0.45.2 drizzle-kit@0.31.10 @libsql/client@0.17.4 oxlint@1.83.0 oxlint-tsgolint@7.0.2001 oxlint-tailwindcss@1.12.0",
     }
   )
   .runCmd(

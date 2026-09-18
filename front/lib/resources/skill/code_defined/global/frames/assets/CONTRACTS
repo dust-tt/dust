@@ -3,6 +3,13 @@ Lint MUST check the Frame folder with the Viz declarations and report source fil
 diagnostics. The standard layout reserves functions/ and databases/ for backend code and excludes
 them from UI linting. Type errors, lint errors and missing tooling MUST fail the command.
 
+@cc [owner:flvndvd,label:product] frame-lint-tailwind-classes
+Quoted className attributes, literal branches of conditional or logical className expressions,
+and literal arguments or object keys in cn, clsx or classnames calls MUST fail linting when they
+contain forbidden Tailwind utilities such as h-[600px]. Interpolated values inside utility brackets
+in className template strings MUST also fail. Comments, display text and style props MUST NOT
+trigger this rule. Diagnostics MUST report file, line and column and identify the offending class.
+
 @cc [owner:flvndvd,label:product] frame-lint-project-files
 The script MUST NOT modify or execute Frame source or replace existing project configs. It MUST
 lint the current source with its standard configs, even when the project has its own configs.
