@@ -9,7 +9,8 @@ import type { Sequelize } from "sequelize";
 // package as the one used by pg package.
 // The doc recommends doing this : https://github.com/brianc/node-pg-types?tab=readme-ov-file#use
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const types = require("pg").types;
+const pg = require("pg");
+const types = pg.types;
 
 const acquireAttempts = new WeakMap<object, number>();
 
@@ -110,6 +111,7 @@ export const frontSequelize = new SequelizeWithComments(
         reportPoolMetrics(frontSequelize, POOL_TAGS);
       },
     },
+    dialectModule: pg,
     dialectOptions: {
       appName: "front master",
     },
@@ -125,6 +127,7 @@ export function getFrontReplicaDbConnection() {
       dbConfig.getRequiredFrontReplicaDatabaseURI() as string,
       {
         logging: false,
+        dialectModule: pg,
         dialectOptions: {
           appName: "front replica",
         },
