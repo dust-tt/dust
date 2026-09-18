@@ -1,4 +1,5 @@
 import { DROID_AVATAR_URLS } from "@app/lib/agent_builder/avatars";
+import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
@@ -116,10 +117,37 @@ async function applyCreateSuggestion(
   return new Ok(undefined);
 }
 
+async function applyDeleteSuggestion(
+  auth: Authenticator,
+  agent: LightAgentConfigurationType
+): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
+  if (agent.status !== "active") {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Only an active agent can be deleted."
+      )
+    );
+  }
+
+  // Editor access is enforced by the route (`agent.canEdit`), matching the manual DELETE route.
+  const archived = await archiveAgentConfiguration(auth, agent.sId);
+  if (!archived) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The agent this suggestion targets was not found."
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
+
 /**
- * Applies approved conversational suggestions to the agent they target. Only `create` is applied
- * today; every other kind is rejected so the caller does not mark as approved a change that was
- * never made.
+ * Applies approved conversational suggestions to the agent they target. Only `create` and `delete`
+ * are applied today; every other kind is rejected so the caller does not mark as approved a change
+ * that was never made.
  */
 export async function applyAgentSuggestions(
   auth: Authenticator,
@@ -140,6 +168,14 @@ export async function applyAgentSuggestions(
     switch (data.kind) {
       case "create": {
         const res = await applyCreateSuggestion(auth, agent, data.suggestion);
+        if (res.isErr()) {
+          return res;
+        }
+        break;
+      }
+
+      case "delete": {
+        const res = await applyDeleteSuggestion(auth, agent);
         if (res.isErr()) {
           return res;
         }

@@ -598,6 +598,52 @@ describe("PATCH with applyToAgent", () => {
     expect(fetched?.state).toBe("pending");
   });
 
+  it("archives the agent for a delete suggestion", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const suggestion = await AgentSuggestionFactory.createDelete(auth, agent);
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const archived = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(archived?.status).toBe("archived");
+  });
+
+  it("returns 400 and leaves the suggestion pending when deleting a non-active agent", async () => {
+    const { workspace, auth, agent } = await setupPendingAgent();
+    const suggestion = await AgentSuggestionFactory.createDelete(auth, agent);
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "Only an active agent"
+    );
+    const fetched = await AgentSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(fetched?.state).toBe("pending");
+    const placeholder = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(placeholder?.status).toBe("pending");
+  });
+
   it("returns 400 for kinds that cannot be applied server-side", async () => {
     const { workspace, auth, agent } = await setupTest();
     const suggestion = await AgentSuggestionFactory.createInstructions(
