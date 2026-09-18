@@ -75,7 +75,6 @@ export class FramePublicationError extends Error {
       | "invalid_frame"
       | "invalid_function_artifact"
       | "invalid_function_reference"
-      | "invalid_package_file_ref"
       | "invalid_manifest"
       | "invalid_publication"
       | "invalid_source"

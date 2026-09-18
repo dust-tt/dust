@@ -1,8 +1,8 @@
 {
   "plugins": ["typescript", "react"],
-  "jsPlugins": ["oxlint-tailwindcss"],
+  "jsPlugins": [{"name": "dust", "specifier": "./frame-rules.cjs"}, "oxlint-tailwindcss"],
   "categories": { "correctness": "off" },
-  "ignorePatterns": ["functions/**", "databases/**", "node_modules/**"],
+  "ignorePatterns": ["node_modules/**"],
   "rules": {
     "tailwindcss/no-arbitrary-value": "error",
     "typescript/no-floating-promises": "error",
