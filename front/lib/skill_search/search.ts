@@ -23,7 +23,7 @@ export {
  * @cc [owner:aubin-tchoi,label:security;performance] indexed-skill-search-listings
  * Return only workspace-scoped indexed metadata using the caller's hydrated grants, with no
  * database reads. Permission-bearing document changes are eventually consistent; full-skill
- * access remains separately authorized. Only admins may retain unreadable listings.
+ * access remains separately authorized. Callers must authorize admin-only redaction upstream.
  * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
  * Preserve Elasticsearch hit order without exposing scores in skill listings.
  * Request _source and omit hits without source documents.

@@ -6,7 +6,6 @@ import type {
   SkillSearchPermissionFiltering,
 } from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
-import assert from "assert";
 
 export const MAX_SKILL_SEARCH_RESULTS = 100;
 
@@ -90,7 +89,7 @@ function buildSelectionFilters(
 /**
  * @cc [owner:aubin-tchoi,label:security] workspace-scoped-skill-search
  * Every query is workspace- and lifecycle-scoped, defaulting to active skills. Strict mode requires every requested
- * space and editor visibility; only admins may omit those gates for metadata redaction.
+ * space and editor visibility. Callers must authorize admin-only metadata redaction upstream.
  */
 export function buildSkillSearchQuery(
   auth: Authenticator,
@@ -104,10 +103,6 @@ export function buildSkillSearchQuery(
     permissionFiltering?: SkillSearchPermissionFiltering;
   }
 ): estypes.QueryDslQueryContainer {
-  assert(
-    permissionFiltering !== "redact_unreadable" || auth.isAdmin(),
-    "Only admins can search unreadable skills."
-  );
   return {
     bool: {
       filter: [

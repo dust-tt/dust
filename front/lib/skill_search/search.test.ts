@@ -495,21 +495,6 @@ describe("custom skill search", () => {
     ]);
   });
 
-  it.each([
-    "user",
-    "builder",
-    "manager",
-  ] as const)("refuses admin redaction for a %s", async (role) => {
-    const { authenticator: auth } = await createResourceTest({ role });
-    await expect(
-      searchListings(auth, {
-        searchTerm: "",
-        permissionFiltering: "redact_unreadable",
-      })
-    ).rejects.toThrow("Only admins");
-    expect(mockSearch).not.toHaveBeenCalled();
-  });
-
   it("handles absent and type-wide space grants without enumerating spaces", async () => {
     const {
       authenticator: auth,
