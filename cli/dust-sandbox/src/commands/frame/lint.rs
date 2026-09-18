@@ -1,16 +1,14 @@
-mod project;
-mod runtime_types;
-mod source;
-
-use std::io::{self, Write};
+use std::fs;
 use std::path::PathBuf;
+use std::process::Stdio;
 
-use anyhow::{bail, Context};
+use anyhow::{ensure, Context};
 use clap::Args;
+use tokio::process::Command;
 
 #[derive(Args)]
 pub struct LintArgs {
-    /// Frame folder, manifest.json, or UI entry file
+    /// Frame folder using the standard UI, functions/ and databases/ layout
     #[arg(default_value = ".")]
     pub source: PathBuf,
     /// Viz origin (defaults to DUST_VIZ_URL)
@@ -21,40 +19,39 @@ pub struct LintArgs {
     pub cache_dir: Option<PathBuf>,
 }
 
-/// @cc [owner:flvndvd,label:product] frame-lint-diagnostics
-/// Lint MUST check the UI entry and its imported source files with the Viz declarations.
-/// Diagnostics MUST identify original source paths, lines and columns. Source files MUST NOT
-/// be modified or executed. Type errors, lint errors and unavailable tooling MUST fail the command.
 pub async fn run(args: LintArgs) -> anyhow::Result<()> {
-    if rustix::process::geteuid().is_root() {
-        bail!("run Frame lint as the sandbox user, not root");
+    ensure!(
+        !rustix::process::geteuid().is_root(),
+        "run Frame lint as the sandbox user, not root"
+    );
+    let scripts = tempfile::tempdir()?;
+    for (name, contents) in [
+        ("lint.sh", include_str!("../../../frame-lint/lint.sh")),
+        (
+            "tsconfig.json",
+            include_str!("../../../frame-lint/tsconfig.json"),
+        ),
+        (
+            "oxlintrc.json",
+            include_str!("../../../frame-lint/oxlintrc.json"),
+        ),
+    ] {
+        fs::write(scripts.path().join(name), contents)?;
     }
-    let source = source::FrameSource::resolve(&args.source)?;
-    let viz_url = args
-        .viz_url
-        .or_else(|| std::env::var("DUST_VIZ_URL").ok())
-        .context("DUST_VIZ_URL is not set. Pass --viz-url to select a Viz server")?;
-    let cache_dir = match args.cache_dir {
-        Some(directory) => directory,
-        None => default_cache_dir()?,
-    };
-    let types = runtime_types::fetch(&viz_url, &cache_dir).await?;
-    let output = project::check(&source, &types).await?;
-    io::stdout().write_all(output.stdout.as_bytes())?;
-    io::stderr().write_all(output.stderr.as_bytes())?;
-    if !output.success {
-        bail!("Frame lint failed");
+    let mut command = Command::new("bash");
+    command.arg(scripts.path().join("lint.sh")).arg(args.source);
+    if let Some(url) = args.viz_url {
+        command.env("DUST_VIZ_URL", url);
     }
-    println!("Frame lint passed: {}", source.entry.display());
+    if let Some(directory) = args.cache_dir {
+        command.env("DUST_FRAME_TYPES_CACHE", directory);
+    }
+    let status = command
+        .stdin(Stdio::null())
+        .kill_on_drop(true)
+        .status()
+        .await
+        .context("failed to run the Frame lint script")?;
+    ensure!(status.success(), "Frame lint failed");
     Ok(())
-}
-
-fn default_cache_dir() -> anyhow::Result<PathBuf> {
-    let root = std::env::var_os("XDG_CACHE_HOME")
-        .map(PathBuf::from)
-        .or_else(|| {
-            std::env::var_os("HOME").map(|directory| PathBuf::from(directory).join(".cache"))
-        })
-        .context("HOME and XDG_CACHE_HOME are not set. Pass --cache-dir")?;
-    Ok(root.join("dust/frame-types"))
 }

@@ -82,7 +82,10 @@ jobs:
         run: cargo build
 
       - name: Install Frame lint tools
-        run: bun install --global typescript@5.9.3 oxlint@1.83.0 oxlint-tsgolint@7.0.2001
+        run: bun install --global oxlint@1.83.0 oxlint-tsgolint@7.0.2001
+
+      - name: Test Frame lint script
+        run: bun test ./cli/dust-sandbox/frame-lint/lint.test.ts
 
       - name: Test
         working-directory: cli/dust-sandbox

@@ -1,0 +1,12 @@
+@cc [owner:flvndvd,label:product] frame-lint-diagnostics
+Lint MUST check the Frame folder with the Viz declarations and report source file, line and column
+diagnostics. The standard layout reserves functions/ and databases/ for backend code and excludes
+them from UI linting. Type errors, lint errors and missing tooling MUST fail the command.
+
+@cc [owner:flvndvd,label:product] frame-lint-project-files
+The script MUST NOT modify or execute Frame source. It MAY create or replace its generated
+tsconfig.json and .oxlintrc.json. It MUST refuse to replace configurations without its marker.
+
+@cc [owner:flvndvd,label:security] frame-types-verified-cache
+Downloaded archives MUST match the manifest checksum and size before extraction. A cache entry
+MUST become visible only after extraction succeeds. A changed manifest id MUST select new types.
