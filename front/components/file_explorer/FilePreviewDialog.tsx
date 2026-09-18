@@ -99,6 +99,7 @@ export function FilePreviewDialog({
     fileUrl,
     isActive: isOpen,
     isContentLoading: preview.isContentLoading,
+    isTooLarge: preview.isTooLarge,
     owner,
     processedContent: preview.processedContent,
   });

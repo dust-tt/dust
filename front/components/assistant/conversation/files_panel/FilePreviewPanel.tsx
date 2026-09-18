@@ -112,7 +112,7 @@ export function FilePreviewPanel({
           contentType,
           fileId,
           thumbnailUrl: null,
-          sizeBytes: 0,
+          sizeBytes: fileMetadata?.fileSize ?? 0,
           lastModifiedMs: 0,
         }
       : null;
@@ -129,6 +129,7 @@ export function FilePreviewPanel({
     fileUrl: urls?.baseUrl ?? null,
     isActive: !!entry,
     isContentLoading: preview.isContentLoading,
+    isTooLarge: preview.isTooLarge,
     owner,
     processedContent: preview.processedContent,
   });

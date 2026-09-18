@@ -4,6 +4,7 @@ import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/
 import type { FileEntry } from "@app/components/file_explorer/types";
 import type { MarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import type { FilePreviewCategory } from "@app/types/file_preview";
+import { fileSizeToHumanReadable } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export function filePreviewLayoutClassName(
@@ -42,9 +43,23 @@ export function FilePreviewBody({
     category,
     hasError,
     isContentLoading,
+    isTooLarge,
     processedContent,
+    sizeBytes,
     truncatedContent,
   } = preview;
+
+  if (isTooLarge) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="text-sm text-muted-foreground">
+          This file is too large to preview (
+          {fileSizeToHumanReadable(sizeBytes, 1)}). Download it to view its
+          contents.
+        </p>
+      </div>
+    );
+  }
 
   if (hasError) {
     return (
