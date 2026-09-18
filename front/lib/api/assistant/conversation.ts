@@ -28,6 +28,7 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import { refreshDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import {
@@ -1733,16 +1734,26 @@ export async function createAgentMessageFromText(
   return created;
 }
 
-// This method is in charge of re-running an agent interaction (generating a new
-// AgentMessage as a result)
+/**
+ * @cc [owner:frankaloia,label:product;api] retry-model-selection
+ * A retry with `modelSelection` MUST resolve it through the agent's existing model policy for the
+ * new agent-message version; agents that disallow user overrides MAY retain their configured model.
+ * A retry without it MUST preserve the failed message's resolved model and existing resolution
+ * method; legacy messages missing the method default to the agent resolution method.
+ * Legacy messages without a resolution MUST continue to resolve the agent's configured model.
+ * After that resolution, premium fair-use enforcement MAY still replace a premium pick with the
+ * Standard stream when the weekly allowance is exhausted.
+ */
 export async function retryAgentMessage(
   auth: Authenticator,
   {
     conversationResource,
     message,
+    modelSelection,
   }: {
     conversationResource: ConversationResource;
     message: AgentMessageType;
+    modelSelection?: ModelSelectionType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithContentfulStatusCode>> {
   const conversation: ConversationWithoutContentType =
@@ -1825,14 +1836,28 @@ export async function retryAgentMessage(
     return limitResult;
   }
 
-  let retryModelResolution: AgentMessageModelResolution = message.resolvedModel
-    ? {
-        resolvedModel: message.resolvedModel,
-        modelResolutionMethod: message.modelResolutionMethod ?? "agent",
-      }
-    : await resolveModelForMentionedAgent(auth, {
+  // Stream resolution reads the process-local degraded set. Await a refresh
+  // here so a retry on another pod does not reuse a stale or empty cache and
+  // pick the model we just told the user we would skip.
+  if (modelSelection && isModelStreamId(modelSelection.modelId)) {
+    await refreshDegradedModelIds();
+  }
+
+  // A stream selection (pinned-model tier retry) is re-resolved against the
+  // refreshed degraded set. No override preserves the failed concrete model.
+  let retryModelResolution: AgentMessageModelResolution = modelSelection
+    ? await resolveModelForMentionedAgent(auth, {
         configuration: message.configuration,
-      });
+        selection: modelSelection,
+      })
+    : message.resolvedModel
+      ? {
+          resolvedModel: message.resolvedModel,
+          modelResolutionMethod: message.modelResolutionMethod ?? "agent",
+        }
+      : await resolveModelForMentionedAgent(auth, {
+          configuration: message.configuration,
+        });
 
   const user = auth.user();
   if (user) {

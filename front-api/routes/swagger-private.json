@@ -8270,6 +8270,37 @@
             "BearerAuth": []
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "modelSelection": {
+                    "type": "object",
+                    "description": "Optional model tier or concrete model selection for the retry.",
+                    "required": [
+                      "providerId",
+                      "modelId"
+                    ],
+                    "properties": {
+                      "providerId": {
+                        "type": "string"
+                      },
+                      "modelId": {
+                        "type": "string"
+                      },
+                      "reasoningEffort": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successfully retried message",

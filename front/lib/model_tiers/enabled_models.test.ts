@@ -344,6 +344,7 @@ describe("resolveStreamModel", () => {
     expect(resolved.didFallback).toBe(false);
     expect(resolved.model.modelId).toBe(GPT_5_6_LUNA_MODEL_ID);
   });
+
   it("keeps a degraded model out of the last-resort fallback", async () => {
     const models = await getEnabledModelsForAuth(adminAuth);
     // Luna is the only selectable model, so it is both the stream's first

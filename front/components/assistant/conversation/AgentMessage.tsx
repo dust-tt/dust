@@ -88,6 +88,7 @@ import {
   isAgentMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
+import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
   isFrameContentType,
@@ -772,16 +773,19 @@ export function AgentMessage({
       conversationId,
       messageId,
       blockedOnly = false,
+      modelSelection,
     }: {
       conversationId: string;
       messageId: string;
       blockedOnly?: boolean;
+      modelSelection?: ModelSelectionType;
     }) => {
       setIsRetryHandlerProcessing(true);
       const result = await retryMessage({
         conversationId,
         messageId,
         blockedOnly,
+        modelSelection,
       });
       setIsRetryHandlerProcessing(false);
       if (result.isErr()) {
@@ -1221,6 +1225,7 @@ function AgentMessageContent({
     conversationId: string;
     messageId: string;
     blockedOnly?: boolean;
+    modelSelection?: ModelSelectionType;
   }) => Promise<void>;
   reloadMessage: (params: {
     conversationId: string;
@@ -1563,8 +1568,14 @@ function AgentMessageContent({
                 metadata: {},
               }
             }
-            retryHandler={async () =>
-              retryHandler({ conversationId, messageId: agentMessage.sId })
+            failedModel={agentMessage.resolvedModel ?? undefined}
+            modelResolutionMethod={agentMessage.modelResolutionMethod}
+            retryHandler={async (modelSelection) =>
+              retryHandler({
+                conversationId,
+                messageId: agentMessage.sId,
+                modelSelection,
+              })
             }
           />
         )}
