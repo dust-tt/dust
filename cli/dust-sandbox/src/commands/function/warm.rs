@@ -2,18 +2,17 @@
 //!
 //! A cold function run pays process spawn, bundle resolution against the
 //! gcsfuse-backed functions dir, and the import of the bundle and its
-//! dependencies on every invocation. The warm path keeps a pod-scoped pool
-//! of generic bun workers (the embedded runner's `serve` subcommand)
-//! resident behind unix sockets and forwards invocations to them, so a
-//! repeat invocation costs one local socket round trip.
+//! dependencies on every invocation. The warm path keeps a small pool of
+//! generic bun workers (the embedded runner's `serve` subcommand) resident
+//! behind unix sockets and forwards invocations to them, so a repeat
+//! invocation costs one local socket round trip.
 //!
 //! Workers are generic — the request names the function, the worker resolves
 //! and imports its bundle on first use — so memory scales with the pool size
-//! (POOL_SLOTS x one bun process), not with the number of functions on the
-//! pod. Each function has one home worker, picked by hashing the app prefix
-//! of its slug (`myapp__list-notes` publishes are grouped by app folder), so
-//! all of one app's functions share a worker: opening an app pays one
-//! process spawn, ever, and its working set accumulates in one module cache.
+//! (POOL_SLOTS × one bun process), not with the number of Frame functions.
+//! Each function has a home slot by hashing its slug, spreading concurrent
+//! working sets across the pool; a given name always lands on the same
+//! worker so its module cache sticks.
 //!
 //! Workers run invocations concurrently (protocol v2) and queue briefly when
 //! saturated, so overlapping calls no longer fan out into cold runs. When a
@@ -56,9 +55,9 @@ const WARM_ENABLED_ENV: &str = "DUST_FUNCTION_WARM_ENABLED";
 const SANDBOX_TOKEN_ENV: &str = "DUST_SANDBOX_TOKEN";
 const POD_USER_IDENTITY_ENV: &str = "DUST_POD_USER_IDENTITY";
 
-/// Pool geometry. Four generic workers bound the pod's warm memory (a worker
-/// is one bun process capped at ~300MB RSS with its imported working set,
-/// see serve.ts) regardless of how many functions the pod publishes. Each
+/// Pool geometry. Four generic workers bound warm memory (a worker is one
+/// bun process capped at ~300MB RSS with its imported working set, see
+/// serve.ts) regardless of how many Frame functions are published. Each
 /// worker serves invocations concurrently, so capacity comes from the event
 /// loop, not from the worker count.
 const POOL_SLOTS: u32 = 4;
@@ -191,7 +190,7 @@ pub(crate) fn ensure_trusted_warm_dir() -> Option<PathBuf> {
 }
 
 /// Socket path for a pool slot. Keyed on the functions dir (the same slot
-/// under a different DUST_FUNCTIONS_DIR is a different pod's pool), the
+/// under a different DUST_FUNCTIONS_DIR is a different Frame's pool), the
 /// runner hash (a dsbx upgrade gets fresh workers), and the protocol
 /// version. Unix socket paths must stay short (~104 bytes); this stays well
 /// under.
@@ -204,24 +203,11 @@ fn slot_socket_path(dir: &Path, slot: u32) -> PathBuf {
     ))
 }
 
-/// The affinity key of a slug: its app prefix when it has one, the whole
-/// slug otherwise. Functions published from an app folder get the folder as
-/// a `__`-separated prefix (`myapp__list-notes`), and routing every function
-/// of an app to the same worker means the app pays one worker spawn and
-/// shares one module cache (including its common `lib/` imports). Purely a
-/// routing hint: a wrong key costs a duplicate import, never correctness.
-fn affinity_key(name: &str) -> &str {
-    match name.split_once("__") {
-        Some((app, _)) if !app.is_empty() => app,
-        _ => name,
-    }
-}
-
 /// The home slot a function's requests go to. Affinity, not assignment: the
-/// worker itself is generic, but the same key keeps landing on the same
-/// worker, which already imported the app's bundles.
+/// worker itself is generic, but the same slug keeps landing on the same
+/// worker, which already imported that bundle.
 fn preferred_slot(name: &str) -> u32 {
-    (fnv1a(affinity_key(name).as_bytes()) % u64::from(POOL_SLOTS)) as u32
+    (fnv1a(name.as_bytes()) % u64::from(POOL_SLOTS)) as u32
 }
 
 /// Stages the embedded runner at a stable content-addressed path inside the
@@ -752,44 +738,52 @@ export default {{
         // The handler sees the current invocation's values through AsyncLocalStorage, while a
         // nested process cannot recover the token or identity that existed when the worker was
         // spawned.
-        let environment_handler = bundle_dir.path().join("greet__environment.ts");
+        let environment_handler = bundle_dir.path().join("greet-environment.ts");
         std::fs::write(&environment_handler, environment_fixture()).expect("environment fixture");
-        match try_warm_run("greet__environment", &input).await {
-            WarmRun::Outcome(outcome, _, _) => {
-                assert_eq!(
-                    outcome,
-                    serde_json::json!({
-                        "ok": true,
-                        "output": {
-                            "contextToken": "invocation-token",
-                            "contextIdentity": "invocation-identity",
-                            "childHasToken": false,
-                            "childHasIdentity": false,
-                        }
-                    })
-                );
+        spawn_worker("greet-environment");
+        let env_deadline = std::time::Instant::now() + Duration::from_secs(15);
+        let env_outcome = loop {
+            match try_warm_run("greet-environment", &input).await {
+                WarmRun::Outcome(outcome, _, _) => break outcome,
+                WarmRun::Miss if std::time::Instant::now() < env_deadline => {
+                    tokio::time::sleep(Duration::from_millis(50)).await;
+                }
+                WarmRun::Miss => panic!("environment probe worker never came up"),
             }
-            WarmRun::Miss => panic!("invocation environment probe missed the warm worker"),
-        }
+        };
+        assert_eq!(
+            env_outcome,
+            serde_json::json!({
+                "ok": true,
+                "output": {
+                    "contextToken": "invocation-token",
+                    "contextIdentity": "invocation-identity",
+                    "childHasToken": false,
+                    "childHasIdentity": false,
+                }
+            })
+        );
 
-        // A second function in the same directory is served by the same
-        // worker: its home slot is the same pool, and the worker is generic.
-        let sibling = bundle_dir.path().join("greet__aux.ts");
+        // A second function is also served warm: workers are generic, and each
+        // slug gets its own home slot (spawned on first use).
+        let sibling = bundle_dir.path().join("greet-aux.ts");
         std::fs::write(&sibling, HELLO_FIXTURE).expect("sibling fixture");
-        match try_warm_run("greet__aux", &input).await {
-            WarmRun::Outcome(outcome, import_kind, _) => {
-                assert_eq!(
-                    outcome,
-                    serde_json::json!({ "ok": true, "output": { "hello": "warm" } })
-                );
-                assert_eq!(import_kind, Some(ImportKind::Fresh));
+        spawn_worker("greet-aux");
+        let sibling_deadline = std::time::Instant::now() + Duration::from_secs(15);
+        let (sibling_outcome, sibling_import) = loop {
+            match try_warm_run("greet-aux", &input).await {
+                WarmRun::Outcome(outcome, import_kind, _) => break (outcome, import_kind),
+                WarmRun::Miss if std::time::Instant::now() < sibling_deadline => {
+                    tokio::time::sleep(Duration::from_millis(50)).await;
+                }
+                WarmRun::Miss => panic!("sibling warm worker never came up"),
             }
-            // Different affinity key, so a different (unspawned) home slot:
-            // also correct. Only assert when the slots coincide.
-            WarmRun::Miss => {
-                assert_ne!(preferred_slot("greet__aux"), preferred_slot("greet"));
-            }
-        }
+        };
+        assert_eq!(
+            sibling_outcome,
+            serde_json::json!({ "ok": true, "output": { "hello": "warm" } })
+        );
+        assert_eq!(sibling_import, Some(ImportKind::Fresh));
 
         // A republished bundle (same path, new mtime/size) must not be served
         // from the stale import: the worker refuses (and drains itself) and
@@ -901,32 +895,17 @@ export default {{
     }
 
     #[test]
-    fn affinity_groups_an_app_and_leaves_root_functions_alone() {
-        // App-prefixed slugs share their app's key; root slugs are their own.
-        assert_eq!(affinity_key("myapp__list-notes"), "myapp");
-        assert_eq!(affinity_key("myapp__post-note"), "myapp");
-        assert_eq!(affinity_key("standalone"), "standalone");
-        // Degenerate prefixes fall back to the whole slug rather than
-        // grouping unrelated functions under an empty key.
-        assert_eq!(affinity_key("__odd"), "__odd");
-
-        assert_eq!(
-            preferred_slot("myapp__list-notes"),
-            preferred_slot("myapp__post-note")
-        );
-    }
-
-    #[test]
     fn preferred_slot_is_stable_and_in_range() {
-        let a = preferred_slot("chatpro-sync");
-        assert_eq!(a, preferred_slot("chatpro-sync"));
+        let a = preferred_slot("list-todos");
+        assert_eq!(a, preferred_slot("list-todos"));
         assert!(a < POOL_SLOTS);
-        // Not a strong property, but the affinity point of the hash: distinct
-        // hot apps should not all pile onto slot 0.
-        let slots: std::collections::HashSet<u32> = ["chatpro-sync", "chess-move", "probe", "list"]
-            .iter()
-            .map(|name| preferred_slot(name))
-            .collect();
+        // Distinct Frame function names should spread across the pool rather
+        // than all pile onto slot 0.
+        let slots: std::collections::HashSet<u32> =
+            ["list-todos", "add-todo", "delete-todo", "set-due-date"]
+                .iter()
+                .map(|name| preferred_slot(name))
+                .collect();
         assert!(slots.len() > 1);
     }
 

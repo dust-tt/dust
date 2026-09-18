@@ -4,13 +4,12 @@
 // the import of the bundle and its dependencies (the dominant sandbox-side
 // costs of a cold run).
 //
-// Workers are pod-scoped, not function-scoped: the request names the
+// Workers are generic, not one-process-per-function: the request names the
 // function, and the worker resolves and imports its bundle on first use (the
 // module cache keeps it). Memory is bounded by the pool size (POOL_SLOTS in
-// warm.rs, times the RSS cap below), not by the number of functions on the
-// pod. The client routes a function to its home worker by hashing the app
-// prefix of its slug, so all of one app's functions accumulate in one
-// worker's module cache and an app pays one process spawn, ever.
+// warm.rs, times the RSS cap below), not by the number of Frame functions.
+// The client routes a function to its home worker by hashing its slug, so a
+// given name accumulates in one worker's module cache.
 //
 // Invocations run concurrently. They are IO-bound in the common case (SQL,
 // API calls), so the event loop interleaves many of them at once exactly
