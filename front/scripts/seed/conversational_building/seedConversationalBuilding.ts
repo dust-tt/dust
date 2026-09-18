@@ -145,6 +145,7 @@ export async function seedConversationalBuilding(
       __SKILL_USER_FACING_DESCRIPTION_SUGGESTION_SID__: suggestionSId(
         "skillUserFacingDescription"
       ),
+      __SKILL_DELETE_SUGGESTION_SID__: suggestionSId("skillDelete"),
     },
     additionalUsers: createdUsers,
   });

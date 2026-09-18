@@ -22,6 +22,10 @@ import {
   REVIEWABLE_SKILL_SUGGESTION_SOURCES,
 } from "@app/types/suggestions/skill_suggestion";
 
+// `delete` suggestions are only ever recorded with source `conversational` (reinforcement never
+// produces this kind), so pruning only needs to look there.
+const DELETE_SUGGESTION_SOURCES: SkillSuggestionSource[] = ["conversational"];
+
 // Reviewable suggestions: pruning applies to every source a user may accept or reject, whether
 // it is surfaced in the builder (`reinforcement`) or inline in a conversation (`conversational`).
 const PRUNED_SOURCES: SkillSuggestionSource[] = [
@@ -250,6 +254,27 @@ export async function pruneConflictingSkillUserFacingDescriptionSuggestions(
     toMarkOutdated,
     "outdated"
   );
+}
+
+/**
+ * @cc [owner:avervaet,label:product] prune-conflicting-delete-suggestions
+ * Recording a new pending `delete` suggestion MUST mark every other pending `delete` suggestion
+ * for the same skill `outdated`, so only one deletion proposal is ever open for review at a time.
+ */
+export async function pruneConflictingSkillDeletionSuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  newSuggestion: SkillSuggestionResource
+): Promise<void> {
+  const conflicting = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
+      states: ["pending"],
+      kinds: ["delete"],
+      sources: DELETE_SUGGESTION_SOURCES,
+    })
+  ).filter((s) => s.sId !== newSuggestion.sId);
+
+  await SkillSuggestionResource.bulkUpdateState(auth, conflicting, "outdated");
 }
 
 /**

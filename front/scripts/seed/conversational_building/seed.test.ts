@@ -72,14 +72,15 @@ describe("conversational building seed script integration test", () => {
       [user.sId, LUKE_USER_SID].toSorted()
     );
 
-    // Six pending conversational suggestions.
-    expect(skillSuggestions.size).toBe(6);
+    // Seven pending conversational suggestions.
+    expect(skillSuggestions.size).toBe(7);
     const listed = await SkillSuggestionResource.listBySkillConfigurationId(
       authenticator,
       skill!.sId,
       { sources: ["conversational"] }
     );
     expect(listed.map((s) => s.toJSON().kind).toSorted()).toEqual([
+      "delete",
       "edit",
       "edit",
       "edit",
@@ -130,6 +131,12 @@ describe("conversational building seed script integration test", () => {
       );
     }
 
+    const deleteSuggestion = skillSuggestions.get("skillDelete")!.toJSON();
+    expect(deleteSuggestion.kind).toBe("delete");
+    if (deleteSuggestion.kind === "delete") {
+      expect(deleteSuggestion.suggestion.name).toBe(SKILL_NAME);
+    }
+
     // The conversation embeds each suggestion as a directive, with no leftover placeholder.
     const conversation = await ConversationResource.fetchById(
       authenticator,
@@ -140,7 +147,7 @@ describe("conversational building seed script integration test", () => {
       authenticator,
       conversation!
     );
-    expect(agentMessageIds).toHaveLength(4);
+    expect(agentMessageIds).toHaveLength(5);
     expect(text).not.toContain("__");
     for (const suggestion of skillSuggestions.values()) {
       expect(text).toContain(
@@ -152,7 +159,7 @@ describe("conversational building seed script integration test", () => {
     const rerun = await seedConversationalBuilding(ctx);
     expect(rerun.skills.get(SKILL_NAME)!.sId).toBe(skill!.sId);
     expect(rerun.toolView!.sId).toBe(toolView!.sId);
-    expect(rerun.skillSuggestions.size).toBe(6);
+    expect(rerun.skillSuggestions.size).toBe(7);
     for (const [id, suggestion] of skillSuggestions) {
       expect(rerun.skillSuggestions.get(id)!.sId).not.toBe(suggestion.sId);
     }
@@ -164,7 +171,7 @@ describe("conversational building seed script integration test", () => {
           { sources: ["conversational"] }
         )
       ).length
-    ).toBe(6);
+    ).toBe(7);
 
     const rerunConversation = await ConversationResource.fetchById(
       authenticator,

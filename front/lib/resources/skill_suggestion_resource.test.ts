@@ -118,6 +118,32 @@ describe("SkillSuggestionResource", () => {
       });
     });
 
+    it("should create and fetch a delete suggestion by id", async () => {
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          kind: "delete",
+          suggestion: { name: skill.name },
+          analysis: "Unused for months",
+          source: "conversational",
+        }
+      );
+
+      expect(suggestion.kind).toBe("delete");
+      expect(suggestion.suggestion).toEqual({ name: skill.name });
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.kind).toBe("delete");
+      expect(fetched?.toJSON()).toMatchObject({
+        kind: "delete",
+        suggestion: { name: skill.name },
+      });
+    });
+
     it("should fetch multiple suggestions by ids", async () => {
       const s1 = await SkillSuggestionFactory.create(authenticator, skill);
       const s2 = await SkillSuggestionFactory.create(authenticator, skill);

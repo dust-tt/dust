@@ -13,6 +13,8 @@ export const BUILDING_AGENTS_AND_SKILLS_SERVER_NAME =
 export const DESCRIBE_SKILL_TOOL_NAME = "describe_skill" as const;
 export const SUGGEST_SKILL_UPDATE_TOOL_NAME = "suggest_skill_update" as const;
 export const SUGGEST_SKILL_EDITORS_TOOL_NAME = "suggest_skill_editors" as const;
+export const SUGGEST_SKILL_DELETION_TOOL_NAME =
+  "suggest_skill_deletion" as const;
 export const SUGGEST_AGENT_CREATION_TOOL_NAME =
   "suggest_agent_creation" as const;
 export const SUGGEST_AGENT_DELETION_TOOL_NAME =
@@ -91,6 +93,20 @@ export const SUGGEST_SKILL_EDITORS_INPUT_SCHEMA = z.object({
 
 export type SuggestSkillEditorsArgs = z.infer<
   typeof SUGGEST_SKILL_EDITORS_INPUT_SCHEMA
+>;
+
+export const SUGGEST_SKILL_DELETION_DESCRIPTION =
+  "Suggest deleting an existing custom Skill of this workspace. The skill is not deleted " +
+  "directly: the proposal is recorded as a pending suggestion that the skill's editors can " +
+  "review, accept, or reject. Only skills the caller can administrate can be targeted.";
+
+export const SUGGEST_SKILL_DELETION_INPUT_SCHEMA = z.object({
+  skillId: z.string().describe("The id of the custom skill to delete."),
+  analysis: z.string().optional().describe("Why this skill should be deleted."),
+});
+
+export type SuggestSkillDeletionArgs = z.infer<
+  typeof SUGGEST_SKILL_DELETION_INPUT_SCHEMA
 >;
 
 export const SUGGEST_AGENT_CREATION_DESCRIPTION =
@@ -213,6 +229,18 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting skill editors change",
       done: "Suggest skill editors change",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_SKILL_DELETION_TOOL_NAME,
+    description: SUGGEST_SKILL_DELETION_DESCRIPTION,
+    schema: SUGGEST_SKILL_DELETION_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting skill deletion",
+      done: "Suggest skill deletion",
     },
     toolCostCategory: "basic",
     freeUsage: true,
