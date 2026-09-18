@@ -1,8 +1,10 @@
 {
   "plugins": ["typescript", "react"],
+  "jsPlugins": ["oxlint-tailwindcss"],
   "categories": { "correctness": "off" },
   "ignorePatterns": ["functions/**", "databases/**", "node_modules/**"],
   "rules": {
+    "tailwindcss/no-arbitrary-value": "error",
     "typescript/no-floating-promises": "error",
     "react/rules-of-hooks": "error",
     "no-restricted-imports": [

@@ -16,19 +16,25 @@ reads and writes through GCS Fuse. Oxlint still reads the current source on each
 Keep server code in `functions/` and database schemas in `databases/`, which are excluded.
 Type and lint errors report file, line and column and fail the command. Source is never executed.
 
+The [oxlint-tailwindcss](https://github.com/sergioazoc/oxlint-tailwindcss) plugin's
+`tailwindcss/no-arbitrary-value` rule rejects classes such as `h-[600px]` in `className`,
+templates and class helpers such as `cn` and `clsx`. Use predefined classes or the `style`
+prop for exact values. This is a static check, with gaps for expressions such as `.join()`
+and TypeScript assertions. It does not evaluate Frame code or load a Tailwind config.
+
 The temporary directory is removed after linting. Source files and existing project configs
 are left untouched. Project configs do not override the checker settings.
 
-The sandbox provides `DUST_VIZ_URL` and Oxlint. Declarations are cached by manifest id in
-`$XDG_CACHE_HOME/dust/frame-types` or `$HOME/.cache/dust/frame-types`. Override the cache with
-`DUST_FRAME_TYPES_CACHE`. Downloads are checked against the manifest checksum and size.
+The sandbox provides `DUST_VIZ_URL`, Oxlint and the Tailwind plugin. Declarations are cached by
+manifest id in `$XDG_CACHE_HOME/dust/frame-types` or `$HOME/.cache/dust/frame-types`. Override the
+cache with `DUST_FRAME_TYPES_CACHE`. Downloads are checked against the manifest checksum and size.
 Checker files are cached in the sibling `frame-checker` directory. Override this location with
 `DUST_FRAME_CHECKER_CACHE`. Remove that cache after editing the skill assets locally.
 
 For local development, install Oxlint and run the script from this directory:
 
 ```sh
-npm install --global oxlint@1.83.0 oxlint-tsgolint@7.0.2001
+npm install --global oxlint@1.83.0 oxlint-tsgolint@7.0.2001 oxlint-tailwindcss@1.12.0
 DUST_VIZ_URL=http://localhost:3007 bash assets/lint.sh /path/to/Frame
 ```
 

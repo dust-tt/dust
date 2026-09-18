@@ -80,6 +80,9 @@ if [ ! -d "$types" ]; then
   trap - EXIT
 fi
 
+# Resolve the plugin installed in the image, outside the Frame folder.
+plugin=$(node -p 'require.resolve(process.argv[1])' "$(npm root --global)/oxlint-tailwindcss")
+
 # Oxlint finds tsconfig beside the source, even with --tsconfig.
 # Local directories with source symlinks keep those lookups off GCS Fuse.
 work=$(mktemp -d "$cache/.lint.XXXXXX")
@@ -91,8 +94,8 @@ find "$work" -type d -exec chmod u+w {} +
 find "$work" -type l \( -name tsconfig.json -o -name .oxlintrc.json \) -delete
 jq --arg config "$types/tsconfig.json" '.extends = $config' \
   "$templates/tsconfig.json" > "$work/tsconfig.json"
-jq --argjson modules "$modules" \
-  '.rules["no-restricted-imports"][1].patterns[0].group += ($modules | map("!" + .))' \
+jq --argjson modules "$modules" --arg plugin "$plugin" \
+  '.jsPlugins = [$plugin] | .rules["no-restricted-imports"][1].patterns[0].group += ($modules | map("!" + .))' \
   "$templates/oxlintrc.json" > "$work/.oxlintrc.json"
 
 cd -- "$work"

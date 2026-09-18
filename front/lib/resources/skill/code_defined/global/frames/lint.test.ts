@@ -53,6 +53,7 @@ async function fixture() {
         allowJs: true,
         checkJs: true,
         resolveJsonModule: true,
+        jsx: "preserve",
       },
     })
   );
@@ -147,7 +148,7 @@ test("lints current source, skips backend folders and reuses local checker files
   }
   const broken = await lint(context);
   expect(broken.exitCode).toBe(1);
-  expect(broken.stdout).toContain("value.ts:2:14:");
+  expect(broken.stdout, broken.stderr).toContain("value.ts:2:14:");
   expect(broken.stdout).toContain("TS2322");
   expect(broken.stdout).not.toContain("server.ts");
   expect(await readdir(context.project)).toEqual([
@@ -229,4 +230,71 @@ test("checks read-only source without changing or using project configs", async 
     await chmod(context.project, 0o755);
     await chmod(path.join(context.project, "ui"), 0o755);
   }
+});
+
+test("reports arbitrary Tailwind classes without flagging text or inline styles", async () => {
+  const context = await fixture();
+  await writeFile(
+    path.join(context.project, "jsx.d.ts"),
+    "declare namespace JSX { interface IntrinsicElements { div: { className?: string; style?: { height: number }; title?: string } } }\n"
+  );
+  const declarations = [
+    "declare const active: boolean;",
+    "declare const height: number;",
+    "declare const label: string;",
+    "declare const cn: (...classes: unknown[]) => string;",
+    "declare const clsx: typeof cn;",
+    "declare const classnames: typeof cn;",
+  ];
+  const brokenSource = [
+    ...declarations,
+    "export default () => <div>",
+    '  <div className="h-[600px] hover:bg-[#ff0000]" />',
+    '  <div className={active ? "w-[800px]" : "w-full"} />',
+    "  <div className={`h-[${height}px] p-4`} />",
+    '  <div className={cn("text-[14px]", {"grid-cols-[200px_1fr]": active})} />',
+    '  <div className={clsx([active && "-mt-[4px]"])} />',
+    '  <div className={classnames("max-w-[900px]")} />',
+    '  <div className="[height:600px]" />',
+    "</div>;",
+  ].join("\n");
+  await writeFile(path.join(context.project, "index.tsx"), brokenSource);
+
+  const broken = await lint(context);
+  expect(broken.exitCode).toBe(1);
+  expect(broken.stdout, broken.stderr).toContain("index.tsx:8:18:");
+  expect(broken.stdout).toContain("tailwindcss(no-arbitrary-value)");
+  for (const className of [
+    "h-[600px]",
+    "hover:bg-[#ff0000]",
+    "w-[800px]",
+    "h-[",
+    "text-[14px]",
+    "grid-cols-[200px_1fr]",
+    "-mt-[4px]",
+    "max-w-[900px]",
+    "[height:600px]",
+  ]) {
+    expect(broken.stdout).toContain(`"${className}" uses an arbitrary value`);
+  }
+  expect(await readFile(path.join(context.project, "index.tsx"), "utf8")).toBe(
+    brokenSource
+  );
+
+  await writeFile(
+    path.join(context.project, "index.tsx"),
+    [
+      ...declarations,
+      '// Example: className="h-[600px]"',
+      "export default () => <div>",
+      '  <div className="h-96" style={{height: 600}} title="h-[600px]">h-[600px]</div>',
+      '  <div className={label === "h-[600px]" ? "h-96" : "h-full"} />',
+      '  <div className={cn({"h-96": label === "h-[600px]"}, active && "w-full")} />',
+      '  <div className={`h-96 ${active ? "bg-red-500" : "bg-blue-500"}`} />',
+      "</div>;",
+    ].join("\n")
+  );
+  const valid = await lint(context);
+  expect(valid.stdout).not.toContain("tailwindcss(no-arbitrary-value)");
+  expect(valid.exitCode).toBe(0);
 });
