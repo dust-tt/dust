@@ -18,7 +18,7 @@ export type ConsumptionEvent =
       kind: "items_changed";
       idempotencyKey: string;
       runKey: string;
-      rootAgentMessageId: ModelId;
+      rootAgentMessageModelId: ModelId;
       agentMessageModelId: ModelId;
       consumptionItemIds: ModelId[];
     }
@@ -26,7 +26,7 @@ export type ConsumptionEvent =
       kind: "execution_started";
       idempotencyKey: string;
       runKey: string;
-      rootAgentMessageId: ModelId;
+      rootAgentMessageModelId: ModelId;
       agentMessageModelId: ModelId;
       consumptionMode: EnabledAgentMessageConsumptionMode;
     }
@@ -34,24 +34,16 @@ export type ConsumptionEvent =
       kind: "execution_finalized";
       idempotencyKey: string;
       runKey: string;
-      rootAgentMessageId: ModelId;
+      rootAgentMessageModelId: ModelId;
       agentMessageModelId: ModelId;
       status: AgentMessageStatus;
       consumptionMode: EnabledAgentMessageConsumptionMode;
     };
 
-type ConsumptionEventAppendArgs =
-  | {
-      event: Extract<ConsumptionEvent, { kind: "items_changed" }>;
-      transaction: Transaction;
-    }
-  | {
-      event: Extract<
-        ConsumptionEvent,
-        { kind: "execution_started" | "execution_finalized" }
-      >;
-      transaction?: Transaction;
-    };
+type ConsumptionEventAppendArgs = {
+  event: ConsumptionEvent;
+  transaction: Transaction;
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMessageConsumptionEventResource
@@ -77,7 +69,7 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
       workspaceId: auth.getNonNullableWorkspace().id,
       agentMessageId: event.agentMessageModelId,
       runKey: event.runKey,
-      rootAgentMessageId: event.rootAgentMessageId,
+      rootAgentMessageId: event.rootAgentMessageModelId,
       eventKey: event.idempotencyKey,
     };
 
@@ -123,8 +115,7 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
 
   /**
    * @cc [owner:id13,label:backend;concurrency] transactional-outbox-append
-   * An items-changed event MUST use the transaction containing the consumption mutations that
-   * caused it.
+   * Every event MUST use the transaction containing the state transition that caused it.
    */
   /**
    * @cc [owner:id13,label:backend;error-handling] immutable-event-idempotency
@@ -193,7 +184,7 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
 
   /**
    * @cc [owner:id13,label:backend;product] latest-started-execution-snapshot
-   * The lookup MUST return the root agent message ID and consumption mode from the highest-ID
+   * The lookup MUST return the root agent message ModelId and consumption mode from the highest-ID
    * execution-started event for the requested workspace and agent message. It MUST return `null`
    * when that event is absent or has no consumption mode.
    */
@@ -201,7 +192,7 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
     auth: Authenticator,
     { agentMessageModelId }: { agentMessageModelId: ModelId }
   ): Promise<{
-    rootAgentMessageId: ModelId;
+    rootAgentMessageModelId: ModelId;
     consumptionMode: EnabledAgentMessageConsumptionMode;
   } | null> {
     const row = await this.model.findOne({
@@ -217,7 +208,7 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
     }
 
     return {
-      rootAgentMessageId: row.rootAgentMessageId,
+      rootAgentMessageModelId: row.rootAgentMessageId,
       consumptionMode: row.consumptionMode,
     };
   }

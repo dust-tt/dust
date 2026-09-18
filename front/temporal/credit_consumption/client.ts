@@ -15,9 +15,9 @@ export async function signalConsumptionEventsAppended(
 ): Promise<Result<undefined, Error>> {
   const { workspaceId } = authType;
   const workflowId = makeConsumptionWorkflowId({ workspaceId, runKey });
+  const client = await getTemporalClientForFrontNamespace();
 
   try {
-    const client = await getTemporalClientForFrontNamespace();
     await client.workflow.signalWithStart(creditConsumptionWorkflow, {
       args: [authType, { runKey }],
       taskQueue: QUEUE_NAME,

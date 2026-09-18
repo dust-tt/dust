@@ -2,16 +2,19 @@ import { getAgentMessageConsumptionMode } from "@app/lib/api/assistant/consumpti
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { signalConsumptionEventsAppended } from "@app/temporal/credit_consumption/client";
 import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 type ExecutionEntryContext = {
   agentMessageModelId: ModelId;
-  rootAgentMessageId: ModelId;
+  rootAgentMessageModelId: ModelId;
   runKey: string;
   status: AgentMessageStatus;
 };
@@ -43,7 +46,7 @@ async function resolveExecutionEntryContext(
 
   return {
     agentMessageModelId: creditContext.agentMessageModelId,
-    rootAgentMessageId: rootCreditContext.agentMessageModelId,
+    rootAgentMessageModelId: rootCreditContext.agentMessageModelId,
     runKey,
     status: creditContext.status,
   };
@@ -61,92 +64,106 @@ async function fetchExecutionStartedMode(
   if (executionStarted) {
     return executionStarted.consumptionMode;
   }
-  if (context.agentMessageModelId === context.rootAgentMessageId) {
+  if (context.agentMessageModelId === context.rootAgentMessageModelId) {
     return null;
   }
   const rootExecutionStarted =
     await AgentMessageConsumptionEventResource.fetchLatestExecutionStartedForAgentMessage(
       auth,
-      { agentMessageModelId: context.rootAgentMessageId }
+      { agentMessageModelId: context.rootAgentMessageModelId }
     );
   return rootExecutionStarted?.consumptionMode ?? null;
 }
 
 /**
  * @cc [owner:id13,label:backend;product] consumption-mode-event-snapshot
- * An existing execution-started event MUST determine the mode. Without one, only an initial
- * execution may evaluate feature flags; resumed executions MUST remain on legacy billing.
+ * An existing execution-started event MUST determine the mode. Without one, feature flags MUST be
+ * evaluated only when consumption initialization is explicitly allowed; other launches MUST remain
+ * on legacy billing.
  */
 export async function recordExecutionStarted(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs,
-  { startStep }: { startStep: number }
-): Promise<boolean> {
+  {
+    canInitializeConsumption,
+  }: {
+    // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
+    canInitializeConsumption: boolean;
+  }
+): Promise<Result<boolean, Error>> {
   const { runKey } = agentLoopArgs;
   if (!runKey) {
-    return false;
+    return new Ok(false);
   }
   const context = await resolveExecutionEntryContext(auth, agentLoopArgs);
   if (!context) {
-    return false;
+    return new Ok(false);
   }
   const existingMode = await fetchExecutionStartedMode(auth, context);
   const mode =
     existingMode ??
-    (startStep === 0 ? await getAgentMessageConsumptionMode(auth) : "off");
+    (canInitializeConsumption
+      ? await getAgentMessageConsumptionMode(auth)
+      : "off");
   if (mode === "off") {
-    return false;
+    return new Ok(false);
   }
 
-  await AgentMessageConsumptionEventResource.append(auth, {
-    event: {
-      kind: "execution_started",
-      idempotencyKey: `execution:${runKey}:started`,
-      runKey: context.runKey,
-      rootAgentMessageId: context.rootAgentMessageId,
-      agentMessageModelId: context.agentMessageModelId,
-      consumptionMode: mode,
-    },
-  });
+  await withTransaction((transaction) =>
+    AgentMessageConsumptionEventResource.append(auth, {
+      event: {
+        kind: "execution_started",
+        idempotencyKey: `execution:${runKey}:started`,
+        runKey: context.runKey,
+        rootAgentMessageModelId: context.rootAgentMessageModelId,
+        agentMessageModelId: context.agentMessageModelId,
+        consumptionMode: mode,
+      },
+      transaction,
+    })
+  );
 
   const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
     runKey: context.runKey,
   });
   if (signalRes.isErr()) {
-    throw signalRes.error;
+    return new Err(signalRes.error);
   }
-  return true;
+  return new Ok(true);
 }
 
 export async function recordExecutionFinalized(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
-): Promise<EnabledAgentMessageConsumptionMode | null> {
+): Promise<Result<EnabledAgentMessageConsumptionMode | null, Error>> {
   const context = await resolveExecutionEntryContext(auth, agentLoopArgs);
   if (!context) {
-    return null;
+    return new Ok(null);
   }
   const consumptionMode = await fetchExecutionStartedMode(auth, context);
   if (consumptionMode === null) {
-    return null;
+    return new Ok(null);
   }
-  await AgentMessageConsumptionEventResource.append(auth, {
-    event: {
-      kind: "execution_finalized",
-      idempotencyKey: `execution:${context.runKey}:finalized`,
-      runKey: context.runKey,
-      rootAgentMessageId: context.rootAgentMessageId,
-      agentMessageModelId: context.agentMessageModelId,
-      status: context.status,
-      consumptionMode,
-    },
-  });
+  await withTransaction((transaction) =>
+    AgentMessageConsumptionEventResource.append(auth, {
+      event: {
+        kind: "execution_finalized",
+        idempotencyKey: `execution:${context.runKey}:finalized`,
+        runKey: context.runKey,
+        rootAgentMessageModelId: context.rootAgentMessageModelId,
+        agentMessageModelId: context.agentMessageModelId,
+        status: context.status,
+        consumptionMode,
+      },
+      transaction,
+    })
+  );
 
   const signalRes = await signalConsumptionEventsAppended(auth.toJSON(), {
     runKey: context.runKey,
   });
   if (signalRes.isErr()) {
-    throw signalRes.error;
+    return new Err(signalRes.error);
   }
 
   logger.info(
@@ -158,5 +175,5 @@ export async function recordExecutionFinalized(
     },
     "[Consumption] Closed an execution."
   );
-  return consumptionMode;
+  return new Ok(consumptionMode);
 }

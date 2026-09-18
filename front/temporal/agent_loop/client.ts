@@ -62,11 +62,14 @@ export async function getTaskQueueForRun(
 export async function launchAgentLoopWorkflow({
   auth,
   agentLoopArgs,
+  canInitializeConsumption = false,
   startStep,
   waitForCompletion,
 }: {
   auth: Authenticator;
   agentLoopArgs: AgentLoopArgs;
+  // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
+  canInitializeConsumption?: boolean;
   startStep: number;
   waitForCompletion?: boolean;
 }): Promise<
@@ -121,6 +124,7 @@ export async function launchAgentLoopWorkflow({
         {
           authType,
           agentLoopArgs: executionArgs,
+          canInitializeConsumption,
           startStep,
           initialStartTime,
         },
