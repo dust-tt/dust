@@ -18,10 +18,9 @@ const DUST_RUNNER_TIMINGS_MS_KEY: &str = "_dustTimingsMs";
 /// The request envelope is read from stdin and the function runs unprivileged
 /// (agent uid) when dsbx is invoked as root.
 ///
-/// The invocation is served warm when a resident server for this function is
-/// listening (see `warm.rs`): one unix-socket round trip instead of a runner
-/// spawn. A cold run additionally leaves a warm server behind for the next
-/// invocation. Both paths produce the same runner `Output` JSON.
+/// Fast path (warm enabled): ensure this publication's worker is ready, then
+/// one unix-socket round trip. Durable path (warm off): cold Bun spawn, with
+/// an optional local archive / sha cache so resolve skips gcsfuse.
 ///
 /// The result is always a protocol v3 envelope on stdout, exit 0, including for
 /// runner `ok:false` and for failures that keep the function from being spawned
@@ -40,16 +39,17 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
         deliver_stdout_envelope(ResultEnvelope::stdout_invocation_failed(err.to_string()), 0);
     }
 
-    // Before warm or cold: land this publication's functions.tar locally and
-    // fill the per-sha bundle cache for every slug. Warm importFromCache and
-    // cold resolve then skip gcsfuse; without this, warm falls through to a
-    // fuse ensureBundle that can burn the full first-frame timeout.
-    if let Ok(dir) = functions_dir() {
-        let _ = archive::ensure_functions_archive_extracted(&dir);
+    // Durable cold path only: land this publication's functions.tar locally
+    // and fill the per-sha bundle cache. Fast path does the same inside
+    // ensure_publication_worker.
+    if !warm::warm_execution_enabled() {
+        if let Ok(dir) = functions_dir() {
+            let _ = archive::ensure_functions_archive_extracted(&dir);
+        }
     }
 
     let warm_started = Instant::now();
-    if let WarmRun::Outcome(outcome, import_kind, phase) = warm::try_warm_run(name, &input).await {
+    if let WarmRun::Outcome(outcome, phase, ensure_ms) = warm::try_warm_run(name, &input).await {
         let runner_ms = started.elapsed().as_millis() as u64;
         deliver_stdout_envelope(
             ResultEnvelope::stdout_outcome(
@@ -58,12 +58,12 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
                     total: started.elapsed().as_millis() as u64,
                     runner: runner_ms,
                     runner_kind: Some(RunnerKind::Warm),
-                    import_kind,
+                    ensure: Some(ensure_ms),
                     warm_attempt: None,
                     resolve: None,
                     resolve_kind: None,
                     child: None,
-                    import: phase.as_ref().and_then(|p| p.import),
+                    import: None,
                     handler: phase.as_ref().and_then(|p| p.handler),
                 }),
             ),
@@ -72,7 +72,7 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
     }
     let warm_attempt_ms = warm_started.elapsed().as_millis() as u64;
 
-    // Cold path: sha cache (filled by the pre-warm archive step) or legacy
+    // Cold path: sha cache (filled by the archive/ensure step) or legacy
     // gcsfuse readdir of DUST_FUNCTIONS_DIR.
     let stamped_sha256 = stamped_bundle_sha256(&input);
     let resolve_started = Instant::now();
@@ -106,10 +106,6 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
         if let Some(sha256) = stamped_sha256.as_deref() {
             warm::populate_bundle_cache(handler, sha256);
         }
-        // Leave a warm worker on this function's home slot so the next
-        // invocation of this function (or its app) skips the spawn.
-        // Fire-and-forget; never affects this run's outcome.
-        warm::spawn_worker(name);
     }
 
     deliver_stdout(
@@ -118,7 +114,7 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
             total: started.elapsed().as_millis() as u64,
             runner: runner_ms,
             runner_kind: Some(RunnerKind::Cold),
-            import_kind: None,
+            ensure: None,
             warm_attempt: Some(warm_attempt_ms),
             resolve: Some(resolve_ms),
             resolve_kind: Some(resolve_kind),
@@ -267,7 +263,7 @@ mod tests {
             total,
             runner,
             runner_kind: Some(RunnerKind::Cold),
-            import_kind: None,
+            ensure: None,
             warm_attempt: None,
             resolve: None,
             resolve_kind: None,

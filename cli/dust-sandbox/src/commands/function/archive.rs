@@ -1,12 +1,11 @@
-//! Materialization of a publication's `functions.tar` for warm and cold runs.
+//! Materialization of a publication's `functions.tar`.
 //!
 //! New publications upload an unpacked (ustar, not gzip) tar alongside the
-//! per-function GCS objects. Before either path runs we extract that single
-//! object from the gcsfuse mount into the local warm dir
-//! (`$HOME/.dust-fn/archives/<publication_id>/`) and eagerly fill the per-sha
-//! bundle cache for every slug — so warm `importFromCache` and cold resolve
-//! both skip an uncached functions/ readdir. Older publications without the
-//! archive keep using [`super::resolve_existing`].
+//! per-function GCS objects. Extracting that single object from the gcsfuse
+//! mount into `$HOME/.dust-fn/archives/<publication_id>/` gives the
+//! publication worker (and the durable cold path) a local tree — at most one
+//! fuse touch when the tar exists. Older publications without the archive
+//! keep using [`super::resolve_existing`] / a one-shot legacy copy.
 
 use std::fs::File;
 use std::io::{copy, ErrorKind, Read, Write};
@@ -29,9 +28,9 @@ const MAX_UNPACKED_BYTES: u64 = 64 * 1024 * 1024;
 
 /// Extract the publication's `functions.tar` into
 /// `$HOME/.dust-fn/archives/<publication_id>/` and eagerly populate the
-/// per-sha bundle cache for every extracted slug. Idempotent when an extract
-/// already exists. Used before warm/cold invoke and by the publish-time seed
-/// command.
+/// per-sha bundle cache for every extracted slug (durable cold resolve).
+/// Idempotent when an extract already exists. Used by publication ensure /
+/// seed and by the durable cold path.
 pub fn ensure_functions_archive_extracted(functions_dir: &Path) -> Option<PathBuf> {
     let publication_dir = functions_dir.parent()?;
     // Directory name under the Frame publications mount — same id as the

@@ -120,7 +120,7 @@ async fn run() -> anyhow::Result<()> {
                 out_schema,
             } => commands::cmd_function_build(&src, &out_bundle, &out_schema).await?,
             commands::function::FunctionCommand::MaterializeArchive => {
-                commands::cmd_function_materialize_archive()?
+                commands::cmd_function_materialize_archive().await?
             }
         },
         Commands::Db { command } => match command {
