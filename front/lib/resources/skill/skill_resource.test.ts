@@ -2431,12 +2431,12 @@ describe("SkillResource", () => {
         { onlyCustom: true, permissionFiltering: "redact_unreadable" }
       );
 
-      const bySId = new Map(skills.map((s) => [s.sId, s]));
+      const byId = new Map(skills.map((s) => [s.sId, s]));
       expect(
-        bySId.get(restrictedSkill.sId)!.canRead(testContext.authenticator)
+        byId.get(restrictedSkill.sId)!.canRead(testContext.authenticator)
       ).toBe(false);
       expect(
-        bySId.get(readableSkill.sId)!.canRead(testContext.authenticator)
+        byId.get(readableSkill.sId)!.canRead(testContext.authenticator)
       ).toBe(true);
     });
   });

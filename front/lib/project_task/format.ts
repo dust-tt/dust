@@ -1,7 +1,7 @@
 /**
  * Serialization and parsing for pod task references in plain text / markdown.
  *
- * Canonical format: `:pod_task[label]{sId=projectTaskSid}`
+ * Canonical format: `:pod_task[label]{sId=projectTaskId}`
  * Legacy `:project_task[...]` and `:todo[...]` are still parsed for backwards
  * compatibility with existing content.
  */

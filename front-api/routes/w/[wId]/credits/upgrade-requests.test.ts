@@ -207,7 +207,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       const workspace = await creditPricedWorkspace();
       const { membership, response: first } =
         await createMemberRequest(workspace);
-      const firstSId = (await first.json()).request.sId;
+      const firstId = (await first.json()).request.sId;
 
       // Same authenticated member requests again.
       await membership.updateCreditState("on_pool");
@@ -218,7 +218,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       });
 
       expect(second.status).toBe(200);
-      expect((await second.json()).request.sId).toBe(firstSId);
+      expect((await second.json()).request.sId).toBe(firstId);
     });
 
     it("reuses the pending request on retry once the reason requirement is enabled after creation", async () => {
@@ -242,7 +242,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       const config = configResult.value;
 
       const { response: first } = await createMemberRequest(workspace);
-      const firstSId = (await first.json()).request.sId;
+      const firstId = (await first.json()).request.sId;
 
       // Simulate the workspace toggling the reason requirement on after the
       // first request already succeeded.
@@ -260,7 +260,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       });
 
       expect(retry.status).toBe(200);
-      expect((await retry.json()).request.sId).toBe(firstSId);
+      expect((await retry.json()).request.sId).toBe(firstId);
     });
   });
 

@@ -163,10 +163,10 @@ export function PodConnectedDataTab({ owner, pod }: PodConnectedDataTabProps) {
 
   const handleNavigateToSearchResult = useCallback(
     (node: DataSourceViewContentNode) => {
-      const dsvSId = node.dataSourceView.sId;
+      const dataSourceViewId = node.dataSourceView.sId;
       const nextParentId =
         node.mimeType === DATA_SOURCE_MIME_TYPE ? undefined : node.internalId;
-      navigateToDataSourceView(dsvSId, nextParentId);
+      navigateToDataSourceView(dataSourceViewId, nextParentId);
     },
     [navigateToDataSourceView]
   );

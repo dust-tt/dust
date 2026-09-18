@@ -126,6 +126,14 @@ async function availableExecutionModes(
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TriggerResource extends ReadonlyAttributesType<TriggerModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+/**
+ * @cc [owner:adrsimon,label:security;product] trigger-workspace-pool-capability
+ * `use_workspace_pool` on the `trigger` type means charging a trigger's runs to the workspace's
+ * credit pool instead of the user's own. A trigger MUST NOT be created with, or switched to,
+ * `executionMode: "workspace_pool"` unless the caller holds
+ * `hasWorkspacePermission("use_workspace_pool", "trigger")`. It says nothing about who may edit
+ * the trigger.
+ */
 export class TriggerResource extends BaseResource<TriggerModel> {
   static model: ModelStatic<TriggerModel> = TriggerModel;
 

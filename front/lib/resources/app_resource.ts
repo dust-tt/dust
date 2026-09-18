@@ -29,6 +29,13 @@ import { Op } from "sequelize";
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AppResource extends ReadonlyAttributesType<AppModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+/**
+ * @cc [owner:tdraier,label:security;product] dust-app-admin-capability
+ * `admin` on the `dust_app` type is the developer capability for Dust apps. Creating an app in a
+ * space (on top of `write` on that space) and managing Dust app secrets MUST require
+ * `hasWorkspacePermission("admin", "dust_app")`. Reading, running and editing an existing app are
+ * governed by its space's verbs (`space-verbs-inherited`), not by this capability.
+ */
 export class AppResource extends ResourceWithSpace<AppModel> {
   static model: ModelStatic<AppModel> = AppModel;
 

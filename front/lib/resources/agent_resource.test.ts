@@ -76,7 +76,7 @@ describe("AgentResource", () => {
     );
     assert(agent.agentModelId !== null);
 
-    const bySId = await AgentResource.fetchById(
+    const byId = await AgentResource.fetchById(
       testContext.authenticator,
       agent.sId
     );
@@ -85,7 +85,7 @@ describe("AgentResource", () => {
       agent.agentModelId
     );
 
-    for (const resource of [bySId, byModelId]) {
+    for (const resource of [byId, byModelId]) {
       expect(resource).not.toBeNull();
       expect(resource?.isFull()).toBe(true);
       expect(resource?.id).toBe(agent.agentModelId);
@@ -188,7 +188,7 @@ describe("AgentResource", () => {
 
     await archiveAgentConfiguration(testContext.authenticator, agent.sId);
 
-    const bySId = await AgentResource.fetchById(
+    const byId = await AgentResource.fetchById(
       testContext.authenticator,
       agent.sId
     );
@@ -197,7 +197,7 @@ describe("AgentResource", () => {
       agent.agentModelId
     );
 
-    for (const resource of [bySId, byModelId]) {
+    for (const resource of [byId, byModelId]) {
       expect(resource).not.toBeNull();
       expect(resource?.id).toBe(agent.agentModelId);
       expect(resource?.sId).toBe(agent.sId);
@@ -252,7 +252,7 @@ describe("AgentResource", () => {
     assert(firstAgent.agentModelId !== null);
     assert(secondAgent.agentModelId !== null);
 
-    const bySIds = await AgentResource.fetchByIds(testContext.authenticator, [
+    const byIds = await AgentResource.fetchByIds(testContext.authenticator, [
       firstAgent.sId,
       secondAgent.sId,
     ]);
@@ -261,7 +261,7 @@ describe("AgentResource", () => {
       [firstAgent.agentModelId, secondAgent.agentModelId]
     );
 
-    expect(bySIds.map((resource) => resource.sId).sort()).toEqual(
+    expect(byIds.map((resource) => resource.sId).sort()).toEqual(
       [firstAgent.sId, secondAgent.sId].sort()
     );
     expect(byModelIds.map((resource) => resource.id).sort()).toEqual(

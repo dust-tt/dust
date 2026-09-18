@@ -62,10 +62,10 @@ const SEARCH_RESULTS_PLACEHOLDER_COUNT = 5;
 
 const getKeyForConnectorProvider = ({
   connectorProvider,
-  dataSourceSId,
+  dataSourceId,
 }: {
   connectorProvider: DataSourceType["connectorProvider"];
-  dataSourceSId: string;
+  dataSourceId: string;
 }) => {
   if (connectorProvider === "webcrawler") {
     return `ds-webcrawler`;
@@ -74,14 +74,14 @@ const getKeyForConnectorProvider = ({
   } else if (connectorProvider === "dust_project") {
     return `ds-project`;
   } else {
-    return `ds-${dataSourceSId}`;
+    return `ds-${dataSourceId}`;
   }
 };
 
 const getKeyForDataSource = (dataSource: DataSourceType) => {
   return getKeyForConnectorProvider({
     connectorProvider: dataSource.connectorProvider,
-    dataSourceSId: dataSource.sId,
+    dataSourceId: dataSource.sId,
   });
 };
 
@@ -114,7 +114,7 @@ interface InputBarAttachmentsPickerProps {
 const PAGE_SIZE = 25;
 const PROJECT_FILTER_KEY = getKeyForConnectorProvider({
   connectorProvider: "dust_project",
-  dataSourceSId: "project",
+  dataSourceId: "project",
 });
 
 interface KnowledgeNodeCheckboxItemProps {

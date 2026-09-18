@@ -125,6 +125,32 @@ export interface FullAgentResource extends AgentResource {
  * superuser) sees identity and core fields only. Callers MUST NOT re-attach private fields to a
  * `light` resource from another read path.
  */
+/**
+ * @cc [owner:philipperolet,label:security;product] agent-verbs
+ * The verbs a caller holds on an agent mean:
+ * - `read`: seeing the agent's configuration and using it. Mentioning or running an agent MUST
+ *   require `read`.
+ * - `write`: editing the agent's definition: configuration versions, tags, model, skills, linked
+ *   Slack channels, archiving and restoring.
+ * - `admin`: managing the agent's editors. `admin` alone MUST NOT allow changing the definition,
+ *   and `write` alone MUST NOT allow changing the editors.
+ * Global (code-defined) agents are `read`-only, for the roles in their audience.
+ */
+/**
+ * @cc [owner:philipperolet,label:security;product] agent-create-capability
+ * `create` on the `agent` type means bringing a new agent into the workspace: creating a pending
+ * agent, saving an agent whose id does not exist yet, or importing one from YAML. Every such path
+ * MUST require `hasWorkspacePermission("create", "agent")`. Saving a new version of an existing
+ * agent MUST NOT.
+ */
+/**
+ * @cc [owner:philipperolet,label:security;product] agent-publish-capability
+ * `publish` on the `agent` type means deciding whether an active agent is visible to the whole
+ * workspace. Moving an active agent to scope `visible`, or an active visible agent to `hidden`,
+ * MUST require `hasWorkspacePermission("publish", "agent")`, even for its editors. Editing an
+ * agent without changing that, or changing the scope of a draft, pending or archived agent, MUST
+ * NOT require it. Protected tags and linking Slack channels to an agent are gated by it too.
+ */
 export class AgentResource
   extends BaseResource<AgentModel>
   implements WithAccessControl

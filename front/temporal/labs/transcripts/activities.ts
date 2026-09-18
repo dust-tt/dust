@@ -592,7 +592,7 @@ export async function processTranscriptActivity(
     localLogger.info(
       {
         agentConfigurationId,
-        conservationSid: conversation.sId,
+        conversationId: conversation.sId,
       },
       "[processTranscriptActivity] Created conversation."
     );

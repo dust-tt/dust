@@ -1532,8 +1532,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     if (sIds.length === 0) {
       return new Map();
     }
-    const uniqueSIds = [...new Set(sIds)];
-    const conversations = await this.fetchByIds(auth, uniqueSIds);
+    const uniqueIds = [...new Set(sIds)];
+    const conversations = await this.fetchByIds(auth, uniqueIds);
     if (conversations.length === 0) {
       return new Map();
     }
@@ -1900,33 +1900,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return result;
     }
 
-    const sIdById = new Map<ModelId, string>(
+    const conversationIdByModelId = new Map<ModelId, string>(
       conversations.map((c) => [c.id, c.sId])
     );
 
     const agentToConvIds = new Map<string, Set<string>>();
     for (const p of participations) {
-      const convSId = sIdById.get(p.message!.conversationId);
-      if (!convSId) {
+      const convId = conversationIdByModelId.get(p.message!.conversationId);
+      if (!convId) {
         continue;
       }
       const agentId = p.agentConfigurationId;
       if (!agentToConvIds.has(agentId)) {
         agentToConvIds.set(agentId, new Set());
       }
-      agentToConvIds.get(agentId)!.add(convSId);
+      agentToConvIds.get(agentId)!.add(convId);
     }
 
-    let qualifyingConvSIds: Set<string>;
+    let qualifyingConvIds: Set<string>;
 
     if (!excludeHumanOutOfTheLoop) {
-      qualifyingConvSIds = new Set(conversations.map((c) => c.sId));
+      qualifyingConvIds = new Set(conversations.map((c) => c.sId));
     } else {
       const nonTriggered = conversations.filter((c) => c.triggerId === null);
       const triggered = conversations.filter((c) => c.triggerId !== null);
 
       if (triggered.length === 0) {
-        qualifyingConvSIds = new Set(nonTriggered.map((c) => c.sId));
+        qualifyingConvIds = new Set(nonTriggered.map((c) => c.sId));
       } else {
         const triggeredWithUserMessages = await MessageModel.findAll({
           attributes: [
@@ -1950,18 +1950,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           raw: true,
         });
 
-        qualifyingConvSIds = new Set([
+        qualifyingConvIds = new Set([
           ...nonTriggered.map((c) => c.sId),
           ...triggeredWithUserMessages
-            .map((m) => sIdById.get(m.conversationId))
+            .map((m) => conversationIdByModelId.get(m.conversationId))
             .filter((sId): sId is string => sId !== undefined),
         ]);
       }
     }
 
-    for (const [agentId, convSIds] of agentToConvIds) {
-      const qualifying = [...convSIds].filter((sId) =>
-        qualifyingConvSIds.has(sId)
+    for (const [agentId, convIds] of agentToConvIds) {
+      const qualifying = [...convIds].filter((sId) =>
+        qualifyingConvIds.has(sId)
       );
       if (qualifying.length > 0) {
         result.set(agentId, qualifying);

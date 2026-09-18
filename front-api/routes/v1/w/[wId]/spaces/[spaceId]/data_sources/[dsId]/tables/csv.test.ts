@@ -85,12 +85,12 @@ vi.mock("@app/lib/file_storage", async (importOriginal) => {
 function postCsv(
   workspace: { sId: string },
   key: { secret: string },
-  spaceSId: string,
+  spaceId: string,
   dsId: string,
   body: unknown
 ) {
   return honoApp.request(
-    `/api/v1/w/${workspace.sId}/spaces/${spaceSId}/data_sources/${dsId}/tables/csv`,
+    `/api/v1/w/${workspace.sId}/spaces/${spaceId}/data_sources/${dsId}/tables/csv`,
     {
       method: "POST",
       headers: {

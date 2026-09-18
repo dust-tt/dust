@@ -47,6 +47,10 @@ export class PodUserIdentityError extends Error {
  *
  * The identity is always scoped to the workspace owning the current Pod.
  * Userless invocations return null.
+ *
+ * @throws PodUserIdentityError when the identity set on the invocation is not
+ *   valid JSON, does not match the expected shape, or belongs to another
+ *   workspace than the current Pod's.
  */
 export function currentUser(): WorkspaceUserIdentity | null {
   const rawIdentity = podEnv(POD_USER_IDENTITY_ENV);

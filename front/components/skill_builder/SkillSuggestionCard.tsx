@@ -1,4 +1,5 @@
 import { getBlockOuterHtml } from "@app/components/shared/utils";
+import { SuggestedSkillEditors } from "@app/components/skill_builder/SuggestedSkillEditors";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
 import { formatRelativeTime } from "@app/lib/utils/timestamps";
@@ -243,6 +244,65 @@ function ConversationFooter({
   );
 }
 
+interface SuggestionDetailsProps {
+  suggestion: SkillSuggestionType;
+  getSkillInstructionsHtml: () => string;
+  getCurrentAgentFacingDescription: () => string;
+  workspaceId: string;
+}
+
+function SuggestionDetails({
+  suggestion,
+  getSkillInstructionsHtml,
+  getCurrentAgentFacingDescription,
+  workspaceId,
+}: SuggestionDetailsProps) {
+  switch (suggestion.kind) {
+    case "edit": {
+      const { instructionEdits, agentFacingDescriptionEdit } =
+        suggestion.suggestion;
+
+      return (
+        <>
+          {agentFacingDescriptionEdit && (
+            <AgentFacingDescriptionEditSection
+              edit={agentFacingDescriptionEdit}
+              currentAgentFacingDescription={getCurrentAgentFacingDescription()}
+            />
+          )}
+
+          {instructionEdits && instructionEdits.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-medium text-foreground">
+                Instruction changes
+              </span>
+              {instructionEdits.map((edit, index) => (
+                <InstructionEditDiffBlock
+                  key={index}
+                  edit={edit}
+                  getSkillInstructionsHtml={getSkillInstructionsHtml}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      );
+    }
+
+    case "editors":
+      return (
+        <SuggestedSkillEditors
+          suggestion={suggestion.suggestion}
+          workspaceId={workspaceId}
+        />
+      );
+
+    default:
+      assertNeverAndIgnore(suggestion);
+      return null;
+  }
+}
+
 interface SkillSuggestionCardProps {
   suggestion: SkillSuggestionType;
   onAccept?: (suggestion: SkillSuggestionType) => void;
@@ -270,17 +330,6 @@ export function SkillSuggestionCard({
   isAccepting = false,
   isDeclining = false,
 }: SkillSuggestionCardProps) {
-  switch (suggestion.kind) {
-    case "edit":
-      break;
-    case "editors":
-      return null;
-    default:
-      assertNeverAndIgnore(suggestion);
-      return null;
-  }
-  const { instructionEdits, agentFacingDescriptionEdit } =
-    suggestion.suggestion;
   const isClickable = !!onSelect;
   const hasActions = !!onAccept && !!onDecline;
 
@@ -324,27 +373,12 @@ export function SkillSuggestionCard({
           <p className="text-sm text-muted-foreground">{suggestion.analysis}</p>
         )}
 
-        {agentFacingDescriptionEdit && (
-          <AgentFacingDescriptionEditSection
-            edit={agentFacingDescriptionEdit}
-            currentAgentFacingDescription={getCurrentAgentFacingDescription()}
-          />
-        )}
-
-        {instructionEdits && instructionEdits.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-foreground">
-              Instruction changes
-            </span>
-            {instructionEdits.map((edit, index) => (
-              <InstructionEditDiffBlock
-                key={index}
-                edit={edit}
-                getSkillInstructionsHtml={getSkillInstructionsHtml}
-              />
-            ))}
-          </div>
-        )}
+        <SuggestionDetails
+          suggestion={suggestion}
+          getSkillInstructionsHtml={getSkillInstructionsHtml}
+          getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
+          workspaceId={workspaceId}
+        />
 
         <ConversationFooter
           visibleSourceConversationIds={suggestion.visibleSourceConversationIds}

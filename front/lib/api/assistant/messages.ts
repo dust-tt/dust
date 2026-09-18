@@ -649,10 +649,9 @@ async function batchRenderAgentMessagesWithContentHydration<
   // Create maps for efficient lookups
   const messagesById = new Map(messages.map((m) => [m.id, m]));
   const allMessagesById = new Map(messagesById);
-  const handoverOriginMessagesBySId = new Map<
-    string,
-    Pick<MessageModel, "sId">
-  >(messages.map((m) => [m.sId, m]));
+  const handoverOriginMessagesById = new Map<string, Pick<MessageModel, "sId">>(
+    messages.map((m) => [m.sId, m])
+  );
   const missingParentIds = [
     ...new Set(
       removeNulls(
@@ -702,7 +701,7 @@ async function batchRenderAgentMessagesWithContentHydration<
     if (
       parentUserMessage?.agenticMessageType === "agent_handover" &&
       parentUserMessage.agenticOriginMessageId &&
-      !handoverOriginMessagesBySId.has(parentUserMessage.agenticOriginMessageId)
+      !handoverOriginMessagesById.has(parentUserMessage.agenticOriginMessageId)
     ) {
       missingHandoverOriginMessageIds.add(
         parentUserMessage.agenticOriginMessageId
@@ -727,7 +726,7 @@ async function batchRenderAgentMessagesWithContentHydration<
     });
 
     for (const handoverOriginMessage of handoverOriginMessages) {
-      handoverOriginMessagesBySId.set(
+      handoverOriginMessagesById.set(
         handoverOriginMessage.sId,
         handoverOriginMessage
       );
@@ -755,7 +754,7 @@ async function batchRenderAgentMessagesWithContentHydration<
         agentConfigurationsById,
         allMessagesById,
         auth,
-        handoverOriginMessagesBySId,
+        handoverOriginMessagesById,
         mentionsByMessageId,
         reactionsByMessageId,
         stepContentsByMessageId,
@@ -786,7 +785,7 @@ type RenderSingleAgentMessageContext = {
   agentConfigurationsById: Map<string, LightAgentConfigurationType>;
   allMessagesById: Map<ModelId, MessageModel>;
   auth: Authenticator;
-  handoverOriginMessagesBySId: Map<string, Pick<MessageModel, "sId">>;
+  handoverOriginMessagesById: Map<string, Pick<MessageModel, "sId">>;
   mentionsByMessageId: Map<ModelId, MentionResource[]>;
   reactionsByMessageId: Record<ModelId, MessageReactionType[]>;
   stepContentsByMessageId: Record<string, AgentStepContentResource[]>;
@@ -803,7 +802,7 @@ async function renderSingleAgentMessage(
     agentConfigurationsById,
     allMessagesById,
     auth,
-    handoverOriginMessagesBySId,
+    handoverOriginMessagesById,
     mentionsByMessageId,
     reactionsByMessageId,
     stepContentsByMessageId,
@@ -902,7 +901,7 @@ async function renderSingleAgentMessage(
     userMessage.agenticOriginMessageId
   ) {
     parentAgentMessage =
-      handoverOriginMessagesBySId.get(userMessage.agenticOriginMessageId) ??
+      handoverOriginMessagesById.get(userMessage.agenticOriginMessageId) ??
       null;
   }
 

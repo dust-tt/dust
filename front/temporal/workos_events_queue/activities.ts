@@ -1287,7 +1287,7 @@ async function handleGroupDelete(
     return;
   }
 
-  const groupSId = group.sId;
+  const groupId = group.sId;
   const groupName = group.name;
 
   const deleteResult = await group.delete(auth);
@@ -1305,7 +1305,7 @@ async function handleGroupDelete(
     },
     targets: [
       buildAuditLogTarget("workspace", workspace),
-      buildAuditLogTarget("group", { sId: groupSId, name: groupName }),
+      buildAuditLogTarget("group", { sId: groupId, name: groupName }),
     ],
     context: { location: "system" },
     metadata: {

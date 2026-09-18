@@ -2926,11 +2926,11 @@ async function deleteCoreFileArtifactsFromDataSource(
     async (span) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const projectId = dataSource.dustAPIProjectId;
-      const dataSourceId = dataSource.dustAPIDataSourceId;
+      const dustAPIDataSourceId = dataSource.dustAPIDataSourceId;
       const logCtx = {
         workspaceId: auth.workspace()?.sId,
         fileId: file.sId,
-        dataSourceSId: dataSource.sId,
+        dataSourceId: dataSource.sId,
       };
 
       const tableIds = new Set<string>([
@@ -2943,13 +2943,13 @@ async function deleteCoreFileArtifactsFromDataSource(
       span?.setTag("file.use_case", file.useCase);
       span?.setTag("data_source.s_id", dataSource.sId);
       span?.setTag("core.project_id", projectId);
-      span?.setTag("core.data_source_id", dataSourceId);
+      span?.setTag("core.data_source_id", dustAPIDataSourceId);
       span?.setTag("tables.count", tableIds.size);
 
       for (const tableId of tableIds) {
         const delTableRes = await coreAPI.deleteTable({
           projectId,
-          dataSourceId,
+          dataSourceId: dustAPIDataSourceId,
           tableId,
         });
         if (
@@ -2965,7 +2965,7 @@ async function deleteCoreFileArtifactsFromDataSource(
 
       const delDocRes = await coreAPI.deleteDataSourceDocument({
         projectId,
-        dataSourceId,
+        dataSourceId: dustAPIDataSourceId,
         documentId: file.sId,
         caller: "file-resource",
       });
@@ -2987,17 +2987,17 @@ async function maybeDeleteCoreArtifactsForIndexedFile(
   file: FileResource
 ): Promise<void> {
   if (file.useCase === "project_context") {
-    const spaceSId = file.useCaseMetadata?.spaceId;
-    if (!spaceSId) {
+    const spaceId = file.useCaseMetadata?.spaceId;
+    if (!spaceId) {
       return;
     }
-    const space = await SpaceResource.fetchById(auth, spaceSId);
+    const space = await SpaceResource.fetchById(auth, spaceId);
     if (!space) {
       logger.warn(
         {
           workspaceId: auth.workspace()?.sId,
           fileId: file.sId,
-          spaceSId,
+          spaceId,
         },
         "File delete: project space not found; skipping Core cleanup."
       );
@@ -3009,7 +3009,7 @@ async function maybeDeleteCoreArtifactsForIndexedFile(
         {
           workspaceId: auth.workspace()?.sId,
           fileId: file.sId,
-          spaceSId,
+          spaceId,
           error: dsRes.error,
         },
         "File delete: project dust_project data source not found; skipping Core cleanup."

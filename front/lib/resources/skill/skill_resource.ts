@@ -301,6 +301,37 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+/**
+ * @cc [owner:fabiencelier,label:security;product] skill-verbs
+ * The verbs a caller holds on a skill mean:
+ * - `read`: seeing and using the skill: listing it, fetching it, attaching it to an agent, running
+ *   it. `read` comes from grants (the workspace global group's `reader` grant, or an editor's
+ *   grant), never from a workspace role.
+ * - `write`: editing the skill's content: instructions, attached knowledge, files.
+ * - `admin`: the skill's lifecycle and editors: adding and removing editors, archiving,
+ *   restoring, deleting. The admin workspace role confers `admin` and MUST NOT confer `write`:
+ *   an admin who is not an editor manages editors without editing content.
+ * Global (code-defined) skills are `read`-only for every workspace member.
+ */
+/**
+ * @cc [owner:fabiencelier,label:security;product] skill-create-capability
+ * `create` on the `skill` type means bringing a new skill into the workspace: creating one,
+ * importing one (zip, GitHub) or detecting one from files. Every such path MUST require
+ * `hasWorkspacePermission("create", "skill")`. Editing an existing skill MUST NOT.
+ */
+/**
+ * @cc [owner:fabiencelier,label:security;product] skill-publish-capability
+ * `publish` on the `skill` type means deciding who the skill is available to. Any change of a
+ * skill's `availability` (`editors`, `workspace_users`, `users_and_agents`), including creating a
+ * skill with a non-default availability, MUST require `hasWorkspacePermission("publish", "skill")`,
+ * even for the skill's editors.
+ */
+/**
+ * @cc [owner:fabiencelier,label:security;product] skill-make-discoverable-capability
+ * `make_discoverable` on the `skill` type means letting agents pick the skill on their own. Setting
+ * a skill's availability to `users_and_agents`, or moving it off that value, MUST require
+ * `hasWorkspacePermission("make_discoverable", "skill")` on top of `publish`.
+ */
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
@@ -2470,7 +2501,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     if (spaceIdsRemovedFromThisSkill.length > 0) {
       actionsByAgentModelId = await fetchMCPServerActionConfigurations(auth, {
-        configurationIds: agentModelIds,
+        configurationModelIds: agentModelIds,
         variant: "full",
       });
 
@@ -2876,14 +2907,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const agentConfigById = new Map(agentConfigs.map((a) => [a.id, a]));
 
     // Map AgentSkillModel references back to skill sId.
-    const sIdByCustomId = new Map(
+    const skillIdByModelId = new Map(
       skills.filter((s) => !s.codeDefinedSkillId).map((s) => [s.id, s.sId])
     );
 
     const result = new Map<string, AgentUsageAttributes[]>();
     for (const as of agentSkills) {
       const skillId = as.customSkillId
-        ? sIdByCustomId.get(as.customSkillId)
+        ? skillIdByModelId.get(as.customSkillId)
         : (as.globalSkillId ?? undefined);
       if (!skillId) {
         continue;
