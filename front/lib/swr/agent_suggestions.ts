@@ -12,7 +12,8 @@ import type {
   PatchSuggestionRequestBody,
   PatchSuggestionResponseBody,
 } from "@app/types/api/assistant/agent_suggestion";
-import { useCallback } from "react";
+import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
+import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 
 export function useAgentSuggestions({
@@ -122,4 +123,68 @@ export function usePatchAgentSuggestions({
   );
 
   return { patchSuggestions };
+}
+
+/**
+ * Accept/reject a suggestion without depending on any specific SWR cache shape or on a
+ * `SidekickSuggestionsContext`-style provider. Meant for surfaces (like a plain conversation
+ * message) that just need working buttons on a suggestion card, not the sidekick's richer
+ * bookkeeping (editor sync, pending/outdated list splitting, refetch debouncing).
+ *
+ * Tracks an optimistic state override per suggestion id locally, reverting it if the request
+ * fails, so callers can compute the card's displayed state as `overrides[sId] ?? suggestion.state`
+ * without needing to touch their own suggestions list.
+ */
+export function useAgentSuggestionActions({
+  agentConfigurationId,
+  workspaceId,
+}: {
+  agentConfigurationId: string | null;
+  workspaceId: string;
+}) {
+  const { patchSuggestions } = usePatchAgentSuggestions({
+    agentConfigurationId,
+    workspaceId,
+  });
+  const [overrides, setOverrides] = useState<
+    Record<string, AgentSuggestionState>
+  >({});
+
+  const resolveSuggestionState = useCallback(
+    (suggestion: { sId: string; state: AgentSuggestionState }) =>
+      overrides[suggestion.sId] ?? suggestion.state,
+    [overrides]
+  );
+
+  const setSuggestionState = useCallback(
+    async (
+      suggestion: { sId: string },
+      nextState: Extract<AgentSuggestionState, "approved" | "rejected">
+    ): Promise<boolean> => {
+      setOverrides((current) => ({ ...current, [suggestion.sId]: nextState }));
+
+      const result = await patchSuggestions([suggestion.sId], nextState);
+      if (!result || result.suggestions.length === 0) {
+        setOverrides((current) => {
+          const { [suggestion.sId]: _removed, ...rest } = current;
+          return rest;
+        });
+        return false;
+      }
+
+      return true;
+    },
+    [patchSuggestions]
+  );
+
+  const acceptSuggestion = useCallback(
+    (suggestion: { sId: string }) => setSuggestionState(suggestion, "approved"),
+    [setSuggestionState]
+  );
+  const rejectSuggestion = useCallback(
+    (suggestion: { sId: string }) => setSuggestionState(suggestion, "rejected"),
+    [setSuggestionState]
+  );
+
+  return { resolveSuggestionState, acceptSuggestion, rejectSuggestion };
 }

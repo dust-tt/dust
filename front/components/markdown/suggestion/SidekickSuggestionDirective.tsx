@@ -7,21 +7,18 @@
  */
 
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
+import { AgentCreateOrDeleteSuggestionCard } from "@app/components/markdown/suggestion/AgentCreateOrDeleteSuggestionCard";
 import {
-  mapSuggestionStateToCardState,
   SidekickSuggestionCard,
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/SidekickSuggestionCard";
-import { getIcon } from "@app/components/resources/resources_icons";
 import {
+  useAgentSuggestionActions,
   useAgentSuggestions,
-  usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
-import type { PatchSuggestionResponseBody } from "@app/types/api/assistant/agent_suggestion";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
-import { ActionCardBlock, Avatar } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { SKIP, visit } from "unist-util-visit";
 
 /**
@@ -170,64 +167,16 @@ function ConversationAgentSuggestion({
   kind,
   sId,
 }: ConversationAgentSuggestionProps) {
-  const [pendingAction, setPendingAction] = useState<
-    "accept" | "decline" | null
-  >(null);
-
-  const { suggestions, isSuggestionsLoading, mutateSuggestions } =
-    useAgentSuggestions({
-      agentConfigurationId: agentId,
-      workspaceId: owner.sId,
-    });
-
-  const { patchSuggestions } = usePatchAgentSuggestions({
+  const { suggestions, isSuggestionsLoading } = useAgentSuggestions({
     agentConfigurationId: agentId,
     workspaceId: owner.sId,
   });
 
-  const updateCachedSuggestions = (
-    patched: PatchSuggestionResponseBody | null
-  ) => {
-    const reviewed = patched?.suggestions ?? [];
-    if (reviewed.length === 0) {
-      return;
-    }
-    const reviewedById = new Map(reviewed.map((s) => [s.sId, s]));
-    void mutateSuggestions(
-      (current) => ({
-        suggestions: (current?.suggestions ?? []).map(
-          (s) => reviewedById.get(s.sId) ?? s
-        ),
-      }),
-      { revalidate: false }
-    );
-  };
-
-  const handleAccept = async () => {
-    if (pendingAction) {
-      return;
-    }
-    setPendingAction("accept");
-    try {
-      updateCachedSuggestions(
-        await patchSuggestions([sId], "approved", { applyToAgent: true })
-      );
-    } finally {
-      setPendingAction(null);
-    }
-  };
-
-  const handleDecline = async () => {
-    if (pendingAction) {
-      return;
-    }
-    setPendingAction("decline");
-    try {
-      updateCachedSuggestions(await patchSuggestions([sId], "rejected"));
-    } finally {
-      setPendingAction(null);
-    }
-  };
+  const { resolveSuggestionState, acceptSuggestion, rejectSuggestion } =
+    useAgentSuggestionActions({
+      agentConfigurationId: agentId,
+      workspaceId: owner.sId,
+    });
 
   if (isSuggestionsLoading) {
     return <SuggestionCardSkeleton kind={kind} />;
@@ -238,40 +187,15 @@ function ConversationAgentSuggestion({
     return null;
   }
 
-  const cardState =
-    pendingAction !== null
-      ? "disabled"
-      : mapSuggestionStateToCardState(suggestion.state);
-
-  const name = suggestion.suggestion.name;
-  const labels =
-    suggestion.kind === "create"
-      ? {
-          title: `Create "${name}" agent`,
-          acceptedTitle: `"${name}" agent creation accepted`,
-          rejectedTitle: `"${name}" agent creation rejected`,
-          description: suggestion.analysis ?? suggestion.suggestion.description,
-        }
-      : {
-          title: `Delete "${name}" agent`,
-          acceptedTitle: `"${name}" agent deletion accepted`,
-          rejectedTitle: `"${name}" agent deletion rejected`,
-          description: suggestion.analysis ?? undefined,
-        };
-
   return (
     <div data-suggestion-s-id={sId}>
-      <ActionCardBlock
-        title={labels.title}
-        applyLabel="Accept"
-        acceptedTitle={labels.acceptedTitle}
-        rejectedTitle={labels.rejectedTitle}
-        visual={<Avatar icon={getIcon("ActionRobotIcon")} size="sm" />}
-        description={labels.description}
-        state={cardState}
-        actionsPosition="header"
-        onClickAccept={() => void handleAccept()}
-        onClickReject={() => void handleDecline()}
+      <AgentCreateOrDeleteSuggestionCard
+        agentSuggestion={{
+          ...suggestion,
+          state: resolveSuggestionState(suggestion),
+        }}
+        onAccept={() => void acceptSuggestion(suggestion)}
+        onReject={() => void rejectSuggestion(suggestion)}
       />
     </div>
   );

@@ -8,6 +8,10 @@ import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import {
+  AgentCreateOrDeleteSuggestionCard,
+  mapSuggestionStateToCardState,
+} from "@app/components/markdown/suggestion/AgentCreateOrDeleteSuggestionCard";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -32,11 +36,9 @@ import type {
   AgentSkillsSuggestionWithRelationsType,
   AgentSubAgentSuggestionWithRelationsType,
   AgentSuggestionKind,
-  AgentSuggestionState,
   AgentSuggestionWithRelationsType,
   AgentToolsSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
-import type { ActionCardState } from "@dust-tt/sparkle";
 import {
   ActionCardBlock,
   Avatar,
@@ -49,24 +51,6 @@ import {
 import { EditorContent, useEditor } from "@tiptap/react";
 import { memo, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
-
-export function mapSuggestionStateToCardState(
-  state: AgentSuggestionState
-): ActionCardState {
-  switch (state) {
-    case "pending":
-      return "active";
-    case "approved":
-      return "accepted";
-    case "rejected":
-      return "rejected";
-    case "outdated":
-      return "disabled";
-    default:
-      assertNeverAndIgnore(state);
-      return "disabled";
-  }
-}
 
 interface InstructionsSuggestionCardProps {
   agentSuggestion: AgentInstructionsSuggestionType;
@@ -669,56 +653,22 @@ function KnowledgeSuggestionCard({
   );
 }
 
-interface CreateAgentSuggestionCardProps {
-  agentSuggestion: AgentCreateSuggestionType;
+interface ConnectedCreateOrDeleteSuggestionCardProps {
+  agentSuggestion: AgentCreateSuggestionType | AgentDeleteSuggestionType;
 }
 
-function CreateAgentSuggestionCard({
+// Thin wiring so `AgentCreateOrDeleteSuggestionCard` stays context-free and shareable with the
+// conversation view, which has no `SidekickSuggestionsContext` to pull accept/reject from.
+function ConnectedCreateOrDeleteSuggestionCard({
   agentSuggestion,
-}: CreateAgentSuggestionCardProps) {
-  const { suggestion, state, analysis } = agentSuggestion;
-  const cardState = mapSuggestionStateToCardState(state);
+}: ConnectedCreateOrDeleteSuggestionCardProps) {
   const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
 
   return (
-    <ActionCardBlock
-      title={`Create "${suggestion.name}" agent`}
-      applyLabel="Accept"
-      acceptedTitle={`"${suggestion.name}" agent creation accepted`}
-      visual={<Avatar icon={getIcon("ActionRobotIcon")} size="sm" />}
-      description={analysis ?? suggestion.description}
-      state={cardState}
-      rejectedTitle={`"${suggestion.name}" agent creation rejected`}
-      actionsPosition="header"
-      onClickAccept={() => void acceptSuggestion(agentSuggestion)}
-      onClickReject={() => void rejectSuggestion(agentSuggestion)}
-    />
-  );
-}
-
-interface DeleteAgentSuggestionCardProps {
-  agentSuggestion: AgentDeleteSuggestionType;
-}
-
-function DeleteAgentSuggestionCard({
-  agentSuggestion,
-}: DeleteAgentSuggestionCardProps) {
-  const { suggestion, state, analysis } = agentSuggestion;
-  const cardState = mapSuggestionStateToCardState(state);
-  const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
-
-  return (
-    <ActionCardBlock
-      title={`Delete "${suggestion.name}" agent`}
-      applyLabel="Accept"
-      acceptedTitle={`"${suggestion.name}" agent deletion accepted`}
-      visual={<Avatar icon={getIcon("ActionRobotIcon")} size="sm" />}
-      description={analysis ?? undefined}
-      state={cardState}
-      rejectedTitle={`"${suggestion.name}" agent deletion rejected`}
-      actionsPosition="header"
-      onClickAccept={() => void acceptSuggestion(agentSuggestion)}
-      onClickReject={() => void rejectSuggestion(agentSuggestion)}
+    <AgentCreateOrDeleteSuggestionCard
+      agentSuggestion={agentSuggestion}
+      onAccept={() => void acceptSuggestion(agentSuggestion)}
+      onReject={() => void rejectSuggestion(agentSuggestion)}
     />
   );
 }
@@ -753,9 +703,12 @@ export function SidekickSuggestionCard({
     case "knowledge":
       return <KnowledgeSuggestionCard agentSuggestion={agentSuggestion} />;
     case "create":
-      return <CreateAgentSuggestionCard agentSuggestion={agentSuggestion} />;
     case "delete":
-      return <DeleteAgentSuggestionCard agentSuggestion={agentSuggestion} />;
+      return (
+        <ConnectedCreateOrDeleteSuggestionCard
+          agentSuggestion={agentSuggestion}
+        />
+      );
     default:
       assertNeverAndIgnore(agentSuggestion);
       return null;
