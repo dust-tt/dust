@@ -75,7 +75,16 @@ Server-side: `PATCH /w/:wId/assistant/skills/:sId/suggestions` with `applyToSkil
 - Test in `front-api/routes/.../skills/[sId]/suggestions.test.ts` (`PATCH with applyToSkill`).
 
 Agents:
-no server-side apply yet; the sidekick patches the builder form client-side.
+Server-side: `PATCH /w/:wId/assistant/agent_configurations/:aId/suggestions` with
+`applyToAgent: true` calls `applyAgentSuggestions`
+(`front/lib/api/assistant/apply_agent_suggestions.ts`) before `bulkUpdateState`. The route
+enforces `approved`, `agent.canEdit` and `pending`. Only `create` is applied today: it turns the
+`pending` placeholder into an active, hidden agent. Sidekick kinds are still patched into the
+builder form client-side and are rejected by `applyAgentSuggestions`.
+
+- Add a `case "<kind>"` in `applyAgentSuggestions`.
+- Test in `front-api/routes/.../agent_configurations/[aId]/suggestions.test.ts`
+  (`PATCH with applyToAgent`).
 
 ### Update the conversational-building skill 
 
