@@ -18,6 +18,7 @@ function instructionEditsOf(suggestion: SkillSuggestionResource) {
     case "edit":
       return json.suggestion.instructionEdits;
     case "editors":
+    case "create":
       return undefined;
     default:
       assertNever(json);

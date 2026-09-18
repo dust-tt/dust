@@ -59,6 +59,7 @@ export function SkillBuilderSuggestionsPanel({
         case "edit":
           break;
         case "editors":
+        case "create":
           return;
         default:
           assertNeverAndIgnore(suggestion);

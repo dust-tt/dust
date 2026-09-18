@@ -297,6 +297,9 @@ function SuggestionDetails({
         />
       );
 
+    case "create":
+      return null;
+
     default:
       assertNeverAndIgnore(suggestion);
       return null;

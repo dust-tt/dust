@@ -669,6 +669,7 @@ export function SkillBuilderInstructionsEditor({
         case "edit":
           break;
         case "editors":
+        case "create":
           continue;
         default:
           assertNeverAndIgnore(suggestion);
