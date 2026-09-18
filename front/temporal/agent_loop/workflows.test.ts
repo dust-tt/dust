@@ -19,6 +19,8 @@ const {
   runModelAndCreateActionsActivity,
   runModelAndCreateActionsActivityWithExplicitCancellation,
   publishDeferredEventsActivity,
+  upsertOngoingAgentLoopActivity,
+  deleteOngoingAgentLoopActivity,
   workflowLogError,
 } = vi.hoisted(() => ({
   deprecatePatch: vi.fn(),
@@ -33,6 +35,8 @@ const {
   runModelAndCreateActionsActivity: vi.fn(),
   runModelAndCreateActionsActivityWithExplicitCancellation: vi.fn(),
   publishDeferredEventsActivity: vi.fn(),
+  upsertOngoingAgentLoopActivity: vi.fn(),
+  deleteOngoingAgentLoopActivity: vi.fn(),
   workflowLogError: vi.fn(),
 }));
 
@@ -75,6 +79,8 @@ vi.mock("@temporalio/workflow", () => {
       finalizeGracefullyStoppedAgentLoopActivity: unusedActivity,
       finalizeInterruptedAgentLoopActivity: unusedActivity,
       finalizeSuccessfulAgentLoopActivity,
+      upsertOngoingAgentLoopActivity,
+      deleteOngoingAgentLoopActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity:
         options.cancellationType === undefined
@@ -305,5 +311,65 @@ describe("agentLoopWorkflow activity cancellation", () => {
     expect(deprecatePatch).toHaveBeenCalledWith(
       "wait-for-all-tool-activities-before-finalization"
     );
+  });
+
+  it("registers and removes user-launched loops", async () => {
+    patched.mockReturnValue(true);
+    const userAuthType = { ...authType, userId: "u123" };
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType: userAuthType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    const entry = {
+      workspaceId: "w123",
+      userId: "u123",
+      conversationId: "c123",
+      messageId: "am123",
+    };
+    expect(upsertOngoingAgentLoopActivity).toHaveBeenCalledWith(entry);
+    expect(deleteOngoingAgentLoopActivity).toHaveBeenCalledWith(entry);
+  });
+
+  it("does not change registry state when replaying pre-registry workflows", async () => {
+    patched.mockReturnValue(false);
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType: { ...authType, userId: "u123" },
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(patched).toHaveBeenCalledWith("track-user-agent-loops-in-redis");
+    expect(upsertOngoingAgentLoopActivity).not.toHaveBeenCalled();
+    expect(deleteOngoingAgentLoopActivity).not.toHaveBeenCalled();
+  });
+
+  it("removes user-launched loops when execution fails", async () => {
+    patched.mockReturnValue(true);
+    const error = new Error("model failed");
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockRejectedValue(
+      error
+    );
+
+    await expect(
+      agentLoopWorkflow({
+        agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+        authType: { ...authType, userId: "u123" },
+        initialStartTime: 0,
+        startStep: 0,
+      })
+    ).rejects.toBe(error);
+
+    expect(deleteOngoingAgentLoopActivity).toHaveBeenCalledWith({
+      workspaceId: "w123",
+      userId: "u123",
+      conversationId: "c123",
+      messageId: "am123",
+    });
   });
 });

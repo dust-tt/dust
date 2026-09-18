@@ -22,6 +22,10 @@ import {
   finalizeSuccessfulAgentLoopActivity,
 } from "@app/temporal/agent_loop/activities/finalize";
 import { finalizeErroredSandboxChildToolActivity } from "@app/temporal/agent_loop/activities/finalize_sandbox_child_tool";
+import {
+  deleteOngoingAgentLoopActivity,
+  upsertOngoingAgentLoopActivity,
+} from "@app/temporal/agent_loop/activities/ongoing_agent_loops";
 import { publishDeferredEventsActivity } from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import { runModelAndCreateActionsActivity } from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
@@ -114,6 +118,8 @@ async function runAgentLoopWorkerForQueue({
       finalizeInterruptedAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
       finalizeErroredSandboxChildToolActivity,
+      upsertOngoingAgentLoopActivity,
+      deleteOngoingAgentLoopActivity,
       checkCreditsActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity,

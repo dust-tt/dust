@@ -9292,6 +9292,68 @@
         }
       }
     },
+    "/api/w/{wId}/assistant/ongoing-agent-loops": {
+      "get": {
+        "summary": "List the authenticated user's ongoing agent loops",
+        "description": "Returns agent loops registered for the authenticated user in this workspace.",
+        "tags": [
+          "Private Assistant"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ongoing agent loops retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "agentLoops"
+                  ],
+                  "properties": {
+                    "agentLoops": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "conversationId",
+                          "messageId"
+                        ],
+                        "properties": {
+                          "conversationId": {
+                            "type": "string"
+                          },
+                          "messageId": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
     "/api/w/{wId}/extension/config": {
       "get": {
         "summary": "Get extension configuration",
