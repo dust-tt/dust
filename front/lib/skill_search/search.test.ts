@@ -35,7 +35,6 @@ import {
   SkillSchema,
 } from "@app/types/assistant/skill_configuration";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
-import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
@@ -65,17 +64,16 @@ async function mockHits(
   return documents;
 }
 
-async function searchCandidates(
+async function searchListings(
   auth: Authenticator,
   options: SkillSearchOptions = { searchTerm: "" }
 ) {
   const result = await searchSkills(auth, {
     query: buildSkillSearchQuery(auth, options),
-    searchAfter: null,
     limit: 200,
   });
   assert(result.isOk());
-  return result.value.candidates;
+  return result.value;
 }
 
 describe("custom skill search", () => {
@@ -229,13 +227,11 @@ describe("custom skill search", () => {
     await auth.refresh();
     // The ES mock applies the generated filters before returning hits.
     await mockHits(auth, skills);
-    const candidates = await searchCandidates(auth, {
+    const candidates = await searchListings(auth, {
       searchTerm: "",
       filters: { status: [status] },
     });
-    expect(
-      removeNulls(candidates.map(({ skill }) => skill?.sId ?? null))
-    ).toEqual(expectedIds);
+    expect(candidates.map((skill) => skill.sId)).toEqual(expectedIds);
     expect(candidates).toHaveLength(expectedIds.length);
     expect(mockSearch).toHaveBeenCalledOnce();
     const filters = mockSearch.mock.lastCall![0].query.bool.must[0].bool.filter;
@@ -285,10 +281,8 @@ describe("custom skill search", () => {
     });
     await auth.refresh();
     await mockHits(auth, [skill]);
-    const [candidate] = await searchCandidates(auth);
-    expect(candidate?.skill.sId ?? null).toBe(
-      access === "denied" ? null : skill.sId
-    );
+    const [candidate] = await searchListings(auth);
+    expect(candidate?.sId ?? null).toBe(access === "denied" ? null : skill.sId);
   });
 
   it.each([
@@ -313,8 +307,8 @@ describe("custom skill search", () => {
       expect((await skill.removeEditors(auth, [user])).isOk()).toBe(true);
     }
     await mockHits(auth, [skill]);
-    const [before] = await searchCandidates(auth);
-    expect(before.skill?.sId).toBe(skill.sId);
+    const [before] = await searchListings(auth);
+    expect(before.sId).toBe(skill.sId);
     switch (change) {
       case "pod":
         await pod.writeGroupPermissions(auth, { members: [], editors: [] });
@@ -337,25 +331,22 @@ describe("custom skill search", () => {
         break;
     }
     await auth.refresh();
-    const [after] = await searchCandidates(auth);
+    const [after] = await searchListings(auth);
     if (change === "pod") {
       expect(after).toBeUndefined();
     } else {
       // Skill fields are eventually consistent until the document is refreshed or deleted.
-      expect(after.skill).toEqual(before.skill);
+      expect(after).toEqual(before);
       if (change === "delete") {
         await mockHits(auth, []);
-        expect(await searchCandidates(auth)).toEqual([]);
+        expect(await searchListings(auth)).toEqual([]);
       } else {
         const current = await SkillResource.fetchById(auth, skill.sId);
         assert(current);
         await mockHits(auth, [current]);
-        const [refreshed] = await searchCandidates(auth);
+        const [refreshed] = await searchListings(auth);
         expect(refreshed).toBeUndefined();
       }
-    }
-    if (after) {
-      expect(after.sort).toEqual(before.sort);
     }
   });
 
@@ -391,19 +382,17 @@ describe("custom skill search", () => {
     const onQuery = vi.fn();
     frontSequelize.addHook("afterQuery", "skill-search-no-db", onQuery);
     try {
-      const defaults = await searchCandidates(auth);
-      expect(defaults.map(({ skill }) => skill?.sId ?? null)).toEqual([
-        active.sId,
-      ]);
-      const both = await searchCandidates(auth, {
+      const defaults = await searchListings(auth);
+      expect(defaults.map((skill) => skill.sId)).toEqual([active.sId]);
+      const both = await searchListings(auth, {
         searchTerm: "",
         filters: { status: ["active", "archived"] },
       });
-      expect(both.map(({ skill }) => skill?.sId ?? null)).toEqual([
+      expect(both.map((skill) => skill.sId)).toEqual([
         active.sId,
         archived.sId,
       ]);
-      const listing = both[0].skill;
+      const listing = both[0];
       expect(
         SkillListItemSchema.extend({ score: z.number() })
           .strict()
@@ -510,11 +499,8 @@ describe("custom skill search", () => {
     });
     await auth.refresh();
 
-    const candidates = await searchCandidates(auth);
-    expect(candidates.map(({ skill }) => skill?.sId ?? null)).toEqual([
-      own.sId,
-      other.sId,
-    ]);
+    const candidates = await searchListings(auth);
+    expect(candidates.map((skill) => skill.sId)).toEqual([own.sId, other.sId]);
     expect(
       buildSkillSearchQuery(auth, { searchTerm: "" }).bool?.filter
     ).not.toContainEqual({
@@ -538,7 +524,7 @@ describe("custom skill search", () => {
     });
     await auth.refresh();
     await mockHits(auth, [skill]);
-    const [candidate] = await searchCandidates(auth);
+    const [candidate] = await searchListings(auth);
     expect(candidate).toBeUndefined();
     expect(
       mockSearch.mock.lastCall![0].query.bool.must[0].bool.filter[2].bool
@@ -559,7 +545,6 @@ describe("custom skill search", () => {
     mockSearch.mockResolvedValue(response);
     const result = await searchSkills(auth, {
       query: buildSkillSearchQuery(auth, { searchTerm: "" }),
-      searchAfter: null,
       limit: 10,
     });
     expect(result.isErr()).toBe(true);

@@ -3,8 +3,8 @@ import type { estypes } from "@elastic/elasticsearch";
 /**
  * @cc [owner:aubin-tchoi,label:product] indexed-skill-name-matching
  * Name matching uses both autocomplete fields and Elasticsearch relevance, without
- * description matching or usage boosts. The
- * ICU-folded keyword field is the pagination sort key, followed by skill ID.
+ * description matching or usage boosts. The ICU-folded keyword field and skill ID
+ * break relevance ties.
  */
 export function buildSkillMatchQuery(
   searchTerm: string

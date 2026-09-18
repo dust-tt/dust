@@ -6,16 +6,8 @@ import type {
   SkillSearchOptions,
 } from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
-import { z } from "zod";
 
 export const MAX_SKILL_SEARCH_RESULTS = 100;
-
-export const SkillSearchSortSchema = z.tuple([
-  z.number().finite(),
-  z.string(),
-  z.string(),
-]);
-export type SkillSearchSort = z.infer<typeof SkillSearchSortSchema>;
 
 // Null represents a type-wide read grant; do not enumerate resources in that case.
 export function getSkillSearchReadableSpaceIds(auth: Authenticator) {

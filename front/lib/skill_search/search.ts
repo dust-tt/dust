@@ -4,24 +4,16 @@ import {
   withEs,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import type { SkillSearchSort } from "@app/lib/skill_search/query";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import type { SkillSearchResult } from "@app/types/api/skills";
 import { Err, Ok } from "@app/types/shared/result";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";
 
-export type { SkillSearchSort } from "@app/lib/skill_search/query";
 export {
   buildSkillSearchQuery,
   MAX_SKILL_SEARCH_RESULTS,
-  SkillSearchSortSchema,
 } from "@app/lib/skill_search/query";
-
-export interface SkillSearchCandidate {
-  skill: SkillSearchResult;
-  sort: SkillSearchSort;
-}
 
 /**
  * @cc [owner:aubin-tchoi,label:security;performance] indexed-skill-search-listings
@@ -34,11 +26,9 @@ export async function searchSkills(
   auth: Authenticator,
   {
     query,
-    searchAfter,
     limit,
   }: {
     query: estypes.QueryDslQueryContainer;
-    searchAfter: SkillSearchSort | null;
     limit: number;
   }
 ) {
@@ -60,7 +50,6 @@ export async function searchSkills(
         { "name.keyword": { order: "asc" } },
         { skill_id: { order: "asc" } },
       ],
-      ...(searchAfter ? { search_after: searchAfter } : {}),
     })
   );
   if (result.isErr()) {
@@ -69,7 +58,7 @@ export async function searchSkills(
 
   const { hits } = result.value.hits;
 
-  const candidates: SkillSearchCandidate[] = [];
+  const skills: SkillSearchResult[] = [];
   for (const hit of hits) {
     const document = hit._source;
     if (!document) {
@@ -78,15 +67,9 @@ export async function searchSkills(
       );
     }
 
-    const [score, name, skillId] = hit.sort!;
-    candidates.push({
-      sort: [score, name, skillId],
-      skill: { ...toSkillListItem(document), score },
-    });
+    const [score] = hit.sort!;
+    skills.push({ ...toSkillListItem(document), score });
   }
 
-  return new Ok({
-    candidates,
-    exhausted: hits.length < limit,
-  });
+  return new Ok(skills);
 }
