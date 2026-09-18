@@ -2,6 +2,7 @@ import {
   CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
   CREDIT_PRICED_ENTERPRISE_PILOT_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
+import { CP_ENTERPRISE_BASIS } from "@app/lib/plans/pricing";
 import type { MembershipSeatType } from "@app/types/memberships";
 
 // Hardcoded pre-fill templates for the Switch Contract poke dialog. Selecting a
@@ -99,6 +100,27 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     stripeCollectionMethod: "send_invoice",
     seats: {
       workspace_yearly: { selected: true },
+    },
+  },
+  {
+    id: "enterprise-pooled-monthly",
+    name: "Enterprise pooled — monthly",
+    description:
+      "Enterprise Pooled billed monthly: monthly workspace seats at 1/12 the yearly rate, pooled credits.",
+    package: { tier: "enterprise", namePattern: "pooled" },
+    planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
+    startMode: "select",
+    stripeCollectionMethod: "send_invoice",
+    seats: {
+      // Disable the package's default yearly seat; bill the monthly workspace
+      // seat instead at 1/12 the yearly rate (yearly = CP_ENTERPRISE_BASIS * 12),
+      // invoiced monthly.
+      workspace_yearly: { selected: false },
+      workspace: {
+        selected: true,
+        rate: CP_ENTERPRISE_BASIS,
+        paymentSchedule: { frequency: "monthly", periods: 12 },
+      },
     },
   },
   {
