@@ -240,6 +240,7 @@ function buildColumns({
   dimension,
   hasAvatar,
   isAvatarRounded,
+  countLabel,
   avgLabel,
   totalCredits,
   totalActiveMembers,
@@ -250,6 +251,7 @@ function buildColumns({
   dimension: ConsumptionDimension;
   hasAvatar: boolean;
   isAvatarRounded: boolean;
+  countLabel: string;
   avgLabel: string;
   totalCredits: number;
   totalActiveMembers: number;
@@ -433,6 +435,19 @@ function buildColumns({
         <DataTable.BasicCellContent
           className="justify-end text-right tabular-nums"
           label={formatCredits(info.row.original.credits)}
+        />
+      ),
+    },
+    {
+      id: "count",
+      accessorKey: "count",
+      header: countLabel,
+      enableSorting: false,
+      meta: { sizeRatio: 16, headerAlign: "right" },
+      cell: (info) => (
+        <DataTable.BasicCellContent
+          className="justify-end text-right tabular-nums"
+          label={info.row.original.count.toLocaleString()}
         />
       ),
     },
@@ -630,7 +645,8 @@ export function ConsumptionAttributionRowsView({
   queryState: { pagination, setPagination, sorting, onSortingChange },
   RowsTableComponent,
 }: ConsumptionAttributionRowsViewProps) {
-  const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
+  const { hasAvatar, countLabel, avgLabel } =
+    CONSUMPTION_DIMENSION_CONFIG[dimension];
   const { isDark } = useTheme();
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
@@ -646,6 +662,7 @@ export function ConsumptionAttributionRowsView({
         dimension,
         hasAvatar,
         isAvatarRounded: dimension === "user",
+        countLabel,
         avgLabel,
         totalCredits,
         totalActiveMembers,
@@ -656,6 +673,7 @@ export function ConsumptionAttributionRowsView({
     [
       hasAvatar,
       dimension,
+      countLabel,
       avgLabel,
       totalCredits,
       totalActiveMembers,
