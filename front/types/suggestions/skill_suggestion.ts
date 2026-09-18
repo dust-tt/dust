@@ -48,7 +48,7 @@ export const REVIEWABLE_SKILL_SUGGESTION_SOURCES = [
 export type ReviewableSkillSuggestionSource =
   (typeof REVIEWABLE_SKILL_SUGGESTION_SOURCES)[number];
 
-export const SKILL_SUGGESTION_KINDS = ["edit", "editors"] as const;
+export const SKILL_SUGGESTION_KINDS = ["edit", "editors", "create"] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
 
@@ -139,9 +139,22 @@ export type SkillEditorsSuggestionType = z.infer<
   typeof SkillEditorsSuggestionSchema
 >;
 
+export const SkillCreateSuggestionSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("The name the agent proposed for the new skill."),
+});
+
+export type SkillCreateSuggestionType = z.infer<
+  typeof SkillCreateSuggestionSchema
+>;
+
 export type SkillSuggestionPayload =
   | SkillEditSuggestionType
-  | SkillEditorsSuggestionType;
+  | SkillEditorsSuggestionType
+  | SkillCreateSuggestionType;
 
 const SkillEditSuggestionDataSchema = z.object({
   kind: z.literal("edit"),
@@ -153,9 +166,15 @@ const SkillEditorsSuggestionDataSchema = z.object({
   suggestion: SkillEditorsSuggestionSchema,
 });
 
+const SkillCreateSuggestionDataSchema = z.object({
+  kind: z.literal("create"),
+  suggestion: SkillCreateSuggestionSchema,
+});
+
 const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillEditSuggestionDataSchema,
   SkillEditorsSuggestionDataSchema,
+  SkillCreateSuggestionDataSchema,
 ]);
 
 type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
@@ -172,6 +191,11 @@ export type SkillEditSuggestionData = Extract<
 export type SkillEditorsSuggestionData = Extract<
   SkillSuggestionData,
   { kind: "editors" }
+>;
+
+export type SkillCreateSuggestionData = Extract<
+  SkillSuggestionData,
+  { kind: "create" }
 >;
 
 // `kind` and `suggestion` are separate columns, so narrowing one without the other would lie about
@@ -204,6 +228,12 @@ export function isEditorsSkillSuggestion<
   T extends { kind: SkillSuggestionKind; suggestion: unknown },
 >(carrier: T): carrier is T & SkillEditorsSuggestionData {
   return isSkillSuggestionOfKind(carrier, "editors");
+}
+
+export function isCreateSkillSuggestion<
+  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+>(carrier: T): carrier is T & SkillCreateSuggestionData {
+  return isSkillSuggestionOfKind(carrier, "create");
 }
 
 const SkillSuggestionUpdatedBySchema = z.object({

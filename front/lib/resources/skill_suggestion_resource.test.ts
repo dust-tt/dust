@@ -96,6 +96,33 @@ describe("SkillSuggestionResource", () => {
       expect(fetched?.kind).toBe("edit");
     });
 
+    it("should create and fetch a create suggestion on a suggested skill", async () => {
+      const draft = await SkillFactory.create(authenticator, {
+        name: "Drafted Skill",
+        status: "suggested",
+      });
+      await authenticator.refresh();
+
+      const suggestion =
+        await SkillSuggestionFactory.createSkillCreationSuggestion(
+          authenticator,
+          draft,
+          { title: "Create Drafted Skill" }
+        );
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.kind).toBe("create");
+      expect(fetched?.skillConfigurationSId).toBe(draft.sId);
+      expect(fetched?.toJSON()).toMatchObject({
+        kind: "create",
+        source: "conversational",
+        suggestion: { name: "Drafted Skill" },
+      });
+    });
+
     it("should fetch multiple suggestions by ids", async () => {
       const s1 = await SkillSuggestionFactory.create(authenticator, skill);
       const s2 = await SkillSuggestionFactory.create(authenticator, skill);
