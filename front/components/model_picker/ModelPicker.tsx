@@ -68,8 +68,6 @@ export interface ModelPickerProps {
   disabled?: boolean;
   // Read-at-submit sink. The picker writes the current toSend here (including
   // derived changes like agent switches); never triggers a parent re-render.
-  // Stays undefined on the untouched agent default, so send omits the model and
-  // the agent's own config applies.
   selectionRef?: MutableRefObject<ModelSelectionType | undefined>;
   // Fired only on intentional user picks / revert — safe to setState.
   onSelectionChange?: (modelSelection: ModelSelectionType | undefined) => void;

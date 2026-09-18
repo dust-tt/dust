@@ -15,8 +15,6 @@ const ParamsSchema = z.object({
   mId: z.string(),
 });
 
-// Clients always send a JSON object (`{}` when there is no override). Empty
-// application/json bodies from stale tabs are rejected.
 const PostRetryRequestBodySchema = z.object({
   modelSelection: ModelSelectionSchema.optional(),
 });

@@ -342,23 +342,6 @@ export function buildModelSelection(
   };
 }
 
-// The explicit selection a display stands for. `Selection.toSend` is undefined
-// for the agent default, which reads as "no override" — fine when posting a new
-// message, but unusable on paths that must name the model they want.
-export function materializeSelection(
-  display: SelectionDisplay
-): ModelSelectionType {
-  switch (display.kind) {
-    case "tier":
-      return buildTierSelection(display.tierId);
-    case "model":
-      return buildModelSelection(display.model, display.effort);
-    default:
-      assertNeverAndIgnore(display);
-      return buildTierSelection("standard");
-  }
-}
-
 export function getModelKey(providerId: string, modelId: string): string {
   return `${providerId}/${modelId}`;
 }

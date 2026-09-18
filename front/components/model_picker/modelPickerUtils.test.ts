@@ -9,7 +9,6 @@ import {
   isModelHostedInRegion,
   isPremiumModel,
   isTierResolvedModelHostedInRegion,
-  materializeSelection,
   PREMIUM_MODEL_LOCKED_TOOLTIP,
 } from "@app/components/model_picker/modelPickerUtils";
 import type {
@@ -113,30 +112,6 @@ describe("getPinnedModelRetryTier", () => {
         errorCategory: "context_window_exceeded",
       })
     ).toBeNull();
-  });
-});
-
-describe("materializeSelection", () => {
-  it("names the stream a tier display stands for", () => {
-    expect(materializeSelection({ kind: "tier", tierId: "standard" })).toEqual({
-      providerId: AUTO_MODEL_ID,
-      modelId: AUTO_MODEL_ID,
-      reasoningEffort: "none",
-    });
-  });
-
-  it("names the model and effort a model display stands for", () => {
-    expect(
-      materializeSelection({
-        kind: "model",
-        model: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
-        effort: "high",
-      })
-    ).toEqual({
-      providerId: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_SONNET_5_MODEL_ID,
-      reasoningEffort: "high",
-    });
   });
 });
 
