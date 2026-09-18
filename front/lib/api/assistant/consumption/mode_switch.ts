@@ -6,7 +6,6 @@ import {
 } from "@app/lib/api/assistant/consumption/mode";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 
 export { AGENT_MESSAGE_CONSUMPTION_WRITES_FLAG } from "@app/lib/api/assistant/consumption/mode";
@@ -47,15 +46,4 @@ export function resolveAgentMessageConsumptionMode(
     return "shadow";
   }
   return mode;
-}
-
-export async function usesAgentMessageConsumption(
-  auth: Authenticator,
-  { rootAgentMessageId }: { rootAgentMessageId: string }
-): Promise<boolean> {
-  const mode = await ConversationResource.fetchAgentMessageConsumptionMode(
-    auth,
-    { agentMessageId: rootAgentMessageId }
-  );
-  return mode !== null && mode !== "off";
 }

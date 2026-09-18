@@ -14,7 +14,6 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { AgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
 import type {
   AgentMessageStatus,
   CompactionMessageStatus,
@@ -500,7 +499,6 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare completedAt: Date | null;
   declare prunedContext: boolean | null;
   declare costCredits: number | null;
-  declare consumptionMode: AgentMessageConsumptionMode | null;
 
   // "paused": loop stopped after crossing the spend checkpoint, waiting on the user.
   // Declining sets the message status to "gracefully_stopped"
@@ -610,13 +608,6 @@ AgentMessageModel.init(
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,
-    },
-    consumptionMode: {
-      type: DataTypes.STRING(16),
-      field: "consumptionRolloutMode",
-      allowNull: true,
-      defaultValue: null,
-      validate: { isIn: [["off", "shadow", "live"]] },
     },
     resolvedProviderId: {
       type: DataTypes.STRING,

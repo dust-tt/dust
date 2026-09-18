@@ -198,4 +198,43 @@ describe("AgentMessageConsumptionEventResource append", () => {
       })
     ).resolves.toBeNull();
   });
+
+  it("fetches the latest execution-started mode for an agent message", async () => {
+    const appendStarted = (
+      idempotencyKey: string,
+      runKey: string,
+      consumptionMode: "shadow" | "live"
+    ) =>
+      withTransaction((transaction) =>
+        AgentMessageConsumptionEventResource.append(auth, {
+          event: {
+            kind: "execution_started",
+            idempotencyKey,
+            runKey,
+            rootAgentMessageId: 7,
+            agentMessageModelId: 8,
+            consumptionMode,
+          },
+          transaction,
+        })
+      );
+    await appendStarted("execution:first:started", "first", "shadow");
+    await appendStarted("execution:second:started", "second", "live");
+
+    await expect(
+      AgentMessageConsumptionEventResource.fetchLatestExecutionStartedForAgentMessage(
+        auth,
+        { agentMessageModelId: 8 }
+      )
+    ).resolves.toEqual({
+      rootAgentMessageId: 7,
+      consumptionMode: "live",
+    });
+    await expect(
+      AgentMessageConsumptionEventResource.fetchLatestExecutionStartedForAgentMessage(
+        auth,
+        { agentMessageModelId: 9 }
+      )
+    ).resolves.toBeNull();
+  });
 });
