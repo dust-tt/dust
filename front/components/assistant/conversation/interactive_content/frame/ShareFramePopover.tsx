@@ -2,7 +2,10 @@ import { FrameSharingFiles } from "@app/components/assistant/conversation/intera
 import { FrameSharingGrants } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingGrants";
 import { FrameSharingViewers } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingViewers";
 import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
-import { getAvailableScopeOptions } from "@app/components/assistant/conversation/interactive_content/frame/shareFrameScopeOptions";
+import {
+  getAvailableScopeOptions,
+  SHARE_SCOPE_ICONS,
+} from "@app/components/assistant/conversation/interactive_content/frame/shareFrameScopeOptions";
 import {
   useShareInteractiveContentFile,
   useSharingGrants,
@@ -35,6 +38,11 @@ interface ShareFramePopoverProps {
   contentHash?: string | null;
 }
 
+/**
+ * @cc [owner:flvndvd,label:product] share-button-scope-icon
+ * When sharing settings load or change, the trigger MUST use the same icon as
+ * the corresponding access option.
+ */
 export function ShareFramePopover({
   fileId,
   owner,
@@ -43,6 +51,13 @@ export function ShareFramePopover({
   const titleId = useId();
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
+  // The visible trigger needs the sharing scope even when the popover is closed.
+  const fileSharing = useShareInteractiveContentFile({
+    fileId,
+    owner,
+    cacheKey: contentHash,
+  });
+  const { fileShare, isFileShareLoading } = fileSharing;
 
   return (
     <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
@@ -51,7 +66,8 @@ export function ShareFramePopover({
           variant="ghost"
           label={isMobile ? undefined : "Share"}
           tooltip={isMobile ? "Share" : undefined}
-          icon={Upload01}
+          icon={fileShare ? SHARE_SCOPE_ICONS[fileShare.scope] : Upload01}
+          isLoading={isFileShareLoading}
         />
       </PopoverTrigger>
       <PopoverContent
@@ -71,6 +87,7 @@ export function ShareFramePopover({
           owner={owner}
           contentHash={contentHash}
           titleId={titleId}
+          fileSharing={fileSharing}
         />
       </PopoverContent>
     </PopoverRoot>
@@ -79,6 +96,7 @@ export function ShareFramePopover({
 
 interface ShareFramePopoverContentProps extends ShareFramePopoverProps {
   titleId: string;
+  fileSharing: ReturnType<typeof useShareInteractiveContentFile>;
 }
 
 // Radix keeps this content mounted through the exit animation, including its queries.
@@ -87,6 +105,7 @@ function ShareFramePopoverContent({
   owner,
   contentHash,
   titleId,
+  fileSharing,
 }: ShareFramePopoverContentProps) {
   const [shareBlockError, setShareBlockError] = useState<string[] | null>(null);
   const [isUpdatingScope, setIsUpdatingScope] = useState(false);
@@ -97,11 +116,7 @@ function ShareFramePopoverContent({
     isFileShareLoading,
     isFileShareError,
     mutateFileShare,
-  } = useShareInteractiveContentFile({
-    fileId,
-    owner,
-    cacheKey: contentHash,
-  });
+  } = fileSharing;
 
   const {
     sharing,
