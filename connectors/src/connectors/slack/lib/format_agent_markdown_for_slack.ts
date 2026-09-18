@@ -7,7 +7,9 @@ const PROJECT_TASK_DIRECTIVE_REGEX =
   /(?::pod_task|:project_task|:todo)\[([^\]]+)]\{sId=([^}]+?)}/g;
 const TOOL_SETUP_REGEX = /:toolSetup\[([^\]]+)]\{sId=([^}]+?)}/g;
 const QUICK_REPLY_REGEX = /:quickReply\[([^\]]+)]\{([^}]*)\}/g;
-const CONTENT_NODE_REGEX = /:content_node_mention\[([^\]]+)](?:\{([^}]*)\})?/g;
+// The label may hold one level of balanced brackets, like "[Q3] Report".
+const CONTENT_NODE_REGEX =
+  /:content_node_mention\[((?:[^\[\]]|\[[^\[\]]*\])+)](?:\{([^}]*)\})?/g;
 const PASTED_REGEX = /:pasted_(?:attachment|content)\[([^\]]+)]\{[^}]*\}/g;
 const VISUALIZATION_BLOCK_REGEX = /:::visualization\s*\n[\s\S]*?\n:::\s*/g;
 const INSTRUCTION_BLOCK_REGEX =

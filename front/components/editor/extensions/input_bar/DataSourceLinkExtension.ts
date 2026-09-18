@@ -1,11 +1,13 @@
 import { DataSourceLinkComponent } from "@app/components/editor/input_bar/DataSourceLinkComponent";
+import { DIRECTIVE_LABEL_PATTERN } from "@app/types/shared/utils/markdown";
 import { mergeAttributes, Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
 // Matches :content_node_mention[title]{url="..."}. The value is quoted since
 // remark-directive stops an unquoted value at "=". Unquoted is still parsed.
-const DATA_SOURCE_LINK_REGEX_BEGINNING =
-  /^:content_node_mention\[([^\]]+)](\{url="?([^"}]+)"?})?/;
+const DATA_SOURCE_LINK_REGEX_BEGINNING = new RegExp(
+  `^:content_node_mention\\[(${DIRECTIVE_LABEL_PATTERN})](\\{url="?([^"}]+)"?})?`
+);
 
 export const DataSourceLinkExtension = Node.create({
   name: "dataSourceLink",

@@ -5,8 +5,12 @@ const PROJECT_TASK_DIRECTIVE_REGEX =
   /(?::pod_task|:project_task|:todo)\[([^\]]+)]\{sId=([^}]+?)}/g;
 const TOOL_SETUP_REGEX = /:toolSetup\[([^\]]+)]\{sId=([^}]+?)}/g;
 const QUICK_REPLY_REGEX = /:quickReply\[([^\]]+)]\{([^}]*)\}/g;
-const CONTENT_NODE_MENTION_REGEX =
-  /:content_node_mention\[([^\]]+)](?:\{([^}]*)\})?/g;
+// Directive labels may hold one level of balanced brackets, like "[Q3] Report".
+export const DIRECTIVE_LABEL_PATTERN = "(?:[^\\[\\]]|\\[[^\\[\\]]*\\])+";
+const CONTENT_NODE_MENTION_REGEX = new RegExp(
+  `:content_node_mention\\[(${DIRECTIVE_LABEL_PATTERN})](?:\\{([^}]*)\\})?`,
+  "g"
+);
 const PASTED_REGEX = /:pasted_(?:attachment|content)\[([^\]]+)]\{[^}]*\}/g;
 const VISUALIZATION_BLOCK_REGEX = /:::visualization\s*\n[\s\S]*?\n:::\s*/g;
 const INSTRUCTION_BLOCK_REGEX =

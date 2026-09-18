@@ -138,6 +138,22 @@ describe("DataSourceLinkExtension", () => {
     expect(editor.getMarkdown()).toBe(markdown);
   });
 
+  it("should round-trip a title with balanced brackets", () => {
+    const markdown =
+      ':content_node_mention[[Q3] Report]{url="https://docs.google.com/document/d/123/edit"}';
+    editor.commands.setContent(markdown, { contentType: "markdown" });
+
+    const json = editor.getJSON();
+    expect(json.content?.[0]?.content?.[0]).toMatchObject({
+      type: "dataSourceLink",
+      attrs: {
+        title: "[Q3] Report",
+        url: "https://docs.google.com/document/d/123/edit",
+      },
+    });
+    expect(editor.getMarkdown()).toBe(markdown);
+  });
+
   it("should escape double quotes in the url", () => {
     editor.commands.setContent({
       type: "doc",

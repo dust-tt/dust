@@ -88,6 +88,20 @@ describe("renderUserMessage", () => {
     expect(text).not.toContain("docs.google.com");
   });
 
+  it("drops the url when the title has brackets", async () => {
+    const { conversation, userMessage } = await buildMessage({
+      content:
+        'See :content_node_mention[[Q3] Report]{url="https://docs.google.com/document/d/123/edit"} please',
+      context: {},
+    });
+
+    const res = renderUserMessage(conversation, userMessage);
+    const text = (res.content[0] as TextContent).text;
+
+    expect(text).toContain("See :content_node_mention[[Q3] Report] please");
+    expect(text).not.toContain("docs.google.com");
+  });
+
   it("adds Sender metadata with full name, username and email", async () => {
     const { conversation, userMessage } = await buildMessage({
       content: "Hello!",

@@ -336,6 +336,21 @@ Quote text
       expect(container.querySelector("a")).toHaveAttribute("href", url);
     });
 
+    it("renders content node mentions whose title has brackets", () => {
+      const url = "https://docs.google.com/document/d/123/edit";
+      const content = `see :content_node_mention[[Q3] Report]{url="${url}"} please`;
+      const message = { ...mockMessage, content };
+      const { container } = render(
+        <UserMessageMarkdown
+          owner={mockOwner}
+          message={message}
+          isLastMessage={false}
+        />
+      );
+      expect(container.textContent).toBe("see [Q3] Report please");
+      expect(container.querySelector("a")).toHaveAttribute("href", url);
+    });
+
     it("renders project task directives", () => {
       const content = ":project_task[Review PR]{sId=ptodo_123}";
       const message = { ...mockMessage, content };

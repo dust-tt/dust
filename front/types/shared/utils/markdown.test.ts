@@ -89,6 +89,14 @@ describe("stripContentNodeMentionUrls", () => {
     );
   });
 
+  it("handles titles with balanced brackets", () => {
+    const content =
+      ':content_node_mention[[Q3] Report]{url="https://docs.google.com/document/d/123/edit"}';
+    expect(stripContentNodeMentionUrls(content)).toBe(
+      ":content_node_mention[[Q3] Report]"
+    );
+  });
+
   it("leaves mentions without url and other text untouched", () => {
     const content =
       "Hey :mention[Bot]{sId=b1} :content_node_mention[Doc] https://example.com/a?b=c";

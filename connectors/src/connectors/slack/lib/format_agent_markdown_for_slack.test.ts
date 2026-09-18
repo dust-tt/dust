@@ -73,6 +73,14 @@ describe("formatAgentMarkdownForSlack", () => {
     );
   });
 
+  it("links content node mentions whose title has brackets", () => {
+    expect(
+      formatAgentMarkdownForSlack(
+        'See :content_node_mention[[Q3] Report]{url="https://example.com/q3"}'
+      )
+    ).toBe("See <https://example.com/q3|[Q3] Report>");
+  });
+
   it("does not log unsupported directives when option is off", () => {
     const spy = vi.spyOn(logger, "warn").mockImplementation(() => {});
     formatAgentMarkdownForSlack(":unknownDirective[hi]{x=1}", {
