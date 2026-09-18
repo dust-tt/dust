@@ -62,7 +62,7 @@ export function SuggestedSkillEditors({
     () => [...addUserIds, ...removeUserIds],
     [addUserIds, removeUserIds]
   );
-  const { membersBySId, isMembersLoading } = useMemberDetails({
+  const { membersById, isMembersLoading } = useMemberDetails({
     workspaceId,
     userIds,
   });
@@ -78,7 +78,7 @@ export function SuggestedSkillEditors({
             key={`add-${userId}`}
             userId={userId}
             action="add"
-            member={membersBySId[userId]}
+            member={membersById[userId]}
             isMembersLoading={isMembersLoading}
           />
         ))}
@@ -87,7 +87,7 @@ export function SuggestedSkillEditors({
             key={`remove-${userId}`}
             userId={userId}
             action="remove"
-            member={membersBySId[userId]}
+            member={membersById[userId]}
             isMembersLoading={isMembersLoading}
           />
         ))}
