@@ -196,17 +196,6 @@ function migrateStoredInvocationData(
   }
 }
 
-interface SandboxFunctionInvocationForLLM {
-  bundleSha256?: string;
-  createdAt: string;
-  error?: StoredSandboxFunctionCallError;
-  input: unknown;
-  invocationId: string;
-  result?: unknown;
-  status: SandboxFunctionInvocationStatus;
-  updatedAt: string;
-}
-
 function safeParseStoredInvocationData(
   content: string
 ): Result<StoredInvocationData, Error> {
@@ -1727,24 +1716,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       functionId: this.sandboxFunction.sId,
       status: this.status,
       createdAt: this.createdAt.toISOString(),
-    };
-  }
-
-  async toJSONForLLM(): Promise<SandboxFunctionInvocationForLLM> {
-    await this.ensureData();
-    return {
-      createdAt: this.createdAt.toISOString(),
-      input: this.data.input,
-      invocationId: this.sId,
-      status: this.status,
-      updatedAt: this.updatedAt.toISOString(),
-      // Which publish served this invocation: comparable against the hash `publish` and `get`
-      // echo. Absent when the invocation predates the stamping or never reached execution.
-      ...(this.data.bundleSha256 !== undefined
-        ? { bundleSha256: this.data.bundleSha256 }
-        : {}),
-      ...(this.data.result !== undefined ? { result: this.data.result } : {}),
-      ...(this.data.error !== undefined ? { error: this.data.error } : {}),
     };
   }
 }

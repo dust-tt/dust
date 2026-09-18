@@ -317,26 +317,15 @@ describe("SandboxFunctionInvocationResource", () => {
       code: "invocation_failed",
       message: "second invocation failed",
     });
-    expect(await recentInvocations[0]?.toJSONForLLM()).toMatchObject({
-      invocationId: thirdInvocation.sId,
-      status: "succeeded",
-      input: { message: "third" },
-      result: { commentId: "comment-3" },
+    expect(await recentInvocations[0]?.getInput()).toEqual({
+      message: "third",
     });
-    expect(await recentInvocations[1]?.toJSONForLLM()).toMatchObject({
-      invocationId: secondInvocation.sId,
-      status: "errored",
-      input: { message: "second" },
-      error: {
-        code: "invocation_failed",
-        message: "second invocation failed",
-      },
+    expect(await recentInvocations[1]?.getInput()).toEqual({
+      message: "second",
     });
     // These invocations settled without going through execute(), so no bundle hash was stamped
     // and none must be invented.
-    expect(await recentInvocations[0]?.toJSONForLLM()).not.toHaveProperty(
-      "bundleSha256"
-    );
+    expect(await recentInvocations[0]?.getBundleSha256()).toBeUndefined();
   });
 
   it("shows every reader only their own invocations", async () => {
@@ -852,9 +841,6 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(await refetchedInvocation?.getBundleSha256()).toBe(
       TEST_BUNDLE_SHA256
     );
-    expect(await refetchedInvocation?.toJSONForLLM()).toMatchObject({
-      bundleSha256: TEST_BUNDLE_SHA256,
-    });
   });
 
   it("uses the lifecycle-locked Frame location for authorization and token scope", async () => {
