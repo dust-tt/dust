@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  skills_search: {
+    description: "Enable Elasticsearch-backed skill search",
+    stage: "dust_only",
+    owner: "aubin-tchoi",
+  },
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
