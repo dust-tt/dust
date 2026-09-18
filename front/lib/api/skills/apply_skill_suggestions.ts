@@ -12,7 +12,10 @@ import {
   convertMarkdownToBlockHtml,
 } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
-import { pruneConflictingSkillEditorsSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
+import {
+  pruneConflictingSkillEditorsSuggestions,
+  pruneConflictingSkillUserFacingDescriptionSuggestions,
+} from "@app/lib/reinforcement/skill_suggestion_pruning";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { Result } from "@app/types/shared/result";
@@ -21,6 +24,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
 import {
   isEditorsSkillSuggestion,
+  isUserFacingDescriptionSkillSuggestion,
   parseSkillSuggestionData,
 } from "@app/types/suggestions/skill_suggestion";
 
@@ -30,6 +34,7 @@ import {
  */
 interface SkillEdits {
   agentFacingDescription?: string;
+  userFacingDescription?: string;
   editors?: { addUserIds: string[]; removeUserIds: string[] };
   instructionEdits?: SkillInstructionEditItemType[];
 }
@@ -53,6 +58,11 @@ function editsForSuggestion(
     case "editors":
       return new Ok({ editors: data.suggestion });
 
+    case "user_facing_description":
+      return new Ok({
+        userFacingDescription: data.suggestion.userFacingDescription,
+      });
+
     default:
       assertNever(data);
   }
@@ -67,6 +77,10 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
     (merged, next) => next.agentFacingDescription ?? merged,
     undefined
   );
+  const userFacingDescription = edits.reduce<string | undefined>(
+    (merged, next) => next.userFacingDescription ?? merged,
+    undefined
+  );
 
   // Concatenated in suggestion order: every accepted edit is applied, each to its own block.
   const instructionEdits = edits.flatMap((e) => e.instructionEdits ?? []);
@@ -74,11 +88,12 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
   // Union, not last-wins: approving two suggestions must apply both editor changes.
   const editorsEdits = edits.flatMap((e) => e.editors ?? []);
   if (editorsEdits.length === 0) {
-    return { agentFacingDescription, instructionEdits };
+    return { agentFacingDescription, userFacingDescription, instructionEdits };
   }
 
   return {
     agentFacingDescription,
+    userFacingDescription,
     instructionEdits,
     editors: {
       addUserIds: [...new Set(editorsEdits.flatMap((e) => e.addUserIds))],
@@ -89,10 +104,13 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
 
 function hasSkillFieldEdits({
   agentFacingDescription,
+  userFacingDescription,
   instructionEdits,
 }: SkillEdits): boolean {
   return (
-    agentFacingDescription !== undefined || (instructionEdits?.length ?? 0) > 0
+    agentFacingDescription !== undefined ||
+    userFacingDescription !== undefined ||
+    (instructionEdits?.length ?? 0) > 0
   );
 }
 
@@ -115,7 +133,11 @@ function resolveInstructions(
 async function applySkillFieldEdits(
   auth: Authenticator,
   skill: SkillResource,
-  { agentFacingDescription, instructionEdits }: SkillEdits
+  {
+    agentFacingDescription,
+    userFacingDescription,
+    instructionEdits,
+  }: SkillEdits
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
   const instructions = resolveInstructions(skill, instructionEdits);
   if (instructions.isErr()) {
@@ -138,7 +160,7 @@ async function applySkillFieldEdits(
     mcpServerViews: skill.mcpServerViews,
     name: skill.name,
     requestedSpaceIds: skill.requestedSpaceIds,
-    userFacingDescription: skill.userFacingDescription,
+    userFacingDescription: userFacingDescription ?? skill.userFacingDescription,
   });
 
   return new Ok(undefined);
@@ -230,6 +252,11 @@ export async function applySkillSuggestions(
     if (updateRes.isErr()) {
       return updateRes;
     }
+    await pruneConflictingSkillUserFacingDescriptionSuggestions(
+      auth,
+      skill,
+      suggestions.filter(isUserFacingDescriptionSkillSuggestion)
+    );
   }
 
   if (editorsChange) {

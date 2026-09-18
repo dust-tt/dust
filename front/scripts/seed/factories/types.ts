@@ -14,6 +14,7 @@ import type {
   SkillEditSuggestionType,
   SkillSuggestionSource,
   SkillSuggestionState,
+  SkillUserFacingDescriptionSuggestionType,
 } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -92,9 +93,16 @@ export interface SkillEditorsSuggestionAsset extends BaseSkillSuggestionAsset {
   suggestion: SkillEditorsSuggestionType;
 }
 
+export interface SkillUserFacingDescriptionSuggestionAsset
+  extends BaseSkillSuggestionAsset {
+  kind: "user_facing_description";
+  suggestion: SkillUserFacingDescriptionSuggestionType;
+}
+
 export type SkillSuggestionAsset =
   | SkillEditSuggestionAsset
-  | SkillEditorsSuggestionAsset;
+  | SkillEditorsSuggestionAsset
+  | SkillUserFacingDescriptionSuggestionAsset;
 
 export interface SuggestedSkillAsset {
   name: string;

@@ -1421,3 +1421,88 @@ describe("PATCH with applyToSkill (editors)", () => {
     ]);
   });
 });
+
+describe("PATCH with applyToSkill (user_facing_description)", () => {
+  async function setupWithFlag() {
+    const context = await setup();
+    await FeatureFlagFactory.basic(context.auth, "conversational_building");
+
+    return context;
+  }
+
+  async function descriptionSuggestion(
+    auth: Authenticator,
+    skill: SkillResource,
+    userFacingDescription: string
+  ) {
+    return SkillSuggestionFactory.create(auth, skill, {
+      kind: "user_facing_description",
+      source: "conversational",
+      state: "pending",
+      suggestion: { userFacingDescription },
+    });
+  }
+
+  it("replaces the user-facing description and saves a version", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const suggestion = await descriptionSuggestion(
+      auth,
+      skill,
+      "Paste notes, get a summary."
+    );
+    const versionsBefore = (await skill.listVersions(auth)).length;
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.userFacingDescription).toBe("Paste notes, get a summary.");
+    expect(updated?.agentFacingDescription).toBe(skill.agentFacingDescription);
+    expect((await skill.listVersions(auth)).length).toBe(versionsBefore + 1);
+  });
+
+  it("outdates the other pending description suggestions only", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const approved = await descriptionSuggestion(auth, skill, "Approved.");
+    const conflicting = await descriptionSuggestion(auth, skill, "Other.");
+    const edit = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [approved.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const states = await Promise.all(
+      [conflicting, edit].map(
+        async (suggestion) =>
+          (await SkillSuggestionResource.fetchById(auth, suggestion.sId))?.state
+      )
+    );
+    expect(states).toEqual(["outdated", "pending"]);
+  });
+
+  it("leaves the skill untouched when applyToSkill is not set", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const suggestion = await descriptionSuggestion(auth, skill, "Unapplied.");
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(200);
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.userFacingDescription).toBe(skill.userFacingDescription);
+  });
+});

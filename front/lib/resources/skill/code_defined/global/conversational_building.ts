@@ -162,12 +162,13 @@ ${skillAgentFacingDescriptionGuidanceBody({ evidenceOnly: false })}
 Discovery (see <discovery_step>):
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_agents\`: inventory agents, resolve names to ids.
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_skills\`: inventory skills, resolve names to ids.
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.describe_skill\`: a custom skill's instructions as HTML with block ids. Call before suggesting any skill edit.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.describe_skill\`: a custom skill's name, settings, and instructions as HTML with block ids. Call it to get any info about a skill before acting on it.
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_workspace_members\`: members with role and job function; pass \`userIds\` to look up specific people.
 
 Skill suggestions:
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_update\`: instruction edits (block-targeted, see <block_aware_editing>) and/or an agent-facing description replacement for one skill. Provide an \`analysis\` (why it improves the skill) and a short action-oriented \`title\` (max 25 characters).
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_editors\`: add or remove editors of a skill by user id. A change that would leave the skill without any editor is refused.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_user_facing_description\`: replace the user-facing description of a skill, the short text members read when browsing skills.
 
 Agent suggestions:
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_creation\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`.

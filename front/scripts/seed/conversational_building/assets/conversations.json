@@ -34,6 +34,16 @@
           "sId": "ConvBuildingAMsg03",
           "content": "Here are two more edits.\n\nFirst, when the notes mention a follow-up meeting, the skill can offer to schedule it with the **Team Calendar** tool using the attendees and date from the notes:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_TOOL_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nSecond, the skill can look acronyms up in the **Team Glossary** and expand them on first use in the summary:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_KNOWLEDGE_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nBoth edits keep the rest of the instructions unchanged."
         }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg04",
+          "content": "One more thing: when people browse skills, the description doesn't tell them what they get out of it. Can you make it clearer?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg04",
+          "content": "Here is a clearer description for members browsing skills. It says what to paste in and what comes back:\n\n:skill_suggestion[]{sId=__SKILL_USER_FACING_DESCRIPTION_SUGGESTION_SID__ kind=user_facing_description skillId=__MEETING_NOTES_SKILL_SID__}\n\nThe agent-facing description from earlier stays as it is; this one is only shown to people."
+        }
       }
     ]
   }
