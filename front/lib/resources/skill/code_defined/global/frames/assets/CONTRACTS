@@ -17,7 +17,14 @@ lint the current source with its standard configs, even when the project has its
 @cc [owner:flvndvd,label:performance] frame-lint-local-files
 The checker files MUST be cached on local sandbox disk after first use. Generated lint configs
 MUST stay on local disk and MUST be removed when the lint command exits.
+Checker caches MUST keep different skill attachment directories separate.
+
+@cc [owner:flvndvd,label:product] frame-types-attached-source
+When a skill includes a declarations manifest, lint MUST use its attached types without
+contacting Viz or requiring DUST_VIZ_URL. Attachment loading or verification failures MUST NOT
+fall back to Viz.
 
 @cc [owner:flvndvd,label:security] frame-types-verified-cache
-Downloaded archives MUST match the manifest checksum and size before extraction. A cache entry
-MUST become visible only after extraction succeeds. A changed manifest id MUST select new types.
+Downloaded and attached archives MUST match the manifest checksum and size before extraction.
+A cache entry MUST become visible only after extraction succeeds. A changed manifest id MUST
+select new types.

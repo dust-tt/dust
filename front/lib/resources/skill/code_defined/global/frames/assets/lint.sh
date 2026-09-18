@@ -10,27 +10,32 @@ fi
 checker_cache=${DUST_FRAME_CHECKER_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/dust/frame-checker}
 checker="$checker_cache/checker"
 if [ "$0" != "$checker/lint.sh" ]; then
+  templates=$(cd -- "$(dirname -- "$0")" && pwd)
+  # Each conversation can have a different local Viz build attached to its skill.
+  checker_cache="$checker_cache$templates"
+  checker="$checker_cache/checker"
   if [ ! -f "$checker/lint.sh" ]; then
-    templates=$(dirname -- "$0")
     mkdir -p -- "$checker_cache"
     staging=$(mktemp -d "$checker_cache/.copy.XXXXXX")
     trap 'rm -rf -- "$staging"' EXIT
     mkdir "$staging/checker"
     cp -- "$templates/lint.sh" "$templates/tsconfig.json" \
       "$templates/oxlintrc.json" "$staging/checker/"
-    # Publish all three files together, including when two lint calls start at once.
+    if [ -f "$templates/frame-runtime.json" ]; then
+      cp -- "$templates/frame-runtime.json" "$templates/frame-runtime.tgz" "$staging/checker/"
+    fi
+    # Publish the files together, including when two lint calls start at once.
     if ! mv "$staging/checker" "$checker_cache/"; then
       test -f "$checker/lint.sh"
     fi
     rm -rf -- "$staging"
     trap - EXIT
   fi
-  exec bash "$checker/lint.sh" "$@"
+  DUST_FRAME_CHECKER_CACHE="$checker_cache" exec bash "$checker/lint.sh" "$@"
 fi
 
 templates=$(cd -- "$(dirname -- "$0")" && pwd)
 project=$(cd -- "${1:-.}" && pwd)
-viz_url=${DUST_VIZ_URL:?Set DUST_VIZ_URL to the Viz origin}
 cache=${DUST_FRAME_TYPES_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/dust/frame-types}
 
 if [ ! -f "$project/manifest.json" ] && [ ! -f "$project/index.tsx" ]; then
@@ -38,8 +43,14 @@ if [ ! -f "$project/manifest.json" ] && [ ! -f "$project/index.tsx" ]; then
   exit 1
 fi
 
-manifest=$(curl --fail --silent --show-error --location --max-time 30 \
-  --max-filesize 65536 "${viz_url%/}/frame-runtime/manifest.json")
+if [ -f "$templates/frame-runtime.json" ]; then
+  # Development skills carry the local build so the sandbox needs no Viz tunnel.
+  manifest=$(cat "$templates/frame-runtime.json")
+else
+  viz_url=${DUST_VIZ_URL:?Set DUST_VIZ_URL to the Viz origin}
+  manifest=$(curl --fail --silent --show-error --location --max-time 30 \
+    --max-filesize 65536 "${viz_url%/}/frame-runtime/manifest.json")
+fi
 id=$(jq -er 'select(.version == 1) | .id | select(test("^[a-f0-9]{64}$"))' <<< "$manifest")
 checksum=$(jq -er '.tarballSha256 | select(test("^[a-f0-9]{64}$"))' <<< "$manifest")
 size=$(jq -er '.sizeBytes | select(. > 0 and . <= 20971520)' <<< "$manifest")
@@ -52,9 +63,13 @@ if [ ! -d "$types" ]; then
   staging=$(mktemp -d "$cache/.download.XXXXXX")
   trap 'rm -rf -- "$staging"' EXIT
   archive="$staging/types.tgz"
-  curl --fail --silent --show-error --location --max-time 30 \
-    --max-filesize 20971520 --output "$archive" \
-    "${viz_url%/}/frame-runtime/$checksum.tgz"
+  if [ -f "$templates/frame-runtime.json" ]; then
+    cp -- "$templates/frame-runtime.tgz" "$archive"
+  else
+    curl --fail --silent --show-error --location --max-time 30 \
+      --max-filesize 20971520 --output "$archive" \
+      "${viz_url%/}/frame-runtime/$checksum.tgz"
+  fi
   if [ "$(wc -c < "$archive" | tr -d ' ')" != "$size" ]; then
     echo "Viz types archive size mismatch" >&2
     exit 1

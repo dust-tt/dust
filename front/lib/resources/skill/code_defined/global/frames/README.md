@@ -29,9 +29,25 @@ The sandbox provides `DUST_VIZ_URL`, Oxlint and the Tailwind plugin. Declaration
 manifest id in `$XDG_CACHE_HOME/dust/frame-types` or `$HOME/.cache/dust/frame-types`. Override the
 cache with `DUST_FRAME_TYPES_CACHE`. Downloads are checked against the manifest checksum and size.
 Checker files are cached in the sibling `frame-checker` directory. Override this location with
-`DUST_FRAME_CHECKER_CACHE`. Remove that cache after editing the skill assets locally.
+`DUST_FRAME_CHECKER_CACHE`. Each skill attachment directory gets its own checker cache so
+conversations can use different local builds. Remove that cache after editing the skill assets locally.
 
-For local development, install Oxlint and run the script from this directory:
+For sandbox use in development, build the Viz declarations before starting Front:
+
+```sh
+npm -w viz run build:runtime-types
+```
+
+Front attaches the generated manifest and archive as `frame-runtime.json` and `frame-runtime.tgz`
+when running in development. The archive is about 760 KiB and is not checked into Git. The lint
+script copies both to local disk on first use and verifies them with the same checksum and size
+checks as downloads. It makes no Viz requests and needs no Viz tunnel or `DUST_VIZ_URL`.
+
+After rebuilding the declarations, restart Front and use a new conversation. Existing conversations
+keep their attached snapshot. If no local build exists when Front starts, or outside development,
+the checker uses its normal Viz download path.
+
+To run lint directly on your laptop, install Oxlint and run the script from this directory:
 
 ```sh
 npm install --global oxlint@1.83.0 oxlint-tsgolint@7.0.2001 oxlint-tailwindcss@1.12.0
