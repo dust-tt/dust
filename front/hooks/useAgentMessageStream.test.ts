@@ -2,11 +2,11 @@ import type { PendingToolCall } from "@app/components/assistant/conversation/typ
 import { makeInitialMessageStreamState } from "@app/components/assistant/conversation/types";
 import {
   appendThinkingStep,
-  isTerminalAgentMessageEvent,
   removePendingToolCallForAction,
   upsertPendingToolCall,
   useAgentMessageStream,
 } from "@app/hooks/useAgentMessageStream";
+import { isTerminalAgentLoopEvent } from "@app/lib/client/agent_loop_stream";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   InlineActivityStep,
@@ -297,14 +297,14 @@ describe("useAgentMessageStream", () => {
     ["generation_tokens", false],
   ])("classifies %s as terminal: %s", (type, expected) => {
     expect(
-      isTerminalAgentMessageEvent(
+      isTerminalAgentLoopEvent(
         JSON.stringify({ eventId: "1", data: { type } })
       )
     ).toBe(expected);
   });
 
   it("does not treat malformed events as terminal", () => {
-    expect(isTerminalAgentMessageEvent("not json")).toBe(false);
+    expect(isTerminalAgentLoopEvent("not json")).toBe(false);
   });
 
   it("clears stale database content before replaying fresh-mount tokens", () => {
@@ -356,7 +356,7 @@ describe("useAgentMessageStream", () => {
       expect.any(Function),
       "message-msg_123",
       expect.objectContaining({
-        isTerminalEvent: isTerminalAgentMessageEvent,
+        isTerminalEvent: isTerminalAgentLoopEvent,
         keepAliveOnUnmount: true,
         replayBufferedEventsOnMount: true,
         restartKey: "stream_123",
