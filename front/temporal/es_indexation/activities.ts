@@ -186,26 +186,26 @@ export async function indexAgentSearchActivity({
     return;
   }
 
-  const [
-    editors,
-    skills,
-    tagsByConfigurationId,
-    actionsByConfigurationId,
-    feedbacks,
-    favoriteCount,
-  ] = await Promise.all([
-    agent.listEditors(auth),
-    agent.listSkills(auth, {
-      permissionFiltering: "redact_unreadable",
-    }),
-    TagResource.listForAgents(auth, [agent.agentConfigurationModelId]),
-    fetchMCPServerActionConfigurations(auth, {
+  const editors = await agent.listEditors(auth);
+  const skills = await agent.listSkills(auth, {
+    permissionFiltering: "redact_unreadable",
+  });
+  const tagsByConfigurationId = await TagResource.listForAgents(auth, [
+    agent.agentConfigurationModelId,
+  ]);
+  const actionsByConfigurationId = await fetchMCPServerActionConfigurations(
+    auth,
+    {
       configurationModelIds: [agent.agentConfigurationModelId],
       variant: "full",
-    }),
-    AgentMessageFeedbackResource.getFeedbackCountForAssistant(auth, agent.sId),
-    agent.countFavorites(auth),
-  ]);
+    }
+  );
+  const feedback =
+    await AgentMessageFeedbackResource.getFeedbackCountForAssistant(
+      auth,
+      agent.sId
+    );
+  const favoriteCount = await agent.countFavorites(auth);
 
   const lastEditedByUser = agent.versionAuthorId
     ? await UserResource.fetchByModelId(agent.versionAuthorId)
@@ -215,8 +215,8 @@ export async function indexAgentSearchActivity({
     activeUsersCount: null,
     editors: editors ?? [],
     favoriteCount,
-    feedbackNegativeCount: feedbacks.negative,
-    feedbackPositiveCount: feedbacks.positive,
+    feedbackNegativeCount: feedback.negative,
+    feedbackPositiveCount: feedback.positive,
     lastEditedByUser,
     mcpServerViewIds: (
       actionsByConfigurationId.get(agent.agentConfigurationModelId) ?? []
