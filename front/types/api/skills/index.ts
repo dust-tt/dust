@@ -1,5 +1,6 @@
 import type {
   SkillAvailability,
+  SkillListItemType,
   SkillStatus,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
@@ -13,6 +14,10 @@ export type GetSkillsResponseBody = {
   })[];
 };
 
+export type SkillSearchResult = SkillListItemType & {
+  score: number;
+};
+
 // OR within a dimension, AND across dimensions. Selection never replaces ACLs.
 export interface SkillSearchFilters {
   // Omitted means active only. Suggested skills are never searchable.
@@ -21,6 +26,11 @@ export interface SkillSearchFilters {
   // Supports "edited by me", but not "not edited by me".
   editedByMe?: true;
   availability?: SkillAvailability[];
+}
+
+export interface SkillSearchOptions {
+  searchTerm: string;
+  filters?: SkillSearchFilters;
 }
 
 /**

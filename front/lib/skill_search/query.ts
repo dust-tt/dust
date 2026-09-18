@@ -1,7 +1,20 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { SkillSearchFilters } from "@app/types/api/skills";
+import { buildSkillMatchQuery } from "@app/lib/skill_search/ranking";
+import type {
+  SkillSearchFilters,
+  SkillSearchOptions,
+} from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
+import { z } from "zod";
+
+export const MAX_SKILL_SEARCH_RESULTS = 150;
+export const SkillSearchSortSchema = z.tuple([
+  z.number().finite(),
+  z.string(),
+  z.string(),
+]);
+export type SkillSearchSort = z.infer<typeof SkillSearchSortSchema>;
 
 // Null represents a type-wide read grant; do not enumerate resources in that case.
 export function getSkillSearchReadableSpaceIds(auth: Authenticator) {
@@ -83,23 +96,28 @@ function buildSelectionFilters(
 /**
  * @cc [owner:aubin-tchoi,label:security] workspace-scoped-skill-search
  * Every query is workspace- and lifecycle-scoped, defaulting to active skills, and requires
- * every requested space and editor visibility. Selection filters never replace permissions.
+ * every requested space and editor visibility.
  */
 export function buildSkillSearchQuery(
   auth: Authenticator,
-  { filters = {} }: { filters?: SkillSearchFilters } = {}
+  searchTerm: string,
+  { filters = {} }: Pick<SkillSearchOptions, "filters"> = {}
 ): estypes.QueryDslQueryContainer {
+  const readableSpaceIds = getSkillSearchReadableSpaceIds(auth);
   return {
     bool: {
       filter: [
         { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
         {
-          terms: { status: [...new Set(filters.status ?? ["active"])].sort() },
+          terms: {
+            status: [...new Set(filters.status ?? ["active"])].sort(),
+          },
         },
         buildAvailabilityFilter(auth),
-        buildSpaceAccessFilter(getSkillSearchReadableSpaceIds(auth)),
+        buildSpaceAccessFilter(readableSpaceIds),
         ...buildSelectionFilters(auth, filters),
       ],
+      must: [buildSkillMatchQuery(searchTerm)],
     },
   };
 }

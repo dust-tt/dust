@@ -101,6 +101,27 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   availability: z.enum(SKILL_AVAILABILITIES),
 });
 
+/**
+ * @cc [owner:aubin-tchoi,label:security] skill-list-item
+ * Search listings contain indexed metadata and relationship IDs, never full resources,
+ * instructions, tool configurations, attachments, source or reinforcement data.
+ */
+export const SkillListItemSchema = z.object({
+  sId: z.string(),
+  status: z.enum(SKILL_STATUSES),
+  name: z.string(),
+  userFacingDescription: z.string(),
+  icon: z.string().nullable(),
+  requestedSpaceIds: z.array(z.string()),
+  mcpServerViewIds: z.array(z.string()),
+  editorIds: z.array(z.string()),
+  availability: z.enum(SKILL_AVAILABILITIES),
+  activeUsersCount: z.number().nullable(),
+  updatedAt: z.number(),
+});
+
+export type SkillListItemType = z.infer<typeof SkillListItemSchema>;
+
 export type SkillWithoutInstructionsAndToolsType = z.infer<
   typeof SkillWithoutInstructionsAndToolsSchema
 >;
