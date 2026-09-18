@@ -11,6 +11,7 @@ import { useEventSource } from "@app/hooks/useEventSource";
 import type { AgentLoopToolNotificationEvent } from "@app/lib/actions/mcp";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
+import { isTerminalAgentLoopEvent } from "@app/lib/client/agent_loop_stream";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   InlineActivityStep,
@@ -791,10 +792,19 @@ export function useAgentMessageStream({
   const { isError } = useEventSource(
     buildEventSourceURL,
     onEventCallback,
-    streamId,
+    `message-${sId}`,
     {
       workspaceId: owner.sId,
       isReadyToConsumeStream: shouldStream,
+      isTerminalEvent: isTerminalAgentLoopEvent,
+      keepAliveOnUnmount: true,
+      replayBufferedEventsOnMount: true,
+      restartKey: streamId,
+      telemetryContext: {
+        sseKind: "agent_loop",
+        conversationId,
+        messageId: sId,
+      },
     }
   );
 
