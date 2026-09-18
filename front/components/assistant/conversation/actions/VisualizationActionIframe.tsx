@@ -353,7 +353,7 @@ function SandboxFunctionInvocation({
     buildEventSourceURL,
     onEventCallback,
     `sandbox-function-invocation-${invocationId}`,
-    { onTerminalError }
+    { onTerminalError, workspaceId }
   );
 
   return null;

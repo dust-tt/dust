@@ -793,6 +793,7 @@ export function useAgentMessageStream({
     onEventCallback,
     streamId,
     {
+      workspaceId: owner.sId,
       isReadyToConsumeStream: shouldStream,
     }
   );
