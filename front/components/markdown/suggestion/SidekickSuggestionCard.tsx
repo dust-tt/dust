@@ -653,15 +653,15 @@ function KnowledgeSuggestionCard({
   );
 }
 
-interface ConnectedCreateOrDeleteSuggestionCardProps {
+interface ConnectedAgentSuggestionActionCardProps {
   agentSuggestion: AgentCreateSuggestionType | AgentDeleteSuggestionType;
 }
 
-// Thin wiring so `AgentSuggestionActionCard` stays context-free and shareable with the
-// conversation view, which has no `SidekickSuggestionsContext` to pull accept/reject from.
-function ConnectedCreateOrDeleteSuggestionCard({
+// Thin wiring so the shared card stays context-free: it pulls accept/reject from the sidekick's
+// own data source and passes them down as props, rather than the shared card reading them itself.
+function ConnectedAgentSuggestionActionCard({
   agentSuggestion,
-}: ConnectedCreateOrDeleteSuggestionCardProps) {
+}: ConnectedAgentSuggestionActionCardProps) {
   const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
 
   return (
@@ -705,9 +705,7 @@ export function SidekickSuggestionCard({
     case "create":
     case "delete":
       return (
-        <ConnectedCreateOrDeleteSuggestionCard
-          agentSuggestion={agentSuggestion}
-        />
+        <ConnectedAgentSuggestionActionCard agentSuggestion={agentSuggestion} />
       );
     default:
       assertNeverAndIgnore(agentSuggestion);

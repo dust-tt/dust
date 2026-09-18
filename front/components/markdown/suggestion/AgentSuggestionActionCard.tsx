@@ -1,11 +1,6 @@
 /**
- * Card for the "create" and "delete" agent suggestion kinds.
- *
- * Unlike the other agent suggestion kinds (tools, skills, model, knowledge, sub_agent,
- * instructions), these two don't depend on the agent builder's form context or its tiptap
- * instructions editor, so they can be rendered the same way from the agent builder sidekick and
- * from a plain conversation message. Accept/reject wiring is passed in by the caller instead of
- * being pulled from a context, so each surface can use its own data source.
+ * For cards that don't depend on the agent builder's form context or its tiptap
+ * instructions editor, so they can be rendered from a plain conversation message.
  */
 
 import { getIcon } from "@app/components/resources/resources_icons";
@@ -44,10 +39,9 @@ interface AgentSuggestionActionCardProps {
 
 /**
  * @cc [owner:avervaet,label:react;architecture] no-suggestion-context-dependency
- * `AgentSuggestionActionCard` MUST NOT read from `SidekickSuggestionsContext` or any other
- * provider, and MUST NOT fetch its own data: it is rendered by both the agent builder sidekick and
- * plain conversation messages, which have different data sources and no shared provider. Accept and
- * reject MUST come in as `onAccept`/`onReject` props.
+ * This card MUST NOT read from any context or provider, and MUST NOT fetch its own data: it is
+ * rendered from multiple call sites with different data sources and no guarantee of a shared
+ * provider between them. Accept and reject MUST come in as `onAccept`/`onReject` props.
  */
 export function AgentSuggestionActionCard({
   agentSuggestion,
