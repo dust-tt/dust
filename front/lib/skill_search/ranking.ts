@@ -3,7 +3,7 @@ import type { estypes } from "@elastic/elasticsearch";
 export function buildSkillDefaultSort(): estypes.Sort {
   return [
     { _score: { order: "desc" } },
-    // Skill ID is the tie-breaker for results with the same score.
+    // Skill ID is the tie-breaker.
     { skill_id: { order: "asc" } },
   ];
 }
