@@ -17,6 +17,7 @@ import {
 import {
   isSlackPostingPermissionError,
   isSlackWebAPIPlatformError,
+  isSlackWebAPIPlatformErrorBotNotFound,
   isWebAPIRateLimitedError,
   SlackExternalUserError,
   SlackMessageError,
@@ -25,14 +26,17 @@ import { formatMessagesForUpsert } from "@connectors/connectors/slack/lib/messag
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
   getSlackBotInfo,
+  getSlackBotInfoFromMessage,
   getSlackClient,
   getSlackUserInfoMemoized,
+  makeSlackBotUserInfo,
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
   isBotAllowed,
   notifyIfSlackUserIsNotAllowed,
+  SLACK_BOT_NOT_IDENTIFIED_MESSAGE,
 } from "@connectors/connectors/slack/lib/workspace_limits";
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
@@ -126,6 +130,7 @@ type BotAnswerParams = {
   slackChannel: string;
   slackUserId: string;
   slackBotId?: string;
+  slackBotUsername?: string;
   slackMessageTs: string;
   slackThreadTs?: string;
 };
@@ -773,6 +778,15 @@ async function processErrorResult(
   }
 }
 
+/**
+ * @cc [owner:rfrenoy,label:product] bot-message-name-resolution
+ * A message carrying a `bot_id` and no `user` MUST be attributed to the name `bots.info` returns
+ * for that bot or, when Slack answers `bot_not_found`, to the message `username`, taken from the
+ * webhook event when it carries one and otherwise from the message fetched at `slackMessageTs`.
+ * The summoning whitelist check and the group resolution MUST both use that name trimmed. When no
+ * name can be resolved, the function MUST return a `SlackExternalUserError` so the failure is
+ * posted in the thread, never `Ok(undefined)`.
+ */
 async function answerMessage(
   message: string,
   mentionOverride: string | undefined,
@@ -781,6 +795,7 @@ async function answerMessage(
     slackChannel,
     slackUserId,
     slackBotId,
+    slackBotUsername,
     slackMessageTs,
     slackThreadTs,
   }: BotAnswerParams,
@@ -835,21 +850,9 @@ async function answerMessage(
         slackBotId
       );
     } catch (e) {
-      if (isSlackWebAPIPlatformError(e)) {
-        logger.error(
-          {
-            error: e,
-            connectorId: connector.id,
-            slackUserId,
-            slackBotId,
-            slackTeamId,
-          },
-          "Failed to get slack bot info"
-        );
-        if (e.data.error === "bot_not_found") {
-          // We received a bot message from a bot that is not accessible to us. We log and ignore
-          // the message.
-          logger.warn(
+      if (!isSlackWebAPIPlatformErrorBotNotFound(e)) {
+        if (isSlackWebAPIPlatformError(e)) {
+          logger.error(
             {
               error: e,
               connectorId: connector.id,
@@ -857,12 +860,34 @@ async function answerMessage(
               slackBotId,
               slackTeamId,
             },
-            "Received bot_not_found"
+            "Failed to get slack bot info"
           );
-          return new Ok(undefined);
         }
+        throw e;
       }
-      throw e;
+      const username = slackBotUsername?.trim();
+      slackUserInfo = username
+        ? makeSlackBotUserInfo({ username, imageUrl: null })
+        : await getSlackBotInfoFromMessage(connector.id, slackClient, {
+            channelId: slackChannel,
+            messageTs: slackMessageTs,
+          });
+      if (!slackUserInfo) {
+        logger.warn(
+          {
+            error: e,
+            connectorId: connector.id,
+            slackBotId,
+            slackTeamId,
+            slackChannel,
+            slackMessageTs,
+          },
+          "Received bot_not_found for a message without username"
+        );
+        return new Err(
+          new SlackExternalUserError(SLACK_BOT_NOT_IDENTIFIED_MESSAGE)
+        );
+      }
     }
   }
 
@@ -939,7 +964,7 @@ async function answerMessage(
   });
 
   if (slackUserInfo.is_bot) {
-    const botName = slackUserInfo.real_name;
+    const botName = slackUserInfo.real_name?.trim();
     if (!botName) {
       throw new Error("Failed to get bot name. Should never happen.");
     }
