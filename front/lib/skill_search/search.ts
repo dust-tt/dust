@@ -3,7 +3,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
 import { buildSkillDefaultSort } from "@app/lib/skill_search/ranking";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
-import type { SkillSearchFilters } from "@app/types/api/skills";
+import type {
+  SkillSearchFilters,
+  SkillSearchPermissionFiltering,
+} from "@app/types/api/skills";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
@@ -17,9 +20,9 @@ export {
  * @cc [owner:aubin-tchoi,label:security;performance] indexed-skill-search-listings
  * Return only workspace-scoped indexed metadata using the caller's hydrated grants, with no
  * database reads. Permission-bearing document changes are eventually consistent; full-skill
- * access remains separately authorized. Unreadable listings must not be returned.
+ * access remains separately authorized. Callers must authorize admin-only redaction upstream.
  * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
- * Preserve Elasticsearch hit order without exposing scores in skill listings.
+ * Preserve Elasticsearch hit order without exposing scores or readability flags in skill listings.
  * Request _source and omit hits without source documents.
  */
 export async function searchSkills(
@@ -28,17 +31,25 @@ export async function searchSkills(
     searchTerm,
     filters,
     limit,
+    permissionFiltering = "strict",
   }: {
     searchTerm: string;
     filters?: SkillSearchFilters;
     limit: number;
+    permissionFiltering?: SkillSearchPermissionFiltering;
   }
 ) {
+  const query = buildSkillSearchQuery(auth, {
+    searchTerm,
+    filters,
+    permissionFiltering,
+  });
+
   const result = await withEs((client) =>
     client.search<SkillSearchDocument>({
       index: SKILL_SEARCH_ALIAS_NAME,
       _source: true,
-      query: buildSkillSearchQuery(auth, { searchTerm, filters }),
+      query,
       size: limit,
       sort: buildSkillDefaultSort(),
     })

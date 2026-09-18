@@ -23,13 +23,17 @@ import {
   buildSkillSearchQuery,
   searchSkills,
 } from "@app/lib/skill_search/search";
+import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { matchesSkillSearchFilters } from "@app/tests/utils/skill_search";
-import type { SkillSearchFilters } from "@app/types/api/skills";
+import type {
+  SkillSearchFilters,
+  SkillSearchPermissionFiltering,
+} from "@app/types/api/skills";
 import {
   SkillListItemSchema,
   SkillSchema,
@@ -68,11 +72,13 @@ async function searchListings(
   options: {
     searchTerm: string;
     filters?: SkillSearchFilters;
+    permissionFiltering?: SkillSearchPermissionFiltering;
   } = { searchTerm: "" }
 ) {
   const result = await searchSkills(auth, {
     ...options,
     limit: 200,
+    permissionFiltering: options.permissionFiltering,
   });
   assert(result.isOk());
   return result.value;
@@ -450,6 +456,37 @@ describe("custom skill search", () => {
     }
   });
 
+  it.each([
+    "regular",
+    "project",
+  ] as const)("returns unreadable %s listings for admins without hydration", async (kind) => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space =
+      kind === "regular"
+        ? await SpaceFactory.regular(workspace)
+        : await SpaceFactory.project(workspace);
+    const skill = await SkillFactory.create(auth, {
+      requestedSpaceIds: [space.id],
+      manuallyRequestedSpaceIds: [space.id],
+    });
+    const [document] = await mockHits(auth, [skill]);
+    const [strict] = await searchListings(auth);
+    expect(strict).toBeUndefined();
+    const [redacted] = await searchListings(auth, {
+      searchTerm: "",
+      permissionFiltering: "redact_unreadable",
+    });
+    expect(SkillListItemSchema.strict().parse(redacted)).toEqual(
+      toSkillListItem(document)
+    );
+    expect(mockSearch.mock.lastCall![0].query.bool.filter).toEqual([
+      { term: { workspace_id: workspace.sId } },
+      { terms: { status: ["active"] } },
+    ]);
+  });
+
   it("handles absent and type-wide space grants without enumerating spaces", async () => {
     const {
       authenticator: auth,
@@ -527,6 +564,11 @@ describe("custom skill search", () => {
     ).not.toContainEqual({
       terms: { skill_id: [own.sId] },
     });
+    const redacted = await searchListings(auth, {
+      searchTerm: "",
+      permissionFiltering: "redact_unreadable",
+    });
+    expect(redacted).toEqual(candidates);
   });
 
   it("requires indexed editorship even with a type-wide skill grant", async () => {

@@ -1,3 +1,4 @@
+import type { SkillPermissionFilteringMode } from "@app/lib/resources/skill/skill_resource";
 import type {
   SkillAvailability,
   SkillStatus,
@@ -12,6 +13,11 @@ export type GetSkillsResponseBody = {
     isFavorite?: boolean;
   })[];
 };
+
+export type SkillSearchPermissionFiltering = Exclude<
+  SkillPermissionFilteringMode,
+  "dangerously_skip"
+>;
 
 // OR within a dimension, AND across dimensions. Selection never replaces ACLs.
 export interface SkillSearchFilters {

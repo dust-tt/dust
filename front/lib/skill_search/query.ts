@@ -1,7 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { buildSkillNameAutocompleteQuery } from "@app/lib/skill_search/ranking";
-import type { SkillSearchFilters } from "@app/types/api/skills";
+import type {
+  SkillSearchFilters,
+  SkillSearchPermissionFiltering,
+} from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
 
 export const MAX_SKILL_SEARCH_RESULTS = 100;
@@ -85,17 +88,19 @@ function buildSelectionFilters(
 
 /**
  * @cc [owner:aubin-tchoi,label:security] workspace-scoped-skill-search
- * Every query is workspace- and lifecycle-scoped, defaulting to active skills, and requires
- * every requested space and editor visibility. Selection filters never replace permissions.
+ * Every query is workspace- and lifecycle-scoped, defaulting to active skills. Strict mode requires every requested
+ * space and editor visibility. Callers must authorize admin-only metadata redaction upstream.
  */
 export function buildSkillSearchQuery(
   auth: Authenticator,
   {
     searchTerm,
     filters = {},
+    permissionFiltering = "strict",
   }: {
     searchTerm: string;
     filters?: SkillSearchFilters;
+    permissionFiltering?: SkillSearchPermissionFiltering;
   }
 ): estypes.QueryDslQueryContainer {
   return {
@@ -105,8 +110,12 @@ export function buildSkillSearchQuery(
         {
           terms: { status: [...new Set(filters.status ?? ["active"])].sort() },
         },
-        buildAvailabilityFilter(auth),
-        buildSpaceAccessFilter(getSkillSearchReadableSpaceIds(auth)),
+        ...(permissionFiltering === "strict"
+          ? [
+              buildAvailabilityFilter(auth),
+              buildSpaceAccessFilter(getSkillSearchReadableSpaceIds(auth)),
+            ]
+          : []),
         ...buildSelectionFilters(auth, filters),
       ],
       must: [buildSkillNameAutocompleteQuery(searchTerm)],
