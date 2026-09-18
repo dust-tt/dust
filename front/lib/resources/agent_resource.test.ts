@@ -628,4 +628,73 @@ describe("AgentResource", () => {
     expect(managerAuth.hasPermission("admin", analyst)).toBe(false);
     expect(await helper.listEditors(testContext.authenticator)).toBeNull();
   });
+  describe("toSearchDocument", () => {
+    it("serializes a custom agent with the caller-supplied counts and ids", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Indexed", description: "Indexed description", scope: "hidden" }
+      );
+      const resource = await AgentResource.fetchById(
+        testContext.authenticator,
+        agent.sId
+      );
+      assert(resource);
+
+      const document = resource.toSearchDocument(testContext.workspace, {
+        activeUsersCount: null,
+        editors: [testContext.user, testContext.user],
+        favoriteCount: 4,
+        feedbackNegativeCount: 1,
+        feedbackPositiveCount: 9,
+        lastEditedByUser: testContext.user,
+        mcpServerViewIds: ["view-b", "view-a"],
+        skillIds: ["skill-b", "skill-a", "skill-b"],
+        tagIds: ["tag-a"],
+      });
+
+      expect(document).toEqual({
+        workspace_id: testContext.workspace.sId,
+        agent_id: agent.sId,
+        status: "active",
+        scope: "hidden",
+        name: "Indexed",
+        description: "Indexed description",
+        picture_url: agent.pictureUrl,
+        last_edited_by_user_id: testContext.user.sId,
+        editor_ids: [testContext.user.sId],
+        requested_space_ids: [],
+        created_at: resource.createdAt.toISOString(),
+        updated_at: resource.updatedAt.toISOString(),
+        skill_ids: ["skill-a", "skill-b"],
+        mcp_server_view_ids: ["view-a", "view-b"],
+        tag_ids: ["tag-a"],
+        feedback_positive_count: 9,
+        feedback_negative_count: 1,
+        active_users_count: null,
+        favorite_count: 4,
+      });
+    });
+
+    it("refuses to serialize a global agent", async () => {
+      const resource = await AgentResource.fetchById(
+        testContext.authenticator,
+        GLOBAL_AGENTS_SID.HELPER
+      );
+      assert(resource);
+
+      expect(() =>
+        resource.toSearchDocument(testContext.workspace, {
+          activeUsersCount: null,
+          editors: [],
+          favoriteCount: 0,
+          feedbackNegativeCount: 0,
+          feedbackPositiveCount: 0,
+          lastEditedByUser: null,
+          mcpServerViewIds: [],
+          skillIds: [],
+          tagIds: [],
+        })
+      ).toThrow("Search documents require a custom agent in the workspace.");
+    });
+  });
 });
