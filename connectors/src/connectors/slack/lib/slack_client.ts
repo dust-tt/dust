@@ -231,11 +231,16 @@ async function _getSlackUserInfo(
   }
 }
 
+/**
+ * @cc [owner:rfrenoy,label:product] nameless-bot-is-no-result
+ * When `bots.info` resolves `botId` but the returned bot has no `name`, the function MUST return
+ * `null` rather than throw, so callers can fall back to another source of the bot's name.
+ */
 export async function getSlackBotInfo(
   connectorId: ModelId,
   slackClient: WebClient,
   botId: string
-): Promise<SlackUserInfo> {
+): Promise<SlackUserInfo | null> {
   reportSlackUsage({
     connectorId,
     method: "bots.info",
@@ -246,7 +251,7 @@ export async function getSlackBotInfo(
   }
   const username = slackBot.bot?.name?.trim();
   if (!username) {
-    throw new Error(`Slack bot with id ${botId} has no name`);
+    return null;
   }
 
   return makeSlackBotUserInfo({
@@ -350,10 +355,10 @@ export async function getSlackBotInfoFromMessage(
 
 /**
  * @cc [owner:rfrenoy,label:product] bot-identity-resolution-order
- * The bot posting a message MUST be identified from `bots.info` when Slack resolves `slackBotId`,
- * otherwise from the trimmed `slackBotUsername` carried by the webhook event, otherwise from the
- * `username` of the message at `messageTs`. A `bots.info` failure other than `bot_not_found` MUST
- * propagate. When no source yields a name, the function MUST return `null`.
+ * The bot posting a message MUST be identified from `bots.info` when Slack resolves `slackBotId` to
+ * a named bot, otherwise from the trimmed `slackBotUsername` carried by the webhook event, otherwise
+ * from the `username` of the message at `messageTs`. A `bots.info` failure other than
+ * `bot_not_found` MUST propagate. When no source yields a name, the function MUST return `null`.
  */
 export async function resolveSlackBotInfo(
   connectorId: ModelId,
@@ -371,7 +376,10 @@ export async function resolveSlackBotInfo(
   }
 ): Promise<SlackUserInfo | null> {
   try {
-    return await getSlackBotInfo(connectorId, slackClient, slackBotId);
+    const botInfo = await getSlackBotInfo(connectorId, slackClient, slackBotId);
+    if (botInfo) {
+      return botInfo;
+    }
   } catch (e) {
     if (!isSlackWebAPIPlatformErrorBotNotFound(e)) {
       if (isSlackWebAPIPlatformError(e)) {
