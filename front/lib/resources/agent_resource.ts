@@ -86,7 +86,6 @@ const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
 // Full-only payload: every `AgentConfigurationModel` column that is not part of the identity/core
 // carried by both shapes. Present only on `full` resources (see `AgentResource` variants).
 export type AgentResourceContent = {
-  agentConfigurationModelId: ModelId;
   version: number;
   instructions: string | null;
   instructionsHtml: string | null;
@@ -99,6 +98,7 @@ export type AgentResourceContent = {
 };
 
 type AgentResourceExtraBlob = {
+  agentConfigurationModelId: ModelId;
   scope: AgentConfigurationScope;
   name: string;
   description: string;
@@ -146,10 +146,10 @@ export interface FullAgentResource extends AgentResource {
 
 // The stable identity of an agent, backed by `AgentModel` (so `id` is the agent's `agentModelId`).
 // It comes in two shapes, discriminated by `variant`:
-// - `light`: identity + `scope`/`name`/`description`/`status`/`pictureUrl`/`versionAuthorId`/
-//   `requestedSpaceIds`/`modelConfiguration`, built without a query from a configuration already in
-//   hand. These core fields are not read-gated — they are carried by every resource — and are
-//   sufficient for permission decisions.
+// - `light`: identity + `agentConfigurationModelId`/`scope`/`name`/`description`/`status`/
+//   `pictureUrl`/`versionAuthorId`/`requestedSpaceIds`/`modelConfiguration`, built without a query
+//   from a configuration already in hand. These core fields are not read-gated — they are carried
+//   by every resource — and are sufficient for permission decisions.
 // - `full`: additionally carries `content` (every remaining `AgentConfigurationModel` column of the
 //   resolved version). Produced by the access-controlled `fetch*` resolvers.
 /**
@@ -220,6 +220,7 @@ export class AgentResource
   // carried by `light` resources too. Only `fetch*`-built resources carry the real date: the `from*`
   // factories have no `agents` row in hand and stamp a placeholder (see `fromAgentConfiguration`).
   readonly createdAt: Date;
+  readonly agentConfigurationModelId: ModelId;
   readonly scope: AgentConfigurationScope;
   readonly name: string;
   readonly description: string;
@@ -246,6 +247,7 @@ export class AgentResource
     this.sId = blob.sId;
     this.workspaceId = blob.workspaceId;
     this.createdAt = blob.createdAt;
+    this.agentConfigurationModelId = extra.agentConfigurationModelId;
     this.scope = extra.scope;
     this.name = extra.name;
     this.description = extra.description;
@@ -302,6 +304,7 @@ export class AgentResource
         currentVersion: configuration.version,
       },
       {
+        agentConfigurationModelId: configuration.id,
         scope: configuration.scope,
         name: configuration.name,
         description: configuration.description,
@@ -346,6 +349,7 @@ export class AgentResource
         currentVersion: configuration.version,
       },
       {
+        agentConfigurationModelId: configuration.id,
         scope: "global",
         name: configuration.name,
         description: configuration.description,
@@ -389,6 +393,7 @@ export class AgentResource
             currentVersion: configuration.version,
           },
       {
+        agentConfigurationModelId: configuration.id,
         scope: configuration.scope,
         name: configuration.name,
         description: configuration.description,
@@ -404,7 +409,6 @@ export class AgentResource
           responseFormat: configuration.responseFormat ?? undefined,
         },
         content: {
-          agentConfigurationModelId: configuration.id,
           version: configuration.version,
           instructions: configuration.instructions,
           instructionsHtml: configuration.instructionsHtml,
@@ -814,7 +818,7 @@ export class AgentResource
       {
         where: {
           id: {
-            [Op.in]: resources.map((r) => r.content.agentConfigurationModelId),
+            [Op.in]: resources.map((r) => r.agentConfigurationModelId),
           },
           workspaceId: workspaceModelId,
         },
@@ -1055,7 +1059,7 @@ export class AgentResource
     const content = this.content;
 
     return {
-      id: content.agentConfigurationModelId,
+      id: this.agentConfigurationModelId,
       agentModelId: this.id,
       versionCreatedAt: content.createdAt.toISOString(),
       sId: this.sId,

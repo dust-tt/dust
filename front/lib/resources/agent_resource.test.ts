@@ -128,6 +128,52 @@ describe("AgentResource", () => {
     expect(asAdmin?.createdAt.getTime()).toBe(createdAt.getTime());
   });
 
+  it("carries the configuration row id on full and light resources alike", async () => {
+    // Hidden, so the non-author admin below gets it light.
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { scope: "hidden" }
+    );
+
+    const currentConfiguration = await AgentConfigurationModel.findOne({
+      where: {
+        sId: agent.sId,
+        status: "active",
+        workspaceId: testContext.workspace.id,
+      },
+    });
+    assert(currentConfiguration !== null);
+
+    const adminUser = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, adminUser, {
+      role: "admin",
+    });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      testContext.workspace.sId
+    );
+
+    const asAuthor = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    const asAdmin = await AgentResource.fetchById(adminAuth, agent.sId);
+    const fromConfiguration = AgentResource.fromAgentConfiguration(
+      testContext.authenticator,
+      agent
+    );
+
+    // The tables keyed by that id (skills, tools, tags) are read by callers who cannot read the
+    // agent, so the id is core: the light shape carries it just like the full one.
+    expect(asAuthor?.isFull()).toBe(true);
+    expect(asAuthor?.agentConfigurationModelId).toBe(currentConfiguration.id);
+    expect(asAdmin?.isFull()).toBe(false);
+    expect(asAdmin?.agentConfigurationModelId).toBe(currentConfiguration.id);
+    expect(fromConfiguration.agentConfigurationModelId).toBe(
+      currentConfiguration.id
+    );
+  });
+
   it("returns a light resource when the caller holds a verb but cannot read the agent", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator,
