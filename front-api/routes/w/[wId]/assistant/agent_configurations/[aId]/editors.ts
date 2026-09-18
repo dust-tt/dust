@@ -1,9 +1,9 @@
-import { shadowCanAdminAgent } from "@app/lib/api/assistant/agent_permissions";
 import {
   getAgentConfiguration,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentEditors } from "@app/lib/api/assistant/editors";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -128,6 +128,8 @@ app.patch(
       });
     }
 
+    // Existence guard only: 404s before authorization for a global agent or one whose legacy
+    // editor group is missing. Removed with the legacy editor writes in PR 14.
     const editorGroupRes = await GroupResource.findEditorGroupForAgent(
       auth,
       agent
@@ -171,15 +173,9 @@ app.patch(
       }
     }
 
-    const editorGroup = editorGroupRes.value;
-    // The rollout switch selects the permission source for both editor writes.
-    const canAdministrate = await shadowCanAdminAgent(
-      auth,
-      agent,
-      async () =>
-        auth.isAdmin() ||
-        (await editorGroup.isMember(auth.getNonNullableUser())),
-      "patchAgentEditorsRoute"
+    const canAdministrate = auth.can(
+      "admin",
+      AgentResource.fromAgentConfiguration(auth, agent)
     );
     if (!canAdministrate) {
       return apiError(ctx, {

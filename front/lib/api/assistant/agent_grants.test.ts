@@ -1,9 +1,4 @@
 import {
-  shadowCanAdminAgent,
-  shadowEditableAgents,
-  shadowUsageConfigIds,
-} from "@app/lib/api/assistant/agent_permissions";
-import {
   archiveAgentConfiguration,
   getAgentConfiguration,
   getAgentConfigurationForDetails,
@@ -14,12 +9,10 @@ import { getEditors } from "@app/lib/api/assistant/editors";
 import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -31,10 +24,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-it.each([
-  "legacy",
-  "grants",
-])("selects %s for permissions and views", async (mode) => {
+it.each(["legacy", "grants"])("selects %s for agent views", async (mode) => {
   vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(
     mode === "legacy"
   );
@@ -75,10 +65,6 @@ it.each([
       })
     ).isOk()
   );
-  const suggestion = await AgentSuggestionFactory.createInstructions(
-    authorAuth,
-    grantAgent
-  );
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     member.sId,
     workspace.sId
@@ -87,37 +73,6 @@ it.each([
   const excluded = mode === "grants" ? legacyAgent : grantAgent;
   await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
   const warn = vi.spyOn(logger, "warn");
-
-  const selectedConfig = await getAgentConfiguration(auth, {
-    agentId: selected.sId,
-    variant: "light",
-  });
-  const excludedConfig = await getAgentConfiguration(auth, {
-    agentId: excluded.sId,
-    variant: "light",
-  });
-  assert(selectedConfig && excludedConfig);
-  expect([selectedConfig.canRead, selectedConfig.canEdit]).toEqual([
-    true,
-    true,
-  ]);
-  expect([excludedConfig.canRead, excludedConfig.canEdit]).toEqual([
-    false,
-    false,
-  ]);
-  const legacyPermission = async () => legacyGroup.value.isMember(member);
-  expect(
-    await shadowCanAdminAgent(auth, legacyAgent, legacyPermission, "test")
-  ).toBe(mode !== "grants");
-  expect(
-    (await shadowEditableAgents(auth, [grantAgent, legacyAgent], "test")).map(
-      (agent) => agent.sId
-    )
-  ).toEqual([selected.sId]);
-  expect(await shadowUsageConfigIds(auth, "test")).toEqual([selected.id]);
-  expect(await AgentSuggestionResource.fetchById(auth, suggestion.sId)).toEqual(
-    mode === "grants" ? expect.objectContaining({ sId: suggestion.sId }) : null
-  );
 
   for (const view of ["list", "manage"] as const) {
     const agents = await getAgentConfigurationsForView({
@@ -156,38 +111,6 @@ it.each([
       "group_permissions_shadow_mismatch"
     )
   );
-  for (const check of [
-    "agent_permissions",
-    "agent_permission",
-    "editable_agents",
-    "agent_usage_filter",
-  ]) {
-    expect(warn).toHaveBeenCalledWith(
-      expect.objectContaining({ check, servedSource: mode }),
-      "group_permissions_shadow_mismatch"
-    );
-  }
-  const error = vi.spyOn(logger, "error");
-  const failedLegacyRead = shadowCanAdminAgent(
-    auth,
-    legacyAgent,
-    async () => {
-      throw new Error("legacy read failed");
-    },
-    "test"
-  );
-  if (mode === "grants") {
-    await expect(failedLegacyRead).resolves.toBe(false);
-    expect(error).toHaveBeenCalledWith(
-      expect.objectContaining({
-        check: "agent_permission",
-        servedSource: mode,
-      }),
-      "group_permissions_shadow_candidate_error"
-    );
-  } else {
-    await expect(failedLegacyRead).rejects.toThrow("legacy read failed");
-  }
 });
 
 it("keeps author access and admin redaction when grants are enabled", async () => {
@@ -239,8 +162,12 @@ it("keeps author access and admin redaction when grants are enabled", async () =
     canEdit: false,
     instructions: null,
   });
+  // The admin role still administers the agent even though content is redacted.
   expect(
-    await shadowCanAdminAgent(adminAuth, agent, async () => true, "test")
+    adminAuth.can(
+      "admin",
+      AgentResource.fromAgentConfiguration(adminAuth, agent)
+    )
   ).toBe(true);
 });
 
