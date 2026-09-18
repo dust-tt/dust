@@ -3686,12 +3686,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       await GroupResource.getActiveMembershipsForGroups(auth, groups);
     const userModelIds = [...new Set(Object.values(membershipsByGroup).flat())];
     const users = await UserResource.fetchByModelIds(userModelIds);
-    const sIdByModelId = new Map(users.map((user) => [user.id, user.sId]));
+    const userIdByModelId = new Map(users.map((user) => [user.id, user.sId]));
 
     return groups.map((group) => {
       const memberIds = removeNulls(
         (membershipsByGroup[group.id] ?? []).map((userModelId) =>
-          sIdByModelId.get(userModelId)
+          userIdByModelId.get(userModelId)
         )
       );
       return {

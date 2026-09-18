@@ -2501,7 +2501,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     if (spaceIdsRemovedFromThisSkill.length > 0) {
       actionsByAgentModelId = await fetchMCPServerActionConfigurations(auth, {
-        configurationIds: agentModelIds,
+        configurationModelIds: agentModelIds,
         variant: "full",
       });
 
@@ -2907,14 +2907,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const agentConfigById = new Map(agentConfigs.map((a) => [a.id, a]));
 
     // Map AgentSkillModel references back to skill sId.
-    const sIdByCustomId = new Map(
+    const skillIdByModelId = new Map(
       skills.filter((s) => !s.codeDefinedSkillId).map((s) => [s.id, s.sId])
     );
 
     const result = new Map<string, AgentUsageAttributes[]>();
     for (const as of agentSkills) {
       const skillId = as.customSkillId
-        ? sIdByCustomId.get(as.customSkillId)
+        ? skillIdByModelId.get(as.customSkillId)
         : (as.globalSkillId ?? undefined);
       if (!skillId) {
         continue;

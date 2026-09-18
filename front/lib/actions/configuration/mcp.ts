@@ -31,10 +31,10 @@ import { Op } from "sequelize";
 export async function fetchMCPServerActionConfigurations(
   auth: Authenticator,
   {
-    configurationIds,
+    configurationModelIds,
     variant,
   }: {
-    configurationIds: ModelId[];
+    configurationModelIds: ModelId[];
     variant: AgentFetchVariant;
   }
 ): Promise<Map<ModelId, MCPServerConfigurationType[]>> {
@@ -45,7 +45,7 @@ export async function fetchMCPServerActionConfigurations(
   const mcpServerConfigurations =
     await AgentMCPServerConfigurationModel.findAll({
       where: {
-        agentConfigurationId: { [Op.in]: configurationIds },
+        agentConfigurationId: { [Op.in]: configurationModelIds },
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });

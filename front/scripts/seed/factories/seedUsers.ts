@@ -21,7 +21,7 @@ export async function seedUsers(
       );
       if (existingUser.sId !== userAsset.sId) {
         logger.warn(
-          { sId: existingUser.sId, assetSId: userAsset.sId },
+          { sId: existingUser.sId, assetId: userAsset.sId },
           "Existing user has a different sId than the asset: assets referencing the asset sId " +
             "(e.g. skill editors suggestions) will not resolve to this user"
         );

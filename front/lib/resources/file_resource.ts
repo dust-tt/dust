@@ -2926,11 +2926,11 @@ async function deleteCoreFileArtifactsFromDataSource(
     async (span) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const projectId = dataSource.dustAPIProjectId;
-      const dataSourceId = dataSource.dustAPIDataSourceId;
+      const dustAPIDataSourceId = dataSource.dustAPIDataSourceId;
       const logCtx = {
         workspaceId: auth.workspace()?.sId,
         fileId: file.sId,
-        dataSourceSId: dataSource.sId,
+        dataSourceId: dataSource.sId,
       };
 
       const tableIds = new Set<string>([
@@ -2943,13 +2943,13 @@ async function deleteCoreFileArtifactsFromDataSource(
       span?.setTag("file.use_case", file.useCase);
       span?.setTag("data_source.s_id", dataSource.sId);
       span?.setTag("core.project_id", projectId);
-      span?.setTag("core.data_source_id", dataSourceId);
+      span?.setTag("core.data_source_id", dustAPIDataSourceId);
       span?.setTag("tables.count", tableIds.size);
 
       for (const tableId of tableIds) {
         const delTableRes = await coreAPI.deleteTable({
           projectId,
-          dataSourceId,
+          dataSourceId: dustAPIDataSourceId,
           tableId,
         });
         if (
@@ -2965,7 +2965,7 @@ async function deleteCoreFileArtifactsFromDataSource(
 
       const delDocRes = await coreAPI.deleteDataSourceDocument({
         projectId,
-        dataSourceId,
+        dataSourceId: dustAPIDataSourceId,
         documentId: file.sId,
         caller: "file-resource",
       });

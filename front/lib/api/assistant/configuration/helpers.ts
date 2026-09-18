@@ -246,8 +246,8 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     agentIdsForUserAsEditor?: ModelId[];
   }
 ): Promise<AgentConfigurationType[]> {
-  const configurationIds = agentConfigurations.map((a) => a.id);
-  const configurationSIds = agentConfigurations.map((a) => a.sId);
+  const configurationModelIds = agentConfigurations.map((a) => a.id);
+  const configurationIds = agentConfigurations.map((a) => a.sId);
   const user = auth.user();
   const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
 
@@ -265,16 +265,16 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
 
   const mcpServerActionsConfigurationsPerAgent =
     await fetchMCPServerActionConfigurations(auth, {
-      configurationIds,
+      configurationModelIds,
       variant,
     });
   const favoriteStatePerAgent =
     user && variant !== "extra_light"
-      ? await getFavoriteStates(auth, { configurationIds: configurationSIds })
+      ? await getFavoriteStates(auth, { configurationIds })
       : new Map<string, boolean>();
   const tagsPerAgent =
     variant !== "extra_light"
-      ? await TagResource.listForAgents(auth, configurationIds)
+      ? await TagResource.listForAgents(auth, configurationModelIds)
       : [];
   const spacesForApiKey =
     isRegularApiKey && auth.isAdmin()
