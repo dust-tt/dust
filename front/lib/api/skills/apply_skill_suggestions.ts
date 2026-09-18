@@ -30,7 +30,6 @@ import {
   isUserFacingDescriptionSkillSuggestion,
   parseSkillSuggestionData,
 } from "@app/types/suggestions/skill_suggestion";
-import { UniqueConstraintError } from "sequelize";
 
 /**
  * What a suggestion asks to change on the skill. `editors` is not a skill field: it is written as
@@ -282,23 +281,9 @@ export async function applySkillSuggestions(
 
   // `updateSkill` saves a version, so a batch that only moves editors must not call it.
   if (hasSkillFieldEdits(edits)) {
-    // The name was validated above, but a concurrent rename or creation can still take it before
-    // the write lands; the unique index is the last word.
-    try {
-      const updateRes = await applySkillFieldEdits(auth, skill, edits);
-      if (updateRes.isErr()) {
-        return updateRes;
-      }
-    } catch (error) {
-      if (error instanceof UniqueConstraintError && edits.name !== undefined) {
-        return new Err(
-          new DustError(
-            "invalid_request_error",
-            `A skill with the name "${edits.name}" already exists.`
-          )
-        );
-      }
-      throw error;
+    const updateRes = await applySkillFieldEdits(auth, skill, edits);
+    if (updateRes.isErr()) {
+      return updateRes;
     }
     await pruneConflictingSkillUserFacingDescriptionSuggestions(
       auth,
