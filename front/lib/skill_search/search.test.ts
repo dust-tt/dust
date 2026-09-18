@@ -38,7 +38,6 @@ import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_c
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
-import { z } from "zod";
 
 async function mockHits(
   auth: Authenticator,
@@ -396,11 +395,7 @@ describe("custom skill search", () => {
         archived.sId,
       ]);
       const listing = both[0];
-      expect(
-        SkillListItemSchema.extend({ score: z.number() })
-          .strict()
-          .parse(listing)
-      ).toEqual({
+      expect(SkillListItemSchema.strict().parse(listing)).toEqual({
         sId: active.sId,
         status: "active",
         name: "Indexed name",
@@ -412,7 +407,6 @@ describe("custom skill search", () => {
         availability: "workspace_users",
         activeUsersCount: null,
         updatedAt: active.updatedAt.getTime(),
-        score: 1,
       });
       expect(SkillSchema.safeParse(listing).success).toBe(false);
       expect(mockSearch.mock.lastCall![0]).toMatchObject({

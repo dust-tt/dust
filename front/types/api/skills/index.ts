@@ -14,9 +14,7 @@ export type GetSkillsResponseBody = {
   })[];
 };
 
-export type SkillSearchResult = SkillListItemType & {
-  score: number;
-};
+export type SkillSearchResult = SkillListItemType;
 
 // OR within a dimension, AND across dimensions. Selection never replaces ACLs.
 export interface SkillSearchFilters {

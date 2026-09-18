@@ -25,6 +25,7 @@ export {
  * database reads. Permission-bearing document changes are eventually consistent; full-skill
  * access remains separately authorized. Unreadable listings must not be returned.
  * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
+ * Preserve Elasticsearch hit order without exposing scores in skill listings.
  */
 export async function searchSkills(
   auth: Authenticator,
@@ -62,8 +63,7 @@ export async function searchSkills(
       );
     }
 
-    const [score] = hit.sort!;
-    skills.push({ ...toSkillListItem(document), score });
+    skills.push(toSkillListItem(document));
   }
 
   return new Ok(skills);
