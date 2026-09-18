@@ -57,6 +57,33 @@ describe("SlashCommandExtension", () => {
     ).toBe(ATTACH_CONTEXT_SUB_MENU_ID);
   });
 
+  it("opens the top-level slash menu after regular text", () => {
+    const editor = createEditor();
+    editor.commands.setContent("<p>regular text</p>");
+    editor.commands.focus("end");
+
+    editor.commands.openSlashCommand();
+
+    expect(editor.getText()).toBe("regular text /");
+    expect(slashCommandPluginKey.getState(editor.state)?.active).toBe(true);
+    expect(
+      getActiveSlashSubMenuFrame(editor.storage.slashCommand)
+    ).toBeNull();
+  });
+
+  it("opens the top-level slash menu in an empty document", () => {
+    const editor = createEditor();
+    editor.commands.focus("end");
+
+    editor.commands.openSlashCommand();
+
+    expect(editor.getText()).toBe("/");
+    expect(slashCommandPluginKey.getState(editor.state)?.active).toBe(true);
+    expect(
+      getActiveSlashSubMenuFrame(editor.storage.slashCommand)
+    ).toBeNull();
+  });
+
   it("keeps typed slash closed after regular text", () => {
     const editor = createEditor();
     editor.commands.setContent("<p>regular text</p>");

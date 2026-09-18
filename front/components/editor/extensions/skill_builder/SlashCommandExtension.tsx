@@ -292,7 +292,19 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
       () =>
       ({ chain }: { chain: () => ChainedCommands }) => {
         storage.hasBeenFocused = true;
-        return chain().focus().insertContent("/").run();
+        const { $from, from } = editor.state.selection;
+        const characterBefore = $from.parent.textBetween(
+          Math.max(0, $from.parentOffset - 1),
+          $from.parentOffset,
+          undefined,
+          "￼"
+        );
+        const needsSpaceBefore =
+          characterBefore.length > 0 && !/\s/.test(characterBefore);
+        return chain()
+          .focus()
+          .insertContentAt(from, needsSpaceBefore ? " /" : "/")
+          .run();
       },
     openAttachKnowledgeSlashCommand:
       () =>
