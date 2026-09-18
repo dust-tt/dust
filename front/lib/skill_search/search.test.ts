@@ -69,7 +69,7 @@ async function searchListings(
   options: SkillSearchOptions = { searchTerm: "" }
 ) {
   const result = await searchSkills(auth, {
-    query: buildSkillSearchQuery(auth, options),
+    ...options,
     limit: 200,
   });
   assert(result.isOk());
@@ -234,7 +234,7 @@ describe("custom skill search", () => {
     expect(candidates.map((skill) => skill.sId)).toEqual(expectedIds);
     expect(candidates).toHaveLength(expectedIds.length);
     expect(mockSearch).toHaveBeenCalledOnce();
-    const filters = mockSearch.mock.lastCall![0].query.bool.must[0].bool.filter;
+    const filters = mockSearch.mock.lastCall![0].query.bool.filter;
     const terms = filters.at(-1).terms_set.requested_space_ids.terms;
     expect(terms).toEqual(
       expect.arrayContaining([
@@ -415,13 +415,10 @@ describe("custom skill search", () => {
       expect(mockSearch.mock.lastCall![0]).toMatchObject({
         index: "front.skills",
         _source: true,
-        query: {
-          bool: {
-            filter: [
-              { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
-            ],
-          },
-        },
+        query: buildSkillSearchQuery(auth, {
+          searchTerm: "",
+          filters: { status: ["active", "archived"] },
+        }),
       });
       expect(onQuery).not.toHaveBeenCalled();
     } finally {
@@ -527,8 +524,7 @@ describe("custom skill search", () => {
     const [candidate] = await searchListings(auth);
     expect(candidate).toBeUndefined();
     expect(
-      mockSearch.mock.lastCall![0].query.bool.must[0].bool.filter[2].bool
-        .should[1]
+      mockSearch.mock.lastCall![0].query.bool.filter[2].bool.should[1]
     ).toEqual({ term: { editor_ids: user.sId } });
     expect(
       buildSkillSearchQuery(auth, {
@@ -544,7 +540,7 @@ describe("custom skill search", () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     mockSearch.mockResolvedValue(response);
     const result = await searchSkills(auth, {
-      query: buildSkillSearchQuery(auth, { searchTerm: "" }),
+      searchTerm: "",
       limit: 10,
     });
     expect(result.isErr()).toBe(true);
