@@ -206,19 +206,16 @@ describe("AgentMessageConsumptionEventResource append", () => {
       runKey: string,
       consumptionMode: EnabledAgentMessageConsumptionMode
     ) =>
-      withTransaction((transaction) =>
-        AgentMessageConsumptionEventResource.append(auth, {
-          event: {
-            kind: "execution_started",
-            idempotencyKey,
-            runKey,
-            rootAgentMessageId: 7,
-            agentMessageModelId: 8,
-            consumptionMode,
-          },
-          transaction,
-        })
-      );
+      AgentMessageConsumptionEventResource.append(auth, {
+        event: {
+          kind: "execution_started",
+          idempotencyKey,
+          runKey,
+          rootAgentMessageId: 7,
+          agentMessageModelId: 8,
+          consumptionMode,
+        },
+      });
     await appendStarted("execution:first:started", "first", "shadow");
     await appendStarted("execution:second:started", "second", "live");
 

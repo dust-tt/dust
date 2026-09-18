@@ -40,6 +40,19 @@ export type ConsumptionEvent =
       consumptionMode: EnabledAgentMessageConsumptionMode;
     };
 
+type ConsumptionEventAppendArgs =
+  | {
+      event: Extract<ConsumptionEvent, { kind: "items_changed" }>;
+      transaction: Transaction;
+    }
+  | {
+      event: Extract<
+        ConsumptionEvent,
+        { kind: "execution_started" | "execution_finalized" }
+      >;
+      transaction?: Transaction;
+    };
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMessageConsumptionEventResource
   extends ReadonlyAttributesType<AgentMessageConsumptionEventModel> {}
@@ -110,8 +123,8 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
 
   /**
    * @cc [owner:id13,label:backend;concurrency] transactional-outbox-append
-   * Event creation MUST use the supplied transaction so the event commits or rolls back atomically
-   * with the consumption mutations that caused it.
+   * An items-changed event MUST use the transaction containing the consumption mutations that
+   * caused it.
    */
   /**
    * @cc [owner:id13,label:backend;error-handling] immutable-event-idempotency
@@ -120,10 +133,7 @@ export class AgentMessageConsumptionEventResource extends BaseResource<AgentMess
    */
   static async append(
     auth: Authenticator,
-    {
-      event,
-      transaction,
-    }: { event: ConsumptionEvent; transaction: Transaction }
+    { event, transaction }: ConsumptionEventAppendArgs
   ): Promise<AgentMessageConsumptionEventResource> {
     const attributes = this.creationAttributes(auth, { event });
     const [row] = await this.model.findOrCreate({

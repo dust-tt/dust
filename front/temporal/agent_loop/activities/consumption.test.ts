@@ -35,12 +35,6 @@ vi.mock("@app/lib/resources/conversation_resource", () => ({
   },
 }));
 
-vi.mock("@app/lib/utils/sql_utils", () => ({
-  withTransaction: vi.fn(
-    async (callback: (transaction: object) => Promise<unknown>) => callback({})
-  ),
-}));
-
 vi.mock("@app/temporal/credit_consumption/client", () => ({
   signalConsumptionEventsAppended: mocks.signal,
 }));
@@ -103,7 +97,6 @@ describe("consumption execution events", () => {
         agentMessageModelId: 42,
         consumptionMode: "shadow",
       },
-      transaction: {},
     });
     expect(mocks.signal).toHaveBeenCalledOnce();
   });
@@ -205,7 +198,6 @@ describe("consumption execution events", () => {
         consumptionMode: "shadow",
         status: "created",
       },
-      transaction: {},
     });
     expect(mocks.signal).toHaveBeenCalledOnce();
   });
