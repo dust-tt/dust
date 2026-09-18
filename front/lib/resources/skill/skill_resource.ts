@@ -1493,26 +1493,59 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async listByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
-    {
-      agentLoopData,
-      effectiveSpaceIds,
-      permissionFiltering,
-    }: SkillFetchContext = {}
+    fetchContext: SkillFetchContext = {}
   ): Promise<SkillResource[]> {
-    const refs = await this.getSkillReferencesForAgent(
+    // Global agents hold no `AgentSkillModel` row: their skills are declared in code.
+    if (isGlobalAgentId(agentConfiguration.sId)) {
+      return this.listCodeDefinedSkills(
+        auth,
+        agentConfiguration.codeDefinedSkillIds ?? [],
+        fetchContext
+      );
+    }
+
+    const refs = await this.getSkillReferencesByAgentConfigurationModelId(
       auth,
-      agentConfiguration
+      agentConfiguration.id
     );
 
     if (refs.length === 0) {
       return [];
     }
 
-    return this.fetchBySkillReferences(auth, refs, {
-      agentLoopData,
-      effectiveSpaceIds,
-      permissionFiltering,
-    });
+    return this.fetchBySkillReferences(auth, refs, fetchContext);
+  }
+
+  /**
+   * Code-defined skills addressed by the ids a global agent declares (see
+   * `AgentResource.listSkills`).
+   */
+  /**
+   * @cc [owner:sfriquet,label:backend] code-defined-skills-order
+   * The returned skills MUST follow the order of `codeDefinedSkillIds`, which is the order the
+   * global agent declares them in, not the order the registry or the fetch yields. An id that
+   * resolves to no skill (retired, or not available to the caller) MUST be dropped silently rather
+   * than surfaced as an error or a hole in the list.
+   */
+  static async listCodeDefinedSkills(
+    auth: Authenticator,
+    codeDefinedSkillIds: string[],
+    fetchContext: SkillFetchContext = {}
+  ): Promise<SkillResource[]> {
+    if (codeDefinedSkillIds.length === 0) {
+      return [];
+    }
+
+    const skills = await this.fetchByIds(
+      auth,
+      uniq(codeDefinedSkillIds),
+      fetchContext
+    );
+    const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
+
+    return removeNulls(
+      codeDefinedSkillIds.map((skillId) => skillBySId.get(skillId) ?? null)
+    );
   }
 
   /**
@@ -1548,7 +1581,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Batched version of listByAgentConfiguration. Performs 2 SQL queries.
    * Does not support global agents as we rely on the ID for mapping: they all share the same
    * model id and hold no `AgentSkillModel` row. Their skills are code-defined, so resolve them
-   * with `fetchByIds` on the ids their configuration declares.
+   * with `listCodeDefinedSkills` on the ids their configuration declares.
    */
   static async listByAgentConfigurations<T extends LightAgentConfigurationType>(
     auth: Authenticator,
@@ -1622,47 +1655,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Returns skill references for an agent configuration.
-   * For global agents, returns references from the config's `codeDefinedSkillIds` field.
-   * For non-global agents, queries the database.
-   * TODO(2026-01-30 agent-resource): fold the global branch into `AgentResource.listSkills`, which
-   *   already covers custom agents, so the resource exposes a unified interface.
-   */
-  static async getSkillReferencesForAgent(
-    auth: Authenticator,
-    agentConfiguration: AgentLoopExecutionData["agentConfiguration"]
-  ): Promise<
-    {
-      customSkillId: ModelId | null;
-      globalSkillId: string | null;
-    }[]
-  > {
-    // For global agents, skills are defined in the config, not in the database.
-    if (
-      isGlobalAgentId(agentConfiguration.sId) &&
-      "codeDefinedSkillIds" in agentConfiguration
-    ) {
-      return (agentConfiguration.codeDefinedSkillIds ?? []).map(
-        (globalSkillId) => ({
-          customSkillId: null,
-          globalSkillId,
-        })
-      );
-    }
-
-    return this.getSkillReferencesByAgentConfigurationModelId(
-      auth,
-      agentConfiguration.id
-    );
-  }
-
-  /**
    * @cc [owner:sfriquet,label:backend] skill-references-by-configuration-model-id
    * `agentConfigurationModelId` MUST designate an `agent_configurations` row: an `AgentResource`
    * passes its `agentConfigurationModelId`, NOT its `id`, which designates the `agents` row. Global
    * agents MUST NOT be passed: they hold no `AgentSkillModel` row and share the `id: -1` sentinel
    * (see `agent-resource-identity`), so their code-defined skills are resolved by
-   * `getSkillReferencesForAgent` instead.
+   * `listCodeDefinedSkills` instead.
    */
   private static async getSkillReferencesByAgentConfigurationModelId(
     auth: Authenticator,

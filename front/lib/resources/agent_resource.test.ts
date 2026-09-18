@@ -727,18 +727,35 @@ describe("AgentResource", () => {
       expect(skills.map((s) => s.id)).toEqual([skill.id]);
     });
 
-    it("refuses to list the skills of a global agent", async () => {
+    it("lists the code-defined skills of a global agent in declaration order", async () => {
+      const resource = AgentResource.fromGlobalAgent(
+        testContext.authenticator,
+        makeAgentConfiguration({
+          sId: GLOBAL_AGENTS_SID.HELPER,
+          scope: "global",
+          agentModelId: null,
+          name: "Helper",
+          description: "Helper description",
+          // Reversed compared to the global skills registry, so the order is the agent's.
+          codeDefinedSkillIds: ["support", "frames"],
+        })
+      );
+
+      const skills = await resource.listSkills(testContext.authenticator);
+
+      expect(skills.map((s) => s.sId)).toEqual(["support", "frames"]);
+    });
+
+    it("carries the code-defined skills a fetched global agent declares", async () => {
       const resource = await AgentResource.fetchById(
         testContext.authenticator,
         GLOBAL_AGENTS_SID.HELPER
       );
       assert(resource);
 
-      await expect(
-        resource.listSkills(testContext.authenticator)
-      ).rejects.toThrow(
-        "Unexpected: `listSkills` called on a global AgentResource"
-      );
+      const skills = await resource.listSkills(testContext.authenticator);
+
+      expect(skills.map((s) => s.sId)).toEqual(["frames"]);
     });
   });
 });
