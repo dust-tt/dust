@@ -305,12 +305,17 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
  * @cc [owner:fabiencelier,label:security;product] skill-verbs
  * The verbs a caller holds on a skill mean:
  * - `read`: seeing and using the skill: listing it, fetching it, attaching it to an agent, running
- *   it. `read` comes from grants (the workspace global group's `reader` grant, or an editor's
- *   grant), never from a workspace role.
+ *   it. Fetching a custom skill as readable MUST also require `read` on every space in its
+ *   `requestedSpaceIds`. Its `availability` MUST NOT affect this decision. `read` comes from grants
+ *   (the workspace global group's `reader` grant, or an editor's grant), never from a workspace
+ *   role.
  * - `write`: editing the skill's content: instructions, attached knowledge, files.
  * - `admin`: the skill's lifecycle and editors: adding and removing editors, archiving,
  *   restoring, deleting. The admin workspace role confers `admin` and MUST NOT confer `write`:
  *   an admin who is not an editor manages editors without editing content.
+ * Holding another verb may make a skill fetchable through an explicit redaction path, but without
+ * `read` only public metadata such as its name and descriptions may be exposed; instructions,
+ * tools and files MUST remain hidden.
  * Global (code-defined) skills are `read`-only for every workspace member.
  */
 /**
