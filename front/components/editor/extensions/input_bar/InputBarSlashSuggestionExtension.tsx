@@ -124,5 +124,9 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
       storage.dismissedTriggerStart = triggerStart;
     }
   },
+  // A new "/" always starts at the root, however the previous session ended.
+  onDropdownExit: ({ storage }) => {
+    clearSlashSubMenuStack(storage);
+  },
   preventEscapeDefault: true,
 });
