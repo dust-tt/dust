@@ -1200,8 +1200,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   static async listAvailableCodeDefinedIds(
-    auth: Authenticator,
-    { mcpServerViewIds = [] }: { mcpServerViewIds?: string[] } = {}
+    auth: Authenticator
   ): Promise<string[]> {
     const skills = await this.fetchByIds(
       auth,
@@ -1210,19 +1209,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ),
       {
         withInstructions: false,
-        withTools: mcpServerViewIds.length > 0,
+        withTools: false,
         withFileAttachments: false,
       }
     );
-    const selectedViewIds = new Set(mcpServerViewIds);
 
-    return skills
-      .filter(
-        (skill) =>
-          selectedViewIds.size === 0 ||
-          skill.mcpServerViews.some((view) => selectedViewIds.has(view.sId))
-      )
-      .map((skill) => skill.sId);
+    return skills.map((skill) => skill.sId);
   }
 
   static async fetchByName(

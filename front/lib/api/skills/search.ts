@@ -73,10 +73,8 @@ export async function searchSkills(
     searchAfter = sort.data;
   }
 
-  const codeDefinedSkillIds = await SkillResource.listAvailableCodeDefinedIds(
-    auth,
-    { mcpServerViewIds: options.filters?.mcpServerViewIds }
-  );
+  const codeDefinedSkillIds =
+    await SkillResource.listAvailableCodeDefinedIds(auth);
   const query = buildSkillSearchQuery(auth, {
     ...options,
     codeDefinedSkillIds,

@@ -146,10 +146,7 @@ export function buildSkillSearchQuery(
                       status: [...new Set(filters.status ?? ["active"])].sort(),
                     },
                   },
-                  ...buildSelectionFilters(auth, {
-                    availability: filters.availability,
-                    editedByMe: filters.editedByMe,
-                  }),
+                  ...buildSelectionFilters(auth, filters),
                 ],
                 must: [buildSkillNameAutocompleteQuery(searchTerm)],
               },
