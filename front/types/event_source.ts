@@ -51,9 +51,11 @@ export type ConnectionEntry = {
   generation: number;
   lastEvent: string | null;
   lastEventAt: number | null;
+  lastResumeAtMs: number | null;
   lastURL: string | null;
   keepAliveWithoutSubscribers: boolean;
   reconnectAttempts: number;
+  unsuccessfulResumes: number;
   reconnectTimeout: ReturnType<typeof setTimeout> | null;
   source: EventSourceLike | null;
   state: EventSourceConnectionState;

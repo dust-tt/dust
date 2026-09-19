@@ -510,4 +510,80 @@ describe("EventSourceManager", () => {
     expect(states.at(-1)?.kind).toBe("failed");
     manager.releaseWorkspace("w_1");
   });
+
+  it("limits registry resumes and allows a user-requested reconnect", async () => {
+    let nowMs = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => nowMs);
+    const sources: FakeEventSource[] = [];
+    const manager = new EventSourceManager(
+      async (url) => {
+        const source = new FakeEventSource(url);
+        sources.push(source);
+        return source;
+      },
+      () => 0,
+      { maxReconnectAttempts: 1 }
+    );
+    manager.subscribe({
+      streamId: "message-msg_registry",
+      config: {
+        buildURL: () => "/events",
+        replayBufferedEventsOnSubscribe: false,
+        restartKey: "message-msg_registry",
+        workspaceId: "w_1",
+      },
+      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: true,
+    });
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].onerror?.({ type: "error", target: sources[0] });
+
+    manager.resume("message-msg_registry");
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    sources[1].onerror?.({ type: "error", target: sources[1] });
+    nowMs = 89_999;
+    manager.resume("message-msg_registry");
+    expect(sources).toHaveLength(2);
+
+    nowMs = 90_000;
+    manager.resume("message-msg_registry");
+    await vi.waitFor(() => expect(sources).toHaveLength(3));
+    sources[2].onerror?.({ type: "error", target: sources[2] });
+    nowMs = 180_000;
+    manager.resume("message-msg_registry");
+    await vi.waitFor(() => expect(sources).toHaveLength(4));
+    sources[3].onerror?.({ type: "error", target: sources[3] });
+    nowMs = 270_000;
+    manager.resume("message-msg_registry");
+    expect(sources).toHaveLength(4);
+
+    manager.reconnect("message-msg_registry");
+    await vi.waitFor(() => expect(sources).toHaveLength(5));
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("closes an unlisted stream after its last subscriber leaves", async () => {
+    const sources: FakeEventSource[] = [];
+    const manager = new EventSourceManager(async (url) => {
+      const source = new FakeEventSource(url);
+      sources.push(source);
+      return source;
+    });
+    const unsubscribe = manager.subscribe({
+      streamId: "message-msg_unlisted",
+      config: {
+        buildURL: () => "/events",
+        replayBufferedEventsOnSubscribe: false,
+        restartKey: "message-msg_unlisted",
+        workspaceId: "w_1",
+      },
+      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: true,
+    });
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    manager.stopKeepingAlive("message-msg_unlisted", "w_1");
+    expect(sources[0].close).not.toHaveBeenCalled();
+    unsubscribe();
+    expect(sources[0].close).toHaveBeenCalledOnce();
+  });
 });
