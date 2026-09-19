@@ -3,6 +3,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
 import type { SkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import type { Authenticator } from "@app/lib/auth";
@@ -30,13 +31,17 @@ import {
 
 /**
  * What a suggestion asks to change on the skill. `editors` is not a skill field: it is written as
- * per-user grants, so it travels here but is applied separately from `updateSkill`.
+ * per-user grants, so it travels here but is applied separately from `updateSkill`. `archive` is
+ * not a field either: it is a terminal status change applied through `skill.archive`, never
+ * combined with other edits in practice, but folded in here so a mixed batch still fails loudly
+ * instead of silently dropping the deletion.
  */
 interface SkillEdits {
   agentFacingDescription?: string;
   userFacingDescription?: string;
   editors?: { addUserIds: string[]; removeUserIds: string[] };
   instructionEdits?: SkillInstructionEditItemType[];
+  archive?: boolean;
 }
 
 function editsForSuggestion(
@@ -63,6 +68,9 @@ function editsForSuggestion(
         userFacingDescription: data.suggestion.userFacingDescription,
       });
 
+    case "delete":
+      return new Ok({ archive: true });
+
     default:
       assertNever(data);
   }
@@ -85,16 +93,24 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
   // Concatenated in suggestion order: every accepted edit is applied, each to its own block.
   const instructionEdits = edits.flatMap((e) => e.instructionEdits ?? []);
 
+  const archive = edits.some((e) => e.archive);
+
   // Union, not last-wins: approving two suggestions must apply both editor changes.
   const editorsEdits = edits.flatMap((e) => e.editors ?? []);
   if (editorsEdits.length === 0) {
-    return { agentFacingDescription, userFacingDescription, instructionEdits };
+    return {
+      agentFacingDescription,
+      userFacingDescription,
+      instructionEdits,
+      archive,
+    };
   }
 
   return {
     agentFacingDescription,
     userFacingDescription,
     instructionEdits,
+    archive,
     editors: {
       addUserIds: [...new Set(editorsEdits.flatMap((e) => e.addUserIds))],
       removeUserIds: [...new Set(editorsEdits.flatMap((e) => e.removeUserIds))],
@@ -243,6 +259,15 @@ export async function applySkillSuggestions(
     editorsChange = validation.value;
   }
 
+  if (edits.archive) {
+    const validation = validateSkillDeletion(auth, skill);
+    if (validation.isErr()) {
+      return new Err(
+        new DustError("invalid_request_error", validation.error.message)
+      );
+    }
+  }
+
   // TODO(achilleburah): make the editor change and skill update atomic so if editors changes fails,
   //  the skill update is rolled back.
 
@@ -270,6 +295,12 @@ export async function applySkillSuggestions(
       skill,
       suggestions.filter(isEditorsSkillSuggestion)
     );
+  }
+
+  // Archiving is terminal, so it runs last: any other edit in the batch is applied to the skill
+  // first, exactly as if it had been accepted on its own right before the deletion.
+  if (edits.archive) {
+    await skill.archive(auth);
   }
 
   return new Ok(undefined);

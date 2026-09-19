@@ -7,6 +7,7 @@ import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_in
 import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
+  SkillDeleteSuggestionType,
   SkillInstructionEditItemType,
   SkillSuggestionState,
   SkillSuggestionType,
@@ -217,6 +218,18 @@ function ConversationFooter({
   );
 }
 
+interface DeleteSuggestionSectionProps {
+  suggestion: SkillDeleteSuggestionType;
+}
+
+function DeleteSuggestionSection({ suggestion }: DeleteSuggestionSectionProps) {
+  return (
+    <p className="text-sm text-foreground">
+      Delete the <span className="font-medium">{suggestion.name}</span> skill.
+    </p>
+  );
+}
+
 interface SuggestionDetailsProps {
   suggestion: SkillSuggestionType;
   getSkillInstructionsHtml: () => string;
@@ -279,6 +292,9 @@ function SuggestionDetails({
           workspaceId={workspaceId}
         />
       );
+
+    case "delete":
+      return <DeleteSuggestionSection suggestion={suggestion.suggestion} />;
 
     default:
       assertNeverAndIgnore(suggestion);

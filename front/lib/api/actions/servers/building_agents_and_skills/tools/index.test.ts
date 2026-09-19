@@ -4,6 +4,7 @@ import {
   SUGGEST_AGENT_CREATION_INPUT_SCHEMA,
   SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_AGENT_DELETION_TOOL_NAME,
+  SUGGEST_SKILL_DELETION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
   SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
@@ -1092,6 +1093,141 @@ describe("building_agents_and_skills tools", () => {
       );
 
       expectMcpError(result, `at most ${USER_FACING_DESCRIPTION_MAX_LENGTH}`);
+    });
+  });
+
+  describe(SUGGEST_SKILL_DELETION_TOOL_NAME, () => {
+    it("records a pending delete suggestion and outdates previous ones", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Old Skill" });
+
+      const first = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: skill.sId, analysis: "Unused for months." },
+        makeExtra(authenticator)
+      );
+      expect(first.isOk()).toBe(true);
+      if (first.isErr()) {
+        throw first.error;
+      }
+      const firstOutput = first.value[0];
+      if (firstOutput?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const { suggestionId: firstId, skillId } = extractDirective(
+        firstOutput.text,
+        "delete"
+      );
+      expect(skillId).toBe(skill.sId);
+
+      const suggestion = await SkillSuggestionResource.fetchById(
+        authenticator,
+        firstId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.kind).toBe("delete");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?.toJSON()).toMatchObject({
+        suggestion: { name: "Old Skill" },
+        analysis: "Unused for months.",
+      });
+
+      // The skill itself is untouched.
+      const untouched = await SkillResource.fetchById(authenticator, skill.sId);
+      expect(untouched?.status).toBe("active");
+
+      const second = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(authenticator)
+      );
+      expect(second.isOk()).toBe(true);
+
+      const previous = await SkillSuggestionResource.fetchById(
+        authenticator,
+        firstId
+      );
+      expect(previous?.state).toBe("outdated");
+    });
+
+    it("returns an MCPError without an interactive user", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(authenticator, { name: "No User" });
+      const nonInteractiveAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(nonInteractiveAuth)
+      );
+      expectMcpError(result, "interactive user");
+    });
+
+    it("returns an MCPError for an unknown skill", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const unknownSkillId = SkillResource.modelIdToSId({
+        id: 999_999_999,
+        workspaceId: workspace.id,
+      });
+
+      const result = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: unknownSkillId },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "not found");
+    });
+
+    it("returns an MCPError when the caller is neither an editor nor an admin", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(authenticator, { name: "Not Mine" });
+      const other = await addMember(workspace);
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        other.sId,
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(otherAuth)
+      );
+      expectMcpError(result, "editors of this skill or workspace admins");
+    });
+
+    it("allows a workspace admin who is not an editor to create a delete suggestion", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(authenticator, { name: "Admin Only" });
+      const admin = await addMember(workspace, "admin");
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        admin.sId,
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(adminAuth)
+      );
+      expect(result.isOk()).toBe(true);
+    });
+
+    it("returns an MCPError for an archived skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Archived",
+        status: "archived",
+      });
+
+      const result = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "active skills");
     });
   });
 });

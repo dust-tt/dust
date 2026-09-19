@@ -97,5 +97,18 @@
     "suggestion": {
       "userFacingDescription": "Paste raw meeting notes, a call transcript or a Slack thread and get back a clean summary with the decisions and the action items, each with an owner and a due date."
     }
+  },
+  {
+    "id": "skillDelete",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "delete",
+    "title": "Delete this skill",
+    "analysis": "Nobody has sent meeting notes through this skill in three months; the team now formats notes directly in the meeting tool.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "name": "MeetingNotesFormatter"
+    }
   }
 ]

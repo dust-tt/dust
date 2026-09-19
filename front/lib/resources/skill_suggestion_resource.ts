@@ -96,7 +96,13 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   ): Promise<SkillSuggestionResource> {
     const owner = auth.getNonNullableWorkspace();
 
-    if (!skill.canWrite(auth)) {
+    // Deletion is a lifecycle operation (see `skill-verbs`): it only requires `canAdministrate`,
+    // never `canWrite`.
+    const isAuthorized =
+      blob.kind === "delete"
+        ? skill.canAdministrate(auth)
+        : skill.canWrite(auth);
+    if (!isAuthorized) {
       throw new Error("User does not have permission to edit this skill");
     }
 
@@ -164,9 +170,12 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       ...new Set(suggestions.map((s) => s.skillConfigurationId)),
     ];
 
+    // Include non-active skills (a suggestion's target skill can be archived by now), and skip
+    // hydrating tools since only sId and canAdministrate() are needed below.
     const skillResources = await SkillResource.fetchByModelIds(
       auth,
-      skillConfigIds
+      skillConfigIds,
+      { status: ["active", "archived", "suggested"], withTools: false }
     );
 
     const skillResourceByModelId = new Map(

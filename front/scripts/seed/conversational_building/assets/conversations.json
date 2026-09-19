@@ -44,6 +44,16 @@
           "sId": "ConvBuildingAMsg04",
           "content": "Here is a clearer description for members browsing skills. It says what to paste in and what comes back:\n\n:skill_suggestion[]{sId=__SKILL_USER_FACING_DESCRIPTION_SUGGESTION_SID__ kind=user_facing_description skillId=__MEETING_NOTES_SKILL_SID__}\n\nThe agent-facing description from earlier stays as it is; this one is only shown to people."
         }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg05",
+          "content": "Actually, nobody has used this skill in months since we started formatting notes directly in the meeting tool. Can you propose retiring it?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg05",
+          "content": "Here is the proposal to delete the skill:\n\n:skill_suggestion[]{sId=__SKILL_DELETE_SUGGESTION_SID__ kind=delete skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting it archives the skill; it can be restored afterwards if you change your mind."
+        }
       }
     ]
   }

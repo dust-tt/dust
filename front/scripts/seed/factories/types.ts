@@ -10,6 +10,7 @@ import type { SkillAvailability } from "@app/types/assistant/skill_configuration
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import type { AgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
 import type {
+  SkillDeleteSuggestionType,
   SkillEditorsSuggestionType,
   SkillEditSuggestionType,
   SkillSuggestionSource,
@@ -99,10 +100,16 @@ export interface SkillUserFacingDescriptionSuggestionAsset
   suggestion: SkillUserFacingDescriptionSuggestionType;
 }
 
+export interface SkillDeleteSuggestionAsset extends BaseSkillSuggestionAsset {
+  kind: "delete";
+  suggestion: SkillDeleteSuggestionType;
+}
+
 export type SkillSuggestionAsset =
   | SkillEditSuggestionAsset
   | SkillEditorsSuggestionAsset
-  | SkillUserFacingDescriptionSuggestionAsset;
+  | SkillUserFacingDescriptionSuggestionAsset
+  | SkillDeleteSuggestionAsset;
 
 export interface SuggestedSkillAsset {
   name: string;
