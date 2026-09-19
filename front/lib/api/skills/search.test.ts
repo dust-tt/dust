@@ -125,8 +125,8 @@ describe("searchSkills pagination", () => {
 });
 
 describe("code-defined skill search", () => {
-  beforeEach(async () => {
-    const documents = await SkillFactory.createCodeDefinedSearchDocuments();
+  beforeEach(() => {
+    const documents = SkillFactory.createCodeDefinedSearchDocuments();
     mockSearch.mockReset();
     mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
       hits: {
@@ -266,7 +266,7 @@ describe("code-defined skill search", () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     const skill = await SkillFactory.create(auth, { name: "WeeklyDeepReport" });
     const [custom] = await SkillFactory.createSearchDocuments(auth, [skill]);
-    const documents = await SkillFactory.createCodeDefinedSearchDocuments();
+    const documents = SkillFactory.createCodeDefinedSearchDocuments();
     const global = documents.find(
       (document) => document.skill_id === "go-deep"
     );
