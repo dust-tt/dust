@@ -1,0 +1,10 @@
+@cc [owner:pmilliotte,label:architecture] llm-layer-provider-agnostic
+Code under `lib/api/llm` must not encode a specific lab, host, region or model's wire format: no
+parsing or construction of a provider's request, response or error bodies, no import from a
+provider SDK, no match on a provider's message strings. Recognizing and extracting those specifics
+belongs to the provider's own code under `lib/model_constructors/sdk/<sdk>/`,
+`lib/model_constructors/providers/<lab>/` or `lib/model_constructors/stream/clients/`, which must
+hand the result to this layer through a lab-agnostic field on `ErrorContent` or
+`EndpointMetadata.content`.
+Reading `lab`, `host`, `region` or `model` to route a request, select credentials, gate a capability
+or render a display name remains allowed.
