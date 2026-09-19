@@ -1393,7 +1393,7 @@ function AgentMessageContent({
     />
   ) : null;
 
-  if (agentMessage.status === "created" && !!streamError) {
+  if (agentMessage.status === "created" && !!streamError && !blockedAction) {
     return (
       <ErrorMessage
         error={{
