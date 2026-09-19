@@ -5,7 +5,9 @@ import {
 } from "@app/lib/client/agent_loop_stream";
 import { eventSourceManager } from "@app/lib/client/event_source_manager";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { GetOngoingAgentLoopsResponseBody } from "@app/types/api/assistant/conversation/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useRef } from "react";
 import type { Fetcher } from "swr";
@@ -103,8 +105,13 @@ export function AgentLoopStreamProvider({
     }
   );
   const refreshAgentLoops = useCallback(() => {
-    void mutate();
-  }, [mutate]);
+    void mutate().catch((error: unknown) => {
+      datadogLogger.warn(
+        { err: normalizeError(error), workspaceId: owner.sId },
+        "Failed to refresh ongoing agent loops."
+      );
+    });
+  }, [mutate, owner.sId]);
 
   useEffect(
     () => () => eventSourceManager.releaseWorkspace(owner.sId),
