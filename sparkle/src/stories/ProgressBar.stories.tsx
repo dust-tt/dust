@@ -18,6 +18,7 @@ const meta = {
 - Pass a \`percentage\` between 0 and 100; out-of-range values are clamped.
 - Pass an array to \`values\` to render adjacent segments separated by a 2px gap. Each entry pairs its \`value\` with an optional \`className\`; values are normalized to total 100.
 - Use \`radius\` to switch between square, extra-small, and fully rounded corners.
+- Control the track via \`className\` and every filled segment via \`fillClassName\`. A segmented value's \`className\` can override the shared fill style.
 - Control the bar's width via \`className\` (e.g. \`w-24\`, \`w-full\`).`,
       },
     },
@@ -60,6 +61,19 @@ export const Percentages: Story = {
       ))}
     </div>
   ),
+};
+
+/**
+ * `className` styles the track while `fillClassName` styles the filled area.
+ *
+ * @summary Custom track and fill colors.
+ */
+export const CustomFill: Story = {
+  args: {
+    percentage: 68,
+    className: "w-48 bg-warning-100",
+    fillClassName: "bg-warning-700",
+  },
 };
 
 export const Segmented: Story = {
