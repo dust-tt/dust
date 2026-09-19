@@ -10,6 +10,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "aubin-tchoi",
   },
+  inference_hooks: {
+    description:
+      "Enforce workspace inference hooks (Generic HTTP or Datadog AI Guard) on agent loop inputs and outputs",
+    stage: "dust_only",
+    owner: "zmarouf",
+  },
   stateful_conversation_window: {
     description:
       "Restore agent-loop context windows from the previous model step checkpoint",

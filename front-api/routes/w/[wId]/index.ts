@@ -61,6 +61,7 @@ import governancePermissions from "./governance-permissions";
 import grantedRoles from "./granted-roles";
 import grantedSeatTypes from "./granted-seat-types";
 import groups from "./groups";
+import inferenceHooks from "./inference_hooks";
 import invitations from "./invitations";
 import keys from "./keys";
 import labs from "./labs";
@@ -1061,6 +1062,7 @@ app.route(
 app.route("/governance-permissions", governancePermissions);
 app.route("/groups", groups);
 app.route("/invitations", invitations);
+app.route("/inference_hooks", inferenceHooks);
 app.route("/keys", keys);
 app.route("/labs", labs);
 app.route("/mcp", mcp);

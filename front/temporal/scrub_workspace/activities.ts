@@ -25,6 +25,7 @@ import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_m
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { InferenceHookResource } from "@app/lib/resources/inference_hook_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
@@ -138,6 +139,7 @@ export async function scrubWorkspaceData({
   await AgentMessageConsumptionEventResource.deleteAllForWorkspace(auth);
   await deleteTakeaways(auth);
   await deleteKeys(auth);
+  await InferenceHookResource.deleteAllForWorkspace(auth);
   await archiveAssistants(auth);
   await deleteAgentMemories(auth);
   await deleteSkills(auth);

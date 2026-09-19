@@ -1,0 +1,6 @@
+SET SESSION statement_timeout = 3000;
+SET SESSION lock_timeout = 3000;
+ALTER TABLE "public"."inference_hooks"
+  ADD COLUMN IF NOT EXISTS "enforcementMode" VARCHAR(255) NOT NULL DEFAULT 'block',
+  ADD COLUMN IF NOT EXISTS "failMode" VARCHAR(255) NOT NULL DEFAULT 'closed',
+  ADD COLUMN IF NOT EXISTS "timeoutMs" INTEGER NOT NULL DEFAULT 1000;

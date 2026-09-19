@@ -11,6 +11,7 @@ import { ConversationExternalNotificationsToggle } from "@app/components/workspa
 import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InactiveAgentArchival } from "@app/components/workspace/settings/InactiveAgentArchival";
+import { InferenceHooksGovernanceSection } from "@app/components/workspace/settings/InferenceHooksSettings";
 import { InteractiveContentSharing } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
 import { MessagingAppToggles } from "@app/components/workspace/settings/MessagingAppToggles";
 import { OpenPodPolicy } from "@app/components/workspace/settings/OpenPodsPolicy";
@@ -279,6 +280,7 @@ export const GovernancePage = () => {
               <MessagingAppToggles owner={owner} />
             </GovernanceSettingSection>
             <AuditLogsGovernanceSection owner={owner} />
+            <InferenceHooksGovernanceSection owner={owner} />
           </>
         )}
       </div>
