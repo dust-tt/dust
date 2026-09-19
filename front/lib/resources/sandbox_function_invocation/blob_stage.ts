@@ -4,6 +4,9 @@ import {
   invalidateCacheWithRedis,
   warmCacheWithRedis,
 } from "@app/lib/utils/cache";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
  * Pre-GCS stage for sandbox-function invocation blobs. The Temporal activity
@@ -18,13 +21,13 @@ export const SANDBOX_FUNCTION_INVOCATION_BLOB_CACHE_TTL_MS =
  * Misses mean the write-behind window expired or was never warmed — not a GCS fetch.
  */
 async function sandboxFunctionInvocationBlob(
-  _invocationSId: string
+  _invocationId: string
 ): Promise<object | null> {
   return null;
 }
 
-const invocationBlobCacheKey = (invocationSId: string) =>
-  `sfi_blob:${invocationSId}:v1`;
+const invocationBlobCacheKey = (invocationId: string) =>
+  `sfi_blob:${invocationId}:v1`;
 
 const warmSandboxFunctionInvocationBlob = warmCacheWithRedis(
   sandboxFunctionInvocationBlob,
@@ -47,21 +50,35 @@ const invalidateSandboxFunctionInvocationBlob = invalidateCacheWithRedis(
 );
 
 export async function stageSandboxFunctionInvocationBlob(
-  invocationSId: string,
+  invocationId: string,
   data: object
-): Promise<void> {
-  await warmSandboxFunctionInvocationBlob(data, invocationSId);
+): Promise<Result<void, Error>> {
+  try {
+    await warmSandboxFunctionInvocationBlob(data, invocationId);
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
 }
 
 export async function readStagedSandboxFunctionInvocationBlob(
-  invocationSId: string
-): Promise<object | null> {
-  return readSandboxFunctionInvocationBlobCached(invocationSId);
+  invocationId: string
+): Promise<Result<object | null, Error>> {
+  try {
+    return new Ok(await readSandboxFunctionInvocationBlobCached(invocationId));
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
 }
 
 /** Drop the stage (e.g. on invocation delete, or when replacing the blob from GCS only). */
 export async function clearStagedSandboxFunctionInvocationBlob(
-  invocationSId: string
-): Promise<void> {
-  await invalidateSandboxFunctionInvocationBlob(invocationSId);
+  invocationId: string
+): Promise<Result<void, Error>> {
+  try {
+    await invalidateSandboxFunctionInvocationBlob(invocationId);
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
 }

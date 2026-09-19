@@ -398,30 +398,32 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   private async loadData(): Promise<void> {
-    try {
-      const staged = await readStagedSandboxFunctionInvocationBlob(this.sId);
-      if (staged !== null) {
-        const parseResult = StoredInvocationDataSchema.safeParse(staged);
-        if (parseResult.success) {
-          this.data = migrateStoredInvocationData(parseResult.data);
-          this.dataLoaded = true;
-          return;
-        }
-        logger.error(
-          {
-            ...this.observabilityContext(),
-            error: fromError(parseResult.error).toString(),
-          },
-          "Invalid staged sandbox function invocation data; falling back to GCS"
-        );
-      }
-    } catch (err) {
+    const stagedResult = await readStagedSandboxFunctionInvocationBlob(
+      this.sId
+    );
+    if (stagedResult.isErr()) {
       logger.error(
         {
           ...this.observabilityContext(),
-          err: normalizeError(err),
+          err: stagedResult.error,
         },
         "Failed to read staged sandbox function invocation blob; falling back to GCS"
+      );
+    } else if (stagedResult.value !== null) {
+      const parseResult = StoredInvocationDataSchema.safeParse(
+        stagedResult.value
+      );
+      if (parseResult.success) {
+        this.data = migrateStoredInvocationData(parseResult.data);
+        this.dataLoaded = true;
+        return;
+      }
+      logger.error(
+        {
+          ...this.observabilityContext(),
+          error: fromError(parseResult.error).toString(),
+        },
+        "Invalid staged sandbox function invocation data; falling back to GCS"
       );
     }
     await this.loadDataFromGcs();
@@ -475,14 +477,16 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   private async persistTerminalData(
     claimed: Exclude<SandboxFunctionInvocationStatus, "created">
   ): Promise<void> {
-    try {
-      await stageSandboxFunctionInvocationBlob(this.sId, this.data);
-    } catch (err) {
+    const stageResult = await stageSandboxFunctionInvocationBlob(
+      this.sId,
+      this.data
+    );
+    if (stageResult.isErr()) {
       logger.error(
         {
           ...this.observabilityContext(),
           claimedStatus: claimed,
-          err: normalizeError(err),
+          err: stageResult.error,
         },
         "Failed to stage terminal sandbox function invocation blob in Redis"
       );
@@ -1118,13 +1122,15 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
     // Stage in Redis first so other processes (Temporal activity) can ensureData without
     // waiting on GCS. GCS durability trails via pendingInitialPersistence.
-    try {
-      await stageSandboxFunctionInvocationBlob(resource.sId, resource.data);
-    } catch (err) {
+    const stageResult = await stageSandboxFunctionInvocationBlob(
+      resource.sId,
+      resource.data
+    );
+    if (stageResult.isErr()) {
       logger.error(
         {
           ...resource.observabilityContext(auth),
-          err: normalizeError(err),
+          err: stageResult.error,
         },
         "Failed to stage sandbox function invocation blob; writing GCS synchronously"
       );
@@ -1530,14 +1536,14 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           workspaceId: workspaceModelId,
         })
       ),
-      async (invocationSId) => {
-        try {
-          await clearStagedSandboxFunctionInvocationBlob(invocationSId);
-        } catch (err) {
+      async (invocationId) => {
+        const clearResult =
+          await clearStagedSandboxFunctionInvocationBlob(invocationId);
+        if (clearResult.isErr()) {
           logger.error(
             {
-              invocationSId,
-              err: normalizeError(err),
+              invocationId,
+              err: clearResult.error,
             },
             "Failed to clear staged sandbox function invocation blob"
           );
@@ -1705,13 +1711,14 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         transaction,
       });
       await SandboxFunctionInvocationResource.deleteDataFromGcs([this.gcsPath]);
-      try {
-        await clearStagedSandboxFunctionInvocationBlob(this.sId);
-      } catch (err) {
+      const clearResult = await clearStagedSandboxFunctionInvocationBlob(
+        this.sId
+      );
+      if (clearResult.isErr()) {
         logger.error(
           {
             ...this.observabilityContext(auth),
-            err: normalizeError(err),
+            err: clearResult.error,
           },
           "Failed to clear staged sandbox function invocation blob"
         );
