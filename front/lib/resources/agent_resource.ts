@@ -114,6 +114,7 @@ type AgentResourceExtraBlob = {
   versionAuthorId: ModelId | null;
   requestedSpaceIds: ModelId[];
   modelConfiguration: AgentModelConfigurationType;
+  codeDefinedSkillIds: string[];
   content: AgentResourceContent | null;
 };
 
@@ -243,6 +244,7 @@ export class AgentResource
   readonly versionAuthorId: ModelId | null;
   private readonly requestedSpaceIds: ModelId[];
   readonly modelConfiguration: AgentModelConfigurationType;
+  private readonly codeDefinedSkillIds: string[];
   // Mutable so a light resource can be enriched to full in place once read access is confirmed
   // (see `fromAgentConfigurationModel`). `variant` is derived from its presence.
   private _content: AgentResourceContent | null;
@@ -271,6 +273,7 @@ export class AgentResource
     this.versionAuthorId = extra.versionAuthorId;
     this.requestedSpaceIds = extra.requestedSpaceIds;
     this.modelConfiguration = extra.modelConfiguration;
+    this.codeDefinedSkillIds = extra.codeDefinedSkillIds;
     this._content = extra.content;
   }
 
@@ -331,6 +334,7 @@ export class AgentResource
           configuration.requestedSpaceIds.map(getResourceIdFromSId)
         ),
         modelConfiguration: configuration.model,
+        codeDefinedSkillIds: [],
         content: null,
       }
     );
@@ -373,6 +377,7 @@ export class AgentResource
         versionAuthorId: null,
         requestedSpaceIds: [],
         modelConfiguration: configuration.model,
+        codeDefinedSkillIds: configuration.codeDefinedSkillIds ?? [],
         content: null,
       }
     );
@@ -423,6 +428,7 @@ export class AgentResource
           reasoningEffort: configuration.reasoningEffort ?? undefined,
           responseFormat: configuration.responseFormat ?? undefined,
         },
+        codeDefinedSkillIds: [],
         content: {
           version: configuration.version,
           instructions: configuration.instructions,
@@ -1106,23 +1112,29 @@ export class AgentResource
   }
 
   /**
-   * Skills equipped on this agent. Custom agents only: a global agent's skills are code-defined and
-   * are not carried by the resource (`fromGlobalAgent` builds from the `light` configuration, which
-   * has no `codeDefinedSkillIds`).
+   * Skills equipped on this agent: the `AgentSkillModel` rows of a custom agent, the code-defined
+   * skills a global agent declares.
+   */
+  /**
+   * @cc [owner:sfriquet,label:backend] agent-skills-by-scope
+   * A global agent's skills MUST be resolved from the `codeDefinedSkillIds` its configuration
+   * declares, never from `AgentSkillModel`: global agents hold no such row and share the `id: -1`
+   * sentinel, so a row lookup would be cross-agent (see
+   * `skill-references-by-configuration-model-id`). A custom agent's skills MUST be resolved from
+   * its `agent_configurations` row (`agentConfigurationModelId`), never from
+   * `codeDefinedSkillIds`, which is always empty for them.
    */
   async listSkills(
     auth: Authenticator,
     fetchContext: SkillFetchContext = {}
   ): Promise<SkillResource[]> {
-    // TODO(2026-09-18 agent-resource): support global agents. `fromGlobalAgent` already receives
-    //   `codeDefinedSkillIds` — `getGlobalAgents` sets them in every variant — but drops them:
-    //   carry them as a core field (a global resource is always `light`, so `content` is not an
-    //   option) and branch here on `scope`, resolving them with `SkillResource.fetchByIds` in
-    //   declaration order. That also retires the global branch of `getSkillReferencesForAgent`.
-    assert(
-      this.scope !== "global",
-      "Unexpected: `listSkills` called on a global AgentResource"
-    );
+    if (this.scope === "global") {
+      return SkillResource.fetchByIds(
+        auth,
+        this.codeDefinedSkillIds,
+        fetchContext
+      );
+    }
 
     return SkillResource.listByAgentConfigurationModelId(
       auth,
