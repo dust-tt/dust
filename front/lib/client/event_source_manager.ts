@@ -305,6 +305,12 @@ export class EventSourceManager {
     void this.startSse(streamId, entry);
   }
 
+  /**
+   * @cc [owner:id13,label:performance;architecture] sse-health-handshake-proof
+   * An SSE probe MUST mark the browser session healthy only after receiving the managed handshake,
+   * never from the HTTP open alone. This proof depends on the server emitting an unpadded handshake;
+   * flush padding could pass a size-threshold proxy while real events remain buffered.
+   */
   private async startSse(
     streamId: string,
     entry: ConnectionEntry

@@ -34,6 +34,13 @@ type StreamEventsParams<TIn> = {
  * `streamEvents` MUST write the managed SSE handshake before it starts consuming the event
  * iterator so clients can verify that streaming response bytes reach the browser.
  */
+/**
+ * @cc [owner:id13,label:performance;architecture] unpadded-managed-sse-handshake
+ * `streamEvents` MUST emit only the minimal managed handshake frame before it starts the iterator
+ * and MUST NOT insert padding, comment frames, or other filler before the first real event.
+ * A size-threshold proxy could otherwise release the handshake while buffering later events,
+ * making the SSE probe falsely healthy.
+ */
 export function streamEvents<TIn>(params: StreamEventsParams<TIn>) {
   setSSEHeaders(params.ctx);
 

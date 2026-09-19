@@ -106,9 +106,11 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
 
     expect(response.status).toBe(200);
     const body = await response.text();
-    expect(body.startsWith(`event: ${MANAGED_SSE_HANDSHAKE_EVENT}\n`)).toBe(
-      true
-    );
+    expect(
+      body.startsWith(
+        `event: ${MANAGED_SSE_HANDSHAKE_EVENT}\ndata: {}\n\ndata: `
+      )
+    ).toBe(true);
     const payloads = parseSseDataPayloads(body);
     expect(payloads.map((p) => JSON.parse(p).data.text)).toEqual(["hello"]);
   });
