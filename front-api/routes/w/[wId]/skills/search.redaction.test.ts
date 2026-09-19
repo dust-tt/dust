@@ -229,14 +229,109 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     ]);
 
     const request: estypes.SearchRequest = mockSearch.mock.calls[1][0];
+    const customQuery = {
+      bool: {
+        filter: [{ term: { workspace_id: workspace.sId } }],
+      },
+    };
     expect(request.query).toEqual({
       bool: {
-        filter: [
-          { term: { workspace_id: workspace.sId } },
-          { terms: { status: [status] } },
-        ],
+        filter: [{ terms: { status: [status] } }],
         must: expect.any(Array),
+        should: [
+          customQuery,
+          expect.objectContaining({
+            bool: expect.objectContaining({
+              filter: expect.arrayContaining([
+                { term: { workspace_id: "global" } },
+              ]),
+            }),
+          }),
+        ],
+        minimum_should_match: 1,
       },
+    });
+  });
+
+  it("filters restricted, removed and foreign skills in the ES query", async () => {
+    const other = await createPrivateApiMockRequest({ role: "admin" });
+    const foreign = await SkillFactory.create(other.auth, { name: "Foreign" });
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    await FeatureFlagFactory.basic(auth, "skills_search");
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    const custom = await SkillFactory.create(auth, {
+      name: "Custom",
+      requestedSpaceIds: [globalSpace.id],
+      availability: "workspace_users",
+    });
+    const [customDocument] = await SkillFactory.createSearchDocuments(auth, [
+      custom,
+    ]);
+    const [foreignDocument] = await SkillFactory.createSearchDocuments(
+      other.auth,
+      [foreign]
+    );
+    const documents = SkillFactory.createCodeDefinedSearchDocuments();
+    const global = documents.find(
+      (document) => document.skill_id === "go-deep"
+    );
+    assert(global);
+    const hits = [
+      {
+        sort: [9, "workspace analytics", "workspace-analytics"],
+        _source: { ...global, skill_id: "workspace-analytics" },
+      },
+      {
+        sort: [8, "deleted", "removed-code-defined-skill"],
+        _source: { ...global, skill_id: "removed-code-defined-skill" },
+      },
+      { sort: [7, "foreign", foreign.sId], _source: foreignDocument },
+      {
+        sort: [6, "go deep", "go-deep"],
+        _source: { ...global, name: "Indexed Go Deep" },
+      },
+      { sort: [5, "custom", custom.sId], _source: customDocument },
+    ];
+    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
+      hits: {
+        hits: hits.filter((hit) =>
+          matchesSkillSearchFilters(hit._source, request.query!)
+        ),
+      },
+    }));
+    const response = await searchRequest(workspace.sId);
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.skills).toEqual([
+      expect.objectContaining({
+        sId: "go-deep",
+        name: "Indexed Go Deep",
+      }),
+      expect.objectContaining({ sId: custom.sId }),
+    ]);
+    expect(body.nextCursor).toBe(
+      Buffer.from(JSON.stringify([5, "custom", custom.sId])).toString(
+        "base64url"
+      )
+    );
+    expect(body.hasMore).toBe(false);
+    expect(mockSearch).toHaveBeenCalledOnce();
+  });
+
+  it("does not inject code-defined skills absent from Elasticsearch", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    await FeatureFlagFactory.basic(auth, "skills_search");
+    mockSearch.mockResolvedValue({ hits: { hits: [] } });
+    const response = await searchRequest(workspace.sId, { query: "deep" });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      skills: [],
+      hasMore: false,
+      nextCursor: null,
     });
   });
 });
