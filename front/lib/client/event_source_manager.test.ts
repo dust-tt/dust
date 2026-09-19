@@ -22,6 +22,10 @@ class FakeEventSource {
 
   constructor(readonly url: string) {}
 
+  emitMessage(data: string) {
+    this.onmessage?.({ data, lastEventId: "", target: this, type: "message" });
+  }
+
   close = vi.fn(() => {
     this.readyState = 2;
   });
@@ -74,7 +78,7 @@ describe("EventSourceManager", () => {
 
     await vi.waitFor(() => expect(sources).toHaveLength(1));
     unsubscribeConcurrent();
-    sources[0].onmessage?.({ data: "event-1" } as PolyfillMessageEvent);
+    sources[0].emitMessage("event-1");
     unsubscribe();
 
     expect(sources[0].close).not.toHaveBeenCalled();
@@ -101,7 +105,7 @@ describe("EventSourceManager", () => {
     expect(firstEvents).toEqual(["event-1"]);
     expect(remountedEvents).toEqual(["event-1"]);
 
-    sources[0].onmessage?.({ data: "terminal" } as PolyfillMessageEvent);
+    sources[0].emitMessage("terminal");
     expect(sources[0].close).toHaveBeenCalledOnce();
     expect(remountedStates.at(-1)).toEqual({ kind: "terminal" });
 
@@ -133,7 +137,7 @@ describe("EventSourceManager", () => {
       keepAliveWithoutSubscribers: false,
     });
     await vi.waitFor(() => expect(sources).toHaveLength(1));
-    sources[0].onmessage?.({ data: "event-1" } as PolyfillMessageEvent);
+    sources[0].emitMessage("event-1");
 
     const secondEvents: string[] = [];
     const unsubscribeSecond = manager.subscribe({
@@ -147,7 +151,7 @@ describe("EventSourceManager", () => {
     });
 
     expect(secondEvents).toEqual([]);
-    sources[0].onmessage?.({ data: "event-2" } as PolyfillMessageEvent);
+    sources[0].emitMessage("event-2");
     expect(firstEvents).toEqual(["event-1", "event-2"]);
     expect(secondEvents).toEqual(["event-2"]);
 
@@ -342,11 +346,11 @@ describe("EventSourceManager", () => {
     });
     await vi.waitFor(() => expect(sources).toHaveLength(1));
     sources[0].onopen?.({ type: "open", target: sources[0] });
-    sources[0].onmessage?.({ data: "done" } as PolyfillMessageEvent);
+    sources[0].emitMessage("done");
     expect(sources).toHaveLength(1);
     await vi.waitFor(() => expect(sources).toHaveLength(2));
     sources[1].onopen?.({ type: "open", target: sources[1] });
-    sources[1].onmessage?.({ data: "done" } as PolyfillMessageEvent);
+    sources[1].emitMessage("done");
     expect(states.at(-1)?.kind).toBe("failed");
     manager.releaseWorkspace("w_1");
   });
