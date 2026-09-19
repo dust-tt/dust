@@ -1,8 +1,5 @@
 import { randomUUID } from "node:crypto";
-import {
-  getRedisCacheClient,
-  REDIS_CACHE_CONCURRENCY,
-} from "@app/lib/api/redis";
+import { REDIS_CACHE_CONCURRENCY } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -343,15 +340,38 @@ export async function deleteActionOutputsFromGcs(
   return deleteContentsFromGcs(uncoveredPaths);
 }
 
-// --- Sandbox-function action output staging (same Redis cache, action-scoped key) ---
+// --- Sandbox-function action output staging (same Redis helpers, action-scoped key) ---
 
 export const SANDBOX_FUNCTION_ACTION_OUTPUT_CACHE_TTL_MS =
   GCS_CONTENT_CACHE_TTL_MS;
 
-function sandboxFunctionActionOutputCacheKey(actionSId: string): string {
-  // Action sIds are globally unique; one blob per sandbox-function MCP action.
-  return `cacheWithRedis-sandboxFunctionActionOutput-sfa_output:${actionSId}:v1`;
+/**
+ * Loader identity for `cacheWithRedis` / `warmCacheWithRedis` keying only.
+ * Misses mean the write-behind window expired or was never warmed — not a GCS fetch.
+ */
+async function sandboxFunctionActionOutput(
+  _actionSId: string
+): Promise<object | null> {
+  return null;
 }
+
+const sandboxFunctionActionOutputCacheKey = (actionSId: string) =>
+  `sfa_output:${actionSId}:v1`;
+
+const warmSandboxFunctionActionOutput = warmCacheWithRedis(
+  sandboxFunctionActionOutput,
+  sandboxFunctionActionOutputCacheKey,
+  { ttlMs: SANDBOX_FUNCTION_ACTION_OUTPUT_CACHE_TTL_MS }
+);
+
+const readSandboxFunctionActionOutputCached = cacheWithRedis(
+  sandboxFunctionActionOutput,
+  sandboxFunctionActionOutputCacheKey,
+  {
+    cacheNullValues: false,
+    ttlMs: SANDBOX_FUNCTION_ACTION_OUTPUT_CACHE_TTL_MS,
+  }
+);
 
 /**
  * Stages the full sandbox-function action output envelope in Redis so poll
@@ -360,13 +380,9 @@ function sandboxFunctionActionOutputCacheKey(actionSId: string): string {
 export async function stageSandboxFunctionActionOutput(
   _auth: Authenticator,
   actionSId: string,
-  output: unknown
+  output: object
 ): Promise<void> {
-  const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
-  const key = sandboxFunctionActionOutputCacheKey(actionSId);
-  await redisCli.set(key, JSON.stringify(output), {
-    PX: SANDBOX_FUNCTION_ACTION_OUTPUT_CACHE_TTL_MS,
-  });
+  await warmSandboxFunctionActionOutput(output, actionSId);
 }
 
 /**
@@ -374,12 +390,6 @@ export async function stageSandboxFunctionActionOutput(
  */
 export async function readStagedSandboxFunctionActionOutput(
   actionSId: string
-): Promise<unknown | null> {
-  const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
-  const key = sandboxFunctionActionOutputCacheKey(actionSId);
-  const raw = await redisCli.get(key);
-  if (raw === null) {
-    return null;
-  }
-  return JSON.parse(raw) as unknown;
+): Promise<object | null> {
+  return readSandboxFunctionActionOutputCached(actionSId);
 }
