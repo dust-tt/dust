@@ -4,7 +4,8 @@ import { SYSTEM_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/syste
 import { makeSkillDocumentId } from "@app/lib/skill_search";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
 import { reindexCodeDefinedSkills } from "@app/lib/skill_search/index_code_defined";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import logger from "@app/logger/logger";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   ping: vi.fn(),
@@ -20,6 +21,8 @@ vi.mock("@elastic/elasticsearch", async (importOriginal) => ({
 }));
 
 describe("reindexCodeDefinedSkills", () => {
+  afterEach(() => vi.restoreAllMocks());
+
   beforeEach(() => {
     vi.resetAllMocks();
     vi.spyOn(config, "getElasticsearchConfig").mockReturnValue({
@@ -86,12 +89,33 @@ describe("reindexCodeDefinedSkills", () => {
   });
 
   it("does not prune when bulk indexing has partial failures", async () => {
-    mocks.bulk.mockResolvedValue({ errors: true });
+    const failedItem = {
+      index: {
+        _id: "code_defined_go-deep",
+        status: 400,
+        error: {
+          type: "mapper_parsing_exception",
+          reason: "Failed to parse field [name]",
+        },
+      },
+    };
+    mocks.bulk.mockResolvedValue({
+      errors: true,
+      items: [
+        { index: { _id: "code_defined_succeeded", status: 201 } },
+        failedItem,
+      ],
+    });
+    const logError = vi.spyOn(logger, "error");
 
     const result = await reindexCodeDefinedSkills();
 
     expect(result.isErr()).toBe(true);
     expect(mocks.deleteByQuery).not.toHaveBeenCalled();
+    expect(logError).toHaveBeenCalledExactlyOnceWith(
+      { errors: [failedItem] },
+      "Failed to index code-defined skills."
+    );
   });
 
   it("does not prune when Elasticsearch rejects indexing", async () => {
