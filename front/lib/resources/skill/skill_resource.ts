@@ -41,11 +41,13 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type {
   CodeDefinedSkillFile,
   SkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
+import { SYSTEM_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/system";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import type {
   SkillConfigurationFindOptions,
@@ -1195,6 +1197,32 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
       { agentLoopData, effectiveSpaceIds, permissionFiltering }
     );
+  }
+
+  static async listAvailableCodeDefinedIds(
+    auth: Authenticator,
+    { mcpServerViewIds = [] }: { mcpServerViewIds?: string[] } = {}
+  ): Promise<string[]> {
+    const skills = await this.fetchByIds(
+      auth,
+      [...GLOBAL_SKILLS_ARRAY, ...SYSTEM_SKILLS_ARRAY].map(
+        (skill) => skill.sId
+      ),
+      {
+        withInstructions: false,
+        withTools: mcpServerViewIds.length > 0,
+        withFileAttachments: false,
+      }
+    );
+    const selectedViewIds = new Set(mcpServerViewIds);
+
+    return skills
+      .filter(
+        (skill) =>
+          selectedViewIds.size === 0 ||
+          skill.mcpServerViews.some((view) => selectedViewIds.has(view.sId))
+      )
+      .map((skill) => skill.sId);
   }
 
   static async fetchByName(

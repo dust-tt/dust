@@ -273,25 +273,22 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
         must: expect.any(Array),
       },
     };
-    expect(request.query).toEqual(
-      status === "active"
-        ? {
-            bool: {
-              should: [
-                customQuery,
-                expect.objectContaining({
-                  bool: expect.objectContaining({
-                    filter: expect.arrayContaining([
-                      { term: { workspace_id: "global" } },
-                    ]),
-                  }),
-                }),
-              ],
-              minimum_should_match: 1,
-            },
-          }
-        : customQuery
-    );
+    expect(request.query).toEqual({
+      bool: {
+        should: [
+          customQuery,
+          expect.objectContaining({
+            bool: expect.objectContaining({
+              filter: expect.arrayContaining([
+                { term: { workspace_id: "global" } },
+                { terms: { status: [status] } },
+              ]),
+            }),
+          }),
+        ],
+        minimum_should_match: 1,
+      },
+    });
   });
 
   it("filters restricted, removed and foreign skills in the ES query", async () => {
