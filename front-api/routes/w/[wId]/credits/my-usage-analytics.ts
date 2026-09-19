@@ -5,6 +5,7 @@ import {
   getAwuUsageFromAnalytics,
 } from "@app/lib/api/analytics/awu_usage_analytics";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
+import { emitAnalyticsExportedEvent } from "@app/lib/api/audit/analytics_export";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -44,6 +45,19 @@ app.get("/", validate("query", QuerySchema), async (ctx) => {
   }
 
   const rows = awuUsageToCsvRows(result.value, series);
+
+  void emitAnalyticsExportedEvent(auth, {
+    exportName: "personal_credit_usage",
+    format: "csv",
+    fileName: `dust_credit_usage_last_${query.days}_days.csv`,
+    rowCount: rows.length,
+    query: {
+      days: query.days,
+      granularity: query.granularity,
+      groupBy: query.groupBy,
+      series,
+    },
+  });
 
   ctx.header("Content-Type", "text/csv");
   ctx.header(
