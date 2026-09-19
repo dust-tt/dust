@@ -5,7 +5,6 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  reindexCodeDefinedSkillsActivity: vi.fn(),
   listWorkspaceIdsActivity: vi.fn(),
   refreshWorkspaceSearchUsageActivity: vi.fn(),
 }));
@@ -18,7 +17,6 @@ vi.mock("@temporalio/workflow", () => ({
 describe("refreshSearchUsageWorkflow", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mocks.reindexCodeDefinedSkillsActivity.mockResolvedValue(undefined);
     mocks.listWorkspaceIdsActivity.mockResolvedValue([
       "workspace-1",
       "workspace-2",
@@ -26,11 +24,8 @@ describe("refreshSearchUsageWorkflow", () => {
     mocks.refreshWorkspaceSearchUsageActivity.mockResolvedValue(undefined);
   });
 
-  it("reindexes code-defined skills once before refreshing workspaces sequentially", async () => {
+  it("refreshes each workspace sequentially", async () => {
     const events: string[] = [];
-    mocks.reindexCodeDefinedSkillsActivity.mockImplementation(async () => {
-      events.push("code-defined");
-    });
     mocks.refreshWorkspaceSearchUsageActivity.mockImplementation(
       async ({ workspaceId }) => {
         events.push(`start:${workspaceId}`);
@@ -42,14 +37,7 @@ describe("refreshSearchUsageWorkflow", () => {
     await refreshSearchUsageWorkflow();
 
     expect(mocks.listWorkspaceIdsActivity).toHaveBeenCalledExactlyOnceWith();
-    expect(
-      mocks.reindexCodeDefinedSkillsActivity
-    ).toHaveBeenCalledExactlyOnceWith();
-    expect(mocks.reindexCodeDefinedSkillsActivity).toHaveBeenCalledBefore(
-      mocks.listWorkspaceIdsActivity
-    );
     expect(events).toEqual([
-      "code-defined",
       "start:workspace-1",
       "end:workspace-1",
       "start:workspace-2",
@@ -57,24 +45,11 @@ describe("refreshSearchUsageWorkflow", () => {
     ]);
   });
 
-  it("reindexes code-defined skills even when there are no workspaces", async () => {
+  it("does nothing when there are no workspaces", async () => {
     mocks.listWorkspaceIdsActivity.mockResolvedValue([]);
 
     await refreshSearchUsageWorkflow();
 
-    expect(
-      mocks.reindexCodeDefinedSkillsActivity
-    ).toHaveBeenCalledExactlyOnceWith();
-    expect(mocks.refreshWorkspaceSearchUsageActivity).not.toHaveBeenCalled();
-  });
-
-  it("stops before listing workspaces if code-defined indexing fails", async () => {
-    const error = new Error("Code-defined indexing failed");
-    mocks.reindexCodeDefinedSkillsActivity.mockRejectedValue(error);
-
-    await expect(refreshSearchUsageWorkflow()).rejects.toBe(error);
-
-    expect(mocks.listWorkspaceIdsActivity).not.toHaveBeenCalled();
     expect(mocks.refreshWorkspaceSearchUsageActivity).not.toHaveBeenCalled();
   });
 
@@ -98,6 +73,5 @@ describe("refreshSearchUsageWorkflow", () => {
       workspaceId: "workspace-4",
     });
     expect(mocks.listWorkspaceIdsActivity).not.toHaveBeenCalled();
-    expect(mocks.reindexCodeDefinedSkillsActivity).not.toHaveBeenCalled();
   });
 });
