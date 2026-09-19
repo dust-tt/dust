@@ -17,7 +17,7 @@ import {
   snapshotFromPayload,
 } from "./data";
 import type { EmbeddingReference, Metrics } from "./metrics";
-import { computeMetrics, toEmbeddingReference } from "./metrics";
+import { computeMetrics, referenceCosines, toEmbeddingReference } from "./metrics";
 import { shuffled } from "./similarity";
 import type { TagsFileType } from "./tagging";
 import {
@@ -88,6 +88,13 @@ type Options = {
 
 const positiveInt = z.coerce.number().int().min(1);
 const nonNegativeInt = z.coerce.number().int().min(0);
+
+const CosinesFile = z.object({
+  version: z.literal(1),
+  model: z.string(),
+  ids: z.array(z.string()),
+  values: z.array(z.number()),
+});
 
 function anthropicClient(): Anthropic {
   const key = EnvironmentConfig.getOptionalEnvVariable("ANTHROPIC_API_KEY");
@@ -277,14 +284,24 @@ async function evaluate(
 ): Promise<Metrics> {
   const tags = await readTagsFile(resolve(loaded.out, "tags.json"));
   const stabilityPath = resolve(loaded.out, "stability.json");
+  const reference = await loadReference(options, loaded);
   const metrics = computeMetrics({
     snapshot: loaded.snapshot,
     tags,
-    reference: await loadReference(options, loaded),
+    reference,
     stability: existsSync(stabilityPath) ? await readStabilityFile(stabilityPath) : null,
     seed: nonNegativeInt.parse(options.seed),
   });
   await saveJson(resolve(loaded.out, "metrics.json"), metrics);
+  if (reference) {
+    const ids = loaded.snapshot.skills.map((skill) => skill.id);
+    await saveJson(resolve(loaded.out, "cosines.json"), {
+      version: 1,
+      model: reference.model,
+      ids,
+      values: referenceCosines(ids, reference),
+    });
+  }
   logger.info(
     {
       skills: metrics.counts.skills,
@@ -310,7 +327,22 @@ async function report(loaded: { snapshot: SkillsSnapshotType; out: string }): Pr
   const metrics: unknown = JSON.parse(
     await readFile(resolve(loaded.out, "metrics.json"), "utf8"),
   );
+  const cosinesPath = resolve(loaded.out, "cosines.json");
+  const ids = loaded.snapshot.skills.map((skill) => skill.id);
+  let cosines: { model: string; values: number[] } | null = null;
+  if (existsSync(cosinesPath)) {
+    const file = CosinesFile.parse(JSON.parse(await readFile(cosinesPath, "utf8")));
+    if (
+      file.ids.length !== ids.length ||
+      file.ids.some((id, index) => id !== ids[index]) ||
+      file.values.length !== (ids.length * (ids.length - 1)) / 2
+    ) {
+      throw new Error("cosines.json does not match the snapshot. Run the evaluate stage again.");
+    }
+    cosines = { model: file.model, values: file.values };
+  }
   const dataset = {
+    cosines,
     workspace: loaded.snapshot.workspace,
     model: tags.model,
     effort: tags.effort,

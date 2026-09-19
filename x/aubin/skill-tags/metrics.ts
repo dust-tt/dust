@@ -857,6 +857,33 @@ function computeStability(tags: TagsFileType, stability: StabilityFileType) {
   };
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] cosines-upper-triangle-order
+ * The exported cosines are the strict upper triangle of the pairwise cosine matrix over `ids` in
+ * the given order, row-major (pair (i, j) with i < j at index `i * n - i * (i + 1) / 2 + (j - i - 1)`),
+ * rounded to 3 decimals. Every ID must have a reference vector.
+ */
+export function referenceCosines(ids: string[], reference: EmbeddingReference): number[] {
+  const vectors = ids.map((id) => {
+    const vector = reference.vectors.get(id);
+    if (!vector) {
+      throw new Error(`Embedding reference is missing skill ${id}.`);
+    }
+    return vector;
+  });
+  const values: number[] = [];
+  for (let i = 0; i < vectors.length; i++) {
+    for (let j = i + 1; j < vectors.length; j++) {
+      let dot = 0;
+      for (let d = 0; d < vectors[i].length; d++) {
+        dot += vectors[i][d] * vectors[j][d];
+      }
+      values.push(round(dot, 3));
+    }
+  }
+  return values;
+}
+
 export function toEmbeddingReference(embeddings: {
   model: string;
   dimensions: number;

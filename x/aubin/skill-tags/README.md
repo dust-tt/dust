@@ -72,6 +72,7 @@ can serve as held-out ground truth for the `function` facet.
 | `tags.json`      | Per skill: tags per facet, summary, confidence, uncovered aspects, input hash, usage      |
 | `stability.json` | A second tagging pass over a seeded sample, for agreement metrics                        |
 | `metrics.json`   | Every metric below plus top-10 embedding neighbors per skill when a reference exists      |
+| `cosines.json`   | Upper triangle of the pairwise embedding cosine matrix, for the report's compare view     |
 | `index.html`     | Offline explorer and metrics report, including its data                                  |
 
 `tags.json` is written before the first model call and after every completed skill, so an
@@ -79,6 +80,26 @@ interrupted run resumes where it stopped. Entries are reused only when the skill
 effort, prompt, taxonomy, name masking, and instruction budget are unchanged. Instructions
 longer than `--instruction-budget` cl100k tokens (default 6000) are truncated for tagging with
 an explicit marker; the snapshot keeps the full text.
+
+## Report
+
+The report has five tabs. **Explore** is the search: pick tags on the left and the list narrows,
+with every remaining tag showing how many of the current matches carry it; the detail panel shows
+the selected skill's tags, its narrowing path, its top-10 tag neighbors next to its top-10
+embedding neighbors, and a `vs` button on every neighbor. **Map** lays all skills out by classical
+multidimensional scaling of tag distance (1 − similarity, method selectable) so distance on screen
+reflects tag similarity; colour up to three tags of a facet at a time, hover a legend entry to
+isolate its members, or switch to one panel per tag to see where each tag's members sit. Points
+outside the current Explore selection are dimmed. **Segments** is a facet × facet heatmap of
+bucket sizes; hovering a cell gives its mean tag similarity and mean embedding cosine, clicking it
+opens the bucket in Explore. **Compare** takes two skills and shows their Jaccard, IDF cosine, and
+embedding cosine with B's rank among A's neighbors, then a facet-by-facet alignment of shared and
+unshared tags weighted by facet, and a seriated similarity matrix of the current Explore selection
+(up to 60 skills) or of A's 20 nearest. **Metrics** renders `metrics.json`.
+
+Charts follow the dataviz conventions of this repository's skills: a single blue sequential ramp
+for magnitudes, at most three categorical hues on the all-pairs scatter, neutral for the rest, hover
+tooltips on every mark, and tables as the accessible fallback. The page adapts to dark mode.
 
 ## Tag similarity and search
 
@@ -138,7 +159,7 @@ whose weighted facets all match.
 | `similarity.ts` | Tag space, IDF weights, similarities, neighbors, conjunction search      |
 | `metrics.ts`    | All metrics, embedding reference, known-group definitions                |
 | `cli.ts`        | Stage orchestration and report generation                               |
-| `viewer.*`      | Offline explorer and metrics report                                     |
+| `viewer.*`      | Offline explorer, map, segments heatmap, compare view, metrics report    |
 
 ## Results on the Dust workspace, taxonomy v1 (2026-09-19)
 
