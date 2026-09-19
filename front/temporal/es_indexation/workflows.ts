@@ -17,6 +17,7 @@ const {
   indexAgentSearchActivity,
   indexSkillSearchActivity,
   indexUserSearchActivity,
+  reindexCodeDefinedSkillsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -136,6 +137,8 @@ const { listWorkspaceIdsActivity, refreshWorkspaceSearchUsageActivity } =
   });
 
 export async function refreshSearchUsageWorkflow(): Promise<void> {
+  await reindexCodeDefinedSkillsActivity();
+
   const workspaceIds = await listWorkspaceIdsActivity();
   for (const workspaceId of workspaceIds) {
     await refreshWorkspaceSearchUsageActivity({ workspaceId });
