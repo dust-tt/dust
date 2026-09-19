@@ -5,7 +5,6 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  patched: vi.fn(),
   reindexCodeDefinedSkillsActivity: vi.fn(),
   listWorkspaceIdsActivity: vi.fn(),
   refreshWorkspaceSearchUsageActivity: vi.fn(),
@@ -13,14 +12,12 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@temporalio/workflow", () => ({
   defineSignal: (name: string) => ({ name }),
-  patched: mocks.patched,
   proxyActivities: () => mocks,
 }));
 
 describe("refreshSearchUsageWorkflow", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mocks.patched.mockReturnValue(true);
     mocks.reindexCodeDefinedSkillsActivity.mockResolvedValue(undefined);
     mocks.listWorkspaceIdsActivity.mockResolvedValue([
       "workspace-1",
@@ -79,15 +76,6 @@ describe("refreshSearchUsageWorkflow", () => {
 
     expect(mocks.listWorkspaceIdsActivity).not.toHaveBeenCalled();
     expect(mocks.refreshWorkspaceSearchUsageActivity).not.toHaveBeenCalled();
-  });
-
-  it("preserves the activity sequence when replaying a pre-change run", async () => {
-    mocks.patched.mockReturnValue(false);
-
-    await refreshSearchUsageWorkflow();
-
-    expect(mocks.reindexCodeDefinedSkillsActivity).not.toHaveBeenCalled();
-    expect(mocks.refreshWorkspaceSearchUsageActivity).toHaveBeenCalledTimes(2);
   });
 
   it("stops when a workspace refresh fails", async () => {
