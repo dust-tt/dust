@@ -8,29 +8,12 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { Op } from "sequelize";
 import { z } from "zod";
 
-// Run backfill_mcp_action_output_item_gcs_paths.ts and verify its completion first.
-// This script trusts the backfilled paths; it does not make a GCS request per row.
-// GCS read failures will fall back to this placeholder instead of the original content.
+// Requires a verified GCS backfill.
 const CONTENT_PLACEHOLDER = {
   type: "text" as const,
   text: "Output content unavailable.",
 };
 
-/**
- * @cc [owner:flvndvd,label:backend] clear-only-workspace-gcs-backed-content
- * The caller MUST verify the GCS backfill before executing. Only content on rows in the
- * requested workspace with its canonical MCP output GCS prefix may be replaced; other
- * columns and rows without that prefix MUST remain unchanged.
- */
-/**
- * @cc [owner:flvndvd,label:performance] bounded-content-cleanup
- * Each scan MUST use the workspace/id cursor, fetch at most batchSize rows without their
- * content, and advance past ineligible rows. Updates MUST be batched, not per row.
- */
-/**
- * @cc [owner:flvndvd,label:backend] content-cleanup-dry-run
- * When execute is false, no database rows may be changed.
- */
 export async function clearMCPActionOutputItemContents(
   {
     workspace,
@@ -85,7 +68,7 @@ export async function clearMCPActionOutputItemContents(
       updated += affectedCount;
     }
 
-    // Log the cursor only after the update succeeds so --afterId can resume safely.
+    // Advance the cursor after a successful update.
     lastId = items[items.length - 1].id;
     scanned += items.length;
     eligible += itemIds.length;
