@@ -1,6 +1,7 @@
 import type { StorybookConfig } from "@storybook/react-vite";
 import { fileURLToPath } from "url";
 import path from "path";
+import { searchForWorkspaceRoot } from "vite";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
@@ -25,6 +26,21 @@ const config: StorybookConfig = {
   ],
 
   viteFinal: async (config) => {
+    config.server = {
+      ...config.server,
+      fs: {
+        ...config.server?.fs,
+        allow: [
+          ...(config.server?.fs?.allow ?? [searchForWorkspaceRoot(__dirname)]),
+          path.resolve(
+            path.dirname(
+              fileURLToPath(import.meta.resolve("@storybook/addon-vitest"))
+            ),
+            "../../.."
+          ),
+        ],
+      },
+    };
     config.resolve = {
       ...(config.resolve || {}),
       alias: {

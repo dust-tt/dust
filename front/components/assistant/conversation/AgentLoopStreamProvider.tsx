@@ -7,7 +7,7 @@ import { eventSourceManager } from "@app/lib/client/event_source_manager";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetOngoingAgentLoopsResponseBody } from "@app/types/api/assistant/conversation/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { Fetcher } from "swr";
 
 const ONGOING_AGENT_LOOPS_REFRESH_INTERVAL_MS = 3_000;
@@ -67,8 +67,8 @@ function OngoingAgentLoopConnection({
  */
 /**
  * @cc [owner:id13,label:concurrency;reliability] ongoing-loop-retry-after-refresh
- * Every successful registry refresh MUST call `resume` for each listed message so a failed stream
- * receives a fresh retry budget even when the registry payload is unchanged.
+ * Every successful registry refresh MUST offer each listed message to the manager for a bounded
+ * resume, even when the registry payload is unchanged. Removed messages MUST lose keepalive.
  */
 export function AgentLoopStreamProvider({
   children,
@@ -78,15 +78,25 @@ export function AgentLoopStreamProvider({
   owner: LightWorkspaceType;
 }) {
   const { fetcher } = useFetcher();
+  const listedStreamIds = useRef(new Set<string>());
   const agentLoopsFetcher: Fetcher<GetOngoingAgentLoopsResponseBody> = fetcher;
   const { data, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/assistant/ongoing-agent-loops`,
     agentLoopsFetcher,
     {
       onSuccess: ({ agentLoops }) => {
+        const nextStreamIds = new Set<string>();
         for (const { messageId } of agentLoops) {
-          eventSourceManager.resume(`message-${messageId}`);
+          const streamId = `message-${messageId}`;
+          nextStreamIds.add(streamId);
+          eventSourceManager.resume(streamId);
         }
+        for (const streamId of listedStreamIds.current) {
+          if (!nextStreamIds.has(streamId)) {
+            eventSourceManager.stopKeepingAlive(streamId, owner.sId);
+          }
+        }
+        listedStreamIds.current = nextStreamIds;
       },
       refreshInterval: ONGOING_AGENT_LOOPS_REFRESH_INTERVAL_MS,
       refreshWhenHidden: true,
