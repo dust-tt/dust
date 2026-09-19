@@ -1,5 +1,4 @@
 import {
-  getConfluenceAccessToken,
   getConfluenceCloudInformation,
   getConfluenceUserAccountId,
   listConfluenceSpaces,
@@ -10,6 +9,7 @@ import {
   retrieveAvailableSpaces,
   retrieveHierarchyForParent,
 } from "@connectors/connectors/confluence/lib/permissions";
+import { getConfluenceAccessTokenWithThrow } from "@connectors/connectors/confluence/lib/utils";
 import {
   launchConfluencePersonalDataReportingSchedule,
   launchConfluenceRemoveSpacesSyncWorkflow,
@@ -55,13 +55,8 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
-    const confluenceAccessTokenRes =
-      await getConfluenceAccessToken(connectionId);
-    if (confluenceAccessTokenRes.isErr()) {
-      throw confluenceAccessTokenRes.error;
-    }
-
-    const confluenceAccessToken = confluenceAccessTokenRes.value;
+    const confluenceAccessToken =
+      await getConfluenceAccessTokenWithThrow(connectionId);
 
     const confluenceCloudInformation = await getConfluenceCloudInformation(
       confluenceAccessToken
@@ -126,14 +121,11 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
           },
         });
 
-      const confluenceAccessTokenRes =
-        await getConfluenceAccessToken(connectionId);
-      if (confluenceAccessTokenRes.isErr()) {
-        throw new Error(confluenceAccessTokenRes.error.message);
-      }
+      const confluenceAccessToken =
+        await getConfluenceAccessTokenWithThrow(connectionId);
 
       const newConfluenceCloudInformation = await getConfluenceCloudInformation(
-        confluenceAccessTokenRes.value
+        confluenceAccessToken
       );
 
       // Change connection only if "cloudId" matches.
@@ -256,6 +248,14 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     );
   }
 
+  /**
+   * @cc [owner:Nils-Fedrigo,label:error-handling] revoked-token-permissions-error
+   * When the Confluence OAuth connection is revoked or missing, this method MUST return
+   * `Err(ConnectorManagerError("EXTERNAL_OAUTH_TOKEN_ERROR"))`. Such failures reach this boundary
+   * as a thrown `ExternalOAuthTokenError` (see `oauth-access-token-or-error`); the helpers it calls
+   * MUST propagate that error unchanged rather than flatten it into a generic `Error` or convert it
+   * into an `Err<Error>`.
+   */
   async retrievePermissions({
     parentInternalId,
     filterPermission,
@@ -353,12 +353,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
       (permission) => permission === "read"
     );
     if (shouldFetchConfluenceSpaces) {
-      const spacesRes = await listConfluenceSpaces(connector);
-      if (spacesRes.isErr()) {
-        return spacesRes;
-      }
-
-      spaces = spacesRes.value;
+      spaces = await listConfluenceSpaces(connector);
     }
 
     const addedSpaceIds = [];

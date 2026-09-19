@@ -252,13 +252,10 @@ export async function retrieveAvailableSpaces(
     },
   });
 
-  const spacesRes = await listConfluenceSpaces(connector, confluenceConfig);
-  if (spacesRes.isErr()) {
-    return spacesRes;
-  }
+  const spaces = await listConfluenceSpaces(connector, confluenceConfig);
 
   return new Ok(
-    spacesRes.value
+    spaces
       .map((space) => {
         const isSynced = syncedSpaces.some((ss) => ss.spaceId === space.id);
 

@@ -6,13 +6,11 @@ import {
   CONFLUENCE_SUPPORTED_SPACE_TYPES,
   ConfluenceClient,
 } from "@connectors/connectors/confluence/lib/confluence_client";
+import { getConfluenceClient } from "@connectors/connectors/confluence/lib/utils";
 import { ConfluenceConfigurationModel } from "@connectors/lib/models/confluence";
-import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
-import type { Result } from "@dust-tt/client";
-import { Err, normalizeError, Ok } from "@dust-tt/client";
 
 const PAGE_FETCH_LIMIT = 100;
 
@@ -24,22 +22,6 @@ export async function getConfluenceCloudInformation(accessToken: string) {
   } catch (err) {
     logger.error({ err }, "Error getting Confluence cloud information");
     return null;
-  }
-}
-
-export async function getConfluenceAccessToken(
-  connectionId: string
-): Promise<Result<string, Error>> {
-  try {
-    const token = await getOAuthConnectionAccessTokenWithThrow({
-      logger,
-      provider: "confluence",
-      connectionId,
-    });
-
-    return new Ok(token.access_token);
-  } catch (error) {
-    return new Err(normalizeError(error));
   }
 }
 
@@ -64,20 +46,15 @@ async function fetchConfluenceConfiguration(connectorId: ModelId) {
 export async function listConfluenceSpaces(
   connector: ConnectorResource,
   confluenceConfig?: ConfluenceConfigurationModel
-): Promise<Result<ConfluenceSpaceType[], Error>> {
-  const { id: connectorId, connectionId } = connector;
+): Promise<ConfluenceSpaceType[]> {
+  const { id: connectorId } = connector;
 
   const config =
     confluenceConfig ?? (await fetchConfluenceConfiguration(connectorId));
-  const confluenceAccessTokenRes = await getConfluenceAccessToken(connectionId);
-  if (confluenceAccessTokenRes.isErr()) {
-    return confluenceAccessTokenRes;
-  }
-
-  const client = new ConfluenceClient(confluenceAccessTokenRes.value, {
-    cloudId: config?.cloudId,
-    useProxy: connector.useProxy ?? false,
-  });
+  const client = await getConfluenceClient(
+    { cloudId: config?.cloudId },
+    connector
+  );
 
   const allSpaces = new Map<string, ConfluenceSpaceType>();
 
@@ -95,7 +72,7 @@ export async function listConfluenceSpaces(
     } while (nextPageCursor);
   }
 
-  return new Ok([...allSpaces.values()]);
+  return [...allSpaces.values()];
 }
 
 export async function pageHasReadRestrictions(
