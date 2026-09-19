@@ -25,6 +25,7 @@ const MODEL_CREDIT_POSTING_ITEM_TYPES: ReadonlySet<AgentMessageConsumptionItemTy
   new Set(["input", "output", "reasoning", "tool_call", "tool_result"]);
 
 export type ExecutionBill = {
+  billingMarkerItemId: ModelId;
   userMessageOrigin: UserMessageOrigin;
   eventCreditAmount: number;
   costCredits: number;
@@ -115,7 +116,7 @@ export async function billExecution(
     if (modelPostingRows.length === 0 && !hasTrackableTool) {
       return null;
     }
-    const usages = await RunResource.listRunUsagesByModelIds(auth, {
+    const usages = await RunResource.listRunUsageGroupsByModelIds(auth, {
       runUsageModelIds: [
         ...new Set(modelPostingRows.map((row) => row.runUsageId)),
       ],
@@ -162,7 +163,6 @@ export async function billExecution(
     }
 
     const toolCreditAmountMicro = sumCharges(settledRows);
-    assertWholeCredits(toolCreditAmountMicro, "tool charges");
     const eventCreditAmount =
       modelCreditAmount + toolCreditAmountMicro / MICRO_CREDITS_PER_CREDIT;
     const creditAmountMicro = sumReconciled(settledRows);
@@ -224,9 +224,9 @@ export async function billExecution(
           transaction,
         },
       );
-    assertWholeCredits(costCreditAmountMicro, "settled message");
 
     return {
+      billingMarkerItemId: insertedRoundingRow.consumptionItemId,
       userMessageOrigin: triggeringUserMessageOrigin ?? "web",
       eventCreditAmount,
       costCredits: costCreditAmountMicro / MICRO_CREDITS_PER_CREDIT,
@@ -298,12 +298,6 @@ function toolActionModelIdsOf(
   ];
 }
 
-function assertWholeCredits(amountMicro: number, label: string): void {
-  if (amountMicro % MICRO_CREDITS_PER_CREDIT !== 0) {
-    throw new Error(`Consumption ${label} must be whole credits`);
-  }
-}
-
 async function executionBillFromSettledRows(
   auth: Authenticator,
   {
@@ -320,16 +314,19 @@ async function executionBillFromSettledRows(
     userMessageOrigin: UserMessageOrigin;
   },
 ): Promise<ExecutionBill> {
+  const billingMarker = settledRows.find((row) => row.itemType === "rounding");
+  if (!billingMarker) {
+    throw new Error("Settled execution has no billing marker");
+  }
   const eventCreditAmountMicro = sumReconciled(settledRows);
-  assertWholeCredits(eventCreditAmountMicro, "settled execution");
   const costCreditAmountMicro =
     await AgentMessageConsumptionItemResource.sumConsumptionBilledCreditAmountMicro(
       auth,
       { agentMessageModelId, transaction },
     );
-  assertWholeCredits(costCreditAmountMicro, "settled message");
 
   return {
+    billingMarkerItemId: billingMarker.id,
     userMessageOrigin,
     eventCreditAmount: eventCreditAmountMicro / MICRO_CREDITS_PER_CREDIT,
     costCredits: costCreditAmountMicro / MICRO_CREDITS_PER_CREDIT,

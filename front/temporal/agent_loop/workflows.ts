@@ -143,15 +143,34 @@ const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
   },
 });
 
+const { initializeConsumptionExecutionActivity } = proxyActivities<
+  typeof consumptionActivities
+>({
+  startToCloseTimeout: "2 minutes",
+  retry: {
+    maximumAttempts: 3,
+  },
+});
+
 const {
-  initializeConsumptionExecutionActivity,
   recordModelCallConsumptionActivity,
   recordToolCompletionConsumptionActivity,
 } = proxyActivities<typeof consumptionActivities>({
-  startToCloseTimeout: "2 minutes",
+  startToCloseTimeout: "5 minutes",
+  cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+  retry: {
+    maximumAttempts: 5,
+  },
 });
 
 const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
+
+type ConsumptionWorkflowState =
+  | { kind: "legacy_history" }
+  | {
+      kind: "initialized";
+      context: AgentMessageConsumptionExecutionContext | null;
+    };
 
 const { ensureConversationTitleActivity } = proxyActivities<
   typeof ensureTitleActivities
@@ -301,10 +320,7 @@ export async function agentLoopWorkflow({
           messageId: agentLoopArgs.agentMessageId,
         }
       : null;
-  let consumptionContext:
-    | AgentMessageConsumptionExecutionContext
-    | null
-    | undefined;
+  let consumptionState: ConsumptionWorkflowState = { kind: "legacy_history" };
 
   try {
     if (ongoingAgentLoop) {
@@ -314,15 +330,18 @@ export async function agentLoopWorkflow({
     const { agentMessageId, conversationId } = agentLoopArgs;
 
     if (runKey !== undefined && patched("agent-loop-consumption-context")) {
-      consumptionContext = await initializeConsumptionExecutionActivity(
-        authType,
-        {
+      consumptionState = {
+        kind: "initialized",
+        context: await initializeConsumptionExecutionActivity(authType, {
           agentMessageId,
           canInitializeConsumption: canInitializeConsumption === true,
           runKey,
-        }
-      );
+        }),
+      };
     }
+    const usesConsumptionPostingActivities =
+      patched("agent-loop-consumption-posting-activities") &&
+      consumptionState.kind === "initialized";
 
     await executionScope.run(async () => {
       const syncStartTime = Date.now();
@@ -354,8 +373,9 @@ export async function agentLoopWorkflow({
               initialStartTime,
             },
             currentStep,
-            consumptionContext,
+            consumptionState,
             canInitializeConsumption: canInitializeConsumption === true,
+            usesConsumptionPostingActivities,
             runIds,
             startStep,
             forceDisableToolUse,
@@ -442,21 +462,21 @@ export async function agentLoopWorkflow({
             finalizeGracefullyStoppedAgentLoopActivity,
             authType,
             argsWithRunIds,
-            consumptionContext
+            consumptionState
           );
         } else if (creditStopRequested) {
           await runFinalizeActivity(
             finalizeCreditStoppedAgentLoopActivity,
             authType,
             argsWithRunIds,
-            consumptionContext
+            consumptionState
           );
         } else {
           await runFinalizeActivity(
             finalizeSuccessfulAgentLoopActivity,
             authType,
             argsWithRunIds,
-            consumptionContext
+            consumptionState
           );
         }
       });
@@ -491,14 +511,14 @@ export async function agentLoopWorkflow({
             finalizeInterruptedAgentLoopActivity,
             authType,
             argsWithRunIds,
-            consumptionContext
+            consumptionState
           );
         } else {
           await runFinalizeActivity(
             finalizeCancelledAgentLoopActivity,
             authType,
             argsWithRunIds,
-            consumptionContext
+            consumptionState
           );
         }
       });
@@ -513,14 +533,14 @@ export async function agentLoopWorkflow({
         message: workflowError.message,
         name: workflowError.name,
       };
-      if (consumptionContext === undefined) {
+      if (consumptionState.kind === "legacy_history") {
         await finalizeErroredAgentLoopActivity(authType, argsWithRunIds, error);
       } else {
         await finalizeErroredAgentLoopActivity(
           authType,
           argsWithRunIds,
           error,
-          consumptionContext
+          consumptionState.context
         );
       }
     });
@@ -547,12 +567,12 @@ async function runFinalizeActivity(
   ) => Promise<void>,
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs,
-  consumptionContext: AgentMessageConsumptionExecutionContext | null | undefined
+  consumptionState: ConsumptionWorkflowState
 ): Promise<void> {
-  if (consumptionContext === undefined) {
+  if (consumptionState.kind === "legacy_history") {
     await activity(authType, agentLoopArgs);
   } else {
-    await activity(authType, agentLoopArgs, consumptionContext);
+    await activity(authType, agentLoopArgs, consumptionState.context);
   }
 }
 
@@ -560,8 +580,9 @@ async function executeStepIteration({
   authType,
   currentStep,
   agentLoopArgs,
-  consumptionContext,
+  consumptionState,
   canInitializeConsumption,
+  usesConsumptionPostingActivities,
   runIds,
   startStep,
   forceDisableToolUse,
@@ -569,12 +590,10 @@ async function executeStepIteration({
   authType: AuthenticatorType;
   currentStep: number;
   agentLoopArgs: AgentLoopArgsWithTiming;
-  consumptionContext:
-    | AgentMessageConsumptionExecutionContext
-    | null
-    | undefined;
+  consumptionState: ConsumptionWorkflowState;
   // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
   canInitializeConsumption: boolean;
+  usesConsumptionPostingActivities: boolean;
   runIds: string[];
   startStep: number;
   forceDisableToolUse: boolean;
@@ -592,14 +611,21 @@ async function executeStepIteration({
     forceDisableToolUse,
     canInitializeConsumption,
   };
-  const result =
-    consumptionContext === undefined
-      ? await runModelAndCreateActionsActivity(modelActivityArgs)
-      : await runModelAndCreateActionsActivity({
-          ...modelActivityArgs,
-          consumptionContext,
-          recordConsumptionInline: false,
-        });
+  let result;
+  if (consumptionState.kind === "legacy_history") {
+    result = await runModelAndCreateActionsActivity(modelActivityArgs);
+  } else if (usesConsumptionPostingActivities) {
+    result = await runModelAndCreateActionsActivity({
+      ...modelActivityArgs,
+      consumptionContext: consumptionState.context,
+      recordConsumptionInline: false,
+    });
+  } else {
+    result = await runModelAndCreateActionsActivity({
+      ...modelActivityArgs,
+      consumptionContext: consumptionState.context,
+    });
+  }
 
   if (!result) {
     // Error occurred — no runId to capture.
@@ -610,15 +636,23 @@ async function executeStepIteration({
   }
 
   const { runId, actionBlobs, retryWithoutTools = false } = result;
+  const consumptionContext =
+    consumptionState.kind === "initialized" ? consumptionState.context : null;
 
-  if (consumptionContext && runId) {
-    await recordModelCallConsumptionActivity(authType, {
-      agentMessageId: agentLoopArgs.agentMessageId,
-      consumptionContext,
-      conversationId: agentLoopArgs.conversationId,
-      dustRunId: runId,
-      emittedActionModelIds: actionBlobs.map(({ actionId }) => actionId),
-    });
+  if (
+    usesConsumptionPostingActivities &&
+    consumptionContext !== null &&
+    runId !== null
+  ) {
+    await CancellationScope.nonCancellable(() =>
+      recordModelCallConsumptionActivity(authType, {
+        agentMessageId: agentLoopArgs.agentMessageId,
+        consumptionContext,
+        conversationId: agentLoopArgs.conversationId,
+        dustRunId: runId,
+        emittedActionModelIds: actionBlobs.map(({ actionId }) => actionId),
+      })
+    );
   }
 
   // Generation completed or the loop unpaused and no new tools were generated.
@@ -646,39 +680,47 @@ async function executeStepIteration({
 
   // Execute tools and collect any deferred events.
   deprecatePatch("wait-for-all-tool-activities-before-finalization");
-  const toolActivityPromises = actionBlobs.map(({ actionId, retryPolicy }) => {
-    const activity =
-      retryPolicy === "no_retry"
-        ? runToolActivityWithExplicitCancellation
-        : runRetryableToolActivityWithExplicitCancellation;
-    const activityArgs = {
-      actionId,
-      runAgentArgs: agentLoopArgs,
-      step: currentStep,
-      runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-    };
-    return consumptionContext === undefined
-      ? activity(authType, activityArgs)
-      : activity(authType, {
+  const toolActivityPromises = actionBlobs.map(
+    async ({ actionId, retryPolicy }) => {
+      const activity =
+        retryPolicy === "no_retry"
+          ? runToolActivityWithExplicitCancellation
+          : runRetryableToolActivityWithExplicitCancellation;
+      const activityArgs = {
+        actionId,
+        runAgentArgs: agentLoopArgs,
+        step: currentStep,
+        runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+      };
+      let result;
+      if (consumptionState.kind === "legacy_history") {
+        result = await activity(authType, activityArgs);
+      } else if (usesConsumptionPostingActivities) {
+        result = await activity(authType, {
           ...activityArgs,
-          consumptionContext,
+          consumptionContext: consumptionState.context,
           recordConsumptionInline: false,
         });
-  });
+      } else {
+        result = await activity(authType, {
+          ...activityArgs,
+          consumptionContext: consumptionState.context,
+        });
+      }
+      if (usesConsumptionPostingActivities && consumptionContext !== null) {
+        await CancellationScope.nonCancellable(() =>
+          recordToolCompletionConsumptionActivity(authType, {
+            actionModelId: actionId,
+            agentMessageId: agentLoopArgs.agentMessageId,
+            consumptionContext,
+          })
+        );
+      }
+      return result;
+    }
+  );
   const toolResults: ToolExecutionResult[] =
     await waitForAllPromises(toolActivityPromises);
-
-  if (consumptionContext) {
-    await Promise.all(
-      actionBlobs.map(({ actionId }) =>
-        recordToolCompletionConsumptionActivity(authType, {
-          actionModelId: actionId,
-          agentMessageId: agentLoopArgs.agentMessageId,
-          consumptionContext,
-        })
-      )
-    );
-  }
 
   // Collect all deferred events from tool executions.
   const allDeferredEvents = toolResults.flatMap(
