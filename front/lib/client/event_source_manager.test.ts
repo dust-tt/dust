@@ -1,4 +1,5 @@
 import { getAgentLoopEventId } from "@app/lib/client/agent_loop_stream";
+import { setSseVerbose } from "@app/lib/client/sse_verbose";
 import type { EventSourceConnectionState } from "@app/types/event_source";
 import { MANAGED_SSE_HANDSHAKE_EVENT } from "@app/types/sse";
 import type {
@@ -60,8 +61,60 @@ describe("EventSourceManager", () => {
   });
 
   afterEach(() => {
+    setSseVerbose(false);
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  it("logs connection activity without event payloads when SSE logs are enabled", async () => {
+    const sources: FakeEventSource[] = [];
+    const verboseLogs = vi
+      .spyOn(console, "info")
+      .mockImplementation(() => undefined);
+    const manager = new EventSourceManager(async (url) => {
+      const source = new FakeEventSource(url);
+      sources.push(source);
+      return source;
+    });
+    setSseVerbose(true);
+
+    manager.subscribe({
+      streamId: "message-msg_debug",
+      config: {
+        buildURL: () => "/events?token=secret-query",
+        replayBufferedEventsOnSubscribe: false,
+        restartKey: "message-msg_debug",
+        workspaceId: "w_1",
+        headers: { Authorization: "secret-header" },
+      },
+      subscriber: {
+        onEvent: vi.fn(),
+        onStateChange: vi.fn(),
+      },
+      keepAliveWithoutSubscribers: false,
+    });
+
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].emitHandshake();
+    sources[0].emitMessage("secret-payload");
+    expect(verboseLogs).toHaveBeenCalledWith(
+      "[Dust SSE]",
+      expect.objectContaining({
+        event: "event_received",
+        eventLength: "secret-payload".length,
+        streamId: "message-msg_debug",
+      })
+    );
+    expect(JSON.stringify(verboseLogs.mock.calls)).not.toMatch(
+      /secret-payload|secret-query|secret-header/
+    );
+
+    setSseVerbose(false);
+    verboseLogs.mockClear();
+    sources[0].emitMessage("another-event");
+    expect(verboseLogs).not.toHaveBeenCalled();
+
+    manager.releaseWorkspace("w_1");
   });
 
   it("retains one connection and replays buffered events to remounted subscribers", async () => {
