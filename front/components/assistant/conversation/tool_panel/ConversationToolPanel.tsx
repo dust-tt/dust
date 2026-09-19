@@ -1,4 +1,4 @@
-import { MCPServerDetailsInfo } from "@app/components/actions/mcp/MCPServerDetailsInfo";
+import { MCPServerDetailsGeneral } from "@app/components/actions/mcp/MCPServerDetailsGeneral";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import {
@@ -51,7 +51,11 @@ function ToolPanelBody({ owner, serverView, isError }: ToolPanelBodyProps) {
           </div>
         </div>
       </div>
-      <MCPServerDetailsInfo mcpServerView={serverView} owner={owner} readOnly />
+      <MCPServerDetailsGeneral
+        mcpServerView={serverView}
+        owner={owner}
+        readOnly
+      />
     </>
   );
 }
