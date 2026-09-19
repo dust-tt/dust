@@ -1,5 +1,6 @@
 import {
   addDuration,
+  commitmentAccessTranches,
   commitmentAmount,
   commitmentMonths,
   commitmentPeriodEnd,
@@ -168,5 +169,71 @@ describe("commitmentAmount", () => {
       end: contractEnd,
     });
     expect(thirty).toBeCloseTo(one * 30, 6);
+  });
+});
+
+describe("commitmentAccessTranches", () => {
+  const contractStart = new Date(Date.UTC(2026, 8, 7, 21));
+  const contractEnd = new Date(Date.UTC(2026, 9, 19, 21));
+
+  it("returns one tranche per month for a monthly seat, on each anniversary", () => {
+    const tranches = commitmentAccessTranches({
+      minSeats: 30,
+      ratePerPeriod: 44,
+      isAnnual: false,
+      start,
+      end: oneYear,
+    });
+    expect(tranches).toHaveLength(12);
+    // Each whole month unlocks a full month's worth, on the month anniversary.
+    tranches.forEach((tranche, k) => {
+      expect(tranche.amount).toBeCloseTo(30 * 44, 6);
+      expect(tranche.startingAt).toEqual(new Date(Date.UTC(2026, k, 1)));
+      expect(tranche.endingBefore).toEqual(new Date(Date.UTC(2026, k + 1, 1)));
+    });
+  });
+
+  it("returns a single tranche for a yearly seat over one year", () => {
+    const tranches = commitmentAccessTranches({
+      minSeats: 30,
+      ratePerPeriod: 528,
+      isAnnual: true,
+      start,
+      end: oneYear,
+    });
+    expect(tranches).toHaveLength(1);
+    expect(tranches[0].amount).toBe(30 * 528);
+    expect(tranches[0].startingAt).toEqual(start);
+    expect(tranches[0].endingBefore).toEqual(oneYear);
+  });
+
+  it("prorates the partial trailing month and clamps its end to the commitment", () => {
+    // Sep 7 → Oct 19: a full first month + 12/31 of October.
+    const tranches = commitmentAccessTranches({
+      minSeats: 1,
+      ratePerPeriod: 20,
+      isAnnual: false,
+      start: contractStart,
+      end: contractEnd,
+    });
+    expect(tranches).toHaveLength(2);
+    expect(tranches[0].amount).toBeCloseTo(20, 6);
+    expect(tranches[1].amount).toBeCloseTo(20 * (12 / 31), 6);
+    expect(tranches[1].endingBefore).toEqual(contractEnd);
+  });
+
+  it("sums to commitmentAmount for the same inputs", () => {
+    const args = {
+      minSeats: 7,
+      ratePerPeriod: 20,
+      isAnnual: false,
+      start: contractStart,
+      end: contractEnd,
+    };
+    const sum = commitmentAccessTranches(args).reduce(
+      (total, tranche) => total + tranche.amount,
+      0
+    );
+    expect(sum).toBeCloseTo(commitmentAmount(args), 6);
   });
 });

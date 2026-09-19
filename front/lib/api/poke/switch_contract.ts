@@ -37,6 +37,7 @@ import {
 import { removeAwuContractExcessCreditsForContract } from "@app/lib/metronome/payg_excess_credits";
 import {
   addDuration,
+  commitmentAccessTranches,
   commitmentAmount,
   commitmentPeriodEnd,
   invoicePeriodWeights,
@@ -802,17 +803,22 @@ async function stepContractEdits({
       // The grant covers the seat subscription charges over the commitment
       // period, matching Metronome's per-hour proration (see `commitmentAmount`)
       // so it fully offsets them. The customer is invoiced `commitmentPrice`,
-      // which the dialog defaults to this same amount.
-      const accessAmountNative =
-        Math.round(
-          commitmentAmount({
-            minSeats: seat.minSeats,
-            ratePerPeriod: rateNative,
-            isAnnual: billingFrequency === "ANNUAL",
-            start: alignedStart,
-            end: commitmentEnd,
-          }) * 100
-        ) / 100;
+      // which the dialog defaults to this same amount. The access is tranched per
+      // seat billing period (monthly for a monthly seat, yearly for a yearly one)
+      // so the committed funds unlock in step with the seat's own billing cadence
+      // — e.g. a monthly seat unlocks its month's worth on each contract
+      // month-anniversary rather than a full year upfront.
+      const accessScheduleItems = commitmentAccessTranches({
+        minSeats: seat.minSeats,
+        ratePerPeriod: rateNative,
+        isAnnual: billingFrequency === "ANNUAL",
+        start: alignedStart,
+        end: commitmentEnd,
+      }).map((tranche) => ({
+        amount: Math.round(tranche.amount * 100) / 100,
+        starting_at: floorToHourISO(tranche.startingAt),
+        ending_before: floorToHourISO(tranche.endingBefore),
+      }));
       // A full payment period bills the committed seats at their list rate for
       // that period: the seat's monthly rate (annual / 12 for a yearly seat)
       // times the months per payment period. The last installment takes the
@@ -867,13 +873,7 @@ async function stepContractEdits({
         applicable_product_ids: [pkgSeat.productId],
         access_schedule: {
           credit_type_id: fiatCreditTypeId,
-          schedule_items: [
-            {
-              amount: accessAmountNative,
-              starting_at: floorToHourISO(alignedStart),
-              ending_before: floorToHourISO(commitmentEnd),
-            },
-          ],
+          schedule_items: accessScheduleItems,
         },
         invoice_schedule: {
           credit_type_id: fiatCreditTypeId,
