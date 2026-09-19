@@ -1,6 +1,7 @@
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import type { MessageStreamBatchEvent } from "@app/lib/api/assistant/pubsub";
 import type { Authenticator } from "@app/lib/auth";
+import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -111,6 +112,53 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events/p
       messageId,
       lastEventId: "evt_1",
       signal: expect.any(AbortSignal),
+    });
+  });
+
+  it("returns end-of-stream when a completed message has no events after the cursor", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest();
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+    const messageId = await getMessageIdByRank(auth, conversation.sId, 1);
+    const message = await MessageModel.findOne({
+      where: { sId: messageId, workspaceId: workspace.id },
+    });
+    if (!message?.agentMessageId) {
+      throw new Error("Expected an agent message.");
+    }
+    vi.mocked(getMessagesEventsBatch).mockResolvedValue([]);
+
+    const activeResponse = await pollMessageEvents({
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+      messageId,
+      lastEventId: "1-0",
+    });
+    expect(await activeResponse.json()).toEqual({ events: [] });
+
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: message.agentMessageId,
+      status: "succeeded",
+    });
+
+    const response = await pollMessageEvents({
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+      messageId,
+      lastEventId: "1-0",
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      events: [
+        JSON.stringify({
+          eventId: "end-of-stream",
+          data: { type: "end-of-stream" },
+        }),
+      ],
     });
   });
 });

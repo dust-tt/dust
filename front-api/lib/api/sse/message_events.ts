@@ -1,5 +1,8 @@
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
-import type { MessageStreamEvent } from "@app/lib/api/assistant/pubsub";
+import type {
+  MessageStreamBatchEvent,
+  MessageStreamEvent,
+} from "@app/lib/api/assistant/pubsub";
 import {
   getMessagesEvents,
   getMessagesEventsBatch,
@@ -7,7 +10,10 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { GetAgentMessageEventsResponseBody } from "@app/types/api/assistant/messages";
-import { ConversationError } from "@app/types/assistant/conversation";
+import {
+  ConversationError,
+  isTerminalAgentMessageStatus,
+} from "@app/types/assistant/conversation";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { streamEvents } from "@front-api/lib/api/sse/stream_events";
 import { apiError } from "@front-api/middlewares/utils";
@@ -24,6 +30,10 @@ export type MessageEventsOptions = {
 };
 
 const MESSAGE_EVENTS_LONG_POLL_TIMEOUT_MS = 25_000;
+const MESSAGE_STREAM_END_EVENT = {
+  eventId: "end-of-stream",
+  data: { type: "end-of-stream" },
+} satisfies MessageStreamBatchEvent;
 
 async function validateMessageEventsRequest(
   ctx: Context,
@@ -35,10 +45,13 @@ async function validateMessageEventsRequest(
     conversationId
   );
   if (!conversation) {
-    return apiErrorForConversation(
-      ctx,
-      new ConversationError("conversation_not_found")
-    );
+    return {
+      kind: "error",
+      response: apiErrorForConversation(
+        ctx,
+        new ConversationError("conversation_not_found")
+      ),
+    } as const;
   }
 
   const messageType = await getConversationMessageType(
@@ -47,25 +60,31 @@ async function validateMessageEventsRequest(
     messageId
   );
   if (!messageType) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "message_not_found",
-        message: "The message you're trying to access was not found.",
-      },
-    });
+    return {
+      kind: "error",
+      response: apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "message_not_found",
+          message: "The message you're trying to access was not found.",
+        },
+      }),
+    } as const;
   }
   if (messageType !== "agent_message") {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Events are only available for agent messages.",
-      },
-    });
+    return {
+      kind: "error",
+      response: apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Events are only available for agent messages.",
+        },
+      }),
+    } as const;
   }
 
-  return null;
+  return { kind: "success", conversation } as const;
 }
 
 // Shared orchestration for both the v1 (public API) and private SSE
@@ -81,12 +100,12 @@ export async function streamMessageEventsForRoute(
   }: { conversationId: string; messageId: string; lastEventId: string | null },
   opts: MessageEventsOptions
 ) {
-  const errorResponse = await validateMessageEventsRequest(ctx, auth, {
+  const validation = await validateMessageEventsRequest(ctx, auth, {
     conversationId,
     messageId,
   });
-  if (errorResponse) {
-    return errorResponse;
+  if (validation.kind === "error") {
+    return validation.response;
   }
 
   return streamEvents({
@@ -98,6 +117,11 @@ export async function streamMessageEventsForRoute(
   });
 }
 
+/**
+ * @cc [owner:id13,label:api;performance] terminal-empty-message-poll
+ * When a non-aborted batch has no events and the persisted agent message is terminal, the response
+ * MUST contain one end-of-stream event. A message still in `created` status MUST return an empty batch.
+ */
 export async function pollMessageEventsForRoute(
   ctx: Context,
   auth: Authenticator,
@@ -107,12 +131,12 @@ export async function pollMessageEventsForRoute(
     lastEventId,
   }: { conversationId: string; messageId: string; lastEventId: string | null }
 ) {
-  const errorResponse = await validateMessageEventsRequest(ctx, auth, {
+  const validation = await validateMessageEventsRequest(ctx, auth, {
     conversationId,
     messageId,
   });
-  if (errorResponse) {
-    return errorResponse;
+  if (validation.kind === "error") {
+    return validation.response;
   }
 
   const controller = new AbortController();
@@ -129,6 +153,19 @@ export async function pollMessageEventsForRoute(
       lastEventId,
       signal: controller.signal,
     });
+
+    if (events.length === 0 && !ctx.req.raw.signal.aborted) {
+      const status = await ConversationResource.fetchAgentMessageStatus(
+        auth,
+        validation.conversation,
+        messageId
+      );
+      if (status && isTerminalAgentMessageStatus(status)) {
+        return ctx.json<GetAgentMessageEventsResponseBody>({
+          events: [JSON.stringify(MESSAGE_STREAM_END_EVENT)],
+        });
+      }
+    }
 
     return ctx.json<GetAgentMessageEventsResponseBody>({
       events: events.map((event) => JSON.stringify(event)),
