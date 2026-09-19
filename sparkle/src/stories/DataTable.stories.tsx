@@ -981,3 +981,173 @@ export const WithAvatarStack = () => {
     </div>
   );
 };
+
+const densityColumns: ColumnDef<Data>[] = columns.filter(
+  (column) => column.id !== "actions"
+);
+
+/**
+ * The same table at the three row densities. `default` is the historical
+ * 48px row; `compact` tightens admin lists to 40px and `relaxed` opens rows to
+ * 64px with 32px avatars. The height also drives `DataTableSkeleton`.
+ * @summary Compact, default and relaxed row heights side by side.
+ */
+export const Densities = () => {
+  return (
+    <div className="flex flex-col gap-8">
+      {(["compact", "default", "relaxed"] as const).map((density) => (
+        <div key={density} className="flex flex-col gap-2">
+          <div className="heading-sm capitalize">{density}</div>
+          <DataTable
+            data={data.slice(0, 4)}
+            columns={densityColumns}
+            density={density}
+          />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+interface UsageRow {
+  agent: string;
+  runs: number;
+  costCents: number;
+  status: "active" | "paused";
+  menuItems?: MenuItem[];
+}
+
+const usageRows: UsageRow[] = [
+  { agent: "Sales assistant", runs: 12840, costCents: 41250, status: "active" },
+  { agent: "Support triage", runs: 3391, costCents: 9820, status: "active" },
+  { agent: "Weekly digest", runs: 52, costCents: 1204, status: "paused" },
+  { agent: "Onboarding coach", runs: 987, costCents: 15075, status: "active" },
+];
+
+const usageColumns: ColumnDef<UsageRow>[] = [
+  {
+    accessorKey: "agent",
+    id: "agent",
+    header: "Agent",
+    meta: { className: "w-full", rowHeader: true },
+    cell: (info) => (
+      <DataTable.CellContent>{info.row.original.agent}</DataTable.CellContent>
+    ),
+  },
+  {
+    accessorKey: "status",
+    id: "status",
+    header: "Status",
+    meta: { type: "status", className: "w-24" },
+    cell: (info) => (
+      <DataTable.BasicCellContent label={info.row.original.status} />
+    ),
+  },
+  {
+    accessorKey: "runs",
+    id: "runs",
+    header: "Runs",
+    meta: { type: "numeric", className: "w-28" },
+    cell: (info) => (
+      <DataTable.BasicCellContent
+        label={info.row.original.runs.toLocaleString("en-US")}
+      />
+    ),
+  },
+  {
+    accessorKey: "costCents",
+    id: "cost",
+    header: "Cost",
+    meta: { type: "numeric", className: "w-28" },
+    cell: (info) => (
+      <DataTable.BasicCellContent
+        label={`$${(info.row.original.costCents / 100).toFixed(2)}`}
+      />
+    ),
+  },
+  {
+    id: "actions",
+    header: "",
+    meta: { type: "action" },
+    cell: () => (
+      <DataTable.MoreButton
+        menuItems={[{ kind: "item", label: "Open", onClick: fn() }]}
+      />
+    ),
+  },
+];
+
+/**
+ * Column presets from `meta.type`: `numeric` right-aligns header and cells in
+ * tabular figures, `action` fixes the overflow-menu column at 48px and makes
+ * it unsortable, `status` keeps labels on one line. `meta.rowHeader` renders
+ * the agent cells as row headers for screen readers.
+ * @summary Numeric, status and action column presets.
+ */
+export const ColumnTypes = () => {
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "runs", desc: true },
+  ]);
+  return (
+    <DataTable
+      data={usageRows}
+      columns={usageColumns}
+      sorting={sorting}
+      setSorting={setSorting}
+      getRowLabel={(row) => row.agent}
+    />
+  );
+};
+
+/**
+ * With no rows, `emptyState` renders once below the header so the filter and
+ * sort controls stay in place. Type in the filter to see the row appear.
+ * @summary Header stays put while the body explains the empty result.
+ */
+export const EmptyState = () => {
+  const [filter, setFilter] = useState("zzz");
+  return (
+    <div className="flex flex-col gap-2">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <DataTable
+        data={usageRows}
+        columns={usageColumns}
+        filter={filter}
+        filterColumn="agent"
+        emptyState={`No agent matches "${filter}".`}
+      />
+    </div>
+  );
+};
+
+/**
+ * `isLoading` dims the current rows in place and blocks pointer events while
+ * a refetch runs, instead of swapping the table for a skeleton. Toggle it to
+ * compare; the header and sorting stay interactive.
+ * @summary Rows dim in place during a refetch.
+ */
+export const Loading = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  return (
+    <div className="flex flex-col gap-4">
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={isLoading}
+          onChange={(e) => setIsLoading(e.target.checked)}
+        />
+        isLoading
+      </label>
+      <DataTable
+        data={usageRows}
+        columns={usageColumns}
+        isLoading={isLoading}
+      />
+    </div>
+  );
+};
