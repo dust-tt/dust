@@ -238,11 +238,14 @@ export async function agentLoopWorkflow({
   authType,
   initialStartTime,
   agentLoopArgs,
+  canInitializeConsumption,
   startStep,
 }: {
   authType: AuthenticatorType;
   initialStartTime: number;
   agentLoopArgs: AgentLoopArgs;
+  // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
+  canInitializeConsumption?: boolean;
   startStep: number;
 }) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
@@ -325,6 +328,7 @@ export async function agentLoopWorkflow({
             },
             currentStep,
             runIds,
+            canInitializeConsumption: canInitializeConsumption === true,
             startStep,
             forceDisableToolUse,
           });
@@ -483,6 +487,7 @@ async function executeStepIteration({
   currentStep,
   agentLoopArgs,
   runIds,
+  canInitializeConsumption,
   startStep,
   forceDisableToolUse,
 }: {
@@ -490,6 +495,8 @@ async function executeStepIteration({
   currentStep: number;
   agentLoopArgs: AgentLoopArgsWithTiming;
   runIds: string[];
+  // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
+  canInitializeConsumption: boolean;
   startStep: number;
   forceDisableToolUse: boolean;
 }): Promise<{
@@ -500,6 +507,7 @@ async function executeStepIteration({
   const result = await runModelAndCreateActionsActivity({
     authType,
     checkForResume: currentStep === startStep, // Only run resume the first time.
+    canInitializeConsumption,
     runAgentArgs: agentLoopArgs,
     runIds,
     step: currentStep,

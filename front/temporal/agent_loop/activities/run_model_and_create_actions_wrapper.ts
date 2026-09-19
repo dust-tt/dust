@@ -14,6 +14,7 @@ import {
   finalizeUnavailableAgentLoop,
   updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
+import { recordExecutionStarted } from "@app/temporal/agent_loop/activities/consumption";
 import {
   AGENT_LOOP_COST_HARD_CAP_USD,
   AGENT_LOOP_SUBAGENT_HARD_CAP,
@@ -35,6 +36,8 @@ import type {
 } from "@app/types/assistant/agent_run";
 import { isAgentLoopDataSoftDeleteError } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
 
@@ -72,6 +75,7 @@ function getActivityTimeoutDeadlineMs(): number {
 export async function runModelAndCreateActionsActivity({
   authType,
   checkForResume = true,
+  canInitializeConsumption,
   runAgentArgs,
   runIds,
   step,
@@ -79,6 +83,8 @@ export async function runModelAndCreateActionsActivity({
 }: {
   authType: AuthenticatorType;
   checkForResume?: boolean;
+  // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
+  canInitializeConsumption: boolean;
   runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   step: number;
@@ -89,12 +95,13 @@ export async function runModelAndCreateActionsActivity({
   // immediately and periodically for the whole activity. The LLM stream adds its own heartbeats.
   heartbeat();
 
-  return withPeriodicHeartbeat(
+  const result = await withPeriodicHeartbeat(
     () =>
       tracer.trace("runModelAndCreateActionsActivity", async () =>
         _runModelAndCreateActionsActivity({
           authType,
           checkForResume,
+          canInitializeConsumption,
           runAgentArgs,
           runIds,
           step,
@@ -106,11 +113,16 @@ export async function runModelAndCreateActionsActivity({
       heartbeatFn: () => heartbeat(),
     }
   );
+  if (result.isErr()) {
+    throw result.error;
+  }
+  return result.value;
 }
 
 async function _runModelAndCreateActionsActivity({
   authType,
   checkForResume,
+  canInitializeConsumption,
   runAgentArgs,
   runIds,
   step,
@@ -118,11 +130,13 @@ async function _runModelAndCreateActionsActivity({
 }: {
   authType: AuthenticatorType;
   checkForResume: boolean;
+  // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
+  canInitializeConsumption: boolean;
   runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   step: number;
   forceDisableToolUse: boolean;
-}): Promise<RunModelAndCreateActionsResult | null> {
+}): Promise<Result<RunModelAndCreateActionsResult | null, Error>> {
   const activityTimeoutDeadlineMs = getActivityTimeoutDeadlineMs();
   const durationRecorder = DurationRecorder.create([]);
 
@@ -147,7 +161,7 @@ async function _runModelAndCreateActionsActivity({
         },
         "Message or conversation was deleted, exiting"
       );
-      return null;
+      return new Ok(null);
     }
     throw contextProviderRes.error;
   }
@@ -155,6 +169,15 @@ async function _runModelAndCreateActionsActivity({
   const contextProvider = contextProviderRes.value;
   const runAgentData = contextProvider.runtimeData;
   const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
+
+  if (step === (runAgentArgs.startStep ?? 0)) {
+    const result = await recordExecutionStarted(auth, runAgentArgs, {
+      canInitializeConsumption,
+    });
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+  }
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
   // This can miss thresholds crossed on the final step.
@@ -214,7 +237,7 @@ async function _runModelAndCreateActionsActivity({
       },
     });
 
-    return null;
+    return new Ok(null);
   }
 
   if (hardCapCheckResult?.subagentHardCapExceeded) {
@@ -241,14 +264,14 @@ async function _runModelAndCreateActionsActivity({
       },
     });
 
-    return null;
+    return new Ok(null);
   }
 
   // Tool test run: bypass LLM and directly execute tool commands.
   if (featureFlags.includes("run_tools_from_prompt")) {
     const result = await handlePromptCommand(auth, runAgentData, step, runIds);
     if (result !== "not_a_command") {
-      return result;
+      return new Ok(result);
     }
   }
 
@@ -261,10 +284,10 @@ async function _runModelAndCreateActionsActivity({
     );
 
     if (existingData) {
-      return {
+      return new Ok({
         actionBlobs: existingData.actionBlobs,
         runId: null,
-      };
+      });
     }
   }
 
@@ -285,7 +308,7 @@ async function _runModelAndCreateActionsActivity({
   });
 
   if (!modelResult) {
-    return null;
+    return new Ok(null);
   }
 
   const {
@@ -299,7 +322,7 @@ async function _runModelAndCreateActionsActivity({
   // Generation completed (text response, no tool calls) — runModel returns
   // { actions: [], runId } so we still capture the runId for tracking.
   if (actions.length === 0) {
-    return { runId, actionBlobs: [], retryWithoutTools };
+    return new Ok({ runId, actionBlobs: [], retryWithoutTools });
   }
 
   // Enforce a limit on actions per step, reducing by depth (8/8/4/2)
@@ -336,10 +359,10 @@ async function _runModelAndCreateActionsActivity({
     }
   }
 
-  return {
+  return new Ok({
     runId,
     actionBlobs: createResult.actionBlobs,
-  };
+  });
 }
 
 async function publishAgentLoopGuardrailExceededError(
