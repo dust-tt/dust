@@ -23,6 +23,7 @@ const RECONNECT_DELAY_BASE_MS = 3000;
 const RECONNECT_DELAY_JITTER_MS = 5000;
 const MAX_RECONNECT_ATTEMPTS = 10;
 const HEARTBEAT_TIMEOUT_MS = 5 * 60 * 1000;
+const MIN_HEALTHY_SSE_LIFETIME_MS = 30_000;
 
 async function createEventSource(
   url: string,
@@ -232,7 +233,10 @@ export class EventSourceManager {
       // A newer attempt may have replaced this one while the factory was pending.
       // Only the current attempt may consume retry budget or change stream state.
       if (generation === entry.generation) {
-        this.handleFailure(streamId, entry, null, error);
+        this.handleDisconnect(streamId, entry, null, {
+          kind: "failure",
+          failure: error,
+        });
       }
       return;
     }
@@ -259,11 +263,19 @@ export class EventSourceManager {
         return;
       }
       if (event.data === "done") {
-        this.handleFailure(
+        const isHealthyRollover =
+          entry.state.kind === "open" &&
+          Date.now() - entry.state.openedAt >= MIN_HEALTHY_SSE_LIFETIME_MS;
+        this.handleDisconnect(
           streamId,
           entry,
           source,
-          new Error("SSE stream ended before a terminal event.")
+          isHealthyRollover
+            ? { kind: "rollover" }
+            : {
+                kind: "failure",
+                failure: new Error("SSE stream ended before a terminal event."),
+              }
         );
         return;
       }
@@ -287,57 +299,70 @@ export class EventSourceManager {
     };
     source.onerror = (event: PolyfillEvent) => {
       if (entry.source === source) {
-        this.handleFailure(streamId, entry, source, event);
+        this.handleDisconnect(streamId, entry, source, {
+          kind: "failure",
+          failure: event,
+        });
       }
     };
   }
 
-  private handleFailure(
+  private handleDisconnect(
     streamId: string,
     entry: ConnectionEntry,
     source: EventSourceLike | null,
-    failure: unknown
+    outcome: { kind: "rollover" } | { kind: "failure"; failure: unknown }
   ): void {
     const readyState = source?.readyState ?? null;
     entry.source = null;
     source?.close();
-    entry.reconnectAttempts++;
-    this.logVerbose(streamId, entry, "sse_failure", { readyState });
+    if (outcome.kind === "failure") {
+      entry.reconnectAttempts++;
+      this.logVerbose(streamId, entry, "sse_failure", { readyState });
 
-    const context = this.telemetryContext({
-      streamId,
-      entry,
-      readyState,
-      failure,
-    });
-
-    if (entry.reconnectAttempts >= this.maxReconnectAttempts) {
-      const error = new Error("Too many SSE connection failures.");
-      entry.keepAliveWithoutSubscribers = false;
-      this.transition(streamId, entry, {
-        kind: "failed",
-        attempt: entry.reconnectAttempts,
-        error,
+      const context = this.telemetryContext({
+        streamId,
+        entry,
+        readyState,
+        failure: outcome.failure,
       });
-      datadogLogger.error(
-        { ...context, retryBudgetExhausted: true },
-        "SSE retry budget exhausted."
-      );
-      for (const subscriber of entry.subscribers) {
-        subscriber.onTerminalError?.(error);
+
+      if (entry.reconnectAttempts >= this.maxReconnectAttempts) {
+        const error = new Error("Too many SSE connection failures.");
+        entry.keepAliveWithoutSubscribers = false;
+        this.transition(streamId, entry, {
+          kind: "failed",
+          attempt: entry.reconnectAttempts,
+          error,
+        });
+        datadogLogger.error(
+          { ...context, retryBudgetExhausted: true },
+          "SSE retry budget exhausted."
+        );
+        for (const subscriber of entry.subscribers) {
+          subscriber.onTerminalError?.(error);
+        }
+        if (entry.subscribers.size === 0) {
+          this.destroy(streamId, entry);
+        }
+        return;
       }
-      if (entry.subscribers.size === 0) {
-        this.destroy(streamId, entry);
-      }
-      return;
+
+      datadogLogger.warn(context, "SSE connection failed, reconnecting.");
+    } else {
+      entry.reconnectAttempts = 0;
     }
 
-    datadogLogger.warn(context, "SSE connection failed, reconnecting.");
     const reconnectDelayMs =
       this.reconnectDelayBaseMs + this.random() * this.reconnectDelayJitterMs;
-    this.logVerbose(streamId, entry, "sse_retry", {
-      delayMs: reconnectDelayMs,
-    });
+    this.logVerbose(
+      streamId,
+      entry,
+      outcome.kind === "rollover" ? "sse_rollover" : "sse_retry",
+      {
+        delayMs: reconnectDelayMs,
+      }
+    );
     this.transition(streamId, entry, {
       kind: "reconnecting",
       attempt: entry.reconnectAttempts,
@@ -511,12 +536,12 @@ export class EventSourceManager {
           continue;
         }
         if (entry.source?.readyState === EventSourcePolyfill.CLOSED) {
-          this.handleFailure(
-            streamId,
-            entry,
-            entry.source,
-            new Error("SSE source closed while the page was inactive.")
-          );
+          this.handleDisconnect(streamId, entry, entry.source, {
+            kind: "failure",
+            failure: new Error(
+              "SSE source closed while the page was inactive."
+            ),
+          });
         } else if (!entry.source && !entry.reconnectTimeout) {
           this.ensureConnected(streamId, entry);
         }
