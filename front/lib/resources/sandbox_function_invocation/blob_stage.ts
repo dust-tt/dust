@@ -1,5 +1,9 @@
-import { getRedisCacheClient } from "@app/lib/api/redis";
 import { GCS_CONTENT_CACHE_TTL_MS } from "@app/lib/resources/agent_mcp_action/output_storage";
+import {
+  cacheWithRedis,
+  invalidateCacheWithRedis,
+  warmCacheWithRedis,
+} from "@app/lib/utils/cache";
 
 /**
  * Pre-GCS stage for sandbox-function invocation blobs. The Temporal activity
@@ -9,39 +13,55 @@ import { GCS_CONTENT_CACHE_TTL_MS } from "@app/lib/resources/agent_mcp_action/ou
 export const SANDBOX_FUNCTION_INVOCATION_BLOB_CACHE_TTL_MS =
   GCS_CONTENT_CACHE_TTL_MS;
 
-function invocationBlobCacheKey(invocationSId: string): string {
-  return `cacheWithRedis-sandboxFunctionInvocationBlob-sfi_blob:${invocationSId}:v1`;
+/**
+ * Loader identity for `cacheWithRedis` / `warmCacheWithRedis` keying only.
+ * Misses mean the write-behind window expired or was never warmed — not a GCS fetch.
+ */
+async function sandboxFunctionInvocationBlob(
+  _invocationSId: string
+): Promise<object | null> {
+  return null;
 }
+
+const invocationBlobCacheKey = (invocationSId: string) =>
+  `sfi_blob:${invocationSId}:v1`;
+
+const warmSandboxFunctionInvocationBlob = warmCacheWithRedis(
+  sandboxFunctionInvocationBlob,
+  invocationBlobCacheKey,
+  { ttlMs: SANDBOX_FUNCTION_INVOCATION_BLOB_CACHE_TTL_MS }
+);
+
+const readSandboxFunctionInvocationBlobCached = cacheWithRedis(
+  sandboxFunctionInvocationBlob,
+  invocationBlobCacheKey,
+  {
+    cacheNullValues: false,
+    ttlMs: SANDBOX_FUNCTION_INVOCATION_BLOB_CACHE_TTL_MS,
+  }
+);
+
+const invalidateSandboxFunctionInvocationBlob = invalidateCacheWithRedis(
+  sandboxFunctionInvocationBlob,
+  invocationBlobCacheKey
+);
 
 export async function stageSandboxFunctionInvocationBlob(
   invocationSId: string,
-  data: unknown
+  data: object
 ): Promise<void> {
-  const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
-  await redisCli.set(
-    invocationBlobCacheKey(invocationSId),
-    JSON.stringify(data),
-    {
-      PX: SANDBOX_FUNCTION_INVOCATION_BLOB_CACHE_TTL_MS,
-    }
-  );
+  await warmSandboxFunctionInvocationBlob(data, invocationSId);
 }
 
 export async function readStagedSandboxFunctionInvocationBlob(
   invocationSId: string
-): Promise<unknown | null> {
-  const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
-  const raw = await redisCli.get(invocationBlobCacheKey(invocationSId));
-  if (raw === null) {
-    return null;
-  }
-  return JSON.parse(raw) as unknown;
+): Promise<object | null> {
+  return readSandboxFunctionInvocationBlobCached(invocationSId);
 }
 
 /** Drop the stage (e.g. on invocation delete, or when replacing the blob from GCS only). */
 export async function clearStagedSandboxFunctionInvocationBlob(
   invocationSId: string
 ): Promise<void> {
-  const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
-  await redisCli.del(invocationBlobCacheKey(invocationSId));
+  await invalidateSandboxFunctionInvocationBlob(invocationSId);
 }
