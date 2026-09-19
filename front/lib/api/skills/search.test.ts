@@ -210,7 +210,7 @@ describe("code-defined skill search", () => {
     });
   });
 
-  it("resolves tool filters using the caller's workspace views", async () => {
+  it("filters indexed tool IDs without loading code-defined tools", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
     const view =
       await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
@@ -218,15 +218,41 @@ describe("code-defined skill search", () => {
         "web_search_&_browse"
       );
     assert(view);
+    const skill = await SkillFactory.create(auth, {
+      mcpServerViews: [view],
+    });
+    const customDocuments = await SkillFactory.createSearchDocuments(auth, [
+      skill,
+    ]);
+    const documents = [
+      ...customDocuments,
+      ...SkillFactory.createCodeDefinedSearchDocuments(),
+    ];
+    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
+      hits: {
+        hits: documents
+          .filter((document) =>
+            matchesSkillSearchFilters(document, request.query!)
+          )
+          .map((document) => ({
+            _source: document,
+            sort: [1, document.skill_id],
+          })),
+      },
+    }));
     const options = {
       searchTerm: "",
       filters: { mcpServerViewIds: [view.sId] },
     };
-    const result = await searchSkills(auth, options);
-    assert(result.isOk());
-    const ids = result.value.skills.map((skill) => skill.sId);
-    expect(ids).toContain("go-deep");
-    expect(ids).not.toContain("discover_skills");
+    const listViews = vi.spyOn(MCPServerViewResource, "listByMCPServers");
+    try {
+      const result = await searchSkills(auth, options);
+      assert(result.isOk());
+      expect(result.value.skills.map((item) => item.sId)).toEqual([skill.sId]);
+      expect(listViews).not.toHaveBeenCalled();
+    } finally {
+      listViews.mockRestore();
+    }
 
     const { authenticator: otherAuth } = await createResourceTest({
       role: "admin",
