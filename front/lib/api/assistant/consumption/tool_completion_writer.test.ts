@@ -16,6 +16,7 @@ import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,7 +38,7 @@ const RUN_KEY_Y = "execution-y";
 
 const EXTERNAL_TOOL_CHARGE_MICRO = 3 * MICRO_CREDITS_PER_CREDIT;
 
-async function setupToolCall() {
+async function setupToolCall({ origin }: { origin?: UserMessageOrigin } = {}) {
   const { authenticator: auth, workspace } = await createResourceTest({
     role: "admin",
   });
@@ -53,10 +54,21 @@ async function setupToolCall() {
     inputTokens: INPUT_TOKENS_COUNT,
     outputTokens: OUTPUT_TOKENS_COUNT,
   });
+  const triggeringMessage = origin
+    ? await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Run the tool",
+        origin,
+      })
+    : null;
   const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
     workspace,
     conversation,
     agentConfig: agentConfiguration,
+    parentMessageModelId: triggeringMessage?.messageRow.id,
+    rank: triggeringMessage ? 1 : 0,
     runIds: [run.dustRunId],
   });
   const { action } = await AgentMCPActionFactory.create(auth, {
@@ -128,10 +140,13 @@ describe("recordToolCompletionConsumption", () => {
       action.id
     );
 
-    await recordToolCompletionConsumption(auth, {
+    const result = await recordToolCompletionConsumption(auth, {
       action: settledAction!,
       context,
     });
+    expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
+      true
+    );
 
     const items = await listConsumptionItems(auth, context.agentMessageModelId);
     const toolRow = items.find((item) => item.itemType === "tool_direct");
@@ -340,6 +355,29 @@ describe("recordToolCompletionConsumption", () => {
       directCreditAmountMicro: 0,
       inputTokensCount: TOKENS_PER_FOOTPRINT,
     });
+  });
+
+  it("records the rated tool amount before a free-origin bill waives it", async () => {
+    const { auth, action, context } = await setupToolCall({
+      origin: "agent_sidekick",
+    });
+    await action.markAsSucceeded({ executionDurationMs: 10 });
+    const settledAction = await AgentMCPActionResource.fetchByModelIdWithAuth(
+      auth,
+      action.id
+    );
+
+    const result = await recordToolCompletionConsumption(auth, {
+      action: settledAction!,
+      context,
+    });
+
+    expect(result.isOk()).toBe(true);
+    const items = await listConsumptionItems(auth, context.agentMessageModelId);
+    expect(
+      items.find((item) => item.itemType === "tool_direct")
+        ?.directCreditAmountMicro
+    ).toBe(EXTERNAL_TOOL_CHARGE_MICRO);
   });
 
   it("records a sandbox child as a charge-only posting anchored to its parent call", async () => {

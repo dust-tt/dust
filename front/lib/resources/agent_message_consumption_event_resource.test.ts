@@ -6,6 +6,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { getNamespace } from "@app/tests/utils/test_cls";
 import type { EnabledAgentMessageConsumptionMode } from "@app/types/assistant/agent_message_consumption";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Op } from "sequelize";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let auth: Authenticator;
@@ -26,7 +27,7 @@ describe("AgentMessageConsumptionEventResource pending events", () => {
 
     const events = await AgentMessageConsumptionEventResource.listUnprocessed(
       auth,
-      { runKey: "execution", limit: 256 }
+      { runKey: "execution", limit: 256 },
     );
 
     expect(events.map((event) => event.id)).toEqual([42]);
@@ -55,7 +56,7 @@ describe("AgentMessageConsumptionEventResource pending events", () => {
             consumptionItemIds: [11],
           },
           transaction,
-        })
+        }),
       );
     const requestedEvent = await append("requested", "execution");
     const unrequestedEvent = await append("unrequested", "execution");
@@ -66,14 +67,14 @@ describe("AgentMessageConsumptionEventResource pending events", () => {
         runKey: "execution",
         eventModelIds: [requestedEvent.id, otherRunEvent.id],
         processedAt,
-      })
+      }),
     ).resolves.toBe(1);
     await expect(
       AgentMessageConsumptionEventResource.markProcessed(auth, {
         runKey: "execution",
         eventModelIds: [requestedEvent.id],
         processedAt,
-      })
+      }),
     ).resolves.toBe(0);
 
     const [processed, unprocessed, otherRun] = await Promise.all([
@@ -91,6 +92,87 @@ describe("AgentMessageConsumptionEventResource pending events", () => {
     expect(processed?.processedAt).toEqual(processedAt);
     expect(unprocessed?.processedAt).toBeNull();
     expect(otherRun?.processedAt).toBeNull();
+  });
+
+  it("inherits lineage from the latest parent execution start", async () => {
+    const findOne = vi
+      .spyOn(AgentMessageConsumptionEventResource.model, "findOne")
+      .mockResolvedValue({
+        rootAgentMessageId: 7,
+        consumptionMode: "live",
+      } as never);
+
+    await expect(
+      AgentMessageConsumptionEventResource.fetchLatestExecutionStartedForAgentMessage(
+        auth,
+        { agentMessageModelId: 42 },
+      ),
+    ).resolves.toEqual({
+      rootAgentMessageModelId: 7,
+      consumptionMode: "live",
+    });
+    expect(findOne).toHaveBeenCalledWith({
+      where: {
+        workspaceId: workspace.id,
+        agentMessageId: 42,
+        kind: "execution_started",
+      },
+      order: [["id", "DESC"]],
+    });
+  });
+
+  it("deduplicates the bounded recovery scan by execution", async () => {
+    vi.spyOn(
+      AgentMessageConsumptionEventResource.model,
+      "findAll",
+    ).mockResolvedValue([
+      { runKey: "run-a", workspaceId: 123 },
+      { runKey: "run-a", workspaceId: 123 },
+      { runKey: "run-b", workspaceId: 123 },
+    ] as never);
+
+    await expect(
+      AgentMessageConsumptionEventResource.listOldestUnprocessedExecutions({
+        limit: 3,
+      }),
+    ).resolves.toEqual({
+      executions: [
+        { runKey: "run-a", workspaceModelId: 123 },
+        { runKey: "run-b", workspaceModelId: 123 },
+      ],
+      hasMore: true,
+    });
+  });
+
+  it("deletes message events within the authenticated workspace", async () => {
+    const destroy = vi
+      .spyOn(AgentMessageConsumptionEventResource.model, "destroy")
+      .mockResolvedValue(2);
+
+    await expect(
+      AgentMessageConsumptionEventResource.deleteByAgentMessageModelIds(auth, {
+        agentMessageModelIds: [7, 8],
+      }),
+    ).resolves.toBe(2);
+    expect(destroy).toHaveBeenCalledWith({
+      where: {
+        workspaceId: workspace.id,
+        agentMessageId: { [Op.in]: [7, 8] },
+      },
+    });
+  });
+
+  it("deletes every event during a workspace scrub", async () => {
+    const destroy = vi
+      .spyOn(AgentMessageConsumptionEventResource.model, "destroy")
+      .mockResolvedValue(3);
+
+    await expect(
+      AgentMessageConsumptionEventResource.deleteAllForWorkspace(auth),
+    ).resolves.toBe(3);
+    expect(destroy).toHaveBeenCalledWith({
+      where: { workspaceId: workspace.id },
+    });
   });
 });
 
@@ -111,7 +193,7 @@ describe("AgentMessageConsumptionEventResource append", () => {
           consumptionItemIds: [11, 12],
         },
         transaction,
-      })
+      }),
     );
 
     expect(event).toMatchObject({
@@ -137,7 +219,7 @@ describe("AgentMessageConsumptionEventResource append", () => {
             consumptionItemIds: [11],
           },
           transaction,
-        })
+        }),
       );
 
     const first = await append();
@@ -159,13 +241,13 @@ describe("AgentMessageConsumptionEventResource append", () => {
             consumptionItemIds: [11],
           },
           transaction,
-        })
+        }),
       );
 
     await append("run-a");
 
     await expect(append("run-b")).rejects.toThrow(
-      "A consumption event key cannot identify different events"
+      "A consumption event key cannot identify different events",
     );
   });
 
@@ -196,7 +278,7 @@ describe("AgentMessageConsumptionEventResource append", () => {
     await expect(
       AgentMessageConsumptionEventResource.fetchByEventKey(auth, {
         eventKey: "items:rollback",
-      })
+      }),
     ).resolves.toBeNull();
   });
 
@@ -204,7 +286,7 @@ describe("AgentMessageConsumptionEventResource append", () => {
     const appendStarted = (
       idempotencyKey: string,
       runKey: string,
-      consumptionMode: EnabledAgentMessageConsumptionMode
+      consumptionMode: EnabledAgentMessageConsumptionMode,
     ) =>
       withTransaction((transaction) =>
         AgentMessageConsumptionEventResource.append(auth, {
@@ -225,8 +307,8 @@ describe("AgentMessageConsumptionEventResource append", () => {
     await expect(
       AgentMessageConsumptionEventResource.fetchLatestExecutionStartedForAgentMessage(
         auth,
-        { agentMessageModelId: 8 }
-      )
+        { agentMessageModelId: 8 },
+      ),
     ).resolves.toEqual({
       rootAgentMessageModelId: 7,
       consumptionMode: "live",
@@ -234,8 +316,8 @@ describe("AgentMessageConsumptionEventResource append", () => {
     await expect(
       AgentMessageConsumptionEventResource.fetchLatestExecutionStartedForAgentMessage(
         auth,
-        { agentMessageModelId: 9 }
-      )
+        { agentMessageModelId: 9 },
+      ),
     ).resolves.toBeNull();
   });
 });
