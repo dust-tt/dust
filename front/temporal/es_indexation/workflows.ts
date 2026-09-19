@@ -1,10 +1,5 @@
 import type * as activities from "@app/temporal/es_indexation/activities";
-import {
-  patched,
-  proxyActivities,
-  setHandler,
-  sleep,
-} from "@temporalio/workflow";
+import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
 import {
   indexAgentSearchSignal,
@@ -143,10 +138,7 @@ const { listWorkspaceIdsActivity, refreshWorkspaceSearchUsageActivity } =
   });
 
 export async function refreshSearchUsageWorkflow(): Promise<void> {
-  // Existing runs keep their recorded activity order.
-  if (patched("reindex-code-defined-skills-before-usage")) {
-    await reindexCodeDefinedSkillsActivity();
-  }
+  await reindexCodeDefinedSkillsActivity();
 
   const workspaceIds = await listWorkspaceIdsActivity();
   for (const workspaceId of workspaceIds) {
