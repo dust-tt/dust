@@ -476,7 +476,7 @@ describe("custom skill search", () => {
 
   it("projects eligible global documents without database reads after search", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
-    const documents = await SkillFactory.createCodeDefinedSearchDocuments();
+    const documents = SkillFactory.createCodeDefinedSearchDocuments();
     const global = documents.find(
       (document) => document.skill_id === "go-deep"
     );

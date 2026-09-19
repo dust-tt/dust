@@ -276,7 +276,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
       other.auth,
       [foreign]
     );
-    const documents = await SkillFactory.createCodeDefinedSearchDocuments();
+    const documents = SkillFactory.createCodeDefinedSearchDocuments();
     const global = documents.find(
       (document) => document.skill_id === "go-deep"
     );
