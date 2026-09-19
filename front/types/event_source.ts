@@ -53,6 +53,7 @@ export type ConnectionConfig = {
   buildURL: (lastEvent: string | null) => string | null;
   getEventId?: (event: string) => string;
   headers?: Record<string, string>;
+  isPauseEvent?: (event: string) => boolean;
   isTerminalEvent?: (event: string) => boolean;
   replayBufferedEventsOnSubscribe: boolean;
   restartKey: string;
@@ -85,6 +86,8 @@ export type LongPollTransportState =
 
 export type BrowserSseHealth = "unknown" | "healthy" | "degraded";
 
+export type KeepAliveState = "inactive" | "active" | "paused";
+
 export type ConnectionEntry = {
   config: ConnectionConfig;
   events: string[];
@@ -97,7 +100,7 @@ export type ConnectionEntry = {
   lastURL: string | null;
   longPollAttempts: number;
   longPollState: LongPollTransportState;
-  keepAliveWithoutSubscribers: boolean;
+  keepAliveState: KeepAliveState;
   reconnectAttempts: number;
   unsuccessfulResumes: number;
   seenEventIds: Set<string>;

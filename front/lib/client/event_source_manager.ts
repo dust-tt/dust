@@ -96,9 +96,8 @@ async function createLongPoll(
  */
 /**
  * @cc [owner:id13,label:performance;concurrency] persistent-stream-lifecycle
- * An entry marked `keepAliveWithoutSubscribers` MUST survive with zero subscribers until it reaches
- * a terminal event, all configured transports exhaust their retry budgets, or its workspace is
- * released.
+ * An entry with active keepalive MUST survive with zero subscribers until terminal, retry budget
+ * exhaustion, registry removal, a final blocking event, or workspace release.
  */
 /**
  * @cc [owner:id13,label:architecture;concurrency] browser-session-sse-fallback
@@ -153,7 +152,14 @@ export class EventSourceManager {
       this.restart(streamId, entry, config);
     } else {
       entry.config = config;
-      entry.keepAliveWithoutSubscribers ||= keepAliveWithoutSubscribers;
+    }
+    if (
+      entry.keepAliveState === "inactive" &&
+      keepAliveWithoutSubscribers &&
+      entry.state.kind !== "failed" &&
+      entry.state.kind !== "terminal"
+    ) {
+      entry.keepAliveState = "active";
     }
 
     entry.subscribers.add(subscriber);
@@ -175,7 +181,7 @@ export class EventSourceManager {
       this.logVerbose(streamId, current, "subscriber_removed");
       if (
         current.subscribers.size === 0 &&
-        !current.keepAliveWithoutSubscribers
+        current.keepAliveState !== "active"
       ) {
         this.destroy(streamId, current);
       }
@@ -199,7 +205,9 @@ export class EventSourceManager {
     if (!entry || entry.config.workspaceId !== workspaceId) {
       return;
     }
-    entry.keepAliveWithoutSubscribers = false;
+    if (entry.keepAliveState === "active") {
+      entry.keepAliveState = "inactive";
+    }
     entry.lastResumeAtMs = null;
     entry.unsuccessfulResumes = 0;
     if (entry.subscribers.size === 0) {
@@ -226,7 +234,9 @@ export class EventSourceManager {
     }
     entry.lastResumeAtMs = Date.now();
     entry.unsuccessfulResumes++;
-    entry.keepAliveWithoutSubscribers = true;
+    if (entry.keepAliveState === "inactive") {
+      entry.keepAliveState = "active";
+    }
     this.logVerbose(streamId, entry, "resume");
     this.restartFailedConnection(streamId, entry);
   }
@@ -268,7 +278,7 @@ export class EventSourceManager {
       lastURL: null,
       longPollAttempts: 0,
       longPollState: { kind: "idle" },
-      keepAliveWithoutSubscribers,
+      keepAliveState: keepAliveWithoutSubscribers ? "active" : "inactive",
       reconnectAttempts: 0,
       unsuccessfulResumes: 0,
       seenEventIds: new Set(),
@@ -706,6 +716,12 @@ export class EventSourceManager {
     entry.longPollState = { kind: "retrying", timeout };
   }
 
+  /**
+   * @cc [owner:id13,label:concurrency;reliability] blocked-stream-keepalive
+   * A final blocking event MUST reach subscribers before keepalive pauses. A paused stream MUST
+   * close when its last subscriber leaves, MUST NOT rearm on subscribe, and MUST rearm on the next
+   * accepted nonblocking event.
+   */
   private acceptEvent(
     streamId: string,
     entry: ConnectionEntry,
@@ -717,6 +733,11 @@ export class EventSourceManager {
     }
     if (eventId) {
       entry.seenEventIds.add(eventId);
+    }
+
+    const pausesKeepAlive = entry.config.isPauseEvent?.(event) ?? false;
+    if (entry.keepAliveState === "paused" && !pausesKeepAlive) {
+      entry.keepAliveState = "active";
     }
 
     entry.lastEvent = event;
@@ -733,8 +754,18 @@ export class EventSourceManager {
       this.notifyEventSubscriber(entry, subscriber, event);
     }
 
+    if (this.connections.get(streamId) !== entry) {
+      return;
+    }
+
     if (entry.config.isTerminalEvent?.(event)) {
       this.markTerminal(streamId, entry);
+    } else if (pausesKeepAlive) {
+      entry.keepAliveState = "paused";
+      this.logVerbose(streamId, entry, "keepalive_paused");
+      if (entry.subscribers.size === 0) {
+        this.destroy(streamId, entry);
+      }
     }
   }
 
@@ -748,7 +779,9 @@ export class EventSourceManager {
   ): void {
     this.stopSse(entry);
     this.stopLongPolling(entry);
-    entry.keepAliveWithoutSubscribers = false;
+    if (entry.keepAliveState !== "paused") {
+      entry.keepAliveState = "inactive";
+    }
     this.transition(streamId, entry, { kind: "failed", attempt, error });
     datadogLogger.error(context, message);
     for (const subscriber of entry.subscribers) {
@@ -857,7 +890,7 @@ export class EventSourceManager {
     entry.generation++;
     this.stopSse(entry);
     this.stopLongPolling(entry);
-    entry.keepAliveWithoutSubscribers = false;
+    entry.keepAliveState = "inactive";
     this.transition(streamId, entry, { kind: "terminal" });
     if (entry.subscribers.size === 0) {
       this.destroy(streamId, entry);
@@ -911,6 +944,7 @@ export class EventSourceManager {
       reconnectAttempts: entry.reconnectAttempts,
       longPollAttempts: entry.longPollAttempts,
       preHandshakeFailures: this.preHandshakeFailures,
+      keepAliveState: entry.keepAliveState,
       subscriberCount: entry.subscribers.size,
       ...details,
     });
