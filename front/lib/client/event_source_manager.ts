@@ -2,6 +2,15 @@ import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { clientEventSource } from "@app/lib/egress/client";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { DatadogLogContext } from "@app/logger/logger";
+import type {
+  ConnectionConfig,
+  ConnectionEntry,
+  EventSourceConnectionState,
+  EventSourceFactory,
+  EventSourceLike,
+  EventSourceManagerOptions,
+  Subscriber,
+} from "@app/types/event_source";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type {
   Event as PolyfillEvent,
@@ -13,65 +22,6 @@ const RECONNECT_DELAY_BASE_MS = 3000;
 const RECONNECT_DELAY_JITTER_MS = 5000;
 const MAX_RECONNECT_ATTEMPTS = 10;
 const HEARTBEAT_TIMEOUT_MS = 5 * 60 * 1000;
-
-type EventSourceLike = Pick<
-  EventSourcePolyfill,
-  "close" | "onerror" | "onmessage" | "onopen" | "readyState" | "url"
->;
-
-type EventSourceFactory = (
-  url: string,
-  headers?: Record<string, string>
-) => Promise<EventSourceLike>;
-
-type EventSourceManagerOptions = {
-  maxReconnectAttempts?: number;
-  reconnectDelayBaseMs?: number;
-  reconnectDelayJitterMs?: number;
-};
-
-export type EventSourceConnectionState =
-  | { kind: "idle" }
-  | { kind: "connecting"; attempt: number; startedAt: number }
-  | { kind: "open"; openedAt: number }
-  | {
-      kind: "reconnecting";
-      attempt: number;
-      reconnectAt: number;
-    }
-  | { kind: "failed"; attempt: number; error: Error }
-  | { kind: "terminal" };
-
-type ConnectionConfig = {
-  buildURL: (lastEvent: string | null) => string | null;
-  headers?: Record<string, string>;
-  isTerminalEvent?: (event: string) => boolean;
-  replayBufferedEventsOnSubscribe: boolean;
-  restartKey: string;
-  telemetryContext?: DatadogLogContext;
-  workspaceId: string;
-};
-
-type Subscriber = {
-  onEvent: (event: string) => void;
-  onStateChange: (state: EventSourceConnectionState) => void;
-  onTerminalError?: (error: Error) => void;
-};
-
-type ConnectionEntry = {
-  config: ConnectionConfig;
-  events: string[];
-  generation: number;
-  lastEvent: string | null;
-  lastEventAt: number | null;
-  lastURL: string | null;
-  keepAliveWithoutSubscribers: boolean;
-  reconnectAttempts: number;
-  reconnectTimeout: ReturnType<typeof setTimeout> | null;
-  source: EventSourceLike | null;
-  state: EventSourceConnectionState;
-  subscribers: Set<Subscriber>;
-};
 
 async function createEventSource(
   url: string,
@@ -170,7 +120,7 @@ export class EventSourceManager {
 
   /**
    * @cc [owner:id13,label:architecture;concurrency] workspace-stream-cleanup
-   * Releasing a workspace MUST close all and only its streams, regardless of telemetry metadata.
+   * Releasing a workspace MUST close all and only its streams.
    */
   releaseWorkspace(workspaceId: string): void {
     for (const [streamId, entry] of this.connections) {

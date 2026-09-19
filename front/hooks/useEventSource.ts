@@ -1,6 +1,6 @@
-import type { EventSourceConnectionState } from "@app/lib/client/event_source_manager";
 import { eventSourceManager } from "@app/lib/client/event_source_manager";
 import type { DatadogLogContext } from "@app/logger/logger";
+import type { EventSourceConnectionState } from "@app/types/event_source";
 import { useEffect, useRef, useState } from "react";
 
 interface UseEventSourceOptions {
