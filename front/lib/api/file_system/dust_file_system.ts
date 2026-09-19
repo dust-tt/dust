@@ -1012,22 +1012,14 @@ export class DustFileSystem {
   }
 
   /**
-   * Rename `scopedPath` to `newFileName` within the same directory.
-   *
-   * `newFileName` must be a plain filename with no path separators.
-   * Returns `Ok({ dest, sourceDeletionFailed })` where `dest` is the canonical
-   * scoped path of the renamed file. Callers that need to sync side-effects
-   * (e.g. FileResource) can use `dest` to determine the new location.
-   *
-   * No-ops when `newFileName` is identical to the current filename, returning
-   * `Ok({ dest: scopedPath, sourceDeletionFailed: false })`.
+   * Compute the canonical scoped path a rename of `scopedPath` to `newFileName` targets, so callers
+   * can inspect the destination before any mutation. Returns `Err("invalid_path")` when
+   * `newFileName` is empty or contains a path separator.
    */
-  async rename(
+  static resolveRenameDestination(
     scopedPath: string,
     newFileName: string
-  ): Promise<
-    Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
-  > {
+  ): Result<string, DustFileSystemError> {
     if (
       !newFileName ||
       newFileName.includes("/") ||
@@ -1043,18 +1035,7 @@ export class DustFileSystem {
 
     const lastSlash = scopedPath.lastIndexOf("/");
     const parentDir = lastSlash >= 0 ? scopedPath.slice(0, lastSlash) : "";
-    const dest = parentDir ? `${parentDir}/${newFileName}` : newFileName;
-
-    if (dest === scopedPath) {
-      return new Ok({ dest, sourceDeletionFailed: false });
-    }
-
-    const moveResult = await this.move({ src: scopedPath, dest });
-    if (moveResult.isErr()) {
-      return moveResult;
-    }
-
-    return new Ok({ dest, ...moveResult.value });
+    return new Ok(parentDir ? `${parentDir}/${newFileName}` : newFileName);
   }
 
   /** Move `src` to `dest` using the selected backend. */

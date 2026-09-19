@@ -523,12 +523,15 @@ export async function moveFile(
   }
 
   if (file) {
-    await file.updateMount({
+    const updateRes = await file.updateMount({
       destFileName,
       destMountFilePath: destGcsPath,
       destUseCase,
       destUseCaseMetadata,
     });
+    if (updateRes.isErr()) {
+      return updateRes;
+    }
   }
 
   const prefix = resolvePrefix(auth.getNonNullableWorkspace(), destScope);
