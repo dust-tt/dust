@@ -294,11 +294,9 @@ describe("code-defined skill search", () => {
     );
     expect(page.value.hasMore).toBe(true);
     expect(page.value.skills[1]).not.toHaveProperty("score");
-    for (const branch of mockSearch.mock.calls[0][0].query.bool.should) {
-      expect(branch.bool.must).toEqual([
-        buildSkillNameAutocompleteQuery("deep"),
-      ]);
-    }
+    expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([
+      buildSkillNameAutocompleteQuery("deep"),
+    ]);
 
     const next = await searchSkills(auth, {
       searchTerm: "deep",

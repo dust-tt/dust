@@ -109,35 +109,55 @@ describe("custom skill search", () => {
             },
           },
         ],
-        filter: [
-          { term: { workspace_id: workspace.sId } },
-          { terms: { status: ["active"] } },
+        filter: [{ terms: { status: ["active"] } }],
+        should: [
           {
             bool: {
-              should: [
+              filter: [
+                { term: { workspace_id: workspace.sId } },
                 {
-                  terms: {
-                    availability: ["workspace_users", "users_and_agents"],
+                  bool: {
+                    should: [
+                      {
+                        terms: {
+                          availability: ["workspace_users", "users_and_agents"],
+                        },
+                      },
+                      { term: { editor_ids: auth.getNonNullableUser().sId } },
+                    ],
+                    minimum_should_match: 1,
                   },
                 },
-                { term: { editor_ids: auth.getNonNullableUser().sId } },
+                {
+                  terms_set: {
+                    requested_space_ids: {
+                      terms: [globalSpace.sId, conversationsSpace.sId].sort(),
+                      minimum_should_match_script: {
+                        source: "doc['requested_space_ids'].size()",
+                      },
+                    },
+                  },
+                },
               ],
-              minimum_should_match: 1,
             },
           },
           {
-            terms_set: {
-              requested_space_ids: {
-                terms: [globalSpace.sId, conversationsSpace.sId].sort(),
-                minimum_should_match_script: {
-                  source: "doc['requested_space_ids'].size()",
-                },
-              },
+            bool: {
+              filter: [
+                { term: { workspace_id: "global" } },
+                { terms: { skill_id: [] } },
+              ],
             },
           },
         ],
+        minimum_should_match: 1,
       },
     });
+    expect(
+      SkillFactory.createCodeDefinedSearchDocuments().filter((document) =>
+        matchesSkillSearchFilters(document, query)
+      )
+    ).toEqual([]);
   });
 
   it.each([
@@ -157,10 +177,11 @@ describe("custom skill search", () => {
     const editor = { term: { editor_ids: auth.getNonNullableUser().sId } };
     expect(query.bool?.filter).toEqual([
       ...[base.bool?.filter].flat(),
-      { terms: { mcp_server_view_ids: ["view-1", "view-2"] } },
+      { terms: { mcp_server_view_ids: ["view-2", "view-1", "view-2"] } },
       { terms: { availability: ["users_and_agents"] } },
       ...(editedByMe ? [editor] : []),
     ]);
+    expect(query.bool?.should).toEqual(base.bool?.should);
   });
 
   it.each(
@@ -240,8 +261,7 @@ describe("custom skill search", () => {
     expect(candidates).toHaveLength(expectedIds.length);
     expect(mockSearch).toHaveBeenCalledOnce();
     const { query } = mockSearch.mock.lastCall![0];
-    const customQuery = query.bool.should?.[0] ?? query;
-    const filters = customQuery.bool.filter;
+    const filters = query.bool.should[0].bool.filter;
     const terms = filters.at(-1).terms_set.requested_space_ids.terms;
     expect(terms).toEqual(
       expect.arrayContaining([
@@ -252,8 +272,8 @@ describe("custom skill search", () => {
     );
     expect(terms).not.toContain(deniedSpace.sId);
     expect(terms).not.toContain(deniedPod.sId);
-    expect(filters).toHaveLength(4);
-    expect(filters[2].bool.should[1]).toEqual({
+    expect(filters).toHaveLength(3);
+    expect(filters[1].bool.should[1]).toEqual({
       term: { editor_ids: user.sId },
     });
   }, 30_000);
@@ -462,11 +482,11 @@ describe("custom skill search", () => {
         index: "front.skills",
         _source: true,
       });
-      expect(mockSearch.mock.lastCall![0].query.bool.should).toContainEqual(
+      expect(mockSearch.mock.lastCall![0].query.bool.filter).toEqual(
         buildSkillSearchQuery(auth, {
           searchTerm: "",
           filters: { status: ["active", "archived"] },
-        })
+        }).bool?.filter
       );
       expect(onQuery).not.toHaveBeenCalled();
     } finally {
@@ -541,10 +561,7 @@ describe("custom skill search", () => {
     );
     expect(
       mockSearch.mock.lastCall![0].query.bool.should[0].bool.filter
-    ).toEqual([
-      { term: { workspace_id: workspace.sId } },
-      { terms: { status: ["active"] } },
-    ]);
+    ).toEqual([{ term: { workspace_id: workspace.sId } }]);
   });
 
   it("handles absent and type-wide space grants without enumerating spaces", async () => {
@@ -566,7 +583,8 @@ describe("custom skill search", () => {
       resourceIds: [],
     });
     expect(
-      buildSkillSearchQuery(auth, { searchTerm: "" }).bool?.filter
+      [buildSkillSearchQuery(auth, { searchTerm: "" }).bool?.should].flat()[0]
+        ?.bool?.filter
     ).toContainEqual({
       terms_set: {
         requested_space_ids: {
@@ -585,7 +603,8 @@ describe("custom skill search", () => {
     await auth.refresh();
     expect(auth.getReadableSpaceModelIds()).toEqual({ kind: "all" });
     expect(
-      buildSkillSearchQuery(auth, { searchTerm: "" }).bool?.filter
+      [buildSkillSearchQuery(auth, { searchTerm: "" }).bool?.should].flat()[0]
+        ?.bool?.filter
     ).toContainEqual({
       match_all: {},
     });
@@ -650,7 +669,7 @@ describe("custom skill search", () => {
     const [candidate] = await searchListings(auth);
     expect(candidate).toBeUndefined();
     expect(
-      mockSearch.mock.lastCall![0].query.bool.should[0].bool.filter[2].bool
+      mockSearch.mock.lastCall![0].query.bool.should[0].bool.filter[1].bool
         .should[1]
     ).toEqual({ term: { editor_ids: user.sId } });
     expect(
