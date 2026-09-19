@@ -33,6 +33,11 @@ import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types
 import type { PersistedToolOutput } from "@app/lib/api/files/action_output_fs";
 import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
+import {
+  recordMcpPersistOutputMs,
+  recordMcpProcessBlocksMs,
+  roundMs,
+} from "@app/lib/api/sandbox_functions/sandbox_function_mcp_action_server_timings";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -279,6 +284,7 @@ export async function processToolResults(
   const { toolConfiguration } = runContext;
 
   const timestamp = Date.now();
+  const processBlocksStarted = performance.now();
   const cleanContent: {
     content: CallToolResult["content"][number];
     file: FileResource | null;
@@ -551,6 +557,7 @@ export async function processToolResults(
       concurrency: 10,
     }
   );
+  recordMcpProcessBlocksMs(roundMs(processBlocksStarted));
 
   const generatedFiles: ActionGeneratedFileType[] = removeNulls(
     cleanContent.map((c) => {
@@ -590,6 +597,7 @@ export async function processToolResults(
     content: sanitizeStringsDeep(c.content),
     fileId: c.file?.id,
   }));
+  const persistOutputStarted = performance.now();
   const outputRes = isSandboxFunctionRunContext(runContext)
     ? await runContext.action.createOutputItems(auth, cleanContentItems, {
         structuredContent:
@@ -601,6 +609,7 @@ export async function processToolResults(
     : await runContext.action.createOutputItems(auth, cleanContentItems, {
         deferDurablePersist: true,
       });
+  recordMcpPersistOutputMs(roundMs(persistOutputStarted));
 
   // Surfaced as an exception: there is no acceptable degraded state for unpersisted tool outputs.
   if (outputRes.isErr()) {

@@ -2,12 +2,36 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 
+export type ToolCallServerTimingsMs = {
+  fetchView: number;
+  resolveTool: number;
+  fetchFunction: number;
+  fetchInvocation: number;
+  stakeStatus: number;
+  createAction: number;
+  runOrLaunch: number;
+  run?: {
+    auth: number;
+    fetchAction: number;
+    fetchInvocation: number;
+    resolvePod: number;
+    streaming: number;
+    mcpConnect?: number;
+    mcpCall?: number;
+    total: number;
+  };
+  earlyWait?: number;
+  total: number;
+};
+
 export type ToolCallTimingMs = {
   server: string;
   tool: string;
   post: number;
   poll: number;
   offload?: number;
+  /** Front create/run breakdown when present on the POST. */
+  dust?: ToolCallServerTimingsMs;
   total: number;
 };
 

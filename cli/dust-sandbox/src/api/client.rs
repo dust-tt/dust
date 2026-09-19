@@ -8,12 +8,12 @@ use tokio::time::sleep;
 
 use super::error::DustApiError;
 use super::types::{
-    parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
-    CallToolResponse, CallToolResult, FrameCallByIdRequest, FrameCallFromSourceRequest,
-    FrameCallResponse, FrameDatabaseListResponse, FrameDatabaseQueryRequest,
-    FrameDatabaseQueryResponse, FramePublishRequest, FramePublishResponse, FrameRegisterRequest,
-    FrameRegisterResponse, FrameShareLinkResponse, FrameValidateRequest, FrameValidateResponse,
-    MCPServerView, SandboxServerViewsResponse,
+    interpret_call_tool_post_response, parse_action_poll_response, ActionPollResponse,
+    CallToolPostOutcome, CallToolPostResponse, CallToolRequest, CallToolResponse, CallToolResult,
+    FrameCallByIdRequest, FrameCallFromSourceRequest, FrameCallResponse, FrameDatabaseListResponse,
+    FrameDatabaseQueryRequest, FrameDatabaseQueryResponse, FramePublishRequest,
+    FramePublishResponse, FrameRegisterRequest, FrameRegisterResponse, FrameShareLinkResponse,
+    FrameValidateRequest, FrameValidateResponse, MCPServerView, SandboxServerViewsResponse,
 };
 
 // Action poll schedule after a 202 create: Temporal + MCP need time before
@@ -410,20 +410,49 @@ impl DustApiClient {
             arguments,
         };
         let post_started = Instant::now();
-        let CallToolPostResponse::Pending { action_id } =
-            self.post("sandbox/actions/call", &body).await?;
+        let post_response: CallToolPostResponse = self.post("sandbox/actions/call", &body).await?;
         let post_ms = post_started.elapsed().as_millis() as u64;
 
-        let poll_started = Instant::now();
-        let mut response = self.poll_action_result(&action_id).await?;
-        let poll_ms = poll_started.elapsed().as_millis() as u64;
-        response.result.timings_ms = Some(super::types::ToolCallTimingsMs {
-            post: post_ms,
-            poll: poll_ms,
-            offload: None,
-            total: started.elapsed().as_millis() as u64,
-        });
-        Ok(response)
+        match interpret_call_tool_post_response(post_response) {
+            CallToolPostOutcome::Ready {
+                content,
+                structured_content,
+                is_error,
+                server_timings_ms,
+            } => Ok(CallToolResponse {
+                result: CallToolResult {
+                    content,
+                    structured_content,
+                    is_error,
+                    timings_ms: Some(super::types::ToolCallTimingsMs {
+                        post: post_ms,
+                        poll: 0,
+                        offload: None,
+                        server: server_timings_ms,
+                        total: started.elapsed().as_millis() as u64,
+                    }),
+                },
+            }),
+            CallToolPostOutcome::Rejected => {
+                bail!("action was rejected");
+            }
+            CallToolPostOutcome::Pending {
+                action_id,
+                server_timings_ms,
+            } => {
+                let poll_started = Instant::now();
+                let mut response = self.poll_action_result(&action_id).await?;
+                let poll_ms = poll_started.elapsed().as_millis() as u64;
+                response.result.timings_ms = Some(super::types::ToolCallTimingsMs {
+                    post: post_ms,
+                    poll: poll_ms,
+                    offload: None,
+                    server: server_timings_ms,
+                    total: started.elapsed().as_millis() as u64,
+                });
+                Ok(response)
+            }
+        }
     }
 }
 

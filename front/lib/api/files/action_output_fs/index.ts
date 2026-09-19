@@ -213,7 +213,12 @@ export async function persistToolOutput(
 ): Promise<Result<PersistedToolOutput | null, Error>> {
   if (runContext.contextType === "sandbox_function" && !runContext.pod) {
     logger.info(
-      { runContext },
+      {
+        actionId: runContext.action.sId,
+        invocationId: runContext.invocation.sId,
+        toolName,
+        serverName,
+      },
       "Sandbox function running for a Frame without a Pod, skipping persisting outputs."
     );
     return new Ok(null);
