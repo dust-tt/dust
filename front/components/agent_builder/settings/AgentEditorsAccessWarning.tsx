@@ -1,28 +1,31 @@
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useRemoveAgentSpace } from "@app/components/agent_builder/hooks/useRemoveAgentSpace";
 import { EditorsAccessWarning } from "@app/components/shared/EditorsAccessWarning";
+import type { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import type { EditorWithoutSpaceAccess } from "@app/components/shared/useEditorsWithoutSpaceAccess";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import { useRemoveSkillSpace } from "@app/components/skill_builder/useRemoveSkillSpace";
 import type { EditorUser } from "@app/types/editors";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useController } from "react-hook-form";
 
-interface SkillEditorsAccessWarningProps {
+interface AgentEditorsAccessWarningProps {
   editorsWithoutSpaceAccess: EditorWithoutSpaceAccess[];
   owner: LightWorkspaceType;
+  spaceIdToActions: ReturnType<typeof getSpaceIdToActionsMap>;
 }
 
-export function SkillEditorsAccessWarning({
+export function AgentEditorsAccessWarning({
   editorsWithoutSpaceAccess,
   owner,
-}: SkillEditorsAccessWarningProps) {
+  spaceIdToActions,
+}: AgentEditorsAccessWarningProps) {
   const { field: editorsField } = useController<
-    SkillBuilderFormData,
-    "editors"
+    AgentBuilderFormData,
+    "agentSettings.editors"
   >({
-    name: "editors",
+    name: "agentSettings.editors",
   });
-  const { removeSpace, isRemovalDisabled } = useRemoveSkillSpace();
+  const { removeSpace } = useRemoveAgentSpace({ spaceIdToActions });
 
   const handleRemoveEditor = (editor: EditorUser) => {
     editorsField.onChange(
@@ -39,9 +42,8 @@ export function SkillEditorsAccessWarning({
   return (
     <EditorsAccessWarning
       editorsWithoutSpaceAccess={editorsWithoutSpaceAccess}
-      entityName="skill"
+      entityName="agent"
       isEditorRemovalDisabled={editorsField.disabled}
-      isSpaceRemovalDisabled={isRemovalDisabled}
       onRemoveEditor={handleRemoveEditor}
       onRemoveSpace={handleRemoveSpace}
       owner={owner}

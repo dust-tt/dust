@@ -3,10 +3,12 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { useAgentRequestedSpaces } from "@app/components/agent_builder/hooks/useAgentRequestedSpaces";
 import { AgentBuilderAvailabilityMessage } from "@app/components/agent_builder/settings/AgentBuilderAvailabilityMessage";
+import { AgentEditorsAccessWarning } from "@app/components/agent_builder/settings/AgentEditorsAccessWarning";
 import { SlackSettingsSheet } from "@app/components/agent_builder/settings/SlackSettingsSheet";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
+import { useEditorsWithoutSpaceAccess } from "@app/components/shared/useEditorsWithoutSpaceAccess";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   Button,
@@ -61,8 +63,17 @@ export function AccessSection({
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { owner } = useAgentBuilderContext();
   const { hasPermission } = useWorkspacePermissions();
-  const { nonGlobalSpacesWithRestrictions } = useAgentRequestedSpaces({
-    initialRequestedSpaceIds,
+  const { nonGlobalSpacesWithRestrictions, spaceIdToActions } =
+    useAgentRequestedSpaces({
+      initialRequestedSpaceIds,
+    });
+
+  // `nonGlobalSpacesWithRestrictions` only holds spaces the current user can read,
+  // so the access check never gets asked about a space it would reject.
+  const editorsWithoutSpaceAccess = useEditorsWithoutSpaceAccess({
+    owner,
+    restrictedSpaces: nonGlobalSpacesWithRestrictions,
+    editors,
   });
 
   const canPublishAgent = hasPermission("publish", "agent");
@@ -164,6 +175,13 @@ export function AccessSection({
           </>
         )}
       </div>
+      {editorsWithoutSpaceAccess.length > 0 && (
+        <AgentEditorsAccessWarning
+          editorsWithoutSpaceAccess={editorsWithoutSpaceAccess}
+          owner={owner}
+          spaceIdToActions={spaceIdToActions}
+        />
+      )}
       <AgentBuilderAvailabilityMessage
         owner={owner}
         restrictedSpaces={nonGlobalSpacesWithRestrictions}
