@@ -8,6 +8,7 @@ import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shar
 import { SYSTEM_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/system";
 import { makeSkillDocumentId } from "@app/lib/skill_search";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
@@ -70,6 +71,12 @@ export async function reindexCodeDefinedSkills(): Promise<
       return result;
     }
     if (result.value.errors) {
+      logger.error(
+        {
+          errors: result.value.items.filter((item) => item.index?.error),
+        },
+        "Failed to index code-defined skills."
+      );
       return new Err(
         new ElasticsearchError(
           "query_error",
