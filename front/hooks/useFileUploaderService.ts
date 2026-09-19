@@ -1,7 +1,12 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type { FileUploadedRequestResponseBody } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
+  isAudioTranscriptionAvailable,
+} from "@app/lib/workspace_policies";
 import logger from "@app/logger/logger";
 import type { FileUploadRequestResponseBody } from "@app/types/api/files/upload_metadata";
 import { isAPIErrorResponse } from "@app/types/error";
@@ -16,6 +21,8 @@ import {
   ensureFileSizeByFormatCategory,
   fileSizeToHumanReadable,
   getFileFormatCategory,
+  getSupportedFileExtensions,
+  isSupportedAudioContentType,
   isSupportedFileContentType,
   resolveFileContentType,
   resolveMaxFileSizes,
@@ -52,6 +59,13 @@ class FileBlobUploadError extends Error {
   }
 }
 
+/**
+ * @cc [owner:Nils-Fedrigo,label:react;product] audio-selection-needs-transcription
+ * When `isAudioTranscriptionAvailable` is false for the workspace, a selected file whose content
+ * type is audio MUST be reported as an error blob and MUST NOT reach `uploadFiles`, whichever entry
+ * path produced it (picker, drag-and-drop, paste). `acceptedFileExtensions` MUST NOT list audio
+ * extensions in that case so the picker cannot offer them in the first place.
+ */
 export function useFileUploaderService({
   hasSandboxTools,
   owner,
@@ -69,6 +83,22 @@ export function useFileUploaderService({
   const isProcessingFiles = numFilesProcessing > 0;
 
   const sendNotification = useSendNotification();
+
+  const { subscription } = useAuth();
+  const isAudioSupported = isAudioTranscriptionAvailable({
+    owner,
+    plan: subscription.plan,
+  });
+
+  const acceptedFileExtensions = useMemo(() => {
+    const supported = getSupportedFileExtensions(undefined, useCase);
+    if (isAudioSupported) {
+      return supported;
+    }
+
+    const audioExtensions = new Set(getSupportedFileExtensions("audio"));
+    return supported.filter((ext) => !audioExtensions.has(ext));
+  }, [isAudioSupported, useCase]);
 
   const sizeResolverOpts = useMemo(
     () => ({
@@ -144,13 +174,30 @@ export function useFileUploaderService({
             return acc;
           }
 
+          if (!isAudioSupported && isSupportedAudioContentType(fileType)) {
+            acc.push(
+              new Err(
+                new FileBlobUploadError(
+                  renamedFile,
+                  AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE
+                )
+              )
+            );
+            return acc;
+          }
+
           acc.push(new Ok(createFileBlob(renamedFile, fileType)));
           return acc;
         },
         []
       );
     },
-    [fileBlobs, findAvailableTitle, resolveSelectedFileContentType]
+    [
+      fileBlobs,
+      findAvailableTitle,
+      isAudioSupported,
+      resolveSelectedFileContentType,
+    ]
   );
 
   const uploadFiles = useCallback(
@@ -467,6 +514,7 @@ export function useFileUploaderService({
 
   const result = useMemo(() => {
     return {
+      acceptedFileExtensions,
       addUploadedFile,
       fileBlobs,
       getFileBlob,
@@ -478,6 +526,7 @@ export function useFileUploaderService({
       resetUpload,
     };
   }, [
+    acceptedFileExtensions,
     addUploadedFile,
     fileBlobs,
     getFileBlob,

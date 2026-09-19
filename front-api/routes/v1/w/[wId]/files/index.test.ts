@@ -1,5 +1,7 @@
 import config from "@app/lib/api/config";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE } from "@app/lib/workspace_policies";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { honoApp } from "@front-api/app";
@@ -44,6 +46,42 @@ describe("POST /api/v1/w/[wId]/files", () => {
     expect(data.file.fileName).toBe("test.csv");
     expect(data.file.uploadUrl).toContain("http://localhost:9999");
     expect(data.file.sId).toBeDefined();
+  });
+
+  it("refuses an audio upload when voice transcription is disabled", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      allowVoiceTranscription: false,
+    });
+
+    const response = await postFile(workspace, key, {
+      contentType: "audio/mpeg",
+      fileName: "meeting.mp3",
+      fileSize: 1024,
+      useCase: "conversation",
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.type).toBe("file_type_not_supported");
+    expect(data.error.message).toBe(AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE);
+  });
+
+  it("accepts an audio upload when voice transcription is available", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      method: "POST",
+    });
+
+    const response = await postFile(workspace, key, {
+      contentType: "audio/mpeg",
+      fileName: "meeting.mp3",
+      fileSize: 1024,
+      useCase: "conversation",
+    });
+
+    expect(response.status).toBe(200);
   });
 
   it("refuses non public use-case without a system API key", async () => {
