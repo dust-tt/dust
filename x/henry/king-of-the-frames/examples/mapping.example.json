@@ -1,0 +1,18 @@
+{
+  "example-pack": {
+    "slots": {
+      "1": {
+        "agentId": "agent-candidate-b",
+        "label": "Candidate B"
+      },
+      "2": {
+        "agentId": "agent-candidate-a",
+        "label": "Candidate A"
+      },
+      "3": {
+        "agentId": "agent-candidate-c",
+        "label": "Candidate C"
+      }
+    }
+  }
+}
