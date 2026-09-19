@@ -6,15 +6,10 @@ import {
 } from "@app/lib/metronome/client";
 import {
   getMetricLlmProviderCostAwuId,
-  getMetricToolInvocationsId,
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_PROGRAMMATIC,
 } from "@app/lib/metronome/constants";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
-import {
-  isToolCostCategory,
-  TOOL_COST_CATEGORY_AWU_WEIGHTS,
-} from "@app/lib/metronome/events";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -81,17 +76,15 @@ export async function getRemainingProgrammaticUsageFromMetronome(
  * floored period start (at HOUR granularity when the period itself does not
  * start at midnight) and drop pre-period buckets in code.
  *
- * AWU spend has two sources, both priced in the AWU credit type:
- *   - AI Usage: the `cost_awu` metric, priced 1 AWU per unit.
- *   - Tool Usage: an invocation count, weighted per category (basic ×1,
- *     advanced ×3).
+ * AWU spend is read from the `cost_awu` metric (priced 1 AWU per unit).
+ * Tool-invocation cost is now folded into that aggregated metric (#31569), so
+ * the ToolInvocations metric is no longer queried.
  *
- * We group by `usage_type` (plus `tool_category` for tools) and keep only the
- * `programmatic` buckets in code rather than filtering the query on
- * `usage_type`: filtered queries make Metronome under-aggregate some buckets
- * (see per_user_usage.ts). Unlike the per-user query, grouping only by
- * `usage_type` has a handful of groups, so the unfiltered query is not at
- * risk of being capped server-side.
+ * We group by `usage_type` and keep only the `programmatic` buckets in code
+ * rather than filtering the query on `usage_type`: filtered queries make
+ * Metronome under-aggregate some buckets (see per_user_usage.ts). Unlike the
+ * per-user query, grouping only by `usage_type` has a handful of groups, so the
+ * unfiltered query is not at risk of being capped server-side.
  */
 export async function fetchProgrammaticAwuSpend({
   workspaceId,
@@ -117,34 +110,21 @@ export async function fetchProgrammaticAwuSpend({
   const windowSize =
     cycleStartMs === floorToMidnightUTC(cycleStart).getTime() ? "DAY" : "HOUR";
 
-  const [aiResult, toolResult] = await Promise.all([
-    listMetronomeUsageWithGroups({
-      customerId: metronomeCustomerId,
-      billableMetricId: getMetricLlmProviderCostAwuId(),
-      startingOn,
-      endingBefore,
-      windowSize,
-      groupKey: [USAGE_TYPE_GROUP_KEY],
-    }),
-    listMetronomeUsageWithGroups({
-      customerId: metronomeCustomerId,
-      billableMetricId: getMetricToolInvocationsId(),
-      startingOn,
-      endingBefore,
-      windowSize,
-      groupKey: [USAGE_TYPE_GROUP_KEY, "tool_category"],
-    }),
-  ]);
+  const aiResult = await listMetronomeUsageWithGroups({
+    customerId: metronomeCustomerId,
+    billableMetricId: getMetricLlmProviderCostAwuId(),
+    startingOn,
+    endingBefore,
+    windowSize,
+    groupKey: [USAGE_TYPE_GROUP_KEY],
+  });
   if (aiResult.isErr()) {
     return new Err(aiResult.error);
-  }
-  if (toolResult.isErr()) {
-    return new Err(toolResult.error);
   }
 
   let spentAwuCredits = 0;
 
-  // AI usage: the value is already AWU spend (cost_awu, priced 1:1).
+  // The value is already AWU spend (cost_awu, priced 1:1).
   for (const entry of aiResult.value) {
     if (
       entry.value === null ||
@@ -154,22 +134,6 @@ export async function fetchProgrammaticAwuSpend({
       continue;
     }
     spentAwuCredits += entry.value;
-  }
-
-  // Tool usage: the value is an invocation count — weight it by the
-  // per-category AWU price to convert it into AWU spend.
-  for (const entry of toolResult.value) {
-    const category = entry.group?.["tool_category"];
-    if (
-      entry.value === null ||
-      entry.group?.[USAGE_TYPE_GROUP_KEY] !== USAGE_TYPE_PROGRAMMATIC ||
-      new Date(entry.startingOn).getTime() < cycleStartMs ||
-      !category ||
-      !isToolCostCategory(category)
-    ) {
-      continue;
-    }
-    spentAwuCredits += entry.value * TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
   }
 
   return new Ok(spentAwuCredits);
