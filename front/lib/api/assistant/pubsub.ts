@@ -233,37 +233,26 @@ export async function getMessagesEventsBatch({
 }): Promise<MessageStreamBatchEvent[]> {
   const pubsubChannel = getMessageChannelId(messageId);
   const liveEvents: EventPayload[] = [];
-  let closed = false;
-  let resolveFirstEvent: () => void = () => undefined;
-  const firstEvent = new Promise<void>((resolve) => {
-    resolveFirstEvent = resolve;
-  });
+  const batchReady = Promise.withResolvers<void>();
 
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
     pubsubChannel,
     (event) => {
-      if (event === "close") {
-        closed = true;
-      } else {
+      if (event !== "close") {
         liveEvents.push(event);
       }
-      resolveFirstEvent();
+      batchReady.resolve();
     },
     "message_events_long_poll",
     { lastEventId }
   );
 
-  const onAbort = () => resolveFirstEvent();
+  const onAbort = () => batchReady.resolve();
   signal.addEventListener("abort", onAbort, { once: true });
 
   try {
-    if (
-      history.length === 0 &&
-      liveEvents.length === 0 &&
-      !closed &&
-      !signal.aborted
-    ) {
-      await firstEvent;
+    if (history.length === 0 && liveEvents.length === 0 && !signal.aborted) {
+      await batchReady.promise;
     }
 
     if (liveEvents.length > 0 && !signal.aborted) {

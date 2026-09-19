@@ -15,7 +15,9 @@ const app = publicApiApp();
  * /api/v1/w/{wId}/assistant/conversations/{cId}/events:
  *   get:
  *     summary: Get the events for a conversation
- *     description: Get the events for a conversation in the workspace identified by {wId}.
+ *     description: |
+ *       Stream conversation events for the workspace identified by {wId} using Server-Sent Events (SSE).
+ *       The stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed event frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.
  *     tags:
  *       - Conversations
  *     parameters:
@@ -34,14 +36,26 @@ const app = publicApiApp();
  *       - in: query
  *         name: lastEventId
  *         required: false
- *         description: ID of the last event
+ *         description: Redis stream ID of the last received conversation event. Omit or pass an empty value to start from the available history.
  *         schema:
  *           type: string
  *     security:
  *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: Events for the conversation, view the "Events" page from this documentation for more information.
+ *         description: SSE event stream with a named handshake followed by unnamed conversation frames. Each conversation frame contains JSON with `eventId` and `data` fields. The `data` field is the conversation event. View the "Events" page from this documentation for more information.
+ *         content:
+ *           text/event-stream:
+ *             schema:
+ *               type: object
+ *               required: [eventId, data]
+ *               properties:
+ *                 eventId:
+ *                   type: string
+ *                   description: Redis stream ID used as the resume cursor.
+ *                 data:
+ *                   type: object
+ *                   description: Conversation event discriminated by its type field.
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:

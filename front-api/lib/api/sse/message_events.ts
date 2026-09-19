@@ -14,6 +14,8 @@ import {
   ConversationError,
   isTerminalAgentMessageStatus,
 } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { streamEvents } from "@front-api/lib/api/sse/stream_events";
 import { apiError } from "@front-api/middlewares/utils";
@@ -39,19 +41,18 @@ async function validateMessageEventsRequest(
   ctx: Context,
   auth: Authenticator,
   { conversationId, messageId }: { conversationId: string; messageId: string }
-) {
+): Promise<Result<ConversationResource, ReturnType<typeof apiError>>> {
   const conversation = await ConversationResource.fetchById(
     auth,
     conversationId
   );
   if (!conversation) {
-    return {
-      kind: "error",
-      response: apiErrorForConversation(
+    return new Err(
+      apiErrorForConversation(
         ctx,
         new ConversationError("conversation_not_found")
-      ),
-    } as const;
+      )
+    );
   }
 
   const messageType = await getConversationMessageType(
@@ -60,31 +61,29 @@ async function validateMessageEventsRequest(
     messageId
   );
   if (!messageType) {
-    return {
-      kind: "error",
-      response: apiError(ctx, {
+    return new Err(
+      apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "message_not_found",
           message: "The message you're trying to access was not found.",
         },
-      }),
-    } as const;
+      })
+    );
   }
   if (messageType !== "agent_message") {
-    return {
-      kind: "error",
-      response: apiError(ctx, {
+    return new Err(
+      apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
           message: "Events are only available for agent messages.",
         },
-      }),
-    } as const;
+      })
+    );
   }
 
-  return { kind: "success", conversation } as const;
+  return new Ok(conversation);
 }
 
 // Shared orchestration for both the v1 (public API) and private SSE
@@ -104,8 +103,8 @@ export async function streamMessageEventsForRoute(
     conversationId,
     messageId,
   });
-  if (validation.kind === "error") {
-    return validation.response;
+  if (validation.isErr()) {
+    return validation.error;
   }
 
   return streamEvents({
@@ -135,8 +134,8 @@ export async function pollMessageEventsForRoute(
     conversationId,
     messageId,
   });
-  if (validation.kind === "error") {
-    return validation.response;
+  if (validation.isErr()) {
+    return validation.error;
   }
 
   const controller = new AbortController();
@@ -157,7 +156,7 @@ export async function pollMessageEventsForRoute(
     if (events.length === 0 && !ctx.req.raw.signal.aborted) {
       const status = await ConversationResource.fetchAgentMessageStatus(
         auth,
-        validation.conversation,
+        validation.value,
         messageId
       );
       if (status && isTerminalAgentMessageStatus(status)) {

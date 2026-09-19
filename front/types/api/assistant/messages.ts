@@ -46,6 +46,9 @@ export type GetAgentMessageSkillsResponseBody = {
   skills: SkillType[];
 };
 
+/**
+ * @swaggerschema PrivateAgentMessageEventsPollResponse (swagger_private_schemas.ts)
+ */
 export type GetAgentMessageEventsResponseBody = {
   events: string[];
 };

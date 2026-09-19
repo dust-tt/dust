@@ -11,6 +11,8 @@ vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
 
 import { getMessagesEventsBatch } from "./pubsub";
 
+type SubscriptionCallback = (event: EventPayload | "close") => void;
+
 describe("getMessagesEventsBatch", () => {
   beforeEach(() => {
     redisHybridManager.subscribe.mockReset();
@@ -66,19 +68,12 @@ describe("getMessagesEventsBatch", () => {
     expect(unsubscribe).toHaveBeenCalledOnce();
   });
 
-  it("waits for a live event when history is empty", async () => {
+  it("waits for and batches live events when history is empty", async () => {
     const unsubscribe = vi.fn();
-    let resolveCallback: (
-      callback: (event: EventPayload | "close") => void
-    ) => void = () => undefined;
-    const callbackRegistered = new Promise<
-      (event: EventPayload | "close") => void
-    >((resolve) => {
-      resolveCallback = resolve;
-    });
+    const callbackRegistered = Promise.withResolvers<SubscriptionCallback>();
     redisHybridManager.subscribe.mockImplementation(
       async (_channel, callback) => {
-        resolveCallback(callback);
+        callbackRegistered.resolve(callback);
         return { history: [], unsubscribe };
       }
     );
@@ -88,15 +83,42 @@ describe("getMessagesEventsBatch", () => {
       lastEventId: null,
       signal: new AbortController().signal,
     });
-    const publishEvent = await callbackRegistered;
+    const publishEvent = await callbackRegistered.promise;
     publishEvent({
       id: "2-0",
+      message: { payload: JSON.stringify({ type: "agent_message_delta" }) },
+    });
+    publishEvent({
+      id: "3-0",
       message: { payload: JSON.stringify({ type: "end-of-stream" }) },
     });
 
     await expect(eventsPromise).resolves.toEqual([
-      { eventId: "2-0", data: { type: "end-of-stream" } },
+      { eventId: "2-0", data: { type: "agent_message_delta" } },
+      { eventId: "3-0", data: { type: "end-of-stream" } },
     ]);
+    expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+
+  it("returns and unsubscribes when the subscription closes", async () => {
+    const unsubscribe = vi.fn();
+    const callbackRegistered = Promise.withResolvers<SubscriptionCallback>();
+    redisHybridManager.subscribe.mockImplementation(
+      async (_channel, callback) => {
+        callbackRegistered.resolve(callback);
+        return { history: [], unsubscribe };
+      }
+    );
+
+    const eventsPromise = getMessagesEventsBatch({
+      messageId: "msg_1",
+      lastEventId: null,
+      signal: new AbortController().signal,
+    });
+    const closeSubscription = await callbackRegistered.promise;
+    closeSubscription("close");
+
+    await expect(eventsPromise).resolves.toEqual([]);
     expect(unsubscribe).toHaveBeenCalledOnce();
   });
 });
