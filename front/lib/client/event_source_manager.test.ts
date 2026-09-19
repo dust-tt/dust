@@ -1,6 +1,12 @@
-import { getAgentLoopEventId } from "@app/lib/client/agent_loop_stream";
+import {
+  getAgentLoopEventId,
+  isLastBlockingAgentLoopEvent,
+} from "@app/lib/client/agent_loop_stream";
 import { setSseVerbose } from "@app/lib/client/sse_verbose";
-import type { EventSourceConnectionState } from "@app/types/event_source";
+import type {
+  EventSourceConnectionState,
+  EventSourceManagerOptions,
+} from "@app/types/event_source";
 import { MANAGED_SSE_HANDSHAKE_EVENT } from "@app/types/sse";
 import type {
   Event as PolyfillEvent,
@@ -52,6 +58,47 @@ class FakeEventSource {
   close = vi.fn(() => {
     this.readyState = 2;
   });
+}
+
+const blockingEvent = JSON.stringify({
+  eventId: "blocking-event",
+  data: {
+    type: "tool_approve_execution",
+    isLastBlockingEventForStep: true,
+  },
+});
+const resumedEvent = JSON.stringify({
+  eventId: "resumed-event",
+  data: { type: "generation_tokens" },
+});
+
+function createBlockedStreamManager(options: EventSourceManagerOptions = {}) {
+  const sources: FakeEventSource[] = [];
+  const manager = new EventSourceManager(
+    async (url) => {
+      const source = new FakeEventSource(url);
+      sources.push(source);
+      return source;
+    },
+    () => 0,
+    options
+  );
+  const config = {
+    buildURL: () => "/events",
+    isPauseEvent: isLastBlockingAgentLoopEvent,
+    replayBufferedEventsOnSubscribe: false,
+    restartKey: "message-msg_blocked",
+    workspaceId: "w_1",
+  };
+  const subscribe = (onEvent: (event: string) => void = vi.fn()) =>
+    manager.subscribe({
+      streamId: "message-msg_blocked",
+      config,
+      subscriber: { onEvent, onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: true,
+    });
+
+  return { manager, sources, subscribe };
 }
 
 describe("EventSourceManager", () => {
@@ -975,5 +1022,95 @@ describe("EventSourceManager", () => {
     expect(sources[0].close).not.toHaveBeenCalled();
     unsubscribe();
     expect(sources[0].close).toHaveBeenCalledOnce();
+  });
+
+  it("evicts a blocked stream when its subscriber left before the blocking event", async () => {
+    const { manager, sources, subscribe } = createBlockedStreamManager();
+
+    const unsubscribe = subscribe();
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].emitHandshake();
+    unsubscribe();
+    expect(sources[0].close).not.toHaveBeenCalled();
+
+    sources[0].emitMessage(blockingEvent);
+    expect(sources[0].close).toHaveBeenCalledOnce();
+
+    subscribe();
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("does not rearm a blocked stream when another subscriber mounts", async () => {
+    const { sources, subscribe } = createBlockedStreamManager();
+    const onEvent = vi.fn();
+
+    const unsubscribe = subscribe(onEvent);
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].emitHandshake();
+    sources[0].emitMessage(blockingEvent);
+    expect(onEvent).toHaveBeenCalledWith(blockingEvent);
+    expect(sources[0].close).not.toHaveBeenCalled();
+
+    const unsubscribeRemount = subscribe(onEvent);
+    unsubscribe();
+    expect(sources[0].close).not.toHaveBeenCalled();
+    unsubscribeRemount();
+    expect(sources[0].close).toHaveBeenCalledOnce();
+  });
+
+  it("rearms keepalive when a blocked stream resumes while the conversation is open", async () => {
+    const { manager, sources, subscribe } = createBlockedStreamManager();
+    const onEvent = vi.fn();
+    const unsubscribe = subscribe(onEvent);
+
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].emitHandshake();
+    sources[0].emitMessage(blockingEvent);
+    manager.stopKeepingAlive("message-msg_blocked", "w_1");
+    sources[0].emitMessage(resumedEvent);
+    expect(onEvent).toHaveBeenCalledWith(resumedEvent);
+
+    unsubscribe();
+    expect(sources[0].close).not.toHaveBeenCalled();
+    manager.releaseWorkspace("w_1");
+    expect(sources[0].close).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a failed blocked stream paused until a resumed event arrives", async () => {
+    const { manager, sources, subscribe } = createBlockedStreamManager({
+      maxReconnectAttempts: 1,
+    });
+    const unsubscribe = subscribe();
+
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].emitHandshake();
+    sources[0].emitMessage(blockingEvent);
+    sources[0].onerror?.({ type: "error", target: sources[0] });
+
+    manager.resume("message-msg_blocked");
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    sources[1].emitHandshake();
+    unsubscribe();
+    expect(sources[1].close).toHaveBeenCalledOnce();
+
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("evicts a failed stream after a new subscriber also leaves", async () => {
+    const { manager, sources, subscribe } = createBlockedStreamManager({
+      maxReconnectAttempts: 1,
+    });
+    const unsubscribe = subscribe();
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].onerror?.({ type: "error", target: sources[0] });
+
+    const unsubscribeRemount = subscribe();
+    unsubscribe();
+    unsubscribeRemount();
+
+    subscribe();
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    manager.releaseWorkspace("w_1");
   });
 });
