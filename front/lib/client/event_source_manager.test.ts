@@ -1,3 +1,4 @@
+import type { EventSourceConnectionState } from "@app/types/event_source";
 import type {
   Event as PolyfillEvent,
   MessageEvent as PolyfillMessageEvent,
@@ -11,7 +12,6 @@ const datadogLogger = vi.hoisted(() => ({
 
 vi.mock("@app/logger/datadogLogger", () => ({ default: datadogLogger }));
 
-import type { EventSourceConnectionState } from "./event_source_manager";
 import { EventSourceManager } from "./event_source_manager";
 
 class FakeEventSource {
