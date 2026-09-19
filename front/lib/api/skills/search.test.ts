@@ -19,11 +19,13 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
 import { searchSkills } from "@app/lib/api/skills/search";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
   buildSkillSearchQuery,
   MAX_SKILL_SEARCH_RESULTS,
 } from "@app/lib/skill_search/query";
 import { buildSkillNameAutocompleteQuery } from "@app/lib/skill_search/ranking";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { matchesSkillSearchFilters } from "@app/tests/utils/skill_search";
@@ -91,11 +93,13 @@ describe("searchSkills pagination", () => {
     );
     expect(second.value.hasMore).toBe(false);
     expect(mockSearch).toHaveBeenCalledTimes(2);
+    const codeDefinedSkillIds =
+      await SkillResource.listAvailableCodeDefinedIds(auth);
     expect(mockSearch.mock.calls[1][0]).toMatchObject({
       size: 3,
       sort: [{ _score: { order: "desc" } }, { skill_id: { order: "asc" } }],
       search_after: hits[1].sort,
-      query: buildSkillSearchQuery(auth, options),
+      query: buildSkillSearchQuery(auth, { ...options, codeDefinedSkillIds }),
     });
 
     const retry = await searchSkills(auth, nextOptions);
@@ -150,6 +154,45 @@ describe("code-defined skill search", () => {
     expect(ids).toEqual(globals.map((skill) => skill.sId).sort());
     expect(ids).toContain("go-deep");
     expect(ids).not.toContain("workspace-analytics");
+  });
+
+  it("uses the resource's available IDs in the global ES filter", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const expectedIds = await SkillResource.listAvailableCodeDefinedIds(auth);
+
+    const result = await searchSkills(auth, { searchTerm: "" });
+
+    assert(result.isOk());
+    expect(result.value.skills.map((skill) => skill.sId).sort()).toEqual(
+      [...expectedIds].sort()
+    );
+    expect(
+      mockSearch.mock.lastCall![0].query.bool.should[1].bool.filter
+    ).toContainEqual({
+      terms: { skill_id: expectedIds },
+    });
+  });
+
+  it("applies the current user's memory preference before querying ES", async () => {
+    const { authenticator: auth, user } = await createResourceTest({
+      role: "user",
+    });
+    await FeatureFlagFactory.basic(auth, "user_memory");
+    await user.setMemoryEnabled(auth, true);
+
+    const enabled = await searchSkills(auth, { searchTerm: "" });
+    assert(enabled.isOk());
+    expect(enabled.value.skills.map((skill) => skill.sId)).toContain(
+      "user_memory"
+    );
+
+    await user.setMemoryEnabled(auth, false);
+
+    const disabled = await searchSkills(auth, { searchTerm: "" });
+    assert(disabled.isOk());
+    expect(disabled.value.skills.map((skill) => skill.sId)).not.toContain(
+      "user_memory"
+    );
   });
 
   it.each<SkillSearchFilters>([

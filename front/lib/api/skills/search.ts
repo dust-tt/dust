@@ -1,6 +1,6 @@
 import { SKILL_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import { listCodeDefinedSearchSkillIds } from "@app/lib/skill_search/code_defined";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
   buildSkillSearchQuery,
   MAX_SKILL_SEARCH_RESULTS,
@@ -70,9 +70,9 @@ export async function searchSkills(
     searchAfter = sort.data;
   }
 
-  const codeDefinedSkillIds = await listCodeDefinedSearchSkillIds(
+  const codeDefinedSkillIds = await SkillResource.listAvailableCodeDefinedIds(
     auth,
-    options
+    { mcpServerViewIds: options.filters?.mcpServerViewIds }
   );
   const query = buildSkillSearchQuery(auth, {
     ...options,
