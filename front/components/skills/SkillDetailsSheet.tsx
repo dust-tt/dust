@@ -4,8 +4,8 @@ import {
   SkillDetailsHeader,
   SkillLoadError,
 } from "@app/components/skills/SkillDetailsBody";
-import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Sheet,
@@ -17,8 +17,8 @@ import {
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
-type SkillDetailsProps = {
-  skill: GetSkillsWithRelationsResponseBody["skills"][number] | null;
+interface SkillDetailsProps {
+  skill: SkillWithRelationsType | null;
   open?: boolean;
   isError?: boolean;
   errorReason?: SkillLoadErrorReason;
@@ -31,7 +31,7 @@ type SkillDetailsProps = {
   owner: WorkspaceType;
   user: UserType;
   replaceOnEdit?: boolean;
-};
+}
 
 export function SkillDetailsSheet({
   skill,
@@ -46,19 +46,6 @@ export function SkillDetailsSheet({
   replaceOnEdit,
 }: SkillDetailsProps) {
   const isOpen = open ?? skill !== null;
-
-  // Fetch the full skill (with instructions/tools) for the content section,
-  // since the list endpoint may not include them.
-  const {
-    skill: fullSkill,
-    isSkillLoading,
-    isSkillError: isFullSkillError,
-    mutateSkill: retryFullSkill,
-  } = useSkill({
-    workspaceId: owner.sId,
-    skillId: skill?.sId ?? null,
-    disabled: !skill,
-  });
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -78,19 +65,7 @@ export function SkillDetailsSheet({
               />
             </SheetHeader>
             <SheetContainer className="pb-4">
-              {!fullSkill && isFullSkillError ? (
-                <SkillLoadError onRetry={retryFullSkill} />
-              ) : isSkillLoading || !fullSkill ? (
-                <div className="flex justify-center py-8">
-                  <Spinner size="lg" />
-                </div>
-              ) : (
-                <SkillDetailsContent
-                  skill={{ ...fullSkill, relations: skill.relations }}
-                  user={user}
-                  owner={owner}
-                />
-              )}
+              <SkillDetailsContent skill={skill} user={user} owner={owner} />
             </SheetContainer>
           </>
         ) : isError ? (

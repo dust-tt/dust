@@ -66,7 +66,7 @@ import {
 import type { RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-function getDeepLinkErrorReason({
+function getSkillLoadErrorReason({
   isHidden,
   isNotFound,
 }: {
@@ -86,9 +86,6 @@ export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
-  const [selectedSkillOverride, setSelectedSkillOverride] = useState<
-    GetSkillsWithRelationsResponseBody["skills"][number] | null
-  >(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
@@ -241,8 +238,7 @@ export function ManageSkillsPage() {
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
   const handleSkillSelect = useCallback(
-    (skill: GetSkillsWithRelationsResponseBody["skills"][number] | null) => {
-      setSelectedSkillOverride(skill);
+    (skill: { sId: string } | null) => {
       setSkillIdParam(skill?.sId);
     },
     [setSkillIdParam]
@@ -293,6 +289,37 @@ export function ManageSkillsPage() {
     }
   };
 
+  const {
+    skill: selectedSkill,
+    isSkillError,
+    isSkillNotFound,
+    mutateSkill,
+  } = useSkill({
+    workspaceId: owner.sId,
+    skillId: skillIdParam ?? null,
+    withRelations: true,
+    disabled: !skillIdParam,
+    shouldRetryOnError: false,
+  });
+  // Same rule as the list: unpublished skills stay hidden from non-editors. Admins get them, as
+  // they could reveal them with "Show hidden skills" anyway.
+  const isSelectedSkillHidden =
+    selectedSkill !== null &&
+    !canBypassEditorVisibility &&
+    !(
+      selectedSkill.status === "suggested" &&
+      canCreateSkill &&
+      selectedSkill.canAdministrate
+    ) &&
+    !isSkillVisibleToViewer({
+      availability: selectedSkill.availability,
+      viewerCanWrite: selectedSkill.canWrite,
+    });
+  const skillLoadErrorReason = getSkillLoadErrorReason({
+    isHidden: isSelectedSkillHidden,
+    isNotFound: isSkillNotFound,
+  });
+
   const handleFavoriteChange = useCallback(
     async (
       skill: GetSkillsWithRelationsResponseBody["skills"][number],
@@ -300,75 +327,10 @@ export function ManageSkillsPage() {
     ) => {
       const didUpdate = await updateSkillFavorite(skill, isFavorite);
       if (didUpdate) {
-        // The sheet is the only caller, so the skill is the selected one. Overriding also
-        // covers deep-linked skills, whose by-id fetch is not refreshed by the list mutations.
-        setSelectedSkillOverride({ ...skill, isFavorite });
+        void mutateSkill();
       }
     },
-    [updateSkillFavorite]
-  );
-
-  const knownSkillsById = useMemo(
-    () =>
-      new Map(
-        [...activeSkills, ...archivedSkills, ...suggestedSkills].map(
-          (skill) => [skill.sId, skill]
-        )
-      ),
-    [activeSkills, archivedSkills, suggestedSkills]
-  );
-
-  const selectedSkill = useMemo(() => {
-    if (!skillIdParam) {
-      return null;
-    }
-
-    if (selectedSkillOverride?.sId === skillIdParam) {
-      return selectedSkillOverride;
-    }
-
-    return knownSkillsById.get(skillIdParam) ?? null;
-  }, [skillIdParam, knownSkillsById, selectedSkillOverride]);
-
-  // Deep links can point at a skill outside the loaded lists (hidden without "Show hidden
-  // skills", archived while on another tab), so resolve the hash id on its own.
-  const {
-    skill: deepLinkedSkill,
-    isSkillError: isDeepLinkedSkillError,
-    isSkillNotFound: isDeepLinkedSkillNotFound,
-    mutateSkill: retryDeepLinkedSkill,
-  } = useSkill({
-    workspaceId: owner.sId,
-    skillId: skillIdParam ?? null,
-    withRelations: true,
-    disabled: !skillIdParam || selectedSkill !== null,
-    shouldRetryOnError: false,
-  });
-  // Same rule as the list: unpublished skills stay hidden from non-editors. Admins get them, as
-  // they could reveal them with "Show hidden skills" anyway.
-  const isDeepLinkedSkillHidden =
-    deepLinkedSkill !== null &&
-    !canBypassEditorVisibility &&
-    !isSkillVisibleToViewer({
-      availability: deepLinkedSkill.availability,
-      viewerCanWrite: deepLinkedSkill.canWrite,
-    });
-  const deepLinkedSkillErrorReason = getDeepLinkErrorReason({
-    isHidden: isDeepLinkedSkillHidden,
-    isNotFound: isDeepLinkedSkillNotFound,
-  });
-
-  const handleUsedBySkillSelect = useCallback(
-    (skillId: string) => {
-      const skill = knownSkillsById.get(skillId);
-      if (skill) {
-        handleSkillSelect(skill);
-      } else {
-        setSelectedSkillOverride(null);
-        setSkillIdParam(skillId);
-      }
-    },
-    [handleSkillSelect, knownSkillsById, setSkillIdParam]
+    [updateSkillFavorite, mutateSkill]
   );
 
   const searchBarRef = useRef<HTMLInputElement>(null);
@@ -434,13 +396,11 @@ export function ManageSkillsPage() {
   return (
     <>
       <SkillDetailsSheet
-        skill={
-          selectedSkill ?? (isDeepLinkedSkillHidden ? null : deepLinkedSkill)
-        }
+        skill={isSelectedSkillHidden ? null : selectedSkill}
         open={!!skillIdParam}
-        isError={isDeepLinkedSkillError || isDeepLinkedSkillHidden}
-        errorReason={deepLinkedSkillErrorReason}
-        onRetry={retryDeepLinkedSkill}
+        isError={isSkillError || isSelectedSkillHidden}
+        errorReason={skillLoadErrorReason}
+        onRetry={mutateSkill}
         onClose={() => handleSkillSelect(null)}
         onFavoriteChange={handleFavoriteChange}
         user={user}
@@ -582,7 +542,7 @@ export function ManageSkillsPage() {
                 skills={skillsByTab[activeTab]}
                 onSkillClick={handleSkillSelect}
                 onAgentClick={setAgentId}
-                onUsedBySkillClick={handleUsedBySkillSelect}
+                onUsedBySkillClick={setSkillIdParam}
                 canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
                 enableSelection={isBatchEditionAvailable}
                 rowSelection={rowSelection}
