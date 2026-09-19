@@ -1,0 +1,15 @@
+{
+  "name": "@dust-experiments/skill-tags",
+  "private": true,
+  "scripts": {
+    "start": "node --import tsx cli.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.110.0",
+    "gpt-tokenizer": "2.9.0",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "tsx": "4.21.0"
+  }
+}
