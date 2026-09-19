@@ -1,6 +1,7 @@
 import { adminAPIHandler } from "@connectors/api/admin";
 import { patchConnectorConfigurationAPIHandler } from "@connectors/api/configuration";
 import { createConnectorAPIHandler } from "@connectors/api/create_connector";
+import { createNotionWebhookRegistrationHandler } from "@connectors/api/create_notion_webhook_registration";
 import { deleteConnectorAPIHandler } from "@connectors/api/delete_connector";
 import {
   getConnectorAPIHandler,
@@ -9,6 +10,7 @@ import {
 import { getConnectorPermissionsAPIHandler } from "@connectors/api/get_connector_permissions";
 import { getNotionUrlStatusHandler } from "@connectors/api/notion_url_status";
 import { pauseConnectorAPIHandler } from "@connectors/api/pause_connector";
+import { redeemNotionWebhookRegistrationHandler } from "@connectors/api/redeem_notion_webhook_registration";
 import { setConnectorPermissionsAPIHandler } from "@connectors/api/set_connector_permissions";
 import {
   deleteSlackBotSummoningWhitelistHandler,
@@ -158,6 +160,10 @@ export function startServer(port: number) {
     "/connectors/:connector_id/notion/workspace_id",
     getNotionWorkspaceIdHandler
   );
+  app.post(
+    "/connectors/:connector_id/notion/webhook_registration",
+    createNotionWebhookRegistrationHandler
+  );
 
   // (legacy) "Dust Data-sync" for indexing and handling calls to the dust bot.
   app.post("/webhooks/:webhook_secret/slack", webhookSlackAPIHandler);
@@ -200,6 +206,11 @@ export function startServer(port: number) {
   app.post(
     "/webhooks/:webhook_secret/microsoft_teams_bot",
     webhookTeamsAPIHandler
+  );
+
+  app.post(
+    "/webhooks_router_entries/:webhook_secret/notion/:providerWorkspaceId/registration",
+    redeemNotionWebhookRegistrationHandler
   );
 
   app.post(
