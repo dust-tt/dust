@@ -162,18 +162,21 @@ vi.mock("@dust-tt/sparkle", () => {
     disabled,
     isLoading,
     "aria-label": ariaLabel,
+    "aria-expanded": ariaExpanded,
   }: {
     label?: string;
     onClick?: () => void;
     disabled?: boolean;
     isLoading?: boolean;
     "aria-label"?: string;
+    "aria-expanded"?: boolean;
   }) => (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled || isLoading}
       aria-label={ariaLabel}
+      aria-expanded={ariaExpanded}
     >
       {label ?? ariaLabel}
     </button>
@@ -181,10 +184,14 @@ vi.mock("@dust-tt/sparkle", () => {
 
   const Spinner = () => <div>Loading</div>;
   const ArrowUp = () => null;
+  const ChevronDown = () => null;
+  const ChevronUp = () => null;
 
   return {
     ArrowUp,
     Button,
+    ChevronDown,
+    ChevronUp,
     Card,
     Counter,
     cn,
@@ -671,5 +678,74 @@ describe("UserAnswerRequired", () => {
         },
       });
     });
+  });
+
+  it("only shows the collapse toggle when a toggle handler is provided", () => {
+    const { rerender } = render(
+      <UserAnswerRequired
+        blockedAction={makeBlockedAction()}
+        triggeringUser={null}
+        owner={owner}
+        retryHandler={retryHandlerMock}
+      />
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /Collapse question/i })
+    ).not.toBeInTheDocument();
+
+    const onToggleCollapsed = vi.fn();
+    rerender(
+      <UserAnswerRequired
+        blockedAction={makeBlockedAction()}
+        triggeringUser={null}
+        owner={owner}
+        retryHandler={retryHandlerMock}
+        isCollapsed={false}
+        onToggleCollapsed={onToggleCollapsed}
+      />
+    );
+
+    const toggle = screen.getByRole("button", { name: /Collapse question/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(toggle);
+
+    expect(onToggleCollapsed).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the answer body and ignores keyboard shortcuts while collapsed", async () => {
+    const user = userEvent.setup();
+    const { container } = render(
+      <UserAnswerRequired
+        blockedAction={makeBlockedAction()}
+        triggeringUser={null}
+        owner={owner}
+        retryHandler={retryHandlerMock}
+        isCollapsed
+        onToggleCollapsed={vi.fn()}
+      />
+    );
+
+    const keyboardContainer = getKeyboardContainer(container);
+    const toggle = screen.getByRole("button", { name: /Expand question/i });
+    const body = container.querySelector("#user-answer-body-action_1");
+
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(body).toHaveClass("invisible", "grid-rows-[0fr]");
+
+    await waitFor(() => expect(keyboardContainer).toHaveFocus());
+
+    // Escape would otherwise skip the question, a printable key would start a
+    // custom response and Enter would submit the highlighted option.
+    fireEvent.keyDown(keyboardContainer, { key: "Escape" });
+    await user.keyboard("a");
+    fireEvent.keyDown(keyboardContainer, { key: "Enter" });
+
+    expect(answerQuestionMock).not.toHaveBeenCalled();
+    expect(screen.getByPlaceholderText(/Tell the agent/i)).toHaveValue("");
+    expect(screen.getByRole("button", { name: /Alpha/i })).toHaveClass(
+      "bg-primary-100"
+    );
   });
 });
