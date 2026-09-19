@@ -435,6 +435,15 @@ const InputBarContainer = ({
   includeAttachKnowledgeRef.current = actions.includes("attachment");
   const includePickModelRef = useRef(false);
   includePickModelRef.current = actions.includes("model-picker");
+  const includeSelectSpacesRef = useRef(false);
+  includeSelectSpacesRef.current = shouldShowSpacesAction;
+  const selectableSpacesRef = useRef(selectableSpaces);
+  selectableSpacesRef.current = selectableSpaces;
+  const isSelectableSpacesLoadingRef = useRef(isSelectableSpacesLoading);
+  isSelectableSpacesLoadingRef.current = isSelectableSpacesLoading;
+  const onSpaceSelectRef = useRef<
+    ((space: SelectableConversationSpaceType) => void) | undefined
+  >(undefined);
   const modelSelectionCommitRef = useRef<
     ((selection: Selection) => void) | null
   >(null);
@@ -840,9 +849,14 @@ const InputBarContainer = ({
       slashCommandsRef,
       includeAttachKnowledgeRef,
       includePickModelRef,
+      includeSelectSpacesRef,
+      isSelectableSpacesLoadingRef,
       attachedNodesRef,
       onModelSelectRef,
       onNodeSelectRef,
+      onSpaceSelectRef,
+      selectableSpacesRef,
+      selectedSpaceIdsRef,
       spaceIdRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : placeholder,
@@ -944,6 +958,17 @@ const InputBarContainer = ({
     },
     [handleSelectedSpaceIdsChange, sendNotification]
   );
+
+  onSpaceSelectRef.current = (space: SelectableConversationSpaceType) => {
+    if (selectedSpaceIdsRef.current.includes(space.sId)) {
+      return;
+    }
+
+    handleSelectedSpaceIdsChangeSafely([
+      ...selectedSpaceIdsRef.current,
+      space.sId,
+    ]);
+  };
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
