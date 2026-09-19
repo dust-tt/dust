@@ -15,7 +15,7 @@ const app = workspaceApp();
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events/poll:
  *   get:
  *     summary: Poll message events
- *     description: Wait for agent-message events after the supplied Redis stream event ID. The request returns when events are available or after 25 seconds.
+ *     description: Wait for agent-message events after the supplied Redis stream event ID. The request returns when events are available or after 25 seconds. If the message has ended and no later events remain, it returns an end-of-stream event.
  *     tags:
  *       - Private Events
  *     parameters:
