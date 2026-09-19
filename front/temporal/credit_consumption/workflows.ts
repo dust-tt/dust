@@ -11,6 +11,7 @@ import {
 
 const {
   applyConsumptionEventsActivity,
+  billExecutionActivity,
   markConsumptionEventsProcessedActivity,
 } = proxyActivities<typeof activities>({ startToCloseTimeout: "2 minutes" });
 
@@ -32,6 +33,7 @@ export async function creditConsumptionWorkflow(
 ): Promise<void> {
   let pendingEvents = true;
   let finalizedExecution = resumeState?.finalizedExecution ?? null;
+  let billed = resumeState?.billed ?? false;
 
   setHandler(consumptionEventsAppendedSignal, () => {
     pendingEvents = true;
@@ -44,12 +46,21 @@ export async function creditConsumptionWorkflow(
     let hasMore = true;
     while (hasMore) {
       const result = await applyConsumptionEventsActivity(authType, { runKey });
+      finalizedExecution ??= result.finalizedExecution;
+      let billedThisBatch = false;
+      if (result.finalizedExecution !== null && !billed) {
+        await billExecutionActivity(authType, {
+          ...result.finalizedExecution,
+          runKey,
+        });
+        billed = true;
+        billedThisBatch = true;
+      }
       await markConsumptionEventsProcessedActivity(authType, {
         runKey,
         eventModelIds: result.eventModelIds,
       });
-      hasMore = result.hasMore;
-      finalizedExecution ??= result.finalizedExecution;
+      hasMore = result.hasMore || billedThisBatch;
 
       batchCount += 1;
       if (batchCount >= MAX_BATCHES_BEFORE_CONTINUE_AS_NEW) {
@@ -57,14 +68,14 @@ export async function creditConsumptionWorkflow(
           runKey,
           resumeState: {
             finalizedExecution,
-            billed: resumeState?.billed ?? false,
+            billed,
             esPending: result.esPending,
           },
         });
       }
     }
 
-    if (finalizedExecution) {
+    if (billed) {
       return;
     }
     const signalled = await condition(() => pendingEvents, IDLE_TIMEOUT_MS);

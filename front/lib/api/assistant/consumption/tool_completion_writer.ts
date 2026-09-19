@@ -1,6 +1,6 @@
 import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
-import { creditsForInputTokens } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
+import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { measureToolCallFootprints } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversation/attachment_capabilities";
 import type { Authenticator } from "@app/lib/auth";
@@ -32,11 +32,6 @@ type ToolCompletionConsumptionContext = {
   runKey: string;
 };
 
-type ToolCompletionSettlement = {
-  chargeMicro: number;
-  reallocatedCallFootprintCreditAmountMicro: number;
-};
-
 function billingActionOf(action: AgentMCPActionResource) {
   return {
     internalMCPServerName: action.metadata.internalMCPServerName,
@@ -47,30 +42,23 @@ function billingActionOf(action: AgentMCPActionResource) {
 }
 
 /**
- * @cc [owner:id13,label:backend;data-integrity] cross-execution-tool-settlement
- * When a tool completes in a different execution, its call-footprint credit MUST remain attributed
- * to the emitting execution while its result footprint and direct charge MUST belong to the
- * completing execution. Both executions' item events MUST be appended in the settlement
- * transaction.
+ * @cc [owner:id13,label:backend;data-integrity] tool-completion-posting-ownership
+ * A tool call MUST remain attributed to its emitting execution. Its direct charge MUST be posted to
+ * the execution that observes completion, while its measured result footprint MUST remain available
+ * for the model execution that consumes that result.
  *
  * ```text
- * model emits tool        tool reaches a terminal state
- *        │                              │
- *        ▼                              ▼
- * [pending tool row] ──► [measure result + rate charge]
- *                                │
- *                                ▼
- *                    [atomic settlement transaction]
- *                                │
- *                                ▼
- *                  [signal every affected execution]
+ * emitting execution    [tool_call: call footprint]
+ *                                  │
+ * tool completes                   ├──► [tool_direct: charge + result evidence]
+ *                                  │
+ * result is consumed               └──► [tool_result: result footprint]
  * ```
  */
 /**
- * @cc [owner:id13,label:backend;concurrency] idempotent-tool-completion
- * Only the first writer that completes a pending tool row MAY change credits or append settlement
- * events. Retries MAY repeat read-only preparation, but MUST NOT change settled amounts or append
- * another settlement event.
+ * @cc [owner:id13,label:backend;concurrency] idempotent-tool-completion-posting
+ * Concurrent attempts MAY repeat read-only measurement and rating, but MUST create at most one
+ * direct-charge posting and one corresponding outbox event per tool action.
  */
 export async function recordToolCompletionConsumption(
   auth: Authenticator,
@@ -84,285 +72,203 @@ export async function recordToolCompletionConsumption(
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
-  const toolRow =
-    await AgentMessageConsumptionItemResource.fetchConsumptionToolRow(auth, {
-      agentMCPActionModelId: action.id,
-    });
-  if (!toolRow) {
+  const ownToolCallRow =
+    await AgentMessageConsumptionItemResource.fetchConsumptionToolCallRow(
+      auth,
+      {
+        agentMCPActionModelId: action.id,
+      }
+    );
+  const sandboxChildInfo = action.stepContext.sandboxChildActionInfo;
+  const parentAction = isSandboxChildActionInfo(sandboxChildInfo)
+    ? await AgentMCPActionResource.fetchById(
+        auth,
+        sandboxChildInfo.parentActionId
+      )
+    : null;
+  const toolCallRow =
+    ownToolCallRow ??
+    (parentAction
+      ? await AgentMessageConsumptionItemResource.fetchConsumptionToolCallRow(
+          auth,
+          {
+            agentMCPActionModelId: parentAction.id,
+          }
+        )
+      : null);
+  if (!toolCallRow) {
     return;
   }
 
-  const [emittingUsage] = await RunResource.listRunUsagesByModelIds(auth, {
-    runUsageModelIds: [toolRow.runUsageId],
-  });
-  if (!emittingUsage) {
-    logger.warn(
-      { workspaceId, actionId: action.sId },
-      "[Consumption] Tool row has no emitting run usage."
+  const existingDirectRow =
+    await AgentMessageConsumptionItemResource.fetchConsumptionToolDirectRow(
+      auth,
+      {
+        agentMCPActionModelId: action.id,
+      }
+    );
+  if (existingDirectRow) {
+    await signalAffectedExecutions(
+      auth,
+      new Set([existingDirectRow.runKey ?? context.runKey])
     );
     return;
   }
-  if (!toolRow.runKey) {
-    throw new Error(`Consumption tool row ${toolRow.id} has no execution key`);
+
+  let resultTokensCount = 0;
+  if (!parentAction) {
+    const [emittingUsage] = await RunResource.listRunUsagesByModelIds(auth, {
+      runUsageModelIds: [toolCallRow.runUsageId],
+    });
+    if (!emittingUsage) {
+      logger.warn(
+        { workspaceId, actionId: action.sId },
+        "[Consumption] Tool row has no emitting run usage."
+      );
+      return;
+    }
+    resultTokensCount = await measureResultFootprint(auth, {
+      action,
+      conversationModelId: toolCallRow.conversationId,
+      usage: emittingUsage,
+    });
   }
-  const emittingRunKey = toolRow.runKey;
-
-  const affectedRunKeys = new Set([context.runKey]);
-  affectedRunKeys.add(emittingRunKey);
-
-  if (toolRow.completedAt !== null) {
-    await signalAffectedExecutions(auth, affectedRunKeys);
-    return;
-  }
-
-  const resultTokensCount = await measureResultFootprint(auth, {
-    action,
-    conversationModelId: toolRow.conversationId,
-    usage: emittingUsage,
-  });
-  const resultCreditAmountMicro = creditsForInputTokens({
-    usage: emittingUsage,
-    tokensCount: resultTokensCount,
-  });
   const chargeMicro = await rateToolCharge(auth, {
     action,
     agentMessageId: context.agentMessageId,
     agentMessageModelId: context.agentMessageModelId,
   });
-  const settlement = await settleToolCompletion(auth, {
+  const wasRecorded = await recordToolCompletionPosting(auth, {
     actionModelId: action.id,
-    chargeMicro,
-    context,
-    emittingRunKey,
-    resultCreditAmountMicro,
+    agentMessageModelId: context.agentMessageModelId,
+    chargeAmountMicro: chargeMicro,
+    conversationModelId: toolCallRow.conversationId,
     resultTokensCount,
-    toolConsumptionItemModelId: toolRow.id,
-    toolRunUsageModelId: toolRow.runUsageId,
+    rootAgentMessageModelId: context.rootAgentMessageId,
+    runKey: context.runKey,
+    runUsageModelId: toolCallRow.runUsageId,
   });
 
-  await signalAffectedExecutions(auth, affectedRunKeys);
+  await signalAffectedExecutions(auth, new Set([context.runKey]));
 
-  if (settlement) {
+  if (wasRecorded) {
     logger.info(
       {
         workspaceId,
         actionId: action.sId,
         runKey: context.runKey,
-        chargeMicro: settlement.chargeMicro,
-        reallocatedCallFootprintCreditAmountMicro:
-          settlement.reallocatedCallFootprintCreditAmountMicro,
+        chargeMicro,
         resultTokensCount,
       },
-      "[Consumption] Settled a tool row."
+      "[Consumption] Recorded a tool completion posting."
     );
   }
 }
 
 /**
- * @cc [owner:id13,label:backend;data-integrity] atomic-tool-completion
- * Completing the tool row, reallocating cross-execution call-footprint credit, and appending every
- * affected event MUST commit atomically. If any step fails, none of those changes may persist.
+ * @cc [owner:id13,label:backend;data-integrity] atomic-tool-completion-posting
+ * The direct-charge posting and its outbox event MUST commit atomically. A duplicate posting MUST
+ * append no event and MUST leave the existing posting unchanged.
  *
  * ```text
  * BEGIN
- *   lock pending tool
+ *   insert tool_direct ── duplicate ──► no-op
  *          │
- *          ▼
- *   complete tool row
- *          │
- *          ├── execution changed ──► reallocate call-footprint credit
- *          │
- *          ▼
- *   append completion event
- *          │
- *          └── execution changed ──► append compensation event
+ *          └── inserted ──────────────► append items_changed
  * COMMIT
  * ```
  */
-async function settleToolCompletion(
+async function recordToolCompletionPosting(
   auth: Authenticator,
   {
     actionModelId,
-    chargeMicro,
-    context,
-    emittingRunKey,
-    resultCreditAmountMicro,
+    agentMessageModelId,
+    chargeAmountMicro,
+    conversationModelId,
     resultTokensCount,
-    toolConsumptionItemModelId,
-    toolRunUsageModelId,
+    rootAgentMessageModelId,
+    runKey,
+    runUsageModelId,
   }: {
     actionModelId: ModelId;
-    chargeMicro: number;
-    context: ToolCompletionConsumptionContext;
-    emittingRunKey: string;
-    resultCreditAmountMicro: number;
+    agentMessageModelId: ModelId;
+    chargeAmountMicro: number;
+    conversationModelId: ModelId;
     resultTokensCount: number;
-    toolConsumptionItemModelId: ModelId;
-    toolRunUsageModelId: ModelId;
+    rootAgentMessageModelId: ModelId;
+    runKey: string;
+    runUsageModelId: ModelId;
   }
-): Promise<ToolCompletionSettlement | null> {
+): Promise<boolean> {
   return withTransaction(async (transaction) => {
-    const completion =
-      await AgentMessageConsumptionItemResource.completeConsumptionToolRow(
+    const insertedRow =
+      await AgentMessageConsumptionItemResource.insertConsumptionToolDirectRow(
         auth,
         {
-          consumptionItemId: toolConsumptionItemModelId,
-          runKey: context.runKey,
+          agentMCPActionModelId: actionModelId,
+          agentMessageModelId,
+          chargeAmountMicro,
+          conversationModelId,
           inputTokensCount: resultTokensCount,
-          grossCreditAmountMicroDelta: resultCreditAmountMicro + chargeMicro,
-          directCreditAmountMicro: chargeMicro,
-          shouldReallocateCallFootprintCredit:
-            emittingRunKey !== context.runKey,
+          runKey,
+          runUsageModelId,
           transaction,
         }
       );
-    if (!completion) {
-      return null;
-    }
-    const { reallocatedCallFootprintCreditAmountMicro } = completion;
-
-    const emittingItemModelIds = [toolConsumptionItemModelId];
-    if (reallocatedCallFootprintCreditAmountMicro > 0) {
-      const emittingOutputModelId =
-        await reallocateCallFootprintCreditToEmittingOutput(auth, {
-          callFootprintCreditAmountMicro:
-            reallocatedCallFootprintCreditAmountMicro,
-          toolRunUsageModelId,
-          transaction,
-        });
-      emittingItemModelIds.push(emittingOutputModelId);
+    if (!insertedRow) {
+      return false;
     }
 
-    await appendToolSettlementEvents(auth, {
+    await appendToolCompletionEvent(auth, {
       actionModelId,
-      context,
-      emittingItemModelIds,
-      emittingRunKey,
-      toolConsumptionItemModelId,
+      agentMessageModelId,
+      consumptionItemModelId: insertedRow.consumptionItemId,
+      rootAgentMessageModelId,
+      runKey,
       transaction,
     });
-
-    return { chargeMicro, reallocatedCallFootprintCreditAmountMicro };
+    return true;
   });
 }
 
-/**
- * @cc [owner:id13,label:backend;data-integrity] emitting-call-footprint-credit-reallocation
- * Cross-execution completion MUST move the tool's existing call-footprint credit to the emitting
- * model's output row before the tool row is attributed to the completing execution. A missing
- * output row MUST fail and roll back the settlement transaction.
- *
- * ```text
- * before
- * emitting execution    [output] [pending tool: call-footprint credit]
- *
- * after
- * emitting execution    [output + call-footprint credit]
- * completing execution  [completed tool: result footprint + direct charge]
- * ```
- */
-async function reallocateCallFootprintCreditToEmittingOutput(
-  auth: Authenticator,
-  {
-    callFootprintCreditAmountMicro,
-    toolRunUsageModelId,
-    transaction,
-  }: {
-    callFootprintCreditAmountMicro: number;
-    toolRunUsageModelId: ModelId;
-    transaction: Transaction;
-  }
-): Promise<ModelId> {
-  const emittingOutputRow =
-    await AgentMessageConsumptionItemResource.fetchConsumptionModelRow(auth, {
-      runUsageModelId: toolRunUsageModelId,
-      itemType: "output",
-      transaction,
-    });
-  if (!emittingOutputRow) {
-    throw new Error(
-      `Cannot reallocate tool call-footprint credit without output row for run usage ${toolRunUsageModelId}`
-    );
-  }
-  await AgentMessageConsumptionItemResource.addReconciledCreditAmounts(auth, {
-    creditAmountMicroDeltaByConsumptionItemId: new Map([
-      [emittingOutputRow.id, callFootprintCreditAmountMicro],
-    ]),
-    transaction,
-  });
-  return emittingOutputRow.id;
-}
-
-/**
- * @cc [owner:id13,label:backend;data-integrity] tool-settlement-event-fanout
- * Settlement MUST append one completion event for the completing execution. It MUST additionally
- * append one compensation event containing every changed emitting item if the execution changed,
- * and MUST NOT append that compensation event when both execution keys are equal.
- *
- * ```text
- * same execution
- * [settled tool] ──────────────────────────────► completion event
- *
- * different executions
- * [settled tool] ──────────────────────────────► completion event (completing)
- * [moved tool + reallocated output credit] ────► compensation event (emitting)
- * ```
- */
-async function appendToolSettlementEvents(
+async function appendToolCompletionEvent(
   auth: Authenticator,
   {
     actionModelId,
-    context,
-    emittingItemModelIds,
-    emittingRunKey,
-    toolConsumptionItemModelId,
+    agentMessageModelId,
+    consumptionItemModelId,
+    rootAgentMessageModelId,
+    runKey,
     transaction,
   }: {
     actionModelId: ModelId;
-    context: ToolCompletionConsumptionContext;
-    emittingItemModelIds: ModelId[];
-    emittingRunKey: string;
-    toolConsumptionItemModelId: ModelId;
+    agentMessageModelId: ModelId;
+    consumptionItemModelId: ModelId;
+    rootAgentMessageModelId: ModelId;
+    runKey: string;
     transaction: Transaction;
   }
 ): Promise<void> {
   await AgentMessageConsumptionEventResource.append(auth, {
     event: {
       kind: "items_changed",
-      idempotencyKey: `tool-completion:${actionModelId}:${context.runKey}`,
-      runKey: context.runKey,
-      rootAgentMessageModelId: context.rootAgentMessageId,
-      agentMessageModelId: context.agentMessageModelId,
-      consumptionItemIds: [toolConsumptionItemModelId],
-    },
-    transaction,
-  });
-
-  if (emittingRunKey === context.runKey) {
-    return;
-  }
-
-  await AgentMessageConsumptionEventResource.append(auth, {
-    event: {
-      kind: "items_changed",
-      idempotencyKey: `tool-compensation:${actionModelId}:${emittingRunKey}`,
-      runKey: emittingRunKey,
-      rootAgentMessageModelId: context.rootAgentMessageId,
-      agentMessageModelId: context.agentMessageModelId,
-      consumptionItemIds: emittingItemModelIds,
+      idempotencyKey: `tool-completion:${actionModelId}:${runKey}`,
+      runKey,
+      rootAgentMessageModelId,
+      agentMessageModelId,
+      consumptionItemIds: [consumptionItemModelId],
     },
     transaction,
   });
 }
 
 /**
- * @cc [owner:id13,label:backend;reliability] signal-all-affected-executions
- * Every distinct execution whose items changed MUST be signaled after settlement commits. A signal
- * failure MUST be surfaced so the activity retry can recover the persisted outbox work.
+ * @cc [owner:id13,label:backend;reliability] signal-tool-completion-executions
+ * Every supplied execution MUST be signaled after the posting transaction commits. A signal failure
+ * MUST be surfaced so an activity retry can recover the persisted outbox event.
  *
  * ```text
- * committed items ──► completing execution workflow
- *                 └─► emitting execution workflow (when different)
+ * committed outbox event ──► execution workflow
  * ```
  */
 async function signalAffectedExecutions(

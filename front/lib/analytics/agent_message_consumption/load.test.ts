@@ -219,7 +219,8 @@ describe("loadConsumptionAnalyticsInput", () => {
             reconciledCreditAmountMicro: 1_500_000,
           },
         ],
-        pendingToolRows: [],
+        toolCallRows: [],
+        toolResultRows: [],
       }
     );
 

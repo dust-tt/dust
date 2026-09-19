@@ -79,6 +79,35 @@ describe("Metronome aggregated usage event", () => {
     });
   });
 
+  it("uses the authoritative consumption amount without changing the event shape", () => {
+    const [event] = buildUsageEvents({
+      ...commonEventInput,
+      runUsages: [usage({ costMicroUsd: 1 })],
+      actions: [],
+      billedCredits: 7,
+      rootAgentMessageId: "root-message",
+    });
+
+    expect(event?.event_type).toBe("llm_usage_v3");
+    expect(event?.properties).toMatchObject({
+      provider_id: "aggregate",
+      model_id: "aggregate",
+      cost_awu: 7,
+      root_agent_message_id: "root-message",
+    });
+  });
+
+  it("rejects an invalid authoritative consumption amount", () => {
+    expect(() =>
+      buildUsageEvents({
+        ...commonEventInput,
+        runUsages: [usage({ costMicroUsd: 1 })],
+        actions: [],
+        billedCredits: Number.NaN,
+      })
+    ).toThrow("billedCredits must be a finite non-negative number");
+  });
+
   it("refuses to emit a user-attributed event with no userId", () => {
     // A "user" usage_type with no userId means the caller's attribution logic
     // has a bug (see isProgrammaticUsageFromContext) — it must fail loudly

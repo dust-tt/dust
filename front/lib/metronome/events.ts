@@ -164,6 +164,7 @@ export function buildUsageEvents({
   agentId,
   subAgentId,
   parentAgentMessageId,
+  rootAgentMessageId,
   runKey,
   runUsages,
   actions,
@@ -174,6 +175,7 @@ export function buildUsageEvents({
   messageStatus,
   isSubAgentMessage,
   timestamp,
+  billedCredits,
 }: {
   workspaceId: string;
   isByok: boolean;
@@ -184,6 +186,7 @@ export function buildUsageEvents({
   agentId: string | null;
   subAgentId: string | null;
   parentAgentMessageId: string | null;
+  rootAgentMessageId?: string;
   runKey: string;
   runUsages: RunUsageType[];
   actions: ToolAction[];
@@ -194,7 +197,14 @@ export function buildUsageEvents({
   messageStatus: string;
   isSubAgentMessage: boolean;
   timestamp: string;
+  billedCredits?: number;
 }): MetronomeEvent[] {
+  if (
+    billedCredits !== undefined &&
+    (!Number.isFinite(billedCredits) || billedCredits < 0)
+  ) {
+    throw new Error("billedCredits must be a finite non-negative number");
+  }
   const billingPlan = buildAgentMessageBillingPlan({
     actions,
     contextOrigin: origin,
@@ -228,7 +238,8 @@ export function buildUsageEvents({
     );
   }
 
-  const costAwu = billingPlan.totals.llmBilledCredits + toolBilledCredits;
+  const costAwu =
+    billedCredits ?? billingPlan.totals.llmBilledCredits + toolBilledCredits;
 
   // Aggregate token counts across models for observability only — the billable
   // metric sums `cost_awu` and ignores these.
@@ -271,6 +282,7 @@ export function buildUsageEvents({
         agent_id: agentId ?? "unknown",
         sub_agent_id: subAgentId ?? "none",
         parent_agent_message_id: parentAgentMessageId ?? "none",
+        root_agent_message_id: rootAgentMessageId ?? "none",
         // Required by the billable metric but intentionally not granular: LLM and
         // tool cost are aggregated into this single event.
         provider_id: "aggregate",
