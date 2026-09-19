@@ -1,3 +1,4 @@
+import { isSseVerbose } from "@app/lib/client/sse_verbose";
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { clientEventSource } from "@app/lib/egress/client";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -50,6 +51,12 @@ async function createEventSource(
  * An entry marked `keepAliveWithoutSubscribers` MUST survive with zero subscribers until it reaches
  * a terminal event, exhausts its retry budget, or its workspace is released.
  */
+/**
+ * @cc [owner:id13,label:logging;performance] devtools-stream-diagnostics
+ * When SSE logging is enabled in the dev console, the manager MUST report connection activity
+ * without event payloads, request headers, or URL query parameters. Disabling it MUST stop
+ * those diagnostics immediately.
+ */
 export class EventSourceManager {
   private readonly connections = new Map<string, ConnectionEntry>();
   private isPageWakeRecoveryInstalled = false;
@@ -88,13 +95,14 @@ export class EventSourceManager {
       entry = this.createEntry(config, keepAliveWithoutSubscribers);
       this.connections.set(streamId, entry);
     } else if (entry.config.restartKey !== config.restartKey) {
-      this.restart(entry, config);
+      this.restart(streamId, entry, config);
     } else {
       entry.config = config;
       entry.keepAliveWithoutSubscribers ||= keepAliveWithoutSubscribers;
     }
 
     entry.subscribers.add(subscriber);
+    this.logVerbose(streamId, entry, "subscriber_added");
     subscriber.onStateChange(entry.state);
     if (entry.config.replayBufferedEventsOnSubscribe) {
       for (const event of entry.events) {
@@ -109,6 +117,7 @@ export class EventSourceManager {
         return;
       }
       current.subscribers.delete(subscriber);
+      this.logVerbose(streamId, current, "subscriber_removed");
       if (
         current.subscribers.size === 0 &&
         !current.keepAliveWithoutSubscribers
@@ -137,7 +146,8 @@ export class EventSourceManager {
     }
     entry.keepAliveWithoutSubscribers = true;
     entry.reconnectAttempts = 0;
-    this.transition(entry, { kind: "idle" });
+    this.logVerbose(streamId, entry, "resume");
+    this.transition(streamId, entry, { kind: "idle" });
     this.ensureConnected(streamId, entry);
   }
 
@@ -161,7 +171,11 @@ export class EventSourceManager {
     };
   }
 
-  private restart(entry: ConnectionEntry, config: ConnectionConfig): void {
+  private restart(
+    streamId: string,
+    entry: ConnectionEntry,
+    config: ConnectionConfig
+  ): void {
     entry.generation++;
     const source = entry.source;
     entry.source = null;
@@ -176,7 +190,7 @@ export class EventSourceManager {
     entry.lastEventAt = null;
     entry.lastURL = null;
     entry.reconnectAttempts = 0;
-    this.transition(entry, { kind: "idle" });
+    this.transition(streamId, entry, { kind: "idle" });
   }
 
   private ensureConnected(streamId: string, entry: ConnectionEntry): void {
@@ -204,7 +218,8 @@ export class EventSourceManager {
     entry.lastURL = url;
 
     const generation = ++entry.generation;
-    this.transition(entry, {
+    this.logVerbose(streamId, entry, "sse_connect");
+    this.transition(streamId, entry, {
       kind: "connecting",
       attempt: entry.reconnectAttempts + 1,
       startedAt: Date.now(),
@@ -237,7 +252,7 @@ export class EventSourceManager {
       if (entry.source !== source) {
         return;
       }
-      this.transition(entry, { kind: "open", openedAt: Date.now() });
+      this.transition(streamId, entry, { kind: "open", openedAt: Date.now() });
     };
     source.onmessage = (event: PolyfillMessageEvent) => {
       if (entry.source !== source || typeof event.data !== "string") {
@@ -256,6 +271,9 @@ export class EventSourceManager {
       entry.reconnectAttempts = 0;
       entry.lastEvent = event.data;
       entry.lastEventAt = Date.now();
+      this.logVerbose(streamId, entry, "event_received", {
+        eventLength: event.data.length,
+      });
       if (entry.config.replayBufferedEventsOnSubscribe) {
         entry.events.push(event.data);
       }
@@ -284,6 +302,7 @@ export class EventSourceManager {
     entry.source = null;
     source?.close();
     entry.reconnectAttempts++;
+    this.logVerbose(streamId, entry, "sse_failure", { readyState });
 
     const context = this.telemetryContext({
       streamId,
@@ -295,7 +314,7 @@ export class EventSourceManager {
     if (entry.reconnectAttempts >= this.maxReconnectAttempts) {
       const error = new Error("Too many SSE connection failures.");
       entry.keepAliveWithoutSubscribers = false;
-      this.transition(entry, {
+      this.transition(streamId, entry, {
         kind: "failed",
         attempt: entry.reconnectAttempts,
         error,
@@ -316,7 +335,10 @@ export class EventSourceManager {
     datadogLogger.warn(context, "SSE connection failed, reconnecting.");
     const reconnectDelayMs =
       this.reconnectDelayBaseMs + this.random() * this.reconnectDelayJitterMs;
-    this.transition(entry, {
+    this.logVerbose(streamId, entry, "sse_retry", {
+      delayMs: reconnectDelayMs,
+    });
+    this.transition(streamId, entry, {
       kind: "reconnecting",
       attempt: entry.reconnectAttempts,
       reconnectAt: Date.now() + reconnectDelayMs,
@@ -412,23 +434,56 @@ export class EventSourceManager {
       clearTimeout(entry.reconnectTimeout);
       entry.reconnectTimeout = null;
     }
-    this.transition(entry, { kind: "terminal" });
+    this.transition(streamId, entry, { kind: "terminal" });
     if (entry.subscribers.size === 0) {
       this.destroy(streamId, entry);
     }
   }
 
   private transition(
+    streamId: string,
     entry: ConnectionEntry,
     state: EventSourceConnectionState
   ): void {
+    const previousState = entry.state.kind;
     entry.state = state;
+    this.logVerbose(streamId, entry, "state_change", {
+      previousState,
+      nextState: state.kind,
+    });
     for (const subscriber of entry.subscribers) {
       subscriber.onStateChange(state);
     }
   }
 
+  private logVerbose(
+    streamId: string,
+    entry: ConnectionEntry,
+    event: string,
+    details: {
+      delayMs?: number;
+      eventLength?: number;
+      nextState?: EventSourceConnectionState["kind"];
+      previousState?: EventSourceConnectionState["kind"];
+      readyState?: number | null;
+    } = {}
+  ): void {
+    if (!isSseVerbose()) {
+      return;
+    }
+    console.info("[Dust SSE]", {
+      event,
+      streamId,
+      workspaceId: entry.config.workspaceId,
+      state: entry.state.kind,
+      reconnectAttempts: entry.reconnectAttempts,
+      subscriberCount: entry.subscribers.size,
+      ...details,
+    });
+  }
+
   private destroy(streamId: string, entry: ConnectionEntry): void {
+    this.logVerbose(streamId, entry, "destroy");
     entry.generation++;
     const source = entry.source;
     entry.source = null;
