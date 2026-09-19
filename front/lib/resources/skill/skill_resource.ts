@@ -1193,6 +1193,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
+  // Use fetchByIds to apply isRestricted checks, feature flags, user preferences,
+  // etc. before including code-defined skill IDs in search.
   static async listAvailableCodeDefinedIds(
     auth: Authenticator
   ): Promise<string[]> {
