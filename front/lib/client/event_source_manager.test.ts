@@ -309,4 +309,89 @@ describe("EventSourceManager", () => {
 
     manager.releaseWorkspace("w_1");
   });
+
+  it("delays and budgets immediate done sentinels", async () => {
+    const sources: FakeEventSource[] = [];
+    const states: EventSourceConnectionState[] = [];
+    const manager = new EventSourceManager(
+      async (url) => {
+        const source = new FakeEventSource(url);
+        sources.push(source);
+        return source;
+      },
+      () => 0,
+      {
+        maxReconnectAttempts: 2,
+        reconnectDelayBaseMs: 10,
+        reconnectDelayJitterMs: 0,
+      }
+    );
+    manager.subscribe({
+      streamId: "message-msg_done",
+      config: {
+        buildURL: () => "/events",
+        replayBufferedEventsOnSubscribe: false,
+        restartKey: "message-msg_done",
+        workspaceId: "w_1",
+      },
+      subscriber: {
+        onEvent: vi.fn(),
+        onStateChange: (state) => states.push(state),
+      },
+      keepAliveWithoutSubscribers: true,
+    });
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].onopen?.({ type: "open", target: sources[0] });
+    sources[0].onmessage?.({ data: "done" } as PolyfillMessageEvent);
+    expect(sources).toHaveLength(1);
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    sources[1].onopen?.({ type: "open", target: sources[1] });
+    sources[1].onmessage?.({ data: "done" } as PolyfillMessageEvent);
+    expect(states.at(-1)?.kind).toBe("failed");
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("charges page-wake recovery to the existing budget", async () => {
+    const sources: FakeEventSource[] = [];
+    const states: EventSourceConnectionState[] = [];
+    const manager = new EventSourceManager(
+      async (url) => {
+        const source = new FakeEventSource(url);
+        sources.push(source);
+        return source;
+      },
+      () => 0,
+      {
+        maxReconnectAttempts: 2,
+        reconnectDelayBaseMs: 10,
+        reconnectDelayJitterMs: 0,
+      }
+    );
+    manager.subscribe({
+      streamId: "message-msg_wake",
+      config: {
+        buildURL: () => "/events",
+        replayBufferedEventsOnSubscribe: false,
+        restartKey: "message-msg_wake",
+        workspaceId: "w_1",
+      },
+      subscriber: {
+        onEvent: vi.fn(),
+        onStateChange: (state) => states.push(state),
+      },
+      keepAliveWithoutSubscribers: true,
+    });
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].onopen?.({ type: "open", target: sources[0] });
+    sources[0].onerror?.({ type: "error", target: sources[0] });
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(sources).toHaveLength(1);
+
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    sources[1].onopen?.({ type: "open", target: sources[1] });
+    sources[1].readyState = 2;
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(states.at(-1)?.kind).toBe("failed");
+    manager.releaseWorkspace("w_1");
+  });
 });
