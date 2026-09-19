@@ -350,13 +350,13 @@ export const SANDBOX_FUNCTION_ACTION_OUTPUT_CACHE_TTL_MS =
  * Misses mean the write-behind window expired or was never warmed — not a GCS fetch.
  */
 async function sandboxFunctionActionOutput(
-  _actionSId: string
+  _actionId: string
 ): Promise<object | null> {
   return null;
 }
 
-const sandboxFunctionActionOutputCacheKey = (actionSId: string) =>
-  `sfa_output:${actionSId}:v1`;
+const sandboxFunctionActionOutputCacheKey = (actionId: string) =>
+  `sfa_output:${actionId}:v1`;
 
 const warmSandboxFunctionActionOutput = warmCacheWithRedis(
   sandboxFunctionActionOutput,
@@ -379,17 +379,17 @@ const readSandboxFunctionActionOutputCached = cacheWithRedis(
  */
 export async function stageSandboxFunctionActionOutput(
   _auth: Authenticator,
-  actionSId: string,
+  actionId: string,
   output: object
 ): Promise<void> {
-  await warmSandboxFunctionActionOutput(output, actionSId);
+  await warmSandboxFunctionActionOutput(output, actionId);
 }
 
 /**
  * Reads a staged sandbox-function action output, if still within TTL.
  */
 export async function readStagedSandboxFunctionActionOutput(
-  actionSId: string
+  actionId: string
 ): Promise<object | null> {
-  return readSandboxFunctionActionOutputCached(actionSId);
+  return readSandboxFunctionActionOutputCached(actionId);
 }
