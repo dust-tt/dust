@@ -115,13 +115,6 @@ const creditSubAggs = {
   total_cost: { sum: { field: CREDIT_MICRO_FIELD } },
 } satisfies Record<string, estypes.AggregationsAggregationContainer>;
 
-/**
- * @cc [owner:sfriquet,label:product] credit-micro-converted-to-credits
- * `credit_micro` sums are in micro-credits and MUST be converted here with
- * `microCreditsToCredits`. Every credit figure this module returns is expressed
- * in credits, so returning the raw Elasticsearch sum would overstate
- * consumption by six orders of magnitude.
- */
 function totalCreditsFromSlice(slice: CreditSlice): number {
   return Math.round(microCreditsToCredits(slice.total_cost?.value ?? 0));
 }
@@ -261,9 +254,12 @@ function buildCreditDateHistogram({
 }
 
 // Sums `credit_micro` over the consumption units of the window. Each message's
-// units reconcile exactly to its authoritative billed charge, so this matches
-// the usage page up to indexing lag. Groups are ranked exactly by
-// `credit_micro` inside ES.
+// units reconcile exactly to its authoritative billed charge, but the total is
+// still an estimate vs the billed figure on the usage page: indexing lags the
+// message, messages whose attribution fails to reconcile are skipped entirely,
+// and a message that ends in a non-tracked status (`failed`) is never indexed,
+// so credits already billed on its earlier executions are missing here. Groups
+// are ranked exactly by `credit_micro` inside ES.
 export async function fetchCreditUsage(
   auth: Authenticator,
   {

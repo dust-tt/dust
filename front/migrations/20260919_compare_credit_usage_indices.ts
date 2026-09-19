@@ -13,8 +13,11 @@
  * Known sources of divergence, which this script is meant to quantify:
  * - the legacy index recomputes `cost.billable_awu` at index time, while
  *   `credit_micro` reconciles to the authoritative billed charge;
- * - the legacy index holds every message, the consumption index only billed
- *   consumption, and it skips messages whose attribution fails reconciliation;
+ * - the legacy index holds every message; the consumption index holds only
+ *   billed consumption, skips messages whose attribution fails to reconcile,
+ *   and indexes nothing at all for a message that ends in a non-tracked status
+ *   (`failed`), whose earlier executions the legacy index still carried through
+ *   `cost.billable_awu`;
  * - the usage-type split moves from a heuristic over `auth_method` /
  *   `context_origin` / `user_id` to the stored `usage_type` field.
  *
