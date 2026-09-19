@@ -108,6 +108,13 @@ const GetCodeToExecuteRequestSchema = VisualizationRPCRequestBaseSchema.extend({
   params: z.null(),
 });
 
+// Liveness probe sent by the iframe when its RPC data API is constructed. The host answers
+// immediately so the iframe can tell a live host from a hostless (top-level) context.
+const PingRequestSchema = VisualizationRPCRequestBaseSchema.extend({
+  command: z.literal("ping"),
+  params: z.null(),
+});
+
 const SetContentHeightRequestSchema = VisualizationRPCRequestBaseSchema.extend({
   command: z.literal("setContentHeight"),
   params: SetContentHeightParamsSchema,
@@ -154,6 +161,7 @@ const VisualizationRPCRequestSchema = z.union([
   GetUserIdentityRequestSchema,
   GetFileRequestSchema,
   GetCodeToExecuteRequestSchema,
+  PingRequestSchema,
   SetContentHeightRequestSchema,
   SetErrorMessageRequestSchema,
   DownloadFileRequestSchema,
@@ -174,6 +182,7 @@ export type VisualizationRPCRequestMap = {
   getUserIdentity: null;
   getFile: GetFileParams;
   getCodeToExecute: null;
+  ping: null;
   setContentHeight: SetContentHeightParams;
   setErrorMessage: SetErrorMessageParams;
   downloadFileRequest: DownloadFileRequestParams;
@@ -188,6 +197,7 @@ export interface CommandResultMap {
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
   downloadFileRequest: { blob: Blob; filename?: string };
+  ping: { ok: true };
   setContentHeight: void;
   setErrorMessage: void;
   displayCode: void;
