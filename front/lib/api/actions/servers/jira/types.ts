@@ -271,8 +271,10 @@ const ADFDateNodeSchema = z.object({
     .optional(),
 });
 
-export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
-  z.union([
+// Node types we validate structurally. Keyed by the `type` discriminator so a
+// node is matched by exactly one branch.
+const ADFKnownNodeSchema: z.ZodType<any> = z.lazy(() =>
+  z.discriminatedUnion("type", [
     // Text and basic inline nodes
     ADFTextNodeSchema,
     ADFHardBreakNodeSchema,
@@ -331,20 +333,51 @@ export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
       type: z.enum(["media", "mediaInline"]),
       attrs: z.record(z.any()).optional(),
     }),
-
-    // Catch-all for any other ADF node types (future-proofing)
-    // This allows unknown ADF nodes to pass validation and be handled
-    // by the rendering layer's default case
-    z
-      .object({
-        type: z.string(),
-        attrs: z.record(z.any()).optional(),
-        content: z.array(ADFContentNodeSchema).optional(),
-        text: z.string().optional(),
-        marks: z.array(ADFMarkSchema).optional(),
-      })
-      .passthrough(),
   ])
+);
+
+// Catch-all for any other ADF node types (future-proofing). This allows unknown
+// ADF nodes to pass validation and be handled by the rendering layer's default
+// case. `content` is intentionally left unvalidated: we do not know the shape of
+// an unrecognized node's children, and descending into them here is what makes
+// validation cost super-linear (see `adf-validation-cost-linear`).
+const ADFUnknownNodeSchema = z
+  .object({
+    type: z.string(),
+    attrs: z.record(z.any()).optional(),
+    content: z.array(z.unknown()).optional(),
+    text: z.string().optional(),
+    marks: z.array(ADFMarkSchema).optional(),
+  })
+  .passthrough();
+
+/**
+ * @cc [owner:Nils-Fedrigo,label:performance] adf-validation-cost-linear
+ * Validating an ADF document MUST cost time and memory linear in its node count,
+ * for any input including malformed ones. At most one branch of this schema may
+ * descend into a node's `content`: `zod` object validation does not stop at the
+ * first failing key, so every additional branch that declares
+ * `content: z.array(ADFContentNodeSchema)` re-walks the whole subtree and makes
+ * the cost exponential in nesting depth.
+ *
+ * Adding a node type therefore means adding it to `ADFKnownNodeSchema`'s
+ * discriminated union, never as an extra `z.union` member alongside it, and
+ * never giving `ADFUnknownNodeSchema.content` a recursive element schema.
+ *
+ * Violating this blocks the Node event loop inside `jiraApiCall`'s `safeParse`.
+ * Because tool activities share a worker process, that stalls every concurrent
+ * activity on it past `TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS` and fails unrelated
+ * conversations.
+ */
+/**
+ * @cc [owner:Nils-Fedrigo,label:product] adf-unknown-subtree-passthrough
+ * A node whose `type` is not in `ADFKnownNodeSchema` MUST parse successfully
+ * along with its whole subtree, without its children being structurally
+ * validated. A single unrecognized or malformed node must not fail validation of
+ * the Jira response that contains it.
+ */
+export const ADFContentNodeSchema: z.ZodType<any> = z.lazy(() =>
+  z.union([ADFKnownNodeSchema, ADFUnknownNodeSchema])
 );
 
 export type ADFContentNode = z.infer<typeof ADFContentNodeSchema>;
