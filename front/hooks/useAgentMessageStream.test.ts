@@ -297,9 +297,7 @@ describe("useAgentMessageStream", () => {
     ["generation_tokens", false],
   ])("classifies %s as terminal: %s", (type, expected) => {
     expect(
-      isTerminalAgentLoopEvent(
-        JSON.stringify({ eventId: "1", data: { type } })
-      )
+      isTerminalAgentLoopEvent(JSON.stringify({ eventId: "1", data: { type } }))
     ).toBe(expected);
   });
 

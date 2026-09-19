@@ -12,7 +12,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useRef } from "react";
 import type { Fetcher } from "swr";
 
-const ONGOING_AGENT_LOOPS_REFRESH_INTERVAL_MS = 3_000;
+const ONGOING_AGENT_LOOPS_REFRESH_INTERVAL_MS = 2_500;
 
 function OngoingAgentLoopConnection({
   owner,
@@ -58,7 +58,7 @@ function OngoingAgentLoopConnection({
  * Keeps SSE connections alive for user-launched agent loops when their conversation UI is not
  * mounted. Temporal workflows maintain the Redis registry that backs the polling endpoint.
  *
- * Redis registry --> 3 s API poll --> headless SSE subscriber
+ * Redis registry --> 2.5 s API poll --> headless SSE subscriber
  *                                          |
  *                                          v
  * Conversation UI <-- replay and dedupe <-- EventSourceManager

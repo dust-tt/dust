@@ -157,6 +157,8 @@ export class EventSourceManager {
       return;
     }
     entry.keepAliveWithoutSubscribers = false;
+    entry.lastResumeAtMs = null;
+    entry.unsuccessfulResumes = 0;
     if (entry.subscribers.size === 0) {
       this.destroy(streamId);
     }
@@ -164,8 +166,9 @@ export class EventSourceManager {
 
   /**
    * @cc [owner:id13,label:performance;concurrency] bounded-registry-resume
-   * Registry refreshes MAY resume a failed stream at most once per 90 seconds and at most three
-   * times without an accepted event. A user-requested reconnect MAY reset these limits.
+   * Refreshes of a continuously listed stream MAY resume it at most once per 90 seconds and at
+   * most three times without an accepted event. Removal and re-registration, or a user-requested
+   * reconnect, MAY reset these limits.
    */
   resume(streamId: string): void {
     const entry = this.connections.get(streamId);

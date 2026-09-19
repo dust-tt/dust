@@ -614,6 +614,47 @@ describe("EventSourceManager", () => {
     manager.releaseWorkspace("w_1");
   });
 
+  it("restarts a failed visible stream when its registry entry is readded", async () => {
+    let nowMs = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => nowMs);
+    const sources: FakeEventSource[] = [];
+    const manager = new EventSourceManager(
+      async (url) => {
+        const source = new FakeEventSource(url);
+        sources.push(source);
+        return source;
+      },
+      () => 0,
+      { maxReconnectAttempts: 1 }
+    );
+    manager.subscribe({
+      streamId: "message-msg_blocked",
+      config: {
+        buildURL: () => "/events",
+        replayBufferedEventsOnSubscribe: false,
+        restartKey: "message-msg_blocked",
+        workspaceId: "w_1",
+      },
+      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: true,
+    });
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].onerror?.({ type: "error", target: sources[0] });
+
+    manager.resume("message-msg_blocked");
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    sources[1].onerror?.({ type: "error", target: sources[1] });
+
+    nowMs = 1;
+    manager.resume("message-msg_blocked");
+    expect(sources).toHaveLength(2);
+
+    manager.stopKeepingAlive("message-msg_blocked", "w_1");
+    manager.resume("message-msg_blocked");
+    await vi.waitFor(() => expect(sources).toHaveLength(3));
+    manager.releaseWorkspace("w_1");
+  });
+
   it("closes an unlisted stream after its last subscriber leaves", async () => {
     const sources: FakeEventSource[] = [];
     const manager = new EventSourceManager(async (url) => {
