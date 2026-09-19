@@ -9,6 +9,7 @@ import type {
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { clearStagedSandboxFunctionInvocationBlob } from "@app/lib/resources/sandbox_function_invocation/blob_stage";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import {
   computeSandboxFunctionBundleSha256,
@@ -36,6 +37,12 @@ import { frameV2ContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Use the real cache helpers so Redis stage write-behind is exercised under the
+// redis mock. The global vite.setup stub makes warmCacheWithRedis a no-op.
+vi.mock("@app/lib/utils/cache", async (importOriginal) => {
+  return importOriginal<typeof import("@app/lib/utils/cache")>();
+});
 
 const tracerMocks = vi.hoisted(() => {
   const setTag = vi.fn();
@@ -436,6 +443,7 @@ describe("SandboxFunctionInvocationResource", () => {
     expect((await loadedPoke(invocation)).input).toEqual({ message: "hello" });
     expect((await loadedPoke(invocation)).result).toBeUndefined();
     expect((await loadedPoke(invocation)).error).toBeNull();
+    await invocation.settleInitialPersistence();
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toBe(
       JSON.stringify({ version: 2, input: { message: "hello" } })
     );
@@ -464,6 +472,7 @@ describe("SandboxFunctionInvocationResource", () => {
     );
 
     expect(await invocation.getContext()).toEqual({ timezone: "Europe/Paris" });
+    await invocation.settleInitialPersistence();
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toBe(
       JSON.stringify({
         version: 2,
@@ -514,6 +523,8 @@ describe("SandboxFunctionInvocationResource", () => {
     await getPrivateUploadBucket()
       .file(invocation.gcsPath!)
       .save(Buffer.from(JSON.stringify({ version: 3 }), "utf-8"));
+    // Simulate a GCS-only blob (no Redis stage), e.g. written before staging existed.
+    await clearStagedSandboxFunctionInvocationBlob(invocation.sId);
 
     // Listings load every invocation's blob, so one unreadable record must not fail the listing.
     const refetched = await SandboxFunctionInvocationResource.fetchById(
@@ -532,6 +543,7 @@ describe("SandboxFunctionInvocationResource", () => {
     await getPrivateUploadBucket()
       .file(invocation.gcsPath!)
       .save(Buffer.from('{"version": 2, "input"', "utf-8"));
+    await clearStagedSandboxFunctionInvocationBlob(invocation.sId);
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
@@ -633,6 +645,7 @@ describe("SandboxFunctionInvocationResource", () => {
     );
     expect(refetched?.status).toBe("succeeded");
     expect((await loadedPoke(refetched)).result).toEqual(result);
+    await invocation.settleInitialPersistence();
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toContain(
       '"commentId":"comment-1"'
     );
@@ -680,29 +693,34 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledTimes(1);
   });
 
-  it("releases a won succeed claim when the terminal blob write fails", async () => {
+  it("keeps a won succeed claim when the write-behind terminal blob write fails", async () => {
     const { authenticator, sandboxFunction, invocation } =
       await setupExecutionTest();
     fileStorageMock.setFileSaveFails(
       (filePath) => filePath === invocation.gcsPath
     );
 
-    await expect(
-      invocation.succeed({ commentId: "comment-1" })
-    ).rejects.toThrow();
+    // Outcome is delivered via the event stream / settledOutcome; GCS failure must not
+    // unwind the claim or block the caller (same contract as the inline write-behind path).
+    expect(await invocation.succeed({ commentId: "comment-1" })).toBe(true);
+    expect(invocation.status).toBe("succeeded");
+    expect(invocation.settledOutcome()).toEqual({
+      status: "succeeded",
+      result: { commentId: "comment-1" },
+    });
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledTimes(1);
+
+    await invocation.settleInitialPersistence();
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
-    expect(refetched?.status).toBe("created");
-    expect(publishSandboxFunctionInvocationEvent).not.toHaveBeenCalled();
-
-    fileStorageMock.setFileSaveFails(() => false);
-    expect(
-      await refetched!.fail(new Error("recoverable after gcs failure"))
-    ).toBe(true);
-    expect(refetched!.status).toBe("errored");
+    expect(refetched?.status).toBe("succeeded");
+    // Redis stage still holds the terminal blob even though GCS write failed.
+    expect((await loadedPoke(refetched)).result).toEqual({
+      commentId: "comment-1",
+    });
   });
 
   it("migrates a v1 blob, which recorded the message only", async () => {
@@ -724,6 +742,7 @@ describe("SandboxFunctionInvocationResource", () => {
           "utf-8"
         )
       );
+    await clearStagedSandboxFunctionInvocationBlob(invocation.sId);
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
@@ -739,6 +758,7 @@ describe("SandboxFunctionInvocationResource", () => {
 
     // The next write persists it as v2, so a blob is migrated once rather than on every read.
     await refetched!.succeed({ commentId: "comment-1" });
+    await refetched!.settleInitialPersistence();
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toContain(
       '"version":2'
     );
@@ -752,6 +772,7 @@ describe("SandboxFunctionInvocationResource", () => {
     await getPrivateUploadBucket()
       .file(invocation.gcsPath!)
       .save(Buffer.from(JSON.stringify({ version: 1 }), "utf-8"));
+    await clearStagedSandboxFunctionInvocationBlob(invocation.sId);
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,

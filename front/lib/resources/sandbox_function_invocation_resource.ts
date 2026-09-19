@@ -29,6 +29,11 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter";
+import {
+  clearStagedSandboxFunctionInvocationBlob,
+  readStagedSandboxFunctionInvocationBlob,
+  stageSandboxFunctionInvocationBlob,
+} from "@app/lib/resources/sandbox_function_invocation/blob_stage";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -275,12 +280,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   private pendingDataLoad: Promise<void> | undefined;
 
   /**
-   * In-flight blob persistence for an inline execution: the deferred initial write (blob +
-   * created event), and after a terminal transition also the write-behind terminal blob write
-   * chained onto it. The chaining keeps the object-level ordering (the terminal write can never
-   * be overwritten by a late initial one) without holding the caller's response on GCS. Only
-   * ever set on the instance that runs the invocation inline; instances rehydrated from the DB
-   * never have one, and never need one.
+   * In-flight blob persistence: the deferred initial GCS write, and after a terminal
+   * transition the write-behind terminal upload chained onto it. Redis is staged up front so
+   * other processes never wait on this promise. Settling drains the chain for tests / handoff.
    */
   private pendingInitialPersistence: Promise<void> | undefined;
 
@@ -379,19 +381,52 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   /**
-   * Load the GCS blob once and cache it on this instance. No-op when already loaded
-   * (including instances constructed from `makeNew` with in-memory data).
+   * Load the invocation blob once and cache it on this instance. Prefers the Redis stage
+   * (filled before the deferred GCS write) so the Temporal activity can run without waiting
+   * on GCS; falls back to GCS for cold/history reads.
    */
   async ensureData(): Promise<void> {
     if (this.dataLoaded) {
       return;
     }
     if (!this.pendingDataLoad) {
-      this.pendingDataLoad = this.loadDataFromGcs().finally(() => {
+      this.pendingDataLoad = this.loadData().finally(() => {
         this.pendingDataLoad = undefined;
       });
     }
     await this.pendingDataLoad;
+  }
+
+  private async loadData(): Promise<void> {
+    const stagedResult = await readStagedSandboxFunctionInvocationBlob(
+      this.sId
+    );
+    if (stagedResult.isErr()) {
+      logger.error(
+        {
+          ...this.observabilityContext(),
+          err: stagedResult.error,
+        },
+        "Failed to read staged sandbox function invocation blob; falling back to GCS"
+      );
+    } else if (stagedResult.value !== null) {
+      const parseResult = StoredInvocationDataSchema.safeParse(
+        stagedResult.value
+      );
+      if (parseResult.success) {
+        this.data = migrateStoredInvocationData(parseResult.data);
+        this.dataLoaded = true;
+        return;
+      }
+      logger.error(
+        {
+          ...this.observabilityContext(),
+          error: fromError(parseResult.error).toString(),
+        },
+        "Invalid staged sandbox function invocation data; falling back to GCS"
+      );
+    }
+    await this.loadDataFromGcs();
   }
 
   async getContext(): Promise<SandboxFunctionInvocationContext | undefined> {
@@ -433,69 +468,52 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   /**
    * Persist the terminal blob (input, context, outcome), set on `this.data` by the caller.
    *
-   * Inline path (a deferred initial persistence is pending): the write chains behind it,
-   * write-behind. The caller's response and the result event carry the outcome, and every
-   * cross-process blob reader is either explicitly settled first (the workflow handoff awaits
-   * settleInitialPersistence) or reads well after the write's ~100-500ms window (inspection,
-   * listings), so nothing is left holding a request on GCS tail latency. The cost is a
-   * narrower durability guarantee: a write that fails, or a process that dies right after
-   * responding, leaves a terminal row whose blob is missing the outcome. Logged loudly; the
-   * outcome itself was still delivered to the caller and the event stream.
-   *
-   * Every other path keeps the awaited write, and gives the terminal claim back on failure so
-   * a retry can record the outcome.
+   * Always write-behind: Redis is staged first so cross-process readers (and the HTTP wait,
+   * which only needs the result event) are not held on GCS. When an initial deferred write is
+   * still pending, the terminal upload chains behind it so object order stays correct. Failure
+   * is logged and the terminal claim is kept — the outcome was already delivered on the event
+   * stream / caller response.
    */
   private async persistTerminalData(
     claimed: Exclude<SandboxFunctionInvocationStatus, "created">
   ): Promise<void> {
-    if (this.pendingInitialPersistence !== undefined) {
-      const pending = this.pendingInitialPersistence;
-      this.pendingInitialPersistence = (async () => {
-        // Invariant: `pending` never rejects — its producers settle internally (makeNew logs
-        // its write failure, createAndStartExecution wraps in Promise.allSettled) — and
-        // writeDataToGcs returns a Result, so this floating chain cannot produce an unhandled
-        // rejection. The claim is deliberately kept on failure, unlike the awaited branch:
-        // releasing here would strand a row whose caller already got the outcome, with nothing
-        // left to retry it.
-        await pending;
-        const writeResult = await this.writeDataToGcs();
-        if (writeResult.isErr()) {
-          logger.error(
-            {
-              ...this.observabilityContext(),
-              claimedStatus: claimed,
-              err: writeResult.error,
-            },
-            "Write-behind terminal sandbox function invocation persistence failed"
-          );
-        }
-      })();
-      return;
-    }
-
-    await this.settleInitialPersistence();
-    const writeResult = await this.writeDataToGcs();
-    if (writeResult.isErr()) {
-      await this.releaseTerminalClaim(claimed);
-      throw writeResult.error;
-    }
-  }
-
-  // Give the claim back if terminal blob persistence fails, so a later fail()/
-  // markCreatedAsErrored() path can still record the outcome.
-  private async releaseTerminalClaim(
-    from: Exclude<SandboxFunctionInvocationStatus, "created">
-  ): Promise<void> {
-    const released = await this.casStatus({ from, to: "created" });
-    if (!released) {
+    const stageResult = await stageSandboxFunctionInvocationBlob(
+      this.sId,
+      this.data
+    );
+    if (stageResult.isErr()) {
       logger.error(
         {
           ...this.observabilityContext(),
-          fromStatus: from,
+          claimedStatus: claimed,
+          err: stageResult.error,
         },
-        "Failed to release sandbox function terminal claim after blob write failure"
+        "Failed to stage terminal sandbox function invocation blob in Redis"
       );
     }
+
+    const pending = this.pendingInitialPersistence;
+    this.pendingInitialPersistence = (async () => {
+      // Invariant: `pending` never rejects — its producers settle internally (makeNew logs
+      // its write failure, createAndStartExecution wraps in Promise.allSettled) — and
+      // writeDataToGcs returns a Result, so this floating chain cannot produce an unhandled
+      // rejection. The claim is kept on failure: releasing would strand a row whose caller
+      // already got the outcome, with nothing left to retry it.
+      if (pending) {
+        await pending;
+      }
+      const writeResult = await this.writeDataToGcs();
+      if (writeResult.isErr()) {
+        logger.error(
+          {
+            ...this.observabilityContext(),
+            claimedStatus: claimed,
+            err: writeResult.error,
+          },
+          "Write-behind terminal sandbox function invocation persistence failed"
+        );
+      }
+    })();
   }
 
   async fail(error: Error | SandboxFunctionCallError): Promise<boolean> {
@@ -1067,11 +1085,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       context?: SandboxFunctionInvocationContext;
       origin?: SandboxFunctionInvocationOrigin;
     },
-    transaction?: Transaction,
-    // Inline executions defer the initial blob write (see createAndStartExecution): the terminal
-    // transition rewrites the full blob anyway, so the upload only needs to finish before that
-    // write, not before execution starts.
-    { deferInitialWrite = false }: { deferInitialWrite?: boolean } = {}
+    transaction?: Transaction
   ): Promise<SandboxFunctionInvocationResource> {
     const resource = await withTransaction(async (t) => {
       const invocation = await this.model.create(
@@ -1106,28 +1120,40 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return resource;
     }, transaction);
 
-    if (deferInitialWrite) {
-      resource.pendingInitialPersistence = resource
-        .writeDataToGcs()
-        .then((result) => {
-          if (result.isErr()) {
-            // Surfaced here rather than thrown: the terminal transition rewrites the full blob,
-            // so a failed initial upload only matters if the invocation never settles.
-            logger.error(
-              {
-                ...resource.observabilityContext(auth),
-                err: result.error,
-              },
-              "Deferred sandbox function invocation blob write failed"
-            );
-          }
-        });
-    } else {
+    // Stage in Redis first so other processes (Temporal activity) can ensureData without
+    // waiting on GCS. GCS durability trails via pendingInitialPersistence.
+    const stageResult = await stageSandboxFunctionInvocationBlob(
+      resource.sId,
+      resource.data
+    );
+    if (stageResult.isErr()) {
+      logger.error(
+        {
+          ...resource.observabilityContext(auth),
+          err: stageResult.error,
+        },
+        "Failed to stage sandbox function invocation blob; writing GCS synchronously"
+      );
       const writeResult = await resource.writeDataToGcs();
       if (writeResult.isErr()) {
         throw writeResult.error;
       }
+      return resource;
     }
+
+    resource.pendingInitialPersistence = resource
+      .writeDataToGcs()
+      .then((result) => {
+        if (result.isErr()) {
+          logger.error(
+            {
+              ...resource.observabilityContext(auth),
+              err: result.error,
+            },
+            "Deferred sandbox function invocation blob write failed"
+          );
+        }
+      });
     return resource;
   }
 
@@ -1148,9 +1174,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     // holding the request there would deadlock, since the approval card only renders once the
     // client holds the invocation.
     const inline = sandboxFunction.executionMode === "fast";
-    // Deferring is only safe because no other process reads the blob during execution, which
-    // holds because every run is started with `--result-delivery stdout`: the result comes back
-    // on the exec's own stdout, so nothing fetches the invocation, and its blob, mid-execution.
+    // GCS is deferred in makeNew (Redis staged first). Previously the durable path also
+    // re-uploaded the same blob right before workflow.start.
     const invocation = await this.makeNew(
       auth,
       {
@@ -1159,8 +1184,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         context: body.context,
         origin,
       },
-      undefined,
-      { deferInitialWrite: inline }
+      undefined
     );
     const publishCreated = () =>
       publishSandboxFunctionInvocationEvent(
@@ -1219,15 +1243,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       );
     }
 
-    // The workflow activity re-reads the invocation, blob included, from another process: a
-    // deferred initial write must be durable before the workflow can be allowed to start. The
-    // rewrite is idempotent (same object, same content) and this is already the slow path.
-    await invocation.settleInitialPersistence();
-    const persistResult = await invocation.writeDataToGcs();
-    if (persistResult.isErr()) {
-      throw persistResult.error;
-    }
-
+    // Redis already holds the blob (staged in makeNew). Do not await GCS before starting the
+    // workflow — that was the create-path latency tax. The activity loads via ensureData
+    // (stage → GCS).
     const launchResult = await launchSandboxFunctionInvocationWorkflow(auth, {
       sandboxFunction,
       invocation,
@@ -1511,6 +1529,28 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       { transaction }
     );
     await this.deleteDataFromGcs(invocations.map(({ gcsPath }) => gcsPath));
+    await concurrentExecutor(
+      invocations.map(({ id }) =>
+        SandboxFunctionInvocationResource.modelIdToSId({
+          id,
+          workspaceId: workspaceModelId,
+        })
+      ),
+      async (invocationId) => {
+        const clearResult =
+          await clearStagedSandboxFunctionInvocationBlob(invocationId);
+        if (clearResult.isErr()) {
+          logger.error(
+            {
+              invocationId,
+              err: clearResult.error,
+            },
+            "Failed to clear staged sandbox function invocation blob"
+          );
+        }
+      },
+      { concurrency: 10 }
+    );
 
     return deletedInvocationCount;
   }
@@ -1671,6 +1711,18 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         transaction,
       });
       await SandboxFunctionInvocationResource.deleteDataFromGcs([this.gcsPath]);
+      const clearResult = await clearStagedSandboxFunctionInvocationBlob(
+        this.sId
+      );
+      if (clearResult.isErr()) {
+        logger.error(
+          {
+            ...this.observabilityContext(auth),
+            err: clearResult.error,
+          },
+          "Failed to clear staged sandbox function invocation blob"
+        );
+      }
 
       return new Ok(undefined);
     } catch (error) {
