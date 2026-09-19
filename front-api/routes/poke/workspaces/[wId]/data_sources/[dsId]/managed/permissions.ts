@@ -76,6 +76,14 @@ app.get(
                 "Authorization error while retrieving the data source permissions.",
             },
           });
+        case "connector_document_not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "data_source_document_not_found",
+              message: "The requested data source location could not be found.",
+            },
+          });
         case "connector_oauth_user_must_be_admin":
           return apiError(ctx, {
             status_code: 403,

@@ -108,6 +108,14 @@ const _getConnectorPermissions = async (
             message: pRes.error.message,
           },
         });
+      case "CONTENT_NODE_NOT_FOUND":
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "not_found",
+            message: pRes.error.message,
+          },
+        });
       case "CONNECTOR_NOT_FOUND":
         return apiError(req, res, {
           status_code: 404,
