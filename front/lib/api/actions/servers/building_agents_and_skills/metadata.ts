@@ -3,6 +3,7 @@ import {
   AGENT_FACING_DESCRIPTION_MAX_LENGTH,
   USER_FACING_DESCRIPTION_MAX_LENGTH,
 } from "@app/lib/skills/labels";
+import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { SkillInstructionEditItemSchema } from "@app/types/suggestions/skill_suggestion";
 import { z } from "zod";
@@ -19,6 +20,7 @@ export const SUGGEST_AGENT_DELETION_TOOL_NAME =
   "suggest_agent_deletion" as const;
 export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME =
   "suggest_skill_user_facing_description" as const;
+export const SUGGEST_SKILL_NAME_TOOL_NAME = "suggest_skill_name" as const;
 
 // Bounds the O(n²) pairwise conflict check in hasSuggestionSelfConflict; larger rewrites
 // should target the instructions root block instead.
@@ -167,6 +169,33 @@ export type SuggestSkillUserFacingDescriptionArgs = z.infer<
   typeof SUGGEST_SKILL_USER_FACING_DESCRIPTION_INPUT_SCHEMA
 >;
 
+export const SUGGEST_SKILL_NAME_INPUT_SCHEMA = z.object({
+  skillId: z.string().describe("The id of the custom skill to rename."),
+  name: z
+    .string()
+    .min(1)
+    .max(SKILL_NAME_MAX_LENGTH)
+    .describe(
+      `The full new name (replaces the current one), at most ${SKILL_NAME_MAX_LENGTH} characters. ` +
+        "It must be unique among the workspace's active skills."
+    ),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Why this name is clearer than the current one."),
+  title: z
+    .string()
+    .max(25)
+    .optional()
+    .describe(
+      "A short, action-oriented user-facing title for this suggestion (at most 25 characters)."
+    ),
+});
+
+export type SuggestSkillNameArgs = z.infer<
+  typeof SUGGEST_SKILL_NAME_INPUT_SCHEMA
+>;
+
 export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   {
     name: DESCRIBE_SKILL_TOOL_NAME,
@@ -251,6 +280,21 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting skill description",
       done: "Suggest skill description",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_SKILL_NAME_TOOL_NAME,
+    description:
+      "Suggest a new name for an existing custom Skill. The change is not applied directly: it " +
+      "is recorded as a pending suggestion that the skill's editors can review, accept, or " +
+      "reject. A name already carried by another active skill of the workspace is refused.",
+    schema: SUGGEST_SKILL_NAME_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting skill name",
+      done: "Suggest skill name",
     },
     toolCostCategory: "basic",
     freeUsage: true,

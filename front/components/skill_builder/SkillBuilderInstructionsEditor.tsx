@@ -670,6 +670,7 @@ export function SkillBuilderInstructionsEditor({
           break;
         case "editors":
         case "user_facing_description":
+        case "name":
           continue;
         default:
           assertNeverAndIgnore(suggestion);

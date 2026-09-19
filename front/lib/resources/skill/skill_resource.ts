@@ -1219,6 +1219,32 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
+  /**
+   * @cc [owner:achilleburah,label:backend;security] name-taken-ignores-read-permissions
+   * MUST report an active skill of the workspace carrying `name` even when the caller cannot read
+   * it, and MUST NOT see archived skills or the skill at `excludeSkillModelId`: this mirrors the
+   * `(workspaceId, name, status)` unique index so callers can refuse a rename before the index
+   * rejects it.
+   */
+  static async isNameTaken(
+    auth: Authenticator,
+    name: string,
+    excludeSkillModelId?: ModelId
+  ): Promise<boolean> {
+    const count = await this.model.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        name,
+        status: "active",
+        ...(excludeSkillModelId !== undefined
+          ? { id: { [Op.ne]: excludeSkillModelId } }
+          : {}),
+      },
+    });
+
+    return count > 0;
+  }
+
   static async fetchByNames(
     auth: Authenticator,
     names: string[]

@@ -482,6 +482,44 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
   });
 
+  it("returns 400 when renaming to the name of a skill the caller cannot read", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      skillOwnerRole: "user",
+      requestUserRole: "user",
+    });
+    const other = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, other, { role: "user" });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      other.sId,
+      workspace.sId
+    );
+    await SkillFactory.create(otherAuth, {
+      name: "Hidden Homonym",
+      availability: "editors",
+    });
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: "Hidden Homonym",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toBe(
+      'A skill with the name "Hidden Homonym" already exists.'
+    );
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.name).toBe(skill.name);
+  });
+
   it.each([
     { length: 256, status: 200 },
     { length: 257, status: 400 },

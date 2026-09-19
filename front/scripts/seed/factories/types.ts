@@ -12,6 +12,7 @@ import type { AgentSuggestionData } from "@app/types/suggestions/agent_suggestio
 import type {
   SkillEditorsSuggestionType,
   SkillEditSuggestionType,
+  SkillNameSuggestionType,
   SkillSuggestionSource,
   SkillSuggestionState,
   SkillUserFacingDescriptionSuggestionType,
@@ -99,10 +100,16 @@ export interface SkillUserFacingDescriptionSuggestionAsset
   suggestion: SkillUserFacingDescriptionSuggestionType;
 }
 
+export interface SkillNameSuggestionAsset extends BaseSkillSuggestionAsset {
+  kind: "name";
+  suggestion: SkillNameSuggestionType;
+}
+
 export type SkillSuggestionAsset =
   | SkillEditSuggestionAsset
   | SkillEditorsSuggestionAsset
-  | SkillUserFacingDescriptionSuggestionAsset;
+  | SkillUserFacingDescriptionSuggestionAsset
+  | SkillNameSuggestionAsset;
 
 export interface SuggestedSkillAsset {
   name: string;
