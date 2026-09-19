@@ -516,6 +516,19 @@ export class EventSourceManager {
     const readyState = source.readyState;
     this.stopSse(entry);
     this.logVerbose(streamId, entry, "sse_failure", { readyState });
+    if (this.hasLongPollFallback(entry) && entry.reconnectAttempts >= 1) {
+      this.sseHealth = "degraded";
+      datadogLogger.warn(
+        {
+          ...this.telemetryContext({ streamId, entry, readyState, failure }),
+          fallbackAvailable: true,
+          transport: "sse",
+        },
+        "SSE failed after handshake twice, switching to long polling."
+      );
+      this.startLongPolling(streamId, entry);
+      return;
+    }
     this.scheduleSseReconnect(streamId, entry, {
       kind: "failure",
       readyState,
