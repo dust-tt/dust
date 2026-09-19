@@ -892,20 +892,16 @@ export async function destroyAgentConfigurationRow(
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
   auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType
+  agentResource: AgentResource
 ): Promise<void> {
   const workspaceId = auth.getNonNullableWorkspace().id;
+  const configurationModelId = agentResource.agentConfigurationModelId;
 
   await withTransaction(async (t) => {
-    const agentResource = AgentResource.fromAgentConfiguration(
-      auth,
-      agentConfiguration
-    );
-
     // Clean up MCP server configurations and their children first
     const mcpConfigs = await AgentMCPServerConfigurationModel.findAll({
       where: {
-        agentConfigurationId: agentConfiguration.id,
+        agentConfigurationId: configurationModelId,
         workspaceId,
       },
       attributes: ["id"],
@@ -949,7 +945,7 @@ export async function unsafeHardDeleteAgentConfiguration(
 
     await TagAgentModel.destroy({
       where: {
-        agentConfigurationId: agentConfiguration.id,
+        agentConfigurationId: configurationModelId,
         workspaceId,
       },
       transaction: t,
@@ -957,7 +953,7 @@ export async function unsafeHardDeleteAgentConfiguration(
 
     await GroupAgentModel.destroy({
       where: {
-        agentConfigurationId: agentConfiguration.id,
+        agentConfigurationId: configurationModelId,
         workspaceId,
       },
       transaction: t,
@@ -965,7 +961,7 @@ export async function unsafeHardDeleteAgentConfiguration(
 
     await AgentSkillModel.destroy({
       where: {
-        agentConfigurationId: agentConfiguration.id,
+        agentConfigurationId: configurationModelId,
         workspaceId,
       },
       transaction: t,
@@ -973,7 +969,7 @@ export async function unsafeHardDeleteAgentConfiguration(
 
     await destroyAgentConfigurationRow(
       auth,
-      { agent: agentResource, configurationId: agentConfiguration.id },
+      { agent: agentResource, configurationId: configurationModelId },
       t
     );
   });
