@@ -21,7 +21,20 @@ import { StarterKit } from "@tiptap/starter-kit";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
+/**
+ * - "editable": full editing experience.
+ * - "readOnly": non-editable; knowledge chips stay interactive (links, icons).
+ * - "suggestion": non-editable diff presentation; knowledge nodes render as
+ *   static chips so suggestion decorations apply to them.
+ */
+export type SkillInstructionsEditorMode =
+  | "editable"
+  | "readOnly"
+  | "suggestion";
+
 interface BuildSkillInstructionsExtensionsOptions {
+  mode?: SkillInstructionsEditorMode;
+  editableExtensions?: Extensions;
   onSkillNodeDetails?: (skillId: string) => void;
   onToolDetails?: (tool: MCPServerViewType) => void;
 }
@@ -29,17 +42,18 @@ interface BuildSkillInstructionsExtensionsOptions {
 /**
  * Build the TipTap extension list for the skill instructions editor.
  *
- * @param isReadOnly - When true, interactive editing extensions are omitted.
- * @param editableExtensions - Extensions appended when `isReadOnly` is false.
+ * @param options.mode - "readOnly" omits interactive editing extensions;
+ *   "suggestion" renders knowledge nodes as static suggestion
+ *   chips. Defaults to "editable".
+ * @param options.editableExtensions - Extensions appended in "editable" mode
+ *   only.
  */
-export function buildSkillInstructionsExtensions(
-  isReadOnly: boolean,
-  editableExtensions: Extensions = [],
-  {
-    onSkillNodeDetails,
-    onToolDetails,
-  }: BuildSkillInstructionsExtensionsOptions = {}
-): Extensions {
+export function buildSkillInstructionsExtensions({
+  mode = "editable",
+  editableExtensions = [],
+  onSkillNodeDetails,
+  onToolDetails,
+}: BuildSkillInstructionsExtensionsOptions = {}): Extensions {
   const baseExtensions: Extensions = [
     InstructionsDocumentExtension,
     InstructionsRootExtension,
@@ -97,7 +111,7 @@ export function buildSkillInstructionsExtensions(
       },
     }),
     BlockIdExtension,
-    KnowledgeNodeWithView.configure({ readOnly: isReadOnly }),
+    KnowledgeNodeWithView.configure({ isSuggestion: mode === "suggestion" }),
     ToolNodeWithView.configure({ onToolDetails }),
     SkillNode.configure({ onSkillDetails: onSkillNodeDetails }),
   ];
@@ -108,7 +122,7 @@ export function buildSkillInstructionsExtensions(
     ...rawMarkdownBlockParsers
   );
 
-  if (!isReadOnly) {
+  if (mode === "editable") {
     baseExtensions.push(...editableExtensions);
   }
 

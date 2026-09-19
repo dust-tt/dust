@@ -488,7 +488,7 @@ export function SkillBuilderInstructionsEditor({
   const { editor, isContentReady } = useSkillInstructionsEditor({
     content: instructionsField.value ?? "",
     htmlContent: instructionsHtmlField.value ?? undefined,
-    isReadOnly: isInstructionsReadOnly,
+    mode: isInstructionsReadOnly ? "readOnly" : "editable",
     skillReferences: {
       currentSkillId: skillId,
       onSkillDetails: handleSkillDetails,

@@ -29,7 +29,7 @@ export function SkillInstructionsReadOnlyEditor({
   const { editor, editorService } = useSkillInstructionsEditor({
     content,
     htmlContent: htmlForEditor,
-    isReadOnly: true,
+    mode: "readOnly",
   });
 
   useEffect(() => {

@@ -9,6 +9,7 @@ import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_bui
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { SkillInstructionsEditorMode } from "@app/lib/editor/build_skill_instructions_extensions";
 import {
   buildSkillInstructionsExtensions,
   INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
@@ -108,7 +109,7 @@ interface UseSkillInstructionsEditorProps {
   content: string;
   enableSlashCommands?: boolean;
   htmlContent?: string;
-  isReadOnly: boolean;
+  mode?: SkillInstructionsEditorMode;
   skillReferences?: SkillInstructionsSkillReferencesOptions;
   onUpdate?: (props: { editor: Editor; transaction: Transaction }) => void;
   onBlur?: () => void;
@@ -164,7 +165,7 @@ export function useSkillInstructionsEditor({
   content,
   enableSlashCommands = true,
   htmlContent,
-  isReadOnly,
+  mode = "editable",
   skillReferences,
   onUpdate,
   onBlur,
@@ -207,11 +208,13 @@ export function useSkillInstructionsEditor({
 
   const extensions = useMemo(
     () =>
-      buildSkillInstructionsExtensions(isReadOnly, editableExtensions, {
+      buildSkillInstructionsExtensions({
+        mode,
+        editableExtensions,
         onSkillNodeDetails,
         onToolDetails,
       }),
-    [editableExtensions, isReadOnly, onSkillNodeDetails, onToolDetails]
+    [editableExtensions, mode, onSkillNodeDetails, onToolDetails]
   );
 
   // Track if initial content has been set
@@ -221,7 +224,7 @@ export function useSkillInstructionsEditor({
   const editor = useEditor(
     {
       extensions,
-      editable: !isReadOnly,
+      editable: mode === "editable",
       immediatelyRender: false,
       onUpdate,
       onBlur,
@@ -229,7 +232,7 @@ export function useSkillInstructionsEditor({
         ? ({ editor: editorInstance }) => onDelete(editorInstance)
         : undefined,
     },
-    [extensions, isReadOnly]
+    [extensions, mode]
   );
 
   const editorService = useEditorService(editor);

@@ -17,7 +17,7 @@ describe("skill instructions preprocessing", () => {
 
   it("preserves skill tags", () => {
     editor = new Editor({
-      extensions: buildSkillInstructionsExtensions(false),
+      extensions: buildSkillInstructionsExtensions(),
     });
 
     editor.commands.setContent(
@@ -46,7 +46,7 @@ describe("skill instructions preprocessing", () => {
     });
 
     editor = new Editor({
-      extensions: buildSkillInstructionsExtensions(false),
+      extensions: buildSkillInstructionsExtensions(),
     });
 
     editor.commands.setContent(preprocessMarkdownForEditor(`Use ${toolTag}.`), {
@@ -58,7 +58,7 @@ describe("skill instructions preprocessing", () => {
 
   it("preserves unavailable skill tags", () => {
     editor = new Editor({
-      extensions: buildSkillInstructionsExtensions(false),
+      extensions: buildSkillInstructionsExtensions(),
     });
 
     editor.commands.setContent(
