@@ -29,6 +29,7 @@ import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { invalidateAgentResourceCaches } from "@app/lib/resources/agent_resource_cache";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -639,6 +640,11 @@ export async function archiveAgentConfiguration(
     });
   }
 
+  if (updated[0] > 0) {
+    // The agent no longer has an active version, so drop its cached AgentResource.
+    await AgentResource.invalidateCache(owner.id, agentConfigurationId);
+  }
+
   const affectedCount = updated[0];
   return affectedCount > 0;
 }
@@ -711,6 +717,11 @@ export async function restoreAgentConfiguration(
       },
     }
   );
+
+  if (updated[0] > 0) {
+    // The restored version is active again, so the cached AgentResource is now stale.
+    await AgentResource.invalidateCache(owner.id, agentConfigurationId);
+  }
 
   // Re-enable triggers.
   if (updated[0] > 0) {
@@ -867,6 +878,9 @@ export async function destroyAgentConfigurationRow(
     lock: transaction.LOCK.UPDATE,
     transaction,
   });
+
+  // Deleting a row changes (or removes) the agent's current version; invalidate after commit.
+  await AgentResource.invalidateCache(workspaceId, agent.sId, transaction);
 
   const remainingConfiguration = await AgentConfigurationModel.findOne({
     where: { sId: agent.sId, workspaceId },
@@ -1055,6 +1069,13 @@ export async function batchHardDeletePendingAgentConfigurations(
       where: { id: agentModelIds, workspaceId },
       transaction: t,
     });
+
+    // Drop the deleted agents' cached entries once the deletion commits.
+    await invalidateAgentResourceCaches(
+      workspaceId,
+      agents.map((agent) => agent.sId),
+      t
+    );
   });
 }
 
