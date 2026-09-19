@@ -42,7 +42,6 @@ import type {
   ConversationType,
   UserMessageContext,
 } from "@app/types/assistant/conversation";
-import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isRichAgentMention } from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
 
@@ -89,12 +88,6 @@ describe("createAgentMessages", () => {
         conversation,
         content: `Hello @${agentConfig1.name}`,
       });
-
-    const _mentions: MentionType[] = [
-      {
-        configurationId: agentConfig1.sId,
-      } satisfies AgentMention,
-    ];
 
     const modelResolution = await resolveModelForMentionedAgent(auth, {
       configuration: agentConfig1,
@@ -201,12 +194,6 @@ describe("createAgentMessages", () => {
       content: `Hello @${agentConfig1.name}`,
     });
 
-    const _mentions: MentionType[] = [
-      {
-        configurationId: agentConfig1.sId,
-      } as AgentMention,
-    ];
-
     const modelResolution = await resolveModelForMentionedAgent(auth, {
       configuration: agentConfig1,
     });
@@ -255,12 +242,6 @@ describe("createAgentMessages", () => {
       agenticOriginMessageId: originMessageId,
     });
 
-    const _mentions: MentionType[] = [
-      {
-        configurationId: agentConfig1.sId,
-      } as AgentMention,
-    ];
-
     const modelResolution = await resolveModelForMentionedAgent(auth, {
       configuration: agentConfig1,
     });
@@ -304,12 +285,6 @@ describe("createAgentMessages", () => {
       content: `Hello @${agentConfig1.name}`,
       origin: "web",
     });
-
-    const _mentions: MentionType[] = [
-      {
-        configurationId: agentConfig1.sId,
-      } as AgentMention,
-    ];
 
     const modelResolution = await resolveModelForMentionedAgent(auth, {
       configuration: agentConfig1,
@@ -425,12 +400,6 @@ describe("createAgentMessages", () => {
       conversation: testConversation,
       content: `Hello @${agentConfig.name}`,
     });
-
-    const _mentions: MentionType[] = [
-      {
-        configurationId: agentConfig.sId,
-      } satisfies AgentMention,
-    ];
 
     // Get the updated agent configuration with requestedSpaceIds as sIds
     const agentConfigWithSpaces = await getAgentConfiguration(auth, {
@@ -558,12 +527,6 @@ describe("createAgentMessages", () => {
       content: `Hello @${agentConfig.name}`,
     });
 
-    const _mentions: MentionType[] = [
-      {
-        configurationId: agentConfig.sId,
-      } satisfies AgentMention,
-    ];
-
     // Agent has space1 and space2, conversation already has space1
     const agentConfigWithSpaces = await getAgentConfiguration(auth, {
       agentId: agentConfig.sId,
@@ -690,12 +653,6 @@ describe("createAgentMessages", () => {
       content: `Hello @${agentConfig.name}`,
     });
 
-    const _mentions: MentionType[] = [
-      {
-        configurationId: agentConfig.sId,
-      } satisfies AgentMention,
-    ];
-
     // Agent has the same spaces as conversation
     const agentConfigWithSpaces = await getAgentConfiguration(auth, {
       agentId: agentConfig.sId,
@@ -820,12 +777,6 @@ describe("createAgentMessages", () => {
         conversation: spaceConversation,
         content: `Hello @${agentConfig.name}`,
       });
-
-      const _mentions: MentionType[] = [
-        {
-          configurationId: agentConfig.sId,
-        } satisfies AgentMention,
-      ];
 
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
         configuration: updatedAgentConfig!,
@@ -977,12 +928,6 @@ describe("createAgentMessages", () => {
         content: `Hello @${agentConfig.name}`,
       });
 
-      const _mentions: MentionType[] = [
-        {
-          configurationId: agentConfig.sId,
-        } satisfies AgentMention,
-      ];
-
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
         userAuth,
         {
@@ -1124,12 +1069,6 @@ describe("createAgentMessages", () => {
         content: `Hello @${agentConfig.name}`,
       });
 
-      const _mentions: MentionType[] = [
-        {
-          configurationId: agentConfig.sId,
-        } satisfies AgentMention,
-      ];
-
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
         userAuth,
         {
@@ -1259,12 +1198,6 @@ describe("createAgentMessages", () => {
         conversation: spaceConversation,
         content: `Hello @${agentConfig.name}`,
       });
-
-      const _mentions: MentionType[] = [
-        {
-          configurationId: agentConfig.sId,
-        } satisfies AgentMention,
-      ];
 
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
         userAuth,
@@ -1423,12 +1356,6 @@ describe("createAgentMessages", () => {
         conversation: spaceConversation,
         content: `Hello @${agentConfig.name}`,
       });
-
-      const _mentions: MentionType[] = [
-        {
-          configurationId: agentConfig.sId,
-        } satisfies AgentMention,
-      ];
 
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
         userAuth,
