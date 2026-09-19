@@ -778,9 +778,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    */
   static async fetchAgentMessageCreditContext(
     auth: Authenticator,
-    { agentMessageId }: { agentMessageId: string }
+    {
+      agentMessageId,
+      rootAgentMessageId,
+    }: { agentMessageId: string; rootAgentMessageId?: string }
   ): Promise<{
     agentMessageModelId: ModelId;
+    rootAgentMessageModelId: ModelId | null;
     status: AgentMessageStatus;
     runIds: string[] | null;
     triggeringUserMessageOrigin: UserMessageOrigin | null;
@@ -803,6 +807,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const agentMessage = messageRow?.agentMessage;
     if (!agentMessage) {
       return null;
+    }
+
+    let rootAgentMessageModelId: ModelId | null = null;
+    if (rootAgentMessageId === agentMessageId) {
+      rootAgentMessageModelId = agentMessage.id;
+    } else if (rootAgentMessageId) {
+      const rootMessage = await MessageModel.findOne({
+        attributes: ["agentMessageId"],
+        where: { sId: rootAgentMessageId, workspaceId },
+      });
+      rootAgentMessageModelId = rootMessage?.agentMessageId ?? null;
     }
 
     let triggeringUserMessageOrigin: UserMessageOrigin | null = null;
@@ -829,6 +844,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     return {
       agentMessageModelId: agentMessage.id,
+      rootAgentMessageModelId,
       status: agentMessage.status,
       runIds: agentMessage.runIds,
       triggeringUserMessageOrigin,
