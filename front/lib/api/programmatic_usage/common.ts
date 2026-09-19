@@ -130,9 +130,8 @@ export type UsageAggregations = {
  * TODO: only needed because the legacy analytics index has no stored
  * usage_type field, unlike the newer consumption analytics index. Once that
  * legacy index is retired, delete this (and getShouldTrackTokenUsageCostsESFilter)
- * and repoint their remaining callers — daily_cap.ts, programmatic_cost.ts,
- * programmatic_cost_export.ts, observability/credit_usage.ts — at a stored
- * usage_type term query instead.
+ * and repoint their remaining callers — programmatic_cost.ts,
+ * programmatic_cost_export.ts — at a stored usage_type term query instead.
  */
 export function getProgrammaticUsageFilterClause(): estypes.QueryDslQueryContainer {
   return {

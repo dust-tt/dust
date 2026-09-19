@@ -1,16 +1,24 @@
+import {
+  COMPLETED_AT_FIELD,
+  CREDIT_MICRO_FIELD,
+} from "@app/lib/api/analytics/consumption/scope";
 import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import { resolveAnalyticsAgentLabels } from "@app/lib/api/assistant/observability/agent_labels";
 import {
-  buildCreditsScopeQuery,
-  MODEL_ID_FIELD,
+  buildConsumptionCreditsScopeQuery,
+  CONSUMPTION_CREDIT_GROUP_FIELDS,
   NOT_API_GROUP_KEY,
   NOT_API_GROUP_NAME,
 } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
-import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
-import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
+import {
+  bucketsToArray,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { microCreditsToCredits } from "@app/lib/credits/units";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { USAGE_TYPE_PROGRAMMATIC } from "@app/lib/metronome/constants";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { TopConversationCreditsRow } from "@app/types/api/credits/my_top_conversations";
@@ -104,32 +112,32 @@ type CreditUsageTypeAggs = {
 };
 
 const creditSubAggs = {
-  total_cost: { sum: { field: "cost.billable_awu" } },
+  total_cost: { sum: { field: CREDIT_MICRO_FIELD } },
 } satisfies Record<string, estypes.AggregationsAggregationContainer>;
 
+/**
+ * @cc [owner:sfriquet,label:product] credit-micro-converted-to-credits
+ * `credit_micro` sums are in micro-credits and MUST be converted here with
+ * `microCreditsToCredits`. Every credit figure this module returns is expressed
+ * in credits, so returning the raw Elasticsearch sum would overstate
+ * consumption by six orders of magnitude.
+ */
 function totalCreditsFromSlice(slice: CreditSlice): number {
-  return Math.round(slice.total_cost?.value ?? 0);
+  return Math.round(microCreditsToCredits(slice.total_cost?.value ?? 0));
 }
 
-function groupFieldFor(
-  groupBy: CreditBreakdownBy
-):
-  | "agent_id"
-  | "user_id"
-  | "context_origin"
-  | "api_key_name"
-  | typeof MODEL_ID_FIELD {
+function groupFieldFor(groupBy: CreditBreakdownBy): string {
   switch (groupBy) {
     case "agent":
-      return "agent_id";
+      return CONSUMPTION_CREDIT_GROUP_FIELDS.agent;
     case "user":
-      return "user_id";
+      return CONSUMPTION_CREDIT_GROUP_FIELDS.user;
     case "origin":
-      return "context_origin";
+      return CONSUMPTION_CREDIT_GROUP_FIELDS.origin;
     case "api_key":
-      return "api_key_name";
+      return CONSUMPTION_CREDIT_GROUP_FIELDS.api_key;
     case "model":
-      return MODEL_ID_FIELD;
+      return CONSUMPTION_CREDIT_GROUP_FIELDS.model;
     default:
       return assertNever(groupBy);
   }
@@ -235,7 +243,7 @@ function buildCreditDateHistogram({
 }): estypes.AggregationsAggregationContainer["date_histogram"] {
   const dateHistogram: estypes.AggregationsAggregationContainer["date_histogram"] =
     {
-      field: "timestamp",
+      field: COMPLETED_AT_FIELD,
       calendar_interval: granularity,
       time_zone: timezone,
     };
@@ -252,10 +260,10 @@ function buildCreditDateHistogram({
   };
 }
 
-// Sums the per-message billed AWU credits (cost.billable_awu) precomputed at index
-// time with the billing pipeline's conversion. Still an estimate vs the billed
-// figure on the usage page (indexing lag, docs indexed before the cost fields
-// shipped). Groups are ranked exactly by cost.billable_awu inside ES.
+// Sums `credit_micro` over the consumption units of the window. Each message's
+// units reconcile exactly to its authoritative billed charge, so this matches
+// the usage page up to indexing lag. Groups are ranked exactly by
+// `credit_micro` inside ES.
 export async function fetchCreditUsage(
   auth: Authenticator,
   {
@@ -295,7 +303,7 @@ export async function fetchCreditUsage(
     };
   }
 
-  const query = buildCreditsScopeQuery(auth, {
+  const query = buildConsumptionCreditsScopeQuery(auth, {
     startDate,
     endDate,
     contextOrigin,
@@ -312,10 +320,13 @@ export async function fetchCreditUsage(
         : [{ exists: { field: groupFieldFor(groupBy) } }],
   });
 
-  const result = await searchAnalytics<never, CreditUsageAggs>(query, {
-    aggregations,
-    size: 0,
-  });
+  const result = await searchConsumptionAnalytics<never, CreditUsageAggs>(
+    query,
+    {
+      aggregations,
+      size: 0,
+    }
+  );
 
   if (result.isErr()) {
     return result;
@@ -357,8 +368,8 @@ type TopConversationsAggs = {
   by_conversation?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
 };
 
-// Conversations ranked by summed per-message billed AWU credits (cost.billable_awu) over
-// the window. Same source and scope as fetchCreditUsage; scope to a user via
+// Conversations ranked by summed `credit_micro` over the window. Same source
+// and scope as fetchCreditUsage; scope to a user via
 // `userIds` so the ranking only counts that user's messages. Conversations
 // that can no longer be fetched (deleted, or the caller lost access) are
 // dropped since they cannot be linked to.
@@ -376,26 +387,29 @@ export async function fetchTopConversationsByCredits(
     userIds?: string[];
   }
 ): Promise<Result<TopConversationCreditsRow[], ElasticsearchError>> {
-  const query = buildCreditsScopeQuery(auth, {
+  const query = buildConsumptionCreditsScopeQuery(auth, {
     startDate,
     endDate,
     userIds,
     extraFilters: [{ exists: { field: "conversation_id" } }],
   });
 
-  const result = await searchAnalytics<never, TopConversationsAggs>(query, {
-    aggregations: {
-      by_conversation: {
-        terms: {
-          field: "conversation_id",
-          size: limit,
-          order: { total_cost: "desc" },
+  const result = await searchConsumptionAnalytics<never, TopConversationsAggs>(
+    query,
+    {
+      aggregations: {
+        by_conversation: {
+          terms: {
+            field: "conversation_id",
+            size: limit,
+            order: { total_cost: "desc" },
+          },
+          aggs: { ...creditSubAggs },
         },
-        aggs: { ...creditSubAggs },
       },
-    },
-    size: 0,
-  });
+      size: 0,
+    }
+  );
 
   if (result.isErr()) {
     return result;
@@ -460,7 +474,7 @@ export async function fetchCreditTimeseries(
     fillWindow?: boolean;
   }
 ): Promise<Result<CreditTimeseriesPoint[], ElasticsearchError>> {
-  const query = buildCreditsScopeQuery(auth, {
+  const query = buildConsumptionCreditsScopeQuery(auth, {
     startDate,
     endDate,
     contextOrigin,
@@ -471,21 +485,24 @@ export async function fetchCreditTimeseries(
     modelIds,
   });
 
-  const result = await searchAnalytics<never, CreditTimeseriesAggs>(query, {
-    aggregations: {
-      by_date: {
-        date_histogram: buildCreditDateHistogram({
-          granularity,
-          timezone,
-          startDate,
-          endDate,
-          fillWindow,
-        }),
-        aggs: { ...creditSubAggs },
+  const result = await searchConsumptionAnalytics<never, CreditTimeseriesAggs>(
+    query,
+    {
+      aggregations: {
+        by_date: {
+          date_histogram: buildCreditDateHistogram({
+            granularity,
+            timezone,
+            startDate,
+            endDate,
+            fillWindow,
+          }),
+          aggs: { ...creditSubAggs },
+        },
       },
-    },
-    size: 0,
-  });
+      size: 0,
+    }
+  );
 
   if (result.isErr()) {
     return result;
@@ -504,11 +521,9 @@ export async function fetchCreditTimeseries(
   );
 }
 
-// Credits over time split by usage type: Programmatic (API key / programmatic
-// origin, per getProgrammaticUsageFilterClause) vs User (everything else).
-// usage_type isn't a stored field, so it's derived with filter sub-aggs. Free
-// usage is already out of scope, so the two series partition the total. Same
-// source and scope as fetchCreditTimeseries.
+// Credits over time split by usage type: Programmatic vs User, read from the
+// stored `usage_type` field. Free usage is never indexed, so the two series
+// partition the total. Same source and scope as fetchCreditTimeseries.
 export async function fetchCreditTimeseriesByUsageType(
   auth: Authenticator,
   {
@@ -537,7 +552,7 @@ export async function fetchCreditTimeseriesByUsageType(
     fillWindow?: boolean;
   }
 ): Promise<Result<CreditUsageTypePoint[], ElasticsearchError>> {
-  const query = buildCreditsScopeQuery(auth, {
+  const query = buildConsumptionCreditsScopeQuery(auth, {
     startDate,
     endDate,
     contextOrigin,
@@ -548,32 +563,37 @@ export async function fetchCreditTimeseriesByUsageType(
     modelIds,
   });
 
-  const programmaticFilter = getProgrammaticUsageFilterClause();
+  const programmaticFilter: estypes.QueryDslQueryContainer = {
+    term: { usage_type: USAGE_TYPE_PROGRAMMATIC },
+  };
 
-  const result = await searchAnalytics<never, CreditUsageTypeAggs>(query, {
-    aggregations: {
-      by_date: {
-        date_histogram: buildCreditDateHistogram({
-          granularity,
-          timezone,
-          startDate,
-          endDate,
-          fillWindow,
-        }),
-        aggs: {
-          programmatic: {
-            filter: programmaticFilter,
-            aggs: { ...creditSubAggs },
-          },
-          user: {
-            filter: { bool: { must_not: [programmaticFilter] } },
-            aggs: { ...creditSubAggs },
+  const result = await searchConsumptionAnalytics<never, CreditUsageTypeAggs>(
+    query,
+    {
+      aggregations: {
+        by_date: {
+          date_histogram: buildCreditDateHistogram({
+            granularity,
+            timezone,
+            startDate,
+            endDate,
+            fillWindow,
+          }),
+          aggs: {
+            programmatic: {
+              filter: programmaticFilter,
+              aggs: { ...creditSubAggs },
+            },
+            user: {
+              filter: { bool: { must_not: [programmaticFilter] } },
+              aggs: { ...creditSubAggs },
+            },
           },
         },
       },
-    },
-    size: 0,
-  });
+      size: 0,
+    }
+  );
 
   if (result.isErr()) {
     return result;
@@ -654,7 +674,7 @@ export async function fetchCreditTimeseriesBreakdown(
   }
 
   const groupKeys = groups.map((group) => group.groupKey);
-  const query = buildCreditsScopeQuery(auth, {
+  const query = buildConsumptionCreditsScopeQuery(auth, {
     startDate,
     endDate,
     contextOrigin,
@@ -665,34 +685,34 @@ export async function fetchCreditTimeseriesBreakdown(
     modelIds,
   });
 
-  const result = await searchAnalytics<never, CreditTimeseriesBreakdownAggs>(
-    query,
-    {
-      aggregations: {
-        by_date: {
-          date_histogram: buildCreditDateHistogram({
-            granularity,
-            timezone,
-            startDate,
-            endDate,
-            fillWindow,
-          }),
-          aggs: {
-            ...creditSubAggs,
-            by_group: {
-              terms: {
-                ...groupTermsAggFor(breakdownBy),
-                include: groupKeys,
-                size: groupKeys.length,
-              },
-              aggs: { ...creditSubAggs },
+  const result = await searchConsumptionAnalytics<
+    never,
+    CreditTimeseriesBreakdownAggs
+  >(query, {
+    aggregations: {
+      by_date: {
+        date_histogram: buildCreditDateHistogram({
+          granularity,
+          timezone,
+          startDate,
+          endDate,
+          fillWindow,
+        }),
+        aggs: {
+          ...creditSubAggs,
+          by_group: {
+            terms: {
+              ...groupTermsAggFor(breakdownBy),
+              include: groupKeys,
+              size: groupKeys.length,
             },
+            aggs: { ...creditSubAggs },
           },
         },
       },
-      size: 0,
-    }
-  );
+    },
+    size: 0,
+  });
 
   if (result.isErr()) {
     return result;

@@ -1,3 +1,8 @@
+import {
+  AGENT_TAG_IDS_FIELD,
+  COMPLETED_AT_FIELD,
+  CONSUMPTION_DIMENSION_FIELDS,
+} from "@app/lib/api/analytics/consumption/scope";
 import { contextOriginFilter } from "@app/lib/api/assistant/observability/context_origin";
 import type { Authenticator } from "@app/lib/auth";
 import { FREE_ORIGINS } from "@app/lib/metronome/events";
@@ -38,6 +43,13 @@ export const NOT_API_GROUP_NAME = "Not API";
 
 // Model that actually ran the message, resolved at message creation.
 export const MODEL_ID_FIELD = "model.model_id";
+
+// Agent that executed the message on the consumption index, the counterpart of
+// the legacy index's `agent_id`. Deliberately not
+// `CONSUMPTION_DIMENSION_FIELDS.agent` (`agent.attributed_id`), which rolls
+// hidden helper agents up to their user-facing parent: that is a grouping
+// change, not a field rename.
+const CONSUMPTION_AGENT_ID_FIELD = "agent.id";
 
 // api_key_name is only set on API-key authenticated messages. The sentinel
 // selects everything else (missing field), so a mixed selection becomes a
@@ -147,17 +159,27 @@ export function buildAgentAnalyticsBaseQuery({
   };
 }
 
-// Workspace query scoped to the window, with free origins excluded. No status
-// filter: credit sums use `cost.billable_awu`, which already encodes the billed
-// amount per execution (a failed-terminal message contributes only its non-error
-// executions' work, 0 when the only/last execution errored), so it matches
-// Metronome without excluding `failed` docs — and, unlike a status filter, it
-// keeps the non-error work of failed multi-execution messages. Shared by the
-// credit fetchers (timeseries, breakdown, per-user and per-agent tables) so the
-// scope stays identical across them. `extraFilters` / `extraMustNot` carry
-// per-caller constraints (e.g. requiring an agent_id, or excluding the
-// programmatic "unknown" user).
-export function buildCreditsScopeQuery(
+// Workspace-scoped credit query over the consumption index: the window, the
+// dashboard filters and the free-origin exclusion the credit fetchers share.
+// Built on the consumption fields rather than parameterizing
+// `buildAgentAnalyticsBaseQuery` by field name, because that builder is still
+// shared with the legacy-index readers (`messages_export`,
+// `datasource_retrieval`).
+//
+// No status filter: `credit_micro` already encodes the billed amount per
+// consumption unit, so a failed message contributes only the work that was
+// actually charged. The free-origin exclusion is redundant with the pipeline,
+// which never indexes `USAGE_TYPE_FREE` usage, but keeps the scope explicit and
+// identical to the legacy query it replaces.
+/**
+ * @cc [owner:sfriquet,label:product] credits-scope-excludes-free-origins
+ * The returned query MUST exclude documents whose `context_origin` is one of
+ * `FREE_ORIGINS`, and MUST NOT constrain document `status`. `credit_micro`
+ * already carries the billed amount of each consumption unit, so a status
+ * filter would drop work that was actually charged on messages that later
+ * failed.
+ */
+export function buildConsumptionCreditsScopeQuery(
   auth: Authenticator,
   {
     startDate,
@@ -183,20 +205,19 @@ export function buildCreditsScopeQuery(
     extraMustNot?: estypes.QueryDslQueryContainer[];
   }
 ): estypes.QueryDslQueryContainer {
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: auth.getNonNullableWorkspace().sId,
-    startDate,
-    endDate,
-    contextOrigin,
-    agentIds,
-    userIds,
-    apiKeyNames,
-    agentTagIds,
-    modelIds,
-  });
   return {
     bool: {
-      filter: [baseQuery, ...extraFilters],
+      filter: [
+        { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
+        ...termFilter(CONSUMPTION_AGENT_ID_FIELD, agentIds),
+        ...termFilter(AGENT_TAG_IDS_FIELD, agentTagIds),
+        ...termFilter(CONSUMPTION_DIMENSION_FIELDS.user, userIds),
+        ...apiKeyNamesFilter(apiKeyNames),
+        ...contextOriginFilter(contextOrigin),
+        ...termFilter(MODEL_ID_FIELD, modelIds),
+        { range: { [COMPLETED_AT_FIELD]: { gte: startDate, lte: endDate } } },
+        ...extraFilters,
+      ],
       must_not: [
         { terms: { context_origin: [...FREE_ORIGINS] } },
         ...extraMustNot,
@@ -204,3 +225,24 @@ export function buildCreditsScopeQuery(
     },
   };
 }
+
+// Field the consumption index carries for each grouping dimension the credit
+// dashboards offer. `agent` and `origin` intentionally mirror the legacy
+// fields (`agent.id`, `context_origin`) rather than the consumption module's
+// analytics conventions (`agent.attributed_id`, `normalized_origin`), so the
+// index swap does not silently change how rows are grouped.
+/**
+ * @cc [owner:sfriquet,label:product] credit-grouping-mirrors-legacy-dimensions
+ * The `agent` dimension MUST group on the executing agent (`agent.id`) and the
+ * `origin` dimension on the raw `context_origin`. Repointing them at the
+ * consumption module's `agent.attributed_id` or `normalized_origin` changes
+ * which rows the dashboards merge together, and is a product change rather
+ * than an alignment refactor.
+ */
+export const CONSUMPTION_CREDIT_GROUP_FIELDS = {
+  agent: CONSUMPTION_AGENT_ID_FIELD,
+  user: CONSUMPTION_DIMENSION_FIELDS.user,
+  origin: "context_origin",
+  api_key: "api_key_name",
+  model: MODEL_ID_FIELD,
+} as const;
