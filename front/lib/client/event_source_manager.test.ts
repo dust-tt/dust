@@ -40,6 +40,7 @@ describe("EventSourceManager", () => {
 
   afterEach(() => {
     setSseVerbose(false);
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -407,6 +408,61 @@ describe("EventSourceManager", () => {
     await vi.waitFor(() => expect(sources).toHaveLength(2));
     sources[1].onopen?.({ type: "open", target: sources[1] });
     sources[1].emitMessage("done");
+    expect(states.at(-1)?.kind).toBe("failed");
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("keeps reconnecting after planned idle rollovers", async () => {
+    vi.useFakeTimers();
+    const sources: FakeEventSource[] = [];
+    const states: EventSourceConnectionState[] = [];
+    const manager = new EventSourceManager(
+      async (url) => {
+        const source = new FakeEventSource(url);
+        sources.push(source);
+        return source;
+      },
+      () => 0,
+      {
+        maxReconnectAttempts: 2,
+        reconnectDelayBaseMs: 1_000,
+        reconnectDelayJitterMs: 0,
+      }
+    );
+    manager.subscribe({
+      streamId: "conversation-c_1",
+      config: {
+        buildURL: () => "/events",
+        replayBufferedEventsOnSubscribe: false,
+        restartKey: "conversation-c_1",
+        workspaceId: "w_1",
+      },
+      subscriber: {
+        onEvent: vi.fn(),
+        onStateChange: (state) => states.push(state),
+      },
+      keepAliveWithoutSubscribers: false,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    sources[0].onopen?.({ type: "open", target: sources[0] });
+
+    for (let rollover = 0; rollover < 3; rollover++) {
+      await vi.advanceTimersByTimeAsync(180_000);
+      sources[rollover].emitMessage("done");
+      expect(states.at(-1)?.kind).toBe("reconnecting");
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(sources).toHaveLength(rollover + 2);
+      sources[rollover + 1].onopen?.({
+        type: "open",
+        target: sources[rollover + 1],
+      });
+    }
+
+    sources[3].onerror?.({ type: "error", target: sources[3] });
+    expect(states.at(-1)?.kind).toBe("reconnecting");
+    await vi.advanceTimersByTimeAsync(1_000);
+    sources[4].onopen?.({ type: "open", target: sources[4] });
+    sources[4].onerror?.({ type: "error", target: sources[4] });
     expect(states.at(-1)?.kind).toBe("failed");
     manager.releaseWorkspace("w_1");
   });
