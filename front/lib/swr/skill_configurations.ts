@@ -15,6 +15,9 @@ import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
   GetSkillWithRelationsResponseBody,
+  SearchSkillsResponseBody,
+  SkillSearchFilters,
+  SkillSearchPermissionFiltering,
 } from "@app/types/api/skills";
 import type { ImportSkillsResponseBody } from "@app/types/api/skills/detection/github/import_skills";
 import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
@@ -30,12 +33,13 @@ import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
 const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
+const SEARCH_SKILLS_DEBOUNCE_MS = 250;
 
 export function useSkill(options: {
   workspaceId: string;
@@ -174,6 +178,79 @@ export function useSkills({
     isSkillsError: !!error,
     isSkillsLoading: isLoading,
     mutateSkills: mutate,
+  };
+}
+
+export function useSearchSkills({
+  owner,
+  searchTerm,
+  cursor,
+  limit,
+  permissionFiltering,
+  filters,
+  disabled,
+  swrOptions,
+}: {
+  owner: LightWorkspaceType;
+  searchTerm: string;
+  cursor?: SearchSkillsResponseBody["nextCursor"];
+  limit?: number;
+  permissionFiltering?: SkillSearchPermissionFiltering;
+  filters?: SkillSearchFilters;
+  disabled?: boolean;
+  swrOptions?: SWRConfiguration;
+}) {
+  const { fetcherWithBody } = useFetcher();
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+
+  // Debounce the external request. Never mix scores from the previous query
+  // with current-query tool scores while this timer or the request is pending.
+  useEffect(() => {
+    const timeout = setTimeout(
+      () => setDebouncedSearchTerm(searchTerm),
+      SEARCH_SKILLS_DEBOUNCE_MS
+    );
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
+
+  const body = {
+    query: debouncedSearchTerm.slice(0, 200),
+    cursor,
+    limit,
+    permissionFiltering,
+    ...filters,
+  };
+  const skillsFetcher: Fetcher<
+    SearchSkillsResponseBody,
+    [string, typeof body, string]
+  > = fetcherWithBody;
+  const { data, error, isValidating } = useSWRWithDefaults(
+    [`/api/w/${owner.sId}/skills/search`, body, "POST"],
+    skillsFetcher,
+    {
+      ...swrOptions,
+      disabled,
+      keepPreviousData: false,
+    }
+  );
+
+  return {
+    skills:
+      searchTerm === debouncedSearchTerm && !disabled
+        ? (data?.skills ??
+          emptyArray<SearchSkillsResponseBody["skills"][number]>())
+        : emptyArray<SearchSkillsResponseBody["skills"][number]>(),
+    hasMore:
+      searchTerm === debouncedSearchTerm &&
+      !disabled &&
+      (data?.hasMore ?? false),
+    nextCursor:
+      searchTerm === debouncedSearchTerm ? (data?.nextCursor ?? null) : null,
+    isSkillsError: !!error,
+    isSkillsLoading:
+      !disabled &&
+      (searchTerm !== debouncedSearchTerm ||
+        (!error && (!data || isValidating))),
   };
 }
 
