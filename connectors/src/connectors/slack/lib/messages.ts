@@ -7,6 +7,7 @@ import {
   EMPTY_SECTION,
   formatSlackMessageForLLM,
 } from "@connectors/connectors/slack/lib/message_formatter";
+import { processMessageForMentions } from "@connectors/connectors/slack/lib/message_mentions";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
 import { formatDateForUpsert } from "@connectors/lib/formatting";
@@ -15,69 +16,43 @@ import { safeSubstring } from "@connectors/types";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 
-async function processMessageForMentions(
-  message: string,
-  connectorId: ModelId,
-  slackClient: WebClient
-): Promise<string> {
-  const matches = message.match(/<@[A-Z-0-9]+>/g);
-  if (!matches) {
-    return message;
-  }
-  for (const m of matches) {
-    const userId = m.replace(/<|@|>/g, "");
-    const { name: userName } = await getUserInfo(
-      userId,
-      connectorId,
-      slackClient
-    );
-    if (!userName) {
-      continue;
-    }
-
-    message = message.replace(m, `@${userName}`);
-  }
-
-  return message;
-}
-
-// Single entry point to turn a Slack message into its upsert body text: resolves
-// mentions, splits forwarded (unfurl) attachments from regular ones, reconstructs
-// the content from text/blocks/attachments/files, and appends forwarded messages.
+// Single entry point to turn a Slack message into its upsert body text: renders the
+// content (blocks first, top-level `text` as a fallback), appends forwarded (unfurl)
+// messages, then resolves the mention tokens left in the assembled body.
 async function formatSlackMessageBody(
   message: MessageElement,
   connectorId: ModelId,
   slackClient: WebClient
 ): Promise<string> {
-  const text = await processMessageForMentions(
-    message.text ?? "",
-    connectorId,
-    slackClient
-  );
-
   const { nonUnfurlAttachments, forwardedMessagesText } = splitSlackAttachments(
     message.attachments
   );
 
   const formatted = formatSlackMessageForLLM({
-    text,
+    text: message.text,
     blocks: message.blocks,
     attachments: nonUnfurlAttachments,
     files: message.files,
   });
 
-  // `content` has a single text slot, so flatten the reconstructed sections into
-  // one string, dropping the ones the formatter marked empty.
-  const body = [
-    formatted.text,
-    formatted.blocks,
-    formatted.attachments,
-    formatted.files,
-  ]
+  // `blocks` is the authoritative content of a Slack message; the top-level `text` is
+  // Slack's fallback rendering of the same thing, so rendering both would duplicate it.
+  // We render the blocks and only fall back to `text` when the message has none (rare bot
+  // alerts). Attachments (content cards, link previews) render alongside either way.
+  const mainContent =
+    formatted.blocks !== EMPTY_SECTION ? formatted.blocks : formatted.text;
+
+  // `content` has a single text slot, so flatten the sections into one string,
+  // dropping the ones the formatter marked empty.
+  const body = [mainContent, formatted.attachments, formatted.files]
     .filter((s) => s !== EMPTY_SECTION)
     .join("\n");
 
-  return forwardedMessagesText ? `${body}\n${forwardedMessagesText}` : body;
+  const assembled = forwardedMessagesText
+    ? `${body}\n${forwardedMessagesText}`
+    : body;
+
+  return processMessageForMentions(assembled, connectorId, slackClient);
 }
 
 export async function formatMessagesForUpsert({
