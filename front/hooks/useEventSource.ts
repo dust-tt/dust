@@ -5,7 +5,10 @@ import { useEffect, useRef, useState } from "react";
 
 interface UseEventSourceOptions {
   workspaceId: string;
+  buildLongPollURL?: (lastEvent: string | null) => string | null;
+  getEventId?: (event: string) => string;
   isReadyToConsumeStream?: boolean;
+  isPauseEvent?: (event: string) => boolean;
   isTerminalEvent?: (event: string) => boolean;
   onTerminalError?: (error: Error) => void;
   headers?: Record<string, string>;
@@ -21,7 +24,10 @@ export function useEventSource(
   streamId: string,
   {
     workspaceId,
+    buildLongPollURL,
+    getEventId,
     isReadyToConsumeStream = true,
+    isPauseEvent,
     isTerminalEvent,
     onTerminalError,
     headers,
@@ -31,11 +37,15 @@ export function useEventSource(
     telemetryContext,
   }: UseEventSourceOptions
 ) {
+  const hasLongPollFallback = Boolean(buildLongPollURL && getEventId);
   const [connectionState, setConnectionState] =
     useState<EventSourceConnectionState>({ kind: "idle" });
   const [isError, setIsError] = useState<Error | null>(null);
   const buildURLRef = useRef(buildURL);
+  const buildLongPollURLRef = useRef(buildLongPollURL);
+  const getEventIdRef = useRef(getEventId);
   const onEventCallbackRef = useRef(onEventCallback);
+  const isPauseEventRef = useRef(isPauseEvent);
   const isTerminalEventRef = useRef(isTerminalEvent);
   const onTerminalErrorRef = useRef(onTerminalError);
   const headersRef = useRef(headers);
@@ -43,14 +53,20 @@ export function useEventSource(
 
   useEffect(() => {
     buildURLRef.current = buildURL;
+    buildLongPollURLRef.current = buildLongPollURL;
+    getEventIdRef.current = getEventId;
     onEventCallbackRef.current = onEventCallback;
+    isPauseEventRef.current = isPauseEvent;
     isTerminalEventRef.current = isTerminalEvent;
     onTerminalErrorRef.current = onTerminalError;
     headersRef.current = headers;
     telemetryContextRef.current = telemetryContext;
   }, [
     buildURL,
+    buildLongPollURL,
+    getEventId,
     headers,
+    isPauseEvent,
     isTerminalEvent,
     onEventCallback,
     onTerminalError,
@@ -68,8 +84,15 @@ export function useEventSource(
       streamId,
       config: {
         workspaceId,
+        buildLongPollURL: hasLongPollFallback
+          ? (lastEvent) => buildLongPollURLRef.current?.(lastEvent) ?? null
+          : undefined,
         buildURL: (lastEvent) => buildURLRef.current(lastEvent),
+        getEventId: hasLongPollFallback
+          ? (event) => getEventIdRef.current?.(event) ?? ""
+          : undefined,
         headers: headersRef.current,
+        isPauseEvent: (event) => isPauseEventRef.current?.(event) ?? false,
         isTerminalEvent: (event) =>
           isTerminalEventRef.current?.(event) ?? false,
         replayBufferedEventsOnSubscribe: replayBufferedEventsOnMount,
@@ -87,6 +110,7 @@ export function useEventSource(
       keepAliveWithoutSubscribers: keepAliveOnUnmount,
     });
   }, [
+    hasLongPollFallback,
     isReadyToConsumeStream,
     keepAliveOnUnmount,
     replayBufferedEventsOnMount,

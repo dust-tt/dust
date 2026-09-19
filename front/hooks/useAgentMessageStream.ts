@@ -11,7 +11,11 @@ import { useEventSource } from "@app/hooks/useEventSource";
 import type { AgentLoopToolNotificationEvent } from "@app/lib/actions/mcp";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import { isTerminalAgentLoopEvent } from "@app/lib/client/agent_loop_stream";
+import {
+  getAgentLoopEventId,
+  isLastBlockingAgentLoopEvent,
+  isTerminalAgentLoopEvent,
+} from "@app/lib/client/agent_loop_stream";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   InlineActivityStep,
@@ -354,6 +358,16 @@ export function useAgentMessageStream({
       }
 
       return esURL + "?lastEventId=" + lastEventId;
+    },
+    [conversationId, sId, owner.sId]
+  );
+
+  const buildLongPollURL = useCallback(
+    (lastEvent: string | null) => {
+      if (isStreamTerminated.current) {
+        return null;
+      }
+      return `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events/poll?lastEventId=${getAgentLoopEventId(lastEvent)}`;
     },
     [conversationId, sId, owner.sId]
   );
@@ -795,6 +809,9 @@ export function useAgentMessageStream({
     `message-${sId}`,
     {
       workspaceId: owner.sId,
+      buildLongPollURL,
+      getEventId: getAgentLoopEventId,
+      isPauseEvent: isLastBlockingAgentLoopEvent,
       isReadyToConsumeStream: shouldStream,
       isTerminalEvent: isTerminalAgentLoopEvent,
       keepAliveOnUnmount: true,
