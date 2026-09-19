@@ -1333,7 +1333,7 @@
     "/api/v1/w/{wId}/assistant/conversations/{cId}/events": {
       "get": {
         "summary": "Get the events for a conversation",
-        "description": "Get the events for a conversation in the workspace identified by {wId}.",
+        "description": "Stream conversation events for the workspace identified by {wId} using Server-Sent Events (SSE).\nThe stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed event frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.\n",
         "tags": [
           "Conversations"
         ],
@@ -1360,7 +1360,7 @@
             "in": "query",
             "name": "lastEventId",
             "required": false,
-            "description": "ID of the last event",
+            "description": "Redis stream ID of the last received conversation event. Omit or pass an empty value to start from the available history.",
             "schema": {
               "type": "string"
             }
@@ -1373,7 +1373,28 @@
         ],
         "responses": {
           "200": {
-            "description": "Events for the conversation, view the \"Events\" page from this documentation for more information."
+            "description": "SSE event stream with a named handshake followed by unnamed conversation frames. Each conversation frame contains JSON with `eventId` and `data` fields. The `data` field is the conversation event. View the \"Events\" page from this documentation for more information.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "eventId",
+                    "data"
+                  ],
+                  "properties": {
+                    "eventId": {
+                      "type": "string",
+                      "description": "Redis stream ID used as the resume cursor."
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "Conversation event discriminated by its type field."
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request. Missing or invalid parameters."
@@ -2054,7 +2075,7 @@
     "/api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events": {
       "get": {
         "summary": "Get events for a message",
-        "description": "Get events for a message in the workspace identified by {wId}.",
+        "description": "Stream events for a message in the workspace identified by {wId} using Server-Sent Events (SSE).\nThe stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed message frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.\n",
         "tags": [
           "Conversations"
         ],
@@ -2089,7 +2110,8 @@
           {
             "in": "query",
             "name": "lastEventId",
-            "description": "ID of the last event received",
+            "required": false,
+            "description": "Redis stream ID of the last received message event. Omit or pass an empty value to start from the available history.",
             "schema": {
               "type": "string"
             }
@@ -2102,30 +2124,23 @@
         ],
         "responses": {
           "200": {
-            "description": "The events",
+            "description": "SSE event stream with a named handshake followed by unnamed message frames. The JSON `data` field in each message frame contains the event, discriminated by `type`.",
             "content": {
-              "application/json": {
+              "text/event-stream": {
                 "schema": {
                   "type": "object",
+                  "required": [
+                    "eventId",
+                    "data"
+                  ],
                   "properties": {
-                    "events": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "description": "ID of the event"
-                          },
-                          "type": {
-                            "type": "string",
-                            "description": "Type of the event"
-                          },
-                          "data": {
-                            "$ref": "#/components/schemas/Message"
-                          }
-                        }
-                      }
+                    "eventId": {
+                      "type": "string",
+                      "description": "Redis stream ID used as the resume cursor."
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "Agent message event discriminated by its type field."
                     }
                   }
                 }
@@ -3040,7 +3055,7 @@
     "/api/v1/w/{wId}/mcp/requests": {
       "get": {
         "summary": "Stream MCP tool requests for a workspace",
-        "description": "[Documentation](https://docs.dust.tt/docs/client-side-mcp-server)\nServer-Sent Events (SSE) endpoint that streams MCP tool requests for a workspace.\nThis endpoint is used by client-side MCP servers to listen for tool requests in real-time.\nThe connection will remain open and events will be sent as new tool requests are made.\n",
+        "description": "[Documentation](https://docs.dust.tt/docs/client-side-mcp-server)\nServer-Sent Events (SSE) endpoint that streams MCP tool requests for a workspace.\nThis endpoint is used by client-side MCP servers to listen for tool requests in real-time.\nEvents arrive as new tool requests are made. Reconnect with `lastEventId` after the stream closes to continue receiving events.\nThe stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed request frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.\n",
         "tags": [
           "MCP"
         ],
@@ -3072,7 +3087,7 @@
             "in": "query",
             "name": "lastEventId",
             "required": false,
-            "description": "ID of the last event to filter events for",
+            "description": "Redis stream ID of the last received request event. Omit to start from the available history.",
             "schema": {
               "type": "string"
             }
@@ -3080,15 +3095,19 @@
         ],
         "responses": {
           "200": {
-            "description": "Connection established successfully. Events will be streamed in Server-Sent Events format.\nEach event will contain a tool request that needs to be processed by the MCP server.\n",
+            "description": "SSE event stream with a named handshake followed by unnamed request frames. The JSON `data` field in each request frame contains the tool request.\n",
             "content": {
               "text/event-stream": {
                 "schema": {
                   "type": "object",
+                  "required": [
+                    "eventId",
+                    "data"
+                  ],
                   "properties": {
-                    "type": {
+                    "eventId": {
                       "type": "string",
-                      "description": "Type of the event (e.g. \"tool_request\")"
+                      "description": "Redis stream ID used as the resume cursor."
                     },
                     "data": {
                       "type": "object",

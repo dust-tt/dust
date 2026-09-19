@@ -15,7 +15,7 @@ const app = workspaceApp();
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events/poll:
  *   get:
  *     summary: Poll message events
- *     description: Wait for agent-message events after the supplied Redis stream event ID. The request returns when events are available or after 25 seconds. If the message has ended and no later events remain, it returns an end-of-stream event.
+ *     description: Wait up to 25 seconds for events after the supplied Redis stream event ID. Returns an empty array when a non-terminal message has no newer events, or a serialized end-of-stream event when the message has ended with no newer events. A closed channel may return before the timeout.
  *     tags:
  *       - Private Events
  *     parameters:
@@ -37,6 +37,7 @@ const app = workspaceApp();
  *       - in: query
  *         name: lastEventId
  *         required: false
+ *         description: Redis stream ID of the last received message event. Omit or pass an empty value to start from the available history.
  *         schema:
  *           type: string
  *     security:
@@ -47,14 +48,7 @@ const app = workspaceApp();
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               required: [events]
- *               properties:
- *                 events:
- *                   type: array
- *                   items:
- *                     type: string
- *                     description: Serialized message event in the same format as the SSE data payload.
+ *               $ref: '#/components/schemas/PrivateAgentMessageEventsPollResponse'
  *       400:
  *         description: The requested message is not an agent message
  *       401:
