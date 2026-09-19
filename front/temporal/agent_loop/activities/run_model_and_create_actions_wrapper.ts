@@ -1,4 +1,9 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import {
+  hasCrossedCreditSpendCheckpoint,
+  hasReachedCreditSpendCheckpoint,
+  isExemptFromCreditSpendCheckpoint,
+} from "@app/lib/api/assistant/credit_spend_checkpoint";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -34,6 +39,7 @@ import type {
   AgentLoopRuntimeData,
 } from "@app/types/assistant/agent_run";
 import { isAgentLoopDataSoftDeleteError } from "@app/types/assistant/agent_run";
+import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
@@ -44,6 +50,7 @@ export type RunModelAndCreateActionsResult = {
   // The model returned nothing at all: the loop should run one more step with
   // tool use disabled to force a final answer.
   retryWithoutTools?: boolean;
+  creditSpendCheckpointCrossed?: boolean;
 };
 
 const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
@@ -244,7 +251,18 @@ async function _runModelAndCreateActionsActivity({
     return null;
   }
 
-  // Tool test run: bypass LLM and directly execute tool commands.
+  const creditSpendCheckpointCrossed = await getCreditSpendCheckpointCrossed(
+    auth,
+    {
+      isRootAgentMessage,
+      userMessageOrigin: runAgentArgs.userMessageOrigin ?? null,
+      agentMessageId: runAgentArgs.agentMessageId,
+      totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
+    }
+  );
+
+  // Tool test run: bypass LLM and directly execute tool commands. The command result does not
+  // carry the checkpoint flag: a test run never pauses.
   if (featureFlags.includes("run_tools_from_prompt")) {
     const result = await handlePromptCommand(auth, runAgentData, step, runIds);
     if (result !== "not_a_command") {
@@ -264,6 +282,7 @@ async function _runModelAndCreateActionsActivity({
       return {
         actionBlobs: existingData.actionBlobs,
         runId: null,
+        creditSpendCheckpointCrossed,
       };
     }
   }
@@ -299,7 +318,12 @@ async function _runModelAndCreateActionsActivity({
   // Generation completed (text response, no tool calls) — runModel returns
   // { actions: [], runId } so we still capture the runId for tracking.
   if (actions.length === 0) {
-    return { runId, actionBlobs: [], retryWithoutTools };
+    return {
+      runId,
+      actionBlobs: [],
+      retryWithoutTools,
+      creditSpendCheckpointCrossed,
+    };
   }
 
   // Enforce a limit on actions per step, reducing by depth (8/8/4/2)
@@ -339,7 +363,52 @@ async function _runModelAndCreateActionsActivity({
   return {
     runId,
     actionBlobs: createResult.actionBlobs,
+    creditSpendCheckpointCrossed,
   };
+}
+
+/**
+ * Whether the agent loop must pause here for the user to confirm continuing. Reads the agent
+ * message's checkpoint status only when the cheap, in-memory checks (exemption, root message,
+ * pre-step spend) don't already rule it out.
+ */
+export async function getCreditSpendCheckpointCrossed(
+  auth: Authenticator,
+  {
+    isRootAgentMessage,
+    userMessageOrigin,
+    agentMessageId,
+    totalCostMicroUsd,
+  }: {
+    isRootAgentMessage: boolean;
+    userMessageOrigin: UserMessageOrigin | null;
+    agentMessageId: string;
+    totalCostMicroUsd: number;
+  }
+): Promise<boolean> {
+  const isExempt = isExemptFromCreditSpendCheckpoint(auth, {
+    userMessageOrigin,
+  });
+
+  if (
+    isExempt ||
+    !isRootAgentMessage ||
+    !hasReachedCreditSpendCheckpoint({ totalCostMicroUsd })
+  ) {
+    return false;
+  }
+
+  const status =
+    await ConversationResource.fetchAgentMessageCreditSpendCheckpointStatus(
+      auth,
+      { agentMessageId }
+    );
+
+  return hasCrossedCreditSpendCheckpoint({
+    isExempt,
+    isRootAgentMessage,
+    status,
+  });
 }
 
 async function publishAgentLoopGuardrailExceededError(

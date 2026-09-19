@@ -35,6 +35,7 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageStatus,
+  AgentMessageType,
   CompactionMessageStatus,
   ConversationForkedChildType,
   ConversationForkedFromType,
@@ -834,6 +835,52 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       triggeringUserMessageAuthMethod,
       previousCostCredits: agentMessage.costCredits,
     };
+  }
+
+  /**
+   * Loads the agent message's credit spend checkpoint status. Returns null when the message
+   * cannot be found (the caller must then not pause).
+   */
+  static async fetchAgentMessageCreditSpendCheckpointStatus(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<AgentMessageModel["creditSpendCheckpointStatus"] | null> {
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+
+    const agentMessageRow = await MessageModel.findOne({
+      where: { sId: agentMessageId, workspaceId: workspaceModelId },
+      attributes: ["id"],
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["creditSpendCheckpointStatus"],
+        },
+      ],
+    });
+
+    return agentMessageRow?.agentMessage?.creditSpendCheckpointStatus ?? null;
+  }
+
+  static async markAgentMessageCreditSpendCheckpointPaused(
+    auth: Authenticator,
+    { agentMessage }: { agentMessage: AgentMessageType }
+  ): Promise<void> {
+    if (agentMessage.status !== "created") {
+      return;
+    }
+
+    await AgentMessageModel.update(
+      { creditSpendCheckpointStatus: "paused" },
+      {
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: "created",
+        },
+      }
+    );
   }
 
   /**

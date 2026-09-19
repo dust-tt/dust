@@ -175,6 +175,7 @@ const {
   finalizeCancelledAgentLoopActivity,
   finalizeInterruptedAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
+  finalizeCreditSpendCheckpointPausedAgentLoopActivity,
 } = proxyActivities<typeof finalizeActivities>({
   startToCloseTimeout: "1 minute",
 });
@@ -276,6 +277,10 @@ export async function agentLoopWorkflow({
   // Credit stop: the per-step gate found the workspace pool exhausted.
   let creditStopRequested = false;
 
+  // Credit spend checkpoint pause: this message's own spend reached the threshold at which we
+  // ask the user whether to continue.
+  let creditSpendCheckpointPaused = false;
+
   const runIds: string[] = [];
   const ongoingAgentLoop =
     authType.userId !== null && patched("track-user-agent-loops-in-redis")
@@ -316,18 +321,22 @@ export async function agentLoopWorkflow({
 
         const stepStartTime = Date.now();
 
-        const { runId, shouldContinue, retryWithoutTools } =
-          await executeStepIteration({
-            authType,
-            agentLoopArgs: {
-              ...agentLoopArgs,
-              initialStartTime,
-            },
-            currentStep,
-            runIds,
-            startStep,
-            forceDisableToolUse,
-          });
+        const {
+          runId,
+          shouldContinue,
+          retryWithoutTools,
+          creditSpendCheckpointCrossed,
+        } = await executeStepIteration({
+          authType,
+          agentLoopArgs: {
+            ...agentLoopArgs,
+            initialStartTime,
+          },
+          currentStep,
+          runIds,
+          startStep,
+          forceDisableToolUse,
+        });
 
         forceDisableToolUse = retryWithoutTools ?? false;
 
@@ -381,6 +390,16 @@ export async function agentLoopWorkflow({
           creditStopRequested = true;
           break;
         }
+
+        // The decision is made on the spend measured before this step ran. The step itself may
+        // have crossed it, in which case the pause lands one step late.
+        if (
+          creditSpendCheckpointCrossed &&
+          patched("credit-spend-checkpoint-gate")
+        ) {
+          creditSpendCheckpointPaused = true;
+          break;
+        }
       }
 
       const stepsCompleted = currentStep - startStep;
@@ -412,6 +431,11 @@ export async function agentLoopWorkflow({
           );
         } else if (creditStopRequested) {
           await finalizeCreditStoppedAgentLoopActivity(
+            authType,
+            argsWithRunIds
+          );
+        } else if (creditSpendCheckpointPaused) {
+          await finalizeCreditSpendCheckpointPausedAgentLoopActivity(
             authType,
             argsWithRunIds
           );
@@ -496,6 +520,8 @@ async function executeStepIteration({
   runId: string | null;
   shouldContinue: boolean;
   retryWithoutTools?: boolean;
+  // Passed through so the caller knows whether to pause and finalize as checkpointed.
+  creditSpendCheckpointCrossed?: boolean;
 }> {
   const result = await runModelAndCreateActionsActivity({
     authType,
@@ -514,7 +540,12 @@ async function executeStepIteration({
     };
   }
 
-  const { runId, actionBlobs, retryWithoutTools = false } = result;
+  const {
+    runId,
+    actionBlobs,
+    retryWithoutTools = false,
+    creditSpendCheckpointCrossed,
+  } = result;
 
   // Generation completed or the loop unpaused and no new tools were generated.
   if (actionBlobs.length === 0) {
@@ -526,6 +557,7 @@ async function executeStepIteration({
       // disabled to force a final answer.
       shouldContinue: runId === null || retryWithoutTools,
       retryWithoutTools,
+      creditSpendCheckpointCrossed,
     };
   }
 
@@ -536,6 +568,7 @@ async function executeStepIteration({
     return {
       runId,
       shouldContinue: false,
+      creditSpendCheckpointCrossed,
     };
   }
 
@@ -574,6 +607,7 @@ async function executeStepIteration({
       return {
         runId,
         shouldContinue: false,
+        creditSpendCheckpointCrossed,
       };
     }
   }
@@ -581,6 +615,7 @@ async function executeStepIteration({
   return {
     runId,
     shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
+    creditSpendCheckpointCrossed,
   };
 }
 

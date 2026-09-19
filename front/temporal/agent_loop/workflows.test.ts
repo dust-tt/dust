@@ -10,6 +10,7 @@ const {
   deprecatePatch,
   patched,
   checkCreditsActivity,
+  finalizeCreditSpendCheckpointPausedAgentLoopActivity,
   finalizeErroredSandboxChildToolActivity,
   finalizeSuccessfulAgentLoopActivity,
   runToolActivity,
@@ -26,6 +27,7 @@ const {
   deprecatePatch: vi.fn(),
   patched: vi.fn(),
   checkCreditsActivity: vi.fn(),
+  finalizeCreditSpendCheckpointPausedAgentLoopActivity: vi.fn(),
   finalizeErroredSandboxChildToolActivity: vi.fn(),
   finalizeSuccessfulAgentLoopActivity: vi.fn(),
   runToolActivity: vi.fn(),
@@ -73,6 +75,7 @@ vi.mock("@temporalio/workflow", () => {
       compactionCleanupActivity: unusedActivity,
       ensureConversationTitleActivity: unusedActivity,
       finalizeCancelledAgentLoopActivity: unusedActivity,
+      finalizeCreditSpendCheckpointPausedAgentLoopActivity,
       finalizeCreditStoppedAgentLoopActivity: unusedActivity,
       finalizeErroredAgentLoopActivity: unusedActivity,
       finalizeErroredSandboxChildToolActivity,
@@ -371,5 +374,83 @@ describe("agentLoopWorkflow activity cancellation", () => {
       conversationId: "c123",
       messageId: "am123",
     });
+  });
+});
+
+describe("agentLoopWorkflow credit spend checkpoint", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    patched.mockReturnValue(true);
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
+      actionBlobs: [
+        {
+          actionId: "action-1",
+          needsApproval: false,
+          retryPolicy: "no_retry",
+        },
+      ],
+      runId: "run-1",
+      creditSpendCheckpointCrossed: false,
+    });
+    runToolActivityWithExplicitCancellation.mockResolvedValue({
+      deferredEvents: [],
+    });
+    checkCreditsActivity.mockResolvedValue({ shouldStop: false, reason: null });
+    finalizeSuccessfulAgentLoopActivity.mockResolvedValue(undefined);
+    finalizeCreditSpendCheckpointPausedAgentLoopActivity.mockResolvedValue(
+      undefined
+    );
+  });
+
+  it("continues the loop when the step result says the checkpoint isn't crossed", async () => {
+    checkCreditsActivity
+      .mockResolvedValueOnce({ shouldStop: false, reason: null })
+      .mockResolvedValue({ shouldStop: true, reason: "credits_exhausted" });
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).toHaveBeenCalledTimes(2);
+    expect(
+      finalizeCreditSpendCheckpointPausedAgentLoopActivity
+    ).not.toHaveBeenCalled();
+  });
+
+  it("breaks out of the loop and finalizes as paused when the checkpoint is crossed", async () => {
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
+      actionBlobs: [
+        {
+          actionId: "action-1",
+          needsApproval: false,
+          retryPolicy: "no_retry",
+        },
+      ],
+      runId: "run-1",
+      creditSpendCheckpointCrossed: true,
+    });
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).toHaveBeenCalledOnce();
+    expect(
+      finalizeCreditSpendCheckpointPausedAgentLoopActivity
+    ).toHaveBeenCalledWith(
+      authType,
+      expect.objectContaining({ agentMessageId: "am123" })
+    );
+    expect(finalizeSuccessfulAgentLoopActivity).not.toHaveBeenCalled();
   });
 });
