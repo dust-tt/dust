@@ -14,6 +14,7 @@ export const ContentSchema = z.object({
 export const PatchSpaceRequestBodySchema = z.object({
   name: z.string().optional(),
   content: z.array(ContentSchema).optional(),
+  instructions: z.string().max(8192).optional(),
 });
 
 export const PostNotionSyncPayloadSchema = z.object({
@@ -102,6 +103,7 @@ export type RichSpaceType = EnrichedSpaceType & {
   isEditor: boolean;
   // Useful in case of projects
   description: string | null;
+  instructions: string | null;
   archivedAt: number | null;
   /** Background todo suggestions from project activity (project spaces only). */
   todoGenerationEnabled: boolean;
@@ -117,7 +119,7 @@ export type GetSpaceResponseBody = {
 };
 
 export type PatchSpaceResponseBody = {
-  space: SpaceType;
+  space: SpaceType & { instructions?: string | null };
 };
 
 /**
