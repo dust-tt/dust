@@ -63,9 +63,12 @@ interface ConsumptionDimensionConfig {
   label: string;
   breakdownLabel: string;
   hasAvatar: boolean;
+  countLabel: string;
   avgLabel: string;
 }
 
+export const MESSAGE_COUNT_LABEL = "Messages";
+const INVOCATION_COUNT_LABEL = "Invocations";
 const MESSAGE_AVG_LABEL = "Credits / message";
 const INVOCATION_AVG_LABEL = "Credits / invocation";
 
@@ -77,54 +80,63 @@ export const CONSUMPTION_DIMENSION_CONFIG: Record<
     label: "Agents",
     breakdownLabel: "agent",
     hasAvatar: true,
+    countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   user: {
     label: "Members",
     breakdownLabel: "member",
     hasAvatar: true,
+    countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   group: {
     label: "Groups",
     breakdownLabel: "group",
     hasAvatar: false,
+    countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   model: {
     label: "Models",
     breakdownLabel: "model",
     hasAvatar: true,
+    countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   tool: {
     label: "Tools",
     breakdownLabel: "tool",
     hasAvatar: true,
+    countLabel: INVOCATION_COUNT_LABEL,
     avgLabel: INVOCATION_AVG_LABEL,
   },
   skill: {
     label: "Skills",
     breakdownLabel: "skill",
     hasAvatar: true,
+    countLabel: INVOCATION_COUNT_LABEL,
     avgLabel: INVOCATION_AVG_LABEL,
   },
   source: {
     label: "Sources",
     breakdownLabel: "source",
     hasAvatar: false,
+    countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   trigger: {
     label: "Triggers",
     breakdownLabel: "trigger",
     hasAvatar: false,
+    countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   api_key: {
     label: "API keys",
     breakdownLabel: "API key",
     hasAvatar: false,
+    countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
 };
