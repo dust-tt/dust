@@ -181,7 +181,7 @@ describe("GET /api/v1/w/[wId]/sandbox/actions/[aId] (function invocation)", () =
         resource: {
           uri: "pod-spc_x/.tool_outputs/fn/1_tool.json",
           mimeType: "text/plain",
-          text: '{"__dust_offloaded__":true}\n[Full content archived at pod-spc_x/.tool_outputs/fn/1_tool.json]',
+          text: '{"items":[{"id":1... (truncated)\n[Full content archived at pod-spc_x/.tool_outputs/fn/1_tool.json]',
         },
         _meta: {
           "tt.dust/offload": {
