@@ -44,6 +44,11 @@ type ExaParams = {
   api_key?: string;
 };
 
+type YouComParams = {
+  provider: "you_com";
+  api_key?: string;
+};
+
 const serpapiDefaultOptions = {
   provider: "serpapi",
   engine: "google",
@@ -52,7 +57,7 @@ const serpapiDefaultOptions = {
 } satisfies Omit<BaseWebSearchParams & SerpapiParams, "query">;
 
 export type SearchParams = BaseWebSearchParams &
-  (SerpapiParams | SerperParams | FirecrawlParams | ExaParams);
+  (SerpapiParams | SerperParams | FirecrawlParams | ExaParams | YouComParams);
 
 export type SearchResultItem = {
   title: string;
@@ -261,8 +266,72 @@ const exaSearch = async ({
   return new Ok(results);
 };
 
+const YOU_COM_BASE_URL = "https://ydc-index.io";
+
+const youComSearch = async ({
+  query,
+  num,
+  api_key,
+}: BaseWebSearchParams & YouComParams): Promise<
+  Result<SearchResponse, Error>
+> => {
+  const youComApiKey = api_key ?? credentials.YDC_API_KEY;
+
+  if (!youComApiKey) {
+    return new Err(
+      new Error("utils/websearch: a DUST_MANAGED_YDC_API_KEY is required")
+    );
+  }
+
+  // eslint-disable-next-line no-restricted-globals
+  const res = await fetch(`${YOU_COM_BASE_URL}/v1/search`, {
+    method: "POST",
+    headers: {
+      "X-API-Key": youComApiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      query,
+      count: num ?? 10,
+    }),
+  });
+
+  logger.debug({ ok: res.ok, statusCode: res.status }, "post you.com search");
+
+  if (res.ok) {
+    const json = await res.json();
+
+    if ("results" in json && Array.isArray(json.results?.web)) {
+      const results = json.results.web.reduce(
+        (acc: SearchResultItem[], item: any) => {
+          if (item.url) {
+            acc.push({
+              title: item.title ?? item.url,
+              link: item.url,
+              snippet: item.description ?? item.snippets?.[0] ?? "",
+            });
+          }
+          return acc;
+        },
+        [] as SearchResultItem[]
+      );
+
+      return new Ok(results);
+    }
+
+    return new Ok([]);
+  }
+
+  logger.error(
+    { statusCode: res.status, statusText: res.statusText },
+    "Bad request on You.com search"
+  );
+
+  return new Err(new Error(`Bad request on You.com: ${res.statusText}`));
+};
+
 /**
- * Make a web search using SerpAPI, Serper, Firecrawl or Exa
+ * Make a web search using SerpAPI, Serper, Firecrawl, Exa or You.com
  * @param {SearchParams} params
  */
 export const webSearch = async (
@@ -284,6 +353,9 @@ export const webSearch = async (
     }
     case "exa": {
       return exaSearch(params);
+    }
+    case "you_com": {
+      return youComSearch(params);
     }
     default:
       assertNever(provider);
