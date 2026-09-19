@@ -439,6 +439,59 @@ describe("EventSourceManager", () => {
     manager.releaseWorkspace("w_1");
   });
 
+  it("falls back to polling after repeated post-handshake SSE failures", async () => {
+    const sources: FakeEventSource[] = [];
+    const polls: Array<(events: string[]) => void> = [];
+    const received: string[] = [];
+    const manager = new EventSourceManager(
+      async (url) => {
+        const source = new FakeEventSource(url);
+        sources.push(source);
+        return source;
+      },
+      () => 0,
+      {
+        reconnectDelayBaseMs: 0,
+        reconnectDelayJitterMs: 0,
+        longPollFactory: (_url, { signal }) =>
+          new Promise<string[]>((resolve) => {
+            polls.push(resolve);
+            signal.addEventListener("abort", () => resolve([]), { once: true });
+          }),
+      }
+    );
+    manager.subscribe({
+      streamId: "message-msg_fallback",
+      config: {
+        buildURL: () => "/events",
+        buildLongPollURL: () => "/events/poll",
+        getEventId: getAgentLoopEventId,
+        replayBufferedEventsOnSubscribe: false,
+        restartKey: "message-msg_fallback",
+        workspaceId: "w_1",
+      },
+      subscriber: {
+        onEvent: (event) => received.push(event),
+        onStateChange: vi.fn(),
+      },
+      keepAliveWithoutSubscribers: true,
+    });
+
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].emitHandshake();
+    sources[0].onerror?.({ type: "error", target: sources[0] });
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    sources[1].emitHandshake();
+    sources[1].onerror?.({ type: "error", target: sources[1] });
+
+    expect(polls).toHaveLength(1);
+    polls[0]([
+      JSON.stringify({ eventId: "evt_1", data: { type: "generation_tokens" } }),
+    ]);
+    await vi.waitFor(() => expect(received).toHaveLength(1));
+    manager.releaseWorkspace("w_1");
+  });
+
   it("reports terminal failures with context and resumes an ongoing stream", async () => {
     const sources: FakeEventSource[] = [];
     const states: EventSourceConnectionState[] = [];
