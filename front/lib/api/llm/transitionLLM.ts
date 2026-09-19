@@ -797,6 +797,7 @@ abstract class BaseTransition extends LLM {
       forceToolCall,
       disableToolUse,
       toolSearchEnabled,
+      nativeWebSearchEnabled,
       previousMessageId,
     } = streamParameters;
 
@@ -825,6 +826,7 @@ abstract class BaseTransition extends LLM {
       forceTool: forceToolCall,
       disableToolUse,
       toolSearchEnabled,
+      nativeWebSearchEnabled,
       outputFormat: parseResponseFormatSchema(
         this.responseFormat,
         this.metadata.clientId
