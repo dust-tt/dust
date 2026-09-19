@@ -43,6 +43,7 @@ import {
   getFileDisplayName,
   isSupportedFileContentType,
 } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
@@ -270,6 +271,8 @@ export async function processToolResults(
 ): Promise<{
   outputItems: ToolOutputItemType[];
   generatedFiles: ActionGeneratedFileType[];
+  /** Await after markAsSucceeded so GCS write-behind finishes before the activity exits. */
+  awaitDurablePersist: () => Promise<Result<void, Error>>;
 }> {
   const { runContext } = toolContext;
   assert(runContext, "processToolResults requires a tool run context.");
@@ -582,6 +585,7 @@ export async function processToolResults(
   // Persist the processed contents on the run context's action: per-item rows for agent loop
   // actions, a single output object for sandbox function actions. Sandbox function actions also
   // persist the structuredContent so programmatic consumers get a machine-readable payload.
+  // Stage in Redis and return before GCS; the caller awaits durable persist after markAsSucceeded.
   const cleanContentItems = cleanContent.map((c) => ({
     content: sanitizeStringsDeep(c.content),
     fileId: c.file?.id,
@@ -592,15 +596,22 @@ export async function processToolResults(
           toolCallResultStructuredContent !== undefined
             ? sanitizeStringsDeep(toolCallResultStructuredContent)
             : undefined,
+        deferDurablePersist: true,
       })
-    : await runContext.action.createOutputItems(auth, cleanContentItems);
+    : await runContext.action.createOutputItems(auth, cleanContentItems, {
+        deferDurablePersist: true,
+      });
 
   // Surfaced as an exception: there is no acceptable degraded state for unpersisted tool outputs.
   if (outputRes.isErr()) {
     throw outputRes.error;
   }
 
-  return { outputItems: outputRes.value, generatedFiles };
+  return {
+    outputItems: outputRes.value,
+    generatedFiles,
+    awaitDurablePersist: () => runContext.action.awaitDeferredOutputPersist(),
+  };
 }
 
 /**
