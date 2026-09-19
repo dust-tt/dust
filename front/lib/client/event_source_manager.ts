@@ -214,12 +214,16 @@ export class EventSourceManager {
     try {
       source = await this.sourceFactory(url, entry.config.headers);
     } catch (error) {
+      // A newer attempt may have replaced this one while the factory was pending.
+      // Only the current attempt may consume retry budget or change stream state.
       if (generation === entry.generation) {
         this.handleFailure(streamId, entry, null, error);
       }
       return;
     }
 
+    // Generation rejects an older attempt on this entry; map identity rejects an
+    // entry removed or replaced during the await. Close either stale source.
     if (
       generation !== entry.generation ||
       this.connections.get(streamId) !== entry
