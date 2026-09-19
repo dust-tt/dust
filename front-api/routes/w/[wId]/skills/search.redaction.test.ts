@@ -266,22 +266,19 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     const request: estypes.SearchRequest = mockSearch.mock.calls[1][0];
     const customQuery = {
       bool: {
-        filter: [
-          { term: { workspace_id: workspace.sId } },
-          { terms: { status: [status] } },
-        ],
-        must: expect.any(Array),
+        filter: [{ term: { workspace_id: workspace.sId } }],
       },
     };
     expect(request.query).toEqual({
       bool: {
+        filter: [{ terms: { status: [status] } }],
+        must: expect.any(Array),
         should: [
           customQuery,
           expect.objectContaining({
             bool: expect.objectContaining({
               filter: expect.arrayContaining([
                 { term: { workspace_id: "global" } },
-                { terms: { status: [status] } },
               ]),
             }),
           }),
