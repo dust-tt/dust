@@ -141,6 +141,7 @@ export async function getSandboxFunctionInvocation(
     ? await UserResource.fetchByModelIds([invocation.userId])
     : [];
 
+  await invocation.ensureData();
   return invocation.toPokeJSON(user ?? null, mcpActions);
 }
 

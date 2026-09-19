@@ -74,6 +74,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { truncate } from "@app/types/shared/utils/string_utils";
+import assert from "assert";
 import groupBy from "lodash/groupBy";
 import sum from "lodash/sum";
 import type { Attributes, Transaction } from "sequelize";
@@ -195,17 +196,6 @@ function migrateStoredInvocationData(
   }
 }
 
-interface SandboxFunctionInvocationForLLM {
-  bundleSha256?: string;
-  createdAt: string;
-  error?: StoredSandboxFunctionCallError;
-  input: unknown;
-  invocationId: string;
-  result?: unknown;
-  status: SandboxFunctionInvocationStatus;
-  updatedAt: string;
-}
-
 function safeParseStoredInvocationData(
   content: string
 ): Result<StoredInvocationData, Error> {
@@ -279,6 +269,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
   readonly sandboxFunction: SandboxFunctionResource;
   private data: SandboxFunctionInvocationData;
+  /** True once the GCS blob is on this instance (constructed with it, or loaded). */
+  private dataLoaded: boolean;
+  /** Coalesces concurrent `ensureData` calls into one download. */
+  private pendingDataLoad: Promise<void> | undefined;
 
   /**
    * In-flight blob persistence for an inline execution: the deferred initial write (blob +
@@ -327,18 +321,22 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     blob: Attributes<SandboxFunctionInvocationModel>,
     {
       sandboxFunction,
-      data = {
-        version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
-        input: undefined,
-      },
+      data,
+      dataLoaded = false,
     }: {
       sandboxFunction: SandboxFunctionResource;
       data?: SandboxFunctionInvocationData;
+      /** Set when `data` is the real blob (makeNew / after GCS load), not a placeholder. */
+      dataLoaded?: boolean;
     }
   ) {
     super(model, blob);
     this.sandboxFunction = sandboxFunction;
-    this.data = data;
+    this.data = data ?? {
+      version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+      input: undefined,
+    };
+    this.dataLoaded = dataLoaded;
   }
 
   get sId(): string {
@@ -380,24 +378,25 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     };
   }
 
-  get input(): unknown {
-    return this.data.input;
+  /**
+   * Load the GCS blob once and cache it on this instance. No-op when already loaded
+   * (including instances constructed from `makeNew` with in-memory data).
+   */
+  async ensureData(): Promise<void> {
+    if (this.dataLoaded) {
+      return;
+    }
+    if (!this.pendingDataLoad) {
+      this.pendingDataLoad = this.loadDataFromGcs().finally(() => {
+        this.pendingDataLoad = undefined;
+      });
+    }
+    await this.pendingDataLoad;
   }
 
-  get context(): SandboxFunctionInvocationContext | undefined {
+  async getContext(): Promise<SandboxFunctionInvocationContext | undefined> {
+    await this.ensureData();
     return this.data.context;
-  }
-
-  get result(): unknown {
-    return this.data.result;
-  }
-
-  get error(): StoredSandboxFunctionCallError | undefined {
-    return this.data.error;
-  }
-
-  get bundleSha256(): string | undefined {
-    return this.data.bundleSha256;
   }
 
   // WHERE-guarded compare-and-swap on status. Same pattern as
@@ -500,6 +499,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async fail(error: Error | SandboxFunctionCallError): Promise<boolean> {
+    await this.ensureData();
+
     const callError: SandboxFunctionCallError =
       error instanceof Error
         ? { code: "invocation_failed", message: error.message }
@@ -525,8 +526,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
-      input: this.input,
-      context: this.context,
+      input: this.data.input,
+      context: this.data.context,
       ...(this.executedBundleSha256 === undefined
         ? {}
         : { bundleSha256: this.executedBundleSha256 }),
@@ -535,6 +536,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // record of a failure the stream classified precisely.
       error: callError,
     };
+    this.dataLoaded = true;
     await this.persistTerminalData("errored");
     await publishSandboxFunctionInvocationEvent(
       {
@@ -551,6 +553,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async succeed(result: unknown): Promise<boolean> {
+    await this.ensureData();
+
     const claimed = await this.casStatus({
       from: "created",
       to: "succeeded",
@@ -572,13 +576,14 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
     this.data = {
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
-      input: this.input,
-      context: this.context,
+      input: this.data.input,
+      context: this.data.context,
       ...(this.executedBundleSha256 === undefined
         ? {}
         : { bundleSha256: this.executedBundleSha256 }),
       result,
     };
+    this.dataLoaded = true;
     await this.persistTerminalData("succeeded");
     await publishSandboxFunctionInvocationEvent(
       {
@@ -607,6 +612,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     auth: Authenticator,
     { inline = false }: { inline?: boolean } = {}
   ): Promise<Result<undefined, Error>> {
+    await this.ensureData();
+
     if (this.status !== "created") {
       logger.info(
         {
@@ -760,9 +767,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           "x-dust-sandbox-function-id": sandboxFunction.sId,
           "x-dust-sandbox-function-invocation-id": this.sId,
         },
-        ...(this.input === undefined
+        ...(this.data.input === undefined
           ? {}
-          : { body: JSON.stringify(this.input) }),
+          : { body: JSON.stringify(this.data.input) }),
         encoding: "utf8",
         // From the persisted row, like the mode above: the warm server refuses to serve a
         // bundle that does not hash to this, so a republished function is never run from a
@@ -973,11 +980,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         "Invalid sandbox function invocation data"
       );
       this.data = { version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION };
+      this.dataLoaded = true;
 
       return;
     }
 
     this.data = migrateStoredInvocationData(storedResult.value);
+    this.dataLoaded = true;
   }
 
   private async writeDataToGcs(): Promise<Result<undefined, Error>> {
@@ -1053,6 +1062,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const resource = new this(this.model, invocation.get(), {
         sandboxFunction,
         data,
+        dataLoaded: true,
       });
       const gcsPath = resource.buildGcsPath(auth);
       await resource.update({ gcsPath }, t);
@@ -1169,7 +1179,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           ...invocation.observabilityContext(auth),
           reason: "sandbox_not_running",
         },
-        "Escalating a fast sandbox function invocation to the invocation workflow"
+        "Escalating an inline sandbox function invocation to the invocation workflow"
       );
     }
 
@@ -1272,15 +1282,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       ...rest,
     });
 
-    return concurrentExecutor(
-      invocations,
-      async (invocation) => {
-        const blob = invocation.get();
-        const resource = new this(this.model, blob, { sandboxFunction });
-        await resource.loadDataFromGcs();
-        return resource;
-      },
-      { concurrency: GCS_CONCURRENCY }
+    // DB row only — the GCS blob is loaded on demand via `ensureData` /
+    // `getContext` when a caller needs it.
+    return invocations.map(
+      (invocation) =>
+        new this(this.model, invocation.get(), { sandboxFunction })
     );
   }
 
@@ -1316,6 +1322,40 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
 
     return invocation ?? null;
+  }
+
+  /**
+   * DB-only existence check for execution-side pairing. Does not download the
+   * invocation blob — callers that need input/context/result must `fetchById`.
+   */
+  static async existsForFunction(
+    auth: Authenticator,
+    {
+      sandboxFunction,
+      invocationId,
+    }: {
+      sandboxFunction: SandboxFunctionResource;
+      invocationId: string;
+    }
+  ): Promise<boolean> {
+    if (!isResourceSId("sandbox_function_invocation", invocationId)) {
+      return false;
+    }
+
+    const invocationModelId = getResourceIdFromSId(invocationId);
+    if (invocationModelId === null) {
+      return false;
+    }
+
+    const row = await this.model.findOne({
+      attributes: ["id"],
+      where: {
+        id: invocationModelId,
+        sandboxFunctionId: sandboxFunction.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    return row !== null;
   }
 
   static async listRecent(
@@ -1625,6 +1665,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     user: UserResource | null,
     mcpActions: PokeSandboxFunctionMCPAction[]
   ): PokeSandboxFunctionInvocationDetails {
+    assert(
+      this.dataLoaded,
+      "toPokeJSON requires the invocation blob to be loaded (call ensureData first)"
+    );
     return {
       ...SandboxFunctionInvocationResource.rowToPokeJSON(
         {
@@ -1638,9 +1682,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         },
         user
       ),
-      input: this.input,
-      result: this.result,
-      error: this.error ?? null,
+      input: this.data.input,
+      result: this.data.result,
+      error: this.data.error ?? null,
       mcpActions,
     };
   }
@@ -1651,23 +1695,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       functionId: this.sandboxFunction.sId,
       status: this.status,
       createdAt: this.createdAt.toISOString(),
-    };
-  }
-
-  toJSONForLLM(): SandboxFunctionInvocationForLLM {
-    return {
-      createdAt: this.createdAt.toISOString(),
-      input: this.input,
-      invocationId: this.sId,
-      status: this.status,
-      updatedAt: this.updatedAt.toISOString(),
-      // Which publish served this invocation: comparable against the hash `publish` and `get`
-      // echo. Absent when the invocation predates the stamping or never reached execution.
-      ...(this.bundleSha256 !== undefined
-        ? { bundleSha256: this.bundleSha256 }
-        : {}),
-      ...(this.result !== undefined ? { result: this.result } : {}),
-      ...(this.error !== undefined ? { error: this.error } : {}),
     };
   }
 }

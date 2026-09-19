@@ -393,6 +393,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
    * deliberately skipped. The invocation ties the pair together; callers are trusted because
    * their (function, invocation) ids come from server-minted inputs — workflow args or verified
    * sandbox JWT claims — never from user input.
+   *
+   * Existence only: does not download the invocation GCS blob.
    */
   static async fetchByIdForExecution(
     auth: Authenticator,
@@ -413,13 +415,11 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       return null;
     }
 
-    // We don't need the invocation itself, just its existence.
-    const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
-      sandboxFunction,
-      invocationId,
-      access: "system",
-    });
-    return invocation ? sandboxFunction : null;
+    const exists = await SandboxFunctionInvocationResource.existsForFunction(
+      auth,
+      { sandboxFunction, invocationId }
+    );
+    return exists ? sandboxFunction : null;
   }
 
   // Lives here rather than on SandboxFunctionMCPActionResource: that resource can only type-import

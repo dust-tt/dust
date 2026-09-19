@@ -82,7 +82,8 @@ describe("runSandboxFunctionInvocationActivity", () => {
       .mockImplementation(async function (
         this: SandboxFunctionInvocationResource
       ) {
-        expect(this.input).toEqual({ message: "hello" });
+        await this.ensureData();
+        expect(this.toPokeJSON(null, []).input).toEqual({ message: "hello" });
         return new Ok(undefined);
       });
 
