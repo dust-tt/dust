@@ -38,6 +38,12 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Use the real cache helpers so Redis stage write-behind is exercised under the
+// redis mock. The global vite.setup stub makes warmCacheWithRedis a no-op.
+vi.mock("@app/lib/utils/cache", async (importOriginal) => {
+  return importOriginal<typeof import("@app/lib/utils/cache")>();
+});
+
 const tracerMocks = vi.hoisted(() => {
   const setTag = vi.fn();
   return {
