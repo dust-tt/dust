@@ -1,3 +1,4 @@
+import { ManagedEventSourceTransport } from "@app/lib/client/event_source_transport";
 import { isSseVerbose } from "@app/lib/client/sse_verbose";
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { clientEventSource } from "@app/lib/egress/client";
@@ -38,6 +39,11 @@ async function createEventSource(
 
   return clientEventSource(path, {
     heartbeatTimeout: HEARTBEAT_TIMEOUT_MS,
+    ...(typeof globalThis.fetch === "function" &&
+    typeof Response !== "undefined" &&
+    "body" in Response.prototype
+      ? { Transport: ManagedEventSourceTransport }
+      : {}),
     ...(headers ? { headers } : {}),
   });
 }
