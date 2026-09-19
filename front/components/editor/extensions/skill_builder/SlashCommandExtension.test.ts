@@ -1,7 +1,4 @@
-import {
-  ATTACH_CONTEXT_SUB_MENU_ID,
-  getActiveSlashSubMenuFrame,
-} from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
+import { getActiveSlashSubMenuFrame } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { Editor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { afterEach, describe, expect, it } from "vitest";
@@ -31,30 +28,31 @@ describe("SlashCommandExtension", () => {
     return editor;
   }
 
-  it("opens attach knowledge sub-menu after marked text", () => {
-    const editor = createEditor();
-    editor.commands.setContent("<p><em>Italic text</em></p>");
-    editor.commands.focus("end");
-
-    editor.commands.openAttachKnowledgeSlashCommand();
-
-    expect(editor.getText()).toBe("Italic text/");
-    expect(
-      getActiveSlashSubMenuFrame(editor.storage.slashCommand)?.subMenuId
-    ).toBe(ATTACH_CONTEXT_SUB_MENU_ID);
-  });
-
-  it("opens attach knowledge sub-menu after regular text", () => {
+  it("opens the top-level slash menu after regular text", () => {
     const editor = createEditor();
     editor.commands.setContent("<p>regular text</p>");
     editor.commands.focus("end");
 
-    editor.commands.openAttachKnowledgeSlashCommand();
+    editor.commands.openSlashCommand();
 
-    expect(editor.getText()).toBe("regular text/");
+    expect(editor.getText()).toBe("regular text /");
+    expect(slashCommandPluginKey.getState(editor.state)?.active).toBe(true);
     expect(
-      getActiveSlashSubMenuFrame(editor.storage.slashCommand)?.subMenuId
-    ).toBe(ATTACH_CONTEXT_SUB_MENU_ID);
+      getActiveSlashSubMenuFrame(editor.storage.slashCommand)
+    ).toBeNull();
+  });
+
+  it("opens the top-level slash menu in an empty document", () => {
+    const editor = createEditor();
+    editor.commands.focus("end");
+
+    editor.commands.openSlashCommand();
+
+    expect(editor.getText()).toBe("/");
+    expect(slashCommandPluginKey.getState(editor.state)?.active).toBe(true);
+    expect(
+      getActiveSlashSubMenuFrame(editor.storage.slashCommand)
+    ).toBeNull();
   });
 
   it("keeps typed slash closed after regular text", () => {

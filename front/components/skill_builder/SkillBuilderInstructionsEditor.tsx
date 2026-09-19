@@ -227,11 +227,11 @@ function sanitizeSkillInstructionsHtml(html: string): string {
 const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[50vh]";
 
 interface SkillBuilderInstructionsEditorProps {
-  onAddKnowledge?: (addKnowledge: () => void) => void;
+  onOpenInsertMenu?: (openInsertMenu: () => void) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
-  onAddKnowledge,
+  onOpenInsertMenu,
 }: SkillBuilderInstructionsEditorProps) {
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
   const { resetField, setValue } = useFormContext<SkillBuilderFormData>();
@@ -518,19 +518,19 @@ export function SkillBuilderInstructionsEditor({
     };
   }, [attachedKnowledgeField.ref, editor, instructionsField.ref]);
 
-  const handleAddKnowledge = useCallback(() => {
+  const handleOpenInsertMenu = useCallback(() => {
     if (!editor) {
       return;
     }
 
-    editor.commands.openAttachKnowledgeSlashCommand();
+    editor.commands.openSlashCommand();
   }, [editor]);
 
   useEffect(() => {
-    if (editor && onAddKnowledge) {
-      onAddKnowledge(handleAddKnowledge);
+    if (editor && onOpenInsertMenu) {
+      onOpenInsertMenu(handleOpenInsertMenu);
     }
-  }, [editor, handleAddKnowledge, onAddKnowledge]);
+  }, [editor, handleOpenInsertMenu, onOpenInsertMenu]);
 
   const handleReferenceClick = useCallback(
     (target: ReferenceSummaryItem) => {

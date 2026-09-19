@@ -17,7 +17,6 @@ import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   clearSlashSubMenuStack,
   createSlashMenuNavigationStorage,
-  enterSlashSubMenu,
   handleSlashSubMenuCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { createAttachKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
@@ -255,7 +254,6 @@ interface SkillBuilderSlashSuggestionStorage {
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     skillBuilderSlashCommand: {
-      openAttachKnowledgeSlashCommand: () => ReturnType;
       openSlashCommand: () => ReturnType;
     };
   }
@@ -292,41 +290,19 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
       () =>
       ({ chain }: { chain: () => ChainedCommands }) => {
         storage.hasBeenFocused = true;
-        return chain().focus().insertContent("/").run();
-      },
-    openAttachKnowledgeSlashCommand:
-      () =>
-      ({ chain }: { chain: () => ChainedCommands }) => {
-        storage.hasBeenFocused = true;
-        const insertFrom = editor.state.selection.from;
-        const result = chain().focus().insertContentAt(insertFrom, "/").run();
-
-        const pluginState = slashCommandPluginKey.getState(editor.state);
-        const range =
-          pluginState?.active && pluginState.range
-            ? pluginState.range
-            : { from: insertFrom, to: insertFrom + 1 };
-
-        if (
-          pluginState?.active &&
-          handleSlashSubMenuCommand({
-            command: createAttachKnowledgeSlashCommand(),
-            editor,
-            range,
-            storage,
-          })
-        ) {
-          return result;
-        }
-
-        enterSlashSubMenu({
-          command: createAttachKnowledgeSlashCommand(),
-          editor,
-          range,
-          storage,
-          subMenuId: ATTACH_CONTEXT_SUB_MENU_ID,
-        });
-        return result;
+        const { $from, from } = editor.state.selection;
+        const characterBefore = $from.parent.textBetween(
+          Math.max(0, $from.parentOffset - 1),
+          $from.parentOffset,
+          undefined,
+          "￼"
+        );
+        const needsSpaceBefore =
+          characterBefore.length > 0 && !/\s/.test(characterBefore);
+        return chain()
+          .focus()
+          .insertContentAt(from, needsSpaceBefore ? " /" : "/")
+          .run();
       },
   }),
   allow: ({ storage }) => storage.hasBeenFocused,
