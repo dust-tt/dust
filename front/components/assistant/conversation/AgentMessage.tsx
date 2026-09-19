@@ -62,6 +62,7 @@ import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { formatCredits, formatCreditValue } from "@app/lib/client/credits";
+import { eventSourceManager } from "@app/lib/client/event_source_manager";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import { FILE_ID_PATTERN } from "@app/lib/files";
@@ -826,20 +827,6 @@ export function AgentMessage({
     [owner.sId, methods.data]
   );
 
-  useEffect(() => {
-    if (!!streamError) {
-      // Hook to the focus event of the document to try reloading the message automatically
-      const handleFocus = () => {
-        void reloadMessage({ conversationId, messageId: agentMessage.sId });
-        window.removeEventListener("focus", handleFocus);
-      };
-      window.addEventListener("focus", handleFocus);
-      return () => {
-        window.removeEventListener("focus", handleFocus);
-      };
-    }
-  }, [streamError, reloadMessage, conversationId, agentMessage.sId]);
-
   // Add feedback buttons.
   if (shouldShowFeedback) {
     alwaysVisibleButtons.push(
@@ -1380,18 +1367,20 @@ function AgentMessageContent({
     />
   ) : null;
 
-  if (agentMessage.status === "created" && !!streamError) {
+  if (agentMessage.status === "created" && !!streamError && !blockedAction) {
     return (
       <ErrorMessage
         error={{
           message:
-            "Connection lost while generating message. Please try again.",
+            "Connection lost while generating message. Reconnect to check its progress.",
           code: "stream_error",
-          metadata: {},
+          metadata: { errorTitle: "Connection lost" },
         }}
-        retryHandler={() =>
-          reloadMessage({ conversationId, messageId: agentMessage.sId })
-        }
+        retryLabel="Reconnect"
+        retryHandler={() => {
+          eventSourceManager.reconnect(`message-${agentMessage.sId}`);
+          return reloadMessage({ conversationId, messageId: agentMessage.sId });
+        }}
       />
     );
   }
