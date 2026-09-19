@@ -82,6 +82,8 @@ export interface SlashCommandDropdownProps
   defaultSelectedItemId?: string | null;
   emptyMessage?: string;
   header?: string;
+  // Rendered below `header`, above the list (e.g. breadcrumbs of a browsable sub-menu).
+  headerContent?: React.ReactNode;
   isLoading?: boolean;
   items?: SlashCommand[];
   loadingMessage?: string;
@@ -166,6 +168,7 @@ export const SlashCommandDropdown = forwardRef<
       defaultSelectedItemId,
       emptyMessage = DEFAULT_EMPTY_MESSAGE,
       header,
+      headerContent,
       isLoading = false,
       listMaxHeightClassName = DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME,
       loadingMessage = SLASH_COMMAND_DEFAULT_LOADING_MESSAGE,
@@ -369,6 +372,7 @@ export const SlashCommandDropdown = forwardRef<
               {header}
             </div>
           ) : null}
+          {headerContent}
           {!hasVisibleContent ? (
             <div
               className={cn(
@@ -407,6 +411,7 @@ export const SlashCommandDropdown = forwardRef<
                   let flatIndex = 0;
 
                   const renderItem = (item: SlashCommand, index: number) => {
+                    const entryIndex = subMenuNavigation ? index + 1 : index;
                     const canShowDetails = !!onItemDetails && !!item.hasDetails;
                     const menuItem = (
                       <DropdownMenuItem
@@ -423,7 +428,7 @@ export const SlashCommandDropdown = forwardRef<
                               size="mini"
                               className={cn(
                                 "opacity-0 group-focus-within:opacity-100",
-                                index === selectedIndex && "opacity-100"
+                                entryIndex === selectedIndex && "opacity-100"
                               )}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -433,10 +438,10 @@ export const SlashCommandDropdown = forwardRef<
                             />
                           ) : undefined
                         }
-                        onClick={() => selectEntry(index)}
+                        onClick={() => selectEntry(entryIndex)}
                         {...getPointerHighlightProps(
                           item,
-                          index,
+                          entryIndex,
                           setSelectedIndex
                         )}
                         onFocus={(event) => {
@@ -447,11 +452,11 @@ export const SlashCommandDropdown = forwardRef<
                             // Menu items focus on pointer move, which would bypass the tooltip delay.
                             event.stopPropagation();
                           }
-                          setSelectedIndex(index);
+                          setSelectedIndex(entryIndex);
                         }}
                         className={cn(
                           "group",
-                          index === selectedIndex &&
+                          entryIndex === selectedIndex &&
                             "bg-muted-background [transition-duration:0ms]"
                         )}
                       />

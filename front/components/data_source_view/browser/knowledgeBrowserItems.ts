@@ -1,3 +1,5 @@
+import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
+import { navigationHistoryEntryTitle } from "@app/components/data_source_view/context/utils";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { NON_REMOTE_DATABASE_TABLE_MIME_TYPES } from "@app/lib/content_nodes_constants";
@@ -123,6 +125,32 @@ export function buildCategoryItems(
   );
 }
 
+// A pod's own data source is stored as "Project (<sId>): <pod>", which does not fit a menu row;
+// the browser uses the pod page's own word for it, and the pod is already named one level up.
+export const POD_FILES_TITLE = "Pod files";
+
+export function getBrowsableDataSourceViewTitle(
+  dataSourceView: DataSourceViewType
+): string {
+  return dataSourceView.dataSource.connectorProvider === "dust_project"
+    ? POD_FILES_TITLE
+    : getDataSourceNameFromView(dataSourceView);
+}
+
+// The label shown for a navigation entry in breadcrumbs and headings.
+export function getKnowledgeBrowserEntryLabel(
+  entry: NavigationHistoryEntryType
+): string {
+  switch (entry.type) {
+    case "root":
+      return "All";
+    case "data_source":
+      return getBrowsableDataSourceViewTitle(entry.dataSourceView);
+    default:
+      return navigationHistoryEntryTitle(entry);
+  }
+}
+
 // Hidden connectors are omitted; `data_warehouse` keeps remote databases only, `table` keeps
 // everything else, other view types keep every view. Results are ordered by display name.
 export function buildDataSourceViewItems(
@@ -156,7 +184,7 @@ export function buildDataSourceViewItems(
       return {
         kind: "data_source" as const,
         id: dsv.sId,
-        title: getDataSourceNameFromView(dsv),
+        title: getBrowsableDataSourceViewTitle(dsv),
         icon,
         dataSourceView: dsv,
       };
