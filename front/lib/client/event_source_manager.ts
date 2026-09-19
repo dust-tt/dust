@@ -282,7 +282,6 @@ export class EventSourceManager {
       if (entry.source !== source) {
         return;
       }
-      entry.reconnectAttempts = 0;
       this.transition(entry, { kind: "open", openedAt: Date.now() });
     };
     source.onmessage = (event: PolyfillMessageEvent) => {
@@ -290,12 +289,16 @@ export class EventSourceManager {
         return;
       }
       if (event.data === "done") {
-        entry.source = null;
-        source.close();
-        this.ensureConnected(streamId, entry);
+        this.handleFailure(
+          streamId,
+          entry,
+          source,
+          new Error("SSE stream ended before a terminal event.")
+        );
         return;
       }
 
+      entry.reconnectAttempts = 0;
       entry.lastEvent = event.data;
       entry.lastEventAt = Date.now();
       if (entry.config.replayBufferedEventsOnSubscribe) {
@@ -494,18 +497,17 @@ export class EventSourceManager {
 
     const recoverStaleStreams = () => {
       for (const [streamId, entry] of this.connections) {
-        if (
-          entry.state.kind !== "terminal" &&
-          entry.state.kind !== "failed" &&
-          (!entry.source ||
-            entry.source.readyState === EventSourcePolyfill.CLOSED)
-        ) {
-          entry.source = null;
-          entry.reconnectAttempts = 0;
-          if (entry.reconnectTimeout) {
-            clearTimeout(entry.reconnectTimeout);
-            entry.reconnectTimeout = null;
-          }
+        if (entry.state.kind === "terminal" || entry.state.kind === "failed") {
+          continue;
+        }
+        if (entry.source?.readyState === EventSourcePolyfill.CLOSED) {
+          this.handleFailure(
+            streamId,
+            entry,
+            entry.source,
+            new Error("SSE source closed while the page was inactive.")
+          );
+        } else if (!entry.source && !entry.reconnectTimeout) {
           this.ensureConnected(streamId, entry);
         }
       }
