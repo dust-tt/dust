@@ -2,6 +2,7 @@ import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { clientEventSource } from "@app/lib/egress/client";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { DatadogLogContext } from "@app/logger/logger";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type {
   Event as PolyfillEvent,
   MessageEvent as PolyfillMessageEvent,
@@ -440,7 +441,7 @@ export class EventSourceManager {
         {
           ...entry.config.telemetryContext,
           workspaceId: entry.config.workspaceId,
-          error,
+          err: normalizeError(error),
         },
         "SSE subscriber failed to process an event."
       );
