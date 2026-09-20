@@ -54,19 +54,19 @@ describe("core table file transfers", () => {
   it.each([
     { environment: "production", useServiceAccount: false },
     { environment: "development", useServiceAccount: true },
-  ])(
-    "selects the expected storage credentials in $environment",
-    async ({ environment, useServiceAccount }) => {
-      vi.stubEnv("NODE_ENV", environment);
-      vi.stubEnv("IS_DEVELOPMENT", "false");
+  ])("selects the expected storage credentials in $environment", async ({
+    environment,
+    useServiceAccount,
+  }) => {
+    vi.stubEnv("NODE_ENV", environment);
+    vi.stubEnv("IS_DEVELOPMENT", "false");
 
-      await startTransferCoreTableFiles(params);
+    await startTransferCoreTableFiles(params);
 
-      expect(getBucketInstance).toHaveBeenLastCalledWith("source-tables", {
-        useServiceAccount,
-      });
-    }
-  );
+    expect(getBucketInstance).toHaveBeenLastCalledWith("source-tables", {
+      useServiceAccount,
+    });
+  });
 
   it("completes empty prefixes without creating or polling an STS job", async () => {
     const bucket = getBucketInstance("source-tables");
