@@ -1117,16 +1117,17 @@ export class FileResource extends BaseResource<FileModel> {
    * MUST be set to it. The conversation UI reads this field to enable "Ask agent to fix" on a
    * Frame runtime error; if a publication path omits it, the retry affordance stays silently
    * unavailable for every publication of that Frame, not just the failing one.
+   *
+   * The Frame's name is not part of a publication: it is the source folder's basename. See the
+   * `frame-name-is-the-source-folder` contract in `lib/api/frames/frame_name.ts`.
    */
   async setActiveFramePublication(
     {
       publicationId,
-      name,
       description,
       publishedByAgentConfigurationId,
     }: {
       publicationId: string;
-      name: string;
       description: string;
       publishedByAgentConfigurationId?: string;
     },
@@ -1137,7 +1138,6 @@ export class FileResource extends BaseResource<FileModel> {
         useCaseMetadata: {
           ...this.useCaseMetadata,
           activePublicationId: publicationId,
-          frameName: name,
           frameDescription: description,
           ...(publishedByAgentConfigurationId
             ? {

@@ -5,6 +5,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
+import { getFrameV2NameFromMountFilePath } from "@app/lib/api/frames/frame_name";
 import {
   buildFrameFunctionsTarArchive,
   FRAME_FUNCTIONS_ARCHIVE_CONTENT_TYPE,
@@ -631,7 +632,6 @@ export async function activateFramePublication(
     await frame.setActiveFramePublication(
       {
         publicationId,
-        name: descriptor.value.manifest.name,
         description: descriptor.value.manifest.description,
         publishedByAgentConfigurationId,
       },
@@ -663,7 +663,10 @@ export async function activateFramePublication(
       buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
       buildAuditLogTarget("frame", {
         sId: frame.sId,
-        name: descriptor.value.manifest.name,
+        name:
+          (frame.mountFilePath
+            ? getFrameV2NameFromMountFilePath(frame.mountFilePath)
+            : null) ?? frame.sId,
       }),
     ],
     context: getAuditLogContext(auth),
