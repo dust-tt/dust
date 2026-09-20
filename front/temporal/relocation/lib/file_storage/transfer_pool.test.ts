@@ -238,20 +238,82 @@ describe("relocation transfer job pool", () => {
 
   it("recovers when Redis fails to record a started operation", async () => {
     const redis = await getRedisStreamClient({ origin: "lock" });
-    const journalWrite = redis.multi();
-    const resultWrite = redis.multi();
-    vi.spyOn(resultWrite, "exec").mockRejectedValueOnce(
-      new Error("Redis unavailable")
-    );
-    vi.spyOn(redis, "multi")
-      .mockReturnValueOnce(journalWrite)
-      .mockReturnValueOnce(resultWrite);
+    const evalCommand = redis.eval.bind(redis);
+    vi.spyOn(redis, "eval")
+      .mockImplementationOnce(evalCommand)
+      .mockRejectedValueOnce(new Error("Redis unavailable"));
 
     expect((await service.startPooledTransfer(request(0))).isErr()).toBe(true);
     finishOperations();
     const retry = await service.startPooledTransfer(request(0));
     expect(retry.isOk() && retry.value).toBe("transferOperations/test-0");
     expect(sts.runTransferJob).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    { stage: "assignment", delayedWrite: 1 },
+    { stage: "completion", delayedWrite: 2 },
+  ])("rejects a queued $stage write after another worker takes the lock", async ({
+    delayedWrite,
+  }) => {
+    const redis = await getRedisStreamClient({ origin: "lock" });
+    const evalCommand = redis.eval.bind(redis);
+    const queued = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    let writeCount = 0;
+    vi.spyOn(redis, "eval").mockImplementation(async (...args) => {
+      const script = args[0];
+      if (typeof script === "string" && script.includes('redis.call("hset"')) {
+        writeCount++;
+        if (writeCount === delayedWrite) {
+          queued.resolve();
+          await release.promise;
+        }
+      }
+      return evalCommand(...args);
+    });
+
+    const oldAttempt = service.startPooledTransfer(request(0));
+    await queued.promise;
+    let otherRequest;
+    try {
+      // Expire the old lease while its Redis command is still queued.
+      await redis.pExpire(`lock:${poolKey}`, 0);
+      otherRequest = await service.startPooledTransfer(request(1));
+    } finally {
+      release.resolve();
+    }
+    const stale = await oldAttempt;
+    expect(stale.isErr() && stale.error.message).toContain("lock expired");
+    expect(otherRequest.isOk()).toBe(true);
+    expect(await redis.hGet(poolKey, "pending")).toBe("");
+
+    const retry = await service.startPooledTransfer(request(0));
+    expect(retry.isOk()).toBe(true);
+    if (retry.isOk() && otherRequest.isOk()) {
+      expect(retry.value).not.toBe(otherRequest.value);
+      expect(specs.get(retry.value)?.gcsDataSource?.path).toBe("source-0/");
+      expect(specs.get(otherRequest.value)?.gcsDataSource?.path).toBe(
+        "source-1/"
+      );
+    }
+  });
+
+  it("does not refresh the deadline after a delayed lock acquisition reply", async () => {
+    const redis = await getRedisStreamClient({ origin: "lock" });
+    const setCommand = redis.set.bind(redis);
+    const nowMs = Date.now();
+    vi.spyOn(redis, "set").mockImplementationOnce(async (...args) => {
+      const result = await setCommand(...args);
+      vi.spyOn(Date, "now").mockReturnValue(nowMs + 300_000);
+      return result;
+    });
+
+    const result = await service.startPooledTransfer(request(0));
+    expect(result.isErr() && result.error.message).toContain("timed out");
+    expect(sts.createTransferJob).not.toHaveBeenCalled();
+    expect(sts.updateTransferJob).not.toHaveBeenCalled();
+    expect(sts.runTransferJob).not.toHaveBeenCalled();
   });
 
   it("waits for the returned operation to become visible on its job", async () => {

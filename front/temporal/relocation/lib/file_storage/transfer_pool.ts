@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import type { RedisClientType } from "@app/lib/api/redis";
 import { getRedisStreamClient } from "@app/lib/api/redis";
+import type { LockOwnership } from "@app/lib/lock";
 import { executeWithLockResult } from "@app/lib/lock";
 import type { TransferConfig } from "@app/temporal/relocation/lib/file_storage/transfer";
 import type { Result } from "@app/types/shared/result";
@@ -37,6 +38,7 @@ type TransferPool = {
   key: string;
   id: string;
   deadlineMs: number;
+  lock: LockOwnership;
 };
 
 type AvailableJob = {
@@ -75,12 +77,24 @@ async function savePoolState(
   if (deadline.isErr()) {
     return deadline;
   }
-  await pool.redis
-    .multi()
-    .hSet(pool.key, fields)
-    .expire(pool.key, STATE_TTL_SECONDS)
-    .exec();
-  return new Ok(undefined);
+  // Queued writes must not outlive the lease that authorized them.
+  const saved = await pool.redis.eval(
+    `if redis.call("get", KEYS[1]) ~= ARGV[1] then return 0 end
+     redis.call("hset", KEYS[2], unpack(ARGV, 3))
+     redis.call("expire", KEYS[2], ARGV[2])
+     return 1`,
+    {
+      keys: [pool.lock.lockKey, pool.key],
+      arguments: [
+        pool.lock.lockValue,
+        String(STATE_TTL_SECONDS),
+        ...Object.entries(fields).flat(),
+      ],
+    }
+  );
+  return saved === 1
+    ? new Ok(undefined)
+    : new Err(new Error("Transfer pool lock expired"));
 }
 
 async function getJob(
@@ -299,9 +313,11 @@ export async function startPooledTransfer(
   const key = `relocation:table-transfers:${id}`;
   const requestId = hash([config.sourcePath, config.destPath]);
   const redis = await getRedisStreamClient({ origin: "lock" });
+  // A delayed lock reply must not give an expired owner a fresh deadline.
+  const deadlineMs = Date.now() + LOCK_ACQUIRE_TIMEOUT_MS + START_TIMEOUT_MS;
   return executeWithLockResult(
     key,
-    async () => {
+    async (lock) => {
       try {
         return await startTransferFromPool(
           {
@@ -310,7 +326,8 @@ export async function startPooledTransfer(
             config,
             key,
             id,
-            deadlineMs: Date.now() + START_TIMEOUT_MS,
+            deadlineMs,
+            lock,
           },
           requestId
         );
