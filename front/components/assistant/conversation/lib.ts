@@ -149,7 +149,7 @@ export function createPlaceholderAgentMessage({
 }): AgentMessageWithStreaming {
   const createdAt = new Date().getTime();
   return {
-    sId: `placeholder-agent-message-${createdAt.toString()}`,
+    sId: `placeholder-agent-message-${createdAt.toString()}-${rank}`,
     rank,
     branchId: null,
     type: "agent_message",

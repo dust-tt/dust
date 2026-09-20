@@ -15,6 +15,7 @@ import {
 } from "@app/components/assistant/conversation/lib";
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import { handlePlanUpdatedEvent } from "@app/components/assistant/conversation/plan_mode/handle_plan_updated";
+import { reconcilePostedAgentMessages } from "@app/components/assistant/conversation/reconcilePostedAgentMessages";
 import type {
   AgentMessageWithStreaming,
   ConversationForkNotice,
@@ -1324,17 +1325,10 @@ export const ConversationViewer = ({
           agentMessages: agentMessagesFromBackend,
         } = result.value;
 
-        // Restricted / mention-only agents: backend returns no agent message
-        // for that mention. Remove matching optimistic agent placeholders so
-        // they cannot collide on rank with later real messages.
-        const createdAgentConfigIds = new Set(
-          agentMessagesFromBackend.map((m) => m.configuration.sId)
-        );
-        virtuosoMessageListRef.current.data.findAndDelete((m) =>
-          placeholderAgentMessages.some(
-            (p) =>
-              p.sId === m.sId && !createdAgentConfigIds.has(p.configuration.sId)
-          )
+        reconcilePostedAgentMessages(
+          virtuosoMessageListRef.current.data,
+          placeholderAgentMessages,
+          agentMessagesFromBackend.map(getLightAgentMessageFromAgentMessage)
         );
 
         // Replace the optimistic user row by sId (not rank): FE lastMessageRank
