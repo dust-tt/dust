@@ -5,10 +5,21 @@ import {
   isFileStorageTransferComplete,
   startTransferCoreTableFiles,
 } from "@app/temporal/relocation/activities/source_region/front/file_storage";
+import { copyCoreTableFiles } from "@app/temporal/relocation/lib/file_storage/copy_core_tables";
 import { StorageTransferService } from "@app/temporal/relocation/lib/file_storage/transfer";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@temporalio/activity", () => ({
+  Context: {
+    current: () => ({ cancellationSignal: new AbortController().signal }),
+  },
+}));
+
+vi.mock("@app/temporal/relocation/lib/file_storage/copy_core_tables", () => ({
+  copyCoreTableFiles: vi.fn(),
+}));
 
 const params = {
   dataSourceCoreIds: {
@@ -30,6 +41,11 @@ const sourcePath = "project-source-project/source-data-source/";
 
 describe("core table file transfers", () => {
   beforeEach(() => {
+    vi.mocked(copyCoreTableFiles).mockReset();
+    vi.mocked(copyCoreTableFiles).mockResolvedValue({
+      copied: 1,
+      alreadyCopied: 0,
+    });
     vi.spyOn(fileStorageConfig, "getDustTablesBucket").mockReturnValue(
       "source-tables"
     );
@@ -75,10 +91,10 @@ describe("core table file transfers", () => {
     const jobName = await startTransferCoreTableFiles(params);
 
     expect(jobName).toBeNull();
-    expect(bucket.getFiles).toHaveBeenCalledExactlyOnceWith({
+    expect(bucket.getAllFilesByPrefix).toHaveBeenCalledExactlyOnceWith({
       prefix: sourcePath,
-      maxResults: 1,
     });
+    expect(copyCoreTableFiles).not.toHaveBeenCalled();
     expect(
       StorageTransferService.prototype.createTransferJob
     ).not.toHaveBeenCalled();
@@ -90,35 +106,40 @@ describe("core table file transfers", () => {
     ).not.toHaveBeenCalled();
   });
 
-  it("creates and polls a transfer when the source prefix contains a file", async () => {
-    fileStorageMock.setFilesByPrefix((prefix) =>
-      prefix === sourcePath
-        ? [{ name: `${sourcePath}table.json`, metadata: {} }]
-        : []
+  it("copies and verifies nonempty prefixes before returning null without STS", async () => {
+    fileStorageMock.setFilesByPrefix(() => [
+      {
+        name: `${sourcePath}table.csv`,
+        metadata: { generation: "1", size: "42", crc32c: "checksum" },
+      },
+    ]);
+    expect(await startTransferCoreTableFiles(params)).toBeNull();
+    expect(copyCoreTableFiles).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        sourcePrefix: sourcePath,
+        destinationPrefix:
+          "project-destination-project/destination-data-source/",
+        files: expect.arrayContaining([
+          expect.objectContaining({ name: `${sourcePath}table.csv` }),
+        ]),
+      })
     );
-
-    const jobName = await startTransferCoreTableFiles(params);
-
-    expect(jobName).toBe("transferJobs/test");
+    expect(getBucketInstance).toHaveBeenLastCalledWith("destination-tables", {
+      useServiceAccount: false,
+    });
     expect(
       StorageTransferService.prototype.createTransferJob
-    ).toHaveBeenCalledExactlyOnceWith({
-      destBucket: params.destBucket,
-      destPath: "project-destination-project/destination-data-source/",
-      destCell: params.destCell,
-      sourceBucket: "source-tables",
-      sourcePath,
-      transferProjectId: "transfer-project",
-      sourceCell: params.sourceCell,
-      workspaceId: params.workspaceId,
-    });
-    await expect(isFileStorageTransferComplete({ jobName })).resolves.toBe(
-      false
-    );
+    ).not.toHaveBeenCalled();
+  });
+
+  it("keeps polling STS job names recorded before this deployment", async () => {
+    await expect(
+      isFileStorageTransferComplete({ jobName: "transferJobs/existing" })
+    ).resolves.toBe(false);
     expect(
       StorageTransferService.prototype.isTransferJobDone
     ).toHaveBeenCalledExactlyOnceWith({
-      jobName,
+      jobName: "transferJobs/existing",
       transferProjectId: "transfer-project",
     });
   });
@@ -127,7 +148,7 @@ describe("core table file transfers", () => {
     const bucket = getBucketInstance("source-tables");
     vi.mocked(getBucketInstance).mockReturnValueOnce(bucket);
     const error = new Error("GCS permission denied");
-    vi.spyOn(bucket, "getFiles").mockRejectedValueOnce(error);
+    vi.spyOn(bucket, "getAllFilesByPrefix").mockRejectedValueOnce(error);
 
     await expect(startTransferCoreTableFiles(params)).rejects.toBe(error);
     expect(
@@ -135,15 +156,15 @@ describe("core table file transfers", () => {
     ).not.toHaveBeenCalled();
   });
 
-  it("keeps transfer creation failures retryable for nonempty prefixes", async () => {
+  it("propagates copy or verification failures instead of marking completion", async () => {
     fileStorageMock.setFilesByPrefix(() => [
-      { name: `${sourcePath}table.json`, metadata: {} },
+      { name: `${sourcePath}table.csv`, metadata: {} },
     ]);
-    const error = new Error("STS quota exceeded");
-    vi.mocked(
-      StorageTransferService.prototype.createTransferJob
-    ).mockResolvedValueOnce(new Err(error));
-
+    const error = new Error("Copy failed");
+    vi.mocked(copyCoreTableFiles).mockRejectedValueOnce(error);
     await expect(startTransferCoreTableFiles(params)).rejects.toBe(error);
+    expect(
+      StorageTransferService.prototype.createTransferJob
+    ).not.toHaveBeenCalled();
   });
 });

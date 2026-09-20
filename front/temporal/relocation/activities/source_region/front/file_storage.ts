@@ -1,5 +1,6 @@
 import { getBucketInstance } from "@app/lib/file_storage";
 import fileStorageConfig from "@app/lib/file_storage/config";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resources/content_fragment_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -8,10 +9,12 @@ import type {
   CreateDataSourceProjectResult,
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
+import { copyCoreTableFiles } from "@app/temporal/relocation/lib/file_storage/copy_core_tables";
 import { StorageTransferService } from "@app/temporal/relocation/lib/file_storage/transfer";
 import type { CellType } from "@app/types/cell";
 import { getBaseMountPathForWorkspace } from "@app/types/mount_path";
 import { isDevelopment } from "@app/types/shared/env";
+import { Context } from "@temporalio/activity";
 
 export async function startTransferFrontPublicFiles({
   destBucket,
@@ -138,6 +141,7 @@ export async function startTransferFrontPrivateFiles({
 /**
  * @cc [owner:flvndvd,label:backend] skipped-transfers-are-complete
  * A null job name MUST complete without contacting STS.
+ * It represents an empty prefix or direct copies completed by the start activity.
  */
 export async function isFileStorageTransferComplete({
   jobName,
@@ -172,8 +176,9 @@ function makeCoreTableDestPath(
 
 /**
  * @cc [owner:flvndvd,label:performance] skip-empty-core-table-transfers
- * Empty source prefixes MUST return null without creating an STS job.
- * Listing failures MUST fail the activity.
+ * Return null only after every source object has been copied and verified, or
+ * after a successful empty listing. Never create an STS job for table files.
+ * Existing STS job names recorded in workflow history remain pollable.
  */
 export async function startTransferCoreTableFiles({
   dataSourceCoreIds,
@@ -201,51 +206,69 @@ export async function startTransferCoreTableFiles({
     workspaceId,
   });
 
+  const startedAt = Date.now();
+  const context = Context.current();
+  const checkCanContinue = () => {
+    context.cancellationSignal.throwIfAborted();
+    // The existing activity has a ten-minute start-to-close timeout. Stop
+    // starting new copies after eight minutes; retries skip verified objects.
+    // A single large rewrite can still exceed the activity timeout.
+    if (Date.now() - startedAt >= 8 * 60 * 1000) {
+      throw new Error(
+        "Table copy activity budget reached; retry remaining objects"
+      );
+    }
+  };
+
   // Match relocation staging storage: use Workload Identity in production.
-  const files = await getBucketInstance(sourceBucket, {
+  const sourceStorage = getBucketInstance(sourceBucket, {
     useServiceAccount: isDevelopment(),
-  }).getFiles({
-    prefix: sourcePath,
-    maxResults: 1,
   });
+  const { files, pageFetchCount } = await sourceStorage.getAllFilesByPrefix({
+    prefix: sourcePath,
+  });
+  checkCanContinue();
 
   if (files.length === 0) {
     localLogger.info("[Storage Transfer] Skipping empty table files transfer.");
     return null;
   }
 
-  localLogger.info("[Storage Transfer] Initiating table files transfer.");
-
-  const storageTransferService = new StorageTransferService();
-
-  const transferResult = await storageTransferService.createTransferJob({
-    destBucket,
-    destPath: makeCoreTableDestPath(destIds),
-    destCell,
-    sourceBucket,
-    sourcePath,
-    transferProjectId: config.getGcsTransferProjectId(),
-    sourceCell,
-    workspaceId,
+  const destinationStorage = getBucketInstance(destBucket, {
+    useServiceAccount: isDevelopment(),
+  });
+  localLogger.info(
+    { objectCount: files.length, pageFetchCount },
+    "[GCS Copy] Starting direct table file copies."
+  );
+  const counts = await copyCoreTableFiles({
+    files,
+    sourcePrefix: sourcePath,
+    destinationPrefix: makeCoreTableDestPath(destIds),
+    copyFile: (sourceName, destinationName, sourceGeneration) =>
+      sourceStorage.copyFile(sourceName, destinationName, destinationStorage, {
+        sourceGeneration,
+      }),
+    getDestinationMetadata: async (name) => {
+      try {
+        const [metadata] = await destinationStorage.file(name).getMetadata();
+        return metadata;
+      } catch (error) {
+        if (isGCSNotFoundError(error)) {
+          return null;
+        }
+        // A 403 or other failure must never be interpreted as a missing object.
+        throw error;
+      }
+    },
+    checkCanContinue,
   });
 
-  if (transferResult.isErr()) {
-    localLogger.error(
-      {
-        error: transferResult.error,
-      },
-      "[Storage Transfer] Failed to create table files transfer job."
-    );
-
-    throw transferResult.error;
-  }
-
   localLogger.info(
-    {
-      jobName: transferResult.value,
-    },
-    "[Storage Transfer] Table files transfer job created successfully."
+    { ...counts, objectCount: files.length, durationMs: Date.now() - startedAt },
+    "[GCS Copy] Table file copies completed and verified."
   );
-
-  return transferResult.value;
+  // Preserve the existing workflow/activity contract and null completion path.
+  // Unlike an STS job, the copies are already complete when this returns.
+  return null;
 }
