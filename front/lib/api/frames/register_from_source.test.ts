@@ -14,7 +14,7 @@ const manifest = JSON.stringify({
   description: "Show the current status.",
 });
 
-async function setup() {
+async function setup({ folderName = "Status" }: { folderName?: string } = {}) {
   const { authenticator: auth, workspace } = await createResourceTest({
     role: "admin",
   });
@@ -22,11 +22,11 @@ async function setup() {
     agentConfigurationId: "test-agent",
     messagesCreatedAt: [],
   });
-  const manifestPath = `conversation-${conversation.sId}/Status/${FRAME_MANIFEST_FILE}`;
+  const manifestPath = `conversation-${conversation.sId}/${folderName}/${FRAME_MANIFEST_FILE}`;
   const mountFilePath = `${getConversationFilesBasePath({
     workspaceId: workspace.sId,
     conversationId: conversation.sId,
-  })}Status/${FRAME_MANIFEST_FILE}`;
+  })}${folderName}/${FRAME_MANIFEST_FILE}`;
   fileStorageMock.setFileContent((path) =>
     path === mountFilePath ? manifest : null
   );
@@ -69,6 +69,21 @@ describe("registerFrameV2FromSource", () => {
       mountFilePath,
     ]);
     expect(files).toHaveLength(1);
+  });
+
+  it("names the Frame after its source folder, not its manifest", async () => {
+    // The fixture manifest names itself "Status"; the folder is what must win.
+    const { auth, conversation, manifestPath } = await setup({
+      folderName: "Health",
+    });
+
+    const registered = await registerFrameV2FromSource(auth, {
+      conversation,
+      manifestPath,
+    });
+
+    assert(registered.isOk());
+    expect(registered.value.frame.useCaseMetadata?.frameName).toBe("Health");
   });
 
   it("rejects an invalid manifest without creating a FileResource", async () => {

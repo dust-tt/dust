@@ -14,6 +14,7 @@ import {
   getProcessedContentType,
   hasProcessedVersion,
 } from "@app/lib/api/files/processing";
+import { getFrameV2NameFromMountFilePath } from "@app/lib/api/frames/frame_name";
 import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
 import {
   formatFramePackageRelativePath,
@@ -1051,11 +1052,25 @@ export class FileResource extends BaseResource<FileModel> {
 
     await this.ensureShareableFrame(auth, { transaction });
 
-    if (this.status === "ready") {
+    // The folder holding the manifest defines the Frame's name; the stored value is a projection
+    // of it, refreshed here and on rename.
+    const frameName = getFrameV2NameFromMountFilePath(this.mountFilePath);
+    const needsName =
+      frameName !== null && this.useCaseMetadata?.frameName !== frameName;
+
+    if (this.status === "ready" && !needsName) {
       return;
     }
 
-    return this.update({ status: "ready" }, transaction);
+    return this.update(
+      {
+        status: "ready",
+        ...(needsName
+          ? { useCaseMetadata: { ...this.useCaseMetadata, frameName } }
+          : {}),
+      },
+      transaction
+    );
   }
 
   get isReady(): boolean {
@@ -1995,11 +2010,20 @@ export class FileResource extends BaseResource<FileModel> {
     destUseCase: FileUseCase;
     destUseCaseMetadata?: FileUseCaseMetadata;
   }) {
+    // A Frames v2 package is named by the folder holding its manifest, so the stored name follows
+    // the mount path. See the `frame-name-is-the-source-folder` contract.
+    const frameName = this.isFrameV2
+      ? getFrameV2NameFromMountFilePath(destMountFilePath)
+      : null;
+
     return this.update({
       fileName: sanitizeFileSystemName(destFileName),
       mountFilePath: destMountFilePath,
       useCase: destUseCase,
-      useCaseMetadata: destUseCaseMetadata ?? null,
+      useCaseMetadata:
+        destUseCaseMetadata && frameName
+          ? { ...destUseCaseMetadata, frameName }
+          : (destUseCaseMetadata ?? null),
     });
   }
 

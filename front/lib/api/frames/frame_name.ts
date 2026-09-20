@@ -9,10 +9,10 @@ import { Err, Ok } from "@app/types/shared/result";
 /**
  * @cc [owner:davidebbo,label:product;backend] frame-name-is-the-source-folder
  * A Frames v2 package is named by the folder holding its `manifest.json`, and by nothing else.
- * `useCaseMetadata.frameName` is a projection of that folder name: it MUST be written only when
- * the Frame is registered and when it is renamed. Publication activation MUST NOT write it, and
- * the manifest MUST NOT carry a name, otherwise the served name drifts from the folder that the
- * file explorer displays.
+ * `useCaseMetadata.frameName` is a projection of that folder name: it MUST be written only where
+ * the Frame's `mountFilePath` is established, namely registration and `updateMount`. Publication
+ * activation MUST NOT write it, and the manifest MUST NOT carry a name, otherwise the served name
+ * drifts from the folder that the file explorer displays.
  */
 export function getFrameV2NameFromMountFilePath(
   mountFilePath: string

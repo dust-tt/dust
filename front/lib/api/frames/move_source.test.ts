@@ -78,9 +78,11 @@ describe("moveFrameV2Source", () => {
     expect(reloaded?.mountFilePath).toBe(
       `${destinationMountDirectory}/${FRAME_MANIFEST_FILE}`
     );
+    // The Frame's name follows its folder, so the move renames it from "Status" to "Renamed".
     expect(reloaded?.useCaseMetadata).toEqual({
       activePublicationId: "publication-1",
       conversationId: c.conversation.sId,
+      frameName: "Renamed",
     });
     expect(fileStorageMock.getObject(c.sourceObjects[0])).toBeUndefined();
     expect(
