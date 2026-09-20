@@ -4,6 +4,7 @@ import { closeRedisClients, getRedisStreamClient } from "@app/lib/api/redis";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { StorageTransferService } from "@app/temporal/relocation/lib/file_storage/transfer";
 import type { PooledTransferConfig } from "@app/temporal/relocation/lib/file_storage/transfer_pool";
+import { protos } from "@google-cloud/storage-transfer";
 import type { google } from "@google-cloud/storage-transfer/build/protos/protos";
 import {
   afterAll,
@@ -24,6 +25,7 @@ const sts = vi.hoisted(() => ({
   updateTransferJob: vi.fn(),
   runTransferJob: vi.fn(),
   getOperation: vi.fn(),
+  listOperationsAsync: vi.fn(),
 }));
 
 vi.mock("@google-cloud/storage-transfer", async (importOriginal) => {
@@ -37,6 +39,7 @@ vi.mock("@google-cloud/storage-transfer", async (importOriginal) => {
       updateTransferJob = sts.updateTransferJob;
       runTransferJob = sts.runTransferJob;
       getOperation = sts.getOperation;
+      listOperationsAsync = sts.listOperationsAsync;
     },
   };
 });
@@ -46,6 +49,7 @@ type Operation = google.longrunning.IOperation;
 
 const jobs = new Map<string, Job>();
 const operations = new Map<string, Operation>();
+const operationJobs = new Map<string, string>();
 const specs = new Map<string, Job["transferSpec"]>();
 const service = new StorageTransferService();
 let workspaceId: string;
@@ -78,6 +82,7 @@ describe("relocation transfer job pool", () => {
   beforeEach(() => {
     jobs.clear();
     operations.clear();
+    operationJobs.clear();
     specs.clear();
     workspaceId = `test-${randomUUID()}`;
     const config = request(0);
@@ -125,9 +130,7 @@ describe("relocation transfer job pool", () => {
         transferJob: Job;
       }) => {
         const job = jobs.get(jobName)!;
-        const active =
-          job.latestOperationName && operations.get(job.latestOperationName);
-        expect(!active || active.done).toBeTruthy();
+        expect(Object.keys(transferJob)).toEqual(["transferSpec"]);
         const updated = { ...job, ...transferJob };
         jobs.set(jobName, updated);
         return [updated];
@@ -137,11 +140,29 @@ describe("relocation transfer job pool", () => {
       async ({ jobName }: { jobName: string }) => {
         const job = jobs.get(jobName)!;
         const name = `transferOperations/test-${operations.size}`;
-        const active =
-          job.latestOperationName && operations.get(job.latestOperationName);
-        expect(!active || active.done).toBeTruthy();
-        const operation = { name, done: false };
+        const active = [...operations].some(
+          ([operationName, operation]) =>
+            operationJobs.get(operationName) === jobName && !operation.done
+        );
+        if (active) {
+          throw Object.assign(new Error("Transfer job already running"), {
+            code: 9,
+          });
+        }
+        const operation: Operation = {
+          name,
+          done: false,
+          metadata: {
+            type_url:
+              protos.google.storagetransfer.v1.TransferOperation.getTypeUrl(),
+            value: protos.google.storagetransfer.v1.TransferOperation.encode({
+              transferJobName: jobName,
+              transferSpec: job.transferSpec,
+            }).finish(),
+          },
+        };
         operations.set(name, operation);
+        operationJobs.set(name, jobName);
         specs.set(name, structuredClone(job.transferSpec));
         jobs.set(jobName, { ...job, latestOperationName: name });
         return [operation];
@@ -150,6 +171,22 @@ describe("relocation transfer job pool", () => {
     sts.getOperation.mockImplementation(async ({ name }: { name: string }) => [
       operations.get(name),
     ]);
+    sts.listOperationsAsync.mockImplementation(async function* ({
+      name,
+      filter,
+      pageSize,
+    }: google.longrunning.IListOperationsRequest) {
+      expect(name).toBe("transferOperations");
+      expect(pageSize).toBe(1);
+      const query = JSON.parse(filter!);
+      expect(query.projectId).toBe(request(0).transferProjectId);
+      expect(query.jobNames).toHaveLength(1);
+      for (const [operationName, operation] of [...operations].reverse()) {
+        if (operationJobs.get(operationName) === query.jobNames[0]) {
+          yield structuredClone(operation);
+        }
+      }
+    });
   });
 
   afterEach(async () => {
@@ -236,10 +273,107 @@ describe("relocation transfer job pool", () => {
     expect(sts.runTransferJob).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    false,
+    true,
+  ])("recovers a lost run with stale job metadata and done=%s", async (done) => {
+    for (let index = 0; index < 20; index++) {
+      expect((await service.startPooledTransfer(request(index))).isOk()).toBe(
+        true
+      );
+    }
+    finishOperations();
+    const run = sts.runTransferJob.getMockImplementation()!;
+    sts.runTransferJob.mockImplementationOnce(async ({ jobName }) => {
+      const previous = structuredClone(jobs.get(jobName)!);
+      const [operation] = await run({ jobName });
+      operation.done = done;
+      jobs.set(jobName, previous);
+      throw new Error("Connection lost after STS accepted the run");
+    });
+    expect((await service.startPooledTransfer(request(20))).isErr()).toBe(true);
+
+    const retry = await service.startPooledTransfer(request(20));
+    expect(retry.isOk() && retry.value).toBe("transferOperations/test-20");
+    expect(sts.listOperationsAsync).toHaveBeenCalledTimes(1);
+    expect(sts.updateTransferJob).toHaveBeenCalledTimes(1);
+    expect(sts.runTransferJob).toHaveBeenCalledTimes(21);
+  });
+
+  it("starts an already configured job when the first run never reached STS", async () => {
+    sts.runTransferJob.mockRejectedValueOnce(new Error("Connection refused"));
+    expect((await service.startPooledTransfer(request(0))).isErr()).toBe(true);
+
+    const retry = await service.startPooledTransfer(request(0));
+    expect(retry.isOk() && retry.value).toBe("transferOperations/test-0");
+    expect(sts.createTransferJob).toHaveBeenCalledTimes(1);
+    expect(sts.updateTransferJob).not.toHaveBeenCalled();
+    expect(sts.runTransferJob).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the pending prefix when both STS reads lag behind an accepted run", async () => {
+    const run = sts.runTransferJob.getMockImplementation()!;
+    sts.runTransferJob.mockImplementationOnce(async ({ jobName }) => {
+      await run({ jobName });
+      jobs.set(jobName, { ...jobs.get(jobName), latestOperationName: null });
+      throw new Error("Connection lost after STS accepted the run");
+    });
+    expect((await service.startPooledTransfer(request(0))).isErr()).toBe(true);
+    sts.listOperationsAsync.mockImplementationOnce(async function* () {});
+
+    const retry = await service.startPooledTransfer(request(1));
+    expect(retry.isErr() && retry.error.message).toBe(
+      "Transfer job already running"
+    );
+    expect(sts.updateTransferJob).not.toHaveBeenCalled();
+    expect(operations.size).toBe(1);
+    expect(jobs.size).toBe(1);
+
+    expect((await service.startPooledTransfer(request(1))).isOk()).toBe(true);
+    const recovered = await service.startPooledTransfer(request(0));
+    expect(recovered.isOk() && recovered.value).toBe(
+      "transferOperations/test-0"
+    );
+    expect(specs.get("transferOperations/test-0")?.gcsDataSource?.path).toBe(
+      "source-0/"
+    );
+  });
+
+  it("rejects an operation from a different prefix during recovery", async () => {
+    sts.runTransferJob.mockRejectedValueOnce(new Error("Connection refused"));
+    expect((await service.startPooledTransfer(request(0))).isErr()).toBe(true);
+    const jobName = [...jobs.keys()][0];
+    const operation: Operation = {
+      name: "transferOperations/older",
+      done: true,
+      metadata: {
+        value: protos.google.storagetransfer.v1.TransferOperation.encode({
+          transferJobName: jobName,
+          transferSpec: {
+            gcsDataSource: {
+              bucketName: "source-tables",
+              path: "another-prefix/",
+            },
+          },
+        }).finish(),
+      },
+    };
+    operations.set(operation.name!, operation);
+    operationJobs.set(operation.name!, jobName);
+
+    const retry = await service.startPooledTransfer(request(0));
+    expect(retry.isErr() && retry.error.message).toContain(
+      "does not match pending prefix"
+    );
+    expect(sts.updateTransferJob).not.toHaveBeenCalled();
+    expect(sts.runTransferJob).toHaveBeenCalledTimes(1);
+  });
+
   it("recovers when Redis fails to record a started operation", async () => {
     const redis = await getRedisStreamClient({ origin: "lock" });
     const evalCommand = redis.eval.bind(redis);
     vi.spyOn(redis, "eval")
+      .mockImplementationOnce(evalCommand)
       .mockImplementationOnce(evalCommand)
       .mockRejectedValueOnce(new Error("Redis unavailable"));
 
@@ -252,7 +386,8 @@ describe("relocation transfer job pool", () => {
 
   it.each([
     { stage: "assignment", delayedWrite: 1 },
-    { stage: "completion", delayedWrite: 2 },
+    { stage: "configuration", delayedWrite: 2 },
+    { stage: "completion", delayedWrite: 3 },
   ])("rejects a queued $stage write after another worker takes the lock", async ({
     delayedWrite,
   }) => {

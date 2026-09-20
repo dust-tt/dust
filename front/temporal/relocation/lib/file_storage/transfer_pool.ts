@@ -25,6 +25,7 @@ const STATE_TTL_SECONDS = 30 * 24 * 60 * 60;
 const BUSY_RETRY_DELAY_MS = 30_000;
 // Let Temporal retry so a lost run response is reconciled before another run.
 const RPC_OPTIONS = { timeout: 10_000, retry: null };
+const TRANSFER_OPERATIONS_COLLECTION = "transferOperations";
 
 export type PooledTransferConfig = Omit<TransferConfig, "includePrefixes"> & {
   sourcePath: string;
@@ -55,9 +56,12 @@ const PendingTransferSchema = z.object({
   sourcePath: z.string(),
   destBucket: z.string(),
   destPath: z.string(),
+  configured: z.boolean(),
 });
 
 type PendingTransfer = z.infer<typeof PendingTransferSchema>;
+
+const OperationNameSchema = z.object({ name: z.string().min(1) });
 
 function hash(parts: string[]): string {
   return createHash("sha256").update(JSON.stringify(parts)).digest("hex");
@@ -174,28 +178,86 @@ async function configureJob(
     gcsDataSink: { bucketName: pending.destBucket, path: pending.destPath },
     transferOptions: { overwriteWhen: "DIFFERENT" },
   };
-  const transferJob: google.storagetransfer.v1.ITransferJob = {
-    name: pending.jobName,
-    projectId: pool.config.transferProjectId,
-    description: `Relocate workspace ${pool.config.workspaceId} from ${pool.config.sourceCell} to ${pool.config.destCell}`,
-    transferSpec,
-    status: "ENABLED",
-  };
   if (existingJob) {
     await pool.client.updateTransferJob(
       {
         jobName: pending.jobName,
         projectId: pool.config.transferProjectId,
-        transferJob,
+        transferJob: { transferSpec },
         updateTransferJobFieldMask: { paths: ["transfer_spec"] },
       },
       RPC_OPTIONS
     );
   } else {
+    const transferJob: google.storagetransfer.v1.ITransferJob = {
+      name: pending.jobName,
+      projectId: pool.config.transferProjectId,
+      description: `Relocate workspace ${pool.config.workspaceId} from ${pool.config.sourceCell} to ${pool.config.destCell}`,
+      transferSpec,
+      status: "ENABLED",
+    };
     // No schedule means only explicit runTransferJob calls can start this job.
     await pool.client.createTransferJob({ transferJob }, RPC_OPTIONS);
   }
   return new Ok(undefined);
+}
+
+async function findPendingOperation(
+  pool: TransferPool,
+  pending: PendingTransfer,
+  latestOperationName: string | null | undefined
+): Promise<Result<string | null, Error>> {
+  let operationName = latestOperationName;
+  if (!operationName || operationName === pending.previousOperationName) {
+    // The operation list can expose a run before latestOperationName catches up.
+    const operations = pool.client.listOperationsAsync(
+      new protos.google.longrunning.ListOperationsRequest({
+        name: TRANSFER_OPERATIONS_COLLECTION,
+        filter: JSON.stringify({
+          projectId: pool.config.transferProjectId,
+          jobNames: [pending.jobName],
+        }),
+        pageSize: 1,
+      }),
+      RPC_OPTIONS
+    );
+    for await (const operation of operations) {
+      // The SDK types pages here but yields individual operations, newest first.
+      const parsed = OperationNameSchema.safeParse(operation);
+      if (!parsed.success) {
+        return new Err(new Error("Invalid transfer operation from STS"));
+      }
+      operationName = parsed.data.name;
+      break;
+    }
+  }
+  if (!operationName || operationName === pending.previousOperationName) {
+    return new Ok(null);
+  }
+  const [operation] = await pool.client.getOperation(
+    new protos.google.longrunning.GetOperationRequest({ name: operationName }),
+    RPC_OPTIONS
+  );
+  const value = operation.metadata?.value;
+  if (!value) {
+    return new Err(new Error("Missing transfer operation metadata"));
+  }
+  const { transferJobName, transferSpec } =
+    protos.google.storagetransfer.v1.TransferOperation.decode(
+      typeof value === "string" ? Buffer.from(value, "base64") : value
+    );
+  if (
+    transferJobName !== pending.jobName ||
+    transferSpec?.gcsDataSource?.bucketName !== pending.sourceBucket ||
+    transferSpec?.gcsDataSource?.path !== pending.sourcePath ||
+    transferSpec?.gcsDataSink?.bucketName !== pending.destBucket ||
+    transferSpec?.gcsDataSink?.path !== pending.destPath
+  ) {
+    return new Err(
+      new Error("Transfer operation does not match pending prefix")
+    );
+  }
+  return new Ok(operationName);
 }
 
 async function startPendingTransfer(
@@ -206,13 +268,32 @@ async function startPendingTransfer(
   if (job.isErr()) {
     return job;
   }
-  let operationName = job.value?.latestOperationName;
-  // A changed operation recovers a run whose response was lost.
-  if (!operationName || operationName === pending.previousOperationName) {
+  let operationName: string | null = null;
+  if (pending.configured) {
+    const recovered = await findPendingOperation(
+      pool,
+      pending,
+      job.value?.latestOperationName
+    );
+    if (recovered.isErr()) {
+      return recovered;
+    }
+    operationName = recovered.value;
+  } else {
     const configured = await configureJob(pool, pending, job.value);
     if (configured.isErr()) {
       return configured;
     }
+    // Persist before RUN so retries never patch a possibly active job.
+    const saved = await savePoolState(pool, {
+      pending: JSON.stringify({ ...pending, configured: true }),
+    });
+    if (saved.isErr()) {
+      return saved;
+    }
+  }
+  if (!operationName) {
+    // RUN may never have reached STS, which rejects overlapping runs.
     const deadline = checkDeadline(pool);
     if (deadline.isErr()) {
       return deadline;
@@ -224,7 +305,7 @@ async function startPendingTransfer(
       },
       RPC_OPTIONS
     );
-    operationName = operation.name;
+    operationName = operation.name ?? null;
   }
   if (!operationName) {
     return new Err(new Error("STS did not return a transfer operation"));
@@ -285,6 +366,7 @@ async function startTransferFromPool(
     sourcePath: pool.config.sourcePath,
     destBucket: pool.config.destBucket,
     destPath: pool.config.destPath,
+    configured: false,
   };
   const saved = await savePoolState(pool, {
     pending: JSON.stringify(pending),
