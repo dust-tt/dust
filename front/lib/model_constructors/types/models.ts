@@ -50,6 +50,11 @@ export const INKLING = "inkling" as const;
 export const GROK_4_5 = "grok-4.5" as const;
 export const GROK_4_6 = "grok-4.6" as const;
 
+// TypeSafe AI's "system one" model. It answers named questions about a piece of
+// state rather than generating text, so it is served by a system-one endpoint
+// and never appears in the chat model picker.
+export const JEV = "jev-latest" as const;
+
 // Dummy model used for local/dev testing (static replies, simulated credit
 // consumption). Served by the in-process noop endpoint, not an external API.
 export const NOOP_MODEL = "noop" as const;
@@ -103,6 +108,7 @@ export const MODELS = [
   INKLING,
   GROK_4_5,
   GROK_4_6,
+  JEV,
   SIMULATED_FAILURE_MODEL,
   NOOP_MODEL,
 ] as const;

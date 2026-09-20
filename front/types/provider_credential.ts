@@ -18,6 +18,7 @@ export type LLMCredentialsType = {
   GOOGLE_AI_STUDIO_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
   XAI_API_KEY?: string;
+  TYPESAFE_AI_API_KEY?: string;
   // Azure OpenAI and TextSynth are not in ModelProviderIdType yet.
   AZURE_OPENAI_API_KEY?: string;
   AZURE_OPENAI_ENDPOINT?: string;

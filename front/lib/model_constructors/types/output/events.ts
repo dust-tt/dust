@@ -72,11 +72,13 @@ export interface ReasoningEvent {
 // only today). Fireworks-hosted labs (moonshot_ai, thinking_machines, z_ai) and
 // the noop lab never produce one. xai reuses the OpenAI Responses converter,
 // which tags its passthrough blocks under the "openai" provider, so "xai" never
-// appears as a passthrough value either. All are excluded to keep the value
-// mappable to the persisted provider vocabulary.
+// appears as a passthrough value either. typesafe_ai answers single-shot
+// system-one requests: there is no conversation to replay, so nothing to carry
+// through. All are excluded to keep the value mappable to the persisted
+// provider vocabulary.
 export type PassthroughLab = Exclude<
   Lab,
-  "moonshot_ai" | "thinking_machines" | "z_ai" | "xai"
+  "moonshot_ai" | "thinking_machines" | "z_ai" | "xai" | "typesafe_ai"
 >;
 
 export type ProviderPassthroughContent = {

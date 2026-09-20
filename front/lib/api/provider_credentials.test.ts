@@ -51,6 +51,7 @@ describe("getLlmCredentials", () => {
       DEEPSEEK_API_KEY: "",
       FIREWORKS_API_KEY: "",
       XAI_API_KEY: "",
+      TYPESAFE_AI_API_KEY: "",
     });
   });
 

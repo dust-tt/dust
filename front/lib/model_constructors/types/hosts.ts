@@ -5,6 +5,7 @@ export const AGENT_PLATFORM_HOST = "agent-platform" as const;
 export const MISTRAL_HOST = "mistral" as const;
 export const FIREWORKS_HOST = "fireworks" as const;
 export const XAI_HOST = "xai" as const;
+export const TYPESAFE_AI_HOST = "typesafe-ai" as const;
 export const NOOP_HOST = "noop" as const;
 
 const HOSTS = [
@@ -15,6 +16,7 @@ const HOSTS = [
   MISTRAL_HOST,
   FIREWORKS_HOST,
   XAI_HOST,
+  TYPESAFE_AI_HOST,
   NOOP_HOST,
 ] as const;
 export type Host = (typeof HOSTS)[number];

@@ -95,6 +95,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+import assert from "assert";
 
 export function inferenceRegionForEndpointRegion(
   region: Region
@@ -996,7 +997,14 @@ export class NoopStreamTransition extends StreamEndpointTransition {
   }
 }
 
-const LAB_TO_PROVIDER_ID: Record<Lab, ModelProviderIdType> = {
+// `typesafe_ai` is absent on purpose: it only serves system-one endpoints,
+// whose constructor is assignable to neither a stream nor a batch transition,
+// and it has no entry in the legacy provider vocabulary. Giving it a stand-in
+// id would mis-attribute usage rows if it ever did reach here.
+const LAB_TO_PROVIDER_ID: Record<
+  Exclude<Lab, "typesafe_ai">,
+  ModelProviderIdType
+> = {
   openai: "openai",
   anthropic: "anthropic",
   mistral: "mistral",
@@ -1009,6 +1017,14 @@ const LAB_TO_PROVIDER_ID: Record<Lab, ModelProviderIdType> = {
   thinking_machines: "fireworks",
   z_ai: "fireworks",
 };
+
+function labToProviderId(lab: Lab): ModelProviderIdType {
+  assert(
+    lab !== "typesafe_ai",
+    "System-one endpoints have no stream or batch transition."
+  );
+  return LAB_TO_PROVIDER_ID[lab];
+}
 
 /**
  * Batch transition: wraps a new `BatchEndpoint` and delegates batch submission,
@@ -1024,7 +1040,7 @@ export class BatchEndpointTransition extends BaseTransition {
   ) {
     super(
       auth,
-      LAB_TO_PROVIDER_ID[llmParameters.modelInfo.endpoint.lab],
+      labToProviderId(llmParameters.modelInfo.endpoint.lab),
       llmParameters
     );
     this.model = new modelConstructor(llmParameters.credentials);

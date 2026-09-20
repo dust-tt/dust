@@ -8,6 +8,7 @@ export const MOONSHOT_AI_LAB = "moonshot_ai" as const;
 export const Z_AI_LAB = "z_ai" as const;
 export const THINKING_MACHINES_LAB = "thinking_machines" as const;
 export const XAI_LAB = "xai" as const;
+export const TYPESAFE_AI_LAB = "typesafe_ai" as const;
 export const NOOP_LAB = "noop" as const;
 
 export const LABS = [
@@ -20,6 +21,7 @@ export const LABS = [
   Z_AI_LAB,
   THINKING_MACHINES_LAB,
   XAI_LAB,
+  TYPESAFE_AI_LAB,
   NOOP_LAB,
 ] as const;
 export type Lab = (typeof LABS)[number];
