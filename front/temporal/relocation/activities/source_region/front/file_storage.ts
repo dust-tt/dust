@@ -11,6 +11,7 @@ import type {
 import { StorageTransferService } from "@app/temporal/relocation/lib/file_storage/transfer";
 import type { CellType } from "@app/types/cell";
 import { getBaseMountPathForWorkspace } from "@app/types/mount_path";
+import { isDevelopment } from "@app/types/shared/env";
 
 export async function startTransferFrontPublicFiles({
   destBucket,
@@ -174,6 +175,10 @@ function makeCoreTableDestPath(
  * Empty source prefixes MUST return null without creating an STS job.
  * Listing failures MUST fail the activity.
  */
+/**
+ * @cc [owner:flvndvd,label:backend] relocation-gcs-credentials
+ * Outside development, the GCS client MUST NOT load the configured service account key file.
+ */
 export async function startTransferCoreTableFiles({
   dataSourceCoreIds,
   destBucket,
@@ -200,7 +205,9 @@ export async function startTransferCoreTableFiles({
     workspaceId,
   });
 
-  const files = await getBucketInstance(sourceBucket).getFiles({
+  const files = await getBucketInstance(sourceBucket, {
+    useServiceAccount: isDevelopment(),
+  }).getFiles({
     prefix: sourcePath,
     maxResults: 1,
   });

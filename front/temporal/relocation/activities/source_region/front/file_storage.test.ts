@@ -7,6 +7,7 @@ import {
 } from "@app/temporal/relocation/activities/source_region/front/file_storage";
 import { StorageTransferService } from "@app/temporal/relocation/lib/file_storage/transfer";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import * as env from "@app/types/shared/env";
 import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -30,6 +31,7 @@ const sourcePath = "project-source-project/source-data-source/";
 
 describe("core table file transfers", () => {
   beforeEach(() => {
+    vi.spyOn(env, "isDevelopment").mockReturnValue(false);
     vi.spyOn(fileStorageConfig, "getDustTablesBucket").mockReturnValue(
       "source-tables"
     );
@@ -57,6 +59,9 @@ describe("core table file transfers", () => {
     const jobName = await startTransferCoreTableFiles(params);
 
     expect(jobName).toBeNull();
+    expect(getBucketInstance).toHaveBeenLastCalledWith("source-tables", {
+      useServiceAccount: false,
+    });
     expect(bucket.getFiles).toHaveBeenCalledExactlyOnceWith({
       prefix: sourcePath,
       maxResults: 1,
