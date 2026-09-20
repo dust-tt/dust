@@ -1,3 +1,4 @@
+import { getBucketInstance } from "@app/lib/file_storage";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resources/content_fragment_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -133,11 +134,19 @@ export async function startTransferFrontPrivateFiles({
   return transferResult.value;
 }
 
+/**
+ * @cc [owner:flvndvd,label:backend] skipped-transfers-are-complete
+ * A null job name MUST complete without contacting STS.
+ */
 export async function isFileStorageTransferComplete({
   jobName,
 }: {
-  jobName: string;
+  jobName: string | null;
 }): Promise<boolean> {
+  if (jobName === null) {
+    return true;
+  }
+
   const storageTransfer = new StorageTransferService();
 
   const result = await storageTransfer.isTransferJobDone({
@@ -160,6 +169,11 @@ function makeCoreTableDestPath(
   return `project-${dustAPIProjectId}/${dustAPIDataSourceId}/`;
 }
 
+/**
+ * @cc [owner:flvndvd,label:performance] skip-empty-core-table-transfers
+ * Empty source prefixes MUST return null without creating an STS job.
+ * Listing failures MUST fail the activity.
+ */
 export async function startTransferCoreTableFiles({
   dataSourceCoreIds,
   destBucket,
@@ -174,9 +188,8 @@ export async function startTransferCoreTableFiles({
   destCell: CellType;
   sourceCell: CellType;
   workspaceId: string;
-}): Promise<string> {
-  const storageTransferService = new StorageTransferService();
-
+}): Promise<string | null> {
+  const sourceBucket = fileStorageConfig.getDustTablesBucket();
   const sourcePath = makeCoreTableDestPath(dataSourceCoreIds);
 
   const localLogger = logger.child({
@@ -187,13 +200,25 @@ export async function startTransferCoreTableFiles({
     workspaceId,
   });
 
+  const files = await getBucketInstance(sourceBucket).getFiles({
+    prefix: sourcePath,
+    maxResults: 1,
+  });
+
+  if (files.length === 0) {
+    localLogger.info("[Storage Transfer] Skipping empty table files transfer.");
+    return null;
+  }
+
   localLogger.info("[Storage Transfer] Initiating table files transfer.");
+
+  const storageTransferService = new StorageTransferService();
 
   const transferResult = await storageTransferService.createTransferJob({
     destBucket,
     destPath: makeCoreTableDestPath(destIds),
     destCell,
-    sourceBucket: fileStorageConfig.getDustTablesBucket(),
+    sourceBucket,
     sourcePath,
     transferProjectId: config.getGcsTransferProjectId(),
     sourceCell,
