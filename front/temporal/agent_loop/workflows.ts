@@ -188,7 +188,6 @@ const { finalizeErroredSandboxChildToolActivity } = proxyActivities<
 const { upsertOngoingAgentLoopActivity, deleteOngoingAgentLoopActivity } =
   proxyActivities<typeof ongoingAgentLoopActivities>({
     startToCloseTimeout: "1 minute",
-    retry: { maximumAttempts: 3 },
   });
 
 export async function agentLoopConversationTitleWorkflow({

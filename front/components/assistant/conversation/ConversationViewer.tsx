@@ -15,7 +15,6 @@ import {
 } from "@app/components/assistant/conversation/lib";
 import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import { handlePlanUpdatedEvent } from "@app/components/assistant/conversation/plan_mode/handle_plan_updated";
-import { reconcilePostedAgentMessages } from "@app/components/assistant/conversation/reconcilePostedAgentMessages";
 import type {
   AgentMessageWithStreaming,
   ConversationForkNotice,
@@ -54,7 +53,6 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
-import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
 import {
   AgentMessageCompletedEvent,
@@ -67,7 +65,6 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
-import type { FetchConversationMessageResponseLight } from "@app/types/api/assistant/messages";
 import type { GetConversationPlanModeResponseBody } from "@app/types/api/assistant/plan_mode";
 import type {
   ConversationForkedChildType,
@@ -87,7 +84,6 @@ import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
 import type {
@@ -893,13 +889,18 @@ export const ConversationViewer = ({
 
             // Update the messages SWR cache in place so a future remount
             // (e.g. navigating away and back) sees the full terminal state.
+            // The message-level SSE fires agent_message_success before this
+            // conversation-level event, so Virtuoso already holds the final
+            // content, completionDurationMs, and activitySteps. We copy them
+            // into the SWR snapshot to avoid a blank message body on remount.
+            // If Virtuoso hasn't committed the update yet (rare race between
+            // two independent SSE streams), we fall back to a real revalidation.
             {
               const vMsg = virtuosoMessageListRef.current?.data.find(
                 (m) => m.sId === event.messageId
               );
               const msg =
                 vMsg && isAgentMessageWithStreaming(vMsg) ? vMsg : null;
-              const needsRefresh = msg === null || msg.status === "created";
 
               void mutateMessages(
                 (pages) =>
@@ -926,55 +927,8 @@ export const ConversationViewer = ({
                         : m
                     ),
                   })),
-                { revalidate: false }
-              )
-                .then(async () => {
-                  if (!needsRefresh) {
-                    return;
-                  }
-                  const response = await clientFetch(
-                    `/api/w/${owner.sId}/assistant/conversations/${event.conversationId}/messages/${event.messageId}?viewType=light`
-                  );
-                  if (!response.ok) {
-                    throw new Error(
-                      `Message refresh failed with status ${response.status}.`
-                    );
-                  }
-                  const {
-                    message: refreshed,
-                  }: FetchConversationMessageResponseLight =
-                    await response.json();
-                  if (!isLightAgentMessageType(refreshed)) {
-                    return;
-                  }
-                  await mutateMessages(
-                    (pages) =>
-                      pages?.map((page) => ({
-                        ...page,
-                        messages: page.messages.map((message) =>
-                          message.sId === event.messageId ? refreshed : message
-                        ),
-                      })),
-                    { revalidate: false }
-                  );
-                  virtuosoMessageListRef.current?.data.map((message) =>
-                    isAgentMessageWithStreaming(message) &&
-                    message.sId === event.messageId &&
-                    message.status === "created"
-                      ? makeInitialMessageStreamState(refreshed)
-                      : message
-                  );
-                })
-                .catch((error: unknown) => {
-                  logger.warn(
-                    {
-                      err: normalizeError(error),
-                      conversationId,
-                      messageId: event.messageId,
-                    },
-                    "Failed to refresh completed agent message."
-                  );
-                });
+                { revalidate: msg === null }
+              );
             }
 
             // Update the conversation hasError state in the local cache without making a network request.
@@ -1325,10 +1279,17 @@ export const ConversationViewer = ({
           agentMessages: agentMessagesFromBackend,
         } = result.value;
 
-        reconcilePostedAgentMessages(
-          virtuosoMessageListRef.current.data,
-          placeholderAgentMessages,
-          agentMessagesFromBackend.map(getLightAgentMessageFromAgentMessage)
+        // Restricted / mention-only agents: backend returns no agent message
+        // for that mention. Remove matching optimistic agent placeholders so
+        // they cannot collide on rank with later real messages.
+        const createdAgentConfigIds = new Set(
+          agentMessagesFromBackend.map((m) => m.configuration.sId)
+        );
+        virtuosoMessageListRef.current.data.findAndDelete((m) =>
+          placeholderAgentMessages.some(
+            (p) =>
+              p.sId === m.sId && !createdAgentConfigIds.has(p.configuration.sId)
+          )
         );
 
         // Replace the optimistic user row by sId (not rank): FE lastMessageRank

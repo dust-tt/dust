@@ -78,204 +78,6 @@ function getMessageTopMargin({
   return "mt-8";
 }
 
-function getMessageSpacing(
-  data: VirtuosoMessage,
-  prevData: VirtuosoMessage | null,
-  isSteeredAgentMessage: boolean
-) {
-  const areSameDate =
-    prevData !== null &&
-    getMessageDate(prevData).toDateString() ===
-      getMessageDate(data).toDateString();
-
-  const isPreviousMessageSameSender =
-    prevData !== null &&
-    areSameDate &&
-    isUserMessage(data) &&
-    isUserMessage(prevData) &&
-    data.user?.sId !== undefined &&
-    data.user.sId === prevData.user?.sId;
-
-  const isPreviousAgentMessageSteered =
-    prevData !== null &&
-    isUserMessage(data) &&
-    isAgentMessageWithStreaming(prevData) &&
-    (prevData.status === "gracefully_stopped" || prevData.status === "created");
-
-  const topMargin = getMessageTopMargin({
-    data,
-    prevData,
-    isPreviousMessageSameSender,
-    isSteeredAgentMessage,
-    isPreviousAgentMessageSteered,
-  });
-
-  return {
-    areSameDate,
-    isPreviousMessageSameSender,
-    isPreviousAgentMessageSteered,
-    topMargin,
-  };
-}
-
-function useMessageCitations(data: VirtuosoMessage) {
-  return useMemo(() => {
-    if (!isUserMessage(data)) {
-      return undefined;
-    }
-
-    let visibleContentFragments = data.contentFragments;
-    if (data.contentFragments.some(isContentNodeContentFragment)) {
-      const inlineKnowledgeReferences = extractKnowledgeTagReferences(
-        data.content
-      );
-      if (inlineKnowledgeReferences.length > 0) {
-        visibleContentFragments = data.contentFragments.filter(
-          (fragment) =>
-            !(
-              isContentNodeContentFragment(fragment) &&
-              fragment.nodeId &&
-              inlineKnowledgeReferences.some(
-                (reference) =>
-                  reference.id === fragment.nodeId &&
-                  (!reference.dataSourceViewId ||
-                    reference.dataSourceViewId ===
-                      fragment.nodeDataSourceViewId)
-              )
-            )
-        );
-      }
-    }
-
-    const hasImageCitation = visibleContentFragments.some((fragment) => {
-      const attachmentCitation = contentFragmentToAttachmentCitation(fragment);
-      return (
-        attachmentCitation.type === "file" &&
-        isSupportedImageContentType(attachmentCitation.contentType)
-      );
-    });
-
-    return visibleContentFragments.length > 0
-      ? visibleContentFragments.map((contentFragment, index) => (
-          <AttachmentCitation
-            key={index}
-            attachmentCitation={contentFragmentToAttachmentCitation(
-              contentFragment
-            )}
-            size={hasImageCitation ? "md" : "sm"}
-          />
-        ))
-      : undefined;
-  }, [data]);
-}
-
-function useMessageActors(data: VirtuosoMessage) {
-  const sId = data.sId;
-  const isAgentMessage = isAgentMessageWithStreaming(data);
-  const configurationId = isAgentMessage ? data.configuration.sId : undefined;
-  const parentMessageId = isAgentMessage ? data.parentMessageId : undefined;
-  const messageUser = isUserMessage(data) ? data.user : null;
-  const methods = useVirtuosoMethods<
-    VirtuosoMessage,
-    VirtuosoMessageListContext
-  >();
-
-  const isSteeredAgentMessage = useMemo(() => {
-    if (!isAgentMessage || !configurationId) {
-      return false;
-    }
-    const messages = methods.data.get();
-    const currentIndex = messages.findIndex((message) => message.sId === sId);
-    for (let i = currentIndex - 1; i >= 0; i--) {
-      const message = messages[i];
-      if (isAgentMessageWithStreaming(message)) {
-        return (
-          (message.status === "gracefully_stopped" ||
-            message.status === "created") &&
-          message.configuration.sId === configurationId
-        );
-      }
-    }
-    return false;
-  }, [isAgentMessage, configurationId, sId, methods.data]);
-
-  const triggeringUser = useMemo((): UserType | null => {
-    if (isAgentMessage && parentMessageId) {
-      const parentUserMessage = methods.data
-        .get()
-        .filter(isUserMessage)
-        .find((message) => message.sId === parentMessageId);
-      return parentUserMessage?.user ?? null;
-    }
-    return messageUser;
-  }, [isAgentMessage, parentMessageId, messageUser, methods.data]);
-
-  return { isSteeredAgentMessage, triggeringUser };
-}
-
-interface MessageMentionsProps {
-  data: Extract<VirtuosoMessage, { richMentions: unknown[] }>;
-  owner: VirtuosoMessageListContext["owner"];
-  conversation: NonNullable<VirtuosoMessageListContext["conversation"]>;
-  triggeringUser: UserType | null;
-}
-
-function MessageMentions({
-  data,
-  owner,
-  conversation,
-  triggeringUser,
-}: MessageMentionsProps) {
-  if (data.visibility === "deleted") {
-    return null;
-  }
-
-  return data.richMentions
-    .filter((mention, index, mentions) => {
-      if (mention.status !== "agent_restricted_by_space_usage") {
-        return true;
-      }
-      return (
-        mentions.findIndex(
-          (candidate) =>
-            candidate.status === "agent_restricted_by_space_usage" &&
-            candidate.id === mention.id
-        ) === index
-      );
-    })
-    .map((mention, index) => {
-      if (
-        mention.status === "pending_conversation_access" ||
-        mention.status === "pending_project_membership" ||
-        mention.status === "agent_restricted_by_space_usage"
-      ) {
-        return (
-          <MentionValidationRequired
-            key={index}
-            mention={mention}
-            message={data}
-            owner={owner}
-            triggeringUser={triggeringUser}
-            conversation={conversation}
-          />
-        );
-      }
-      if (mention.status === "user_restricted_by_conversation_access") {
-        return (
-          <MentionInvalid
-            key={index}
-            mention={mention}
-            message={data}
-            owner={owner}
-            triggeringUser={triggeringUser}
-            conversation={conversation}
-          />
-        );
-      }
-      return null;
-    });
-}
-
 interface MessageItemProps {
   data: VirtuosoMessage;
   context: VirtuosoMessageListContext;
@@ -287,11 +89,6 @@ interface MessageItemProps {
   ) => void;
 }
 
-/**
- * @cc [owner:id13,label:react;concurrency] agent-message-stream-identity
- * AgentMessage MUST remount when its message ID changes on a rank-stable row so its stream state
- * belongs to the real message instead of an optimistic placeholder.
- */
 export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
     {
@@ -305,8 +102,10 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   ) {
     const sId = data.sId;
 
-    const citations = useMessageCitations(data);
-    const { isSteeredAgentMessage, triggeringUser } = useMessageActors(data);
+    const methods = useVirtuosoMethods<
+      VirtuosoMessage,
+      VirtuosoMessageListContext
+    >();
 
     const submitFeedback = useMessageFeedback({
       owner: context.owner,
@@ -356,12 +155,133 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isSubmittingThumb,
     };
 
-    const {
-      areSameDate,
+    const visibleContentFragments = useMemo(() => {
+      if (!isUserMessage(data)) {
+        return [];
+      }
+
+      if (!data.contentFragments.some(isContentNodeContentFragment)) {
+        return data.contentFragments;
+      }
+
+      const inlineKnowledgeReferences = extractKnowledgeTagReferences(
+        data.content
+      );
+
+      if (inlineKnowledgeReferences.length === 0) {
+        return data.contentFragments;
+      }
+
+      // no need to show the content fragment card if it's inlined
+      return data.contentFragments.filter(
+        (fragment) =>
+          !(
+            isContentNodeContentFragment(fragment) &&
+            fragment.nodeId &&
+            inlineKnowledgeReferences.some(
+              (reference) =>
+                reference.id === fragment.nodeId &&
+                (!reference.dataSourceViewId ||
+                  reference.dataSourceViewId === fragment.nodeDataSourceViewId)
+            )
+          )
+      );
+    }, [data]);
+
+    const hasImageCitation =
+      isUserMessage(data) &&
+      visibleContentFragments.some((fragment) => {
+        const attachmentCitation =
+          contentFragmentToAttachmentCitation(fragment);
+        return (
+          attachmentCitation.type === "file" &&
+          isSupportedImageContentType(attachmentCitation.contentType)
+        );
+      });
+
+    const citations =
+      isUserMessage(data) && visibleContentFragments.length > 0
+        ? visibleContentFragments.map((contentFragment, index) => {
+            const attachmentCitation =
+              contentFragmentToAttachmentCitation(contentFragment);
+
+            return (
+              <AttachmentCitation
+                key={index}
+                attachmentCitation={attachmentCitation}
+                size={hasImageCitation ? "md" : "sm"}
+              />
+            );
+          })
+        : undefined;
+
+    const areSameDate =
+      prevData &&
+      getMessageDate(prevData).toDateString() ===
+        getMessageDate(data).toDateString();
+
+    const isPreviousMessageSameSender =
+      prevData &&
+      isUserMessage(data) &&
+      isUserMessage(prevData) &&
+      data.user?.sId !== undefined &&
+      data.user.sId === prevData.user?.sId &&
+      getMessageDate(prevData).toDateString() ===
+        getMessageDate(data).toDateString();
+
+    const isAgentMessage = isAgentMessageWithStreaming(data);
+    const configurationId = isAgentMessage ? data.configuration.sId : undefined;
+
+    const isSteeredAgentMessage = useMemo((): boolean => {
+      if (!isAgentMessage || !configurationId) {
+        return false;
+      }
+      const messages = methods.data.get();
+      const currentIndex = messages.findIndex((m) => m.sId === sId);
+      for (let i = currentIndex - 1; i >= 0; i--) {
+        const m = messages[i];
+        if (isAgentMessageWithStreaming(m)) {
+          // An agent message is considered steered if the previous agent message (skipping user
+          // messages) is in gracefully_stopped or created state and from the same agent.
+          return (
+            (m.status === "gracefully_stopped" || m.status === "created") &&
+            m.configuration.sId === configurationId
+          );
+        }
+      }
+      return false;
+    }, [isAgentMessage, configurationId, sId, methods.data]);
+
+    const parentMessageId = isAgentMessage ? data.parentMessageId : undefined;
+    const messageUser = isUserMessage(data) ? data.user : null;
+
+    // Hide the user message time header when it follows a created or gracefully stopped agent
+    // message (steering flow) to save vertical space.
+    const isPreviousAgentMessageSteered =
+      prevData !== null &&
+      isUserMessage(data) &&
+      isAgentMessageWithStreaming(prevData) &&
+      (prevData.status === "gracefully_stopped" ||
+        prevData.status === "created");
+
+    const triggeringUser = useMemo((): UserType | null => {
+      if (isAgentMessage && parentMessageId) {
+        const messages = methods.data.get();
+        const parentUserMessage = messages
+          .filter(isUserMessage)
+          .find((m) => m.sId === parentMessageId);
+        return parentUserMessage?.user ?? null;
+      }
+      return messageUser;
+    }, [isAgentMessage, parentMessageId, messageUser, methods.data]);
+
+    const topMargin = getMessageTopMargin({
+      data,
+      prevData,
       isPreviousMessageSameSender,
+      isSteeredAgentMessage,
       isPreviousAgentMessageSteered,
-      topMargin,
-    } = getMessageSpacing(data, prevData, isSteeredAgentMessage);
+    });
 
     if (isUserMessage(data) && data.context.origin === "wakeup") {
       return (
@@ -459,7 +379,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           )}
           {isAgentMessageWithStreaming(data) && (
             <AgentMessage
-              key={data.sId}
               user={context.user}
               triggeringUser={triggeringUser}
               conversationId={context.conversation.sId}
@@ -481,12 +400,61 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               setLimitReachedCode={context.setLimitReachedCode}
             />
           )}
-          <MessageMentions
-            data={data}
-            owner={context.owner}
-            conversation={context.conversation}
-            triggeringUser={triggeringUser}
-          />
+          {data.visibility !== "deleted" &&
+            !isCompactionMessage(data) &&
+            data.richMentions
+              .filter((mention, index, mentions) => {
+                // Deduplicate restricted-agent cards: duplicate MentionModel rows for
+                // the same agent would otherwise render multiple pending approvals.
+                if (mention.status !== "agent_restricted_by_space_usage") {
+                  return true;
+                }
+                return (
+                  mentions.findIndex(
+                    (m) =>
+                      m.status === "agent_restricted_by_space_usage" &&
+                      m.id === mention.id
+                  ) === index
+                );
+              })
+              .map((mention, index) => {
+                // To please the type checker
+                if (!context.conversation) {
+                  return null;
+                }
+
+                // :warning: make sure to use the index in the key, as the mention.id is the userId
+
+                if (
+                  mention.status === "pending_conversation_access" ||
+                  mention.status === "pending_project_membership" ||
+                  mention.status === "agent_restricted_by_space_usage"
+                ) {
+                  return (
+                    <MentionValidationRequired
+                      key={index}
+                      mention={mention}
+                      message={data}
+                      owner={context.owner}
+                      triggeringUser={triggeringUser}
+                      conversation={context.conversation}
+                    />
+                  );
+                } else if (
+                  mention.status === "user_restricted_by_conversation_access"
+                ) {
+                  return (
+                    <MentionInvalid
+                      key={index}
+                      mention={mention}
+                      message={data}
+                      owner={context.owner}
+                      triggeringUser={triggeringUser}
+                      conversation={context.conversation}
+                    />
+                  );
+                }
+              })}
         </div>
       </>
     );

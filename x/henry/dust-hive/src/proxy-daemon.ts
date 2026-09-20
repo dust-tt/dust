@@ -98,16 +98,6 @@ interface WsClientData {
   closed: boolean;
 }
 
-function disableSseIdleTimeout(
-  request: Request,
-  server: Bun.Server<WsClientData>,
-  response: Response
-): void {
-  if (response.headers.get("content-type")?.startsWith("text/event-stream")) {
-    server.timeout(request, 0);
-  }
-}
-
 // Swallow close-on-already-closed errors — both ServerWebSocket and the global
 // WebSocket throw if the peer has already gone away, and that's expected at
 // shutdown / teardown time.
@@ -168,7 +158,6 @@ export function startProxy(listenPort: number, ports: Record<Target, number>) {
       const t0 = performance.now();
       try {
         const upstream = await fetch(upstreamUrl, init);
-        disableSseIdleTimeout(req, srv, upstream);
         const dt = (performance.now() - t0).toFixed(0);
         logger.info(
           `[proxy] ${req.method} ${url.pathname} → ${target} (${upstream.status}, ${dt}ms)`
