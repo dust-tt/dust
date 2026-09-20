@@ -8,7 +8,10 @@ import type {
   CreateDataSourceProjectResult,
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
-import { StorageTransferService } from "@app/temporal/relocation/lib/file_storage/transfer";
+import {
+  StorageTransferService,
+  TRANSFER_OPERATION_PREFIX,
+} from "@app/temporal/relocation/lib/file_storage/transfer";
 import type { CellType } from "@app/types/cell";
 import { getBaseMountPathForWorkspace } from "@app/types/mount_path";
 import { isDevelopment } from "@app/types/shared/env";
@@ -139,6 +142,11 @@ export async function startTransferFrontPrivateFiles({
  * @cc [owner:flvndvd,label:backend] skipped-transfers-are-complete
  * A null job name MUST complete without contacting STS.
  */
+/**
+ * @cc [owner:flvndvd,label:backend] poll-original-transfer-operation
+ * Operation IDs MUST poll that operation even after its job has been reused.
+ * Legacy job IDs MUST remain supported for existing workflow histories.
+ */
 export async function isFileStorageTransferComplete({
   jobName,
 }: {
@@ -150,10 +158,12 @@ export async function isFileStorageTransferComplete({
 
   const storageTransfer = new StorageTransferService();
 
-  const result = await storageTransfer.isTransferJobDone({
-    jobName,
-    transferProjectId: config.getGcsTransferProjectId(),
-  });
+  const result = jobName.startsWith(TRANSFER_OPERATION_PREFIX)
+    ? await storageTransfer.isTransferOperationDone(jobName)
+    : await storageTransfer.isTransferJobDone({
+        jobName,
+        transferProjectId: config.getGcsTransferProjectId(),
+      });
 
   if (result.isErr()) {
     throw result.error;
@@ -218,7 +228,7 @@ export async function startTransferCoreTableFiles({
 
   const storageTransferService = new StorageTransferService();
 
-  const transferResult = await storageTransferService.createTransferJob({
+  const transferResult = await storageTransferService.startPooledTransfer({
     destBucket,
     destPath: makeCoreTableDestPath(destIds),
     destCell,
@@ -234,7 +244,7 @@ export async function startTransferCoreTableFiles({
       {
         error: transferResult.error,
       },
-      "[Storage Transfer] Failed to create table files transfer job."
+      "[Storage Transfer] Failed to start table files transfer."
     );
 
     throw transferResult.error;
@@ -242,9 +252,9 @@ export async function startTransferCoreTableFiles({
 
   localLogger.info(
     {
-      jobName: transferResult.value,
+      operationName: transferResult.value,
     },
-    "[Storage Transfer] Table files transfer job created successfully."
+    "[Storage Transfer] Table files transfer started successfully."
   );
 
   return transferResult.value;

@@ -38,11 +38,15 @@ describe("core table file transfers", () => {
     );
     vi.spyOn(
       StorageTransferService.prototype,
-      "createTransferJob"
-    ).mockResolvedValue(new Ok("transferJobs/test"));
+      "startPooledTransfer"
+    ).mockResolvedValue(new Ok("transferOperations/test"));
     vi.spyOn(
       StorageTransferService.prototype,
       "isTransferJobDone"
+    ).mockResolvedValue(new Ok(false));
+    vi.spyOn(
+      StorageTransferService.prototype,
+      "isTransferOperationDone"
     ).mockResolvedValue(new Ok(false));
   });
 
@@ -80,7 +84,7 @@ describe("core table file transfers", () => {
       maxResults: 1,
     });
     expect(
-      StorageTransferService.prototype.createTransferJob
+      StorageTransferService.prototype.startPooledTransfer
     ).not.toHaveBeenCalled();
     await expect(isFileStorageTransferComplete({ jobName })).resolves.toBe(
       true
@@ -88,9 +92,12 @@ describe("core table file transfers", () => {
     expect(
       StorageTransferService.prototype.isTransferJobDone
     ).not.toHaveBeenCalled();
+    expect(
+      StorageTransferService.prototype.isTransferOperationDone
+    ).not.toHaveBeenCalled();
   });
 
-  it("creates and polls a transfer when the source prefix contains a file", async () => {
+  it("starts and polls an operation when the source prefix contains a file", async () => {
     fileStorageMock.setFilesByPrefix((prefix) =>
       prefix === sourcePath
         ? [{ name: `${sourcePath}table.json`, metadata: {} }]
@@ -99,9 +106,9 @@ describe("core table file transfers", () => {
 
     const jobName = await startTransferCoreTableFiles(params);
 
-    expect(jobName).toBe("transferJobs/test");
+    expect(jobName).toBe("transferOperations/test");
     expect(
-      StorageTransferService.prototype.createTransferJob
+      StorageTransferService.prototype.startPooledTransfer
     ).toHaveBeenCalledExactlyOnceWith({
       destBucket: params.destBucket,
       destPath: "project-destination-project/destination-data-source/",
@@ -116,11 +123,26 @@ describe("core table file transfers", () => {
       false
     );
     expect(
+      StorageTransferService.prototype.isTransferOperationDone
+    ).toHaveBeenCalledExactlyOnceWith(jobName);
+    expect(
+      StorageTransferService.prototype.isTransferJobDone
+    ).not.toHaveBeenCalled();
+  });
+
+  it("still polls job IDs recorded by existing workflows", async () => {
+    await expect(
+      isFileStorageTransferComplete({ jobName: "transferJobs/legacy" })
+    ).resolves.toBe(false);
+    expect(
       StorageTransferService.prototype.isTransferJobDone
     ).toHaveBeenCalledExactlyOnceWith({
-      jobName,
+      jobName: "transferJobs/legacy",
       transferProjectId: "transfer-project",
     });
+    expect(
+      StorageTransferService.prototype.isTransferOperationDone
+    ).not.toHaveBeenCalled();
   });
 
   it("fails when listing fails instead of treating the prefix as empty", async () => {
@@ -131,17 +153,17 @@ describe("core table file transfers", () => {
 
     await expect(startTransferCoreTableFiles(params)).rejects.toBe(error);
     expect(
-      StorageTransferService.prototype.createTransferJob
+      StorageTransferService.prototype.startPooledTransfer
     ).not.toHaveBeenCalled();
   });
 
-  it("keeps transfer creation failures retryable for nonempty prefixes", async () => {
+  it("keeps transfer start failures retryable for nonempty prefixes", async () => {
     fileStorageMock.setFilesByPrefix(() => [
       { name: `${sourcePath}table.json`, metadata: {} },
     ]);
     const error = new Error("STS quota exceeded");
     vi.mocked(
-      StorageTransferService.prototype.createTransferJob
+      StorageTransferService.prototype.startPooledTransfer
     ).mockResolvedValueOnce(new Err(error));
 
     await expect(startTransferCoreTableFiles(params)).rejects.toBe(error);
