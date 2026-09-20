@@ -1,3 +1,7 @@
+// event-source-polyfill's fetch transport ignores the promise returned by reader.cancel().
+// A failed stream followed by close() can therefore produce an unhandled rejection. This
+// replacement keeps the polyfill's callback interface and settles cancellation failures.
+
 type OnStart = (
   status: number,
   statusText: string,
@@ -9,9 +13,10 @@ type OnProgress = (chunk: string) => void;
 type OnFinish = (error?: unknown) => void;
 
 /**
- * @cc [owner:id13,label:reliability] settle-sse-reader-cancellation
- * `abort()` MUST abort the fetch and cancel an acquired response reader while handling any
- * rejection from reader cancellation.
+ * @cc [owner:id13,label:reliability] sse-transport-abort
+ * `abort()` MUST abort the fetch, cancel any reader already acquired, and handle a rejection from
+ * reader cancellation. Once aborted, the transport MUST NOT call `onFinish`; fetch or read failures
+ * observed while active MUST call `onFinish(error)`.
  */
 export class ManagedEventSourceTransport {
   open(
@@ -48,6 +53,9 @@ export class ManagedEventSourceTransport {
 
         while (!controller.signal.aborted) {
           const result = await reader.read();
+          if (controller.signal.aborted) {
+            return;
+          }
           if (result.done) {
             onFinish();
             return;

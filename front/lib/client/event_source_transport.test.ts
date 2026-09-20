@@ -5,6 +5,38 @@ import { ManagedEventSourceTransport } from "@app/lib/client/event_source_transp
 import { EventSourcePolyfill } from "event-source-polyfill";
 import { expect, it, vi } from "vitest";
 
+it("settles reader cancellation without finishing an aborted stream", async () => {
+  const body = new ReadableStream<Uint8Array>({
+    cancel: () => Promise.reject(new Error("Cancellation failed.")),
+  });
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(new Response(body, { status: 200 }));
+  const onFinish = vi.fn();
+  let onStart!: () => void;
+  const started = new Promise<void>((resolve) => {
+    onStart = resolve;
+  });
+
+  try {
+    const connection = new ManagedEventSourceTransport().open(
+      undefined,
+      onStart,
+      vi.fn(),
+      onFinish,
+      "http://localhost/events",
+      false,
+      {}
+    );
+    await started;
+    connection.abort();
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    expect(onFinish).not.toHaveBeenCalled();
+  } finally {
+    fetch.mockRestore();
+  }
+});
+
 it("closes a failed SSE fetch without an unhandled cancellation rejection", async () => {
   const server = createServer((_request, response) => {
     response.writeHead(200, { "Content-Type": "text/event-stream" });
