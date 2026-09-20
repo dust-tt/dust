@@ -11,6 +11,7 @@ import type {
 import { StorageTransferService } from "@app/temporal/relocation/lib/file_storage/transfer";
 import type { CellType } from "@app/types/cell";
 import { getBaseMountPathForWorkspace } from "@app/types/mount_path";
+import { isDevelopment } from "@app/types/shared/env";
 
 export async function startTransferFrontPublicFiles({
   destBucket,
@@ -200,7 +201,10 @@ export async function startTransferCoreTableFiles({
     workspaceId,
   });
 
-  const files = await getBucketInstance(sourceBucket).getFiles({
+  // Match relocation staging storage: use Workload Identity in production.
+  const files = await getBucketInstance(sourceBucket, {
+    useServiceAccount: isDevelopment(),
+  }).getFiles({
     prefix: sourcePath,
     maxResults: 1,
   });

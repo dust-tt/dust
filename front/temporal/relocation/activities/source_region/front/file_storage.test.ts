@@ -47,7 +47,25 @@ describe("core table file transfers", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
+  });
+
+  it.each([
+    { environment: "production", useServiceAccount: false },
+    { environment: "development", useServiceAccount: true },
+  ])("selects the expected storage credentials in $environment", async ({
+    environment,
+    useServiceAccount,
+  }) => {
+    vi.stubEnv("NODE_ENV", environment);
+    vi.stubEnv("IS_DEVELOPMENT", "false");
+
+    await startTransferCoreTableFiles(params);
+
+    expect(getBucketInstance).toHaveBeenLastCalledWith("source-tables", {
+      useServiceAccount,
+    });
   });
 
   it("completes empty prefixes without creating or polling an STS job", async () => {
