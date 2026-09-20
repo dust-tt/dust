@@ -42,14 +42,14 @@ type FrameSourceMove = {
  * This intentionally uses a non-transactional copy, DB update, then source delete sequence.
  * Until the DB update succeeds, the source FileResource path remains authoritative.
  */
-export async function moveFrameV2Source(
+export async function moveFrameV2SourceUsingFileSystem(
   auth: Authenticator,
   {
-    conversation,
+    dustFs,
     destinationDirectoryPath,
     sourceDirectoryPath,
   }: {
-    conversation: ConversationWithoutContentType;
+    dustFs: DustFileSystem;
     destinationDirectoryPath: string;
     sourceDirectoryPath: string;
   }
@@ -63,14 +63,6 @@ export async function moveFrameV2Source(
   }
   const paths = pathsResult.value;
 
-  const fsResult = await DustFileSystem.forAgentLoop(auth, {
-    conversation,
-    scopedPaths: [paths.sourceDirectoryPath, paths.destinationDirectoryPath],
-  });
-  if (fsResult.isErr()) {
-    return fsResult;
-  }
-  const dustFs = fsResult.value;
   if (!dustFs.isGCSBacked()) {
     return moveError(
       "invalid_source",
@@ -213,4 +205,43 @@ export async function moveFrameV2Source(
       : new Err(locked.error);
   }
   return locked;
+}
+
+/** Move a Frame's source folder within the invoking conversation's mounted filesystem. */
+export async function moveFrameV2Source(
+  auth: Authenticator,
+  {
+    conversation,
+    destinationDirectoryPath,
+    sourceDirectoryPath,
+  }: {
+    conversation: ConversationWithoutContentType;
+    destinationDirectoryPath: string;
+    sourceDirectoryPath: string;
+  }
+): Promise<Result<FrameSourceMove, MoveFrameV2SourceError>> {
+  const pathsResult = resolveFrameSourceMovePaths({
+    destinationDirectoryPath,
+    sourceDirectoryPath,
+  });
+  if (pathsResult.isErr()) {
+    return pathsResult;
+  }
+
+  const fsResult = await DustFileSystem.forAgentLoop(auth, {
+    conversation,
+    scopedPaths: [
+      pathsResult.value.sourceDirectoryPath,
+      pathsResult.value.destinationDirectoryPath,
+    ],
+  });
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+
+  return moveFrameV2SourceUsingFileSystem(auth, {
+    dustFs: fsResult.value,
+    destinationDirectoryPath,
+    sourceDirectoryPath,
+  });
 }
