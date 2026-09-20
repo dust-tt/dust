@@ -8,6 +8,11 @@ type OnStart = (
 type OnProgress = (chunk: string) => void;
 type OnFinish = (error?: unknown) => void;
 
+/**
+ * @cc [owner:id13,label:reliability] settle-sse-reader-cancellation
+ * `abort()` MUST abort the fetch and cancel an acquired response reader while handling any
+ * rejection from reader cancellation.
+ */
 export class ManagedEventSourceTransport {
   open(
     _xhr: unknown,
