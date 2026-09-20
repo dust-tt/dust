@@ -6,7 +6,11 @@ import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { PodFileTab } from "@app/types/pod_file_tab";
-import { normalizeTabsOrder, sortPodFileTabs } from "@app/types/pod_file_tab";
+import {
+  MAX_POD_FILE_TAB_TITLE_LENGTH,
+  normalizeTabsOrder,
+  sortPodFileTabs,
+} from "@app/types/pod_file_tab";
 import type { PodMetadataType } from "@app/types/project_metadata";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -189,6 +193,46 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     transaction?: Transaction
   ) {
     await this.update({ frameTabs, tabsOrder }, transaction);
+  }
+
+  /**
+   * Repoint the pin, tabs and tab order at a renamed Frame. A tab title seeded from the old
+   * folder name follows the rename; one the user edited is left alone.
+   */
+  async renameFramePath(
+    oldFramePath: string,
+    newFramePath: string,
+    oldFrameName: string,
+    newFrameName: string,
+    transaction?: Transaction
+  ): Promise<void> {
+    const seededTitle = oldFrameName.slice(0, MAX_POD_FILE_TAB_TITLE_LENGTH);
+    const frameTabs = (this.frameTabs ?? []).map((tab) =>
+      tab.path === oldFramePath
+        ? {
+            ...tab,
+            path: newFramePath,
+            title:
+              tab.title === seededTitle
+                ? newFrameName.slice(0, MAX_POD_FILE_TAB_TITLE_LENGTH)
+                : tab.title,
+          }
+        : tab
+    );
+
+    await this.update(
+      {
+        pinnedFramePath:
+          this.pinnedFramePath === oldFramePath
+            ? newFramePath
+            : this.pinnedFramePath,
+        frameTabs,
+        tabsOrder: (this.tabsOrder ?? []).map((entry) =>
+          entry === oldFramePath ? newFramePath : entry
+        ),
+      },
+      transaction
+    );
   }
 
   async removeFramePath(

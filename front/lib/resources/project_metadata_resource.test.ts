@@ -6,6 +6,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { DEFAULT_POD_FILE_TAB_ICON } from "@app/types/pod_file_tab";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -275,6 +276,83 @@ describe("ProjectMetadataResource", () => {
       );
       expect(reloaded!.defaultSkillIds).toEqual([]);
       expect(reloaded!.defaultSkillsIds).toBeNull();
+    });
+  });
+  describe("renameFramePath", () => {
+    const oldPath = "pod-p1/Status/manifest.json";
+    const newPath = "pod-p1/Health/manifest.json";
+
+    it("follows a renamed Frame across the pin, tabs and tab order", async () => {
+      const metadata = await ProjectMetadataResource.makeNew(
+        auth,
+        projectSpace,
+        { description: "d" }
+      );
+      await metadata.updatePinnedFramePath(oldPath);
+      await metadata.updateFileTabs(
+        [
+          { path: oldPath, title: "Status", icon: DEFAULT_POD_FILE_TAB_ICON },
+          {
+            path: "pod-p1/notes.md",
+            title: "My notes",
+            icon: DEFAULT_POD_FILE_TAB_ICON,
+          },
+        ],
+        [oldPath, "files", "pod-p1/notes.md"]
+      );
+
+      await metadata.renameFramePath(oldPath, newPath, "Status", "Health");
+
+      expect(metadata.pinnedFramePath).toBe(newPath);
+      expect(metadata.frameTabs?.map((tab) => tab.path)).toEqual([
+        newPath,
+        "pod-p1/notes.md",
+      ]);
+      expect(metadata.frameTabs?.[0].title).toBe("Health");
+      expect(metadata.tabsOrder).toEqual([newPath, "files", "pod-p1/notes.md"]);
+    });
+
+    it("keeps a tab title the user customized", async () => {
+      const metadata = await ProjectMetadataResource.makeNew(
+        auth,
+        projectSpace,
+        { description: "d" }
+      );
+      await metadata.updateFileTabs(
+        [
+          {
+            path: oldPath,
+            title: "Ops board",
+            icon: DEFAULT_POD_FILE_TAB_ICON,
+          },
+        ],
+        [oldPath]
+      );
+
+      await metadata.renameFramePath(oldPath, newPath, "Status", "Health");
+
+      expect(metadata.frameTabs?.[0].title).toBe("Ops board");
+      expect(metadata.frameTabs?.[0].path).toBe(newPath);
+    });
+
+    it("leaves an unrelated Frame's pin and tabs alone", async () => {
+      const metadata = await ProjectMetadataResource.makeNew(
+        auth,
+        projectSpace,
+        { description: "d" }
+      );
+      const otherPath = "pod-p1/Other/manifest.json";
+      await metadata.updatePinnedFramePath(otherPath);
+      await metadata.updateFileTabs(
+        [{ path: otherPath, title: "Other", icon: DEFAULT_POD_FILE_TAB_ICON }],
+        [otherPath]
+      );
+
+      await metadata.renameFramePath(oldPath, newPath, "Status", "Health");
+
+      expect(metadata.pinnedFramePath).toBe(otherPath);
+      expect(metadata.frameTabs?.[0].path).toBe(otherPath);
+      expect(metadata.tabsOrder).toEqual([otherPath]);
     });
   });
 });
