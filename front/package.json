@@ -119,6 +119,7 @@
     "@types/json-schema": "^7.0.15",
     "@types/remove-markdown": "^0.3.4",
     "@types/turndown": "^5.0.6",
+    "@typesafe-ai/sdk": "0.6.0",
     "@uiw/react-textarea-code-editor": "^3.0.2",
     "@valtown/sdk": "^2.0.0",
     "@virtuoso.dev/message-list": "^1.16.0",
