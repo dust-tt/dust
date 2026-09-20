@@ -62,7 +62,7 @@ interface FileExplorerProps {
   ) => Promise<Result<void, Error>>;
   onOpenInteractive?: (entry: FileEntryWithId | FramePackageEntry) => void;
   onOpenInPanel?: (entry: FileEntry) => boolean;
-  onRename?: (entry: FileEntry | FolderEntry) => void;
+  onRename?: (entry: FileEntry | FolderEntry | FramePackageEntry) => void;
   owner?: LightWorkspaceType;
   getExtraFileMenuItems?: (
     entry: FileExplorerEntry
@@ -175,6 +175,16 @@ export function FileExplorer({
             setActiveFilter("all");
           },
         });
+        if (onRename) {
+          items.push({
+            label: "Rename",
+            icon: Edit04,
+            onClick: (e) => {
+              e.stopPropagation();
+              onRename(entry);
+            },
+          });
+        }
         if (onDelete && (canDelete?.(entry) ?? true)) {
           items.push({
             label: "Delete",
