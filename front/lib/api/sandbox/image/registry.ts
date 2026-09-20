@@ -27,7 +27,7 @@ import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
 const DUST_BASE_IMAGE_VERSION = "0.8.116";
-const DSBX_CLI_VERSION = "0.1.61";
+const DSBX_CLI_VERSION = "0.1.62";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
 // the stable identity used when creating the workload account.
