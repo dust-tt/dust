@@ -24,6 +24,8 @@ export type FileSystemFileEntry = FileSystemEntryBase & {
   fileId: string | null;
   /** Semantic type of the linked FileResource, when it differs from the source bytes. */
   fileResourceContentType?: string;
+  /** Manifest name of the linked Frames v2 file, set once a publication is active. */
+  frameName?: string;
   thumbnailUrl: string | null;
   /** Present when the caller requested signed URLs. */
   signedDownloadUrl?: string | null;

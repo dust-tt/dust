@@ -24,7 +24,7 @@ export type FramePackageEntry = Omit<
 > & {
   kind: "frame_package";
   contentType: typeof frameV2ContentType;
-  /** Display name of the source folder represented by this package. */
+  /** Frame manifest name when published, else the name of the source folder it stands in for. */
   fileName: string;
   /** Explorer navigation path of the package's source folder. */
   sourceFolderPath: string;

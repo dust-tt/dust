@@ -17,10 +17,12 @@ function mountFile(
     contentType = "text/plain",
     fileId = "file-1",
     fileResourceContentType,
+    frameName,
   }: {
     contentType?: string;
     fileId?: string | null;
     fileResourceContentType?: string;
+    frameName?: string;
   } = {}
 ): FileSystemEntry {
   return {
@@ -30,17 +32,22 @@ function mountFile(
     contentType,
     fileId,
     fileResourceContentType,
+    frameName,
     sizeBytes: 100,
     lastModifiedMs: 0,
     thumbnailUrl: null,
   };
 }
 
-function frameManifest(scopedPath: string): FileSystemEntry {
+function frameManifest(
+  scopedPath: string,
+  frameName?: string
+): FileSystemEntry {
   return mountFile(scopedPath, FRAME_MANIFEST_FILE, {
     contentType: "application/json",
     fileId: "frame-1",
     fileResourceContentType: frameV2ContentType,
+    frameName,
   });
 }
 
@@ -76,6 +83,59 @@ describe("getFileExplorerPipeline Frame packages", () => {
       sourceFolderPath: "apps/status",
     });
     expect(pipeline.filterCounts.frames).toBe(1);
+  });
+
+  it("names the package after the Frame manifest when one is published", () => {
+    const files = [
+      frameManifest(
+        "conversation-c1/apps/status/manifest.json",
+        "Status Dashboard"
+      ),
+      mountFile("conversation-c1/apps/status/index.tsx"),
+    ];
+
+    const pipeline = getFileExplorerPipeline({
+      activeFilter: "all",
+      contentNodes: [],
+      currentFolderPath: "apps",
+      displayFramePackages: true,
+      files,
+      searchQuery: "",
+      sortMode: "last-modified",
+    });
+
+    expect(pipeline.sortedNodes).toMatchObject([
+      { name: "Status Dashboard", path: "apps/status" },
+    ]);
+    expect(pipeline.entryByRelativePath.get("apps/status")).toMatchObject({
+      kind: "frame_package",
+      fileName: "Status Dashboard",
+      sourceFolderPath: "apps/status",
+    });
+  });
+
+  it("matches a search on the published Frame name", () => {
+    const files = [
+      frameManifest(
+        "conversation-c1/apps/status/manifest.json",
+        "Status Dashboard"
+      ),
+      mountFile("conversation-c1/apps/status/index.tsx"),
+    ];
+
+    const pipeline = getFileExplorerPipeline({
+      activeFilter: "all",
+      contentNodes: [],
+      currentFolderPath: "apps",
+      displayFramePackages: true,
+      files,
+      searchQuery: "dashboard",
+      sortMode: "last-modified",
+    });
+
+    expect(pipeline.sortedNodes.map((node) => node.name)).toEqual([
+      "Status Dashboard",
+    ]);
   });
 
   it("shows raw source after opening the package folder", () => {

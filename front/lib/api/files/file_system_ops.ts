@@ -177,16 +177,18 @@ export async function enrichListWithFileResourceIds(
   );
 
   // Keep raw GCS contentType for source previews. The linked resource can represent a higher-level
-  // object such as a registered Frame package, so expose its semantic type separately.
+  // object such as a registered Frame package, so expose its semantic type and its published name
+  // separately.
   const byMountPath = new Map<
     string,
-    { contentType: string; fileId: string }
+    { contentType: string; fileId: string; frameName: string | undefined }
   >();
   for (const fr of fileResources) {
     if (fr.mountFilePath) {
       byMountPath.set(fr.mountFilePath, {
         contentType: fr.contentType,
         fileId: fr.sId,
+        frameName: fr.useCaseMetadata?.frameName,
       });
     }
   }
@@ -207,6 +209,7 @@ export async function enrichListWithFileResourceIds(
           ...entry,
           fileId: linkedFile.fileId,
           fileResourceContentType: linkedFile.contentType,
+          frameName: linkedFile.frameName,
         }
       : entry;
   });

@@ -87,7 +87,9 @@ function getCollapsedFramePackages({
       kind: "frame_package",
       contentType: frameV2ContentType,
       fileId: file.fileId,
-      fileName: sourceFolderPath.slice(sourceFolderPath.lastIndexOf("/") + 1),
+      fileName:
+        file.frameName ??
+        sourceFolderPath.slice(sourceFolderPath.lastIndexOf("/") + 1),
       sourceFolderPath,
       sourceFolderCanonicalPath,
       virtualPath: sourceFolderPath,

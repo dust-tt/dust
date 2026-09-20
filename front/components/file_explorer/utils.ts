@@ -372,10 +372,10 @@ export function buildFileSystemTree(
     }
 
     const parts = relativePath.split("/");
-    const canonicalPath =
-      "sourceFolderCanonicalPath" in entry
-        ? entry.sourceFolderCanonicalPath
-        : entry.path;
+    const isFramePackage = "sourceFolderCanonicalPath" in entry;
+    const canonicalPath = isFramePackage
+      ? entry.sourceFolderCanonicalPath
+      : entry.path;
     const canonicalParts = canonicalPath.split("/");
     const canonicalPartOffset = canonicalParts.length - parts.length;
 
@@ -414,7 +414,9 @@ export function buildFileSystemTree(
     }
 
     const fileNode: FileSystemTreeNode = {
-      name: parts[parts.length - 1]!,
+      // A Frame package stands in for its source folder under the Frame's own name, so search and
+      // sort operate on what the explorer actually displays.
+      name: isFramePackage ? entry.fileName : parts[parts.length - 1]!,
       path: relativePath,
       isDirectory: false,
       canonicalPath,
