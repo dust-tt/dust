@@ -273,7 +273,7 @@ function buildColumns({
       accessorKey: "name",
       header: "Name",
       enableSorting: false,
-      meta: { sizeRatio: 32, headerAlign: "left" },
+      meta: { headerAlign: "left" },
       cell: (info) => {
         const row = info.row.original;
         const { name, pictureUrl, description, icon } = row;
@@ -378,7 +378,6 @@ function buildColumns({
                 COLLAPSED_COLUMN_CLASSES,
                 "@xs:w-auto @xs:max-w-none @xs:px-2"
               ),
-              sizeRatio: 18,
               headerAlign: "right",
             },
             cell: (info) => (
@@ -406,7 +405,6 @@ function buildColumns({
                 COLLAPSED_COLUMN_CLASSES,
                 "@md:w-auto @md:max-w-none @md:px-2"
               ),
-              sizeRatio: 22,
               headerAlign: "right",
             },
             cell: (info) => {
@@ -435,7 +433,6 @@ function buildColumns({
                 COLLAPSED_COLUMN_CLASSES,
                 "@xs:w-36 @xs:max-w-none @xs:px-2"
               ),
-              sizeRatio: 20,
               headerAlign: "left",
             },
             cell: (info) => (
@@ -455,7 +452,7 @@ function buildColumns({
       id: "credits",
       accessorKey: "credits",
       header: "Total credits",
-      meta: { sizeRatio: 20, headerAlign: "right" },
+      meta: { headerAlign: "right" },
       cell: (info) => (
         <DataTable.BasicCellContent
           className="justify-end text-right tabular-nums"
@@ -473,7 +470,6 @@ function buildColumns({
           COLLAPSED_COLUMN_CLASSES,
           "@sm:w-auto @sm:max-w-none @sm:px-2"
         ),
-        sizeRatio: 16,
         headerAlign: "right",
       },
       cell: (info) => (
@@ -493,7 +489,6 @@ function buildColumns({
           COLLAPSED_COLUMN_CLASSES,
           "@md:w-auto @md:max-w-none @md:px-2"
         ),
-        sizeRatio: 22,
         headerAlign: "right",
       },
       cell: (info) => (
@@ -512,7 +507,6 @@ function buildColumns({
           COLLAPSED_COLUMN_CLASSES,
           "@lg:w-24 @lg:max-w-none @lg:px-2"
         ),
-        sizeRatio: 18,
         headerAlign: "right",
       },
       cell: (info) => (
