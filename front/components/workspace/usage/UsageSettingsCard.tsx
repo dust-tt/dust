@@ -62,6 +62,12 @@ export function UsageSettingsCard({
     });
   };
 
+  const handleToggleCreditSpendCheckpointEnabled = async () => {
+    await doUpdateUsageSettings({
+      creditSpendCheckpointEnabled: !usageSettings.creditSpendCheckpointEnabled,
+    });
+  };
+
   const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? null;
 
   const handleSaveDefaultLimit = async (newValue: string) => {
@@ -182,6 +188,17 @@ export function UsageSettingsCard({
                 !usageSettings.autoSeatUpgradeAvailable
               }
               onClick={() => void handleToggleAutoSeatUpgrade()}
+            />
+          }
+        />
+        <SettingsList.Row
+          title="Credit spend checkpoint"
+          description="Pause the agent and ask the user to confirm continuing once a single message reaches the spend threshold. Turning this off never pauses, whatever the spend."
+          action={
+            <SliderToggle
+              selected={usageSettings.creditSpendCheckpointEnabled}
+              disabled={isUpdatingUsageSettings || isUsageSettingsLoading}
+              onClick={() => void handleToggleCreditSpendCheckpointEnabled()}
             />
           }
         />

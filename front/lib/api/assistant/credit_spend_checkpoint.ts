@@ -2,6 +2,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import type { PlanType } from "@app/types/plan";
+import { isCreditPricedPlan } from "@app/types/plan";
 
 const CREDIT_SPEND_CHECKPOINT_RESUMABLE_ORIGINS: UserMessageOrigin[] = [
   "web",
@@ -32,6 +34,18 @@ export function hasReachedCreditSpendCheckpoint({
     awuFromMicroUsd(totalCostMicroUsd) >=
     CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS
   );
+}
+
+/**
+ * @cc [owner:avervaet,label:product] checkpoint-plan-default
+ * With no explicit workspace override, the checkpoint gate MUST default to disabled for a
+ * credit-priced plan and to enabled for any other plan (including no plan). This is the
+ * plan-tier default only: it MUST NOT be read once an explicit workspace override exists.
+ */
+export function resolveDefaultCreditSpendCheckpointEnabled(
+  plan: PlanType | null
+): boolean {
+  return !plan || !isCreditPricedPlan(plan);
 }
 
 /**
