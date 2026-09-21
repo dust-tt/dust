@@ -92,10 +92,10 @@ describe("buildInputBarSlashCommandItems", () => {
 
     expect(result.map(getInputBarSlashCommandItemId)).toEqual([
       "attach-knowledge",
-      "select-spaces",
       "upload-file",
       "pick-model",
       "compact",
+      "select-spaces",
     ]);
   });
 
