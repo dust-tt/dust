@@ -20,6 +20,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import assert from "assert";
+import type { JSONSchema7 } from "json-schema";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const AGENT_MODEL_ID = 42;
@@ -1171,6 +1172,78 @@ describe("AgentResource", () => {
         updatedAgentIds: [],
         skippedAgentIds: [agent.sId],
       });
+    });
+  });
+
+  describe("save no-op comparison of tool configuration", () => {
+    it("creates a new version when a tool's JSON schema changes under an identity-named property", async () => {
+      const { authenticator, globalSpace } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            temperature: 0.7,
+          },
+        }
+      );
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const mcpServerView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        globalSpace
+      );
+      const mcpConfig = await AgentMCPServerConfigurationFactory.create(
+        authenticator,
+        globalSpace,
+        {
+          agent,
+          mcpServerView,
+        }
+      );
+      // A tool input schema whose own property is literally named `id` — an identity key the
+      // comparison strips structurally. Content under it must still register as a change.
+      const oldSchema: JSONSchema7 = {
+        type: "object",
+        properties: { id: { type: "string", description: "old" } },
+      };
+      const newSchema: JSONSchema7 = {
+        type: "object",
+        properties: { id: { type: "string", description: "new" } },
+      };
+      await mcpConfig.update({ jsonSchema: oldSchema });
+
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(authenticator);
+      assert(baseParams.actions);
+
+      // Re-saving the exact same configuration is a no-op: the JSON schema does not spuriously diff.
+      const noop = await before.updateConfiguration(authenticator, baseParams);
+      assert(noop.isOk());
+      const afterNoop = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(afterNoop?.isFull());
+      expect(afterNoop.content.version).toBe(before.content.version);
+
+      // Editing the schema under the `id` property is a real change and MUST create a new version,
+      // rather than being masked by the identity-key drop and silently skipped.
+      const editedParams = {
+        ...baseParams,
+        actions: baseParams.actions.map((action) => ({
+          ...action,
+          jsonSchema: newSchema,
+        })),
+      };
+      const edited = await before.updateConfiguration(
+        authenticator,
+        editedParams
+      );
+      assert(edited.isOk());
+      const afterEdit = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(afterEdit?.isFull());
+      expect(afterEdit.content.version).toBe(before.content.version + 1);
     });
   });
 });
