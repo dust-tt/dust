@@ -1,13 +1,13 @@
 import { listUsersWithoutAccessToSpaceResources } from "@app/lib/api/spaces/access";
 import type { Authenticator } from "@app/lib/auth";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
 
 export async function resolveAdditionalRequestedSpaceModelIds(
   auth: Authenticator,
@@ -103,29 +103,19 @@ export async function findSkillEditorsWithoutSpaceAccess(
   );
 }
 
-export async function getReferencedSkillSpaceModelIds(
+export async function findSkillEditorsWithoutAccessToSpaceIds(
   auth: Authenticator,
-  instructions: string,
-  excludedSkillId?: string
-): Promise<ModelId[]> {
-  const referencedSkillIds = extractUniqueSkillReferenceIds(
-    instructions
-  ).filter((skillId) => skillId !== excludedSkillId);
-
-  if (referencedSkillIds.length === 0) {
-    return [];
-  }
-
-  // fetchByIds applies skill visibility. Unreadable references stay unavailable
-  // during tag normalization instead of silently expanding the parent skill.
-  const referencedSkills = await SkillResource.fetchByIds(
+  skill: SkillResource,
+  requestedSpaceIds: ModelId[]
+): Promise<string | null> {
+  const editors = (await skill.listEditors(auth)) ?? [];
+  const requestedSpaces = await SpaceResource.fetchByModelIds(
     auth,
-    referencedSkillIds
+    requestedSpaceIds
   );
 
-  return uniq(
-    referencedSkills
-      .filter((skill) => skill.status === "active")
-      .flatMap((skill) => skill.requestedSpaceIds)
-  );
+  return findSkillEditorsWithoutSpaceAccess(auth, {
+    editors: uniqBy([...editors, auth.getNonNullableUser()], "id"),
+    requestedSpaces,
+  });
 }

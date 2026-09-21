@@ -44,7 +44,6 @@ async function setActiveSubscriptionBilling({
       workspaceId: workspaceModelId,
       planId: currentSubscription.planId,
       status: "active",
-      trialing: false,
       startDate: new Date(),
       endDate: null,
       stripeSubscriptionId: null,

@@ -2,7 +2,6 @@ import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useMCPServerView } from "@app/lib/swr/mcp_servers";
-import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { UserType, WorkspaceType } from "@app/types/user";
 
 interface CapabilityDetailsSheetsProps {
@@ -26,13 +25,6 @@ export function CapabilityDetailsSheets({
   onCloseTool,
   replaceOnSkillEdit,
 }: CapabilityDetailsSheetsProps) {
-  const { skill } = useSkill({
-    workspaceId: owner.sId,
-    skillId: selectedSkillId,
-    withRelations: true,
-    disabled: !selectedSkillId,
-  });
-
   const { serverView: fullMCPServerView } = useMCPServerView({
     owner,
     viewId: selectedMCPServerView?.sId ?? selectedMCPServerViewId ?? null,
@@ -42,7 +34,7 @@ export function CapabilityDetailsSheets({
     <>
       {user && (
         <SkillDetailsSheet
-          skill={skill ?? null}
+          skillId={selectedSkillId}
           owner={owner}
           user={user}
           onClose={onCloseSkill}

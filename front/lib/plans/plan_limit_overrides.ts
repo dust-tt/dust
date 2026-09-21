@@ -56,9 +56,8 @@ export function hasAnyPlanLimitOverride(override: PlanLimitOverride): boolean {
 
 /**
  * Applies a workspace's plan-limit and feature-gate overrides on top of the plan
- * attributes. Applied last when resolving the plan for a workspace — after the
- * trial limits of `getTrialVersionForPlan` — so an explicit override always
- * wins.
+ * attributes. Applied last when resolving the plan for a workspace, so an
+ * explicit override always wins.
  */
 export function applyPlanLimitOverrides(
   plan: PlanAttributes,

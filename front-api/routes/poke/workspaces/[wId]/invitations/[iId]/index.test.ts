@@ -13,9 +13,9 @@ vi.spyOn(sgMail, "send").mockResolvedValue([
   {},
 ] as never);
 
-function patchInvitation(workspace: { sId: string }, invitationSId: string) {
+function patchInvitation(workspace: { sId: string }, invitationId: string) {
   return honoApp.request(
-    `/api/poke/workspaces/${workspace.sId}/invitations/${invitationSId}`,
+    `/api/poke/workspaces/${workspace.sId}/invitations/${invitationId}`,
     { method: "PATCH" }
   );
 }

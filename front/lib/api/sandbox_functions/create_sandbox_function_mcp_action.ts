@@ -12,12 +12,15 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { buildSandboxFunctionAuditMetadata } from "@app/lib/api/sandbox_functions/audit";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
+import type { SandboxFunctionMcpActionServerTimingsMs } from "@app/lib/api/sandbox_functions/sandbox_function_mcp_action_server_timings";
+import { roundMs } from "@app/lib/api/sandbox_functions/sandbox_function_mcp_action_server_timings";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import logger from "@app/logger/logger";
 import { launchSandboxFunctionToolWorkflow } from "@app/temporal/sandbox_functions/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -129,7 +132,17 @@ export async function createSandboxFunctionMCPAction(
     toolName: string;
     rawInputs: Record<string, unknown>;
   }
-): Promise<Result<{ actionId: string }, SandboxFunctionMCPActionError>> {
+): Promise<
+  Result<
+    {
+      actionId: string;
+      createTimings: SandboxFunctionMcpActionServerTimingsMs;
+    },
+    SandboxFunctionMCPActionError
+  >
+> {
+  const totalStarted = performance.now();
+
   const validateInputsResult = validateToolInputs(rawInputs);
   if (validateInputsResult.isErr()) {
     return new Err(
@@ -140,6 +153,7 @@ export async function createSandboxFunctionMCPAction(
     );
   }
 
+  const fetchViewStarted = performance.now();
   const view = await MCPServerViewResource.fetchById(auth, serverViewId, {
     includeHeavyAttributes: [
       "authorization",
@@ -149,6 +163,7 @@ export async function createSandboxFunctionMCPAction(
       "sharedSecret",
     ],
   });
+  const fetchViewMs = roundMs(fetchViewStarted);
   // `fetchById` is workspace-scoped, so reproduce the listing endpoint's confinement: the view
   // must be in the function's runtime or global space (the spaces the listing queries) AND
   // readable by the caller. The permission check keeps this correct if access is revoked within the token
@@ -164,11 +179,13 @@ export async function createSandboxFunctionMCPAction(
     );
   }
 
+  const resolveToolStarted = performance.now();
   const toolConfigurationRes = await resolveSandboxFunctionTool(
     auth,
     view,
     toolName
   );
+  const resolveToolMs = roundMs(resolveToolStarted);
   if (toolConfigurationRes.isErr()) {
     return toolConfigurationRes;
   }
@@ -176,6 +193,7 @@ export async function createSandboxFunctionMCPAction(
   // Execution-side resolution: a sandbox-token auth cannot carry the invoker's original grant
   // (e.g. a frame share token). The id comes from signature-verified sandbox JWT claims minted
   // at execution start, so the space filter is deliberately skipped.
+  const fetchFunctionStarted = performance.now();
   const sandboxFunction = await SandboxFunctionResource.fetchByIdForExecution(
     auth,
     {
@@ -183,6 +201,7 @@ export async function createSandboxFunctionMCPAction(
       invocationId,
     }
   );
+  const fetchFunctionMs = roundMs(fetchFunctionStarted);
   if (!sandboxFunction) {
     return new Err(
       new SandboxFunctionMCPActionError(
@@ -192,11 +211,13 @@ export async function createSandboxFunctionMCPAction(
     );
   }
 
+  const fetchInvocationStarted = performance.now();
   const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
     sandboxFunction,
     invocationId,
     access: "system",
   });
+  const fetchInvocationMs = roundMs(fetchInvocationStarted);
   if (!invocation) {
     return new Err(
       new SandboxFunctionMCPActionError(
@@ -207,12 +228,14 @@ export async function createSandboxFunctionMCPAction(
   }
 
   const toolConfiguration = toolConfigurationRes.value;
+  const stakeStatusStarted = performance.now();
   const { status: executionStatus } = await getExecutionStatusFromConfig(auth, {
     actionConfiguration: toolConfiguration,
     context: {
       toolInputs: rawInputs,
     },
   });
+  const stakeStatusMs = roundMs(stakeStatusStarted);
 
   let actionStatus: "running" | "blocked_validation_required";
   switch (executionStatus) {
@@ -226,6 +249,7 @@ export async function createSandboxFunctionMCPAction(
       assertNever(executionStatus);
   }
 
+  const createActionStarted = performance.now();
   const action = await SandboxFunctionMCPActionResource.makeNew(auth, {
     invocation,
     mcpServerView: view,
@@ -237,7 +261,9 @@ export async function createSandboxFunctionMCPAction(
     ),
     status: actionStatus,
   });
+  const createActionMs = roundMs(createActionStarted);
 
+  const runOrLaunchStarted = performance.now();
   switch (actionStatus) {
     case "running": {
       const launchResult = await launchSandboxFunctionToolWorkflow(auth, {
@@ -295,6 +321,29 @@ export async function createSandboxFunctionMCPAction(
     default:
       assertNever(actionStatus);
   }
+  const runOrLaunchMs = roundMs(runOrLaunchStarted);
 
-  return new Ok({ actionId: action.sId });
+  const createTimings = {
+    fetchView: fetchViewMs,
+    resolveTool: resolveToolMs,
+    fetchFunction: fetchFunctionMs,
+    fetchInvocation: fetchInvocationMs,
+    stakeStatus: stakeStatusMs,
+    createAction: createActionMs,
+    runOrLaunch: runOrLaunchMs,
+    total: roundMs(totalStarted),
+  };
+  logger.info(
+    {
+      actionId: action.sId,
+      invocationId: invocation.sId,
+      timingsMs: createTimings,
+    },
+    "Sandbox function MCP action create phase timings"
+  );
+
+  return new Ok({
+    actionId: action.sId,
+    createTimings,
+  });
 }

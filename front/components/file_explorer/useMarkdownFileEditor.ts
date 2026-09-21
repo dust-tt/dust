@@ -15,6 +15,7 @@ interface UseMarkdownFileEditorParams {
   fileUrl: string | null;
   isActive: boolean;
   isContentLoading: boolean;
+  isTooLarge: boolean;
   owner: LightWorkspaceType | undefined;
   processedContent: ProcessedContent | null;
 }
@@ -37,6 +38,7 @@ export function useMarkdownFileEditor({
   fileUrl,
   isActive,
   isContentLoading,
+  isTooLarge,
   owner,
   processedContent,
 }: UseMarkdownFileEditorParams): MarkdownFileEditor {
@@ -56,7 +58,7 @@ export function useMarkdownFileEditor({
     entryPath && owner && parseCanonicalScopedPath(entryPath)
       ? entryPath
       : null;
-  const canEdit = category === "markdown" && !!editablePath;
+  const canEdit = category === "markdown" && !!editablePath && !isTooLarge;
 
   if (isActive !== resetKey.isActive || entryPath !== resetKey.path) {
     setResetKey({ isActive, path: entryPath });

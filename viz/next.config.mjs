@@ -52,6 +52,11 @@ const nextConfig = {
         source: "/_next/static/:path*",
         headers: [{ key: "Access-Control-Allow-Origin", value: "*" }],
       },
+      // Sandboxed Frames have an opaque origin even when fetching this public report.
+      {
+        source: "/tailwind-coverage.json",
+        headers: [{ key: "Access-Control-Allow-Origin", value: "*" }],
+      },
     ];
   },
 };

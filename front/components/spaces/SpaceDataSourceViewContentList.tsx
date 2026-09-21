@@ -361,10 +361,10 @@ export const SpaceDataSourceViewContentList = ({
   }, [childrenNodes.length, setIsSearchDisabled]);
 
   const addToSpace = useCallback(
-    async (contentNode: DataSourceViewContentNode, spaceSId: string) => {
+    async (contentNode: DataSourceViewContentNode, spaceId: string) => {
       const existingViewForSpace = dataSourceViews.find(
         (d) =>
-          d.spaceId === spaceSId &&
+          d.spaceId === spaceId &&
           d.dataSource.sId === dataSourceView.dataSource.sId
       );
 
@@ -372,7 +372,7 @@ export const SpaceDataSourceViewContentList = ({
         let res;
         if (existingViewForSpace) {
           res = await clientFetch(
-            `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views/${existingViewForSpace.sId}`,
+            `/api/w/${owner.sId}/spaces/${spaceId}/data_source_views/${existingViewForSpace.sId}`,
             {
               method: "PATCH",
               headers: {
@@ -385,7 +385,7 @@ export const SpaceDataSourceViewContentList = ({
           );
         } else {
           res = await clientFetch(
-            `/api/w/${owner.sId}/spaces/${spaceSId}/data_source_views`,
+            `/api/w/${owner.sId}/spaces/${spaceId}/data_source_views`,
             {
               method: "POST",
               headers: {

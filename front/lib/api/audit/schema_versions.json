@@ -84,6 +84,8 @@
   "scim.user_updated": 4,
   "self_improvement.batch_mode_updated": 1,
   "self_improvement.enabled": 1,
+  "skill.availability_updated": 1,
+  "skill.editors_updated": 1,
   "skill.self_improvement_updated": 1,
   "skill_import_github_connection.created": 1,
   "skill_import_github_connection.deleted": 1,

@@ -3,9 +3,14 @@ import { shellEscape } from "@app/lib/api/sandbox/shell";
 export const SANDBOX_ROOT_SAFE_PATH = "/usr/sbin:/usr/bin:/sbin:/bin:/opt/bin";
 export const SANDBOX_AGENT_SAFE_PATH = SANDBOX_ROOT_SAFE_PATH;
 export const SANDBOX_AGENT_SERVICE_HOME = "/var/empty";
+/**
+ * @cc [owner:flvndvd,label:product] sandbox-workload-npm-tools
+ * The workload PATH MUST resolve globally installed npm tools without sourcing shell profiles.
+ */
 export const SANDBOX_AGENT_PROXIED_SAFE_PATH = [
   "/opt/venv/bin",
   "/opt/bin",
+  "/opt/npm-global/bin",
   "/usr/local/sbin",
   "/usr/local/bin",
   "/usr/sbin",

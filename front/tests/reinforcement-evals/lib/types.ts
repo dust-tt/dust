@@ -93,7 +93,7 @@ interface MockConversationMessage {
  */
 export function buildConversationText(
   messages: MockConversationMessage[],
-  _agentConfigSId: string = "skill-under-test"
+  _agentConfigId: string = "skill-under-test"
 ): string {
   return renderConversationAsText(
     mockConversation(

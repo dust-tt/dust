@@ -14,11 +14,13 @@ import {
 import {
   creditsExhaustedMessage,
   finalizeCancellation,
+  finalizeCreditSpendCheckpointPause,
   finalizeCreditStop,
   finalizeGracefulStop,
   finalizeInterruption,
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
+import { recordExecutionFinalized as recordConsumptionExecutionFinalized } from "@app/temporal/agent_loop/activities/consumption";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import {
   activationNewConversationNotification,
@@ -42,12 +44,17 @@ async function launchAgentMessageConsumptionAttributionAfterPersistingInputs(
     creditArgs?: { agentMessageId: string; dustRunIds?: string[] };
   } = {}
 ): Promise<void> {
-  // Consumption analytics needs the authoritative bill, usage type, and historical skill snapshot
-  // before its attribution workflow can safely materialize Elasticsearch documents.
-  await snapshotAgentMessageSkills(auth, agentLoopArgs);
   await computeAndStoreAgentMessageCredits(auth, creditArgs);
 
   await launchAgentMessageConsumptionAttribution(auth, agentLoopArgs);
+}
+
+async function recordExecutionFinalized(
+  auth: Authenticator,
+  agentLoopArgs: AgentLoopArgs
+): ReturnType<typeof recordConsumptionExecutionFinalized> {
+  await snapshotAgentMessageSkills(auth, agentLoopArgs);
+  return recordConsumptionExecutionFinalized(auth, agentLoopArgs);
 }
 
 export async function finalizeSuccessfulAgentLoopActivity(
@@ -55,6 +62,11 @@ export async function finalizeSuccessfulAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+  const consumptionResult = await recordExecutionFinalized(auth, agentLoopArgs);
+  if (consumptionResult.isErr()) {
+    throw consumptionResult.error;
+  }
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
@@ -82,8 +94,21 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   await finalizeGracefulStop(authType, agentLoopArgs);
+  await launchStoppedLoopSideEffects(authType, agentLoopArgs);
+}
 
+// Post-finalize side effects shared by the paths that stop the loop without reporting an error to
+// the user: graceful stop, interruption and the credit spend checkpoint pause.
+async function launchStoppedLoopSideEffects(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+  const consumptionResult = await recordExecutionFinalized(auth, agentLoopArgs);
+  if (consumptionResult.isErr()) {
+    throw consumptionResult.error;
+  }
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
@@ -111,20 +136,7 @@ export async function finalizeInterruptedAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   await finalizeInterruption(authType, agentLoopArgs);
-
-  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
-
-  await Promise.all([
-    launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
-      auth,
-      agentLoopArgs
-    ),
-    launchTrackProgrammaticUsage(auth, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    conversationUnreadNotification(auth, agentLoopArgs),
-    handleMentions(auth, agentLoopArgs),
-  ]);
+  await launchStoppedLoopSideEffects(authType, agentLoopArgs);
 }
 
 export async function finalizeCancelledAgentLoopActivity(
@@ -134,6 +146,11 @@ export async function finalizeCancelledAgentLoopActivity(
   await finalizeCancellation(authType, agentLoopArgs);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+  const consumptionResult = await recordExecutionFinalized(auth, agentLoopArgs);
+  if (consumptionResult.isErr()) {
+    throw consumptionResult.error;
+  }
 
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
@@ -159,6 +176,11 @@ export async function finalizeCreditStoppedAgentLoopActivity(
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
+  const consumptionResult = await recordExecutionFinalized(auth, agentLoopArgs);
+  if (consumptionResult.isErr()) {
+    throw consumptionResult.error;
+  }
+
   await Promise.all([
     launchAgentMessageAnalytics(auth, agentLoopArgs),
     launchAgentMessageConsumptionAttributionAfterPersistingInputs(
@@ -172,6 +194,14 @@ export async function finalizeCreditStoppedAgentLoopActivity(
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     sendEmailReplyOnError(auth, agentLoopArgs, creditsExhaustedMessage(auth)),
   ]);
+}
+
+export async function finalizeCreditSpendCheckpointPausedAgentLoopActivity(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
+  await finalizeCreditSpendCheckpointPause(authType, agentLoopArgs);
+  await launchStoppedLoopSideEffects(authType, agentLoopArgs);
 }
 
 // Attribute the failure to the tools that never finished. The worker that ran them may have died
@@ -251,6 +281,11 @@ export async function finalizeErroredAgentLoopActivity(
       agentMessageModelId,
       error,
     });
+  }
+
+  const consumptionResult = await recordExecutionFinalized(auth, agentLoopArgs);
+  if (consumptionResult.isErr()) {
+    throw consumptionResult.error;
   }
 
   await Promise.all([

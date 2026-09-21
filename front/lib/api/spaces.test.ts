@@ -1305,6 +1305,8 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
 
   describe("requestedSpaceIds cleanup", () => {
     it("should remove deleted space from skill requestedSpaceIds", async () => {
+      const globalSpace =
+        await SpaceResource.fetchWorkspaceGlobalSpace(adminAuth);
       // Create a non-restricted regular space (accessible via global group)
       const spaceResult = await createSpaceAndGroup(
         adminAuth,
@@ -1353,7 +1355,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       const skillAfter = await SkillResource.fetchById(adminAuth, skill.sId);
       expect(skillAfter).not.toBeNull();
       expect(skillAfter!.requestedSpaceIds).not.toContain(space!.id);
-      expect(skillAfter!.requestedSpaceIds).toHaveLength(0);
+      expect(skillAfter!.requestedSpaceIds).toEqual([globalSpace.id]);
     });
 
     it("should remove a deleted space from a skill's manually requested spaces", async () => {
@@ -1432,6 +1434,8 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
     });
 
     it("should preserve additional skill requestedSpaceIds when deleting a dependency space", async () => {
+      const globalSpace =
+        await SpaceResource.fetchWorkspaceGlobalSpace(adminAuth);
       const toolSpaceResult = await createSpaceAndGroup(
         adminAuth,
         {
@@ -1487,7 +1491,10 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       const skillAfter = await SkillResource.fetchById(adminAuth, skill.sId);
       expect(skillAfter).not.toBeNull();
       expect(skillAfter!.requestedSpaceIds).not.toContain(toolSpace!.id);
-      expect(skillAfter!.requestedSpaceIds).toEqual([additionalSpace!.id]);
+      expect(skillAfter!.requestedSpaceIds).toEqual([
+        additionalSpace!.id,
+        globalSpace.id,
+      ]);
     });
 
     it("should preserve a nested skill's spaces when deleting a dependency space", async () => {

@@ -69,9 +69,9 @@ function tokenUrl(index: number): string {
  * Per-target mount profile.
  *
  * - "workload": root-mounted with `allow_other` so the unprivileged sandbox
- *   users can access it; permissive file/dir modes. All agent-facing mounts
- *   are shared mutable filesystems, so namespace and metadata caching are
- *   disabled: writes from another sandbox or Front must be visible immediately.
+ *   users can access it with permissive file/dir modes. Namespace and metadata
+ *   caches expire after one second, so reads can briefly miss writes from Front
+ *   or another sandbox.
  * - "frame_publications": same access model as "workload", but without caching so newly
  *   published or replaced functions are visible immediately.
  * - "sandbox_state_replica": mounted AS `dust-state` (via runuser) so the FUSE
@@ -399,6 +399,11 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
 }
 
 /** Exported for testing. */
+/**
+ * @cc [owner:flvndvd,label:performance] mount-cache-ttls
+ * Workload mounts MUST use a one second TTL for directory listings, metadata and negative
+ * lookups. Frame publication and sandbox state replica mounts MUST disable these caches.
+ */
 export function buildMountCommand({
   bucket,
   target,
@@ -433,6 +438,10 @@ export function buildMountCommand({
       if (target.readOnly) {
         mountOptions.push("ro");
       }
+      // These mounts have multiple independent writers/readers. gcsfuse only invalidates the
+      // client that performed a mutation, so workload caches can hide writes from Front or
+      // another sandbox for up to one second. Publication and state replica mounts stay uncached.
+      const cacheTtlSeconds = target.mountProfile === "workload" ? 1 : 0;
 
       const flags = [
         ...commonFlags,
@@ -440,12 +449,9 @@ export function buildMountCommand({
         mountOptions.join(","),
         "--file-mode=666",
         "--dir-mode=777",
-        // These mounts have multiple independent writers/readers. gcsfuse only invalidates the
-        // client that performed a mutation, so any cache here can hide writes from another
-        // sandbox or from Front.
-        "--kernel-list-cache-ttl-secs=0",
-        "--metadata-cache-ttl-secs=0",
-        "--metadata-cache-negative-ttl-secs=0",
+        `--kernel-list-cache-ttl-secs=${cacheTtlSeconds}`,
+        `--metadata-cache-ttl-secs=${cacheTtlSeconds}`,
+        `--metadata-cache-negative-ttl-secs=${cacheTtlSeconds}`,
       ];
 
       return rootCommand.stderrToStdout(

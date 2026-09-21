@@ -6,6 +6,7 @@ import conversations from "./conversations";
 import globalAgents from "./global_agents";
 import goTemplate from "./go-template";
 import mentions from "./mentions";
+import ongoingAgentLoops from "./ongoing-agent-loops";
 import skills from "./skills";
 
 // Mounted at /api/w/:wId/assistant.
@@ -17,6 +18,7 @@ app.route("/conversations", conversations);
 app.route("/global_agents", globalAgents);
 app.route("/go-template", goTemplate);
 app.route("/mentions", mentions);
+app.route("/ongoing-agent-loops", ongoingAgentLoops);
 app.route("/skills", skills);
 
 export default app;

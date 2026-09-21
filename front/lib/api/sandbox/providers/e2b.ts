@@ -756,8 +756,9 @@ export class E2BSandboxProvider implements SandboxProvider {
           return new Err(normalizeError(err));
         }
 
+        let paused = false;
         try {
-          await sandbox.betaPause();
+          paused = await sandbox.betaPause();
         } catch (err) {
           if (err instanceof NotFoundError) {
             return new Err(new SandboxNotFoundError(providerId));
@@ -769,7 +770,7 @@ export class E2BSandboxProvider implements SandboxProvider {
           this.dropConnection(providerId);
         }
 
-        logger.info({ providerId }, "E2B sandbox paused");
+        logger.info({ providerId, paused }, "E2B sandbox paused");
 
         return new Ok(undefined);
       },

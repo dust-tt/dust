@@ -53,7 +53,6 @@ export type EditingPlanType = {
   maxLifetimeFreeUsers: string | number;
   maxVaults: string | number;
   name: string;
-  trialPeriodDays: string | number;
 };
 
 export const fromPlanType = (plan: PlanType): EditingPlanType => {
@@ -87,7 +86,6 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     maxFreeUsers: plan.limits.users.maxFreeUsers,
     maxLifetimeFreeUsers: plan.limits.users.maxLifetimeFreeUsers,
     maxVaults: plan.limits.vaults.maxVaults,
-    trialPeriodDays: plan.trialPeriodDays,
     maxImagesPerWeek: plan.limits.capabilities.images.maxImagesPerWeek,
   };
 };
@@ -155,7 +153,6 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       },
       canUseProduct: true,
     },
-    trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),
     isByok: editingPlan.isByok,
     isAuditLogsAllowed: editingPlan.isAuditLogsAllowed,
     hasAdvancedModelAccess: editingPlan.hasAdvancedModelAccess,
@@ -194,7 +191,6 @@ const getEmptyPlan = (): EditingPlanType => ({
   maxLifetimeFreeUsers: -1,
   maxVaults: "",
   name: "",
-  trialPeriodDays: 0,
 });
 
 export const useEditingPlan = () => {
@@ -399,14 +395,6 @@ export const PLAN_FIELDS = {
     width: "small",
     title: "# Images",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxImagesPerWeek),
-  },
-  trialPeriodDays: {
-    type: "number",
-    width: "small",
-    title: "Trial Days",
-    error: (plan: EditingPlanType) => {
-      return errorCheckNumber(plan.trialPeriodDays);
-    },
   },
 } as const;
 

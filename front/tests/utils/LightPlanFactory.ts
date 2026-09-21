@@ -40,7 +40,6 @@ export class LightPlanFactory {
         capabilities: { images: { maxImagesPerWeek: -1 } },
         canUseProduct: true,
       },
-      trialPeriodDays: 0,
       isByok: false,
       isAuditLogsAllowed: true,
       hasAdvancedModelAccess: true,

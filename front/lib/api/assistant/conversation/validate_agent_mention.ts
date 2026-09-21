@@ -340,7 +340,7 @@ export async function validateAgentMention(
     });
   }
 
-  await runAgentLoopWorkflow({
+  agentMessages = await runAgentLoopWorkflow({
     auth,
     agentMessages,
     conversation,

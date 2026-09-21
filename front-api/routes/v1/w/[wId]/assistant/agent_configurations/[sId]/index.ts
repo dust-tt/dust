@@ -5,7 +5,7 @@ import {
 import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
-import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import logger from "@app/logger/logger";
 import type {
   DeleteAgentConfigurationResponseType,
@@ -363,12 +363,18 @@ app.patch(
 
     // it's a public endpoint, so we need to check we are auth with a user, to set a favorite
     if (body.userFavorite !== undefined && auth.user()) {
-      const updateRes = await setAgentUserFavorite({
-        auth,
-        agentId: sId,
-        userFavorite: body.userFavorite,
-      });
+      const agent = await AgentResource.fetchById(auth, sId);
+      if (!agent) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "agent_configuration_not_found",
+            message: `Could not find agent configuration ${sId}`,
+          },
+        });
+      }
 
+      const updateRes = await agent.setUserFavorite(auth, body.userFavorite);
       if (updateRes.isOk()) {
         agentConfiguration.userFavorite = body.userFavorite;
       } else {

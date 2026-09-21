@@ -12,7 +12,7 @@ import {
   useSkillSuggestions,
 } from "@app/hooks/useSkillSuggestions";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { PatchSkillSuggestionResponseBody } from "@app/types/api/assistant/skills/suggestions";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
@@ -101,10 +101,11 @@ function ConversationSkillSuggestion({
       sources: ["conversational"],
     });
 
-  const { skill, isSkillLoading } = useSkill({
-    workspaceId: owner.sId,
-    skillId,
-  });
+  const { skill, isSkillLoading, mutateSkillRegardlessOfQueryParams } =
+    useSkill({
+      workspaceId: owner.sId,
+      skillId,
+    });
 
   const { patchSuggestions } = usePatchSkillSuggestions({
     skillId,
@@ -120,8 +121,43 @@ function ConversationSkillSuggestion({
     [skill]
   );
 
-  // TODO(skill-suggestions): apply the suggestion's edits to the skill and mark it approved.
-  const handleAccept = () => {};
+  const updateCachedSuggestions = (
+    patched: PatchSkillSuggestionResponseBody | null
+  ) => {
+    const reviewed = patched?.suggestions ?? [];
+    if (reviewed.length === 0) {
+      return;
+    }
+    const reviewedById = new Map(reviewed.map((s) => [s.sId, s]));
+    void mutateSuggestions(
+      (current) => ({
+        suggestions: (current?.suggestions ?? []).map(
+          (s) => reviewedById.get(s.sId) ?? s
+        ),
+      }),
+      { revalidate: false }
+    );
+  };
+
+  const handleAccept = async (suggestion: SkillSuggestionType) => {
+    if (pendingAction) {
+      return;
+    }
+    setPendingAction("accept");
+    try {
+      const patched = await patchSuggestions([suggestion.sId], "approved", {
+        applyToSkill: true,
+      });
+      if (!patched) {
+        return;
+      }
+
+      updateCachedSuggestions(patched);
+      mutateSkillRegardlessOfQueryParams();
+    } finally {
+      setPendingAction(null);
+    }
+  };
 
   const handleDecline = async (suggestion: SkillSuggestionType) => {
     if (pendingAction) {
@@ -129,20 +165,9 @@ function ConversationSkillSuggestion({
     }
     setPendingAction("decline");
     try {
-      const patched = await patchSuggestions([suggestion.sId], "rejected");
-      const reviewed = patched?.suggestions.find(
-        (p) => p.sId === suggestion.sId
+      updateCachedSuggestions(
+        await patchSuggestions([suggestion.sId], "rejected")
       );
-      if (reviewed) {
-        void mutateSuggestions(
-          (current) => ({
-            suggestions: (current?.suggestions ?? []).map((s) =>
-              s.sId === reviewed.sId ? reviewed : s
-            ),
-          }),
-          { revalidate: false }
-        );
-      }
     } finally {
       setPendingAction(null);
     }
@@ -157,30 +182,19 @@ function ConversationSkillSuggestion({
     return null;
   }
 
-  const { kind } = suggestion;
-  switch (kind) {
-    case "edit":
-      return (
-        <SkillSuggestionCard
-          suggestion={suggestion}
-          onAccept={handleAccept}
-          onDecline={handleDecline}
-          getSkillInstructionsHtml={getSkillInstructionsHtml}
-          getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
-          workspaceId={owner.sId}
-          disabled={pendingAction !== null}
-          isAccepting={pendingAction === "accept"}
-          isDeclining={pendingAction === "decline"}
-        />
-      );
-
-    case "editors":
-      return null;
-
-    default:
-      assertNeverAndIgnore(kind);
-      return null;
-  }
+  return (
+    <SkillSuggestionCard
+      suggestion={suggestion}
+      onAccept={handleAccept}
+      onDecline={handleDecline}
+      getSkillInstructionsHtml={getSkillInstructionsHtml}
+      getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
+      workspaceId={owner.sId}
+      disabled={pendingAction !== null}
+      isAccepting={pendingAction === "accept"}
+      isDeclining={pendingAction === "decline"}
+    />
+  );
 }
 
 interface SkillSuggestionPluginProps {

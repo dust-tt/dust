@@ -110,9 +110,9 @@ async function listMembersByUserIds(
 ): Promise<Result<MemberPage, MCPError>> {
   const uniqueUserIds = [...new Set(userIds)];
   const users = await UserResource.fetchByIds(uniqueUserIds);
-  const userBySId = new Map(users.map((u) => [u.sId, u]));
+  const userById = new Map(users.map((u) => [u.sId, u]));
 
-  const missingUserIds = uniqueUserIds.filter((id) => !userBySId.has(id));
+  const missingUserIds = uniqueUserIds.filter((id) => !userById.has(id));
   if (missingUserIds.length > 0) {
     return new Err(
       new MCPError(`Users not found: ${missingUserIds.join(", ")}.`)
@@ -139,7 +139,7 @@ async function listMembersByUserIds(
 
   // Preserve caller-supplied order.
   const orderedUsers = uniqueUserIds.flatMap((id) => {
-    const u = userBySId.get(id);
+    const u = userById.get(id);
     return u ? [u] : [];
   });
 

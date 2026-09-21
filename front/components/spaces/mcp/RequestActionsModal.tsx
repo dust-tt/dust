@@ -1,5 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { sendRequestActionsAccessEmail } from "@app/lib/email";
@@ -33,8 +33,9 @@ interface RequestActionsModal {
 }
 
 export function RequestActionsModal({ owner, space }: RequestActionsModal) {
+  const [isOpen, setIsOpen] = useState(false);
   const { serverViews, isMCPServerViewsLoading: isLoading } =
-    useMCPServerViewsNotActivated({ owner, space });
+    useMCPServerViewsNotActivated({ owner, space, disabled: !isOpen });
   const [selectedMcpServer, setSelectedMcpServer] =
     useState<MCPServerViewType | null>(null);
 
@@ -43,6 +44,8 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
 
   const onClose = () => {
     setMessage("");
+    setSelectedMcpServer(null);
+    setIsOpen(false);
   };
 
   const onSave = async () => {
@@ -86,7 +89,10 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
   };
 
   return (
-    <Sheet>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => (open ? setIsOpen(true) : onClose())}
+    >
       <SheetTrigger asChild>
         <Button label="Request Tool" icon={Plus} />
       </SheetTrigger>
@@ -95,7 +101,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
           <SheetTitle>
             Requesting Access to{" "}
             {selectedMcpServer
-              ? getMcpServerDisplayName(selectedMcpServer.server)
+              ? getMcpServerViewDisplayName(selectedMcpServer)
               : ""}
           </SheetTitle>
         </SheetHeader>
@@ -124,8 +130,8 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                         {selectedMcpServer ? (
                           <Button
                             variant="outline"
-                            label={getMcpServerDisplayName(
-                              selectedMcpServer.server
+                            label={getMcpServerViewDisplayName(
+                              selectedMcpServer
                             )}
                             icon={() =>
                               getAvatar(selectedMcpServer.server, "xs")
@@ -144,7 +150,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                         {serverViews.map((v) => (
                           <DropdownMenuItem
                             key={v.sId}
-                            label={getMcpServerDisplayName(v.server)}
+                            label={getMcpServerViewDisplayName(v)}
                             icon={() => getAvatar(v.server, "xs")}
                             onClick={() => setSelectedMcpServer(v)}
                           />
@@ -161,7 +167,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                     {capitalize(selectedMcpServer.editedByUser?.fullName ?? "")}{" "}
                     is the administrator for the{" "}
                     {selectedMcpServer
-                      ? getMcpServerDisplayName(selectedMcpServer.server)
+                      ? getMcpServerViewDisplayName(selectedMcpServer)
                       : ""}{" "}
                     tool within Dust. Send an email to Dust. Send an email to{" "}
                     {capitalize(selectedMcpServer.editedByUser?.fullName ?? "")}

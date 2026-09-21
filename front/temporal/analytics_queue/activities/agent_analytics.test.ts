@@ -80,7 +80,7 @@ async function seedMessages(
     modelResolutionMethod?: ModelResolutionMethodType | null;
   }
 ): Promise<{
-  conversationSId: string;
+  conversationId: string;
   userMessageId: string;
   agentMessageId: string;
 }> {
@@ -111,7 +111,7 @@ async function seedMessages(
   });
 
   return {
-    conversationSId: conversation.sId,
+    conversationId: conversation.sId,
     userMessageId: userMessageRow.sId,
     agentMessageId: agentMessageRow.sId,
   };
@@ -120,16 +120,16 @@ async function seedMessages(
 async function runAnalytics(
   auth: Authenticator,
   {
-    conversationSId,
+    conversationId,
     agentMessageId,
     userMessageId,
-  }: { conversationSId: string; agentMessageId: string; userMessageId: string }
+  }: { conversationId: string; agentMessageId: string; userMessageId: string }
 ): Promise<void> {
   await storeAgentAnalyticsActivity(auth.toJSON(), {
     agentLoopArgs: {
       agentMessageId,
       agentMessageVersion: 0,
-      conversationId: conversationSId,
+      conversationId,
       conversationTitle: null,
       userMessageId,
       userMessageVersion: 0,

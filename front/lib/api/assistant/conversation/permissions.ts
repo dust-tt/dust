@@ -256,16 +256,16 @@ export async function updateConversationRequirements(
   );
 
   // Convert all sIds to modelIds.
-  const sIdToModelId = new Map<string, number>();
+  const groupModelIdById = new Map<string, number>();
   const getModelId = (sId: string) => {
-    if (!sIdToModelId.has(sId)) {
+    if (!groupModelIdById.has(sId)) {
       const id = getResourceIdFromSId(sId);
       if (id === null) {
         throw new Error("Unexpected: invalid group id");
       }
-      sIdToModelId.set(sId, id);
+      groupModelIdById.set(sId, id);
     }
-    return sIdToModelId.get(sId)!;
+    return groupModelIdById.get(sId)!;
   };
 
   const allSpaceRequirements = [

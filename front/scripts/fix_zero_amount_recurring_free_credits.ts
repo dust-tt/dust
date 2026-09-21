@@ -72,7 +72,7 @@ function getCadence(credit: MetronomeCredit): Cadence | null {
 }
 
 interface Finding {
-  workspaceSId: string;
+  workspaceId: string;
   workspaceName: string;
   metronomeCustomerId: string;
   contractId: string | undefined;
@@ -270,7 +270,7 @@ async function findZeroAmountSegments(
     }
 
     const finding: Finding = {
-      workspaceSId: workspace.sId,
+      workspaceId: workspace.sId,
       workspaceName: workspace.name,
       metronomeCustomerId,
       contractId: credit.contract?.id,

@@ -162,7 +162,57 @@ pub struct CallToolRequest {
     rename_all_fields = "camelCase"
 )]
 pub enum CallToolPostResponse {
-    Pending { action_id: String },
+    Pending {
+        action_id: String,
+        #[serde(default)]
+        server_timings_ms: Option<ToolCallServerTimingsMs>,
+    },
+    Rejected,
+    /// Same shape as a successful poll body: front may return the terminal
+    /// result on the create POST when the tool finishes within the early-wait budget.
+    Success {
+        action: ActionData,
+        #[serde(default)]
+        server_timings_ms: Option<ToolCallServerTimingsMs>,
+    },
+}
+
+/// Outcome of `POST .../actions/call` after interpreting an early terminal body.
+#[derive(Debug)]
+pub enum CallToolPostOutcome {
+    Pending {
+        action_id: String,
+        server_timings_ms: Option<ToolCallServerTimingsMs>,
+    },
+    Rejected,
+    Ready {
+        content: Vec<serde_json::Value>,
+        structured_content: Option<serde_json::Value>,
+        is_error: bool,
+        server_timings_ms: Option<ToolCallServerTimingsMs>,
+    },
+}
+
+pub fn interpret_call_tool_post_response(resp: CallToolPostResponse) -> CallToolPostOutcome {
+    match resp {
+        CallToolPostResponse::Pending {
+            action_id,
+            server_timings_ms,
+        } => CallToolPostOutcome::Pending {
+            action_id,
+            server_timings_ms,
+        },
+        CallToolPostResponse::Rejected => CallToolPostOutcome::Rejected,
+        CallToolPostResponse::Success {
+            action,
+            server_timings_ms,
+        } => CallToolPostOutcome::Ready {
+            content: action.output.unwrap_or_default(),
+            structured_content: action.structured_content,
+            is_error: action.status == "errored",
+            server_timings_ms,
+        },
+    }
 }
 
 #[derive(Debug)]
@@ -190,12 +240,12 @@ enum ActionPollResponseRaw {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct ActionData {
-    status: String,
+pub(crate) struct ActionData {
+    pub(crate) status: String,
     #[serde(default)]
-    output: Option<Vec<serde_json::Value>>,
+    pub(crate) output: Option<Vec<serde_json::Value>>,
     #[serde(default)]
-    structured_content: Option<serde_json::Value>,
+    pub(crate) structured_content: Option<serde_json::Value>,
 }
 
 pub fn parse_action_poll_response(body: &str) -> anyhow::Result<ActionPollResponse> {
@@ -241,6 +291,54 @@ pub struct CallToolResponse {
     pub result: CallToolResult,
 }
 
+/// Front-side Dust overhead for one `POST .../actions/call` (create + run + early wait).
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolCallRunTimingsMs {
+    pub auth: u64,
+    pub fetch_action: u64,
+    pub fetch_invocation: u64,
+    pub resolve_pod: u64,
+    pub streaming: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mcp_connect: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mcp_call: Option<u64>,
+    pub total: u64,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolCallServerTimingsMs {
+    pub fetch_view: u64,
+    pub resolve_tool: u64,
+    pub fetch_function: u64,
+    pub fetch_invocation: u64,
+    pub stake_status: u64,
+    pub create_action: u64,
+    pub run_or_launch: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run: Option<ToolCallRunTimingsMs>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub early_wait: Option<u64>,
+    pub total: u64,
+}
+
+/// Phase breakdown for one `dsbx tools` call (POST + poll + optional offload).
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolCallTimingsMs {
+    pub post: u64,
+    pub poll: u64,
+    /// Time spent resolving offloaded content blocks after a successful poll.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offload: Option<u64>,
+    /// Front create/run breakdown when returned on the POST.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server: Option<ToolCallServerTimingsMs>,
+    pub total: u64,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CallToolResult {
@@ -251,6 +349,10 @@ pub struct CallToolResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub structured_content: Option<serde_json::Value>,
     pub is_error: bool,
+    /// Diagnostics only: optional so older consumers ignore unknown fields and
+    /// `--json` without timings stays a valid CallToolResult.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timings_ms: Option<ToolCallTimingsMs>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -394,8 +496,32 @@ mod tests {
         let resp: CallToolPostResponse =
             serde_json::from_str(r#"{"status":"pending","actionId":"act_abc"}"#)
                 .expect("should parse");
-        let CallToolPostResponse::Pending { action_id } = resp;
-        assert_eq!(action_id, "act_abc");
+        match resp {
+            CallToolPostResponse::Pending { action_id, .. } => assert_eq!(action_id, "act_abc"),
+            _ => panic!("expected pending"),
+        }
+    }
+
+    #[test]
+    fn parse_call_tool_post_response_success() {
+        let resp: CallToolPostResponse = serde_json::from_str(
+            r#"{"status":"success","action":{"status":"succeeded","output":[{"type":"text","text":"ok"}]}}"#,
+        )
+        .expect("should parse");
+        match resp {
+            CallToolPostResponse::Success { action, .. } => {
+                assert_eq!(action.status, "succeeded");
+                assert_eq!(action.output.as_ref().unwrap().len(), 1);
+            }
+            _ => panic!("expected success"),
+        }
+    }
+
+    #[test]
+    fn parse_call_tool_post_response_rejected() {
+        let resp: CallToolPostResponse =
+            serde_json::from_str(r#"{"status":"rejected"}"#).expect("should parse");
+        assert!(matches!(resp, CallToolPostResponse::Rejected));
     }
 
     #[test]
@@ -419,6 +545,7 @@ mod tests {
             content: vec![serde_json::json!({"type": "text", "text": "hello"})],
             structured_content: None,
             is_error: false,
+            timings_ms: None,
         };
 
         let value: serde_json::Value =
@@ -441,6 +568,7 @@ mod tests {
             content: vec![serde_json::json!({"type": "text", "text": "hello"})],
             structured_content: Some(serde_json::json!({"items": [1, 2], "nextCursor": "abc"})),
             is_error: false,
+            timings_ms: None,
         };
 
         let value: serde_json::Value =
@@ -478,6 +606,7 @@ mod tests {
             content,
             structured_content: None,
             is_error: false,
+            timings_ms: None,
         };
         let value: serde_json::Value =
             serde_json::from_str(&serde_json::to_string(&result).expect("should serialize"))
@@ -501,6 +630,7 @@ mod tests {
             })],
             structured_content: None,
             is_error: true,
+            timings_ms: None,
         };
 
         let value: serde_json::Value =

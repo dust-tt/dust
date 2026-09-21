@@ -7,7 +7,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { useSidebarSectionCollapsed } from "@app/hooks/useSidebarSectionCollapsed";
 import { useSpaceSidebarItemFocus } from "@app/hooks/useSpaceSidebarItemFocus";
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -732,7 +732,7 @@ const SpaceActionItem = ({
   return (
     <Tree.Item
       type="leaf"
-      label={getMcpServerDisplayName(action.server)}
+      label={getMcpServerViewDisplayName(action)}
       visual={() => getAvatar(action.server, "xs")}
       areActionsFading={false}
     />
@@ -837,7 +837,7 @@ const SpaceActionsSubMenu = ({
           {serverViews.map((serverView) => (
             <SpaceActionItem
               action={serverView}
-              key={serverView.server.name}
+              key={serverView.sId}
               owner={owner}
             />
           ))}

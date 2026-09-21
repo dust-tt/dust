@@ -33,3 +33,31 @@ export function makeDeleteWorkspaceSkillSearchWorkflowId({
 }): string {
   return `es-indexation-delete-workspace-skill-search-${workspaceId}`;
 }
+
+export function makeIndexAgentSearchWorkflowId({
+  workspaceId,
+  agentId,
+}: {
+  workspaceId: string;
+  agentId: string;
+}): string {
+  return `es-indexation-agent-search-${workspaceId}-${agentId}`;
+}
+
+export function makeDeleteAgentSearchWorkflowId({
+  workspaceId,
+  agentId,
+}: {
+  workspaceId: string;
+  agentId: string;
+}): string {
+  return `es-indexation-delete-agent-search-${workspaceId}-${agentId}`;
+}
+
+export function makeDeleteWorkspaceAgentSearchWorkflowId({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): string {
+  return `es-indexation-delete-workspace-agent-search-${workspaceId}`;
+}

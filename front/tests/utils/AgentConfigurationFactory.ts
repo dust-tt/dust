@@ -1,9 +1,10 @@
-import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ModelIdType,
@@ -39,8 +40,8 @@ export class AgentConfigurationFactory {
     assert(user, "User is required");
 
     const workspace = auth.getNonNullableWorkspace();
-    // Some legacy tests use an auth without workspace membership. Such users cannot belong to an
-    // editor group, but authorId below still preserves attribution and the author fallback.
+    // Some legacy tests use an auth without workspace membership. Such users cannot receive an
+    // editor grant, but authorId below still preserves attribution and the author fallback.
     const editors = Authenticator.isMember(auth.role()) ? [user.toJSON()] : [];
 
     // Internal auth only bypasses the create capability; explicit authorId keeps attribution.
@@ -48,7 +49,7 @@ export class AgentConfigurationFactory {
       workspace.sId
     );
 
-    const result = await createAgentConfiguration(internalAuth, {
+    const result = await AgentResource.makeNew(internalAuth, {
       name,
       description,
       instructions: "Test Instructions",
@@ -72,14 +73,23 @@ export class AgentConfigurationFactory {
       throw result.error;
     }
 
-    // createAgentConfiguration refreshes its own `auth` argument's group memberships as a side
-    // effect of creating the new editor group. Since we called it with `internalAuth` above,
-    // mirror that refresh onto the caller's own `auth` so tests that rely on it seeing
-    // just-added group memberships (added earlier in the same test, before this call) keep
-    // working as if `auth` itself had been used.
+    // Refresh the caller so tests see group memberships added earlier in the same test. The save
+    // above uses `internalAuth`, whose refresh cannot update the caller's permission snapshot.
     await auth.refresh();
 
-    return { ...result.value, instructionsHtml: null, actions: [] };
+    // Re-read the full config: as the caller when they are a workspace member (so the returned
+    // verbs reflect the author), otherwise as the internal admin — legacy tests build agents with a
+    // non-member auth, which `getAgentConfigurations` rejects. `dangerouslySkipPermissionFiltering`
+    // lets tests build agents on spaces the caller cannot read.
+    const readAuth = auth.isUser() ? auth : internalAuth;
+    const config = await getAgentConfiguration(readAuth, {
+      agentId: result.value.sId,
+      variant: "full",
+      dangerouslySkipPermissionFiltering: true,
+    });
+    assert(config, "The saved agent must be resolvable");
+
+    return config;
   }
 
   /**
@@ -100,14 +110,22 @@ export class AgentConfigurationFactory {
     const user = auth.user();
     assert(user, "User is required");
 
-    const result = await createAgentConfiguration(auth, {
+    const agentResource = await AgentResource.fetchById(auth, agentId);
+    assert(
+      agentResource && auth.can("read", agentResource),
+      "Agent configuration not found"
+    );
+
+    // A partial update: `scope` is intentionally omitted so the agent keeps its current scope (this
+    // helper updates the definition/editors, it does not (un)publish — which would need the `publish`
+    // capability the test caller may not hold).
+    const result = await agentResource.updateConfiguration(auth, {
       name: overrides.name ?? "Test Agent",
       description: overrides.description ?? "Test Agent Description",
       instructions: overrides.instructions ?? "Updated Test Instructions",
       instructionsHtml: overrides.instructionsHtml ?? null,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
       status: "active",
-      scope: "visible",
       model: {
         providerId: "openai",
         modelId: "gpt-5-mini",
@@ -117,8 +135,11 @@ export class AgentConfigurationFactory {
       tags: [],
       editors: [user.toJSON()],
       authorId: user.id,
-      agentConfigurationId: agentId,
       requestedSpaceIds: overrides.requestedSpaceIds ?? [],
+      // Explicitly clear tools/skills: `updateConfiguration` is a partial merge (an omitted field
+      // keeps its current value), and this helper's contract is to produce a bare updated version.
+      actions: [],
+      skills: [],
     });
 
     if (result.isErr()) {
@@ -126,7 +147,9 @@ export class AgentConfigurationFactory {
     }
 
     return {
-      ...result.value,
+      ...result.value.resource.toJSON(),
+      tags: [],
+      userFavorite: false,
       instructionsHtml: overrides.instructionsHtml ?? null,
       actions: [],
     };

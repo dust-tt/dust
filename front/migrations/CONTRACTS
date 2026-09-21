@@ -1,0 +1,8 @@
+@cc [owner:philipperolet,label:architecture] preserve-completed-backfills
+Once a backfill has completed its intended production run, keep its source as a historical record:
+do not delete it or change its implementation. The only exception is work explicitly preparing the
+same backfill to run again.
+
+If later application changes break a completed TypeScript backfill, add a top-level
+`// @ts-nocheck` instead of adapting its implementation. If it has a dedicated test, 
+the test may be deleted.

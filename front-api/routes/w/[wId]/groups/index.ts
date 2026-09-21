@@ -51,7 +51,7 @@ app.get(
       : [...USER_VISIBLE_GROUP_KINDS];
 
     // This endpoint only ever exposes user-visible group kinds. Internal kinds
-    // (regular_auto, system, agent_editors) are never listed here, so we clamp
+    // (regular_auto, system) are never listed here, so we clamp
     // whatever was requested to the visible set.
     const groupKinds = requestedKinds.filter(isUserVisibleGroupKind);
 

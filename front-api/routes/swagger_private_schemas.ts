@@ -119,7 +119,7 @@
  *           type: string
  *         role:
  *           type: string
- *           enum: [admin, builder, user, none]
+ *           enum: [admin, manager, user, none]
  *         segmentation:
  *           type: string
  *           nullable: true
@@ -537,6 +537,11 @@
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/PrivateRichMentionWithStatus'
+ *         creditSpendCheckpointStatus:
+ *           type: string
+ *           enum: [paused, acknowledged, stopped]
+ *           nullable: true
+ *           description: Where the message stands with the credit spend checkpoint. Null when never reached.
  *         completionDurationMs:
  *           type: integer
  *           nullable: true
@@ -666,6 +671,11 @@
  *           type: array
  *           items:
  *             $ref: '#/components/schemas/PrivateRichMentionWithStatus'
+ *         creditSpendCheckpointStatus:
+ *           type: string
+ *           enum: [paused, acknowledged, stopped]
+ *           nullable: true
+ *           description: Where the message stands with the credit spend checkpoint. Null when never reached.
  *         completionDurationMs:
  *           type: integer
  *           nullable: true

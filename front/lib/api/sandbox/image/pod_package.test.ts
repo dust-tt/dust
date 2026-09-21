@@ -1,8 +1,10 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import {
   getPodPackageSrcDir,
   POD_PACKAGE_IMAGE_DIR,
+  POD_PACKAGE_NAME,
+  POD_PACKAGE_VERSION,
 } from "@app/lib/api/sandbox/image/pod_package";
 import { describe, expect, test } from "vitest";
 
@@ -25,5 +27,20 @@ describe("pod package build paths", () => {
     expect(POD_PACKAGE_IMAGE_DIR).toBe(
       "/opt/npm-global/lib/node_modules/@dust/pod"
     );
+  });
+
+  // The image gets a synthesised package.json built from these constants, not a copy of the
+  // real one, because `registry.ts` reads them while building `DUST_BASE_IMAGE` at module load
+  // — where the repo layout may be absent. They are therefore a deliberate duplicate of the
+  // source package's own fields, and nothing but this test keeps the two in step.
+  test("declares the version the @dust/pod source actually ships", () => {
+    const manifest: unknown = JSON.parse(
+      readFileSync(path.join(getPodPackageSrcDir(), "package.json"), "utf-8")
+    );
+
+    expect(manifest).toMatchObject({
+      name: POD_PACKAGE_NAME,
+      version: POD_PACKAGE_VERSION,
+    });
   });
 });

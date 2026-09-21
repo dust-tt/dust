@@ -80,13 +80,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import {
-  isAdmin,
-  isBuilder,
-  isManager,
-  isUser,
-  lowestRole,
-} from "@app/types/user";
+import { isAdmin, isManager, isUser, lowestRole } from "@app/types/user";
 import assert from "assert";
 import { TokenExpiredError } from "jsonwebtoken";
 import type { Transaction } from "sequelize";
@@ -1278,10 +1272,6 @@ export class Authenticator {
 
   isUser(): boolean {
     return isUser(this.workspace());
-  }
-
-  isBuilder(): boolean {
-    return isBuilder(this.workspace());
   }
 
   isManager(): boolean {

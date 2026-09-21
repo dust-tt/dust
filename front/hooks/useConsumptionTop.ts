@@ -53,6 +53,8 @@ export type ConsumptionTopRow = {
   modelId: string | null;
   modelDisplayName: string | null;
   credits: number;
+  // Messages for most dimensions, invocations for tools and skills.
+  count: number;
   avgCredits: number;
   activeMembers?: number;
   totalMembers?: number;
@@ -100,6 +102,7 @@ export function toConsumptionTopRows(
       modelId: row.modelId,
       modelDisplayName: row.modelDisplayName,
       credits: row.credits,
+      count: row.messageCount,
       avgCredits: row.avgCreditsPerMessage,
       previousCredits: row.previousCredits,
     }));
@@ -114,6 +117,7 @@ export function toConsumptionTopRows(
       modelId: null,
       modelDisplayName: null,
       credits: row.credits,
+      count: row.messageCount,
       avgCredits: row.avgCreditsPerMessage,
       previousCredits: row.previousCredits,
     }));
@@ -128,6 +132,7 @@ export function toConsumptionTopRows(
       modelId: null,
       modelDisplayName: null,
       credits: row.credits,
+      count: row.messageCount,
       avgCredits: row.avgCreditsPerMessage,
       activeMembers: row.activeMembers,
       totalMembers: Math.max(row.totalMembers, row.activeMembers),
@@ -144,6 +149,7 @@ export function toConsumptionTopRows(
       modelId: null,
       modelDisplayName: null,
       credits: row.credits,
+      count: row.messageCount,
       avgCredits: row.avgCreditsPerMessage,
       previousCredits: row.previousCredits,
     }));
@@ -158,6 +164,7 @@ export function toConsumptionTopRows(
       modelId: null,
       modelDisplayName: null,
       credits: row.credits,
+      count: row.messageCount,
       avgCredits: row.avgCreditsPerMessage,
       previousCredits: row.previousCredits,
     }));
@@ -172,6 +179,7 @@ export function toConsumptionTopRows(
       modelId: null,
       modelDisplayName: null,
       credits: row.credits,
+      count: row.invocationCount,
       avgCredits: row.avgCreditsPerInvocation,
       previousCredits: row.previousCredits,
     }));
@@ -186,6 +194,7 @@ export function toConsumptionTopRows(
       modelId: null,
       modelDisplayName: null,
       credits: row.credits,
+      count: row.invocationCount,
       avgCredits: row.avgCreditsPerInvocation,
       previousCredits: row.previousCredits,
     }));
@@ -200,6 +209,7 @@ export function toConsumptionTopRows(
       modelId: null,
       modelDisplayName: null,
       credits: row.credits,
+      count: row.messageCount,
       avgCredits: row.avgCreditsPerMessage,
       previousCredits: row.previousCredits,
     }));
@@ -214,6 +224,7 @@ export function toConsumptionTopRows(
       modelId: null,
       modelDisplayName: null,
       credits: row.credits,
+      count: row.messageCount,
       avgCredits: row.avgCreditsPerMessage,
       previousCredits: row.previousCredits,
     }));
@@ -228,6 +239,7 @@ export function toConsumptionTopRows(
       modelId: null,
       modelDisplayName: null,
       credits: row.credits,
+      count: row.messageCount,
       avgCredits: row.avgCreditsPerMessage,
       previousCredits: row.previousCredits,
     }));

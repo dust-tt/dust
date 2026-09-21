@@ -743,7 +743,7 @@ describe("Output items with GCS storage", () => {
     expect(gcsStore.size).toBe(2);
   });
 
-  it("cleans up GCS and creates no rows when a batch GCS write fails", async () => {
+  it("keeps DB rows and cleans up GCS when a batch GCS write fails", async () => {
     const action = await createAction();
     gcsSaveFailureMarker = "fail-this-write";
 
@@ -756,11 +756,16 @@ describe("Output items with GCS storage", () => {
     const outputItemRows = await AgentMCPActionOutputItemModel.findAll({
       where: { workspaceId: workspace.id, agentMCPActionId: action.id },
     });
-    expect(outputItemRows).toHaveLength(0);
+    // Rows are created before GCS (content readable via DB / Redis stage); GCS batch
+    // failure rolls back the objects.
+    expect(outputItemRows).toHaveLength(2);
+    expect(outputItemRows.every((row) => row.contentGcsPath === null)).toBe(
+      true
+    );
     expect(gcsStore.size).toBe(0);
   });
 
-  it("retains ambiguous DB-failure objects until action-prefix cleanup", async () => {
+  it("creates no GCS objects when DB row insert fails", async () => {
     const action = await createAction();
     const namespace = getNamespace("test-namespace");
     const parentTransaction = namespace?.get("transaction");
@@ -791,12 +796,7 @@ describe("Output items with GCS storage", () => {
       where: { workspaceId: workspace.id, agentMCPActionId: action.id },
     });
     expect(outputItemRows).toHaveLength(0);
-    expect(gcsStore.size).toBe(1);
-
-    await AgentMCPActionResource.destroyOutputItemsByActionIds(auth, [
-      action.id,
-    ]);
-
+    // GCS runs only after a successful insert.
     expect(gcsStore.size).toBe(0);
   });
 
@@ -1340,8 +1340,8 @@ describe("listGeneratedFilesForConversation", () => {
       useCase: "conversation",
       useCaseMetadata: {
         conversationId: conversation.sId,
-        frameName: "Hello Frame",
       },
+      mountFilePath: `w/${workspace.sId}/conversations/${conversation.sId}/files/Hello Frame/manifest.json`,
     });
 
     const { action } = await ConversationFactory.createAgentMessage(auth, {

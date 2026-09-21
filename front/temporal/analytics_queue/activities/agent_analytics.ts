@@ -440,7 +440,7 @@ async function collectToolUsageFromMessage(
       configModelIds
     );
 
-  const configIdToSId = new Map(
+  const configIdByModelId = new Map(
     serverConfigs.map((cfg) => [cfg.id.toString(), cfg.sId])
   );
 
@@ -475,7 +475,8 @@ async function collectToolUsageFromMessage(
       server_name: serverName,
       tool_name: toolName,
       mcp_server_configuration_sid:
-        configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
+        configIdByModelId.get(actionResource.mcpServerConfigurationId) ??
+        undefined,
       execution_time_ms: actionResource.executionDurationMs,
       status: actionResource.status,
       cost_awu: billedCredits,

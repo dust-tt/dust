@@ -119,7 +119,7 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
   // on the rendered conversation messages.
   static async fetchByConversationSId(
     auth: Authenticator,
-    conversationSId: string
+    conversationId: string
   ): Promise<ActivationRecommendationResource[]> {
     const recs = await this.model.findAll({
       where: {
@@ -130,7 +130,7 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
           model: ConversationModel,
           attributes: [],
           required: true,
-          where: { sId: conversationSId },
+          where: { sId: conversationId },
         },
       ],
       order: [["createdAt", "DESC"]],
@@ -195,7 +195,7 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
   ): Promise<
     {
       resource: ActivationRecommendationResource;
-      conversationSId: string | null;
+      conversationId: string | null;
     }[]
   > {
     const where: WhereOptions<ActivationRecommendationModel> = {
@@ -229,7 +229,7 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
 
     return recs.map((rec) => ({
       resource: new this(this.model, rec.get()),
-      conversationSId: rec.conversation?.sId ?? null,
+      conversationId: rec.conversation?.sId ?? null,
     }));
   }
 

@@ -162,6 +162,13 @@ async function postMessageForUnauthorizedUser(
   }
 }
 
+export function makeSlackWorkflowNotAllowedMessage(botName: string): string {
+  return `The Slack workflow "${botName}" is not allowed to call Dust agents yet. A Dust admin can allow it from the Automations page in Dust.`;
+}
+
+export const SLACK_BOT_NOT_IDENTIFIED_MESSAGE =
+  "Dust could not identify the bot or workflow that posted this message, so it cannot call Dust agents. Contact support@dust.tt if this is a Slack workflow.";
+
 export async function isBotAllowed(
   connector: ConnectorResource,
   slackUserInfo: SlackUserInfo
@@ -180,9 +187,8 @@ export async function isBotAllowed(
   const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
     connector.id
   );
-  const whitelist = await slackConfig?.isBotWhitelistedToSummon(
-    realName.trim() // sometimes the user put a space at the end of the bot name
-  );
+  const botName = realName.trim();
+  const whitelist = await slackConfig?.isBotWhitelistedToSummon(botName);
 
   if (!whitelist) {
     logger.info(
@@ -191,9 +197,7 @@ export async function isBotAllowed(
     );
 
     return new Err(
-      new SlackExternalUserError(
-        "To enable Slack Workflows to call Dust agents, email us at support@dust.tt."
-      )
+      new SlackExternalUserError(makeSlackWorkflowNotAllowedMessage(botName))
     );
   }
 

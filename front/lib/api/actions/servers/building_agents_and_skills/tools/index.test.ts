@@ -1,19 +1,36 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   DESCRIBE_SKILL_TOOL_NAME,
+  SUGGEST_AGENT_CREATION_INPUT_SCHEMA,
+  SUGGEST_AGENT_CREATION_TOOL_NAME,
+  SUGGEST_AGENT_DELETION_TOOL_NAME,
+  SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
+  SUGGEST_SKILL_DELETION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
+  SUGGEST_SKILL_NAME_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
+  SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
+import {
+  archiveAgentConfiguration,
+  getAgentConfiguration,
+} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { SKILL_SUGGESTION_KINDS } from "@app/types/suggestions/skill_suggestion";
 import type { WorkspaceType } from "@app/types/user";
@@ -24,6 +41,10 @@ import { TOOLS } from "./index";
 const SKILL_SUGGESTION_DIRECTIVE_REGEX = new RegExp(
   `^:skill_suggestion\\[\\]\\{sId=(\\S+) kind=(${SKILL_SUGGESTION_KINDS.join("|")}) skillId=(\\S+)\\}$`
 );
+const AGENT_CREATE_SUGGESTION_DIRECTIVE_REGEX =
+  /^:agent_suggestion\[\]\{sId=(\S+) kind=create agentId=(\S+)\}$/;
+const AGENT_DELETE_SUGGESTION_DIRECTIVE_REGEX =
+  /^:agent_suggestion\[\]\{sId=(\S+) kind=delete agentId=(\S+)\}$/;
 
 function getTool(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -104,6 +125,39 @@ function expectMcpError(
   expect(result.error.message).toContain(fragment);
 }
 
+function extractAgentCreateSuggestionDirective(text: string): {
+  suggestionId: string;
+  agentId: string;
+} {
+  const match = AGENT_CREATE_SUGGESTION_DIRECTIVE_REGEX.exec(text);
+  if (!match) {
+    throw new Error(`Unexpected tool output: ${text}`);
+  }
+  return { suggestionId: match[1], agentId: match[2] };
+}
+
+function extractAgentDeleteSuggestionDirective(text: string): {
+  suggestionId: string;
+  agentId: string;
+} {
+  const match = AGENT_DELETE_SUGGESTION_DIRECTIVE_REGEX.exec(text);
+  if (!match) {
+    throw new Error(`Unexpected tool output: ${text}`);
+  }
+  return { suggestionId: match[1], agentId: match[2] };
+}
+
+// A non-admin role membership does not grant create/agent by itself — it requires a group grant.
+async function createAgentAuthorTestContext() {
+  const result = await createResourceTest({ role: "user" });
+  await grantWorkspacePermission(result.workspace, result.user, {
+    grantType: "create",
+    resourceType: "agent",
+  });
+  await result.authenticator.refresh();
+  return result;
+}
+
 describe("building_agents_and_skills tools", () => {
   describe(DESCRIBE_SKILL_TOOL_NAME, () => {
     it("returns the skill with its block-structured instructions", async () => {
@@ -130,6 +184,9 @@ describe("building_agents_and_skills tools", () => {
       expect(result.value[0].text).toContain('name="Described"');
       expect(result.value[0].text).toContain("Use when describing things.");
       expect(result.value[0].text).toContain('data-block-id="blk00001"');
+      expect(result.value[0].text).toContain(
+        `<editors>${authenticator.getNonNullableUser().sId}</editors>`
+      );
     });
 
     it("rejects non-custom skill ids", async () => {
@@ -397,6 +454,24 @@ describe("building_agents_and_skills tools", () => {
 
       expect(result.isErr()).toBe(true);
     });
+
+    it("rejects an archived skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Archived",
+        status: "archived",
+      });
+
+      const result = await getTool(SUGGEST_SKILL_UPDATE_TOOL_NAME).handler(
+        {
+          skillId: skill.sId,
+          agentFacingDescriptionEdit: { content: "Whatever." },
+        },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "archived");
+    });
   });
 
   describe(SUGGEST_SKILL_EDITORS_TOOL_NAME, () => {
@@ -546,6 +621,18 @@ describe("building_agents_and_skills tools", () => {
       expectMcpError(result, "not found");
     });
 
+    it("rejects an empty addUserIds and removeUserIds", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Empty Lists" });
+
+      const result = await getTool(SUGGEST_SKILL_EDITORS_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "Provide at least one user");
+    });
+
     it("rejects a user present in both addUserIds and removeUserIds", async () => {
       const { authenticator, workspace } = await createResourceTest({
         role: "user",
@@ -625,6 +712,920 @@ describe("building_agents_and_skills tools", () => {
       );
 
       expectMcpError(result, "do not have access");
+    });
+  });
+
+  describe(SUGGEST_AGENT_CREATION_TOOL_NAME, () => {
+    it("records a pending create suggestion against a hidden placeholder agent", async () => {
+      const { authenticator, user } = await createAgentAuthorTestContext();
+
+      const result = await getTool(SUGGEST_AGENT_CREATION_TOOL_NAME).handler(
+        {
+          name: "Incident Helper",
+          description: "Helps triage incidents.",
+          instructions: "Collect impact and timeline.",
+          analysis: "Incident response had no dedicated helper.",
+        },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+
+      const output = result.value[0];
+      expect(output?.type).toBe("text");
+      if (output?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const { suggestionId, agentId } = extractAgentCreateSuggestionDirective(
+        output.text
+      );
+
+      const suggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      expect(suggestion).not.toBeNull();
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.kind).toBe("create");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?._agentConfigurationId).toBe(agentId);
+      expect(suggestion?.toJSON()).toMatchObject({
+        suggestion: {
+          name: "Incident Helper",
+          description: "Helps triage incidents.",
+          instructions: "Collect impact and timeline.",
+        },
+        analysis: "Incident response had no dedicated helper.",
+      });
+
+      // The suggestion targets a hidden, pending, instructions-less placeholder
+      // agent with the caller as sole editor.
+      const placeholderAgent = await getAgentConfiguration(authenticator, {
+        agentId: suggestion!._agentConfigurationId,
+        variant: "light",
+      });
+      expect(placeholderAgent).not.toBeNull();
+      expect(placeholderAgent?.status).toBe("pending");
+      expect(placeholderAgent?.scope).toBe("hidden");
+
+      const editors = await getAgentsEditors(authenticator, [
+        placeholderAgent!,
+      ]);
+      expect(editors[placeholderAgent!.sId]?.map((e) => e.sId)).toEqual([
+        user.sId,
+      ]);
+    });
+
+    it("rejects blank fields at the input schema level", () => {
+      const valid = {
+        name: " Incident Helper ",
+        description: "Desc",
+        instructions: "Do things.",
+      };
+      const parsed = SUGGEST_AGENT_CREATION_INPUT_SCHEMA.safeParse(valid);
+      expect(parsed.success).toBe(true);
+      expect(parsed.data?.name).toBe("Incident Helper");
+
+      for (const field of ["name", "description", "instructions"] as const) {
+        expect(
+          SUGGEST_AGENT_CREATION_INPUT_SCHEMA.safeParse({
+            ...valid,
+            [field]: "   ",
+          }).success
+        ).toBe(false);
+      }
+    });
+
+    it("returns an MCPError without an interactive user", async () => {
+      const { workspace } = await createAgentAuthorTestContext();
+      const nonInteractiveAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_AGENT_CREATION_TOOL_NAME).handler(
+        { name: "No User", description: "Desc", instructions: "Do things." },
+        makeExtra(nonInteractiveAuth)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        throw new Error("Expected an error.");
+      }
+      expect(result.error.message).toContain("interactive user");
+    });
+
+    it("returns an MCPError for users without the create-agent capability", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await getTool(SUGGEST_AGENT_CREATION_TOOL_NAME).handler(
+        {
+          name: "Restricted",
+          description: "Desc",
+          instructions: "Do things.",
+        },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        throw new Error("Expected an error.");
+      }
+      expect(result.error.message).toContain("restricted");
+    });
+  });
+  describe(SUGGEST_AGENT_DELETION_TOOL_NAME, () => {
+    it("records a pending delete suggestion and outdates previous ones", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Old Helper" }
+      );
+
+      const first = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
+        { agentId: agent.sId, analysis: "Unused for months." },
+        makeExtra(authenticator)
+      );
+      expect(first.isOk()).toBe(true);
+      if (first.isErr()) {
+        throw first.error;
+      }
+      const firstOutput = first.value[0];
+      if (firstOutput?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const { suggestionId: firstId, agentId } =
+        extractAgentDeleteSuggestionDirective(firstOutput.text);
+      expect(agentId).toBe(agent.sId);
+
+      const suggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        firstId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.kind).toBe("delete");
+      expect(suggestion?.toJSON()).toMatchObject({
+        suggestion: { name: "Old Helper" },
+        analysis: "Unused for months.",
+      });
+
+      // The agent itself is untouched.
+      const untouched = await getAgentConfiguration(authenticator, {
+        agentId: agent.sId,
+        variant: "light",
+      });
+      expect(untouched?.status).toBe("active");
+
+      const second = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(authenticator)
+      );
+      expect(second.isOk()).toBe(true);
+
+      const previous = await AgentSuggestionResource.fetchById(
+        authenticator,
+        firstId
+      );
+      expect(previous?.state).toBe("outdated");
+    });
+
+    it("returns an MCPError without an interactive user", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const nonInteractiveAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(nonInteractiveAuth)
+      );
+      expectMcpError(result, "interactive user");
+    });
+
+    it("returns an MCPError for an unknown agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
+        { agentId: "unknown_agent" },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "not found");
+    });
+
+    it("returns an MCPError when the caller is not an editor", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const other = await addMember(workspace);
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        other.sId,
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(otherAuth)
+      );
+      expectMcpError(result, "Only editors");
+    });
+
+    it("returns an MCPError for an archived agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      await archiveAgentConfiguration(authenticator, agent.sId);
+
+      const result = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "active agents");
+    });
+  });
+
+  describe(SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME, () => {
+    it("creates a pending conversational suggestion without touching the skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Described For Users",
+        userFacingDescription: "Formats notes.",
+      });
+
+      const result = await getTool(
+        SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+      ).handler(
+        {
+          skillId: skill.sId,
+          userFacingDescription:
+            "Paste notes, get a summary with action items.",
+          analysis: "Members should know what they get back.",
+          title: "Clarify description",
+        },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const suggestionId = extractSuggestionId(
+        result.value[0].text,
+        "user_facing_description"
+      );
+
+      const suggestion = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?.kind).toBe("user_facing_description");
+      expect(suggestion?.title).toBe("Clarify description");
+      expect(suggestion?.toJSON()).toMatchObject({
+        kind: "user_facing_description",
+        suggestion: {
+          userFacingDescription:
+            "Paste notes, get a summary with action items.",
+        },
+      });
+
+      const reloaded = await SkillResource.fetchById(authenticator, skill.sId);
+      expect(reloaded?.userFacingDescription).toBe("Formats notes.");
+    });
+
+    it("outdates every other pending description suggestion, leaving edit suggestions alone", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Conflicting" });
+      const edit = await SkillSuggestionFactory.createEdit(
+        authenticator,
+        skill,
+        { source: "conversational" }
+      );
+
+      const suggest = async (userFacingDescription: string) => {
+        const result = await getTool(
+          SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+        ).handler(
+          { skillId: skill.sId, userFacingDescription },
+          makeExtra(authenticator)
+        );
+        if (result.isErr() || result.value[0]?.type !== "text") {
+          throw new Error("Expected the suggestion to be created.");
+        }
+        return extractSuggestionId(
+          result.value[0].text,
+          "user_facing_description"
+        );
+      };
+      const stateOf = async (suggestionId: string) =>
+        (await SkillSuggestionResource.fetchById(authenticator, suggestionId))
+          ?.state;
+
+      const firstId = await suggest("First wording.");
+      const secondId = await suggest("Second wording.");
+
+      expect(await stateOf(firstId)).toBe("outdated");
+      expect(await stateOf(secondId)).toBe("pending");
+      expect(await stateOf(edit.sId)).toBe("pending");
+    });
+
+    it("rejects a caller who is not an editor, creating no row", async () => {
+      const { authenticator: ownerAuth, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(ownerAuth, { name: "Not Mine" });
+      const outsider = await addMember(workspace);
+      const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        outsider.sId,
+        workspace.sId
+      );
+
+      const result = await getTool(
+        SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+      ).handler(
+        { skillId: skill.sId, userFacingDescription: "Anything." },
+        makeExtra(outsiderAuth)
+      );
+
+      expectMcpError(result, "added as an editor");
+      const suggestions =
+        await SkillSuggestionResource.listBySkillConfigurationId(
+          ownerAuth,
+          skill.sId,
+          { sources: ["conversational"] }
+        );
+      expect(suggestions).toHaveLength(0);
+    });
+
+    it("rejects an archived skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Archived",
+        status: "archived",
+      });
+
+      const result = await getTool(
+        SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+      ).handler(
+        { skillId: skill.sId, userFacingDescription: "Anything." },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "archived");
+    });
+
+    it("rejects a skill id that is not a custom skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await getTool(
+        SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+      ).handler(
+        { skillId: "not_a_skill", userFacingDescription: "Anything." },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "Only custom workspace skills");
+    });
+
+    it("rejects an empty description", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Empty" });
+
+      const result = await getTool(
+        SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+      ).handler(
+        { skillId: skill.sId, userFacingDescription: "" },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "non-empty");
+    });
+
+    it("rejects a description longer than the column allows", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Too Long" });
+
+      const result = await getTool(
+        SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
+      ).handler(
+        {
+          skillId: skill.sId,
+          userFacingDescription: "a".repeat(
+            USER_FACING_DESCRIPTION_MAX_LENGTH + 1
+          ),
+        },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, `at most ${USER_FACING_DESCRIPTION_MAX_LENGTH}`);
+    });
+  });
+
+  describe(SUGGEST_SKILL_NAME_TOOL_NAME, () => {
+    const suggestName = async (
+      auth: Authenticator,
+      args: { skillId: string; name: string; title?: string }
+    ) => getTool(SUGGEST_SKILL_NAME_TOOL_NAME).handler(args, makeExtra(auth));
+
+    it("creates a pending conversational suggestion with the trimmed name, without renaming", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Old Name" });
+
+      const result = await suggestName(authenticator, {
+        skillId: skill.sId,
+        name: "  New Name  ",
+        title: "Rename skill",
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const suggestionId = extractSuggestionId(result.value[0].text, "name");
+
+      const suggestion = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?.title).toBe("Rename skill");
+      expect(suggestion?.toJSON()).toMatchObject({
+        kind: "name",
+        suggestion: { name: "New Name" },
+      });
+
+      const reloaded = await SkillResource.fetchById(authenticator, skill.sId);
+      expect(reloaded?.name).toBe("Old Name");
+    });
+
+    it("outdates every other pending rename, leaving other kinds alone", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Renamed Twice" });
+      const edit = await SkillSuggestionFactory.createEdit(
+        authenticator,
+        skill,
+        { source: "conversational" }
+      );
+      const idOf = async (name: string) => {
+        const result = await suggestName(authenticator, {
+          skillId: skill.sId,
+          name,
+        });
+        if (result.isErr() || result.value[0]?.type !== "text") {
+          throw new Error("Expected the suggestion to be created.");
+        }
+        return extractSuggestionId(result.value[0].text, "name");
+      };
+      const stateOf = async (suggestionId: string) =>
+        (await SkillSuggestionResource.fetchById(authenticator, suggestionId))
+          ?.state;
+
+      const firstId = await idOf("First Name");
+      const secondId = await idOf("Second Name");
+
+      expect(await stateOf(firstId)).toBe("outdated");
+      expect(await stateOf(secondId)).toBe("pending");
+      expect(await stateOf(edit.sId)).toBe("pending");
+    });
+
+    it("rejects a caller who is not an editor, creating no row", async () => {
+      const { authenticator: ownerAuth, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(ownerAuth, { name: "Not Mine" });
+      const outsider = await addMember(workspace);
+      const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        outsider.sId,
+        workspace.sId
+      );
+
+      const result = await suggestName(outsiderAuth, {
+        skillId: skill.sId,
+        name: "Hijacked",
+      });
+
+      expectMcpError(result, "Only editors of this skill can rename it");
+      const suggestions =
+        await SkillSuggestionResource.listBySkillConfigurationId(
+          ownerAuth,
+          skill.sId,
+          { sources: ["conversational"] }
+        );
+      expect(suggestions).toHaveLength(0);
+    });
+
+    it("rejects an archived skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Archived",
+        status: "archived",
+      });
+
+      const result = await suggestName(authenticator, {
+        skillId: skill.sId,
+        name: "Revived",
+      });
+
+      expectMcpError(result, "archived");
+    });
+
+    it("rejects a skill id that is not a custom skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await suggestName(authenticator, {
+        skillId: "not_a_skill",
+        name: "Anything",
+      });
+
+      expectMcpError(result, "Only custom workspace skills");
+    });
+
+    it("rejects a blank name", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Blank" });
+
+      const result = await suggestName(authenticator, {
+        skillId: skill.sId,
+        name: "   ",
+      });
+
+      expectMcpError(result, "cannot be empty");
+    });
+
+    it("rejects a name over the maximum length", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Too Long" });
+
+      const result = await suggestName(authenticator, {
+        skillId: skill.sId,
+        name: "a".repeat(SKILL_NAME_MAX_LENGTH + 1),
+      });
+
+      expectMcpError(result, `at most ${SKILL_NAME_MAX_LENGTH}`);
+    });
+
+    it("rejects the skill's current name", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Same Name" });
+
+      const result = await suggestName(authenticator, {
+        skillId: skill.sId,
+        name: "Same Name",
+      });
+
+      expectMcpError(result, "already named");
+    });
+
+    it("rejects the name of another active skill, even one the caller cannot read", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(authenticator, { name: "Mine" });
+      const other = await addMember(workspace);
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        other.sId,
+        workspace.sId
+      );
+      await SkillFactory.create(otherAuth, {
+        name: "Hidden Homonym",
+        availability: "editors",
+      });
+
+      const result = await suggestName(authenticator, {
+        skillId: skill.sId,
+        name: "Hidden Homonym",
+      });
+
+      expectMcpError(result, "already exists");
+    });
+  });
+
+  describe(SUGGEST_SKILL_DELETION_TOOL_NAME, () => {
+    it("records a pending delete suggestion and outdates previous ones", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Old Skill" });
+
+      const first = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: skill.sId, analysis: "Unused for months." },
+        makeExtra(authenticator)
+      );
+      expect(first.isOk()).toBe(true);
+      if (first.isErr()) {
+        throw first.error;
+      }
+      const firstOutput = first.value[0];
+      if (firstOutput?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const { suggestionId: firstId, skillId } = extractDirective(
+        firstOutput.text,
+        "delete"
+      );
+      expect(skillId).toBe(skill.sId);
+
+      const suggestion = await SkillSuggestionResource.fetchById(
+        authenticator,
+        firstId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.kind).toBe("delete");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?.toJSON()).toMatchObject({
+        suggestion: {},
+        analysis: "Unused for months.",
+      });
+
+      // The skill itself is untouched.
+      const untouched = await SkillResource.fetchById(authenticator, skill.sId);
+      expect(untouched?.status).toBe("active");
+
+      const second = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(authenticator)
+      );
+      expect(second.isOk()).toBe(true);
+
+      const previous = await SkillSuggestionResource.fetchById(
+        authenticator,
+        firstId
+      );
+      expect(previous?.state).toBe("outdated");
+    });
+
+    it("returns an MCPError without an interactive user", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(authenticator, { name: "No User" });
+      const nonInteractiveAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(nonInteractiveAuth)
+      );
+      expectMcpError(result, "interactive user");
+    });
+
+    it("returns an MCPError for an unknown skill", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const unknownSkillId = SkillResource.modelIdToSId({
+        id: 999_999_999,
+        workspaceId: workspace.id,
+      });
+
+      const result = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: unknownSkillId },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "not found");
+    });
+
+    it("returns an MCPError when the caller is neither an editor nor an admin", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(authenticator, { name: "Not Mine" });
+      const other = await addMember(workspace);
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        other.sId,
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(otherAuth)
+      );
+      expectMcpError(result, "editors of this skill or workspace admins");
+    });
+
+    it("allows a workspace admin who is not an editor to create a delete suggestion", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(authenticator, { name: "Admin Only" });
+      const admin = await addMember(workspace, "admin");
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        admin.sId,
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(adminAuth)
+      );
+      expect(result.isOk()).toBe(true);
+    });
+
+    it("returns an MCPError for an archived skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Archived",
+        status: "archived",
+      });
+
+      const result = await getTool(SUGGEST_SKILL_DELETION_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "active skills");
+    });
+  });
+
+  describe(SUGGEST_SKILL_AVAILABILITY_TOOL_NAME, () => {
+    const suggestAvailability = async (
+      auth: Authenticator,
+      args: {
+        skillId: string;
+        availability: "editors" | "workspace_users" | "users_and_agents";
+        title?: string;
+      }
+    ) =>
+      getTool(SUGGEST_SKILL_AVAILABILITY_TOOL_NAME).handler(
+        args,
+        makeExtra(auth)
+      );
+
+    it("creates a pending conversational suggestion without changing the availability", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const skill = await seedSkill(authenticator, {
+        name: "Published",
+        availability: "users_and_agents",
+      });
+
+      const result = await suggestAvailability(authenticator, {
+        skillId: skill.sId,
+        availability: "workspace_users",
+        title: "Members only",
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const suggestionId = extractSuggestionId(
+        result.value[0].text,
+        "availability"
+      );
+
+      const suggestion = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?.title).toBe("Members only");
+      expect(suggestion?.toJSON()).toMatchObject({
+        kind: "availability",
+        suggestion: { availability: "workspace_users" },
+      });
+
+      const reloaded = await SkillResource.fetchById(authenticator, skill.sId);
+      expect(reloaded?.availability).toBe("users_and_agents");
+    });
+
+    it("outdates every other pending availability suggestion, leaving other kinds alone", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const skill = await seedSkill(authenticator, { name: "Conflicting" });
+      const edit = await SkillSuggestionFactory.createEdit(
+        authenticator,
+        skill,
+        { source: "conversational" }
+      );
+      const idOf = async (
+        availability: "workspace_users" | "users_and_agents"
+      ) => {
+        const result = await suggestAvailability(authenticator, {
+          skillId: skill.sId,
+          availability,
+        });
+        if (result.isErr() || result.value[0]?.type !== "text") {
+          throw new Error("Expected the suggestion to be created.");
+        }
+        return extractSuggestionId(result.value[0].text, "availability");
+      };
+      const stateOf = async (suggestionId: string) =>
+        (await SkillSuggestionResource.fetchById(authenticator, suggestionId))
+          ?.state;
+
+      const firstId = await idOf("workspace_users");
+      const secondId = await idOf("users_and_agents");
+
+      expect(await stateOf(firstId)).toBe("outdated");
+      expect(await stateOf(secondId)).toBe("pending");
+      expect(await stateOf(edit.sId)).toBe("pending");
+    });
+
+    it("allows a workspace admin who is not an editor to suggest an availability change", async () => {
+      const { authenticator: ownerAuth, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(ownerAuth, { name: "Not Mine" });
+      const admin = await addMember(workspace, "admin");
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        admin.sId,
+        workspace.sId
+      );
+
+      const result = await suggestAvailability(adminAuth, {
+        skillId: skill.sId,
+        availability: "workspace_users",
+      });
+
+      expect(result.isOk()).toBe(true);
+    });
+
+    it("rejects an archived skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const skill = await seedSkill(authenticator, {
+        name: "Archived",
+        status: "archived",
+      });
+
+      const result = await suggestAvailability(authenticator, {
+        skillId: skill.sId,
+        availability: "workspace_users",
+      });
+
+      expectMcpError(result, "archived");
+    });
+
+    it("rejects a skill id that is not a custom skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const result = await suggestAvailability(authenticator, {
+        skillId: "not_a_skill",
+        availability: "workspace_users",
+      });
+
+      expectMcpError(result, "Only custom workspace skills");
+    });
+
+    it("rejects the skill's current availability", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const skill = await seedSkill(authenticator, {
+        name: "Unchanged",
+        availability: "workspace_users",
+      });
+
+      const result = await suggestAvailability(authenticator, {
+        skillId: skill.sId,
+        availability: "workspace_users",
+      });
+
+      expectMcpError(result, "already");
+    });
+
+    it("rejects an editor without the publish capability", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Unpublished" });
+
+      const result = await suggestAvailability(authenticator, {
+        skillId: skill.sId,
+        availability: "workspace_users",
+      });
+
+      expectMcpError(result, "change this skill's availability");
+    });
+
+    it("rejects making a skill auto-discoverable without the make_discoverable capability", async () => {
+      const { authenticator, workspace, user } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(authenticator, { name: "Publishable" });
+      await grantWorkspacePermission(workspace, user, {
+        grantType: "publish",
+        resourceType: "skill",
+      });
+      await authenticator.refresh();
+
+      const result = await suggestAvailability(authenticator, {
+        skillId: skill.sId,
+        availability: "users_and_agents",
+      });
+
+      expectMcpError(result, "auto-discoverable");
     });
   });
 });

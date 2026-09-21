@@ -88,9 +88,9 @@ export function shortSandboxFunctionBundleSha256(sha: string | null): string {
 }
 
 export function getSandboxFunctionPublishLockName(
-  sandboxFunctionSId: string
+  sandboxFunctionId: string
 ): string {
-  return `sandbox_function:publish:${sandboxFunctionSId}`;
+  return `sandbox_function:publish:${sandboxFunctionId}`;
 }
 
 function userIdentityPolicyStrength(
@@ -387,12 +387,16 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   }
 
   /**
-   * Gets the function if a matching invocation exists.
+   * Gets the function if a matching invocation row exists.
    * In the context of a temporal activity or a sandbox callback, we don't have the original
    * caller's grant (e.g. a frame share token) in the auth, so the space permission filter is
    * deliberately skipped. The invocation ties the pair together; callers are trusted because
    * their (function, invocation) ids come from server-minted inputs — workflow args or verified
    * sandbox JWT claims — never from user input.
+   *
+   * Checks only that the invocation row exists for the function — it does not load the
+   * invocation payload (input/context/result). Callers that need those must fetch the
+   * invocation separately.
    */
   static async fetchByIdForExecution(
     auth: Authenticator,
@@ -413,13 +417,11 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       return null;
     }
 
-    // We don't need the invocation itself, just its existence.
-    const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
-      sandboxFunction,
-      invocationId,
-      access: "system",
-    });
-    return invocation ? sandboxFunction : null;
+    const exists = await SandboxFunctionInvocationResource.existsForFunction(
+      auth,
+      { sandboxFunction, invocationId }
+    );
+    return exists ? sandboxFunction : null;
   }
 
   // Lives here rather than on SandboxFunctionMCPActionResource: that resource can only type-import
@@ -523,6 +525,32 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     return this.baseFetch(auth, {
       where: { fileId: frame.id, publicationId },
+    });
+  }
+
+  /**
+   * @cc [owner:davidebbo,label:backend] publication-function-rows-deleted-as-a-set
+   * Every function row of `publicationId` MUST be deleted together. A publication serving a
+   * function whose row is gone is not a state any caller can recover from, so retention deletes
+   * the publication's whole set or none of it.
+   */
+  /**
+   * Drop the function rows of one superseded publication. The caller owns the checks that make
+   * this safe: the publication is not the frame's active one, it is past the retention window,
+   * and none of its functions has an invocation left (they FK these rows with `RESTRICT`).
+   */
+  static async deleteAllForFramePublication(
+    auth: Authenticator,
+    { frame, publicationId }: { frame: FileResource; publicationId: string }
+  ): Promise<number> {
+    assert(frame.isFrameV2, "Frame functions require a Frames v2 file.");
+
+    return this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        fileId: frame.id,
+        publicationId,
+      },
     });
   }
 
@@ -694,8 +722,9 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
   /**
    * A Frame function row belongs to its Frame's publication history, not to itself: the Frame file
-   * owns the whole set and deletes it through `deleteFrameFunctionModelIds`. Deleting one on its
-   * own would leave a publication serving a function that no longer exists.
+   * owns the whole set and deletes it through `deleteFrameFunctionModelIds`, and retention drops a
+   * superseded publication's set through `deleteAllForFramePublication`. Deleting one on its own
+   * would leave a publication serving a function that no longer exists.
    */
   async delete(): Promise<Result<undefined, Error>> {
     return new Err(

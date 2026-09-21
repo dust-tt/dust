@@ -182,25 +182,25 @@ describe("RemoteMCPServerResource.updateMetadata", () => {
 
     // Seed metadata for the initial tools plus an extra one that will be stale.
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
-      serverSId: server.sId,
+      serverId: server.sId,
       toolName: "tool_a",
       permission: "never_ask",
       enabled: true,
     });
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
-      serverSId: server.sId,
+      serverId: server.sId,
       toolName: "tool_b",
       permission: "never_ask",
       enabled: true,
     });
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
-      serverSId: server.sId,
+      serverId: server.sId,
       toolName: "tool_c",
       permission: "never_ask",
       enabled: true,
     });
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
-      serverSId: server.sId,
+      serverId: server.sId,
       toolName: "tool_stale",
       permission: "never_ask",
       enabled: true,

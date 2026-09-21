@@ -7,6 +7,7 @@ import type {
 import type {
   AgentActionSuccessEvent,
   AgentContextPrunedEvent,
+  AgentCreditSpendCheckpointUpdatedEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageConsumptionUpdatedEvent,
@@ -38,6 +39,7 @@ export type AgentMessageEvents =
   | AgentMessageGracefullyStoppedEvent
   | AgentMessageSuccessEvent
   | AgentToolCallStartedEvent
+  | AgentCreditSpendCheckpointUpdatedEvent
   | GenerationTokensEvent
   | ToolErrorEvent
   | AgentLoopToolAskUserQuestionEvent
@@ -56,12 +58,3 @@ export type ConversationEvents =
   | ConversationForkPreparedEvent
   | PlanUpdatedEvent
   | WakeUpUpdatedEvent;
-
-export const TERMINAL_AGENT_MESSAGE_EVENT_TYPES: AgentMessageEvents["type"][] =
-  [
-    "agent_message_success",
-    "agent_message_gracefully_stopped",
-    "agent_generation_cancelled",
-    "agent_error",
-    "tool_error",
-  ] as const;

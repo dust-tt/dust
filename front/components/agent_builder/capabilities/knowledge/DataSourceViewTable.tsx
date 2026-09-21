@@ -1,21 +1,19 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
-import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import {
+  DataSourceList,
+  toDataSourceListItem,
+} from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import { buildDataSourceViewItems } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import {
   findCategoryFromNavigationHistory,
   findSpaceFromNavigationHistory,
 } from "@app/components/data_source_view/context/utils";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
-import {
-  getDataSourceNameFromView,
-  isRemoteDatabase,
-} from "@app/lib/data_sources";
-import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
-import { Folder, Spinner } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 export function DataSourceViewTable({
@@ -39,50 +37,12 @@ export function DataSourceViewTable({
 
   const listItems: DataSourceListItem[] = useMemo(
     () =>
-      spaceDataSourceViews
-        .filter((dsv) => {
-          const connectorConfig = dsv.dataSource.connectorProvider
-            ? CONNECTOR_UI_CONFIGURATIONS[dsv.dataSource.connectorProvider]
-            : null;
-
-          if (connectorConfig?.isHiddenAsDataSource) {
-            return false;
-          }
-
-          switch (viewType) {
-            case "data_warehouse":
-              return isRemoteDatabase(dsv.dataSource);
-            case "table":
-              return !isRemoteDatabase(dsv.dataSource);
-            default:
-              return true;
-          }
-        })
-        .map((dsv) => {
-          const provider = dsv.dataSource.connectorProvider;
-
-          const connectorProvider = provider
-            ? CONNECTOR_UI_CONFIGURATIONS[provider]
-            : null;
-
-          const icon = provider
-            ? (connectorProvider?.getLogoComponent(isDark) ??
-              CATEGORY_DETAILS[dsv.category].icon)
-            : Folder;
-
-          return {
-            id: dsv.sId,
-            title: getDataSourceNameFromView(dsv),
-            onClick: () => setDataSourceViewEntry(dsv),
-            icon,
-            entry: {
-              type: "data_source",
-              dataSourceView: dsv,
-              tagsFilter: null,
-            },
-          } satisfies DataSourceListItem;
-        })
-        .toSorted((a, b) => a.title.localeCompare(b.title)),
+      buildDataSourceViewItems(spaceDataSourceViews, { viewType, isDark }).map(
+        (item) =>
+          toDataSourceListItem(item, () =>
+            setDataSourceViewEntry(item.dataSourceView)
+          )
+      ),
     [spaceDataSourceViews, viewType, isDark, setDataSourceViewEntry]
   );
 

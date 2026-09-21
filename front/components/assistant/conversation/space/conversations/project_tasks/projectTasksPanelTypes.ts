@@ -45,7 +45,7 @@ export type PodTasksPanelData = {
   ) => Promise<void>;
   isPodInfoLoading: boolean;
   defaultNewAssigneeId: string | null;
-  handleAddTask: (text: string, assigneeSId: string | null) => Promise<boolean>;
+  handleAddTask: (text: string, assigneeId: string | null) => Promise<boolean>;
   isTasksLoading: boolean;
   isTasksError: boolean;
   frozenLastReadAt: string | null | undefined;

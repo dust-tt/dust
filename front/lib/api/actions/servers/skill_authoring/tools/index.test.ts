@@ -98,7 +98,8 @@ describe("skill_authoring tools", () => {
   });
 
   it("creates, lists, reads, and updates a skill", async () => {
-    const { authenticator, workspace } = await createSkillAuthorTestContext();
+    const { authenticator, workspace, globalSpace } =
+      await createSkillAuthorTestContext();
 
     const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
@@ -130,6 +131,7 @@ describe("skill_authoring tools", () => {
       output.resource.skillId
     );
     expect(createdSkill?.source).toBe("agent");
+    expect(createdSkill?.requestedSpaceIds).toEqual([globalSpace.id]);
     expect(createdSkill?.instructionsHtml).toContain(
       "Collect impact, timeline, root cause, and follow-ups."
     );

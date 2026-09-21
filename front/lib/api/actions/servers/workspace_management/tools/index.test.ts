@@ -4,10 +4,13 @@ import { TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -1162,6 +1165,218 @@ describe("workspace_management tools", () => {
       );
 
       expect(text).toContain("No skill found");
+    });
+  });
+
+  // Auto internal tools are listed too, so the assertions isolate the fixtures with a prefix.
+  describe("list_tools", () => {
+    it("lists the tools of readable spaces only, sorted by name", async () => {
+      const { workspace, globalSpace, authenticator } =
+        await createResourceTest({ role: "user" });
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+
+      const visibleA = await RemoteMCPServerFactory.create(workspace, {
+        name: "Zzzendesk",
+        description: "Manage tickets",
+      });
+      const visibleB = await RemoteMCPServerFactory.create(workspace, {
+        name: "Zzairtable",
+        description: "Manage bases",
+      });
+      const hidden = await RemoteMCPServerFactory.create(workspace, {
+        name: "Zzhidden",
+      });
+
+      const viewA = await MCPServerViewFactory.create(
+        workspace,
+        visibleA.sId,
+        globalSpace
+      );
+      const viewB = await MCPServerViewFactory.create(
+        workspace,
+        visibleB.sId,
+        globalSpace
+      );
+      await MCPServerViewFactory.create(workspace, hidden.sId, restrictedSpace);
+
+      const lines = await callToolLines(
+        "list_tools",
+        { namePrefix: "zz" },
+        authenticator
+      );
+
+      expect(lines).toEqual([
+        `Zzairtable [${viewB.sId}] — type: remote, availability: manual — Manage bases`,
+        `Zzzendesk [${viewA.sId}] — type: remote, availability: manual — Manage tickets`,
+        "Showing 2 of 2.",
+      ]);
+    });
+
+    it("paginates", async () => {
+      const { workspace, globalSpace, authenticator } =
+        await createResourceTest({ role: "admin" });
+
+      for (const name of ["Zzjira", "Zzjenkins", "Zznotion"]) {
+        const server = await RemoteMCPServerFactory.create(workspace, { name });
+        await MCPServerViewFactory.create(workspace, server.sId, globalSpace);
+      }
+
+      const lines = await callToolLines(
+        "list_tools",
+        { namePrefix: "zzj", limit: 1 },
+        authenticator
+      );
+
+      expect(lines).toEqual([
+        expect.stringContaining("Zzjenkins"),
+        "Showing 1 of 2. Pass cursor: 1 for the next page.",
+      ]);
+    });
+
+    it("reports when nothing matches", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const text = await callTool(
+        "list_tools",
+        { namePrefix: "zz" },
+        authenticator
+      );
+
+      expect(text).toBe("No tools found.");
+    });
+  });
+
+  describe("get_tool_details", () => {
+    it("returns the server's functions with their parameters", async () => {
+      const { workspace, globalSpace, authenticator } =
+        await createResourceTest({ role: "user" });
+
+      const server = await RemoteMCPServerFactory.create(workspace, {
+        name: "LinkedIn",
+        description: "Search and enrich LinkedIn profiles",
+        tools: [
+          {
+            name: "search_user",
+            description: "Search for a person by name",
+            inputSchema: {
+              type: "object",
+              properties: {
+                name: {
+                  type: "string",
+                  description: "Full name to search for",
+                },
+              },
+              required: ["name"],
+            },
+          },
+        ],
+      });
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+
+      const text = await callTool(
+        "get_tool_details",
+        { toolId: view.sId },
+        authenticator
+      );
+
+      expect(text).toContain(`MCP: LinkedIn (${view.sId})`);
+      expect(text).toContain("Search and enrich LinkedIn profiles");
+      expect(text).toContain("- search_user");
+      expect(text).toContain("name (string): Full name to search for");
+    });
+
+    it("hides the tools of a space the caller cannot read", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "user",
+      });
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+      const server = await RemoteMCPServerFactory.create(workspace, {
+        name: "Hidden Server",
+      });
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        restrictedSpace
+      );
+
+      const text = await callTool(
+        "get_tool_details",
+        { toolId: view.sId },
+        authenticator
+      );
+
+      expect(text).toContain("No tool found");
+      expect(text).not.toContain("Hidden Server");
+    });
+
+    it("reports an unknown tool without failing", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const text = await callTool(
+        "get_tool_details",
+        { toolId: "does-not-exist" },
+        authenticator
+      );
+
+      expect(text).toContain("No tool found");
+    });
+  });
+
+  // Search mode needs the core API, so only browse mode is covered here, like the copilot's tests.
+  describe("search_knowledge", () => {
+    it("lists the knowledge sources of readable spaces in browse mode", async () => {
+      const { workspace, globalSpace, authenticator } =
+        await createResourceTest({ role: "user" });
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+
+      const visible = await DataSourceViewFactory.folder(
+        workspace,
+        globalSpace
+      );
+      await DataSourceViewFactory.folder(workspace, restrictedSpace);
+
+      const text = await callTool("search_knowledge", {}, authenticator);
+      const parsed: {
+        dataSourceViews: { dataSourceViewId: string; spaceId: string }[];
+        nodes: unknown[];
+      } = JSON.parse(text);
+
+      expect(parsed.nodes).toEqual([]);
+      expect(parsed.dataSourceViews.map((dsv) => dsv.dataSourceViewId)).toEqual(
+        [visible.sId]
+      );
+      expect(parsed.dataSourceViews[0].spaceId).toBe(globalSpace.sId);
+    });
+
+    it("filters by category", async () => {
+      const { workspace, globalSpace, authenticator } =
+        await createResourceTest({ role: "admin" });
+      await DataSourceViewFactory.folder(workspace, globalSpace);
+
+      const text = await callTool(
+        "search_knowledge",
+        { category: "website" },
+        authenticator
+      );
+      const parsed: { dataSourceViews: unknown[] } = JSON.parse(text);
+
+      expect(parsed.dataSourceViews).toEqual([]);
+    });
+
+    it("reports a workspace without knowledge", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const text = await callTool("search_knowledge", {}, authenticator);
+
+      expect(JSON.parse(text)).toEqual({
+        dataSourceViews: [],
+        nodes: [],
+        message: "No knowledge sources found in the workspace.",
+      });
     });
   });
 });

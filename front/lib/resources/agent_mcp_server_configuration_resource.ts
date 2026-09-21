@@ -53,9 +53,9 @@ export class AgentMCPServerConfigurationResource extends BaseResource<AgentMCPSe
     sIds: string[]
   ): Promise<AgentMCPServerConfigurationResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const uniqueSIds = Array.from(new Set(sIds));
+    const uniqueIds = Array.from(new Set(sIds));
 
-    if (uniqueSIds.length === 0) {
+    if (uniqueIds.length === 0) {
       return [];
     }
 
@@ -63,7 +63,7 @@ export class AgentMCPServerConfigurationResource extends BaseResource<AgentMCPSe
       where: {
         workspaceId,
         sId: {
-          [Op.in]: uniqueSIds,
+          [Op.in]: uniqueIds,
         },
       },
     });

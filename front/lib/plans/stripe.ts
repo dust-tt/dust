@@ -3,9 +3,7 @@ import config from "@app/lib/api/config";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { CONTRACT_CREDIT_TYPE_POOL } from "@app/lib/metronome/constants";
-import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
-import { isOldFreePlan } from "@app/lib/plans/plan_codes";
-import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial/constants";
+import { PlanModel } from "@app/lib/models/plan";
 import {
   isEnterpriseReportUsage,
   isMauReportUsage,
@@ -211,23 +209,6 @@ export const createStripeSubscriptionCheckoutSession = async ({
     );
   }
 
-  // Determine if Stripe trial is allowed.
-  // When phone trial is enabled, we don't offer Stripe trials (users get phone trial instead).
-  // When phone trial is disabled, we allow Stripe trial only if the workspace never had a
-  // subscription before (except for the grandfathered old free plan).
-  let stripeTrialDays: number | undefined = undefined;
-  if (!PHONE_TRIAL_ENABLED && plan.trialPeriodDays) {
-    const existingSubscription = await SubscriptionModel.findOne({
-      where: { workspaceId: owner.id },
-      include: [PlanModel],
-    });
-    const trialAllowed =
-      !existingSubscription || isOldFreePlan(existingSubscription.plan.code);
-    if (trialAllowed) {
-      stripeTrialDays = plan.trialPeriodDays;
-    }
-  }
-
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     client_reference_id: owner.sId,
@@ -238,7 +219,6 @@ export const createStripeSubscriptionCheckoutSession = async ({
         planCode: planCode,
         workspaceId: owner.sId,
       },
-      trial_period_days: stripeTrialDays,
     },
     metadata: {
       planCode: planCode,
@@ -659,35 +639,6 @@ export async function getSubscriptionInvoices({
   );
 }
 
-const DAY_IN_SECONDS = 24 * 60 * 60;
-
-export const extendStripeSubscriptionTrial = async (
-  stripeSubscriptionId: string,
-  { days }: { days: number }
-): Promise<Result<{ trialEnd: number | null }, Error>> => {
-  const stripe = getStripeClient();
-  const subscription = await getStripeSubscription(stripeSubscriptionId);
-  if (!subscription) {
-    return new Err(new Error("The subscription does not exist."));
-  }
-
-  if (!subscription.trial_end) {
-    return new Err(new Error("The subscription is not in trial."));
-  }
-
-  const newTrialEnd = Math.floor(Date.now() / 1000) + days * DAY_IN_SECONDS;
-
-  const updatedSubscription = await stripe.subscriptions.update(
-    stripeSubscriptionId,
-    {
-      trial_end: newTrialEnd,
-      proration_behavior: "none",
-    }
-  );
-
-  return new Ok({ trialEnd: updatedSubscription.trial_end });
-};
-
 /**
  * Calls the Stripe API to update the quantity of a subscription. Used for
  * subscription items with prices of type "licensed" (that is, per seat).
@@ -726,22 +677,6 @@ export async function updateStripeActiveUsersForSubscriptionItem(
     // We use action = "set" to override the previous usage (as opposed to "increment")
     action: "set",
     quantity,
-  });
-}
-
-/**
- *
- * Move a subscription from a free trial state to a paying state,
- * immediately charging the customer.
- */
-export async function skipSubscriptionFreeTrial({
-  stripeSubscriptionId,
-}: {
-  stripeSubscriptionId: string;
-}) {
-  const stripe = getStripeClient();
-  return stripe.subscriptions.update(stripeSubscriptionId, {
-    trial_end: "now",
   });
 }
 
@@ -843,245 +778,6 @@ export async function clearScheduledSubscriptionCancellation({
     return new Ok(undefined);
   } catch (err) {
     return new Err(normalizeError(err));
-  }
-}
-
-// Marks a Stripe subscription (via metadata) as cut short by the legacy →
-// Business yearly migration, so the `customer.subscription.deleted` webhook
-// knows to refund the unused prepaid days when it ends.
-export const YEARLY_MIGRATION_REFUND_METADATA_KEY =
-  "dust_yearly_migration_refund";
-
-export async function markSubscriptionForMigrationRefund({
-  stripeSubscriptionId,
-}: {
-  stripeSubscriptionId: string;
-}): Promise<Result<void, Error>> {
-  try {
-    const stripe = getStripeClient();
-    await stripe.subscriptions.update(stripeSubscriptionId, {
-      metadata: { [YEARLY_MIGRATION_REFUND_METADATA_KEY]: "true" },
-    });
-    return new Ok(undefined);
-  } catch (err) {
-    return new Err(normalizeError(err));
-  }
-}
-
-/**
- * Refund the unused prepaid time of a yearly subscription that was cut over
- * early by the migration. Prorated on remaining days, where the paid period is
- * taken from the invoice's yearly line item (NOT the subscription's
- * `current_period_*`, which Stripe clamps to the cancel date):
- *   refund = amountPaid × (paidPeriodEnd − actualEnd) / (paidPeriodEnd − paidPeriodStart)
- *
- * Only acts when the subscription is yearly, carries the migration-refund
- * marker, ended before its paid period end, and its latest invoice was paid.
- * The refund is issued against that invoice's charge and bounded by the amount
- * paid. After refunding to the card, reverses the matching unused-time credit
- * Stripe auto-adds to the customer balance, so the customer isn't refunded
- * twice. Returns the refunded amount in cents (0 when nothing to refund).
- */
-export async function refundYearlyMigrationProration({
-  stripeSubscription,
-}: {
-  stripeSubscription: Stripe.Subscription;
-}): Promise<Result<{ refundedCents: number }, Error>> {
-  try {
-    const stripe = getStripeClient();
-
-    // Only subscriptions marked by the migration are refund candidates; every
-    // other subscription.deleted returns silently.
-    if (
-      stripeSubscription.metadata?.[YEARLY_MIGRATION_REFUND_METADATA_KEY] !==
-      "true"
-    ) {
-      return new Ok({ refundedCents: 0 });
-    }
-    const isYearly = stripeSubscription.items.data.some(
-      (item) => item.price.recurring?.interval === "year"
-    );
-    if (!isYearly) {
-      logger.warn(
-        { stripeSubscriptionId: stripeSubscription.id },
-        "[Stripe] Yearly migration refund: marked sub is not yearly, skipping"
-      );
-      return new Ok({ refundedCents: 0 });
-    }
-
-    const latestInvoiceId =
-      typeof stripeSubscription.latest_invoice === "string"
-        ? stripeSubscription.latest_invoice
-        : (stripeSubscription.latest_invoice?.id ?? null);
-    if (!latestInvoiceId) {
-      logger.warn(
-        { stripeSubscriptionId: stripeSubscription.id },
-        "[Stripe] Yearly migration refund: no latest invoice, skipping"
-      );
-      return new Ok({ refundedCents: 0 });
-    }
-    const invoice = await stripe.invoices.retrieve(latestInvoiceId);
-
-    // Anchor the proration on the ACTUALLY-PAID coverage window, taken from the
-    // invoice's yearly line item(s). We can't use `subscription.current_period_*`
-    // here: once a cancellation is scheduled, Stripe clamps `current_period_end`
-    // to the cancel date, so `remaining` would read 0 and no refund would fire.
-    const yearlyLines = invoice.lines.data.filter(
-      (line) => line.price?.recurring?.interval === "year"
-    );
-    const paidPeriodStartSec =
-      yearlyLines.length > 0
-        ? Math.min(...yearlyLines.map((line) => line.period.start))
-        : stripeSubscription.current_period_start;
-    const paidPeriodEndSec =
-      yearlyLines.length > 0
-        ? Math.max(...yearlyLines.map((line) => line.period.end))
-        : stripeSubscription.current_period_end;
-
-    const actualEndSec =
-      stripeSubscription.ended_at ??
-      stripeSubscription.canceled_at ??
-      Math.floor(Date.now() / 1000);
-    const periodSec = paidPeriodEndSec - paidPeriodStartSec;
-    const remainingSec = paidPeriodEndSec - actualEndSec;
-    if (periodSec <= 0 || remainingSec <= 0) {
-      logger.info(
-        {
-          stripeSubscriptionId: stripeSubscription.id,
-          periodSec,
-          remainingSec,
-        },
-        "[Stripe] Yearly migration refund: no prepaid days remaining, skipping"
-      );
-      return new Ok({ refundedCents: 0 });
-    }
-
-    const chargeId =
-      typeof invoice.charge === "string" ? invoice.charge : invoice.charge?.id;
-    if (!chargeId) {
-      logger.warn(
-        { stripeSubscriptionId: stripeSubscription.id, invoiceId: invoice.id },
-        "[Stripe] Yearly migration refund: invoice has no charge, skipping"
-      );
-      return new Ok({ refundedCents: 0 });
-    }
-
-    // Verify the charge was actually paid (and not already fully refunded)
-    // before refunding anything.
-    const charge = await stripe.charges.retrieve(chargeId);
-    if (!charge.paid || charge.status !== "succeeded") {
-      logger.warn(
-        {
-          stripeSubscriptionId: stripeSubscription.id,
-          chargeId,
-          chargePaid: charge.paid,
-          chargeStatus: charge.status,
-        },
-        "[Stripe] Yearly migration refund: charge not paid, skipping"
-      );
-      return new Ok({ refundedCents: 0 });
-    }
-    const refundableCents = charge.amount - charge.amount_refunded;
-    const proratedCents = Math.round(
-      (charge.amount * remainingSec) / periodSec
-    );
-    const refundedCents = Math.min(refundableCents, proratedCents);
-
-    // Always log the refund attempt for a marked sub, with the computed amount.
-    logger.info(
-      {
-        stripeSubscriptionId: stripeSubscription.id,
-        chargeId,
-        chargeAmount: charge.amount,
-        alreadyRefunded: charge.amount_refunded,
-        remainingDays: Math.ceil(remainingSec / 86400),
-        proratedCents,
-        refundedCents,
-      },
-      refundedCents > 0
-        ? "[Stripe] Issuing yearly migration prorated refund"
-        : "[Stripe] Yearly migration refund: nothing left to refund, skipping"
-    );
-    if (refundedCents <= 0) {
-      return new Ok({ refundedCents: 0 });
-    }
-    await stripe.refunds.create({ charge: chargeId, amount: refundedCents });
-
-    // When the scheduled cancellation fired, Stripe credited the unused time to
-    // the customer's balance (store credit that would offset a future
-    // Metronome-pushed invoice). We've now refunded that same unused time to the
-    // card, so remove the matching credit — otherwise the customer is refunded
-    // twice. Bounded by the credit actually present, so we never push the
-    // customer into a debit if no (or a smaller) credit was created.
-    await reverseMigrationBalanceCredit({
-      stripeSubscription,
-      refundedCents,
-      currency: charge.currency,
-    });
-
-    return new Ok({ refundedCents });
-  } catch (err) {
-    return new Err(normalizeError(err));
-  }
-}
-
-/**
- * Remove up to `refundedCents` of credit from the customer's Stripe balance,
- * used after a yearly-migration card refund to cancel out the unused-time
- * credit Stripe auto-creates on cancellation (so the customer isn't refunded
- * twice — once to the card, once as balance credit). No-op when the customer
- * has no credit balance. Best-effort: logs and swallows failures so a balance
- * hiccup never blocks the (already-issued) refund.
- */
-async function reverseMigrationBalanceCredit({
-  stripeSubscription,
-  refundedCents,
-  currency,
-}: {
-  stripeSubscription: Stripe.Subscription;
-  refundedCents: number;
-  currency: string;
-}): Promise<void> {
-  const stripe = getStripeClient();
-  const stripeCustomerId = getCustomerId(stripeSubscription);
-  const customer = await getStripeCustomer(stripeCustomerId);
-  // A negative balance is credit owed to the customer (offsets future invoices).
-  const creditCents = customer && customer.balance < 0 ? -customer.balance : 0;
-  const reverseCents = Math.min(creditCents, refundedCents);
-  if (reverseCents <= 0) {
-    logger.info(
-      { stripeSubscriptionId: stripeSubscription.id, stripeCustomerId },
-      "[Stripe] Yearly migration refund: no balance credit to reverse"
-    );
-    return;
-  }
-  try {
-    // A positive amount debits the customer, bringing a credit balance back
-    // toward zero.
-    await stripe.customers.createBalanceTransaction(stripeCustomerId, {
-      amount: reverseCents,
-      currency,
-      description:
-        "Reversed unused-time credit: refunded to card (legacy → Business yearly migration)",
-    });
-    logger.info(
-      {
-        stripeSubscriptionId: stripeSubscription.id,
-        stripeCustomerId,
-        reverseCents,
-      },
-      "[Stripe] Yearly migration refund: reversed unused-time balance credit"
-    );
-  } catch (err) {
-    logger.error(
-      {
-        stripeSubscriptionId: stripeSubscription.id,
-        stripeCustomerId,
-        reverseCents,
-        err: normalizeError(err).message,
-      },
-      "[Stripe] Yearly migration refund: failed to reverse balance credit (refund already issued)"
-    );
   }
 }
 

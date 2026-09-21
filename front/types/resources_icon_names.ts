@@ -244,6 +244,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "SemrushLogo",
   "SalesloftLogo",
   "ShopifyLogo",
+  "SiitLogo",
   "SlabLogo",
   "SlackLogo",
   "SnowflakeLogo",

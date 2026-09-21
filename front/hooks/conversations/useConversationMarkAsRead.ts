@@ -207,7 +207,7 @@ export function useConversationMarkAsRead({
     options: { disabled: true },
   });
 
-  const conversationSId = conversation?.sId;
+  const openConversationId = conversation?.sId;
 
   // Depending on the conversation value is deliberate: activity landing while the user
   // views the conversation produces a new object with `unread: true` and a newer
@@ -275,7 +275,7 @@ export function useConversationMarkAsRead({
         };
       });
 
-      if (conversationId === conversationSId) {
+      if (conversationId === openConversationId) {
         void mutateConversation(
           (current) => {
             if (!current) {
@@ -298,6 +298,6 @@ export function useConversationMarkAsRead({
     mutateConversations,
     mutateSpaceSummary,
     mutateConversation,
-    conversationSId,
+    openConversationId,
   ]);
 }

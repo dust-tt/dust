@@ -75,6 +75,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import isEqual from "lodash/isEqual";
 import set from "lodash/set";
 import {
   useCallback,
@@ -565,15 +566,17 @@ function AgentBuilderForm({
         ? null
         : (agentConfiguration?.sId ?? pendingAgentId ?? null);
 
+      const areSlackChannelsChanged = form.getFieldState(
+        "agentSettings.slackChannels"
+      ).isDirty;
+
       const result = await submitAgentBuilderForm({
         user,
         formData,
         owner,
         isDraft: false,
         agentConfigurationId: effectiveAgentConfigurationId,
-        areSlackChannelsChanged: form.getFieldState(
-          "agentSettings.slackChannels"
-        ).isDirty,
+        areSlackChannelsChanged,
         fetcherWithBody,
       });
 
@@ -606,6 +609,24 @@ function AgentBuilderForm({
           formData.generationSettings.modelSettings?.providerId ?? "",
       });
 
+      // A save can leave nothing to persist (config matched the current version, no scope/editor,
+      // Slack or trigger change): tell the user instead of claiming a save. `triggersToUpdate` is
+      // seeded with every existing trigger, so its length isn't a change signal; compare it by value
+      // against its baseline since `useFieldArray.update()` doesn't reliably flip `isDirty`.
+      const editedTriggers = !isEqual(
+        form.getValues("triggersToUpdate"),
+        form.formState.defaultValues?.triggersToUpdate ?? []
+      );
+      const hasTriggerChanges =
+        formData.triggersToCreate.length > 0 ||
+        formData.triggersToDelete.length > 0 ||
+        editedTriggers;
+      const nothingChanged =
+        !isCreatingNew &&
+        createdAgent._updated === false &&
+        !areSlackChannelsChanged &&
+        !hasTriggerChanges;
+
       // Check if there's a warning about Slack channel linking
       if (
         "_warning" in createdAgent &&
@@ -615,6 +636,12 @@ function AgentBuilderForm({
           title: isCreatingNew ? "Agent created" : "Agent saved",
           description:
             "The agent has been saved successfully. Some channels are currently being linked, the operation will complete shortly.",
+          type: "info",
+        });
+      } else if (nothingChanged) {
+        sendNotification({
+          title: "No changes to save",
+          description: "This agent is already up to date.",
           type: "info",
         });
       } else {
@@ -698,7 +725,12 @@ function AgentBuilderForm({
     isTriggersValidating ||
     isEditorsValidating;
 
+  // A pristine form has nothing to save; a duplicate always does (it starts clean but must be
+  // created). Same "has unsaved work" test the navigation lock uses below.
+  const hasUnsavedChanges = isDirty || !!duplicateAgentId;
+
   const isSaveDisabled =
+    !hasUnsavedChanges ||
     isSubmitting ||
     hasAgentDataLoadError ||
     isAgentDataValidating ||
@@ -734,7 +766,7 @@ function AgentBuilderForm({
   };
 
   // Disable navigation lock during save process for new agents
-  useNavigationLock((isDirty || !!duplicateAgentId) && !isSaving);
+  useNavigationLock(hasUnsavedChanges && !isSaving);
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 

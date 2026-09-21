@@ -62,6 +62,11 @@ function isTextPreviewContentType(contentType: string): boolean {
   );
 }
 
+/**
+ * @cc [owner:adrsimon,label:react] delimited-before-generic-text
+ * CSV/TSV content types MUST resolve to the `delimited` category even though they match the
+ * generic `text/` prefix, so they render as a table rather than as raw text.
+ */
 export function getFilePreviewConfig(
   rawContentType: string
 ): FilePreviewConfig {
@@ -117,6 +122,15 @@ export function getFilePreviewConfig(
     };
   }
 
+  if (category === "delimited") {
+    return {
+      category: "delimited",
+      needsProcessedVersion: false,
+      supportsExternalViewer: false,
+      supportsCopyContent: false,
+    };
+  }
+
   if (isTextPreviewContentType(contentType)) {
     return {
       category: "text",
@@ -130,15 +144,6 @@ export function getFilePreviewConfig(
     return {
       category: "audio",
       needsProcessedVersion: true,
-      supportsExternalViewer: false,
-      supportsCopyContent: false,
-    };
-  }
-
-  if (category === "delimited") {
-    return {
-      category: "delimited",
-      needsProcessedVersion: false,
       supportsExternalViewer: false,
       supportsCopyContent: false,
     };

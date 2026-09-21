@@ -114,6 +114,7 @@ vi.mock("@app/lib/temporal", () => ({
   getTemporalClientForFrontNamespace: vi.fn().mockResolvedValue({
     workflow: {
       start: vi.fn().mockResolvedValue(undefined),
+      signalWithStart: vi.fn().mockResolvedValue(undefined),
     },
   }),
 }));
@@ -123,6 +124,18 @@ vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
   const mod = (await importOriginal()) as Record<string, unknown>;
   return {
     ...mod,
+    launchDeleteAgentSearchWorkflow: vi.fn(async () => {
+      const { Ok } = await import("@app/types/shared/result");
+      return new Ok(undefined);
+    }),
+    launchDeleteWorkspaceAgentSearchWorkflow: vi.fn(async () => {
+      const { Ok } = await import("@app/types/shared/result");
+      return new Ok(undefined);
+    }),
+    launchIndexAgentSearchWorkflow: vi.fn(async () => {
+      const { Ok } = await import("@app/types/shared/result");
+      return new Ok(undefined);
+    }),
     launchDeleteSkillSearchWorkflow: vi.fn(async () => {
       const { Ok } = await import("@app/types/shared/result");
       return new Ok(undefined);

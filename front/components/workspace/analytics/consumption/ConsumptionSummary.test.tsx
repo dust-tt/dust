@@ -105,6 +105,9 @@ describe("ConsumptionSummary", () => {
 
     expect(screen.getByText("Top agent")).toBeInTheDocument();
     expect(screen.getByText("Research agent")).toBeInTheDocument();
+    expect(screen.getByText("Messages")).toBeInTheDocument();
+    expect(screen.getByText("566")).toBeInTheDocument();
+    expect(screen.getByText("0.2 credits / message")).toBeInTheDocument();
     expect(
       screen.getByText("Top agent").closest(".bg-panel-background")
     ).toHaveClass("h-24");

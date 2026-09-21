@@ -25,7 +25,7 @@ type AddTaskAssigneeChoice =
   | { kind: "unassigned" }
   | { kind: "member"; sId: string };
 
-function resolveSubmitAssigneeSId(
+function resolveSubmitAssigneeId(
   choice: AddTaskAssigneeChoice,
   defaultAssigneeId: string
 ): string | null {
@@ -44,16 +44,16 @@ function resolveSubmitAssigneeSId(
 
 function memberRowAssigneeChecked(
   choice: AddTaskAssigneeChoice,
-  memberSId: string,
+  memberId: string,
   defaultAssigneeId: string
 ): boolean {
   switch (choice.kind) {
     case "unassigned":
       return false;
     case "default":
-      return defaultAssigneeId === memberSId;
+      return defaultAssigneeId === memberId;
     case "member":
-      return choice.sId === memberSId;
+      return choice.sId === memberId;
     default:
       assertNeverAndIgnore(choice);
       return false;
@@ -95,12 +95,9 @@ function TaskRowAssigneeMenu({
   const showNoAssigneeRow =
     members.length !== 1 && (q === "" || noAssigneeLabelNorm.includes(q));
 
-  const effectiveMemberSId = resolveSubmitAssigneeSId(
-    choice,
-    defaultAssigneeId
-  );
-  const selectedUser = effectiveMemberSId
-    ? members.find((m) => m.sId === effectiveMemberSId)
+  const effectiveMemberId = resolveSubmitAssigneeId(choice, defaultAssigneeId);
+  const selectedUser = effectiveMemberId
+    ? members.find((m) => m.sId === effectiveMemberId)
     : null;
   const tooltip = selectedUser
     ? `Assign to ${selectedUser.fullName}${viewerUserId === selectedUser.sId ? " (you)" : ""}`
@@ -206,7 +203,7 @@ interface AddTaskComposerProps {
   defaultAssigneeId: string;
   /** When true, always assigns to `defaultAssigneeId` with no picker. */
   hideAssigneePicker?: boolean;
-  onAdd: (text: string, assigneeSId: string | null) => Promise<boolean>;
+  onAdd: (text: string, assigneeId: string | null) => Promise<boolean>;
 }
 
 export function AddTaskComposer({
@@ -232,9 +229,9 @@ export function AddTaskComposer({
     );
   }, [hideAssigneePicker, podMembers.length]);
 
-  const submitAssigneeSId = hideAssigneePicker
+  const submitAssigneeId = hideAssigneePicker
     ? defaultAssigneeId
-    : resolveSubmitAssigneeSId(assigneeChoice, defaultAssigneeId);
+    : resolveSubmitAssigneeId(assigneeChoice, defaultAssigneeId);
 
   const handleSubmit = async () => {
     const trimmed = text.trim();
@@ -242,7 +239,7 @@ export function AddTaskComposer({
       return;
     }
     setIsAdding(true);
-    const ok = await onAdd(trimmed, submitAssigneeSId);
+    const ok = await onAdd(trimmed, submitAssigneeId);
     setIsAdding(false);
     if (ok) {
       setText("");

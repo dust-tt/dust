@@ -1,23 +1,17 @@
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
-import type {
-  MCPServerConfigurationType,
-  ServerSideMCPServerConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
-import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
-import {
-  createAgentConfiguration,
-  restoreAgentConfiguration,
-  unsafeHardDeleteAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { resolveAgentRequestedSpaces } from "@app/lib/api/assistant/configuration/requested_spaces";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
@@ -35,6 +29,22 @@ import uniq from "lodash/uniq";
  * agentConfigurationId is created. Otherwise a brand-new agent configuration
  * is created. In both cases the new agent configuration is returned.
  */
+/**
+ * @cc [owner:rfrenoy,label:security;product] requested-spaces-readable-by-caller
+ * Unless `dangerouslySkipPermissionFiltering` is set, the call MUST return an `Err` and persist
+ * nothing when any space of the new version's `requestedSpaceIds` (collected from the actions'
+ * MCP server views, data source views, Dust apps and Pods, from the skills, and from
+ * `additionalRequestedSpaceIds`) is not readable by `auth` (`auth.can("read", space)`), through
+ * `resolveAgentRequestedSpaces`. Agent visibility is gated on the same predicate, so a
+ * version saved through a space the caller cannot read would lock the caller out of the agent.
+ */
+/**
+ * @cc [owner:rfrenoy,label:security;product] dust-apps-readable-by-caller
+ * Unless `dangerouslySkipPermissionFiltering` is set, the call MUST return an `Err` and persist
+ * nothing when an action's `dustAppConfiguration.appId` does not resolve to a Dust app readable by
+ * `auth`. `AppResource` fetchers drop unreadable apps, so without this check such an app would add
+ * no space requirement and its id would still be persisted on the action.
+ */
 export async function createOrUpgradeAgentConfiguration({
   auth,
   assistant,
@@ -51,7 +61,12 @@ export async function createOrUpgradeAgentConfiguration({
   // updates): without it those spaces are rejected and those skills silently dropped, which would
   // unrestrict the agent and strip its skills. It grants no access to what the spaces protect.
   dangerouslySkipPermissionFiltering?: boolean;
-}): Promise<Result<AgentConfigurationType, Error>> {
+}): Promise<
+  Result<
+    { agentConfiguration: AgentConfigurationType; changed: boolean },
+    Error
+  >
+> {
   const skillsOnlyViews = await MCPServerViewResource.fetchByIds(
     auth,
     assistant.actions.map((action) => action.mcpServerViewId),
@@ -115,6 +130,24 @@ export async function createOrUpgradeAgentConfiguration({
     );
   }
 
+  if (!dangerouslySkipPermissionFiltering) {
+    const dustAppIds = uniq(
+      removeNulls(actions.map((action) => action.dustAppConfiguration?.appId))
+    );
+    const dustApps = await AppResource.fetchByIds(auth, dustAppIds);
+    const foundDustAppIds = new Set(dustApps.map((app) => app.sId));
+    const inaccessibleDustAppIds = dustAppIds.filter(
+      (appId) => !foundDustAppIds.has(appId)
+    );
+    if (inaccessibleDustAppIds.length > 0) {
+      return new Err(
+        new Error(
+          `User does not have access to the following Dust apps: ${inaccessibleDustAppIds.join(", ")}`
+        )
+      );
+    }
+  }
+
   const requirements = await getAgentConfigurationRequirementsFromCapabilities(
     auth,
     {
@@ -123,45 +156,29 @@ export async function createOrUpgradeAgentConfiguration({
     }
   );
 
-  let allRequestedSpaceIds = requirements.requestedSpaceIds;
-
-  // Collect additional requestedSpaceIds
-  if (
-    assistant.additionalRequestedSpaceIds &&
-    assistant.additionalRequestedSpaceIds.length > 0
-  ) {
-    const additionalSpaces = await SpaceResource.fetchByIds(
-      auth,
-      assistant.additionalRequestedSpaceIds
-    );
-
-    // Validate that all requested spaces were found and user can read them
-    if (!dangerouslySkipPermissionFiltering) {
-      const readableSpaceIds = new Set(
-        additionalSpaces
-          .filter((space) => auth.can("read", space))
-          .map((s) => s.sId)
-      );
-      const inaccessibleSpaces = assistant.additionalRequestedSpaceIds.filter(
-        (sId) => !readableSpaceIds.has(sId)
-      );
-      if (inaccessibleSpaces.length > 0) {
-        return new Err(
-          new Error(
-            `User does not have access to the following spaces: ${inaccessibleSpaces.join(", ")}`
-          )
-        );
-      }
-    }
-
-    const additionalSpaceModelIds = removeNulls(
-      additionalSpaces.map((s) => getResourceIdFromSId(s.sId))
-    );
-
-    allRequestedSpaceIds = uniq(
-      allRequestedSpaceIds.concat(additionalSpaceModelIds)
-    );
+  // Pods are referenced by sId: resolving them here reports a malformed or unknown id instead of
+  // dropping it when the requirements are computed.
+  const podIds = removeNulls(
+    actions.map((action) => action.dustProject?.projectId ?? null)
+  );
+  const capabilitySpaces = await SpaceResource.fetchByModelIds(
+    auth,
+    requirements.requestedSpaceIds
+  );
+  const requestedSpacesRes = await resolveAgentRequestedSpaces(auth, {
+    capabilitySpaces,
+    requestedSpaceIds: [
+      ...(assistant.additionalRequestedSpaceIds ?? []),
+      ...podIds,
+    ],
+    dangerouslySkipPermissionFiltering,
+  });
+  if (requestedSpacesRes.isErr()) {
+    return requestedSpacesRes;
   }
+  const allRequestedSpaceIds = requestedSpacesRes.value.map(
+    (space) => space.id
+  );
 
   const resolvedAuthorId = authorId ?? auth.user()?.id;
   if (!resolvedAuthorId) {
@@ -189,33 +206,11 @@ export async function createOrUpgradeAgentConfiguration({
     return new Err(new Error(accessError.message));
   }
 
-  const agentConfigurationRes = await createAgentConfiguration(auth, {
-    name: assistant.name,
-    description: assistant.description,
-    instructions: assistant.instructions ?? null,
-    instructionsHtml: assistant.instructionsHtml ?? null,
-    pictureUrl: assistant.pictureUrl,
-    status: assistant.status,
-    scope: assistant.scope,
-    model: assistant.model,
-    agentConfigurationId,
-    templateId: assistant.templateId ?? null,
-    requestedSpaceIds: allRequestedSpaceIds,
-    tags: assistant.tags,
-    editors,
-    authorId: resolvedAuthorId,
-  });
+  const owner = auth.getNonNullableWorkspace();
 
-  if (agentConfigurationRes.isErr()) {
-    return agentConfigurationRes;
-  }
-
-  const actionConfigs: MCPServerConfigurationType[] = [];
-
-  for (const action of actions) {
-    const res = await createAgentActionConfiguration(
-      auth,
-      {
+  const actionConfigs: ServerSideMCPServerConfigurationType[] = actions.map(
+    (action) =>
+      ({
         type: "mcp_server_configuration",
         name: action.name,
         description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
@@ -229,62 +224,9 @@ export async function createOrUpgradeAgentConfiguration({
         timeFrame: action.timeFrame,
         jsonSchema: action.jsonSchema,
         dustProject: action.dustProject,
-      } as ServerSideMCPServerConfigurationType,
-      agentConfigurationRes.value
-    );
-    if (res.isErr()) {
-      logger.error(
-        {
-          error: res.error,
-          agentConfigurationId: agentConfigurationRes.value.sId,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          mcpServerViewId: action.mcpServerViewId,
-        },
-        "Failed to create agent action configuration."
-      );
-      // If we fail to create an action, we should delete the agent configuration
-      // we just created and re-throw the error.
-      await unsafeHardDeleteAgentConfiguration(
-        auth,
-        agentConfigurationRes.value
-      );
-      // If we were upgrading an existing agent (i.e., creating a new
-      // version for an existing `agentConfigurationId`), we archived the
-      // previous version just before creating this one. Since creation of
-      // an action failed and we are cleaning up the new version, restore
-      // the previous version back to `active` status so the agent remains
-      // available.
-      if (agentConfigurationId) {
-        const restoredResult = await restoreAgentConfiguration(
-          auth,
-          agentConfigurationRes.value.sId
-        );
-        if (restoredResult.isErr()) {
-          logger.error(
-            {
-              error: restoredResult.error,
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              agentConfigurationId: agentConfigurationRes.value.sId,
-            },
-            "Error while restoring previous agent version after rollback"
-          );
-        } else if (!restoredResult.value.restored) {
-          logger.error(
-            {
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              agentConfigurationId: agentConfigurationRes.value.sId,
-            },
-            "Failed to restore previous agent version after action creation error"
-          );
-        }
-      }
-      return res;
-    }
-    actionConfigs.push(res.value);
-  }
+      }) as ServerSideMCPServerConfigurationType
+  );
 
-  // Create skill associations.
-  const owner = auth.getNonNullableWorkspace();
   const skillById = new Map(skills.map((skill) => [skill.sId, skill]));
   const skillsToAdd = removeNulls(
     (assistant.skills ?? []).map((skill) => {
@@ -293,7 +235,6 @@ export async function createOrUpgradeAgentConfiguration({
         logger.warn(
           {
             workspaceId: owner.sId,
-            agentConfigurationId: agentConfigurationRes.value.sId,
             skillId: skill.sId,
           },
           "Skill not found when creating agent configuration, skipping"
@@ -304,31 +245,84 @@ export async function createOrUpgradeAgentConfiguration({
       return skillResource;
     })
   );
-  await SkillResource.addManyToAgent(auth, {
-    agentConfiguration: agentConfigurationRes.value,
-    skills: skillsToAdd,
-  });
 
-  const agentConfiguration: AgentConfigurationType = {
-    ...agentConfigurationRes.value,
+  const saveParams = {
+    name: assistant.name,
+    description: assistant.description,
+    instructions: assistant.instructions ?? null,
     instructionsHtml: assistant.instructionsHtml ?? null,
+    pictureUrl: assistant.pictureUrl,
+    status: assistant.status,
+    scope: assistant.scope,
+    model: assistant.model,
+    templateId: assistant.templateId ?? null,
+    requestedSpaceIds: allRequestedSpaceIds,
+    tags: assistant.tags,
+    editors,
+    authorId: resolvedAuthorId,
     actions: actionConfigs,
+    skills: skillsToAdd,
   };
+
+  let savedResource: AgentResource;
+  // Whether the save actually persisted a change. A brand-new agent always does; an update may be a
+  // no-op (incoming configuration identical to the current version, and no scope/editor change).
+  let changed: boolean;
+  if (agentConfigurationId) {
+    const agentResource = await AgentResource.fetchById(
+      auth,
+      agentConfigurationId
+    );
+    // `updateConfiguration` gates each kind of change on its own permission (definition -> `write`,
+    // model -> `write`/`admin`, scope -> publish + `write`/`admin`, editors -> `admin`; see
+    // `agent-edit-in-place`), so we only confirm the agent exists here. `fetchById` returns null when
+    // the caller holds no verb at all, which also hides a hidden agent's existence.
+    if (!agentResource) {
+      return new Err(new Error("Agent configuration not found."));
+    }
+    const updateRes = await agentResource.updateConfiguration(auth, saveParams);
+    if (updateRes.isErr()) {
+      return updateRes;
+    }
+    savedResource = updateRes.value.resource;
+    changed = updateRes.value.changed;
+  } else {
+    const makeNewRes = await AgentResource.makeNew(auth, saveParams);
+    if (makeNewRes.isErr()) {
+      return makeNewRes;
+    }
+    savedResource = makeNewRes.value;
+    changed = true;
+  }
+
+  // The save (configuration row + actions + skills) is atomic (see `agent-save-atomic`), so a
+  // returned Ok means everything committed. Re-read the full config skipping the read gate — the
+  // caller just wrote it, and may hold `write` without `read` (e.g. an admin API key editing a
+  // hidden agent) — to build the `AgentConfigurationType` response, including the actions just
+  // created.
+  const savedConfig = await getAgentConfiguration(auth, {
+    agentId: savedResource.sId,
+    variant: "full",
+    dangerouslySkipPermissionFiltering: true,
+  });
+  if (!savedConfig) {
+    return new Err(new Error("Failed to load the saved agent configuration."));
+  }
 
   // Prune outdated suggestions after saving an existing agent.
   // This must happen after skills/tools are added to the new version.
   if (agentConfigurationId) {
-    await pruneSuggestionsForAgent(auth, agentConfiguration);
+    await pruneSuggestionsForAgent(auth, savedConfig);
   }
 
   // We are not tracking draft agents
-  if (agentConfigurationRes.value.status === "active") {
+  if (savedConfig.status === "active") {
     void ServerSideTracking.trackAssistantCreated({
       user: auth.user() ?? undefined,
       workspace: auth.workspace() ?? undefined,
-      assistant: agentConfiguration,
+      assistant: savedConfig,
     });
   }
 
-  return new Ok(agentConfiguration);
+  return new Ok({ agentConfiguration: savedConfig, changed });
 }
