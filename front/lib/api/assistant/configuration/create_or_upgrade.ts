@@ -246,14 +246,17 @@ export async function createOrUpgradeAgentConfiguration({
       auth,
       agentConfigurationId
     );
-    // A caller who cannot edit an agent cannot save a new version of it (`updateConfiguration`
-    // re-checks). Editors may hold `write` without `read` (e.g. an admin API key on a hidden agent,
-    // see `admin-key-agent-write`), so gate on `write`, not `read`. The exception is the admin batch
-    // re-save (`dangerouslySkipPermissionFiltering`), which resaves agents built on spaces the admin
-    // cannot read as-is; `fetchById` returns those (light).
+    // A caller with no edit access at all cannot save; `updateConfiguration` then gates each kind of
+    // change (definition -> `write`, scope -> publish+`write`/`admin`, editors -> `admin`, see
+    // `agent-edit-in-place`). Gate here on `write` OR `admin` — both are per-agent editor grants and
+    // one is necessary for every edit path — not on `read` (editors may hold them without `read`, e.g.
+    // an admin API key on a hidden agent, see `admin-key-agent-write`). The exception is the admin
+    // batch re-save (`dangerouslySkipPermissionFiltering`), which resaves agents built on spaces the
+    // admin cannot read as-is; `fetchById` returns those (light).
     if (
       !agentResource ||
-      (!dangerouslySkipPermissionFiltering && !auth.can("write", agentResource))
+      (!dangerouslySkipPermissionFiltering &&
+        !(auth.can("write", agentResource) || auth.can("admin", agentResource)))
     ) {
       return new Err(new Error("Agent configuration not found."));
     }
