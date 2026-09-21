@@ -15,7 +15,6 @@ import type {
   LongPollFactory,
   Subscriber,
 } from "@app/types/event_source";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { MANAGED_SSE_HANDSHAKE_EVENT } from "@app/types/sse";
 import type {
   Event as PolyfillEvent,
@@ -167,7 +166,7 @@ export class EventSourceManager {
     subscriber.onStateChange(entry.state);
     if (entry.config.replayBufferedEventsOnSubscribe) {
       for (const event of entry.events) {
-        this.notifyEventSubscriber(entry, subscriber, event);
+        this.notifyEventSubscriber(subscriber, event);
       }
     }
     this.ensureConnected(streamId, entry);
@@ -294,8 +293,11 @@ export class EventSourceManager {
     entry: ConnectionEntry,
     config: ConnectionConfig
   ): void {
+    const hasPendingSourceFactory = entry.sseState.kind === "creating";
     entry.generation++;
-    this.stopSse(entry);
+    if (!hasPendingSourceFactory) {
+      this.stopSse(entry);
+    }
     this.stopLongPolling(entry);
     entry.config = config;
     entry.events = [];
@@ -367,6 +369,13 @@ export class EventSourceManager {
         entry.sseState.attemptId === attemptId
       ) {
         this.handlePreHandshakeFailure(streamId, entry, null, error);
+      } else if (
+        this.connections.get(streamId) === entry &&
+        entry.sseState.kind === "creating" &&
+        entry.sseState.attemptId === attemptId
+      ) {
+        entry.sseState = { kind: "idle" };
+        this.ensureConnected(streamId, entry);
       }
       return;
     }
@@ -380,6 +389,14 @@ export class EventSourceManager {
       entry.sseState.attemptId !== attemptId
     ) {
       source.close();
+      if (
+        this.connections.get(streamId) === entry &&
+        entry.sseState.kind === "creating" &&
+        entry.sseState.attemptId === attemptId
+      ) {
+        entry.sseState = { kind: "idle" };
+        this.ensureConnected(streamId, entry);
+      }
       return;
     }
 
@@ -764,7 +781,7 @@ export class EventSourceManager {
       entry.events.push(event);
     }
     for (const subscriber of entry.subscribers) {
-      this.notifyEventSubscriber(entry, subscriber, event);
+      this.notifyEventSubscriber(subscriber, event);
     }
 
     if (this.connections.get(streamId) !== entry) {
@@ -880,23 +897,8 @@ export class EventSourceManager {
     return Boolean(entry.config.buildLongPollURL && entry.config.getEventId);
   }
 
-  private notifyEventSubscriber(
-    entry: ConnectionEntry,
-    subscriber: Subscriber,
-    event: string
-  ): void {
-    try {
-      subscriber.onEvent(event);
-    } catch (error) {
-      datadogLogger.error(
-        {
-          ...entry.config.telemetryContext,
-          workspaceId: entry.config.workspaceId,
-          err: normalizeError(error),
-        },
-        "Stream subscriber failed to process an event."
-      );
-    }
+  private notifyEventSubscriber(subscriber: Subscriber, event: string): void {
+    subscriber.onEvent(event);
   }
 
   private markTerminal(streamId: string, entry: ConnectionEntry): void {
