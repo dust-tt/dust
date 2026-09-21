@@ -47,6 +47,7 @@ import { FREE_ORIGINS } from "@app/lib/metronome/events";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { Result } from "@app/types/shared/result";
+import { formatDateFromMillis } from "@app/types/shared/utils/date_utils";
 import type { estypes } from "@elastic/elasticsearch";
 
 const DIMENSIONS = ["agent", "user", "origin", "api_key", "model"] as const;
@@ -239,7 +240,7 @@ async function fetchGroupedCredits(
 async function fetchTimeseries(
   dialect: Dialect,
   timezone: string
-): Promise<Map<number, number>> {
+): Promise<Map<string, number>> {
   const aggs = await runAggregation<TimeseriesAggs>(dialect, {
     by_date: {
       date_histogram: {
@@ -252,7 +253,7 @@ async function fetchTimeseries(
   });
   return new Map(
     bucketsToArray<DateBucket>(aggs.by_date?.buckets).map((bucket) => [
-      bucket.key,
+      formatDateFromMillis(bucket.key, timezone),
       creditsFromSlice(dialect, bucket),
     ])
   );
@@ -261,7 +262,7 @@ async function fetchTimeseries(
 async function fetchUsageTypeSplit(
   dialect: Dialect,
   timezone: string
-): Promise<Map<number, { programmaticCredits: number; userCredits: number }>> {
+): Promise<Map<string, { programmaticCredits: number; userCredits: number }>> {
   const aggs = await runAggregation<UsageTypeAggs>(dialect, {
     by_date: {
       date_histogram: {
@@ -283,7 +284,7 @@ async function fetchUsageTypeSplit(
   });
   return new Map(
     bucketsToArray<UsageTypeDateBucket>(aggs.by_date?.buckets).map((bucket) => [
-      bucket.key,
+      formatDateFromMillis(bucket.key, timezone),
       {
         programmaticCredits: creditsFromSlice(
           dialect,
@@ -295,6 +296,12 @@ async function fetchUsageTypeSplit(
   );
 }
 
+type SeriesRow = {
+  key: string;
+  legacyCredits: number;
+  consumptionCredits: number;
+};
+
 type SeriesDelta = {
   comparedKeys: number;
   keysOnlyInLegacy: string[];
@@ -302,30 +309,29 @@ type SeriesDelta = {
   maxAbsoluteDelta: number;
   legacyCredits: number;
   consumptionCredits: number;
-  worstKeys: {
-    key: string;
-    legacyCredits: number;
-    consumptionCredits: number;
-  }[];
+  // Every compared key, largest absolute delta first, so the report can lead with the divergences.
+  rows: SeriesRow[];
 };
 
-const WORST_KEYS_LIMIT = 5;
-
+// Both series are keyed the same way (group key, or formatted date for the daily series), so the
+// membership checks below must be done with the key itself: stringifying it first would make every
+// lookup miss and report each key as present on one side only.
 function compareSeries(
-  legacy: Map<string | number, number>,
-  consumption: Map<string | number, number>
+  legacy: Map<string, number>,
+  consumption: Map<string, number>
 ): SeriesDelta {
   const keys = new Set([...legacy.keys(), ...consumption.keys()]);
-  const rows = [...keys].map((key) => ({
-    key: String(key),
-    legacyCredits: legacy.get(key) ?? 0,
-    consumptionCredits: consumption.get(key) ?? 0,
-  }));
-  const worst = [...rows].sort(
-    (a, b) =>
-      Math.abs(b.consumptionCredits - b.legacyCredits) -
-      Math.abs(a.consumptionCredits - a.legacyCredits)
-  );
+  const rows = [...keys]
+    .map((key) => ({
+      key,
+      legacyCredits: legacy.get(key) ?? 0,
+      consumptionCredits: consumption.get(key) ?? 0,
+    }))
+    .sort(
+      (a, b) =>
+        Math.abs(b.consumptionCredits - b.legacyCredits) -
+        Math.abs(a.consumptionCredits - a.legacyCredits)
+    );
 
   return {
     comparedKeys: keys.size,
@@ -335,16 +341,98 @@ function compareSeries(
     keysOnlyInConsumption: rows
       .filter((row) => !legacy.has(row.key))
       .map((row) => row.key),
-    maxAbsoluteDelta: worst.length
-      ? Math.abs(worst[0].consumptionCredits - worst[0].legacyCredits)
+    maxAbsoluteDelta: rows.length
+      ? Math.abs(rows[0].consumptionCredits - rows[0].legacyCredits)
       : 0,
     legacyCredits: rows.reduce((sum, row) => sum + row.legacyCredits, 0),
     consumptionCredits: rows.reduce(
       (sum, row) => sum + row.consumptionCredits,
       0
     ),
-    worstKeys: worst.slice(0, WORST_KEYS_LIMIT),
+    rows,
   };
+}
+
+// Matching keys carry no information for a migration check, so only the diverging ones are
+// tabulated: a year-long window stays as readable as a week.
+const DIVERGING_ROWS_LIMIT = 10;
+
+function formatCreditDelta(legacyCredits: number, credits: number): string {
+  const delta = credits - legacyCredits;
+  return delta > 0 ? `+${delta}` : String(delta);
+}
+
+function divergingRows(delta: SeriesDelta): SeriesRow[] {
+  const onlyOnOneSide = new Set([
+    ...delta.keysOnlyInLegacy,
+    ...delta.keysOnlyInConsumption,
+  ]);
+  return delta.rows.filter(
+    (row) =>
+      row.legacyCredits !== row.consumptionCredits || onlyOnOneSide.has(row.key)
+  );
+}
+
+function onlyInLabel(
+  delta: SeriesDelta,
+  { key }: SeriesRow,
+  { legacyHeader, consumptionHeader }: Headers
+): string {
+  if (delta.keysOnlyInLegacy.includes(key)) {
+    return legacyHeader;
+  }
+  if (delta.keysOnlyInConsumption.includes(key)) {
+    return consumptionHeader;
+  }
+  return "";
+}
+
+// The agent-attribution section compares two groupings of the same index, so the column names are
+// configurable rather than always "legacy" and "consumption".
+type Headers = { legacyHeader: string; consumptionHeader: string };
+
+const INDEX_HEADERS: Headers = {
+  legacyHeader: "legacy",
+  consumptionHeader: "consumption",
+};
+
+function printSeries({
+  title,
+  keyHeader,
+  delta,
+  headers = INDEX_HEADERS,
+}: {
+  title: string;
+  keyHeader: string;
+  delta: SeriesDelta;
+  headers?: Headers;
+}): void {
+  const { legacyHeader, consumptionHeader } = headers;
+  const diverging = divergingRows(delta);
+  console.log(
+    `\n${title}: ${delta.comparedKeys} keys, ${legacyHeader} ${delta.legacyCredits} credits ` +
+      `vs ${consumptionHeader} ${delta.consumptionCredits} credits` +
+      (diverging.length === 0
+        ? " — every key matches"
+        : ` — ${diverging.length} diverging, largest delta ${delta.maxAbsoluteDelta}`)
+  );
+  if (diverging.length === 0) {
+    return;
+  }
+  console.table(
+    diverging.slice(0, DIVERGING_ROWS_LIMIT).map((row) => ({
+      [keyHeader]: row.key,
+      [legacyHeader]: row.legacyCredits,
+      [consumptionHeader]: row.consumptionCredits,
+      delta: formatCreditDelta(row.legacyCredits, row.consumptionCredits),
+      onlyIn: onlyInLabel(delta, row, headers),
+    }))
+  );
+  if (diverging.length > DIVERGING_ROWS_LIMIT) {
+    console.log(
+      `  ... and ${diverging.length - DIVERGING_ROWS_LIMIT} more diverging keys`
+    );
+  }
 }
 
 makeScript(
@@ -371,7 +459,7 @@ makeScript(
       type: "number" as const,
     },
   },
-  async ({ workspaceId, days, timezone, limit }, logger) => {
+  async ({ workspaceId, days, timezone, limit }) => {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
     if (!workspace) {
       throw new Error(`Workspace not found: ${workspaceId}`);
@@ -442,49 +530,88 @@ makeScript(
       fetchGroupedCredits(consumption, "conversation_id", limit),
     ]);
 
-    const summary = {
-      workspaceId: workspace.sId,
-      startDate,
-      endDate,
-      limit,
-      total: {
-        legacyCredits: legacyTotalCredits,
-        consumptionCredits: consumptionTotalCredits,
-        delta: consumptionTotalCredits - legacyTotalCredits,
+    console.log("Credit usage: legacy index vs consumption index");
+    console.table([
+      {
+        workspace: workspace.sId,
+        from: startDate,
+        to: endDate,
+        timezone,
+        rankedPerDimension: limit,
       },
-      byDimension,
-      agentAttributionDelta,
-      timeseries: compareSeries(legacySeries, consumptionSeries),
-      usageTypeSplit: {
-        programmatic: compareSeries(
-          new Map(
-            [...legacySplit].map(([key, value]) => [
-              key,
-              value.programmaticCredits,
-            ])
-          ),
-          new Map(
-            [...consumptionSplit].map(([key, value]) => [
-              key,
-              value.programmaticCredits,
-            ])
-          )
-        ),
-        user: compareSeries(
-          new Map([...legacySplit].map(([key, v]) => [key, v.userCredits])),
-          new Map([...consumptionSplit].map(([key, v]) => [key, v.userCredits]))
-        ),
-      },
-      topConversations: compareSeries(
-        legacyConversations,
-        consumptionConversations
-      ),
-    };
+    ]);
 
-    if (legacyTotalCredits !== consumptionTotalCredits) {
-      logger.warn(summary, "Credit usage differs between indices");
-      return;
+    console.log(
+      `\nWindow total: legacy ${legacyTotalCredits} credits vs consumption ` +
+        `${consumptionTotalCredits} credits` +
+        (legacyTotalCredits === consumptionTotalCredits
+          ? " — totals match"
+          : ` — TOTALS DIFFER by ${formatCreditDelta(legacyTotalCredits, consumptionTotalCredits)}`)
+    );
+
+    console.log("\nPer-dimension ranking");
+    console.table(
+      DIMENSIONS.map((dimension) => ({
+        dimension,
+        keys: byDimension[dimension].comparedKeys,
+        legacy: byDimension[dimension].legacyCredits,
+        consumption: byDimension[dimension].consumptionCredits,
+        diverging: divergingRows(byDimension[dimension]).length,
+        largestKeyDelta: byDimension[dimension].maxAbsoluteDelta,
+      }))
+    );
+    for (const dimension of DIMENSIONS) {
+      // The table above already reports the dimensions that fully match.
+      if (divergingRows(byDimension[dimension]).length > 0) {
+        printSeries({
+          title: `Dimension ${dimension}`,
+          keyHeader: dimension,
+          delta: byDimension[dimension],
+        });
+      }
     }
-    logger.info(summary, "Credit usage matches between indices");
+
+    printSeries({
+      title: "Daily credits",
+      keyHeader: "date",
+      delta: compareSeries(legacySeries, consumptionSeries),
+    });
+    printSeries({
+      title: "Daily credits, user usage",
+      keyHeader: "date",
+      delta: compareSeries(
+        new Map([...legacySplit].map(([date, v]) => [date, v.userCredits])),
+        new Map([...consumptionSplit].map(([date, v]) => [date, v.userCredits]))
+      ),
+    });
+    printSeries({
+      title: "Daily credits, programmatic usage",
+      keyHeader: "date",
+      delta: compareSeries(
+        new Map(
+          [...legacySplit].map(([date, v]) => [date, v.programmaticCredits])
+        ),
+        new Map(
+          [...consumptionSplit].map(([date, v]) => [
+            date,
+            v.programmaticCredits,
+          ])
+        )
+      ),
+    });
+    printSeries({
+      title: "Top conversations",
+      keyHeader: "conversation",
+      delta: compareSeries(legacyConversations, consumptionConversations),
+    });
+    printSeries({
+      title: "Agent attribution, consumption index only",
+      keyHeader: "agent",
+      delta: agentAttributionDelta,
+      headers: {
+        legacyHeader: "agent.id",
+        consumptionHeader: "agent.attributed_id",
+      },
+    });
   }
 );
