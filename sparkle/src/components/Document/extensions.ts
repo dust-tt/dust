@@ -1,9 +1,7 @@
 import { cn } from "@sparkle/lib/utils";
-import { getSchema, type JSONContent } from "@tiptap/core";
 import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
-import { z } from "zod";
 
 export const documentExtensions = [
   StarterKit.configure({
@@ -69,25 +67,3 @@ export const documentExtensions = [
           : "",
   }),
 ];
-const documentSchema = getSchema(documentExtensions);
-const documentEnvelope = z.object({ type: z.literal("doc") }).passthrough();
-
-export const parseDocumentContent = (
-  content: string,
-  contentType: "markdown" | "json"
-): { ok: true; content: string | JSONContent } | { ok: false } => {
-  if (contentType === "markdown") {
-    return { ok: true, content };
-  }
-  try {
-    const parsed = documentEnvelope.safeParse(JSON.parse(content));
-    if (!parsed.success) {
-      return { ok: false };
-    }
-    const node = documentSchema.nodeFromJSON(parsed.data);
-    node.check();
-    return { ok: true, content: node.toJSON() };
-  } catch {
-    return { ok: false };
-  }
-};
