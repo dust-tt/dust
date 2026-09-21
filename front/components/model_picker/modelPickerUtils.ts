@@ -74,8 +74,9 @@ const PICKER_TIER_BY_MODELS_TIER: Record<ModelsTierName, ModelTierId> = {
 /**
  * @cc [owner:frankaloia,label:product;error-handling] pinned-model-retry-uses-tier
  * When a model-related failure ran a pinned (non-stream) model, the failure UI MUST offer retry
- * on that model's tier and send that tier as `modelSelection`. It MUST NOT read or write the
- * input-bar picker. Stream-resolved failures and every other retry MUST send no override.
+ * on that model's tier and send that tier as `modelSelection`. After that retry, the conversation's
+ * last requested model and the input-bar picker MUST show that tier so subsequent messages use the
+ * same stream. Stream-resolved failures and every other retry MUST send no override.
  * Stream resolution consults the current degraded set server-side (`retry-model-selection`).
  */
 export function getPinnedModelRetryTier({

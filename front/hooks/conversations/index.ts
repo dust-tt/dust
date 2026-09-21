@@ -11,6 +11,7 @@ export {
 } from "./useConversationMarkAsRead";
 export { useConversationMarkAsUnread } from "./useConversationMarkAsUnread";
 export {
+  CONVERSATION_MESSAGES_PAGE_LIMIT,
   useConversationMessage,
   useConversationMessageAction,
   useConversationMessages,

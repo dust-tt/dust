@@ -23,11 +23,13 @@ vi.mock("@app/hooks/useNotification", () => ({
 }));
 
 vi.mock("@app/hooks/conversations", () => ({
+  CONVERSATION_MESSAGES_PAGE_LIMIT: 50,
   useBranchConversation: () => ({
     branchConversation: vi.fn(),
     isBranching: false,
   }),
   useCancelMessage: () => vi.fn(),
+  useConversationMessages: () => ({ mutateMessages: vi.fn() }),
   usePostOnboardingFollowUp: () => ({ postFollowUp: vi.fn() }),
 }));
 
