@@ -1,6 +1,7 @@
 import { Avatar } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
 import { Checkbox } from "@sparkle/components/Checkbox";
+import { type CHIP_COLORS, Chip } from "@sparkle/components/Chip";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -33,6 +34,7 @@ import {
   Clipboard,
   ClipboardCheck,
   DotsHorizontal,
+  Minus,
 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import {
@@ -55,6 +57,7 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import React, {
+  type ComponentType,
   createContext,
   type ReactNode,
   useContext,
@@ -1519,9 +1522,13 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
     items: { name: string; visual?: string | React.ReactNode }[];
     nbVisibleItems?: number;
   };
+  /** Second line under the main text. Only rendered at `relaxed` density, where the row has room for it. */
+  secondaryLine?: ReactNode;
+  /** Content pinned to the end of the cell (a chip, a small button). */
+  trailing?: ReactNode;
 }
 
-/** Standard cell layout with optional avatar, avatar stack, icon, and trailing description. */
+/** Standard cell layout with optional avatar, avatar stack, icon, inline description, secondary line and trailing slot. */
 DataTable.CellContent = function CellContent({
   children,
   className,
@@ -1534,10 +1541,33 @@ DataTable.CellContent = function CellContent({
   grow = false,
   disabled,
   avatarStack,
+  secondaryLine,
+  trailing,
   ...props
 }: CellContentProps) {
   const density = useDataTableDensity();
   const avatarSize = density === "relaxed" ? "sm" : "xs";
+  const showSecondaryLine =
+    secondaryLine !== undefined && density === "relaxed";
+
+  const primaryLine = (
+    <>
+      <div
+        className={cn(
+          grow ? "flex-grow" : "",
+          "truncate text-sm",
+          "text-foreground"
+        )}
+      >
+        {children}
+      </div>
+      {description && (
+        <span className={cn("pl-2 text-sm", "text-muted-foreground")}>
+          {description}
+        </span>
+      )}
+    </>
+  );
 
   return (
     <div
@@ -1585,27 +1615,33 @@ DataTable.CellContent = function CellContent({
           className={cn("mr-2 text-foreground", iconClassName)}
         />
       )}
-      <div
-        className={cn(
-          "flex shrink truncate items-center",
-          grow ? "flex-grow" : ""
-        )}
-      >
+      {showSecondaryLine ? (
         <div
           className={cn(
-            grow ? "flex-grow" : "",
-            "truncate text-sm",
-            "text-foreground"
+            "flex min-w-0 shrink flex-col truncate",
+            grow ? "flex-grow" : ""
           )}
         >
-          {children}
+          <div className="flex items-center truncate">{primaryLine}</div>
+          <div className="truncate text-xs text-muted-foreground">
+            {secondaryLine}
+          </div>
         </div>
-        {description && (
-          <span className={cn("pl-2 text-sm", "text-muted-foreground")}>
-            {description}
-          </span>
-        )}
-      </div>
+      ) : (
+        <div
+          className={cn(
+            "flex shrink truncate items-center",
+            grow ? "flex-grow" : ""
+          )}
+        >
+          {primaryLine}
+        </div>
+      )}
+      {trailing !== undefined && (
+        <div className="ml-auto flex shrink-0 items-center pl-2">
+          {trailing}
+        </div>
+      )}
     </div>
   );
 };
@@ -1703,6 +1739,176 @@ DataTable.BasicCellContent = function BasicCellContent({
         </div>
       )}
     </>
+  );
+};
+
+type ChipColorType = (typeof CHIP_COLORS)[number];
+
+interface NumericCellContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** The number to display; `null`/`undefined` show `placeholder`. */
+  value: number | null | undefined;
+  /** BCP 47 locale for digit grouping and decimals. Defaults to the browser locale. */
+  locale?: string;
+  /** Fixed number of fraction digits. Keep it constant within a column. */
+  precision?: number;
+  /** Currency symbol or unit, concatenated to the number (e.g. "$" prefix, "%" or " kb" suffix). */
+  unit?: string;
+  /** Where `unit` goes. Defaults to "suffix". */
+  unitPosition?: "prefix" | "suffix";
+  /** Shown for missing values. Prefer a word ("Pending") over a dash. */
+  placeholder?: string;
+  /** Direction arrow shown after the number. Colour follows `upIsPositive`; the arrow always shows. */
+  trend?: "up" | "down" | "flat";
+  /** Whether an upward trend is good (sales) rather than bad (costs). Defaults to true. */
+  upIsPositive?: boolean;
+  tooltip?: string;
+  disabled?: boolean;
+}
+
+function formatNumericValue(
+  value: number,
+  locale: string | undefined,
+  precision: number | undefined
+) {
+  return value.toLocaleString(
+    locale,
+    precision === undefined
+      ? undefined
+      : { minimumFractionDigits: precision, maximumFractionDigits: precision }
+  );
+}
+
+const TREND_LABEL: Record<
+  NonNullable<NumericCellContentProps["trend"]>,
+  string
+> = {
+  up: "Trending up",
+  down: "Trending down",
+  flat: "No change",
+};
+
+/**
+ * Right-aligned number in tabular figures, with optional unit and trend arrow.
+ * Pair it with a `meta.type: "numeric"` column so the header aligns too.
+ */
+DataTable.NumericCellContent = function NumericCellContent({
+  value,
+  locale,
+  precision,
+  unit,
+  unitPosition = "suffix",
+  placeholder = "-",
+  trend,
+  upIsPositive = true,
+  tooltip,
+  disabled,
+  className,
+  ...props
+}: NumericCellContentProps) {
+  const density = useDataTableDensity();
+
+  const formatted =
+    value === null || value === undefined
+      ? placeholder
+      : unit === undefined
+        ? formatNumericValue(value, locale, precision)
+        : unitPosition === "prefix"
+          ? `${unit}${formatNumericValue(value, locale, precision)}`
+          : `${formatNumericValue(value, locale, precision)}${unit}`;
+
+  const trendIsPositive =
+    trend === "up" ? upIsPositive : trend === "down" ? !upIsPositive : null;
+
+  const content = (
+    <div
+      className={cn(
+        DENSITY_ROW_HEIGHT_CLASS[density],
+        "flex items-center justify-end gap-1 text-sm tabular-nums whitespace-nowrap",
+        "text-foreground",
+        disabled && "cursor-not-allowed opacity-50",
+        className
+      )}
+      aria-disabled={disabled || undefined}
+      {...props}
+    >
+      <span className="truncate">{formatted}</span>
+      {trend && (
+        <span
+          role="img"
+          aria-label={TREND_LABEL[trend]}
+          className={cn(
+            "flex items-center",
+            trendIsPositive === true && "text-success-800",
+            trendIsPositive === false && "text-warning-800",
+            trendIsPositive === null && "text-muted-foreground"
+          )}
+        >
+          <Icon
+            visual={
+              trend === "up" ? ArrowUp : trend === "down" ? ArrowDown : Minus
+            }
+            size="xs"
+          />
+        </span>
+      )}
+    </div>
+  );
+
+  return tooltip ? (
+    <Tooltip tooltipTriggerAsChild trigger={content} label={tooltip} />
+  ) : (
+    content
+  );
+};
+
+interface StatusCellContentProps {
+  /** Short status word, kept in sentence case for screen readers ("Active", "Paused"). */
+  label: string;
+  /** Chip colour; pair a colour with the label, never rely on colour alone. */
+  color?: ChipColorType;
+  icon?: ComponentType;
+  /** Shimmer for transient states (e.g. "Syncing"). */
+  isBusy?: boolean;
+  tooltip?: string;
+  className?: string;
+}
+
+/**
+ * Status as a mini Chip so it matches chips elsewhere in the product. Pair it
+ * with a `meta.type: "status"` column to keep the label on one line.
+ */
+DataTable.StatusCellContent = function StatusCellContent({
+  label,
+  color = "primary",
+  icon,
+  isBusy,
+  tooltip,
+  className,
+}: StatusCellContentProps) {
+  const density = useDataTableDensity();
+
+  const content = (
+    <div
+      className={cn(
+        DENSITY_ROW_HEIGHT_CLASS[density],
+        "flex items-center",
+        className
+      )}
+    >
+      <Chip
+        size="mini"
+        color={color}
+        label={label}
+        icon={icon}
+        isBusy={isBusy}
+      />
+    </div>
+  );
+
+  return tooltip ? (
+    <Tooltip tooltipTriggerAsChild trigger={content} label={tooltip} />
+  ) : (
+    content
   );
 };
 
