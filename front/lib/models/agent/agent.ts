@@ -1,3 +1,4 @@
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import type { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
 import {
@@ -147,6 +148,12 @@ export class AgentConfigurationModel extends WorkspaceAwareModel<AgentConfigurat
 
   declare lastReinforcementAnalysisAt: Date | null;
 
+  // NULL means the credit spend checkpoint is off for this agent, any value means it is on. Stored in
+  // AWU credits so a per-agent threshold can be added later.
+  declare creditSpendCheckpointThresholdAwuCredits: CreationOptional<
+    number | null
+  >;
+
   declare requestedSpaceIds: number[];
 
   declare author: NonAttribute<UserModel>;
@@ -267,6 +274,11 @@ AgentConfigurationModel.init(
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
+    },
+    creditSpendCheckpointThresholdAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
     },
     requestedSpaceIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),

@@ -11,6 +11,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { DustError } from "@app/lib/error";
 import { getEffectiveReasoningEffort } from "@app/lib/llms/model_configurations";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
@@ -153,6 +154,7 @@ export type AgentResourceContent = {
   instructions: string | null;
   instructionsHtml: string | null;
   maxStepsPerRun: number;
+  creditSpendCheckpointThresholdAwuCredits: number | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -463,6 +465,8 @@ export class AgentResource
       instructions: agentConfiguration.instructions,
       instructionsHtml: agentConfiguration.instructionsHtml,
       maxStepsPerRun: agentConfiguration.maxStepsPerRun,
+      creditSpendCheckpointThresholdAwuCredits:
+        agentConfiguration.creditSpendCheckpointThresholdAwuCredits,
       createdAt: agentConfiguration.createdAt,
       updatedAt: agentConfiguration.updatedAt,
     };
@@ -531,6 +535,8 @@ export class AgentResource
         responseFormat: configuration.model.responseFormat,
         pictureUrl: configuration.pictureUrl,
         maxStepsPerRun: configuration.maxStepsPerRun,
+        creditSpendCheckpointThresholdAwuCredits:
+          CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
         templateId: null,
         reinforcement: configuration.reinforcement ?? "auto",
         lastReinforcementAnalysisAt: null,
@@ -901,6 +907,8 @@ export class AgentResource
         pictureUrl: snapshot.pictureUrl,
         authorId: snapshot.versionAuthorId,
         maxStepsPerRun: content.maxStepsPerRun,
+        creditSpendCheckpointThresholdAwuCredits:
+          content.creditSpendCheckpointThresholdAwuCredits,
         templateId: snapshot.templateId,
         reinforcement: snapshot.reinforcement,
         lastReinforcementAnalysisAt,
