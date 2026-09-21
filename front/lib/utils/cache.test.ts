@@ -51,9 +51,11 @@ describe("cacheManyWithRedis", () => {
   });
 
   it("loads only misses together and writes separate entries without caching nulls", async () => {
-    mockRedisClient.mGet
-      .mockResolvedValueOnce([JSON.stringify({ id: "a" }), null, null])
-      .mockResolvedValueOnce([null, null]);
+    mockRedisClient.mGet.mockResolvedValueOnce([
+      JSON.stringify({ id: "a" }),
+      null,
+      null,
+    ]);
     const load = vi.fn(async (ids: readonly string[]) =>
       ids.map((id) => (id === "missing" ? null : { id }))
     );
@@ -63,6 +65,11 @@ describe("cacheManyWithRedis", () => {
       { id: "a" },
       { id: "b" },
       null,
+    ]);
+    expect(mockRedisClient.mGet).toHaveBeenCalledExactlyOnceWith([
+      "cacheWithRedis-batch-a",
+      "cacheWithRedis-batch-b",
+      "cacheWithRedis-batch-missing",
     ]);
     expect(load).toHaveBeenCalledExactlyOnceWith(["b", "missing"]);
     expect(mockRedisClient.mSet).toHaveBeenCalledExactlyOnceWith([
@@ -103,7 +110,7 @@ describe("cacheManyWithRedis", () => {
     expect(load).toHaveBeenCalledOnce();
   });
 
-  it("propagates loader failures without retry and releases the locks", async () => {
+  it("propagates loader failures without retry", async () => {
     mockRedisClient.mGet.mockResolvedValue([null]);
     const failure = new Error("Database unavailable");
     const load = vi
@@ -118,7 +125,7 @@ describe("cacheManyWithRedis", () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 
-  it("reuses concurrent fills for overlapping batches in different orders", async () => {
+  it("loads overlapping batches independently", async () => {
     const entries = new Map<string, string>();
     mockRedisClient.mGet.mockImplementation(async (keys: string[]) =>
       keys.map((key) => entries.get(key) ?? null)
@@ -140,7 +147,9 @@ describe("cacheManyWithRedis", () => {
       [{ id: "a" }, { id: "b" }],
       [{ id: "b" }, { id: "a" }],
     ]);
-    expect(load).toHaveBeenCalledOnce();
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(load).toHaveBeenNthCalledWith(1, ["a", "b"]);
+    expect(load).toHaveBeenNthCalledWith(2, ["b", "a"]);
   });
 });
 

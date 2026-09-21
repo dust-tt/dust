@@ -151,33 +151,11 @@ async function writeBatchCacheValues<T>(
 }
 
 /**
- * @cc [owner:flvndvd,label:concurrency] batch-cache-locks
- * Cache-fill locks MUST be acquired once per key in a stable order and released even if filling
- * fails, so overlapping batches cannot deadlock or retain locks after an error.
- */
-async function withCacheFillLocks<T>(
-  keys: string[],
-  fill: () => Promise<T>
-): Promise<T> {
-  // Share the existing single-value cache's process-local locks.
-  const sortedKeys = [...new Set(keys)].sort();
-  for (const key of sortedKeys) {
-    await lock(key);
-  }
-  try {
-    return await fill();
-  } finally {
-    for (const key of sortedKeys) {
-      unlock(key);
-    }
-  }
-}
-
-/**
  * @cc [owner:flvndvd,label:backend;performance] batch-cache-misses
- * Each call MUST load all remaining misses together, at most once. The loader MUST return one
- * value per input in input order, using null for missing values. Nulls MUST NOT be cached. Redis
- * failures MUST NOT fail a successful load or cause it to run again; loader errors MUST propagate.
+ * Each call MUST load its misses together, at most once, without waiting for other cache fills.
+ * The loader MUST return one value per input in input order, using null for missing values. Nulls
+ * MUST NOT be cached. Redis failures MUST NOT fail a successful load or cause it to run again;
+ * loader errors MUST propagate.
  */
 export function cacheManyWithRedis<T, Input>(
   load: (inputs: readonly Input[]) => Promise<(JsonSerializable<T> | null)[]>,
@@ -218,56 +196,38 @@ export function cacheManyWithRedis<T, Input>(
       return load(inputs);
     }
 
-    const cachedValues = await readBatchCacheValues<T>(
+    const values = await readBatchCacheValues<T>(
       redis,
       entries.map(({ readKey }) => readKey),
       cacheId
     );
-    if (cachedValues === null) {
+    if (values === null) {
       return load(inputs);
     }
-    const misses = entries.filter(({ readKey }) => !cachedValues.has(readKey));
+    const misses = entries.filter(({ readKey }) => !values.has(readKey));
 
-    return withCacheFillLocks(
-      misses.map(({ readKey }) => readKey),
-      async () => {
-        // Another reader may have filled these keys while we waited for their locks.
-        const recheckedValues = await readBatchCacheValues<T>(
-          redis,
-          misses.map(({ readKey }) => readKey),
-          cacheId
-        );
-        const values = new Map([...cachedValues, ...(recheckedValues ?? [])]);
-        const remainingMisses = misses.filter(
-          ({ readKey }) => !values.has(readKey)
-        );
-
-        // The loader stays outside Redis error handling: database failures must propagate.
-        const loaded =
-          remainingMisses.length > 0
-            ? await load(remainingMisses.map(({ input }) => input))
-            : [];
-        assert(
-          loaded.length === remainingMisses.length,
-          "Batch cache loader must return one value per input"
-        );
-        remainingMisses.forEach(({ readKey }, index) => {
-          const value = loaded[index];
-          if (value !== null) {
-            values.set(readKey, value);
-          }
-        });
-
-        await writeBatchCacheValues(
-          redis,
-          entries,
-          values,
-          new Set(remainingMisses.map(({ readKey }) => readKey)),
-          { cacheId, copyOnRead: migration?.copyToOtherKey === "after_read" }
-        );
-        return entries.map(({ readKey }) => values.get(readKey) ?? null);
-      }
+    // The loader stays outside Redis error handling: database failures must propagate.
+    const loaded =
+      misses.length > 0 ? await load(misses.map(({ input }) => input)) : [];
+    assert(
+      loaded.length === misses.length,
+      "Batch cache loader must return one value per input"
     );
+    misses.forEach(({ readKey }, index) => {
+      const value = loaded[index];
+      if (value !== null) {
+        values.set(readKey, value);
+      }
+    });
+
+    await writeBatchCacheValues(
+      redis,
+      entries,
+      values,
+      new Set(misses.map(({ readKey }) => readKey)),
+      { cacheId, copyOnRead: migration?.copyToOtherKey === "after_read" }
+    );
+    return entries.map(({ readKey }) => values.get(readKey) ?? null);
   };
 }
 
