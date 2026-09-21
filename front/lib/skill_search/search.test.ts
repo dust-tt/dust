@@ -96,29 +96,16 @@ describe("custom skill search", () => {
       bool: {
         must: [
           {
-            bool: {
-              must: [
-                {
-                  multi_match: {
-                    query: "report b",
-                    type: "bool_prefix",
-                    operator: "and",
-                    fields: [
-                      "name.autocomplete",
-                      "name.autocomplete._2gram",
-                      "name.autocomplete_preserved",
-                      "name.autocomplete_preserved._2gram",
-                    ],
-                  },
-                },
-              ],
-              should: [
-                {
-                  constant_score: {
-                    filter: { prefix: { "name.keyword": "report b" } },
-                    boost: 2,
-                  },
-                },
+            multi_match: {
+              query: "report b",
+              type: "bool_prefix",
+              operator: "and",
+              fields: [
+                "name.keyword",
+                "name.autocomplete",
+                "name.autocomplete._2gram",
+                "name.autocomplete_preserved",
+                "name.autocomplete_preserved._2gram",
               ],
             },
           },
