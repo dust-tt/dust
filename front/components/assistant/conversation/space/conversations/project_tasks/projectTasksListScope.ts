@@ -77,21 +77,21 @@ function taskOwnerFilterToSearchParams(
 }
 
 export function buildPodTasksListSwrKey(
-  workspaceSId: string,
+  workspaceId: string,
   podId: string,
   filter: TaskOwnerFilter
 ): string {
-  const base = `/api/w/${workspaceSId}/spaces/${podId}/project_tasks`;
+  const base = `/api/w/${workspaceId}/spaces/${podId}/project_tasks`;
   const qs = taskOwnerFilterToSearchParams(filter).toString();
   return qs.length > 0 ? `${base}?${qs}` : base;
 }
 
 export function isPodTasksListSwrKey(
   key: unknown,
-  workspaceSId: string,
+  workspaceId: string,
   podId: string
 ): boolean {
-  const prefix = `/api/w/${workspaceSId}/spaces/${podId}/project_tasks`;
+  const prefix = `/api/w/${workspaceId}/spaces/${podId}/project_tasks`;
   return (
     typeof key === "string" && (key === prefix || key.startsWith(`${prefix}?`))
   );

@@ -6,9 +6,15 @@ RUN npm install -g npm@11.11.0
 
 WORKDIR /app
 COPY package.json package-lock.json ./
+COPY sparkle/package.json ./sparkle/
 COPY viz/package.json ./viz/
 
-RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm ci
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm ci -w sparkle -w viz
+
+# Sparkle's package entries point at dist/, which Viz needs for both its build and runtime types.
+WORKDIR /app/sparkle
+COPY /sparkle .
+RUN npm run build
 
 WORKDIR /app/viz
 COPY /viz .

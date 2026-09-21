@@ -15,6 +15,10 @@ import {
   hasProcessedVersion,
 } from "@app/lib/api/files/processing";
 import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import {
+  formatFramePackageRelativePath,
+  resolvePackageRelativeToScopedPath,
+} from "@app/lib/api/frames/package_file_ref_paths";
 import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
 import { cleanupProjectFileFragments } from "@app/lib/api/projects/file_cleanup";
 import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
@@ -262,6 +266,34 @@ export class FileResource extends BaseResource<FileModel> {
         id: { [Op.in]: ids },
       },
     });
+    return frames.map((frame) => new this(this.model, frame.get()));
+  }
+
+  /**
+   * One ascending page of Frames v2 files across every workspace, resuming after `afterModelId`.
+   * Used by the publication retention sweep, which has no workspace to scope to.
+   *
+   * WORKSPACE_ISOLATION_BYPASS: retention sweeps every workspace. Callers act on one frame at a
+   * time, with an authenticator built for that frame's own workspace.
+   */
+  static async dangerouslyListFrameV2Batch({
+    afterModelId,
+    batchSize,
+  }: {
+    afterModelId: ModelId | null;
+    batchSize: number;
+  }): Promise<FileResource[]> {
+    const frames = await this.model.findAll({
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      where: {
+        contentType: frameV2ContentType,
+        ...(afterModelId ? { id: { [Op.gt]: afterModelId } } : {}),
+      },
+      order: [["id", "ASC"]],
+      limit: batchSize,
+    });
+
     return frames.map((frame) => new this(this.model, frame.get()));
   }
 
@@ -1085,16 +1117,17 @@ export class FileResource extends BaseResource<FileModel> {
    * MUST be set to it. The conversation UI reads this field to enable "Ask agent to fix" on a
    * Frame runtime error; if a publication path omits it, the retry affordance stays silently
    * unavailable for every publication of that Frame, not just the failing one.
+   *
+   * The Frame's name is not part of a publication: it is the source folder's basename. See the
+   * `frame-name-is-the-source-folder` contract in `types/api/frame_manifest.ts`.
    */
   async setActiveFramePublication(
     {
       publicationId,
-      name,
       description,
       publishedByAgentConfigurationId,
     }: {
       publicationId: string;
-      name: string;
       description: string;
       publishedByAgentConfigurationId?: string;
     },
@@ -1105,7 +1138,6 @@ export class FileResource extends BaseResource<FileModel> {
         useCaseMetadata: {
           ...this.useCaseMetadata,
           activePublicationId: publicationId,
-          frameName: name,
           frameDescription: description,
           ...(publishedByAgentConfigurationId
             ? {
@@ -2227,9 +2259,11 @@ export class FileResource extends BaseResource<FileModel> {
     {
       fileRef,
       frameContext,
+      packageRoot,
     }: {
       fileRef: FileRef;
       frameContext: FrameScopedPathContext;
+      packageRoot: string | null;
     }
   ): Promise<
     | {
@@ -2329,6 +2363,50 @@ export class FileResource extends BaseResource<FileModel> {
           nestedContentType: contentType,
         };
       }
+      case "frameRelative": {
+        if (!packageRoot) {
+          return { verified: false };
+        }
+
+        const packageRelativeRef = formatFramePackageRelativePath(
+          fileRef.relativePath
+        );
+        const canonicalPath = resolvePackageRelativeToScopedPath({
+          relativePath: packageRelativeRef,
+          frameRoot: packageRoot,
+        });
+        if (!canonicalPath) {
+          return { verified: false };
+        }
+
+        const fsResult = await DustFileSystem.fromScopedPath(
+          auth,
+          canonicalPath
+        );
+        if (fsResult.isErr()) {
+          return { verified: false };
+        }
+
+        const statResult = await fsResult.value.stat(canonicalPath);
+        if (statResult.isErr() || !statResult.value) {
+          return { verified: false };
+        }
+
+        const fileName = canonicalPath.split("/").pop();
+        // Store the portable `./…` identity; resolve against the current package root at read.
+        const entry: AuthorizedFileRef = {
+          kind: "frame_relative_path",
+          ref: packageRelativeRef,
+          ...(fileName ? { fileName } : {}),
+        };
+
+        return {
+          verified: true,
+          entry,
+          nestedContent: undefined,
+          nestedContentType: statResult.value.contentType,
+        };
+      }
       default:
         return assertNever(fileRef);
     }
@@ -2339,10 +2417,12 @@ export class FileResource extends BaseResource<FileModel> {
     {
       frameContent,
       frameContext,
+      packageRoot,
       visited,
     }: {
       frameContent: string;
       frameContext: FrameScopedPathContext;
+      packageRoot: string | null;
       visited: Set<string>;
     }
   ): Promise<{
@@ -2362,6 +2442,9 @@ export class FileResource extends BaseResource<FileModel> {
         case "path":
           key = fileRef.scopedPath;
           break;
+        case "frameRelative":
+          key = formatFramePackageRelativePath(fileRef.relativePath);
+          break;
         default:
           assertNever(fileRef);
       }
@@ -2373,6 +2456,7 @@ export class FileResource extends BaseResource<FileModel> {
       const result = await this.verifyAndNormalizeAuthorizedFileRef(auth, {
         fileRef,
         frameContext,
+        packageRoot,
       });
       if (!result.verified) {
         unverifiableRefs.push(key);
@@ -2386,9 +2470,20 @@ export class FileResource extends BaseResource<FileModel> {
         result.nestedContentType &&
         FRAME_CONTENT_TYPES.has(result.nestedContentType)
       ) {
+        const nestedPackageRoot =
+          result.entry.kind === "file_id"
+            ? ((
+                await FileResource.fetchById(auth, result.entry.ref)
+              )?.getFrameV2SourceDirectoryPath(auth) ?? null)
+            : result.entry.kind === "canonical_path"
+              ? path.posix.dirname(result.entry.ref)
+              : // frame_relative_path assets are data files, not nested frames.
+                null;
+
         const nested = await this.collectVerifiedAuthorizedFileRefs(auth, {
           frameContent: result.nestedContent,
           frameContext,
+          packageRoot: nestedPackageRoot,
           visited,
         });
         refs.push(...nested.refs);
@@ -2404,10 +2499,12 @@ export class FileResource extends BaseResource<FileModel> {
     { frameContent }: { frameContent: string }
   ): Promise<ComputedAuthorizedFileAccess> {
     const frameContext = await this.resolveFrameScopedPathContext(auth);
+    const packageRoot = this.getFrameV2SourceDirectoryPath(auth);
     const { refs, unverifiableRefs } =
       await this.collectVerifiedAuthorizedFileRefs(auth, {
         frameContent,
         frameContext,
+        packageRoot,
         visited: new Set(),
       });
 
@@ -2463,6 +2560,12 @@ export class FileResource extends BaseResource<FileModel> {
           kind: "canonical_path",
           ref: row.ref,
           ...(row.legacyPath ? { legacyPath: row.legacyPath } : {}),
+          ...(row.fileName ? { fileName: row.fileName } : {}),
+        };
+      case "frame_relative_path":
+        return {
+          kind: "frame_relative_path",
+          ref: row.ref,
           ...(row.fileName ? { fileName: row.fileName } : {}),
         };
       default:
@@ -2898,11 +3001,11 @@ async function deleteCoreFileArtifactsFromDataSource(
     async (span) => {
       const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
       const projectId = dataSource.dustAPIProjectId;
-      const dataSourceId = dataSource.dustAPIDataSourceId;
+      const dustAPIDataSourceId = dataSource.dustAPIDataSourceId;
       const logCtx = {
         workspaceId: auth.workspace()?.sId,
         fileId: file.sId,
-        dataSourceSId: dataSource.sId,
+        dataSourceId: dataSource.sId,
       };
 
       const tableIds = new Set<string>([
@@ -2915,13 +3018,13 @@ async function deleteCoreFileArtifactsFromDataSource(
       span?.setTag("file.use_case", file.useCase);
       span?.setTag("data_source.s_id", dataSource.sId);
       span?.setTag("core.project_id", projectId);
-      span?.setTag("core.data_source_id", dataSourceId);
+      span?.setTag("core.data_source_id", dustAPIDataSourceId);
       span?.setTag("tables.count", tableIds.size);
 
       for (const tableId of tableIds) {
         const delTableRes = await coreAPI.deleteTable({
           projectId,
-          dataSourceId,
+          dataSourceId: dustAPIDataSourceId,
           tableId,
         });
         if (
@@ -2937,7 +3040,7 @@ async function deleteCoreFileArtifactsFromDataSource(
 
       const delDocRes = await coreAPI.deleteDataSourceDocument({
         projectId,
-        dataSourceId,
+        dataSourceId: dustAPIDataSourceId,
         documentId: file.sId,
         caller: "file-resource",
       });
@@ -2959,17 +3062,17 @@ async function maybeDeleteCoreArtifactsForIndexedFile(
   file: FileResource
 ): Promise<void> {
   if (file.useCase === "project_context") {
-    const spaceSId = file.useCaseMetadata?.spaceId;
-    if (!spaceSId) {
+    const spaceId = file.useCaseMetadata?.spaceId;
+    if (!spaceId) {
       return;
     }
-    const space = await SpaceResource.fetchById(auth, spaceSId);
+    const space = await SpaceResource.fetchById(auth, spaceId);
     if (!space) {
       logger.warn(
         {
           workspaceId: auth.workspace()?.sId,
           fileId: file.sId,
-          spaceSId,
+          spaceId,
         },
         "File delete: project space not found; skipping Core cleanup."
       );
@@ -2981,7 +3084,7 @@ async function maybeDeleteCoreArtifactsForIndexedFile(
         {
           workspaceId: auth.workspace()?.sId,
           fileId: file.sId,
-          spaceSId,
+          spaceId,
           error: dsRes.error,
         },
         "File delete: project dust_project data source not found; skipping Core cleanup."

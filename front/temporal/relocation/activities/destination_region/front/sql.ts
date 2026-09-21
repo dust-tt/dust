@@ -124,6 +124,11 @@ interface ProcessFrontTableChunkParams {
   workspaceId: string;
 }
 
+/**
+ * @cc [owner:flvndvd,label:error-handling] unreadable-relocation-chunks-fail
+ * A failure to read or deserialize a staged chunk MUST fail the activity and leave the
+ * staged object intact. It MUST NOT report success for rows that were not imported.
+ */
 export async function processFrontTableChunkWithIdNormalization({
   dataPath,
   destCell,
@@ -140,23 +145,7 @@ export async function processFrontTableChunkWithIdNormalization({
 
   localLogger.info("[SQL] Writing table chunk.");
 
-  let blob: RelocationBlob;
-  try {
-    blob = await readFromRelocationStorage<RelocationBlob>(dataPath);
-  } catch (error: unknown) {
-    if (
-      error instanceof Error &&
-      error.message.includes("Cannot create a string longer than")
-    ) {
-      localLogger.warn(
-        { error: error.message, dataPath },
-        "[SQL] File too large to process, skipping with empty blob."
-      );
-      blob = { statements: {} };
-    } else {
-      throw error;
-    }
-  }
+  const blob = await readFromRelocationStorage<RelocationBlob>(dataPath);
 
   const normalization = await readDestinationIdNormalization({
     destCell,

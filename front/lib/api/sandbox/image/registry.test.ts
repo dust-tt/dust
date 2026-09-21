@@ -94,7 +94,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base and sbx bedrock image tags", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.110",
+      tag: "0.8.116",
     });
     expect(getDustBaseImage().baseImage).toEqual({
       type: "docker",
@@ -111,6 +111,35 @@ describe("sandbox image registry", () => {
 
     expect(serviceUnit).toContain("EnvironmentFile=/run/dust/fluent-bit.env");
     expect(serviceUnit).not.toContain("Environment=DD_API_KEY");
+  });
+
+  test("installs the Oxlint allocator without preloading it for other commands", () => {
+    const image = getDustBaseImage();
+    const runCommands = getRunCommands(image.operations);
+    const launcher = getCopiedContent(
+      getCopyOperations(image.operations),
+      "/opt/bin/oxlint"
+    );
+
+    expect(runCommands).toContain(
+      "apt-get update && apt-get install -y libjemalloc2"
+    );
+    expect(runCommands).toContain(
+      "chown root:root /opt/bin/oxlint && chmod 755 /opt/bin/oxlint"
+    );
+    expect(launcher).toContain(
+      'LD_PRELOAD="$jemalloc${LD_PRELOAD:+:$LD_PRELOAD}"'
+    );
+    expect(launcher).toContain(
+      'exec /usr/local/bin/node /opt/npm-global/lib/node_modules/oxlint/bin/oxlint "$@"'
+    );
+    expect(image.runEnv).not.toHaveProperty("LD_PRELOAD");
+    for (const operation of image.operations) {
+      if (operation.type === "env") {
+        expect(operation.vars).not.toHaveProperty("LD_PRELOAD");
+      }
+    }
+    expect(runCommands.join("\n")).not.toContain("vm.overcommit_memory");
   });
 
   test("creates the dormant proxied user and shared-path permissions", () => {
@@ -484,7 +513,7 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.59/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.61/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
@@ -679,7 +708,7 @@ describe("sandbox image registry", () => {
         expect.objectContaining({ name: "drizzle-orm", version: "0.45.2" }),
         expect.objectContaining({ name: "drizzle-kit", version: "0.31.10" }),
         expect.objectContaining({ name: "@libsql/client", version: "0.17.4" }),
-        expect.objectContaining({ name: "@dust/pod", version: "0.3.2" }),
+        expect.objectContaining({ name: "@dust/pod", version: "0.5.0" }),
       ])
     );
   });

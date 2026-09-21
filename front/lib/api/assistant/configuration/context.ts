@@ -113,11 +113,7 @@ export async function getAgentConfigurationContext(
         : "strict",
     }
   );
-  const editorsResult = await getAgentEditors(
-    auth,
-    agentConfiguration,
-    "getAgentConfigurationContext"
-  );
+  const editorsResult = await getAgentEditors(auth, agentConfiguration);
 
   if (editorsResult.isErr()) {
     if (requireEditorGroup) {

@@ -4,7 +4,6 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import type * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
-import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -474,6 +473,22 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
     });
   });
 
+  it("should return 404 when adding a user outside the workspace", async () => {
+    const { workspace, agent } = await setupTest({ requestUserRole: "admin" });
+    const outsider = await UserFactory.basic();
+
+    const response = await patchEditors(workspace, agent.sId, {
+      addEditorIds: [outsider.sId],
+    });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "user_not_found",
+        message: "The user was not found in the workspace.",
+      },
+    });
+  });
+
   it("should return 404 when removing non-existent user", async () => {
     const { workspace, agent } = await setupTest({ requestUserRole: "admin" });
 
@@ -577,7 +592,6 @@ it("uses grants for editor responses and editor administration", async () => {
       })
     ).isOk()
   );
-  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(false);
   const response = await getEditors(workspace, agent.sId);
   expect(response.status).toBe(200);
   expect((await response.json()).editors).toEqual(

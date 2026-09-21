@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
   postNewContentFragment,
@@ -10,6 +9,7 @@ import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -495,12 +495,9 @@ export async function processTranscriptActivity(
       return;
     }
 
-    const agent = await getAgentConfiguration(auth, {
-      agentId: agentConfigurationId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, agentConfigurationId);
 
-    if (!agent) {
+    if (!agent || !auth.can("read", agent)) {
       localLogger.error(
         {},
         "[processTranscriptActivity] Agent configuration not found. Skipping file."
@@ -595,7 +592,7 @@ export async function processTranscriptActivity(
     localLogger.info(
       {
         agentConfigurationId,
-        conservationSid: conversation.sId,
+        conversationId: conversation.sId,
       },
       "[processTranscriptActivity] Created conversation."
     );

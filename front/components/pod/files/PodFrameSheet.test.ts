@@ -1,16 +1,24 @@
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { createElement } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const frameV2Metadata = {
+  contentType: "application/vnd.dust.frame.v2+json",
+  fileName: "manifest.json",
+  useCaseMetadata: { spaceId: "vlt_project" },
+};
 
 interface Mocks {
+  fileMetadata: Record<string, unknown>;
   iframeProps: { frameId?: string } | null;
   metadataCalls: { disabled?: boolean; fileId: string | null }[];
 }
 
 const mocks = vi.hoisted<Mocks>(() => ({
+  fileMetadata: {},
   iframeProps: null,
   metadataCalls: [],
 }));
@@ -59,11 +67,7 @@ vi.mock("@app/lib/swr/files", () => ({
   useFileMetadata: (args: { disabled?: boolean; fileId: string | null }) => {
     mocks.metadataCalls.push(args);
     return {
-      fileMetadata: {
-        contentType: "application/vnd.dust.frame.v2+json",
-        fileName: "app.frame.json",
-        useCaseMetadata: { spaceId: "vlt_project" },
-      },
+      fileMetadata: mocks.fileMetadata,
       isFileMetadataError: null,
       isFileMetadataLoading: false,
     };
@@ -96,28 +100,57 @@ vi.mock("@dust-tt/sparkle", async () => {
 
 const owner = LightWorkspaceFactory.build();
 
+beforeEach(() => {
+  mocks.fileMetadata = { ...frameV2Metadata };
+});
+
 afterEach(() => {
   cleanup();
   mocks.iframeProps = null;
   mocks.metadataCalls = [];
 });
 
+const openSheetProps = {
+  fileId: "fil_frame",
+  fileName: "App",
+  framePath: "pod-vlt_project/App/manifest.json",
+  fileTabs: [],
+  isArchived: false,
+  isEditor: true,
+  isMember: true,
+  isOpen: true,
+  onClose: vi.fn(),
+  owner,
+  pinnedFramePath: null,
+  podId: "vlt_project",
+};
+
 describe("PodFrameSheet", () => {
-  it("loads metadata only while open and forwards the Frames v2 identity", () => {
-    const props = {
-      fileId: "fil_frame",
-      fileName: "app.frame.json",
-      framePath: "pod-vlt_project/App/app.frame.json",
-      fileTabs: [],
-      isArchived: false,
-      isEditor: true,
-      isMember: true,
-      isOpen: false,
-      onClose: vi.fn(),
-      owner,
-      pinnedFramePath: null,
-      podId: "vlt_project",
+  it("names a Frame v2 after the folder holding its manifest", () => {
+    render(createElement(PodFrameSheet, openSheetProps));
+
+    expect(screen.getByText("App")).toBeInTheDocument();
+  });
+
+  it("names a legacy Frame, which has no manifest, after its file", () => {
+    mocks.fileMetadata = {
+      contentType: "text/vnd.dust.attachment.slack.thread",
+      fileName: "Legacy.tsx",
+      useCaseMetadata: { spaceId: "vlt_project" },
     };
+
+    render(
+      createElement(PodFrameSheet, {
+        ...openSheetProps,
+        framePath: "pod-vlt_project/Legacy.tsx",
+      })
+    );
+
+    expect(screen.getByText("Legacy.tsx")).toBeInTheDocument();
+  });
+
+  it("loads metadata only while open and forwards the Frames v2 identity", () => {
+    const props = { ...openSheetProps, isOpen: false };
     const { rerender } = render(createElement(PodFrameSheet, props));
 
     expect(mocks.metadataCalls.at(-1)).toMatchObject({ disabled: true });

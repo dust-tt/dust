@@ -217,6 +217,66 @@ describe("AgentSuggestionResource", () => {
     });
   });
 
+  describe("create suggestion", () => {
+    it("should create and fetch a create suggestion", async () => {
+      const suggestion = await AgentSuggestionFactory.createCreate(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: {
+            name: "Incident Helper",
+            description: "Helps triage incidents.",
+            instructions: "Collect impact and timeline.",
+          },
+          analysis: "Proposing a new agent",
+        }
+      );
+
+      expect(suggestion).toBeDefined();
+      expect(suggestion.kind).toBe("create");
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched).toBeDefined();
+
+      const json = fetched!.toJSON();
+      expect(json.kind).toBe("create");
+      expect(json.suggestion).toEqual({
+        name: "Incident Helper",
+        description: "Helps triage incidents.",
+        instructions: "Collect impact and timeline.",
+      });
+    });
+  });
+
+  describe("delete suggestion", () => {
+    it("should create and fetch a delete suggestion", async () => {
+      const suggestion = await AgentSuggestionFactory.createDelete(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: { name: "Old Helper" },
+          analysis: "Superseded by another agent",
+        }
+      );
+
+      expect(suggestion).toBeDefined();
+      expect(suggestion.kind).toBe("delete");
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched).toBeDefined();
+
+      const json = fetched!.toJSON();
+      expect(json.kind).toBe("delete");
+      expect(json.suggestion).toEqual({ name: "Old Helper" });
+    });
+  });
+
   describe("bulkUpdateState", () => {
     it.each<"approved" | "rejected" | "outdated">([
       "approved",
@@ -444,10 +504,10 @@ describe("AgentSuggestionResource", () => {
           expect(json.suggestion.targetBlockId).toBe("block123");
           expect(json.suggestion.type).toBe("replace");
           break;
-        case "tools":
-        case "skills":
         case "model":
+        case "skills":
         case "sub_agent":
+        case "tools":
           throw new Error("Unexpected kind");
       }
     });

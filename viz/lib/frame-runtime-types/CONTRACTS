@@ -1,0 +1,3 @@
+@cc [owner:flvndvd,label:error-handling] frame-types-build-failure
+The build-only entry point and its helpers MAY throw on missing or invalid declarations or
+filesystem failures. Such failures MUST abort the build instead of publishing partial types.

@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Skill Atlas</title>
+    <style>
+      :root {
+        font-family:
+          ui-sans-serif,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: #23352f;
+        background: #f6f7f3;
+        font-synthesis: none;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+      }
+      header {
+        padding: 28px 36px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        border-bottom: 1px solid #d9e0d8;
+      }
+      h1 {
+        font-size: 26px;
+        letter-spacing: -0.8px;
+        margin: 0 0 7px;
+      }
+      h2 {
+        font-size: 17px;
+        margin: 0 0 12px;
+      }
+      p {
+        line-height: 1.5;
+        margin: 0;
+      }
+      .eyebrow {
+        color: #5e7566;
+        font-size: 11px;
+        letter-spacing: 1.8px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        font-weight: 650;
+      }
+      .muted {
+        color: #65736a;
+        font-size: 13px;
+      }
+      .toolbar {
+        padding: 18px 36px;
+        display: flex;
+        gap: 16px;
+        align-items: end;
+        flex-wrap: wrap;
+      }
+      label {
+        display: grid;
+        gap: 6px;
+        font-size: 12px;
+        color: #52645a;
+      }
+      input,
+      select,
+      button {
+        font: inherit;
+        font-size: 14px;
+        border: 1px solid #cdd6cd;
+        border-radius: 7px;
+        background: #fff;
+        color: #23352f;
+        min-height: 44px;
+        padding: 9px 12px;
+      }
+      input {
+        font-size: 16px;
+        width: 260px;
+      }
+      button,
+      select {
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      :focus-visible {
+        outline: 3px solid #597cba;
+        outline-offset: 3px;
+      }
+      .primary {
+        background: #264c3c;
+        color: #fff;
+        border-color: #264c3c;
+      }
+      main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 350px;
+        gap: 20px;
+        padding: 0 36px 32px;
+      }
+      .panel {
+        background: #fff;
+        border: 1px solid #d9e0d8;
+        border-radius: 12px;
+        min-width: 0;
+        overflow: hidden;
+      }
+      .panel-head {
+        padding: 20px 22px 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 12px;
+      }
+      .plot-tools {
+        display: flex;
+        gap: 5px;
+      }
+      .plot-tools button {
+        min-width: 44px;
+      }
+      #plot {
+        display: block;
+        width: 100%;
+        height: auto;
+        touch-action: none;
+      }
+      #plot circle {
+        cursor: pointer;
+      }
+      #plot text {
+        font-family: inherit;
+        font-size: 12px;
+        fill: #63746a;
+      }
+      .metrics {
+        display: flex;
+        border-top: 1px solid #e5eae3;
+        padding: 16px 22px;
+        gap: 34px;
+        flex-wrap: wrap;
+      }
+      .metric strong {
+        display: block;
+        font-size: 21px;
+        margin-bottom: 3px;
+        font-variant-numeric: tabular-nums;
+      }
+      .metric span {
+        font-size: 12px;
+        color: #65736a;
+      }
+      #legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 0 22px 16px;
+      }
+      #legend button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+      }
+      #legend button[aria-pressed="true"] {
+        border-color: #264c3c;
+        background: #edf3ed;
+      }
+      .swatch {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        flex: 0 0 auto;
+      }
+      aside {
+        padding: 22px;
+      }
+      #detail-name {
+        overflow-wrap: anywhere;
+      }
+      #detail-description {
+        font-size: 14px;
+        margin: 12px 0 18px;
+      }
+      #detail-meta {
+        font-variant-numeric: tabular-nums;
+      }
+      #neighbors {
+        display: grid;
+        gap: 5px;
+        margin: 12px 0 22px;
+      }
+      #neighbors button {
+        display: flex;
+        justify-content: space-between;
+        text-align: left;
+        gap: 8px;
+        align-items: center;
+        font-size: 12px;
+      }
+      #neighbors strong {
+        font-variant-numeric: tabular-nums;
+      }
+      pre {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font-size: 12px;
+        line-height: 1.6;
+        max-height: 360px;
+        overflow-y: auto;
+        color: #44564c;
+      }
+      details {
+        border-top: 1px solid #e3e8e1;
+        padding-top: 16px;
+      }
+      summary {
+        cursor: pointer;
+        min-height: 44px;
+        font-size: 13px;
+      }
+      .list-panel {
+        grid-column: 1 / -1;
+      }
+      .table-wrap {
+        max-height: 340px;
+        overflow: auto;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 11px 22px;
+        border-top: 1px solid #e7ebe5;
+      }
+      th {
+        color: #65736a;
+        font-weight: 500;
+        background: #fbfcf9;
+        position: sticky;
+        top: 0;
+      }
+      td button {
+        border: 0;
+        padding: 0;
+        text-align: left;
+        background: transparent;
+        font-weight: 600;
+      }
+      tr[data-selected="true"] {
+        background: #edf3ed;
+      }
+      footer {
+        padding: 0 36px 28px;
+      }
+      @media (hover: hover) {
+        button:hover {
+          background: #edf3ed;
+          color: #23352f;
+        }
+      }
+      @media (max-width: 1000px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+        aside {
+          display: block;
+        }
+      }
+      @media (max-width: 640px) {
+        header,
+        .toolbar {
+          padding: 20px;
+        }
+        main {
+          padding: 0 12px 20px;
+        }
+        header {
+          align-items: start;
+          flex-direction: column;
+        }
+        .toolbar label,
+        input {
+          width: 100%;
+        }
+        .metrics {
+          gap: 20px;
+        }
+        th,
+        td {
+          padding: 8px 12px;
+        }
+        .description-cell {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <div class="eyebrow">Embedding experiments</div>
+        <h1>Skill Atlas</h1>
+        <p id="subtitle" class="muted"></p>
+      </div>
+      <button id="export" class="primary" type="button">
+        Export visible skills
+      </button>
+    </header>
+    <div class="toolbar">
+      <label
+        >Find a skill<input
+          id="search"
+          type="search"
+          placeholder="Search names, instructions, tools…"
+      /></label>
+      <label>Number of clusters<select id="cluster-count"></select></label>
+      <label
+        >Skill labels<select id="labels">
+          <option value="selected">Selected only</option>
+          <option value="all">All visible</option>
+          <option value="none">Hidden</option>
+        </select></label
+      >
+      <p id="visible-count" class="muted" role="status"></p>
+    </div>
+    <main>
+      <section class="panel" aria-label="PCA scatter plot">
+        <div class="panel-head">
+          <div>
+            <h2>Semantic map</h2>
+            <p class="muted">
+              Select a point to inspect it. Drag to pan; use + / − to zoom.
+            </p>
+          </div>
+          <div class="plot-tools">
+            <button id="zoom-in" aria-label="Zoom in" type="button">+</button
+            ><button id="zoom-out" aria-label="Zoom out" type="button">−</button
+            ><button id="reset" type="button">Reset</button>
+          </div>
+        </div>
+        <svg
+          id="plot"
+          viewBox="0 0 900 570"
+          role="img"
+          aria-label="Skills projected onto two principal components. Use the skills table below to select a skill with the keyboard."
+        ></svg>
+        <div id="legend" aria-label="Filter by cluster"></div>
+        <div class="metrics">
+          <div class="metric">
+            <strong id="variance"></strong><span>Variance retained in 2D</span>
+          </div>
+          <div class="metric">
+            <strong id="silhouette"></strong><span id="silhouette-label"></span>
+          </div>
+          <div class="metric">
+            <strong id="inertia"></strong><span>K-means inertia</span>
+          </div>
+        </div>
+      </section>
+      <aside class="panel" aria-label="Selected skill">
+        <div class="eyebrow">Selected skill</div>
+        <h2 id="detail-name">Choose a skill</h2>
+        <p id="detail-meta" class="muted"></p>
+        <p id="detail-description">
+          Select a point or a row to see its embedding input and nearest
+          neighbors.
+        </p>
+        <h2>Nearest neighbors</h2>
+        <p class="muted">
+          Cosine similarity across all embedding dimensions, including skills
+          outside the current filter.
+        </p>
+        <div id="neighbors"></div>
+        <details>
+          <summary>Exact embedding input</summary>
+          <pre id="detail-text"></pre>
+        </details>
+      </aside>
+      <section class="panel list-panel" aria-label="Skills table">
+        <div class="panel-head">
+          <div>
+            <h2>Skills in view</h2>
+            <p id="cluster-note" class="muted"></p>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Skill</th>
+                <th>Cluster</th>
+                <th class="description-cell">Description</th>
+                <th>Tokens</th>
+              </tr>
+            </thead>
+            <tbody id="skill-list"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+    <footer class="muted">
+      PCA is a lossy projection. Apparent distance in this map can differ from
+      embedding similarity. K-means runs on full, L2-normalized vectors. This
+      report works offline.
+    </footer>
+    <script>
+      /*__DATA__*/
+    </script>
+    <script>
+      /*__VIEWER__*/
+    </script>
+  </body>
+</html>

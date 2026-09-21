@@ -31,7 +31,7 @@ export type NodeAttachment = {
   title: string;
   spaceName: string;
   spaceIcon: React.ComponentType;
-  visual: React.ReactNode;
+  visual: React.ReactElement;
   path: string;
   onRemove?: () => void;
   url: string | null;
@@ -44,7 +44,7 @@ interface BaseAttachmentCitation {
   attachmentCitationType: "fragment" | "inputBar" | "mcp";
   title: string;
   sourceUrl: string | null;
-  visual: React.ReactNode;
+  visual: React.ReactElement;
   provider?: string;
   onRemove?: () => void;
 }

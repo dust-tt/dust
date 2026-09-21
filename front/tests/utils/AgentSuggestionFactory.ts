@@ -3,7 +3,10 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  AgentSuggestionSource,
   AgentSuggestionState,
+  CreateSuggestionType,
+  DeleteSuggestionType,
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
@@ -131,6 +134,56 @@ export class AgentSuggestionFactory {
         },
         analysis: overrides.analysis ?? "Suggested a more capable model",
         state: overrides.state ?? "pending",
+      }
+    );
+  }
+
+  static async createCreate(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType,
+    overrides: Partial<{
+      suggestion: CreateSuggestionType;
+      analysis: string | null;
+      state: AgentSuggestionState;
+    }> = {}
+  ): Promise<AgentSuggestionResource> {
+    return AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      agentConfiguration,
+      {
+        kind: "create",
+        suggestion: overrides.suggestion ?? {
+          name: "Incident Helper",
+          description: "Helps triage incidents.",
+          instructions: "Collect impact and timeline.",
+        },
+        analysis: overrides.analysis ?? "Suggested a new agent",
+        state: overrides.state ?? "pending",
+        conversationId: null,
+      }
+    );
+  }
+
+  static async createDelete(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType,
+    overrides: Partial<{
+      suggestion: DeleteSuggestionType;
+      analysis: string | null;
+      state: AgentSuggestionState;
+      source: AgentSuggestionSource;
+    }> = {}
+  ): Promise<AgentSuggestionResource> {
+    return AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      agentConfiguration,
+      {
+        kind: "delete",
+        suggestion: overrides.suggestion ?? { name: agentConfiguration.name },
+        analysis: overrides.analysis ?? "This agent is no longer used",
+        state: overrides.state ?? "pending",
+        conversationId: null,
+        source: overrides.source ?? "conversational",
       }
     );
   }

@@ -37,7 +37,6 @@ const FREE_BYOK_PLAN_DATA: PlanAttributes = {
   maxDataSourcesCount: -1,
   maxDataSourcesDocumentsCount: -1,
   maxDataSourcesDocumentsSizeMb: 2,
-  trialPeriodDays: 0,
   canUseProduct: true,
   isByok: true,
   hasAdvancedModelAccess: false,

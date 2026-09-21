@@ -11,6 +11,7 @@ import { useEventSource } from "@app/hooks/useEventSource";
 import type { AgentLoopToolNotificationEvent } from "@app/lib/actions/mcp";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
+import { isTerminalAgentLoopEvent } from "@app/lib/client/agent_loop_stream";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   InlineActivityStep,
@@ -699,6 +700,30 @@ export function useAgentMessageStream({
           );
           break;
 
+        // Both the pause and its resolution are streamed, so replayed history lands on the state
+        // the server persisted: nothing runs while paused, the loop only runs again once
+        // acknowledged. A decline is followed by the terminal cancelled event.
+        case "agent_credit_spend_checkpoint_updated": {
+          const { status } = eventPayload.data;
+          methods.data.map((m) =>
+            isAgentMessageWithStreaming(m) && m.sId === sId
+              ? {
+                  ...m,
+                  creditSpendCheckpointStatus: status,
+                  streaming:
+                    status === "acknowledged"
+                      ? { ...m.streaming, agentState: "thinking" }
+                      : {
+                          ...m.streaming,
+                          agentState: "done",
+                          pendingToolCalls: [],
+                        },
+                }
+              : m
+          );
+          break;
+        }
+
         case "agent_generation_cancelled": {
           isStreamTerminated.current = true;
           updateMessageThrottled.cancel();
@@ -791,9 +816,19 @@ export function useAgentMessageStream({
   const { isError } = useEventSource(
     buildEventSourceURL,
     onEventCallback,
-    streamId,
+    `message-${sId}`,
     {
+      workspaceId: owner.sId,
       isReadyToConsumeStream: shouldStream,
+      isTerminalEvent: isTerminalAgentLoopEvent,
+      keepAliveOnUnmount: true,
+      replayBufferedEventsOnMount: true,
+      restartKey: streamId,
+      telemetryContext: {
+        sseKind: "agent_loop",
+        conversationId,
+        messageId: sId,
+      },
     }
   );
 

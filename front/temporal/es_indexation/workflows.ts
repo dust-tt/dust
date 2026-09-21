@@ -1,13 +1,20 @@
 import type * as activities from "@app/temporal/es_indexation/activities";
 import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
 
-import { indexSkillSearchSignal, indexUserSearchSignal } from "./signals";
+import {
+  indexAgentSearchSignal,
+  indexSkillSearchSignal,
+  indexUserSearchSignal,
+} from "./signals";
 
 const DEBOUNCE_DELAY_MS = 1_000;
 
 const {
+  deleteAgentSearchActivity,
   deleteSkillSearchActivity,
+  deleteWorkspaceAgentSearchActivity,
   deleteWorkspaceSkillSearchActivity,
+  indexAgentSearchActivity,
   indexSkillSearchActivity,
   indexUserSearchActivity,
 } = proxyActivities<typeof activities>({
@@ -79,4 +86,66 @@ export async function deleteWorkspaceSkillSearchWorkflow({
   workspaceId: string;
 }): Promise<void> {
   await deleteWorkspaceSkillSearchActivity({ workspaceId });
+}
+
+export async function indexAgentSearchWorkflow({
+  workspaceId,
+  agentId,
+}: {
+  workspaceId: string;
+  agentId: string;
+}): Promise<void> {
+  let signaled = false;
+
+  setHandler(indexAgentSearchSignal, async () => {
+    signaled = true;
+  });
+
+  while (signaled) {
+    signaled = false;
+    await sleep(DEBOUNCE_DELAY_MS);
+    if (signaled) {
+      continue;
+    }
+
+    await indexAgentSearchActivity({ workspaceId, agentId });
+  }
+}
+
+export async function deleteAgentSearchWorkflow({
+  workspaceId,
+  agentId,
+}: {
+  workspaceId: string;
+  agentId: string;
+}): Promise<void> {
+  await deleteAgentSearchActivity({ workspaceId, agentId });
+}
+
+export async function deleteWorkspaceAgentSearchWorkflow({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<void> {
+  await deleteWorkspaceAgentSearchActivity({ workspaceId });
+}
+
+const { listWorkspaceIdsActivity, refreshWorkspaceSearchUsageActivity } =
+  proxyActivities<typeof activities>({
+    startToCloseTimeout: "10 minutes",
+  });
+
+export async function refreshSearchUsageWorkflow(): Promise<void> {
+  const workspaceIds = await listWorkspaceIdsActivity();
+  for (const workspaceId of workspaceIds) {
+    await refreshWorkspaceSearchUsageActivity({ workspaceId });
+  }
+}
+
+export async function refreshWorkspaceSearchUsageWorkflow({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<void> {
+  await refreshWorkspaceSearchUsageActivity({ workspaceId });
 }

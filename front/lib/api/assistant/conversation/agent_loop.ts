@@ -1,5 +1,5 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
@@ -8,7 +8,6 @@ import type {
   ConversationWithoutContentType,
   UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
-import assert from "assert";
 
 // Soft assumption that we will not have more than 10 mentions in the same user message.
 const MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE = 10;
@@ -24,18 +23,29 @@ export const runAgentLoopWorkflow = async ({
   conversation: ConversationWithoutContentType;
   userMessage: UserMessageTypeWithoutMentions;
 }) => {
-  await concurrentExecutor(
+  return concurrentExecutor(
     agentMessages,
     async (agentMessage) => {
-      const agentConfiguration = await getAgentConfiguration(auth, {
-        agentId: agentMessage.configuration.sId,
-        variant: "extra_light",
-      });
-
-      assert(
-        agentConfiguration,
-        "Unreachable: could not find detailed configuration for agent"
+      const agentConfiguration = await AgentResource.fetchById(
+        auth,
+        agentMessage.configuration.sId
       );
+
+      if (!agentConfiguration || !auth.can("read", agentConfiguration)) {
+        const completedAt =
+          await ConversationResource.cancelUnavailableAgentMessage(auth, {
+            conversationId: conversation.sId,
+            agentMessageId: agentMessage.sId,
+            agentMessageVersion: agentMessage.version,
+          });
+        return completedAt
+          ? {
+              ...agentMessage,
+              status: "cancelled" as const,
+              completedTs: completedAt.getTime(),
+            }
+          : agentMessage;
+      }
 
       await ConversationResource.setIsRunningAgentLoop(auth, {
         conversation,
@@ -53,8 +63,12 @@ export const runAgentLoopWorkflow = async ({
           userMessageVersion: userMessage.version,
           userMessageOrigin: userMessage.context.origin,
         },
+        // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
+        canInitializeConsumption: true,
         startStep: 0,
       });
+
+      return agentMessage;
     },
     { concurrency: MAX_CONCURRENT_AGENT_EXECUTIONS_PER_USER_MESSAGE }
   );

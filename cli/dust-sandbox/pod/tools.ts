@@ -26,6 +26,10 @@
 import { z } from "zod";
 
 import { podEnv } from "./context.ts";
+import {
+  recordToolTiming,
+  type ToolCallServerTimingsMs,
+} from "./tool_timings.ts";
 
 export const TOOLS_API_URL_ENV = "DUST_API_URL";
 export const TOOLS_SANDBOX_TOKEN_ENV = "DUST_SANDBOX_TOKEN";
@@ -194,6 +198,15 @@ const resultSchema = z.object({
   content: z.array(z.unknown()),
   isError: z.boolean(),
   structuredContent: z.unknown().optional(),
+  timingsMs: z
+    .object({
+      post: z.number(),
+      poll: z.number(),
+      offload: z.number().optional(),
+      server: z.record(z.unknown()).optional(),
+      total: z.number(),
+    })
+    .optional(),
 });
 
 const errorEnvelopeSchema = z.object({
@@ -355,6 +368,10 @@ export const tools = {
     const dsbxPath = podEnv(DSBX_PATH_ENV) ?? DEFAULT_DSBX_PATH;
     const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
+    // Wall clock around the whole `dsbx tools` child. Prefer dsbx's own
+    // post/poll/offload breakdown when present; otherwise still record this
+    // total so `timingsMs.tools` is not silently empty on older binaries.
+    const callStartedAt = performance.now();
     const run = await runDsbx({
       dsbxPath,
       argv: ["tools", "--json", "--args-json", "-", server, tool],
@@ -369,6 +386,7 @@ export const tools = {
       stdinBody: JSON.stringify(args ?? {}),
       timeoutMs,
     });
+    const wallMs = Math.max(0, Math.round(performance.now() - callStartedAt));
 
     if (run.timedOut) {
       // The underlying action may still complete server-side; retrying would
@@ -393,6 +411,30 @@ export const tools = {
 
     const result = resultSchema.safeParse(parsed);
     if (result.success) {
+      const fromDsbx = result.data.timingsMs;
+      if (fromDsbx) {
+        recordToolTiming({
+          server,
+          tool,
+          post: fromDsbx.post,
+          poll: fromDsbx.poll,
+          ...(fromDsbx.offload === undefined
+            ? {}
+            : { offload: fromDsbx.offload }),
+          ...(fromDsbx.server === undefined
+            ? {}
+            : { dust: fromDsbx.server as ToolCallServerTimingsMs }),
+          total: fromDsbx.total,
+        });
+      } else {
+        recordToolTiming({
+          server,
+          tool,
+          post: 0,
+          poll: wallMs,
+          total: wallMs,
+        });
+      }
       // Exit code 1 with a result payload is a tool-level error, already
       // carried by isError; any other exit code cannot produce this shape.
       return new ToolCallResult({

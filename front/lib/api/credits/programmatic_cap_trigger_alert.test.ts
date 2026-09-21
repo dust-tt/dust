@@ -79,8 +79,8 @@ async function setup({
   executionMode?: TriggerExecutionMode;
 } = {}): Promise<{
   auth: Authenticator;
-  adminSId: string;
-  workspaceSId: string;
+  adminId: string;
+  workspaceId: string;
   trigger: TriggerType;
 }> {
   const { authenticator, user, workspace } = await createResourceTest({
@@ -98,8 +98,8 @@ async function setup({
 
   return {
     auth: authenticator,
-    adminSId: user.sId,
-    workspaceSId: workspace.sId,
+    adminId: user.sId,
+    workspaceId: workspace.sId,
     trigger: { ...triggerResource.toJSON(), status },
   };
 }
@@ -109,7 +109,7 @@ const notify = () =>
 
 describe("notifyAdminsTriggerBlockedByProgrammaticCap", () => {
   it("sends one admin notification when the cap is 0", async () => {
-    const { auth, adminSId, workspaceSId, trigger } = await setup();
+    const { auth, adminId, workspaceId, trigger } = await setup();
 
     const res = await notifyAdminsTriggerBlockedByProgrammaticCap(auth, {
       trigger,
@@ -118,12 +118,12 @@ describe("notifyAdminsTriggerBlockedByProgrammaticCap", () => {
     expect(res.isOk()).toBe(true);
     expect(notify()).toHaveBeenCalledTimes(1);
     const [calledAuth, args] = notify().mock.calls[0];
-    expect(calledAuth.getNonNullableWorkspace().sId).toBe(workspaceSId);
+    expect(calledAuth.getNonNullableWorkspace().sId).toBe(workspaceId);
     expect(args).toEqual(
       expect.objectContaining({
         monthlyCapCredits: 0,
         reason: "programmatic_cap_disabled",
-        admins: [expect.objectContaining({ sId: adminSId })],
+        admins: [expect.objectContaining({ sId: adminId })],
       })
     );
   });

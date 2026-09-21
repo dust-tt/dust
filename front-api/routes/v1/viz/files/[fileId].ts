@@ -136,6 +136,7 @@ app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
     requestedRef: fileId,
     owner,
     frameContent,
+    packageRoot: null,
   });
   if (authorizationMode === "denied") {
     return apiError(ctx, {

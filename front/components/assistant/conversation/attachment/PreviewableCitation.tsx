@@ -35,7 +35,8 @@ interface PreviewableCitationProps {
   thumbnailUrl?: string;
   title: string;
   tooltipLabel?: React.ReactNode;
-  variant?: "card" | "inline";
+  // `chip` is the composer attachment row; `inline` is a text-level reference.
+  variant?: "card" | "chip" | "inline";
 }
 
 export function PreviewableCitation({
@@ -143,6 +144,7 @@ export function PreviewableCitation({
     title,
     description,
     size,
+    variant,
     isLoading,
     loadingLabel,
     onRemove,

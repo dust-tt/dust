@@ -1,3 +1,4 @@
+// @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
 import { QueryTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";

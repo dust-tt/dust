@@ -108,15 +108,15 @@ app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
   );
 
   const serializedBase = todos.map((t) => t.toJSON());
-  const conversationSIds = [
+  const conversationIds = [
     ...new Set(
       serializedBase
         .map((s) => s.conversationId)
         .filter((id): id is string => id !== null)
     ),
   ];
-  const listItemByConversationSId =
-    await ConversationResource.fetchListItemsBySIds(auth, conversationSIds);
+  const listItemByConversationId =
+    await ConversationResource.fetchListItemsBySIds(auth, conversationIds);
 
   // TODO: enrich todos with creator/done-by user info when supporting multiple users.
   const todosWithSources: PodTaskType[] = serializedBase.map(
@@ -127,7 +127,7 @@ app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
       let conversationSidebarStatus: ConversationDotStatus | null = null;
       let conversationIsRunningAgentLoop: boolean = false;
       if (conversationId) {
-        const listItem = listItemByConversationSId.get(conversationId);
+        const listItem = listItemByConversationId.get(conversationId);
         conversationSidebarStatus = listItem
           ? getConversationDotStatus(listItem)
           : "idle";

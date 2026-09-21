@@ -3,6 +3,7 @@ import {
   isAllowlistShareScopeStale,
   isAllowlistStale,
   isAuthorizedFileRef,
+  resolveAllowlistedCanonicalPath,
 } from "@app/lib/api/viz/authorized_file_access_policy";
 import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
 import { Authenticator } from "@app/lib/auth";
@@ -20,6 +21,7 @@ import { getAuthorizedFileRefLabel } from "@app/types/files";
 import { legacyScopedPathsMatch } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Readable } from "stream";
 
@@ -247,11 +249,13 @@ export async function assertVizFileAuthorized({
   requestedRef,
   owner,
   frameContent,
+  packageRoot = null,
 }: {
   authorizedFileAccess: AuthorizedFileAccessAllowlist | null;
   requestedRef: string;
   owner: LightWorkspaceType;
   frameContent: string;
+  packageRoot?: string | null;
 }): Promise<VizFileAuthorizationMode> {
   if (!authorizedFileAccess || authorizedFileAccess.refs.length === 0) {
     return "denied";
@@ -268,7 +272,8 @@ export async function assertVizFileAuthorized({
   const hasAccess = await reverifyAuthorAccess(
     authorizedFileAccess,
     requestedRef,
-    owner
+    owner,
+    { packageRoot }
   );
   return hasAccess ? "authorized" : "denied";
 }
@@ -276,7 +281,8 @@ export async function assertVizFileAuthorized({
 export async function reverifyAuthorAccess(
   authorizedFileAccess: AuthorizedFileAccessAllowlist,
   requestedRef: string,
-  workspace: LightWorkspaceType
+  workspace: LightWorkspaceType,
+  { packageRoot }: { packageRoot: string | null } = { packageRoot: null }
 ): Promise<boolean> {
   if (!isAuthorizedFileRef(authorizedFileAccess, requestedRef)) {
     return false;
@@ -297,13 +303,18 @@ export async function reverifyAuthorAccess(
   );
 
   const matchingRef = authorizedFileAccess.refs.find((r) => {
-    if (r.kind === "file_id") {
-      return r.ref === requestedRef;
+    switch (r.kind) {
+      case "file_id":
+      case "frame_relative_path":
+        return r.ref === requestedRef;
+      case "canonical_path":
+        return (
+          r.ref === requestedRef ||
+          legacyScopedPathsMatch(r.legacyPath, requestedRef)
+        );
+      default:
+        return assertNever(r);
     }
-    return (
-      r.ref === requestedRef ||
-      legacyScopedPathsMatch(r.legacyPath, requestedRef)
-    );
   });
 
   if (!matchingRef) {
@@ -315,11 +326,21 @@ export async function reverifyAuthorAccess(
     return file !== null;
   }
 
-  const fsResult = await DustFileSystem.fromScopedPath(auth, matchingRef.ref);
+  const canonicalPath =
+    matchingRef.kind === "frame_relative_path"
+      ? resolveAllowlistedCanonicalPath(authorizedFileAccess, requestedRef, {
+          packageRoot,
+        })
+      : matchingRef.ref;
+  if (!canonicalPath) {
+    return false;
+  }
+
+  const fsResult = await DustFileSystem.fromScopedPath(auth, canonicalPath);
   if (fsResult.isErr()) {
     return false;
   }
 
-  const statResult = await fsResult.value.stat(matchingRef.ref);
+  const statResult = await fsResult.value.stat(canonicalPath);
   return statResult.isOk() && statResult.value !== null;
 }

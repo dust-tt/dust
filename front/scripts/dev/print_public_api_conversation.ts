@@ -3,7 +3,7 @@
  * GET /v1/w/:wId/spaces/:spaceId/conversations (after backward-compat mapping).
  *
  * From repo root / front directory:
- *   cd front && npx tsx scripts/dev/print_public_api_conversation.ts --wId <workspaceSId> --cId <conversationSId>
+ *   cd front && npx tsx scripts/dev/print_public_api_conversation.ts --wId <workspaceId> --cId <conversationId>
  *
  * Or paste the imports + an async main() into a scratch file (set wId / cId).
  * Do not use top-level await — tsx often emits CJS, which does not support it.
@@ -24,7 +24,7 @@ async function main() {
 
   if (!wId || !cId) {
     console.error(
-      "Usage: npx tsx scripts/dev/print_public_api_conversation.ts --wId <workspaceSId> --cId <conversationSId> [--includeDeleted false]"
+      "Usage: npx tsx scripts/dev/print_public_api_conversation.ts --wId <workspaceId> --cId <conversationId> [--includeDeleted false]"
     );
     process.exit(1);
   }

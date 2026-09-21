@@ -36,6 +36,8 @@ import type {
   NavigationHistoryEntryType,
   NodeSelectionState,
 } from "@app/components/data_source_view/context/types";
+import type { NavigationHistoryState } from "@app/components/data_source_view/context/useNavigationHistory";
+import { useNavigationHistory } from "@app/components/data_source_view/context/useNavigationHistory";
 import {
   addNodeToTree,
   computeNavigationPath,
@@ -45,32 +47,10 @@ import {
   pathToString,
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
-import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
-import type {
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  TagsFilter,
-  TagsFilterMode,
-} from "@app/types/data_source_view";
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { EnrichedSpaceType } from "@app/types/space";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useReducer,
-} from "react";
+import type { TagsFilter, TagsFilterMode } from "@app/types/data_source_view";
+import { createContext, useCallback, useContext, useMemo } from "react";
 
-type StateType = {
-  /**
-   * Shape is `[root, space, category, ...node]`
-   * so in this case we can use index to update specific values
-   */
-  navigationHistory: NavigationHistoryEntryType[];
-};
-
-type DataSourceBuilderState = StateType & {
+type DataSourceBuilderState = NavigationHistoryState & {
   /**
    * Select a specific row.
    * Total path is deduced from the current navigationHistory state.
@@ -114,31 +94,6 @@ type DataSourceBuilderState = StateType & {
   isCurrentNavigationEntrySelected: () => NodeSelectionState;
 
   /**
-   * Add the current selected space
-   */
-  setSpaceEntry: (space: EnrichedSpaceType) => void;
-
-  /**
-   * Set the current selected category in the navigation
-   */
-  setCategoryEntry: (category: DataSourceViewCategoryWithoutApps) => void;
-
-  /**
-   * Set the current selected dataSourceView in the navigation
-   */
-  setDataSourceViewEntry: (dataSourceView: DataSourceViewType) => void;
-
-  /**
-   * Add a new node to the navigation
-   */
-  addNodeEntry: (node: DataSourceViewContentNode) => void;
-
-  /**
-   * Navigate to a specific node
-   */
-  navigateTo: (index: number) => void;
-
-  /**
    * Update the `tagsFilter` of the given `sources` index
    */
   updateSourcesTags: (index: number, tagsFilter: TagsFilter) => void;
@@ -146,87 +101,9 @@ type DataSourceBuilderState = StateType & {
   toggleInConversationFiltering: (mode: TagsFilterMode) => void;
 };
 
-type ActionType =
-  | {
-      type: "NAVIGATION_SET_SPACE";
-      payload: { space: EnrichedSpaceType };
-    }
-  | {
-      type: "NAVIGATION_SET_CATEGORY";
-      payload: { category: DataSourceViewCategoryWithoutApps };
-    }
-  | {
-      type: "NAVIGATION_ADD_NODE";
-      payload: { node: DataSourceViewContentNode };
-    }
-  | {
-      type: "NAVIGATION_SET_DATA_SOURCE";
-      payload: { dataSourceView: DataSourceViewType };
-    }
-  | {
-      type: "NAVIGATION_NAVIGATE_TO";
-      payload: { index: number };
-    };
-
 const DataSourceBuilderContext = createContext<
   DataSourceBuilderState | undefined
 >(undefined);
-
-function dataSourceBuilderReducer(
-  state: StateType,
-  { type, payload }: ActionType
-): StateType {
-  switch (type) {
-    case "NAVIGATION_SET_SPACE": {
-      return {
-        ...state,
-        navigationHistory: [
-          ...state.navigationHistory.slice(0, 1),
-          { type: "space", space: payload.space },
-        ],
-      };
-    }
-    case "NAVIGATION_SET_CATEGORY": {
-      return {
-        ...state,
-        navigationHistory: [
-          ...state.navigationHistory.slice(0, 2),
-          { type: "category", category: payload.category },
-        ],
-      };
-    }
-    case "NAVIGATION_ADD_NODE": {
-      return {
-        ...state,
-        navigationHistory: [
-          ...state.navigationHistory,
-          { type: "node", node: payload.node, tagsFilter: null },
-        ],
-      };
-    }
-    case "NAVIGATION_NAVIGATE_TO": {
-      return {
-        ...state,
-        navigationHistory: state.navigationHistory.slice(0, payload.index + 1),
-      };
-    }
-    case "NAVIGATION_SET_DATA_SOURCE": {
-      return {
-        ...state,
-        navigationHistory: [
-          ...state.navigationHistory.slice(0, 3),
-          {
-            type: "data_source",
-            dataSourceView: payload.dataSourceView,
-            tagsFilter: null,
-          },
-        ],
-      };
-    }
-    default:
-      assertNever(type);
-  }
-}
 
 export function DataSourceBuilderProvider({
   children,
@@ -234,13 +111,12 @@ export function DataSourceBuilderProvider({
   children: React.ReactNode;
 }) {
   const { field } = useSourcesFormController();
-  const [state, dispatch] = useReducer(dataSourceBuilderReducer, {
-    navigationHistory: [{ type: "root" }],
-  });
+  const navigation = useNavigationHistory();
+  const { navigationHistory } = navigation;
 
   const selectNode: DataSourceBuilderState["selectNode"] = useCallback(
     (entry) => {
-      const nodePath = computeNavigationPath(state.navigationHistory);
+      const nodePath = computeNavigationPath(navigationHistory);
       nodePath.push(getLastNavigationHistoryEntryId(entry));
 
       field.onChange(
@@ -251,14 +127,13 @@ export function DataSourceBuilderProvider({
         })
       );
     },
-    [field, state.navigationHistory]
+    [field, navigationHistory]
   );
 
   const selectCurrentNavigationEntry: DataSourceBuilderState["selectCurrentNavigationEntry"] =
     useCallback(() => {
-      const lastEntry =
-        state.navigationHistory[state.navigationHistory.length - 1];
-      const nodePath = computeNavigationPath(state.navigationHistory);
+      const lastEntry = navigationHistory[navigationHistory.length - 1];
+      const nodePath = computeNavigationPath(navigationHistory);
 
       field.onChange(
         addNodeToTree(field.value, {
@@ -267,11 +142,11 @@ export function DataSourceBuilderProvider({
           ...lastEntry,
         })
       );
-    }, [field, state.navigationHistory]);
+    }, [field, navigationHistory]);
 
   const removeNode: DataSourceBuilderState["removeNode"] = useCallback(
     (entry) => {
-      const nodePath = computeNavigationPath(state.navigationHistory);
+      const nodePath = computeNavigationPath(navigationHistory);
       nodePath.push(getLastNavigationHistoryEntryId(entry));
 
       field.onChange(
@@ -282,7 +157,7 @@ export function DataSourceBuilderProvider({
         })
       );
     },
-    [field, state.navigationHistory]
+    [field, navigationHistory]
   );
 
   const removeNodeWithPath: DataSourceBuilderState["removeNodeWithPath"] =
@@ -295,9 +170,8 @@ export function DataSourceBuilderProvider({
 
   const removeCurrentNavigationEntry: DataSourceBuilderState["removeCurrentNavigationEntry"] =
     useCallback(() => {
-      const nodePath = computeNavigationPath(state.navigationHistory);
-      const lastEntry =
-        state.navigationHistory[state.navigationHistory.length - 1];
+      const nodePath = computeNavigationPath(navigationHistory);
+      const lastEntry = navigationHistory[navigationHistory.length - 1];
 
       field.onChange(
         removeNodeFromTree(field.value, {
@@ -306,57 +180,21 @@ export function DataSourceBuilderProvider({
           ...lastEntry,
         })
       );
-    }, [field, state.navigationHistory]);
+    }, [field, navigationHistory]);
 
   const isRowSelected: DataSourceBuilderState["isRowSelected"] = useCallback(
     (rowId) => {
-      const nodePath = computeNavigationPath(state.navigationHistory).concat(
-        rowId
-      );
+      const nodePath = computeNavigationPath(navigationHistory).concat(rowId);
       return isNodeSelected(field.value, nodePath);
     },
-    [field.value, state.navigationHistory]
+    [field.value, navigationHistory]
   );
 
   const isCurrentNavigationEntrySelected: DataSourceBuilderState["isCurrentNavigationEntrySelected"] =
     useCallback(() => {
-      const nodePath = computeNavigationPath(state.navigationHistory);
+      const nodePath = computeNavigationPath(navigationHistory);
       return isNodeSelected(field.value, nodePath);
-    }, [field.value, state.navigationHistory]);
-
-  const setSpaceEntry: DataSourceBuilderState["setSpaceEntry"] = useCallback(
-    (space) => {
-      dispatch({ type: "NAVIGATION_SET_SPACE", payload: { space } });
-    },
-    []
-  );
-
-  const setCategoryEntry: DataSourceBuilderState["setCategoryEntry"] =
-    useCallback((category) => {
-      dispatch({ type: "NAVIGATION_SET_CATEGORY", payload: { category } });
-    }, []);
-
-  const setDataSourceViewEntry: DataSourceBuilderState["setDataSourceViewEntry"] =
-    useCallback((dataSourceView) => {
-      dispatch({
-        type: "NAVIGATION_SET_DATA_SOURCE",
-        payload: { dataSourceView },
-      });
-    }, []);
-
-  const addNodeEntry: DataSourceBuilderState["addNodeEntry"] = useCallback(
-    (node) => {
-      dispatch({ type: "NAVIGATION_ADD_NODE", payload: { node } });
-    },
-    []
-  );
-
-  const navigateTo: DataSourceBuilderState["navigateTo"] = useCallback(
-    (index) => {
-      dispatch({ type: "NAVIGATION_NAVIGATE_TO", payload: { index } });
-    },
-    []
-  );
+    }, [field.value, navigationHistory]);
 
   const updateSourcesTags: DataSourceBuilderState["updateSourcesTags"] =
     useCallback(
@@ -411,7 +249,7 @@ export function DataSourceBuilderProvider({
 
   const value = useMemo(
     () => ({
-      ...state,
+      ...navigation,
       selectNode,
       selectCurrentNavigationEntry,
       removeNode,
@@ -419,28 +257,18 @@ export function DataSourceBuilderProvider({
       removeCurrentNavigationEntry,
       isRowSelected,
       isCurrentNavigationEntrySelected,
-      setSpaceEntry,
-      setCategoryEntry,
-      setDataSourceViewEntry,
-      addNodeEntry,
-      navigateTo,
       updateSourcesTags,
       toggleInConversationFiltering,
     }),
     [
-      state,
-      addNodeEntry,
+      navigation,
       isCurrentNavigationEntrySelected,
       isRowSelected,
-      navigateTo,
       removeCurrentNavigationEntry,
       removeNode,
       removeNodeWithPath,
       selectCurrentNavigationEntry,
       selectNode,
-      setCategoryEntry,
-      setSpaceEntry,
-      setDataSourceViewEntry,
       updateSourcesTags,
       toggleInConversationFiltering,
     ]

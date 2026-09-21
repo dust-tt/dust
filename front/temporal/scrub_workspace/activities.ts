@@ -45,6 +45,7 @@ import logger from "@app/logger/logger";
 import { MAX_WORKSPACES_TO_DOWNGRADE_PER_RUN } from "@app/temporal/scrub_workspace/config";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import chunk from "lodash/chunk";
@@ -140,7 +141,10 @@ export async function scrubWorkspaceData({
   await deleteKeys(auth);
   await archiveAssistants(auth);
   await deleteAgentMemories(auth);
-  await deleteSkills(auth);
+  const deleteSkillsResult = await deleteSkills(auth);
+  if (deleteSkillsResult.isErr()) {
+    throw deleteSkillsResult.error;
+  }
   await deleteOnboardingTasks(auth);
   await deleteMembershipUpgradeRequests(auth);
   await deleteTags(auth);
@@ -293,8 +297,10 @@ async function deleteAgentMemories(auth: Authenticator) {
   await AgentMemoryResource.deleteAllForWorkspace(auth);
 }
 
-async function deleteSkills(auth: Authenticator) {
-  await SkillResource.deleteAllForWorkspace(auth);
+async function deleteSkills(
+  auth: Authenticator
+): Promise<Result<undefined, Error>> {
+  return SkillResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteOnboardingTasks(auth: Authenticator) {

@@ -5,6 +5,7 @@ import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_acti
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { _getAnalystGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/analyst";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SKILL_COMPANY_DATA_SERVER_NAME } from "@app/lib/resources/skill/code_defined/shared";
@@ -64,7 +65,10 @@ describe("resolveSkillMCPServers", () => {
       throw new Error("Expected Discover Knowledge skill.");
     }
     await SkillResource.addManyToAgent(authenticator, {
-      agentConfiguration,
+      agentResource: AgentResource.fromAgentConfiguration(
+        authenticator,
+        agentConfiguration
+      ),
       skills: [discoverKnowledge],
     });
 
@@ -242,7 +246,10 @@ describe("resolveSkillMCPServers", () => {
     }
 
     await SkillResource.addManyToAgent(authenticator, {
-      agentConfiguration,
+      agentResource: AgentResource.fromAgentConfiguration(
+        authenticator,
+        agentConfiguration
+      ),
       skills: [discoverKnowledge, goDeep],
     });
     await goDeep.enableForAgent(authenticator, {

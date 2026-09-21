@@ -1,0 +1,12 @@
+{
+  "action": "skill.availability_updated",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "skill" }
+  ],
+  "metadata": {
+    "skill_name": "string",
+    "previous_availability": "string",
+    "new_availability": "string"
+  }
+}

@@ -4,7 +4,7 @@
  *
  * Run with:
  *   npx tsx scripts/update_membership_seat_type.ts \
- *     --wId <workspaceSId> --userId <userSId> --seatType <free|workspace|pro|max> \
+ *     --wId <workspaceId> --userId <userId> --seatType <free|workspace|pro|max> \
  *     [--execute]
  */
 

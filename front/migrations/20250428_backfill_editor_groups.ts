@@ -1,3 +1,4 @@
+// @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
 import assert from "assert";
 import _ from "lodash";
 import type { Logger } from "@app/logger/logger";

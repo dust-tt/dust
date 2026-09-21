@@ -372,7 +372,7 @@ const MAX_MARKDOWN_LENGTH = 10_000; // 10 KB
 
 async function parseMentionsOnBackend(
   text: string,
-  ownerSId: string
+  ownerId: string
 ): Promise<string> {
   // Prevent sending very large markdown payloads to the server which may
   // iterate over all workspace members and cause high CPU usage. If the text
@@ -386,7 +386,7 @@ async function parseMentionsOnBackend(
   }
 
   const response = await clientFetch(
-    `/api/w/${ownerSId}/assistant/mentions/parse`,
+    `/api/w/${ownerId}/assistant/mentions/parse`,
     {
       method: "POST",
       headers: {

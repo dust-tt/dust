@@ -119,7 +119,7 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
   it.each([
     [GLOBAL_AGENTS_SID.SIDEKICK, null],
     ["agent_test", "model_tier_not_enabled"],
-  ] as const)("tier-checks the Standard stream for %s against a Basic-capped member", async (agentSId, expectedCode) => {
+  ] as const)("tier-checks the Standard stream for %s against a Basic-capped member", async (agentId, expectedCode) => {
     const auth = await restrictedUserAuth({ tierName: "cost_efficient" });
     // The model the Standard stream resolves to for an uncapped member.
     const streamModel = getModelConfigByModelId(
@@ -130,8 +130,8 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
     }
 
     const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
-      agentSId,
-      agentName: agentSId,
+      agentId,
+      agentName: agentId,
       model: streamModel,
       modelResolutionMethod: AUTO_MODEL_ID,
     });

@@ -1,6 +1,7 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { makeSId } from "@app/lib/resources/string_ids";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -108,6 +109,77 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
 
     // Should include space IDs from both spaces
     expect(result.requestedSpaceIds).toHaveLength(2);
+  });
+
+  it("adds the Pod space of a dustProject configuration", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(workspace);
+
+    const result = await getAgentConfigurationRequirementsFromCapabilities(
+      authenticator,
+      {
+        actions: [
+          {
+            type: "mcp_server_configuration",
+            name: "Pod action",
+            description: null,
+            dataSources: null,
+            tables: null,
+            childAgentId: null,
+            timeFrame: null,
+            jsonSchema: null,
+            additionalConfiguration: {},
+            mcpServerViewId: "server1",
+            dustAppConfiguration: null,
+            secretName: null,
+            dustProject: { projectId: pod.sId, workspaceId: workspace.sId },
+          },
+        ],
+        skills: [],
+      }
+    );
+
+    expect(result.requestedSpaceIds).toEqual([pod.id]);
+  });
+
+  it("ignores a Pod id that aliases a space through another prefix", async () => {
+    const { authenticator, workspace, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
+
+    const result = await getAgentConfigurationRequirementsFromCapabilities(
+      authenticator,
+      {
+        actions: [
+          {
+            type: "mcp_server_configuration",
+            name: "Pod action",
+            description: null,
+            dataSources: null,
+            tables: null,
+            childAgentId: null,
+            timeFrame: null,
+            jsonSchema: null,
+            additionalConfiguration: {},
+            mcpServerViewId: "server1",
+            dustAppConfiguration: null,
+            secretName: null,
+            dustProject: {
+              projectId: makeSId("data_source_view", {
+                id: globalSpace.id,
+                workspaceId: workspace.id,
+              }),
+              workspaceId: workspace.sId,
+            },
+          },
+        ],
+        skills: [],
+      }
+    );
+
+    expect(result.requestedSpaceIds).toEqual([]);
   });
 
   it("should handle actions with MCP server views from different spaces", async () => {

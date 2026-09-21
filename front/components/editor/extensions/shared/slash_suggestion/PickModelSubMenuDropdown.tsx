@@ -107,6 +107,7 @@ export const PickModelSubMenuDropdown = forwardRef<
         isLoading={isModelsLoading}
         loadingMessage="Loading models…"
         items={items}
+        onClose={onClose}
         subMenuNavigation={{
           label: activeFrame.command.label,
           onBack,

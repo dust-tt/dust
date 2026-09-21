@@ -96,12 +96,18 @@ import {
   getRetryPolicyFromToolConfiguration,
 } from "@app/lib/api/mcp";
 import { invalidateOAuthConnectionAccessTokenCache } from "@app/lib/api/oauth_access_token";
+import {
+  recordMcpCallMs,
+  recordMcpConnectMs,
+  roundMs,
+} from "@app/lib/api/sandbox_functions/sandbox_function_mcp_action_server_timings";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { heartbeat } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
@@ -125,7 +131,7 @@ import {
   CallToolResultSchema,
   ProgressNotificationSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { Context, heartbeat } from "@temporalio/activity";
+import { Context } from "@temporalio/activity";
 import assert from "assert";
 import tracer from "dd-trace";
 import EventEmitter from "events";
@@ -423,11 +429,20 @@ export async function* tryCallMCPTool(
   let mcpClient;
   try {
     if (isServerSideMCPToolConfiguration(toolConfiguration)) {
+      const connectStarted = performance.now();
       const connResult = await connectServerSideMCP(
         auth,
         toolConfiguration,
         toolContext
       );
+      const connectMs = roundMs(connectStarted);
+      if (isSandboxFunctionRunContext(toolContext.runContext)) {
+        recordMcpConnectMs(connectMs);
+        logger.info(
+          { ...toolLogContext, connectMs },
+          "MCP connect phase timing"
+        );
+      }
       if (connResult.isErr()) {
         switch (connResult.error.type) {
           case "not_found":
@@ -547,6 +562,7 @@ export async function* tryCallMCPTool(
     // Alias needed: `mcpClient` is declared with `let`, so TypeScript won't
     // narrow it as non-null inside the async closure passed to tracer.trace().
     const client = mcpClient;
+    const callStarted = performance.now();
 
     // Start the tool call in parallel.
     const toolPromise = tracer.trace(
@@ -634,6 +650,11 @@ export async function* tryCallMCPTool(
     try {
       logger.info(toolLogContext, "Awaiting MCP tool promise");
       toolCallResult = await toolPromise;
+      const callMs = roundMs(callStarted);
+      if (isSandboxFunctionRunContext(toolContext.runContext)) {
+        recordMcpCallMs(callMs);
+        logger.info({ ...toolLogContext, callMs }, "MCP call phase timing");
+      }
       logger.info(toolLogContext, "MCP tool promise resolved");
     } catch (toolError) {
       if (abortSignal?.aborted) {
@@ -663,12 +684,17 @@ export async function* tryCallMCPTool(
     if (isInterruptError) {
       const retryPolicy =
         getRetryPolicyFromToolConfiguration(toolConfiguration);
-      const info = Context.current().info;
+      let attempt = 1;
+      try {
+        attempt = Context.current().info.attempt;
+      } catch {
+        // Outside a Temporal activity (e.g. inline sandbox-function tool runs).
+      }
 
       if (
         shouldRetryToolInterruption({
           isInterruption: isInterruptError,
-          attempt: info.attempt,
+          attempt,
           retryPolicy,
         })
       ) {

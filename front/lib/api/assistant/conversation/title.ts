@@ -62,10 +62,21 @@ export async function updateConversationTitle(
   return new Ok(undefined);
 }
 
+/**
+ * @cc [owner:achilleburah,label:product] skip-analytics-panel-bootstrap-message
+ * An agent loop whose `userMessageOrigin` is `analytics_panel` MUST NOT set a title. That origin
+ * only ever carries the analytics panel's hidden opening prompt, so titling on it would name the
+ * conversation after the panel rather than after the user's first question. Follow-up messages
+ * typed in the panel carry the `web` origin and title normally.
+ */
 export async function ensureConversationTitleFromAgentLoop(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<string | null> {
+  if (agentLoopArgs.userMessageOrigin === "analytics_panel") {
+    return null;
+  }
+
   const runAgentDataRes = await getAgentLoopRuntimeData(
     authType,
     agentLoopArgs
