@@ -3,6 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentModelChangeArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
@@ -146,9 +147,7 @@ export async function suggestAgentModelChangeHandler(
   return new Ok([
     {
       type: "text" as const,
-      text:
-        `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind} ` +
-        `agentId=${suggestion._agentConfigurationId}}`,
+      text: formatAgentSuggestionDirective(suggestion),
     },
   ]);
 }

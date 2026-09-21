@@ -142,7 +142,11 @@ export function getSidekickSuggestionPlugin() {
   return SidekickSuggestionPlugin;
 }
 
-const CONVERSATION_AGENT_SUGGESTION_KINDS = ["create", "delete"] as const;
+const CONVERSATION_AGENT_SUGGESTION_KINDS = [
+  "create",
+  "delete",
+  "model",
+] as const;
 
 type ConversationAgentSuggestionKind =
   (typeof CONVERSATION_AGENT_SUGGESTION_KINDS)[number];
@@ -184,7 +188,7 @@ function ConversationAgentSuggestion({
   const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
     agentConfigurationId: agentId,
-    disabled: kind !== "delete",
+    disabled: kind === "create",
   });
 
   if (isSuggestionsLoading) {
