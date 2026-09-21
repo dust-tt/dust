@@ -341,6 +341,17 @@ async function processTriggers({
   return new Ok(undefined);
 }
 
+// The saved configuration returned to the caller, plus out-of-band markers about the save that are
+// not part of the configuration itself: `_warning` for a partial success (Slack linking still
+// running) and `_versionCreated` (false when the save was a no-op — nothing changed).
+export type SubmittedAgentConfiguration = (
+  | LightAgentConfigurationType
+  | AgentConfigurationType
+) & {
+  _warning?: "slack_channel_linking_in_progress";
+  _versionCreated?: boolean;
+};
+
 export async function submitAgentBuilderForm({
   user,
   formData,
@@ -357,9 +368,7 @@ export async function submitAgentBuilderForm({
   isDraft?: boolean;
   areSlackChannelsChanged?: boolean;
   fetcherWithBody: FetcherWithBodyFn;
-}): Promise<
-  Result<LightAgentConfigurationType | AgentConfigurationType, Error>
-> {
+}): Promise<Result<SubmittedAgentConfiguration, Error>> {
   const allDefaultAvatars = [...DROID_AVATAR_URLS];
   const getRandomDefaultAvatar = () =>
     allDefaultAvatars[Math.floor(Math.random() * allDefaultAvatars.length)];
@@ -511,9 +520,15 @@ export async function submitAgentBuilderForm({
 
     const result: {
       agentConfiguration: LightAgentConfigurationType | AgentConfigurationType;
+      versionCreated?: boolean;
     } = await response.json();
 
-    const agentConfiguration = result.agentConfiguration;
+    // A create always yields a new version; only the PATCH (update) endpoint reports no-op saves.
+    const versionCreated = result.versionCreated ?? true;
+    const agentConfiguration: SubmittedAgentConfiguration = {
+      ...result.agentConfiguration,
+      _versionCreated: versionCreated,
+    };
 
     // Track agent creation (only for new agents, not updates)
     if (!agentConfigurationId && !isDraft) {
