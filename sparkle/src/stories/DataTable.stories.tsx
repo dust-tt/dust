@@ -982,6 +982,33 @@ export const WithAvatarStack = () => {
   );
 };
 
+const densityColumns: ColumnDef<Data>[] = columns.filter(
+  (column) => column.id !== "actions"
+);
+
+/**
+ * The same table at the three row densities. `default` is the historical
+ * 48px row; `compact` tightens admin lists to 40px and `relaxed` opens rows to
+ * 64px with 32px avatars. The height also drives `DataTableSkeleton`.
+ * @summary Compact, default and relaxed row heights side by side.
+ */
+export const Densities = () => {
+  return (
+    <div className="flex flex-col gap-8">
+      {(["compact", "default", "relaxed"] as const).map((density) => (
+        <div key={density} className="flex flex-col gap-2">
+          <div className="heading-sm capitalize">{density}</div>
+          <DataTable
+            data={data.slice(0, 4)}
+            columns={densityColumns}
+            density={density}
+          />
+        </div>
+      ))}
+    </div>
+  );
+};
+
 interface UsageRow {
   agent: string;
   runs: number;
