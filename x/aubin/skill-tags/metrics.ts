@@ -76,12 +76,10 @@ const PREFIX_FUNCTIONS: Record<string, string[]> = {
   utils: ["general"],
 };
 
-// Name patterns that group skills a human would call the same kind of skill.
+// Name patterns that group skills a human would call the same kind of skill. Patterns must not
+// name people or customers; this file is public.
 const NAME_FAMILIES: { id: string; pattern: RegExp }[] = [
-  { id: "brand-image", pattern: /brand[ _]?image|branded|paddlebrand/i },
-  { id: "frank-os", pattern: /^frank os/i },
-  { id: "ek-personal", pattern: /^ek\b|^elia/i },
-  { id: "tv-personal", pattern: /^tv\b/i },
+  { id: "brand-image", pattern: /brand[ _]?image|branded/i },
   { id: "business-case", pattern: /^business case/i },
   { id: "vp-of-sales", pattern: /^vp of sales/i },
   { id: "hiring", pattern: /^hiring/i },

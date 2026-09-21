@@ -148,7 +148,7 @@ tag-conjunction buckets of at least 3 skills.
 
 **Known groups**: bracketed team labels map to expected `function` tags (`[GTM]` → sales or
 customer-success, `[Talent]` → people-talent, ...) and give an accuracy on labeled skills. Name
-families defined by regular expressions (brand-image skills, `Frank OS —`, `VP of Sales`,
+families defined by regular expressions (brand-image skills, `Hiring …`, `VP of Sales`,
 `Query … API`, ...) report within-family mean tag similarity against the global mean, the modal
 tag and its purity for `function`, `task`, `subject`, and the family's mean embedding cosine.
 
@@ -200,8 +200,7 @@ beats the IDF-weighted cosine on every reference metric.
 **Known groups.** With team labels hidden, the predicted function matches the label for 89.5%
 of the 181 labeled skills; misses concentrate in `[Utils]` and `[Design]`. Brand-image skills
 have a within-family tag similarity of 0.77 (global 0.10) with 95–100% purity on
-function/task/subject; personal families (`Frank OS`, `EK`, `TV`) are pure on audience but
-spread across tasks, as intended.
+function/task/subject.
 
 **Stability.** On 40 re-tagged skills the primary tag matches in 95–100% of cases per facet and
 the full weighted tag set is identical for 52%; disagreement is in secondary `subject` and `task`
