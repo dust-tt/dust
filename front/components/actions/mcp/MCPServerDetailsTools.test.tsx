@@ -292,16 +292,26 @@ describe("MCPServerDetailsTools", () => {
     ).toBeNull();
   });
 
-  it("disables the stake dropdown for a tool that is switched off", async () => {
+  it("recedes the row and drops the stake line for a tool that is switched off", async () => {
     renderTools();
 
     const row = getRows()[0];
-    expect(getStakeTrigger(row)).not.toBeDisabled();
+    expect(getStakeTrigger(row)).toBeInTheDocument();
+    expect(row).not.toHaveClass("bg-app-background");
+    expect(within(row).getByText(asDisplayName(WEATHER_TOOL))).not.toHaveClass(
+      "text-muted-foreground"
+    );
 
     await act(async () => {
       fireEvent.click(within(row).getByTestId("enable-toggle"));
     });
 
-    expect(getStakeTrigger(getRows()[0])).toBeDisabled();
+    const disabledRow = getRows()[0];
+    expect(within(disabledRow).queryByText("Stake")).toBeNull();
+    expect(within(disabledRow).queryByTestId("dropdown-trigger")).toBeNull();
+    expect(disabledRow).toHaveClass("bg-app-background");
+    expect(
+      within(disabledRow).getByText(asDisplayName(WEATHER_TOOL))
+    ).toHaveClass("text-muted-foreground");
   });
 });

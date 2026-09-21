@@ -299,7 +299,7 @@ interface ToolRowProps {
 
 /**
  * One operation: ticked to put it in the batch, switched off to take it away
- * from every agent. Turning it off leaves the stake visible but out of reach,
+ * from every agent. Switching it off recedes the row and drops the stake line,
  * since a disabled operation has nothing to ask about.
  */
 function ToolRow({
@@ -313,7 +313,9 @@ function ToolRow({
   const checkboxId = `select-tool-${encodeMCPToolNameForForm(tool.name)}`;
 
   return (
-    <ListItem className="flex-col gap-2">
+    <ListItem
+      className={cn("flex-col gap-2", !settings.enabled && "bg-app-background")}
+    >
       <div className="flex w-full items-center gap-2">
         {/* The label makes the name a hit target for the checkbox too. */}
         <Label
@@ -330,7 +332,12 @@ function ToolRow({
             }
             onCheckedChange={onSelectedChange}
           />
-          <span className="heading-base text-foreground">
+          <span
+            className={cn(
+              "heading-base",
+              settings.enabled ? "text-foreground" : "text-muted-foreground"
+            )}
+          >
             {asDisplayName(tool.name)}
           </span>
         </Label>
@@ -352,29 +359,30 @@ function ToolRow({
         />
       )}
 
-      <div className="flex w-full items-center justify-between gap-2 pl-6">
-        <Label isMuted>Stake</Label>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild disabled={!settings.enabled}>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={!settings.enabled}
-              label={MCP_TOOL_STAKE_LABELS[settings.permission]}
-              isSelect
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {stakeLevels.map((stakeLevel) => (
-              <DropdownMenuItem
-                key={stakeLevel}
-                label={MCP_TOOL_STAKE_LABELS[stakeLevel]}
-                onClick={() => onPatch({ permission: stakeLevel })}
+      {settings.enabled && (
+        <div className="flex w-full items-center justify-between gap-2 pl-6">
+          <Label isMuted>Stake</Label>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                label={MCP_TOOL_STAKE_LABELS[settings.permission]}
+                isSelect
               />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {stakeLevels.map((stakeLevel) => (
+                <DropdownMenuItem
+                  key={stakeLevel}
+                  label={MCP_TOOL_STAKE_LABELS[stakeLevel]}
+                  onClick={() => onPatch({ permission: stakeLevel })}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
     </ListItem>
   );
 }
