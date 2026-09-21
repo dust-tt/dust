@@ -74,9 +74,7 @@ app.patch(
       });
     }
 
-    // The rename moved the mount path, so re-read rather than serving the stale in-memory record.
-    const reloaded = await FileResource.fetchById(auth, frameId);
-    return ctx.json({ frame: (reloaded ?? frame).toJSON(auth) }, 200);
+    return ctx.json({ frame: renamed.value.frame.toJSON(auth) }, 200);
   }
 );
 

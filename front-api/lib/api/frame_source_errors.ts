@@ -2,17 +2,24 @@ import { isFramePublicationError } from "@app/lib/api/frames/publication_storage
 import type { PublishFrameFromSourceError } from "@app/lib/api/frames/publish_from_source";
 import type { RenameFrameV2Error } from "@app/lib/api/frames/rename_source";
 import { isPublishFrameError } from "@app/lib/api/viz/publish_frame";
+import type { DustFileSystemError } from "@app/types/file_system";
 import { isDustFileSystemError } from "@app/types/file_system";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+
+function dustFileSystemErrorStatus(
+  error: DustFileSystemError
+): 400 | 403 | 500 {
+  if (error.code === "unauthorized") {
+    return 403;
+  }
+  return error.code === "internal" ? 500 : 400;
+}
 
 export function frameSourceErrorStatus(
   error: PublishFrameFromSourceError
 ): 400 | 403 | 500 {
   if (isDustFileSystemError(error)) {
-    if (error.code === "unauthorized") {
-      return 403;
-    }
-    return error.code === "internal" ? 500 : 400;
+    return dustFileSystemErrorStatus(error);
   }
 
   if (isFramePublicationError(error)) {
@@ -50,10 +57,7 @@ export function frameRenameErrorStatus(
   error: RenameFrameV2Error
 ): 400 | 403 | 409 | 500 {
   if (isDustFileSystemError(error)) {
-    if (error.code === "unauthorized") {
-      return 403;
-    }
-    return error.code === "internal" ? 500 : 400;
+    return dustFileSystemErrorStatus(error);
   }
 
   const code = error.code;

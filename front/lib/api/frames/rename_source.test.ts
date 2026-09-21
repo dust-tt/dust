@@ -55,7 +55,7 @@ describe("renameFrameV2", () => {
     assert(renamed.isOk(), renamed.isErr() ? renamed.error.message : undefined);
     const reloaded = await FileResource.fetchById(c.auth, c.frame.sId);
     assert(reloaded);
-    expect(reloaded.useCaseMetadata?.frameName).toBe("Health");
+    // The Frame's name is its folder, so the moved path is the rename.
     expect(reloaded.toScopedPath(c.auth)).toBe(
       `conversation-${c.conversation.sId}/Health/${FRAME_MANIFEST_FILE}`
     );
@@ -74,8 +74,8 @@ describe("renameFrameV2", () => {
     });
 
     assert(renamed.isOk(), renamed.isErr() ? renamed.error.message : undefined);
-    expect(renamed.value.destinationDirectoryPath).toBe(
-      `conversation-${c.conversation.sId}/Health`
+    expect(renamed.value.frame.toScopedPath(c.auth)).toBe(
+      `conversation-${c.conversation.sId}/Health/${FRAME_MANIFEST_FILE}`
     );
   });
 

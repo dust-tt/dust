@@ -1,7 +1,8 @@
 import { DustFileSystem } from "@app/lib/api/file_system";
 import { emitGCSMountFileMovedAuditLog } from "@app/lib/api/files/gcs_mount/files";
+import type { FrameSourceMoveError } from "@app/lib/api/frames/move_source_paths";
 import {
-  FrameSourceMoveError,
+  moveError,
   resolveFrameSourceMovePaths,
 } from "@app/lib/api/frames/move_source_paths";
 import {
@@ -16,6 +17,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import logger from "@app/logger/logger";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -25,16 +27,52 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { UniqueConstraintError } from "sequelize";
 
-const moveError = (code: FrameSourceMoveError["code"], message: string) =>
-  new Err(new FrameSourceMoveError(code, message));
-
 export type MoveFrameV2SourceError = DustFileSystemError | FrameSourceMoveError;
 
 type FrameSourceMove = {
   destinationDirectoryPath: string;
-  frameId: string;
+  /** The Frame as of the move, already pointing at its new path. */
+  frame: FileResource;
   sourceDeletionFailed: boolean;
 };
+
+/**
+ * @cc [owner:davidebbo,label:product;backend] frame-move-repoints-pod-references
+ * A Pod addresses its pinned Frame and its Frame tabs by manifest path, so every path change to a
+ * registered Frame MUST repoint them. This belongs with the `updateMount` that changes the path,
+ * under the Frame's locks, so that it holds for every move rather than for one caller: a move that
+ * skipped it would leave the pin and tabs addressing a folder that no longer exists.
+ */
+async function repointPodFrameReferences(
+  auth: Authenticator,
+  frame: FileResource,
+  {
+    oldManifestPath,
+    newManifestPath,
+  }: {
+    oldManifestPath: string;
+    newManifestPath: string;
+  }
+): Promise<void> {
+  const podId = frame.useCaseMetadata?.spaceId;
+  if (!podId) {
+    return;
+  }
+
+  // The Frame has already moved. A dangling tab renders as a missing tab in the Pod UI, which is
+  // a better outcome than failing a move whose bytes and DB record are already committed.
+  try {
+    const [metadata] = await ProjectMetadataResource.fetchBySpaceIds(auth, [
+      podId,
+    ]);
+    await metadata?.renameFramePath(oldManifestPath, newManifestPath);
+  } catch (error) {
+    logger.warn(
+      { error, frameId: frame.sId, oldManifestPath, newManifestPath },
+      "Frame source moved but its Pod tabs could not be repointed"
+    );
+  }
+}
 
 /**
  * Move a registered Frames v2 source folder within one GCS mount.
@@ -163,6 +201,11 @@ export async function moveFrameV2SourceUsingFileSystem(
       );
     }
 
+    await repointPodFrameReferences(auth, freshFrame, {
+      oldManifestPath: paths.sourceManifestPath,
+      newManifestPath: paths.destinationManifestPath,
+    });
+
     const deleted = await deleteFrameSourceStorage(
       snapshot.value.sourceMountPrefix
     );
@@ -185,7 +228,7 @@ export async function moveFrameV2SourceUsingFileSystem(
 
     return new Ok({
       destinationDirectoryPath: paths.destinationDirectoryPath,
-      frameId: frame.sId,
+      frame: freshFrame,
       sourceDeletionFailed: deleted.isErr(),
     });
   }

@@ -301,7 +301,7 @@ describe("ProjectMetadataResource", () => {
         [oldPath, "files", "pod-p1/notes.md"]
       );
 
-      await metadata.renameFramePath(oldPath, newPath, "Status", "Health");
+      await metadata.renameFramePath(oldPath, newPath);
 
       expect(metadata.pinnedFramePath).toBe(newPath);
       expect(metadata.frameTabs?.map((tab) => tab.path)).toEqual([
@@ -329,10 +329,30 @@ describe("ProjectMetadataResource", () => {
         [oldPath]
       );
 
-      await metadata.renameFramePath(oldPath, newPath, "Status", "Health");
+      await metadata.renameFramePath(oldPath, newPath);
 
       expect(metadata.frameTabs?.[0].title).toBe("Ops board");
       expect(metadata.frameTabs?.[0].path).toBe(newPath);
+    });
+
+    it("follows the rename for a seeded title whose folder name contains a dot", async () => {
+      const metadata = await ProjectMetadataResource.makeNew(
+        auth,
+        projectSpace,
+        { description: "d" }
+      );
+      const dottedOld = "pod-p1/v1.2 Board/manifest.json";
+      const dottedNew = "pod-p1/v2.0 Board/manifest.json";
+      // Seeding strips the last extension, so this tab's title is "v1", not "v1.2 Board".
+      await metadata.updateFileTabs(
+        [{ path: dottedOld, title: "v1", icon: DEFAULT_POD_FILE_TAB_ICON }],
+        [dottedOld]
+      );
+
+      await metadata.renameFramePath(dottedOld, dottedNew);
+
+      expect(metadata.frameTabs?.[0].path).toBe(dottedNew);
+      expect(metadata.frameTabs?.[0].title).toBe("v2");
     });
 
     it("leaves an unrelated Frame's pin and tabs alone", async () => {
@@ -348,7 +368,7 @@ describe("ProjectMetadataResource", () => {
         [otherPath]
       );
 
-      await metadata.renameFramePath(oldPath, newPath, "Status", "Health");
+      await metadata.renameFramePath(oldPath, newPath);
 
       expect(metadata.pinnedFramePath).toBe(otherPath);
       expect(metadata.frameTabs?.[0].path).toBe(otherPath);

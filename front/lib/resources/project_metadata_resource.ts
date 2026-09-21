@@ -5,10 +5,11 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { getFrameV2NameFromManifestPath } from "@app/types/api/frame_manifest";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
-  MAX_POD_FILE_TAB_TITLE_LENGTH,
   normalizeTabsOrder,
+  seedPodFileTabTitle,
   sortPodFileTabs,
 } from "@app/types/pod_file_tab";
 import type { PodMetadataType } from "@app/types/project_metadata";
@@ -196,25 +197,28 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
   }
 
   /**
-   * Repoint the pin, tabs and tab order at a renamed Frame. A tab title seeded from the old
-   * folder name follows the rename; one the user edited is left alone.
+   * Repoint the pin, tabs and tab order at a moved Frame. A tab title still equal to the one
+   * seeding would produce follows the move; one the user edited is left alone.
    */
   async renameFramePath(
     oldFramePath: string,
     newFramePath: string,
-    oldFrameName: string,
-    newFrameName: string,
     transaction?: Transaction
   ): Promise<void> {
-    const seededTitle = oldFrameName.slice(0, MAX_POD_FILE_TAB_TITLE_LENGTH);
+    // A Frame tab is seeded from the Frame's name, which is the folder holding its manifest.
+    const seededTitleFor = (framePath: string) => {
+      const frameName = getFrameV2NameFromManifestPath(framePath);
+      return frameName === null ? null : seedPodFileTabTitle(frameName);
+    };
+    const seededTitle = seededTitleFor(oldFramePath);
     const frameTabs = (this.frameTabs ?? []).map((tab) =>
       tab.path === oldFramePath
         ? {
             ...tab,
             path: newFramePath,
             title:
-              tab.title === seededTitle
-                ? newFrameName.slice(0, MAX_POD_FILE_TAB_TITLE_LENGTH)
+              seededTitle !== null && tab.title === seededTitle
+                ? (seededTitleFor(newFramePath) ?? tab.title)
                 : tab.title,
           }
         : tab

@@ -69,11 +69,13 @@ describe("moveFrameV2Source", () => {
     });
 
     assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
-    expect(moved.value).toEqual({
-      destinationDirectoryPath,
-      frameId: c.frame.sId,
-      sourceDeletionFailed: false,
-    });
+    expect(moved.value.destinationDirectoryPath).toBe(destinationDirectoryPath);
+    expect(moved.value.sourceDeletionFailed).toBe(false);
+    // The move hands back the Frame it updated, already pointing at the new path.
+    expect(moved.value.frame.sId).toBe(c.frame.sId);
+    expect(moved.value.frame.mountFilePath).toBe(
+      `${destinationMountDirectory}/${FRAME_MANIFEST_FILE}`
+    );
     const reloaded = await FileResource.fetchById(c.auth, c.frame.sId);
     expect(reloaded?.mountFilePath).toBe(
       `${destinationMountDirectory}/${FRAME_MANIFEST_FILE}`
