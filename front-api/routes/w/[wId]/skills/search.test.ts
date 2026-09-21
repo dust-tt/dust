@@ -234,7 +234,6 @@ describe("POST /api/w/:wId/skills/search", () => {
 
   it.each([
     "user",
-    "builder",
     "manager",
   ] as const)("rejects redacted search for a %s before searching", async (role) => {
     const { workspace } = await setup(role);

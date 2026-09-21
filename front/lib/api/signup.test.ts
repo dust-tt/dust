@@ -3,6 +3,7 @@ import { handleMembershipInvite } from "@app/lib/api/signup";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
+import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -84,13 +85,19 @@ beforeEach(() => {
 });
 
 describe("handleMembershipInvite", () => {
-  it("downgrades a builder invitation to a user membership", async () => {
+  it("reads a legacy builder invitation as a user membership", async () => {
     const workspace = await WorkspaceFactory.creditPricedFree();
     const user = await UserFactory.basic();
-    await MembershipInvitationFactory.create(workspace, {
+    const invitation = await MembershipInvitationFactory.create(workspace, {
       inviteEmail: user.email,
-      initialRole: "builder",
+      initialRole: "user",
     });
+    // Seed the removed `builder` role straight in the DB: rows predating the
+    // 20260915 backfill may still hold it, and the resource reads them as `user`.
+    await MembershipInvitationModel.update(
+      { initialRole: "builder" as unknown as "user" },
+      { where: { id: invitation.id }, hooks: false }
+    );
     // Re-fetch so the invitation carries its workspace association.
     const membershipInvite =
       await MembershipInvitationResource.getPendingForEmailAndWorkspace({
@@ -114,7 +121,7 @@ describe("handleMembershipInvite", () => {
     expect(membership?.role).toBe("user");
   });
 
-  it("preserves a non-builder invitation role", async () => {
+  it("preserves the invitation role", async () => {
     const workspace = await WorkspaceFactory.creditPricedFree();
     const user = await UserFactory.basic();
     await MembershipInvitationFactory.create(workspace, {

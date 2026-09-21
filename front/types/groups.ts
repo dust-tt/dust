@@ -84,8 +84,8 @@ export function isUserVisibleGroupKind(
 export type UserVisibleGroupKind = (typeof USER_VISIBLE_GROUP_KINDS)[number];
 
 // A group can grant a workspace role to its active members. Only "admin" and
-// "manager" are grantable: every member is at least a "user", and "builder" is
-// deprecated. A group with a null `grantedRole` grants no role. When a user
+// "manager" are grantable: every member is at least a "user". A group with a
+// null `grantedRole` grants no role. When a user
 // belongs to several role-granting groups, the highest role wins
 // (admin > manager). See `GroupResource.computeUserRoleFromGroups`.
 export const GROUP_GRANTABLE_ROLES = ["admin", "manager"] as const;

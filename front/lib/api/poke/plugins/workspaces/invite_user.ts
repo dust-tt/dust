@@ -8,7 +8,7 @@ import { isEmailValid } from "@app/lib/utils";
 import { mapToEnumValues } from "@app/types/poke/plugins";
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import { ASSIGNABLE_ROLES, isAssignableRoleType } from "@app/types/user";
+import { ACTIVE_ROLES, isActiveRoleType } from "@app/types/user";
 
 export const inviteUser = createPlugin({
   manifest: {
@@ -27,7 +27,7 @@ export const inviteUser = createPlugin({
         type: "enum",
         label: "Role",
         description: "Role of the user to invite",
-        values: mapToEnumValues(ASSIGNABLE_ROLES, (role) => ({
+        values: mapToEnumValues(ACTIVE_ROLES, (role) => ({
           label: role,
           value: role,
         })),
@@ -79,7 +79,7 @@ export const inviteUser = createPlugin({
     }
 
     const role = args.role[0];
-    if (!role || !isAssignableRoleType(role)) {
+    if (!role || !isActiveRoleType(role)) {
       return new Err(new Error("Please select a valid role."));
     }
 

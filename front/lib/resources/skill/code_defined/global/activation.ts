@@ -229,7 +229,7 @@ This should happen with minimal user effort.
 You should bias towards including a Skill and/or Trigger rung in the plan whenever it meets the criteria below.
 
 Include a Skill rung only when ALL of these hold:
-- The user's workspace role is "admin" or "builder".
+- The user's workspace role is "admin".
 - No similar skill already exists (NEVER plan a duplicate). Check existing skills before including the rung.
 
 Include a Trigger rung when it could be useful to create a recurring task for the user.

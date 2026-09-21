@@ -2715,7 +2715,6 @@ export class GroupResource extends BaseResource<GroupModel> {
           { role: "admin", permissions: ["read", "write", "admin"] },
           { role: "manager", permissions: ["read", "write", "admin"] },
           { role: "user", permissions: ["read"] },
-          { role: "builder", permissions: ["read"] },
         ];
         break;
       case "global":
@@ -2724,7 +2723,6 @@ export class GroupResource extends BaseResource<GroupModel> {
           { role: "admin", permissions: ["read"] },
           { role: "manager", permissions: ["read"] },
           { role: "user", permissions: ["read"] },
-          { role: "builder", permissions: ["read"] },
         ];
         break;
       // system, regular_auto, agent_editors: no permission for anyone. Access to a regular_auto

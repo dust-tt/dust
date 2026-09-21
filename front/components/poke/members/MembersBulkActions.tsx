@@ -5,7 +5,7 @@ import { useAppRouter } from "@app/lib/platform";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { MEMBERSHIP_SEAT_TYPES } from "@app/types/memberships";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
-import { ASSIGNABLE_ROLES } from "@app/types/user";
+import { ACTIVE_ROLES } from "@app/types/user";
 import {
   Button,
   DropdownMenu,
@@ -117,7 +117,7 @@ export function MembersBulkActions({
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          {ASSIGNABLE_ROLES.map((role) => (
+          {ACTIVE_ROLES.map((role) => (
             <DropdownMenuItem key={role} onClick={() => onSetRole(role)}>
               {role}
             </DropdownMenuItem>

@@ -305,7 +305,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * @cc [owner:fabiencelier,label:security] global-space-member-group
    * A workspace's global space must be created with exactly one `regular_auto` member group,
    * created by this method: that group's `member` grant is the global space's only source of
-   * `write` outside the `admin` and `manager` (and legacy `builder`) workspace roles.
+   * `write` outside the `admin` and `manager` workspace roles.
    */
   static async makeGlobalSpaceMemberGroup({
     workspaceId,
@@ -2073,7 +2073,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    *
    * 2. Global spaces:
    * - Read: All workspace members
-   * - Write: Workspace admins and managers (legacy: builders), plus the members of the space's
+   * - Write: Workspace admins and managers, plus the members of the space's
    *   member groups
    *
    * 3. Open spaces:
@@ -2108,8 +2108,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     if (this.isGlobal() || this.isConversations()) {
       return [
         { role: "admin", permissions: ["admin", "write"] },
-        // TODO(governance): remove once manager is available for everyone
-        { role: "builder", permissions: ["write"] },
         { role: "manager", permissions: ["write"] },
       ];
     }

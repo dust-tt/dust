@@ -49,7 +49,7 @@ type AgentMetadata = {
 function readerRolesForAudience(audience: GlobalAgentAudience): RoleType[] {
   switch (audience) {
     case "everyone":
-      return ["admin", "manager", "builder", "user", "none"];
+      return ["admin", "manager", "user", "none"];
     case "managers":
       return ["admin", "manager"];
     case "admins":

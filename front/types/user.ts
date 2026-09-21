@@ -12,9 +12,8 @@ import { decodeUtf8HeaderValue } from "./shared/utils/http_headers";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 
-const ROLES = ["admin", "manager", "builder", "user", "none"] as const;
-export const ACTIVE_ROLES = ["admin", "manager", "builder", "user"] as const;
-export const ASSIGNABLE_ROLES = ["admin", "manager", "user"] as const;
+const ROLES = ["admin", "manager", "user", "none"] as const;
+export const ACTIVE_ROLES = ["admin", "manager", "user"] as const;
 export const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
 
 export const MANAGER_ROLE_NAME = "manager";
@@ -65,30 +64,6 @@ export type ActiveRoleType = z.infer<typeof ActiveRoleSchema>;
 
 export function isActiveRoleType(role: string): role is ActiveRoleType {
   return ACTIVE_ROLES.includes(role as ActiveRoleType);
-}
-
-export type AssignableRoleType = (typeof ASSIGNABLE_ROLES)[number];
-
-export function isAssignableRoleType(role: string): role is AssignableRoleType {
-  return ASSIGNABLE_ROLES.includes(role as AssignableRoleType);
-}
-
-// Roles that can be assigned through the API (invitations, membership role updates). The
-// deprecated `builder` role is rejected here while remaining a valid role value elsewhere
-// (existing memberships, role display, and legacy/pending invitations).
-function isAssignableRole(role: RoleType): boolean {
-  return role !== "builder" && role !== "none";
-}
-
-export const AssignableRoleSchema = ActiveRoleSchema.refine(isAssignableRole, {
-  message: "The 'builder' role can no longer be assigned.",
-});
-
-// Maps a possibly-legacy role to one that can still be assigned: `builder` resolves to a regular
-// `user`. Use this when re-submitting a role read from an existing invitation or membership (e.g.
-// resending a pending `builder` invitation), which the API would otherwise reject.
-export function toAssignableRole(role: ActiveRoleType): AssignableRoleType {
-  return role === "builder" ? "user" : role;
 }
 
 export type WorkspaceSharingPolicy =
@@ -308,7 +283,6 @@ export function isAdmin(
     case "admin":
       return true;
     case "manager":
-    case "builder":
     case "user":
     case "none":
       return false;
@@ -327,26 +301,6 @@ export function isManager(
     case "admin":
     case "manager":
       return true;
-    case "builder":
-    case "user":
-    case "none":
-      return false;
-    default:
-      assertNever(owner.role);
-  }
-}
-
-export function isBuilder(
-  owner: WorkspaceType | null
-): owner is WorkspaceType & { role: "builder" | "manager" | "admin" } {
-  if (!owner) {
-    return false;
-  }
-  switch (owner.role) {
-    case "admin":
-    case "manager":
-    case "builder":
-      return true;
     case "user":
     case "none":
       return false;
@@ -356,7 +310,7 @@ export function isBuilder(
 }
 
 export function isUser(owner: WorkspaceType | null): owner is WorkspaceType & {
-  role: "user" | "builder" | "manager" | "admin";
+  role: "user" | "manager" | "admin";
 } {
   if (!owner) {
     return false;
@@ -364,7 +318,6 @@ export function isUser(owner: WorkspaceType | null): owner is WorkspaceType & {
   switch (owner.role) {
     case "admin":
     case "manager":
-    case "builder":
     case "user":
       return true;
     case "none":

@@ -210,7 +210,6 @@ export async function getMembers(
       switch (m.role) {
         case "admin":
         case "manager":
-        case "builder":
         case "user":
           role = m.role;
           break;

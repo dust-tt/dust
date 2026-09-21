@@ -1,12 +1,11 @@
 import {
   displayRole,
   displayRoleCapitalized,
-  normalizeDisplayRole,
   ROLES_DATA,
 } from "@app/components/members/Roles";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { ActiveRoleType } from "@app/types/user";
-import { ASSIGNABLE_ROLES, isAdmin } from "@app/types/user";
+import { ACTIVE_ROLES, isAdmin } from "@app/types/user";
 import {
   Button,
   ChevronDown,
@@ -31,10 +30,7 @@ export function RoleDropDown({
   const workspace = useWorkspace();
   const canManageAdminRole = isAdmin(workspace);
 
-  // `builder` is deprecated: display it as a regular member.
-  const displayedRole = normalizeDisplayRole(selectedRole);
-
-  const availableRoles = ASSIGNABLE_ROLES.filter((role) => {
+  const availableRoles = ACTIVE_ROLES.filter((role) => {
     // `admin` can only be assigned by those allowed to manage the admin role
     // (matches the server-side escalation guard).
     if (role === "admin" && !canManageAdminRole) {
@@ -51,11 +47,11 @@ export function RoleDropDown({
   if (isLocked) {
     return (
       <Chip
-        color={ROLES_DATA[displayedRole]["color"]}
+        color={ROLES_DATA[selectedRole]["color"]}
         size="sm"
         className="capitalize"
       >
-        {displayRole(displayedRole)}
+        {displayRole(selectedRole)}
       </Chip>
     );
   }
@@ -66,7 +62,7 @@ export function RoleDropDown({
         <Button
           iconRight={ChevronDown}
           size="sm"
-          label={displayRoleCapitalized(displayedRole)}
+          label={displayRoleCapitalized(selectedRole)}
           variant="ghost"
         />
       </DropdownMenuTrigger>
