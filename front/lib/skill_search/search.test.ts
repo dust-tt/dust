@@ -412,7 +412,7 @@ describe("custom skill search", () => {
     expect(page.value).toEqual({
       skills: [expected[0]],
       hasMore: true,
-      nextCursor: Buffer.from(JSON.stringify([1, "missing-skill"])).toString(
+      nextCursor: Buffer.from(JSON.stringify([1, 0, "missing-skill"])).toString(
         "base64url"
       ),
     });
