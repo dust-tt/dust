@@ -65,6 +65,114 @@ function getCacheKey<T, Args extends unknown[]>(
   return buildCacheWithRedisKey(cacheId, resolver(...args));
 }
 
+type RedisCacheClient = Awaited<ReturnType<typeof getRedisCacheClient>>;
+
+type BatchCacheEntry<Input> = {
+  input: Input;
+  readKey: string;
+  // During a migration, fresh values also go to this key.
+  otherKey: string | null;
+};
+
+function warnCacheFailure(cacheId: string, err: unknown) {
+  logger.warn(
+    { cacheId, err: normalizeError(err) },
+    "Resource cache unavailable"
+  );
+}
+
+// A missing map entry is a cache miss. null means the Redis read itself failed.
+async function readBatchCacheValues<T>(
+  redis: RedisCacheClient,
+  keys: string[],
+  cacheId: string
+): Promise<Map<string, JsonSerializable<T>> | null> {
+  const values = new Map<string, JsonSerializable<T>>();
+  if (keys.length === 0) {
+    return values;
+  }
+
+  let serializedValues;
+  try {
+    serializedValues = await redis.mGet(keys);
+  } catch (err) {
+    warnCacheFailure(cacheId, err);
+    return null;
+  }
+
+  serializedValues.forEach((serialized, index) => {
+    if (serialized === null) {
+      return;
+    }
+    try {
+      // These are snapshots written by this cache's serializer.
+      const value = JSON.parse(serialized) as JsonSerializable<T> | null;
+      if (value !== null) {
+        values.set(keys[index], value);
+      }
+    } catch (err) {
+      warnCacheFailure(cacheId, err);
+    }
+  });
+  return values;
+}
+
+async function writeBatchCacheValues<T>(
+  redis: RedisCacheClient,
+  entries: BatchCacheEntry<unknown>[],
+  values: ReadonlyMap<string, JsonSerializable<T>>,
+  loadedKeys: ReadonlySet<string>,
+  { cacheId, copyOnRead }: { cacheId: string; copyOnRead: boolean }
+): Promise<void> {
+  const writes = new Map<string, string>();
+  for (const { readKey, otherKey } of entries) {
+    const value = values.get(readKey);
+    const wasLoaded = loadedKeys.has(readKey);
+    if (value === undefined || (!wasLoaded && !copyOnRead)) {
+      continue;
+    }
+    const serialized = JSON.stringify(value);
+    if (wasLoaded) {
+      writes.set(readKey, serialized);
+    }
+    if (otherKey) {
+      writes.set(otherKey, serialized);
+    }
+  }
+
+  if (writes.size === 0) {
+    return;
+  }
+  try {
+    await redis.mSet([...writes]);
+  } catch (err) {
+    warnCacheFailure(cacheId, err);
+  }
+}
+
+/**
+ * @cc [owner:flvndvd,label:concurrency] batch-cache-locks
+ * Cache-fill locks MUST be acquired once per key in a stable order and released even if filling
+ * fails, so overlapping batches cannot deadlock or retain locks after an error.
+ */
+async function withCacheFillLocks<T>(
+  keys: string[],
+  fill: () => Promise<T>
+): Promise<T> {
+  // Share the existing single-value cache's process-local locks.
+  const sortedKeys = [...new Set(keys)].sort();
+  for (const key of sortedKeys) {
+    await lock(key);
+  }
+  try {
+    return await fill();
+  } finally {
+    for (const key of sortedKeys) {
+      unlock(key);
+    }
+  }
+}
+
 /**
  * @cc [owner:flvndvd,label:backend;performance] batch-cache-misses
  * Each call MUST load all remaining misses together, at most once. The loader MUST return one
@@ -79,133 +187,87 @@ export function cacheManyWithRedis<T, Input>(
     migration,
   }: { cacheId: string; migration?: CacheKeyMigration<[Input]> }
 ): (inputs: readonly Input[]) => Promise<(JsonSerializable<T> | null)[]> {
+  const entryForInput = (input: Input): BatchCacheEntry<Input> => {
+    const newKey = buildCacheWithRedisKey(cacheId, resolver(input));
+    const previousKey = migration
+      ? buildCacheWithRedisKey(
+          migration.previousKey.cacheId,
+          migration.previousKey.resolver(input)
+        )
+      : null;
+    return {
+      input,
+      readKey:
+        migration?.readFrom === "previous" && previousKey
+          ? previousKey
+          : newKey,
+      otherKey: migration?.readFrom === "previous" ? newKey : previousKey,
+    };
+  };
+
   return async (inputs) => {
     if (inputs.length === 0) {
       return [];
     }
-    const entries = inputs.map((input) => {
-      const newKey = buildCacheWithRedisKey(cacheId, resolver(input));
-      const previousKey = migration
-        ? buildCacheWithRedisKey(
-            migration.previousKey.cacheId,
-            migration.previousKey.resolver(input)
-          )
-        : null;
-      return {
-        input,
-        readKey:
-          migration?.readFrom === "previous" && previousKey
-            ? previousKey
-            : newKey,
-        otherKey: migration?.readFrom === "previous" ? newKey : previousKey,
-      };
-    });
-    const warn = (err: unknown) =>
-      logger.warn(
-        { cacheId, err: normalizeError(err) },
-        "Resource cache unavailable"
-      );
-
+    const entries = inputs.map(entryForInput);
     let redis;
     try {
       redis = await getRedisCacheClient({ origin: "cache_with_redis" });
     } catch (err) {
-      warn(err);
+      warnCacheFailure(cacheId, err);
       return load(inputs);
     }
-    const read = async (keys: string[]) => {
-      try {
-        const values = await redis.mGet(keys);
-        return values.map((value): JsonSerializable<T> | null => {
-          if (value === null) {
-            return null;
-          }
-          try {
-            // These are snapshots written by this cache's serializer.
-            return JSON.parse(value) as JsonSerializable<T>;
-          } catch (err) {
-            warn(err);
-            return null;
-          }
-        });
-      } catch (err) {
-        warn(err);
-        return null;
-      }
-    };
 
-    const snapshots = await read(entries.map((entry) => entry.readKey));
-    if (snapshots === null) {
+    const cachedValues = await readBatchCacheValues<T>(
+      redis,
+      entries.map(({ readKey }) => readKey),
+      cacheId
+    );
+    if (cachedValues === null) {
       return load(inputs);
     }
-    const missingIndexes = entries.flatMap((_, index) =>
-      snapshots[index] === null ? [index] : []
-    );
-    // Share the single-value cache's process-local locks. A stable acquisition order prevents
-    // overlapping batches from deadlocking; recheck after acquiring to reuse another reader's fill.
-    const lockedKeys = [
-      ...new Set(missingIndexes.map((index) => entries[index].readKey)),
-    ].sort();
-    for (const key of lockedKeys) {
-      await lock(key);
-    }
-    try {
-      if (missingIndexes.length > 0) {
-        const rechecked = await read(
-          missingIndexes.map((index) => entries[index].readKey)
+    const misses = entries.filter(({ readKey }) => !cachedValues.has(readKey));
+
+    return withCacheFillLocks(
+      misses.map(({ readKey }) => readKey),
+      async () => {
+        // Another reader may have filled these keys while we waited for their locks.
+        const recheckedValues = await readBatchCacheValues<T>(
+          redis,
+          misses.map(({ readKey }) => readKey),
+          cacheId
         );
-        if (rechecked !== null) {
-          missingIndexes.forEach((index, offset) => {
-            snapshots[index] = rechecked[offset];
-          });
-        }
-      }
-      const remainingIndexes = missingIndexes.filter(
-        (index) => snapshots[index] === null
-      );
-      const writes = new Map<string, string>();
-      if (remainingIndexes.length > 0) {
-        // Keep the loader outside Redis error handling: a failed database query is never retried.
-        const loaded = await load(
-          remainingIndexes.map((index) => entries[index].input)
+        const values = new Map([...cachedValues, ...(recheckedValues ?? [])]);
+        const remainingMisses = misses.filter(
+          ({ readKey }) => !values.has(readKey)
         );
+
+        // The loader stays outside Redis error handling: database failures must propagate.
+        const loaded =
+          remainingMisses.length > 0
+            ? await load(remainingMisses.map(({ input }) => input))
+            : [];
         assert(
-          loaded.length === remainingIndexes.length,
+          loaded.length === remainingMisses.length,
           "Batch cache loader must return one value per input"
         );
-        remainingIndexes.forEach((index, offset) => {
-          const value = loaded[offset];
-          snapshots[index] = value;
+        remainingMisses.forEach(({ readKey }, index) => {
+          const value = loaded[index];
           if (value !== null) {
-            const serialized = JSON.stringify(value);
-            writes.set(entries[index].readKey, serialized);
-            const { otherKey } = entries[index];
-            if (otherKey) {
-              writes.set(otherKey, serialized);
-            }
+            values.set(readKey, value);
           }
         });
+
+        await writeBatchCacheValues(
+          redis,
+          entries,
+          values,
+          new Set(remainingMisses.map(({ readKey }) => readKey)),
+          { cacheId, copyOnRead: migration?.copyToOtherKey === "after_read" }
+        );
+        return entries.map(({ readKey }) => values.get(readKey) ?? null);
       }
-      if (migration?.copyToOtherKey === "after_read") {
-        entries.forEach(({ otherKey }, index) => {
-          if (otherKey && snapshots[index] !== null) {
-            writes.set(otherKey, JSON.stringify(snapshots[index]));
-          }
-        });
-      }
-      if (writes.size > 0) {
-        try {
-          await redis.mSet([...writes]);
-        } catch (err) {
-          warn(err);
-        }
-      }
-      return snapshots;
-    } finally {
-      for (const key of lockedKeys) {
-        unlock(key);
-      }
-    }
+    );
   };
 }
 
