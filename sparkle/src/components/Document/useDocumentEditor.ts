@@ -2,7 +2,10 @@ import { cn } from "@sparkle/lib/utils";
 import { useEditor } from "@tiptap/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { documentExtensions, parseDocumentContent } from "./extensions";
-import type { DocumentProps } from "./types";
+import type { DocumentProps, DocumentSaveResult } from "./types";
+
+const SAVE_ERROR_MESSAGE =
+  "Could not save. Your changes are still here. Try again.";
 
 interface UseDocumentEditorProps {
   initialContent: string;
@@ -17,13 +20,17 @@ interface UseDocumentEditorProps {
  * Failed saves MUST preserve the draft. A successful save MUST acknowledge only the submitted
  * content; edits made during the request MUST remain unsaved. Prop changes MUST NOT replace an
  * open draft. Invalid stored content MUST disable editing and saving rather than discard it.
+ * Returning to the saved content MUST clear save errors without making another save request.
+ * Rejections from the host persistence callback MUST be treated as failed saves.
  */
 /**
  * @cc [owner:flvndvd,label:product] document-autosave
  * Dirty, editable content MUST autosave after autosaveDebounceMs without edits (three seconds by default),
  * with at most one save in flight.
- * Failure MUST suspend automatic retries until the user explicitly retries. Unchanged content
- * MUST NOT trigger saves. Cmd/Ctrl+S MUST allow an immediate save using the same callback.
+ * Failure MUST suspend automatic retries until the user explicitly retries or returns to saved
+ * content. Unchanged content MUST NOT trigger saves. Cmd/Ctrl+S MUST allow an immediate save.
+ * Parent renders and callback identity changes MUST NOT restart the debounce. Saves MUST use
+ * the latest committed callback.
  */
 export const useDocumentEditor = ({
   initialContent,
@@ -41,7 +48,14 @@ export const useDocumentEditor = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
+  const onSaveRef = useRef(onSave);
   const editable = !readOnly && onSave !== undefined && initial.ok;
+
+  // The timer needs the latest committed callback without restarting when its identity changes.
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
+
   const editor = useEditor({
     extensions: documentExtensions,
     content: initial.ok ? initial.content : "",
@@ -68,41 +82,64 @@ export const useDocumentEditor = ({
       setBaseline(content);
       setDraft(content);
     },
-    onUpdate: ({ editor }) => setDraft(JSON.stringify(editor.getJSON())),
+    onUpdate: ({ editor }) => {
+      const content = JSON.stringify(editor.getJSON());
+      setDraft(content);
+
+      if (content === baseline) {
+        setError(null);
+      }
+    },
   });
+
+  // TipTap's React hook preserves its current editability when applying updated options.
+  useEffect(() => {
+    if (editor && editor.isEditable !== editable) {
+      editor.setEditable(editable, false);
+    }
+  }, [editor, editable]);
+
   const dirty = baseline !== null && draft !== baseline;
 
   const save = useCallback(async () => {
-    if (!editor || !onSave || !editable || !dirty || savingRef.current) {
+    const persist = onSaveRef.current;
+
+    if (!editor || !persist || !editable || !dirty || savingRef.current) {
       return;
     }
+
     const content = JSON.stringify(editor.getJSON());
     savingRef.current = true;
     setSaving(true);
     setError(null);
+
+    // Only the host callback crosses a boundary where thrown failures are expected.
+    let result: DocumentSaveResult;
     try {
-      // Persistence belongs to the host and may reject on a transport error.
-      const result = await onSave(content);
-      if (result.ok) {
-        setBaseline(content);
-      } else {
-        setError(
-          result.error ||
-            "Could not save. Your changes are still here. Try again."
-        );
-      }
+      result = await persist(content);
     } catch {
-      setError("Could not save. Your changes are still here. Try again.");
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
+      result = { ok: false, error: SAVE_ERROR_MESSAGE };
     }
-  }, [editor, onSave, editable, dirty]);
+
+    savingRef.current = false;
+    setSaving(false);
+
+    if (result.ok) {
+      setBaseline(content);
+      return;
+    }
+
+    // The user may have undone their changes while persistence was still in flight.
+    if (JSON.stringify(editor.getJSON()) !== baseline) {
+      setError(result.error || SAVE_ERROR_MESSAGE);
+    }
+  }, [editor, editable, dirty, baseline]);
 
   useEffect(() => {
     if (draft === null || !dirty || saving || error || !editable) {
       return;
     }
+
     // Debounce document changes, including edits made during an earlier save. Never retry errors in a loop.
     const timeout = setTimeout(() => void save(), autosaveDebounceMs);
     return () => clearTimeout(timeout);

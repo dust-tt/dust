@@ -11,6 +11,8 @@ import { useDocumentEditor } from "./useDocumentEditor";
 
 export type { DocumentProps, DocumentSaveResult } from "./types";
 
+const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
+
 /**
  * @cc [owner:flvndvd,label:product] document-ui-owned-by-sparkle
  * Document MUST own its typography and formatting controls. Inline controls MUST appear only
@@ -22,14 +24,15 @@ export type { DocumentProps, DocumentSaveResult } from "./types";
 /**
  * @cc [owner:flvndvd,label:product] document-read-only
  * When readOnly is true or onSave is absent, Document MUST disable editing, formatting
- * controls, and save callbacks. Hosts MUST apply their permissions through readOnly.
+ * controls, and save callbacks, including when these props change after mount. Hosts MUST
+ * apply their permissions through readOnly.
  */
 export const Document = ({
   initialContent,
   contentType = "markdown",
   className,
   readOnly = false,
-  autosaveDebounceMs = 3_000,
+  autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
 }: DocumentProps) => {
   const { editor, editable, valid, dirty, saving, error, save } =
@@ -41,7 +44,8 @@ export const Document = ({
       onSave,
     });
   const blockMenu = useDocumentBlockMenu(editor, editable);
-  const onKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (
       event.nativeEvent.isComposing ||
       !(event.target instanceof Node) ||
@@ -49,6 +53,7 @@ export const Document = ({
     ) {
       return;
     }
+
     if (
       (event.metaKey || event.ctrlKey) &&
       !event.shiftKey &&
@@ -59,6 +64,7 @@ export const Document = ({
       void save();
       return;
     }
+
     blockMenu.onKeyDown(event);
   };
 
@@ -76,7 +82,7 @@ export const Document = ({
   return (
     <article
       className={cn("@container", className)}
-      onKeyDownCapture={onKeyDown}
+      onKeyDownCapture={handleKeyDown}
     >
       <div
         className={cn(

@@ -13,10 +13,12 @@ export const useDocumentBlockMenu = (
   const [highlight, setHighlight] = useState({ queryKey: "", index: 0 });
   const [dismissedQuery, setDismissedQuery] = useState<string | null>(null);
   const menuId = useId();
+
   const blockQuery = useEditorState({
     editor,
     selector: ({ editor }) => (editor ? getBlockQuery(editor.state) : null),
   });
+
   const queryKey = blockQuery ? `${blockQuery.from}:${blockQuery.query}` : "";
   const blocks = BLOCKS.filter((block) =>
     `${block.name} ${block.keywords}`
@@ -31,6 +33,7 @@ export const useDocumentBlockMenu = (
 
   const insertBlock = (index: number) => {
     const block = blocks[index];
+
     if (editor && blockQuery && block) {
       block.apply(
         editor
@@ -42,14 +45,18 @@ export const useDocumentBlockMenu = (
       setHighlight({ queryKey: "", index: 0 });
     }
   };
+
   const highlightBlock = (index: number) => setHighlight({ queryKey, index });
+
   const onKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (!show) {
       if (dismissedQuery !== null) {
         setDismissedQuery(null);
       }
+
       return;
     }
+
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();

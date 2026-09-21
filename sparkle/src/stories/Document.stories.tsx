@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { expect, fn, mocked, userEvent, waitFor, within } from "storybook/test";
 import {
   Document,
@@ -28,6 +28,9 @@ const meta = {
 } satisfies Meta<typeof Document>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+const HOST_RERENDER_INTERVAL_MS = 100;
+const HOST_AUTOSAVE_DEBOUNCE_MS = 1_000;
 
 /** @summary The writing surface with headings, lists, and a quote. */
 export const DocumentPage: Story = {
@@ -231,6 +234,64 @@ export const Autosave: Story = {
   },
 };
 
+const UpdatingParent = ({ onSave, ...props }: DocumentProps) => {
+  const [revision, setRevision] = useState(0);
+  const [savedRevision, setSavedRevision] = useState<number | null>(null);
+
+  useEffect(() => {
+    const interval = setInterval(
+      () => setRevision((value) => value + 1),
+      HOST_RERENDER_INTERVAL_MS
+    );
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <>
+      {/* Recreating this callback intentionally exercises a normal host rerender. */}
+      <Document
+        {...props}
+        onSave={
+          onSave
+            ? (content) => {
+                setSavedRevision(revision);
+                return onSave(content);
+              }
+            : undefined
+        }
+      />
+      <p>Parent revision: {revision}</p>
+      <output aria-label="Saved callback revision">{savedRevision}</output>
+    </>
+  );
+};
+
+/** @summary Parent updates keep the draft and autosave through the latest callback. */
+export const AutosaveDuringParentUpdates: Story = {
+  args: {
+    initialContent: "A draft",
+    autosaveDebounceMs: HOST_AUTOSAVE_DEBOUNCE_MS,
+  },
+  render: (args) => <UpdatingParent {...args} />,
+  play: async ({ canvas, args }) => {
+    const editor = await canvas.findByRole("textbox", {
+      name: "Document content",
+    });
+    await userEvent.type(editor, " with edits");
+    await waitFor(() => expect(args.onSave).toHaveBeenCalledTimes(1), {
+      timeout: HOST_AUTOSAVE_DEBOUNCE_MS * 2,
+    });
+    await expect(canvas.getByText(/^Saved$/)).toBeVisible();
+    await expect(args.onSave).toHaveBeenCalledWith(
+      expect.stringContaining("with edits")
+    );
+    await expect(
+      Number(canvas.getByLabelText("Saved callback revision").textContent)
+    ).toBeGreaterThan(0);
+  },
+};
+
 /** @summary Keep the draft after a failed save and allow an explicit retry. */
 export const SaveFailure: Story = {
   args: {
@@ -269,6 +330,45 @@ export const SaveFailure: Story = {
     await expect(args.onSave).toHaveBeenLastCalledWith(
       expect.stringContaining("Keep these changes and a further edit")
     );
+  },
+};
+
+/** @summary Undoing a failed save clears the error when the document matches its saved content. */
+export const UndoAfterSaveFailure: Story = {
+  args: {
+    initialContent: "A saved document",
+    onSave: fn(
+      async (): Promise<DocumentSaveResult> => ({
+        ok: false,
+        error: "Persistence is unavailable.",
+      })
+    ),
+  },
+  play: async ({ canvas, args }) => {
+    const editor = await canvas.findByRole("textbox", {
+      name: "Document content",
+    });
+    const savedText = editor.textContent;
+
+    await userEvent.type(editor, " with unsaved edits");
+    await userEvent.keyboard("{Control>}s{/Control}");
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "Persistence is unavailable."
+    );
+
+    const modifier = /Mac|iPhone|iPad/.test(navigator.platform)
+      ? "Meta"
+      : "Control";
+    await userEvent.keyboard(`{${modifier}>}z{/${modifier}}`);
+
+    await expect(editor.textContent).toBe(savedText);
+    await expect(canvas.getByRole("status")).toHaveTextContent(/^Saved$/);
+    await expect(canvas.queryByRole("alert")).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole("button", { name: "Retry" })
+    ).not.toBeInTheDocument();
+    await userEvent.keyboard("{Control>}s{/Control}");
+    await expect(args.onSave).toHaveBeenCalledTimes(1);
   },
 };
 
@@ -346,6 +446,83 @@ export const ReadOnly: Story = {
     await expect(canvas.queryByRole("toolbar")).not.toBeInTheDocument();
     await expect(canvas.queryByRole("status")).not.toBeInTheDocument();
     await expect(args.onSave).not.toHaveBeenCalled();
+  },
+};
+
+const ChangingPermissions = (props: DocumentProps) => {
+  const [readOnly, setReadOnly] = useState(false);
+  const [hasPersistence, setHasPersistence] = useState(true);
+  return (
+    <>
+      <div className="flex gap-4 border-b p-4">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={readOnly}
+            onChange={(event) => setReadOnly(event.target.checked)}
+          />
+          Read only
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={hasPersistence}
+            onChange={(event) => setHasPersistence(event.target.checked)}
+          />
+          Persistence available
+        </label>
+      </div>
+      <Document
+        {...props}
+        readOnly={readOnly}
+        onSave={hasPersistence ? props.onSave : undefined}
+      />
+    </>
+  );
+};
+
+/** @summary Permission and persistence changes update editability without replacing the draft. */
+export const PermissionChanges: Story = {
+  args: {
+    initialContent: "A draft",
+    autosaveDebounceMs: HOST_AUTOSAVE_DEBOUNCE_MS,
+  },
+  render: (args) => <ChangingPermissions {...args} />,
+  play: async ({ canvas, args }) => {
+    const editor = await canvas.findByRole("textbox", {
+      name: "Document content",
+    });
+    await userEvent.type(editor, " with edits");
+    const draft = editor.textContent;
+    await userEvent.click(canvas.getByRole("checkbox", { name: "Read only" }));
+    await expect(editor).toHaveAttribute("contenteditable", "false");
+    await userEvent.click(editor);
+    await userEvent.keyboard(" must not appear{Control>}s{/Control}");
+    await expect(editor.textContent).toBe(draft);
+    await new Promise((resolve) =>
+      setTimeout(resolve, HOST_AUTOSAVE_DEBOUNCE_MS * 1.5)
+    );
+    await expect(args.onSave).not.toHaveBeenCalled();
+    await userEvent.click(canvas.getByRole("checkbox", { name: "Read only" }));
+    await expect(editor).toHaveAttribute("contenteditable", "true");
+    await expect(editor.textContent).toBe(draft);
+    await userEvent.click(
+      canvas.getByRole("checkbox", { name: "Persistence available" })
+    );
+    await expect(editor).toHaveAttribute("contenteditable", "false");
+    await new Promise((resolve) =>
+      setTimeout(resolve, HOST_AUTOSAVE_DEBOUNCE_MS * 1.5)
+    );
+    await expect(args.onSave).not.toHaveBeenCalled();
+    await userEvent.click(
+      canvas.getByRole("checkbox", { name: "Persistence available" })
+    );
+    await expect(editor).toHaveAttribute("contenteditable", "true");
+    await expect(editor.textContent).toBe(draft);
+    await userEvent.click(editor);
+    await userEvent.keyboard("{Control>}s{/Control}");
+    await waitFor(() => expect(args.onSave).toHaveBeenCalledTimes(1));
+    await expect(canvas.getByRole("status")).toHaveTextContent(/^Saved$/);
   },
 };
 
