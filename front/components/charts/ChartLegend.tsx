@@ -69,7 +69,7 @@ function ChartLegendItem({ item }: ChartLegendItemProps) {
       className={cn(
         "flex items-center gap-2",
         item.onClick &&
-          "-m-1 cursor-pointer rounded-sm border border-transparent p-1 hover:border-border focus-visible:outline-highlight"
+          "cursor-pointer rounded-sm border border-transparent px-1 hover:border-border focus-visible:outline-highlight"
       )}
       onClick={item.onClick}
     >
