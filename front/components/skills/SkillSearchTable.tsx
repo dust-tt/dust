@@ -2,10 +2,8 @@ import { SkillSearchActionsMenu } from "@app/components/skills/SkillSearchAction
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { SearchSkillsResponseBody } from "@app/types/api/skills";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
-import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, DataTable, Tooltip } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
@@ -13,7 +11,6 @@ import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 interface SkillSearchTableProps {
   owner: LightWorkspaceType;
   skills: SkillListItemType[];
-  editors: SearchSkillsResponseBody["editors"];
   onSelect: (skillId: string) => void;
   onRefresh: () => void;
   pagination: PaginationState;
@@ -26,14 +23,12 @@ type SkillSearchRow = SkillListItemType & { onClick: () => void };
 export function SkillSearchTable({
   owner,
   skills,
-  editors,
   onSelect,
   onRefresh,
   pagination,
   setPagination,
   hasMore,
 }: SkillSearchTableProps) {
-  const editorsById = new Map(editors.map((editor) => [editor.sId, editor]));
   const columns: ColumnDef<SkillSearchRow>[] = [
     {
       id: "name",
@@ -100,13 +95,11 @@ export function SkillSearchTable({
       cell: ({ row: { original: skill } }) => {
         const items = isDustProvidedSkill(skill)
           ? [{ name: "Dust", visual: DUST_AVATAR_URL, isRounded: false }]
-          : removeNulls(skill.editorIds.map((id) => editorsById.get(id))).map(
-              (editor) => ({
-                name: editor.fullName,
-                visual: editor.image,
-                isRounded: true,
-              })
-            );
+          : skill.editors.map((editor) => ({
+              name: editor.fullName,
+              visual: editor.image,
+              isRounded: true,
+            }));
         return (
           <DataTable.CellContent avatarStack={{ items, nbVisibleItems: 4 }} />
         );

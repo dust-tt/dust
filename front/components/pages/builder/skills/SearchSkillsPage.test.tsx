@@ -53,7 +53,11 @@ async function setup({ enabled = true } = {}) {
   const [document] = await SkillFactory.createSearchDocuments(authenticator, [
     resource,
   ]);
-  const skill = toSkillListItem(document);
+  const { sId, fullName, image } = user.toJSON();
+  const skill = {
+    ...toSkillListItem(document),
+    editors: [{ sId, fullName, image }],
+  };
   const context: AuthContextValue = {
     workspace: authenticator.getNonNullableWorkspace(),
     user: user.toJSON(),
@@ -69,7 +73,6 @@ async function setup({ enabled = true } = {}) {
     .fn<() => Promise<SearchSkillsResponseBody>>()
     .mockResolvedValue({
       skills: [skill],
-      editors: [user.toJSON()],
       hasMore: false,
       nextCursor: null,
     });
@@ -152,7 +155,6 @@ describe("search-backed Manage Skills", () => {
     await screen.findByRole("button", { name: /Weekly report/ });
     search.mockResolvedValue({
       skills: [],
-      editors: [],
       hasMore: false,
       nextCursor: null,
     });
@@ -190,7 +192,6 @@ describe("search-backed Manage Skills", () => {
     const cursor = "opaque-search-after";
     search.mockResolvedValueOnce({
       skills: [{ ...skill, name: "Zebra" }],
-      editors: [],
       hasMore: true,
       nextCursor: cursor,
     });
@@ -198,7 +199,6 @@ describe("search-backed Manage Skills", () => {
     await screen.findByRole("button", { name: /Zebra/ });
     search.mockResolvedValue({
       skills: [{ ...skill, sId: "next", name: "Alpha" }],
-      editors: [],
       hasMore: false,
       nextCursor: "last",
     });
@@ -223,7 +223,6 @@ describe("search-backed Manage Skills", () => {
 
     search.mockResolvedValue({
       skills: [{ ...skill, name: "Zebra" }],
-      editors: [],
       hasMore: true,
       nextCursor: cursor,
     });
@@ -235,7 +234,6 @@ describe("search-backed Manage Skills", () => {
 
     search.mockResolvedValue({
       skills: [{ ...skill, sId: "next", name: "Alpha" }],
-      editors: [],
       hasMore: false,
       nextCursor: "last",
     });
@@ -246,7 +244,6 @@ describe("search-backed Manage Skills", () => {
     await screen.findByRole("button", { name: /Alpha/ });
     search.mockResolvedValue({
       skills: [skill],
-      editors: [],
       hasMore: false,
       nextCursor: null,
     });
@@ -269,7 +266,6 @@ describe("search-backed Manage Skills", () => {
     ).not.toBeInTheDocument();
     search.mockResolvedValue({
       skills: [{ ...skill, name: "Zebra" }],
-      editors: [],
       hasMore: true,
       nextCursor: cursor,
     });
@@ -293,7 +289,6 @@ describe("search-backed Manage Skills", () => {
     await screen.findByRole("alert");
     search.mockResolvedValue({
       skills: [],
-      editors: [],
       hasMore: false,
       nextCursor: null,
     });

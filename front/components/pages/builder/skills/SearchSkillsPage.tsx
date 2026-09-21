@@ -55,7 +55,6 @@ function SkillSearchResults({
     useCursorPaginationForDataTable(SKILL_SEARCH_PAGE_SIZE);
   const {
     skills,
-    editors,
     hasMore,
     nextCursor,
     isSkillsLoading,
@@ -103,7 +102,6 @@ function SkillSearchResults({
         <SkillSearchTable
           owner={owner}
           skills={skills}
-          editors={editors}
           onSelect={onSelect}
           onRefresh={() => void mutate()}
           pagination={tablePagination}

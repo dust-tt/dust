@@ -248,9 +248,6 @@ export function useSearchSkills({
     skills:
       (disabled ? undefined : data?.skills) ?? emptyArray<SkillListItemType>(),
     resolvedSearchTerm: disabled ? null : (data?.searchTerm ?? null),
-    editors:
-      data?.editors ??
-      emptyArray<SearchSkillsResponseBody["editors"][number]>(),
     hasMore: data?.hasMore ?? false,
     nextCursor: data?.nextCursor ?? null,
     isSkillsError: !!error,
