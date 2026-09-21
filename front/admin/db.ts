@@ -55,6 +55,7 @@ import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import { GlobalFeatureFlagModel } from "@app/lib/models/global_feature_flag";
+import { InferenceHookModel } from "@app/lib/models/inference_hook";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { ProviderCredentialModel } from "@app/lib/models/provider_credential";
@@ -216,6 +217,7 @@ export function loadAllModels() {
     PlanModel,
     SubscriptionModel,
     ProviderCredentialModel,
+    InferenceHookModel,
     TemplateModel,
     CreditModel,
     CouponModel,
