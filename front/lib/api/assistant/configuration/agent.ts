@@ -60,8 +60,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { UserType } from "@app/types/user";
-import assert from "assert";
 import type { Transaction } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
 

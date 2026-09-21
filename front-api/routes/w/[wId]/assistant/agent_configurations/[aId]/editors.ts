@@ -3,13 +3,12 @@ import { getAgentEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentEditorsLightResponseBody,
   AgentEditorsResponseBody,
 } from "@app/types/api/assistant/configuration/editors";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -52,18 +51,15 @@ type EditorDeltaErrorCode =
 
 // Applies this endpoint's add/remove editor deltas by translating them into the complete editor set
 // and persisting it through `AgentResource.updateConfiguration` — the single editor-edit path
-// (admin-gated, applied in place with no new version; see `agent-edit-in-place`). The caller has
-// already checked admin access, archived and global status.
+// (admin-gated, applied in place with no new version; see `agent-edit-in-place`). Active-member
+// validation of added editors lives on that path (see `editor-add-requires-membership`); its
+// `user_not_found` failure is surfaced here as a 404. The caller has already checked admin access,
+// archived and global status.
 /**
  * @cc [owner:philipperolet,label:security;product] editor-removal-uses-grants
- * Removing an editor MUST validate against the grant-backed editor set (`listEditors`); removing a
- * user who holds no editor grant MUST fail with `user_not_member` and change no grant.
- */
-/**
- * @cc [owner:philipperolet,label:security;product] editor-add-requires-membership
- * Adding an editor requires active workspace membership: a non-member MUST fail with
- * `user_not_found` before any editor grant is changed. Adding a user who is already an editor MUST
- * fail with `user_already_member`.
+ * Translating add/remove deltas MUST validate against the grant-backed editor set (`listEditors`):
+ * removing a user who holds no editor grant MUST fail with `user_not_member`, and adding a user who
+ * already holds one MUST fail with `user_already_member`. Neither changes any grant.
  */
 async function applyEditorDelta(
   auth: Authenticator,
@@ -95,22 +91,6 @@ async function applyEditorDelta(
     );
   }
 
-  if (usersToAdd.length > 0) {
-    const { total: activeMembershipCount } =
-      await MembershipResource.getActiveMemberships({
-        users: usersToAdd,
-        workspace: auth.getNonNullableWorkspace(),
-      });
-    if (activeMembershipCount !== usersToAdd.length) {
-      return new Err(
-        new DustError(
-          "user_not_found",
-          "The user was not found in the workspace."
-        )
-      );
-    }
-  }
-
   const removeEditorModelIds = new Set(usersToRemove.map((u) => u.id));
   const nextEditors = [
     ...currentEditors.filter((u) => !removeEditorModelIds.has(u.id)),
@@ -121,7 +101,18 @@ async function applyEditorDelta(
     editors: nextEditors,
   });
   if (updateRes.isErr()) {
-    return new Err(new DustError("internal_error", updateRes.error.message));
+    // `syncAgentEditors` rejects a non-member with a `user_not_found` DustError
+    // (see `editor-add-requires-membership`); surface that as a 404, anything else as internal.
+    const { error } = updateRes;
+    if (error instanceof DustError && error.code === "user_not_found") {
+      return new Err(
+        new DustError(
+          "user_not_found",
+          "The user was not found in the workspace."
+        )
+      );
+    }
+    return new Err(new DustError("internal_error", error.message));
   }
 
   return new Ok(updateRes.value.resource);
