@@ -793,6 +793,28 @@ export class AgentResource
   }
 
   /**
+   * @cc [owner:flvndvd,label:backend] agent-batch-loader-alignment
+   * Inputs MUST be a nonempty batch from one workspace. Results MUST preserve input positions,
+   * returning null for each missing agent.
+   */
+  private static async loadManyFromDatabase(
+    inputs: readonly AgentResourceCacheKey[]
+  ): Promise<(FullAgentResource | null)[]> {
+    const { workspaceModelId } = inputs[0];
+    assert(
+      inputs.every((input) => input.workspaceModelId === workspaceModelId),
+      "Agent cache batches must belong to one workspace"
+    );
+    const resources = await this.loadResource(workspaceModelId, {
+      sId: inputs.map(({ id }) => id),
+    });
+    const resourcesById = new Map(
+      resources.map((resource) => [resource.sId, resource])
+    );
+    return inputs.map(({ id }) => resourcesById.get(id) ?? null);
+  }
+
+  /**
    * @cc [owner:tdraier,label:backend;performance] agent-resource-cache
    * The cache holds the caller-independent full resource; the caller-dependent `canFetch` and
    * `materializeResource` gates MUST run on every read and MUST NOT be cached. Entries have no TTL, so
@@ -811,20 +833,8 @@ export class AgentResource
       version: AGENT_RESOURCE_CACHE_VERSION,
       key: agentResourceCacheKey,
       dryRun: AGENT_RESOURCE_CACHE_DRY_RUN,
-      loadManyFromDatabase: async (inputs) => {
-        const { workspaceModelId } = inputs[0];
-        assert(
-          inputs.every((input) => input.workspaceModelId === workspaceModelId),
-          "Agent cache batches must belong to one workspace"
-        );
-        const resources = await AgentResource.loadResource(workspaceModelId, {
-          sId: inputs.map(({ id }) => id),
-        });
-        const resourcesById = new Map(
-          resources.map((resource) => [resource.sId, resource])
-        );
-        return inputs.map(({ id }) => resourcesById.get(id) ?? null);
-      },
+      loadManyFromDatabase: (inputs) =>
+        AgentResource.loadManyFromDatabase(inputs),
       toSnapshot: (cachedResource) => cachedResource.toSnapshot(),
       fromSnapshot: (snapshot) => AgentResource.fromSnapshot(snapshot),
     });
