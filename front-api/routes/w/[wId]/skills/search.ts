@@ -85,10 +85,7 @@ app.post(
     const editorIds = [
       ...new Set(result.value.skills.flatMap((skill) => skill.editorIds)),
     ];
-    let users: UserResource[] = [];
-    if (editorIds.length > 0) {
-      users = await UserResource.fetchByIds(editorIds);
-    }
+    const users = await UserResource.fetchByIds(editorIds);
 
     const editorsById = new Map(
       users.map((user) => {
