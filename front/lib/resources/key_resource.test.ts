@@ -148,7 +148,7 @@ describe("KeyResource", () => {
       expect(fetched).not.toBeNull();
       expect(fetched!.status).toBe("active");
       expect(fetched!.isSystem).toBe(false);
-      expect(fetched!.role).toBe("manager");
+      expect(fetched!.role).toBe("user");
       expect(fetched!.groupIds).toEqual([globalGroup.id]);
       expect(fetched!.secret).toBe(key.secret);
     });

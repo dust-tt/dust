@@ -180,7 +180,7 @@ describe("POST /api/v1/w/[wId]/files/[fileId]", () => {
     expect(response.status).toBe(200);
   });
 
-  it("should allow a manager to modify conversation files", async () => {
+  it("should allow a user key to modify conversation files", async () => {
     const { workspace, key } = await createPublicApiMockRequest();
     setupMockFile(workspace, { useCase: "conversation" });
 
@@ -243,7 +243,7 @@ describe("DELETE /api/v1/w/[wId]/files/[fileId]", () => {
     expect(mockDelete).toHaveBeenCalledTimes(1);
   });
 
-  it("should allow a manager to delete conversation files", async () => {
+  it("should allow a user key to delete conversation files", async () => {
     const { workspace, key } = await createPublicApiMockRequest();
     setupMockFile(workspace, { useCase: "conversation" });
 
