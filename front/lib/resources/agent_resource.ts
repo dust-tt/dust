@@ -240,14 +240,23 @@ const ACTION_IDENTITY_KEYS_TO_DROP = new Set([
   "meta",
 ]);
 
+// Action fields whose contents are arbitrary user-controlled data: a tool's input JSON schema
+// (keyed by the tool's own property names) and the free-form config map. Their keys can legitimately
+// collide with the identity keys above — `jsonSchema.properties.id`, an `additionalConfiguration`
+// entry named `icon` — so they are compared verbatim rather than descended into. Dropping a key
+// inside them would let a real edit compare equal and be silently skipped, violating the conservative
+// requirement of `save-skips-noop-version`. The worst case of comparing verbatim is a redundant save.
+const OPAQUE_ACTION_KEYS = new Set(["jsonSchema", "additionalConfiguration"]);
+
 function isRecordValue(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 // Projects an MCP action onto the fields that define it for comparison, recursively dropping the
-// reconstructed-only identity fields above. Rebuilds objects with a null prototype so an own
-// `__proto__` key (e.g. inside a tool's JSON schema) is preserved as data rather than silently
-// reparented — which would otherwise let a real schema edit compare equal and be dropped.
+// reconstructed-only identity fields above (except inside the opaque, user-controlled fields, which
+// are kept verbatim). Rebuilds objects with a null prototype so an own `__proto__` key (e.g. inside
+// a tool's JSON schema) is preserved as data rather than silently reparented — which would otherwise
+// let a real schema edit compare equal and be dropped.
 function normalizeActionForComparison(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(normalizeActionForComparison);
@@ -258,7 +267,9 @@ function normalizeActionForComparison(value: unknown): unknown {
       if (ACTION_IDENTITY_KEYS_TO_DROP.has(key)) {
         continue;
       }
-      result[key] = normalizeActionForComparison(value[key]);
+      result[key] = OPAQUE_ACTION_KEYS.has(key)
+        ? value[key]
+        : normalizeActionForComparison(value[key]);
     }
     return result;
   }
