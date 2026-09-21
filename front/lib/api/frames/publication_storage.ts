@@ -8,6 +8,7 @@ import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database
 import {
   buildFrameFunctionsTarArchive,
   FRAME_FUNCTIONS_ARCHIVE_CONTENT_TYPE,
+  parseFrameFunctionsTarArchive,
 } from "@app/lib/api/frames/functions_archive";
 import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
 import { seedFramePublicationFunctionsArchive } from "@app/lib/api/frames/seed_functions_archive";
@@ -40,17 +41,12 @@ import {
 } from "@app/types/api/frame_publication";
 import {
   getFramePublicationDescriptorPath,
-  getFramePublicationFunctionBundlePath,
   getFramePublicationFunctionsArchivePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
 import type { AllSupportedFileContentType } from "@app/types/files";
-import {
-  frameContentType,
-  frameV2ContentType,
-  sandboxFunctionContentType,
-} from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -320,19 +316,12 @@ export async function storeFramePublication(
       content: uiBundleCode,
       contentType: frameContentType,
     },
-    ...functionArtifacts.map((artifact) => ({
-      filePath: getFramePublicationFunctionBundlePath({
-        ...identity,
-        functionName: artifact.name,
-      }),
-      content: artifact.bundleCode,
-      contentType: sandboxFunctionContentType,
-    })),
   ];
 
-  // Additive cold-path archive: one object so invocation can skip listing the
-  // uncached gcsfuse functions/ directory. Per-function objects stay for
-  // poke/debug and as the resolve fallback when the archive is absent.
+  // One object for every published function bundle. Cold invocation extracts
+  // it once; poke/activation read the same archive. Older publications may
+  // still have a per-function `functions/` tree that dsbx falls back to when
+  // this archive is absent — front no longer writes that tree.
   if (functionArtifacts.length > 0) {
     const functionsArchive = await buildFrameFunctionsTarArchive(
       functionArtifacts.map((artifact) => ({
@@ -374,9 +363,9 @@ export async function storeFramePublication(
 }
 
 /**
- * The published bundle of a single Frame function. `loadFramePublicationFunctionDefinitions` reads
- * every function of a publication and verifies each hash because activation depends on it; a
- * reader that only wants to display one function's code does not need the rest.
+ * The published bundle of a single Frame function, taken from `functions.tar`.
+ * Activation verifies every entry's hash via the same archive; poke only needs
+ * one slug and still shares this path.
  */
 export async function readFramePublicationFunctionBundle(
   auth: Authenticator,
@@ -390,23 +379,16 @@ export async function readFramePublicationFunctionBundle(
     functionName: string;
   }
 ): Promise<Result<string, FramePublicationError>> {
-  const frameIdentity = getFrameIdentity(auth, frame);
-  if (frameIdentity.isErr()) {
-    return frameIdentity;
+  const bundles = await loadFramePublicationFunctionBundles(auth, {
+    frame,
+    publicationId,
+  });
+  if (bundles.isErr()) {
+    return bundles;
   }
 
-  const bundlePath = getFramePublicationFunctionBundlePath({
-    ...frameIdentity.value,
-    publicationId,
-    functionName,
-  });
-
-  try {
-    return new Ok(await getPrivateUploadBucket().fetchFileContent(bundlePath));
-  } catch (error) {
-    if (!isGCSNotFoundError(error)) {
-      throw error;
-    }
+  const bundleCode = bundles.value.get(functionName);
+  if (bundleCode === undefined) {
     return new Err(
       new FramePublicationError(
         "publication_not_found",
@@ -414,6 +396,48 @@ export async function readFramePublicationFunctionBundle(
       )
     );
   }
+
+  return new Ok(bundleCode);
+}
+
+async function loadFramePublicationFunctionBundles(
+  auth: Authenticator,
+  {
+    frame,
+    publicationId,
+  }: {
+    frame: FileResource;
+    publicationId: string;
+  }
+): Promise<Result<Map<string, string>, FramePublicationError>> {
+  const frameIdentity = getFrameIdentity(auth, frame);
+  if (frameIdentity.isErr()) {
+    return frameIdentity;
+  }
+
+  const archivePath = getFramePublicationFunctionsArchivePath({
+    ...frameIdentity.value,
+    publicationId,
+  });
+
+  let archiveBuffer: Buffer;
+  try {
+    archiveBuffer = Buffer.from(
+      await getPrivateUploadBucket().fetchFileBuffer(archivePath)
+    );
+  } catch (error) {
+    if (!isGCSNotFoundError(error)) {
+      throw error;
+    }
+    return new Err(
+      new FramePublicationError(
+        "publication_not_found",
+        `Frame publication functions archive not found: ${publicationId}`
+      )
+    );
+  }
+
+  return new Ok(await parseFrameFunctionsTarArchive(archiveBuffer));
 }
 
 export async function loadFramePublicationDescriptor(
@@ -489,29 +513,23 @@ async function loadFramePublicationFunctionDefinitions(
 ): Promise<
   Result<FramePublicationFunctionDefinition[], FramePublicationError>
 > {
-  const frameIdentity = getFrameIdentity(auth, frame);
-  if (frameIdentity.isErr()) {
-    return frameIdentity;
+  if (descriptor.manifest.functions.length === 0) {
+    return new Ok([]);
   }
 
-  const storage = getPrivateUploadBucket();
+  const bundles = await loadFramePublicationFunctionBundles(auth, {
+    frame,
+    publicationId,
+  });
+  if (bundles.isErr()) {
+    return bundles;
+  }
+
   const definitions = await concurrentExecutor(
     descriptor.manifest.functions,
     async (fn, index) => {
-      const identity = {
-        ...frameIdentity.value,
-        publicationId,
-        functionName: fn.name,
-      };
-      let bundleCode: string;
-      try {
-        bundleCode = await storage.fetchFileContent(
-          getFramePublicationFunctionBundlePath(identity)
-        );
-      } catch (error) {
-        if (!isGCSNotFoundError(error)) {
-          throw error;
-        }
+      const bundleCode = bundles.value.get(fn.name);
+      if (bundleCode === undefined) {
         return new Err(
           new FramePublicationError(
             "publication_not_found",

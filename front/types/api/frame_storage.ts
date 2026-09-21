@@ -117,16 +117,7 @@ export function getFramePublicationUiBundlePath(args: {
   return `${getFramePublicationBasePath(args)}ui/bundle.js`;
 }
 
-export function getFramePublicationFunctionBundlePath(args: {
-  workspaceId: string;
-  frameId: string;
-  publicationId: string;
-  functionName: string;
-}): string {
-  return `${getFramePublicationBasePath(args)}functions/${safeSegment(args.functionName, "functionName")}.ts`;
-}
-
-/** Sibling of the per-function `functions/` directory: one archive for cold materialization. */
+/** Sole published function payload: one uncompressed tar of every `<name>.ts` bundle. */
 export function getFramePublicationFunctionsArchivePath(args: {
   workspaceId: string;
   frameId: string;
