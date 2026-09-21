@@ -272,10 +272,20 @@ describe("getAgentConfigurations", () => {
       dangerouslySkipPermissionFiltering: true,
     });
 
-    expect(agents.map(({ sId, version }) => ({ sId, version }))).toEqual([
-      { sId: latestFirstAgent.sId, version: latestFirstAgent.version },
-      { sId: latestSecondAgent.sId, version: latestSecondAgent.version },
-    ]);
+    // `getAgentConfigurations` deduplicates the requested ids, drops the unknown one, and returns
+    // the latest version of each agent. It orders by version across agents, which is not a
+    // meaningful order between distinct agents (both are at the same version here), so compare
+    // order-independently by sorting on sId.
+    const bySId = (a: { sId: string }, b: { sId: string }) =>
+      a.sId.localeCompare(b.sId);
+    expect(
+      agents.map(({ sId, version }) => ({ sId, version })).sort(bySId)
+    ).toEqual(
+      [
+        { sId: latestFirstAgent.sId, version: latestFirstAgent.version },
+        { sId: latestSecondAgent.sId, version: latestSecondAgent.version },
+      ].sort(bySId)
+    );
   });
 });
 
