@@ -185,7 +185,7 @@ export type SaveAgentConfigurationParams = {
 // The `SaveAgentConfigurationParams` fields that define a configuration version (everything except
 // `scope`/`editors`, which are applied in place, and `authorId`, which is version metadata). A save
 // that changes any of these creates a new version; see `saveConfiguration`/`agent-edit-in-place`.
-const AGENT_DEFINITION_KEYS = [
+const AGENT_CONFIGURATION_KEYS = [
   "name",
   "description",
   "instructions",
@@ -1704,11 +1704,11 @@ export class AgentResource
     // configuration is read (to diff and to fill the new version's unchanged columns) ONLY when a
     // definition field is provided AND the agent is readable — an unreadable (`light`) caller cannot
     // create a version, so its definition fields are ignored (it may still change scope/editors).
-    const providedDefinitionKeys = AGENT_DEFINITION_KEYS.filter(
+    const providedDefinitionKeys = AGENT_CONFIGURATION_KEYS.filter(
       (key) => update[key] !== undefined
     );
     let versionParams: SaveAgentConfigurationParams | null = null;
-    let versionChangedModelOnly = false;
+    let allowForAdmins = false;
     if (providedDefinitionKeys.length > 0 && this.isFull()) {
       const currentParams = await this.buildResaveParams(auth);
       const mergedParams: SaveAgentConfigurationParams = { ...currentParams };
@@ -1730,9 +1730,7 @@ export class AgentResource
       );
       if (changedDefinitionKeys.length > 0) {
         versionParams = mergedParams;
-        versionChangedModelOnly = changedDefinitionKeys.every(
-          (key) => key === "model"
-        );
+        allowForAdmins = changedDefinitionKeys.every((key) => key === "model");
       }
     }
 
@@ -1746,7 +1744,7 @@ export class AgentResource
     if (versionParams) {
       // The model alone may be changed by an editor or an admin; every other definition field
       // requires `write` (see `agent-edit-in-place` / `model-change-requires-edit`).
-      const canEditDefinition = versionChangedModelOnly
+      const canEditDefinition = allowForAdmins
         ? auth.can("write", this) || auth.can("admin", this)
         : auth.can("write", this);
       if (!canEditDefinition) {
