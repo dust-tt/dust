@@ -149,7 +149,6 @@ export async function makeTestFrameFunction({
     useCaseMetadata: {
       spaceId: space.sId,
       activePublicationId: publicationId,
-      frameName: "Task List",
       frameDescription: "Track tasks.",
     },
     // A Frame always lives in its own folder, and that folder is its name.

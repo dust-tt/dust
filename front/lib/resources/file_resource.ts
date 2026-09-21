@@ -1119,7 +1119,7 @@ export class FileResource extends BaseResource<FileModel> {
    * unavailable for every publication of that Frame, not just the failing one.
    *
    * The Frame's name is not part of a publication: it is the source folder's basename. See the
-   * `frame-name-is-the-source-folder` contract in `lib/api/frames/frame_name.ts`.
+   * `frame-name-is-the-source-folder` contract in `types/api/frame_manifest.ts`.
    */
   async setActiveFramePublication(
     {

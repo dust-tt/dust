@@ -5,7 +5,6 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
-import { getFrameV2NameFromMountFilePath } from "@app/lib/api/frames/frame_name";
 import {
   buildFrameFunctionsTarArchive,
   FRAME_FUNCTIONS_ARCHIVE_CONTENT_TYPE,
@@ -29,7 +28,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
-import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
+import {
+  getFrameV2NameFromManifestPath,
+  isSafeFrameRelativePath,
+} from "@app/types/api/frame_manifest";
 import type { FramePublicationDescriptor } from "@app/types/api/frame_publication";
 import {
   FRAME_PUBLICATION_SCHEMA_VERSION,
@@ -665,7 +667,7 @@ export async function activateFramePublication(
         sId: frame.sId,
         name:
           (frame.mountFilePath
-            ? getFrameV2NameFromMountFilePath(frame.mountFilePath)
+            ? getFrameV2NameFromManifestPath(frame.mountFilePath)
             : null) ?? frame.sId,
       }),
     ],

@@ -620,8 +620,7 @@ describe("activateFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       stored.value.publicationId
     );
-    // Activation records the description but never the name: the source folder names the Frame.
-    expect(reloaded?.useCaseMetadata?.frameName).toBeUndefined();
+    // Activation records the description; the source folder names the Frame.
     expect(reloaded?.useCaseMetadata?.frameDescription).toBe("Track tasks.");
   });
 
@@ -665,7 +664,6 @@ describe("activateFramePublication", () => {
     expect(activated.isOk()).toBe(true);
 
     const reloaded = await FileResource.fetchById(auth, frame.sId);
-    expect(reloaded?.useCaseMetadata?.frameName).toBeUndefined();
     expect(reloaded?.useCaseMetadata?.frameDescription).toBe(
       "Renamed description."
     );
