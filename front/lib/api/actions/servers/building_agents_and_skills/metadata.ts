@@ -3,6 +3,8 @@ import {
   AGENT_FACING_DESCRIPTION_MAX_LENGTH,
   USER_FACING_DESCRIPTION_MAX_LENGTH,
 } from "@app/lib/skills/labels";
+import { MODEL_IDS } from "@app/types/assistant/models/models";
+import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import {
   SKILL_AVAILABILITIES,
   SKILL_NAME_MAX_LENGTH,
@@ -23,6 +25,8 @@ export const SUGGEST_AGENT_CREATION_TOOL_NAME =
   "suggest_agent_creation" as const;
 export const SUGGEST_AGENT_DELETION_TOOL_NAME =
   "suggest_agent_deletion" as const;
+export const SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME =
+  "suggest_agent_model_change" as const;
 export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME =
   "suggest_skill_user_facing_description" as const;
 export const SUGGEST_SKILL_NAME_TOOL_NAME = "suggest_skill_name" as const;
@@ -158,6 +162,31 @@ export const SUGGEST_AGENT_DELETION_INPUT_SCHEMA = z.object({
 
 export type SuggestAgentDeletionArgs = z.infer<
   typeof SUGGEST_AGENT_DELETION_INPUT_SCHEMA
+>;
+
+export const SUGGEST_AGENT_MODEL_CHANGE_DESCRIPTION =
+  "Suggest changing the model, and optionally its reasoning effort, used by an existing agent " +
+  "of this workspace. The change is not applied directly: it is recorded as a pending " +
+  "suggestion that the agent's editors can review, accept, or reject. Only agents the caller " +
+  "can edit can be targeted.";
+
+export const SUGGEST_AGENT_MODEL_CHANGE_INPUT_SCHEMA = z.object({
+  agentId: z.string().describe("The id of the agent whose model to change."),
+  modelId: z.enum(MODEL_IDS).describe("The id of the new model for the agent."),
+  reasoningEffort: z
+    .enum(ORDERED_REASONING_EFFORTS)
+    .optional()
+    .describe(
+      "The reasoning effort to use with the new model, if the model supports more than one."
+    ),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Why this model change improves the agent."),
+});
+
+export type SuggestAgentModelChangeArgs = z.infer<
+  typeof SUGGEST_AGENT_MODEL_CHANGE_INPUT_SCHEMA
 >;
 
 export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_INPUT_SCHEMA = z.object({
@@ -328,6 +357,18 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting agent deletion",
       done: "Suggest agent deletion",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME,
+    description: SUGGEST_AGENT_MODEL_CHANGE_DESCRIPTION,
+    schema: SUGGEST_AGENT_MODEL_CHANGE_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting agent model change",
+      done: "Suggest agent model change",
     },
     toolCostCategory: "basic",
     freeUsage: true,

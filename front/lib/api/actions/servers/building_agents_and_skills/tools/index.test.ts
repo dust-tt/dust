@@ -4,6 +4,7 @@ import {
   SUGGEST_AGENT_CREATION_INPUT_SCHEMA,
   SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_AGENT_DELETION_TOOL_NAME,
+  SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME,
   SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
   SUGGEST_SKILL_DELETION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
@@ -45,6 +46,8 @@ const AGENT_CREATE_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=create agentId=(\S+)\}$/;
 const AGENT_DELETE_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=delete agentId=(\S+)\}$/;
+const AGENT_MODEL_SUGGESTION_DIRECTIVE_REGEX =
+  /^:agent_suggestion\[\]\{sId=(\S+) kind=model agentId=(\S+)\}$/;
 
 function getTool(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -141,6 +144,17 @@ function extractAgentDeleteSuggestionDirective(text: string): {
   agentId: string;
 } {
   const match = AGENT_DELETE_SUGGESTION_DIRECTIVE_REGEX.exec(text);
+  if (!match) {
+    throw new Error(`Unexpected tool output: ${text}`);
+  }
+  return { suggestionId: match[1], agentId: match[2] };
+}
+
+function extractAgentModelSuggestionDirective(text: string): {
+  suggestionId: string;
+  agentId: string;
+} {
+  const match = AGENT_MODEL_SUGGESTION_DIRECTIVE_REGEX.exec(text);
   if (!match) {
     throw new Error(`Unexpected tool output: ${text}`);
   }
@@ -948,6 +962,161 @@ describe("building_agents_and_skills tools", () => {
         makeExtra(authenticator)
       );
       expectMcpError(result, "active agents");
+    });
+  });
+
+  describe(SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME, () => {
+    it("records a pending model suggestion and outdates previous ones", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const first = await getTool(SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME).handler(
+        {
+          agentId: agent.sId,
+          modelId: "claude-sonnet-4-6",
+          reasoningEffort: "high",
+          analysis: "Better for complex tasks.",
+        },
+        makeExtra(authenticator)
+      );
+      expect(first.isOk()).toBe(true);
+      if (first.isErr()) {
+        throw first.error;
+      }
+      const firstOutput = first.value[0];
+      if (firstOutput?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const { suggestionId: firstId, agentId } =
+        extractAgentModelSuggestionDirective(firstOutput.text);
+      expect(agentId).toBe(agent.sId);
+
+      const suggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        firstId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.kind).toBe("model");
+      expect(suggestion?.toJSON()).toMatchObject({
+        suggestion: { modelId: "claude-sonnet-4-6", reasoningEffort: "high" },
+        analysis: "Better for complex tasks.",
+      });
+
+      const second = await getTool(
+        SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME
+      ).handler(
+        { agentId: agent.sId, modelId: "claude-sonnet-4-6" },
+        makeExtra(authenticator)
+      );
+      expect(second.isOk()).toBe(true);
+
+      const previous = await AgentSuggestionResource.fetchById(
+        authenticator,
+        firstId
+      );
+      expect(previous?.state).toBe("outdated");
+    });
+
+    it("returns an MCPError without an interactive user", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const nonInteractiveAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const result = await getTool(
+        SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME
+      ).handler(
+        { agentId: agent.sId, modelId: "claude-sonnet-4-6" },
+        makeExtra(nonInteractiveAuth)
+      );
+      expectMcpError(result, "interactive user");
+    });
+
+    it("returns an MCPError for an unknown agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await getTool(
+        SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME
+      ).handler(
+        { agentId: "unknown_agent", modelId: "claude-sonnet-4-6" },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "not found");
+    });
+
+    it("returns an MCPError when the caller is not an editor", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const other = await addMember(workspace);
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        other.sId,
+        workspace.sId
+      );
+
+      const result = await getTool(
+        SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME
+      ).handler(
+        { agentId: agent.sId, modelId: "claude-sonnet-4-6" },
+        makeExtra(otherAuth)
+      );
+      expectMcpError(result, "Only editors");
+    });
+
+    it("returns an MCPError for an archived agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      await archiveAgentConfiguration(authenticator, agent.sId);
+
+      const result = await getTool(
+        SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME
+      ).handler(
+        { agentId: agent.sId, modelId: "claude-sonnet-4-6" },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "active agents");
+    });
+
+    it("returns an MCPError for an unsupported reasoning effort", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // claude-sonnet-4-6 does not support reasoningEffort "none".
+      const result = await getTool(
+        SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME
+      ).handler(
+        {
+          agentId: agent.sId,
+          modelId: "claude-sonnet-4-6",
+          reasoningEffort: "none",
+        },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "Invalid reasoning effort");
+    });
+
+    it("returns an MCPError for a model not available in the workspace", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // gpt-4o-mini is in SUPPORTED_MODEL_CONFIGS but not in USED_MODEL_CONFIGS.
+      const result = await getTool(
+        SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME
+      ).handler(
+        { agentId: agent.sId, modelId: "gpt-4o-mini" },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "Invalid model ID");
     });
   });
 
