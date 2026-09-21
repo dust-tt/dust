@@ -15,10 +15,10 @@ export type InputBarRunCommandId = Extract<
 
 /** Reorder this list to change display order in the `/` menu. */
 export const INPUT_BAR_SLASH_COMMAND_ORDER: InputBarSlashCommandId[] = [
-  "compact",
-  "upload-file",
   "attach-knowledge",
+  "upload-file",
   "pick-model",
+  "compact",
 ];
 
 // Static command offered by the input bar `/` dropdown, as opposed to workspace capabilities

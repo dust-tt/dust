@@ -88,7 +88,7 @@ import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   ArrowUp,
-  Attachment01,
+  BookOpen01,
   Button,
   Camera01,
   Chip,
@@ -1929,7 +1929,7 @@ const InputBarContainer = ({
                           <DropdownMenuContent align="end">
                             {actions.includes("attachment") && (
                               <DropdownMenuItem
-                                icon={Attachment01}
+                                icon={BookOpen01}
                                 label="Attach"
                                 onClick={() => {
                                   setIsCaptureDropdownOpen(false);
