@@ -37,17 +37,17 @@ const SEARCH_TABS = [
   { id: "archived", label: "Archived", filters: { status: ["archived"] } },
 ] satisfies { id: string; label: string; filters: SkillSearchFilters }[];
 
-interface SkillSearchResultsProps {
+interface SkillsListProps {
   searchTerm: string;
   filters: SkillSearchFilters;
   onSelect: (skillId: string) => void;
 }
 
-function SkillSearchResults({
+function SkillsList({
   searchTerm,
   filters,
   onSelect,
-}: SkillSearchResultsProps) {
+}: SkillsListProps) {
   const owner = useWorkspace();
   const {
     cursorPagination,
@@ -183,7 +183,7 @@ export function SearchSkillsPage() {
           </TabsList>
           {SEARCH_TABS.map((tab) => (
             <TabsContent key={tab.id} value={tab.id}>
-              <SkillSearchResults
+              <SkillsList
                 key={owner.sId}
                 searchTerm={searchTerm}
                 filters={tab.filters}
