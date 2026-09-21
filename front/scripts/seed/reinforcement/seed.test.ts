@@ -20,6 +20,7 @@ function instructionEditsOf(suggestion: SkillSuggestionResource) {
     case "editors":
     case "user_facing_description":
     case "create":
+    case "name":
       return undefined;
     default:
       assertNever(json);

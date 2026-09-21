@@ -97,5 +97,18 @@
     "suggestion": {
       "userFacingDescription": "Paste raw meeting notes, a call transcript or a Slack thread and get back a clean summary with the decisions and the action items, each with an owner and a due date."
     }
+  },
+  {
+    "id": "skillName",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "name",
+    "title": "Rename to match its scope",
+    "analysis": "The skill now covers call transcripts and Slack threads, not only meeting notes, and its output is a decisions-and-actions summary. The name should say so.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "name": "MeetingSummarizer"
+    }
   }
 ]

@@ -1,3 +1,4 @@
+import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
 import {
   AttachedKnowledgeSchema,
   SkillNameSchema,
@@ -30,6 +31,7 @@ import {
 } from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -203,17 +205,6 @@ app.patch(
     const { skill } = loaded;
 
     const body = ctx.req.valid("json");
-    const name = body.name.trim();
-
-    if (!name) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Skill name cannot be empty.",
-        },
-      });
-    }
 
     // Resolve the requested availability once: isDefault is a deprecated alias; an explicit
     // availability takes priority over it.
@@ -280,18 +271,35 @@ app.patch(
       });
     }
 
-    // Check for existing active skill with the same name (excluding current skill).
-    const existingSkill = await SkillResource.fetchByName(auth, name);
-
-    if (existingSkill && existingSkill.id !== skill.id) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `A skill with the name "${name}" already exists.`,
-        },
-      });
+    const nameValidation = await validateSkillNameChange(auth, skill, {
+      name: body.name,
+    });
+    if (nameValidation.isErr()) {
+      switch (nameValidation.error.code) {
+        case "not_authorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "app_auth_error",
+              message: nameValidation.error.message,
+            },
+          });
+        case "archived":
+        case "empty":
+        case "too_long":
+        case "already_exists":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: nameValidation.error.message,
+            },
+          });
+        default:
+          assertNever(nameValidation.error.code);
+      }
     }
+    const { name } = nameValidation.value;
 
     // Validate MCP server view IDs.
     for (const tool of body.tools) {

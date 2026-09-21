@@ -1220,6 +1220,25 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
+  static async isNameTaken(
+    auth: Authenticator,
+    name: string,
+    excludeSkillModelId?: ModelId
+  ): Promise<boolean> {
+    const count = await this.model.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        name,
+        status: "active",
+        ...(excludeSkillModelId !== undefined
+          ? { id: { [Op.ne]: excludeSkillModelId } }
+          : {}),
+      },
+    });
+
+    return count > 0;
+  }
+
   static async fetchByNames(
     auth: Authenticator,
     names: string[]
