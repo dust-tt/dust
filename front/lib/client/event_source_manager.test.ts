@@ -1,6 +1,6 @@
 import {
   getAgentLoopEventId,
-  isLastBlockingAgentLoopEvent,
+  shouldPauseAgentLoopStream,
 } from "@app/lib/client/agent_loop_stream";
 import { setSseVerbose } from "@app/lib/client/sse_verbose";
 import type {
@@ -85,7 +85,7 @@ function createBlockedStreamManager(options: EventSourceManagerOptions = {}) {
   );
   const config = {
     buildURL: () => "/events",
-    isPauseEvent: isLastBlockingAgentLoopEvent,
+    isPauseEvent: shouldPauseAgentLoopStream,
     replayBufferedEventsOnSubscribe: false,
     restartKey: "message-msg_blocked",
     workspaceId: "w_1",

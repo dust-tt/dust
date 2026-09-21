@@ -1,7 +1,7 @@
-import { isLastBlockingAgentLoopEvent } from "@app/lib/client/agent_loop_stream";
+import { shouldPauseAgentLoopStream } from "@app/lib/client/agent_loop_stream";
 import { describe, expect, it } from "vitest";
 
-describe("isLastBlockingAgentLoopEvent", () => {
+describe("shouldPauseAgentLoopStream", () => {
   it.each([
     "tool_approve_execution",
     "tool_personal_auth_required",
@@ -9,7 +9,7 @@ describe("isLastBlockingAgentLoopEvent", () => {
     "tool_ask_user_question",
   ])("recognizes the final %s event", (type) => {
     expect(
-      isLastBlockingAgentLoopEvent(
+      shouldPauseAgentLoopStream(
         JSON.stringify({
           eventId: "event-1",
           data: { type, isLastBlockingEventForStep: true },
@@ -20,7 +20,7 @@ describe("isLastBlockingAgentLoopEvent", () => {
 
   it("ignores earlier blocking events and terminal errors", () => {
     expect(
-      isLastBlockingAgentLoopEvent(
+      shouldPauseAgentLoopStream(
         JSON.stringify({
           data: {
             type: "tool_approve_execution",
@@ -30,12 +30,12 @@ describe("isLastBlockingAgentLoopEvent", () => {
       )
     ).toBe(false);
     expect(
-      isLastBlockingAgentLoopEvent(
+      shouldPauseAgentLoopStream(
         JSON.stringify({
           data: { type: "tool_error", isLastBlockingEventForStep: true },
         })
       )
     ).toBe(false);
-    expect(isLastBlockingAgentLoopEvent("invalid json")).toBe(false);
+    expect(shouldPauseAgentLoopStream("invalid json")).toBe(false);
   });
 });

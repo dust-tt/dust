@@ -51,7 +51,7 @@ export function isTerminalAgentLoopEvent(event: string): boolean {
  * The predicate MUST match only approval, authentication, or question events whose
  * isLastBlockingEventForStep flag is true. Invalid JSON MUST return false.
  */
-export function isLastBlockingAgentLoopEvent(event: string): boolean {
+export function shouldPauseAgentLoopStream(event: string): boolean {
   try {
     const parsed: unknown = JSON.parse(event);
     if (!isJsonRecord(parsed) || !isJsonRecord(parsed.data)) {
