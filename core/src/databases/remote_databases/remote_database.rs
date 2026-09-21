@@ -210,6 +210,15 @@ pub trait RemoteDatabase {
      * returned on `RemoteTableSchema.table_metadata_note` so agents can prefer
      * filtered reads over full-table scans.
      */
+    /**
+     * @cc [owner:thomasvicaire,label:product;backend] opaque-id-case-sensitive-resolution
+     * Each entry of `opaque_ids` is a dot-separated `database.schema.table` identifier in
+     * its original case, with any literal `.` inside a component escaped as
+     * `__DUST_DOT__`. Implementations MUST resolve every component case-sensitively (e.g.
+     * by quoting identifiers) instead of relying on the remote system's default
+     * unquoted-identifier folding, so that quoted, mixed- or lower-case names created by
+     * upstream connectors resolve to the exact table rather than a differently-cased one.
+     */
     async fn get_tables_schema(
         &self,
         opaque_ids: &Vec<&str>,
