@@ -21,6 +21,13 @@ vi.mock("@app/lib/egress/client", () => ({
 vi.mock("@app/lib/swr/useIsMobile", () => ({
   useIsMobile: () => false,
 }));
+vi.mock("@app/lib/platform", () => ({
+  useAppRouter: () => ({
+    asPath: "/files",
+    events: { on: vi.fn(), off: vi.fn() },
+  }),
+  useNavigationBlocker: vi.fn(),
+}));
 
 function makeFile({
   contentType,

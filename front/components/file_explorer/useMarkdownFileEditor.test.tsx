@@ -2,6 +2,7 @@ import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdown
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
+import type { Cache } from "swr";
 import { SWRConfig } from "swr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -42,6 +43,24 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("useMarkdownFileEditor", () => {
+  it("opens a new document when a clean file refreshes", () => {
+    const { result, rerender } = renderHook(useMarkdownFileEditor, {
+      initialProps,
+      wrapper: Wrapper,
+    });
+    const documentKey = result.current.documentKey;
+
+    rerender({
+      ...initialProps,
+      processedContent: { text: "# Updated by an agent", format: "markdown" },
+    });
+
+    expect(result.current.content).toBe("# Updated by an agent");
+    expect(result.current.documentKey).not.toBe(documentKey);
+    expect(result.current.isDirty).toBe(false);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("saves plain Markdown without remounting the document on its own refresh", async () => {
     const { result, rerender } = renderHook(useMarkdownFileEditor, {
       initialProps,
@@ -87,6 +106,29 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.content).toBe("# Original");
     expect(result.current.isDirty).toBe(true);
     expect(result.current.isSaving).toBe(false);
+  });
+
+  it("clears saving when the cache update rejects after a write", async () => {
+    const cache: Cache = new Map();
+    const { result } = renderHook(useMarkdownFileEditor, {
+      initialProps,
+      wrapper: ({ children }: WrapperProps) => (
+        <SWRConfig value={{ provider: () => cache }}>{children}</SWRConfig>
+      ),
+    });
+    act(() => result.current.setDocumentDirty(true));
+    vi.spyOn(cache, "set").mockImplementationOnce(() => {
+      throw new Error("Cache update failed");
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.saveContent("Keep this draft")
+      ).rejects.toThrow("Cache update failed");
+    });
+
+    expect(result.current.isSaving).toBe(false);
+    expect(result.current.isDirty).toBe(true);
   });
 
   it("does not apply an earlier file's save to a newly opened document", async () => {

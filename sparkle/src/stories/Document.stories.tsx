@@ -308,7 +308,7 @@ export const Autosave: Story = {
   },
 };
 
-const UpdatingParent = ({ onSave, ...props }: DocumentProps) => {
+const UpdatingParent = ({ onSave, onDirtyChange, ...props }: DocumentProps) => {
   const [revision, setRevision] = useState(0);
   const [savedRevision, setSavedRevision] = useState<number | null>(null);
 
@@ -326,6 +326,7 @@ const UpdatingParent = ({ onSave, ...props }: DocumentProps) => {
       {/* Keep this callback inline to cover parent rerenders. */}
       <Document
         {...props}
+        onDirtyChange={(dirty) => onDirtyChange?.(dirty)}
         onSave={
           onSave
             ? (content) => {
@@ -346,6 +347,7 @@ export const AutosaveDuringParentUpdates: Story = {
   args: {
     initialContent: "A draft",
     autosaveDebounceMs: HOST_AUTOSAVE_DEBOUNCE_MS,
+    onDirtyChange: fn(),
   },
   render: (args) => <UpdatingParent {...args} />,
   play: async ({ canvas, args }) => {
@@ -363,6 +365,10 @@ export const AutosaveDuringParentUpdates: Story = {
     await expect(
       Number(canvas.getByLabelText("Saved callback revision").textContent)
     ).toBeGreaterThan(0);
+    await expect(args.onDirtyChange).toHaveBeenCalledTimes(3);
+    await expect(args.onDirtyChange).toHaveBeenNthCalledWith(1, false);
+    await expect(args.onDirtyChange).toHaveBeenNthCalledWith(2, true);
+    await expect(args.onDirtyChange).toHaveBeenNthCalledWith(3, false);
   },
 };
 
@@ -835,7 +841,7 @@ const LeavingDocument = ({ onSave, ...props }: DocumentProps) => {
 
 /** @summary Closing waits for an in-flight write and saves edits made while it was pending. */
 export const SaveBeforeClosing: Story = {
-  args: { initialContent: "A saved draft." },
+  args: { initialContent: "A saved draft.", onDirtyChange: fn() },
   render: (args) => <LeavingDocument {...args} />,
   play: async ({ canvas, args }) => {
     const editor = await canvas.findByRole("textbox", {
@@ -851,6 +857,8 @@ export const SaveBeforeClosing: Story = {
     );
     await expect(canvas.queryByText("Document closed")).not.toBeInTheDocument();
     await expect(args.onSave).toHaveBeenCalledTimes(1);
+    await expect(args.onDirtyChange).toHaveBeenCalledTimes(2);
+    await expect(args.onDirtyChange).toHaveBeenLastCalledWith(true);
     await userEvent.click(
       canvas.getByRole("button", { name: "Finish saving" })
     );
@@ -859,6 +867,8 @@ export const SaveBeforeClosing: Story = {
     await expect(args.onSave).toHaveBeenLastCalledWith(
       expect.stringContaining("First edit. Later edit.")
     );
+    await expect(args.onDirtyChange).toHaveBeenCalledTimes(3);
+    await expect(args.onDirtyChange).toHaveBeenLastCalledWith(false);
   },
 };
 

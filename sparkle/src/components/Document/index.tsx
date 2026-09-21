@@ -2,7 +2,7 @@
 
 import { cn } from "@sparkle/lib/utils";
 import { EditorContent } from "@tiptap/react";
-import React, { forwardRef, useImperativeHandle, useLayoutEffect } from "react";
+import React, { forwardRef, useImperativeHandle } from "react";
 import { DocumentBlockMenu, useDocumentBlockMenu } from "./DocumentBlockMenu";
 import { DocumentSaveStatus } from "./DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "./DocumentSelectionToolbar";
@@ -64,14 +64,11 @@ export const Document = forwardRef<DocumentHandle, DocumentProps>(
       readOnly,
       autosaveDebounceMs,
       onSave,
+      onDirtyChange,
     });
     const blockMenu = useDocumentBlockMenu(editor, editable);
 
     useImperativeHandle(ref, () => ({ save: flush }), [flush]);
-
-    useLayoutEffect(() => {
-      onDirtyChange?.(dirty);
-    }, [dirty, onDirtyChange]);
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
       if (

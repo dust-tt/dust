@@ -36,6 +36,7 @@ interface UseDocumentEditorProps {
   readOnly: boolean;
   autosaveDebounceMs: number;
   onSave: DocumentProps["onSave"];
+  onDirtyChange?: DocumentProps["onDirtyChange"];
 }
 
 /**
@@ -64,6 +65,11 @@ interface UseDocumentEditorProps {
  * The host save handle MUST wait for any in-flight save and persist newer edits before succeeding.
  * A failed save MUST keep the draft available to the host.
  */
+/**
+ * @cc [owner:flvndvd,label:react] document-dirty-notifications
+ * Hosts MUST receive dirty-state transitions from editor and persistence events.
+ * Unchanged dirty state and callback identity changes MUST NOT trigger notifications.
+ */
 export const useDocumentEditor = ({
   initialContent,
   contentType,
@@ -71,6 +77,7 @@ export const useDocumentEditor = ({
   readOnly,
   autosaveDebounceMs,
   onSave,
+  onDirtyChange,
 }: UseDocumentEditorProps) => {
   const [initial] = useState(() => ({
     ...parseDocumentContent(initialContent, contentType),
@@ -82,12 +89,32 @@ export const useDocumentEditor = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pendingSaveRef = useRef<Promise<DocumentSaveResult> | null>(null);
+  const reportedDirtyRef = useRef<boolean | null>(null);
   const editable = !readOnly && onSave !== undefined && initial.ok;
-  const persistenceRef = useRef({ onSave, editable, baseline, saveFormat });
+  const persistenceRef = useRef({
+    onSave,
+    onDirtyChange,
+    editable,
+    baseline,
+    saveFormat,
+  });
 
   useLayoutEffect(() => {
-    persistenceRef.current = { onSave, editable, baseline, saveFormat };
-  }, [onSave, editable, baseline, saveFormat]);
+    persistenceRef.current = {
+      onSave,
+      onDirtyChange,
+      editable,
+      baseline,
+      saveFormat,
+    };
+  }, [onSave, onDirtyChange, editable, baseline, saveFormat]);
+
+  const reportDirty = useCallback((dirty: boolean) => {
+    if (reportedDirtyRef.current !== dirty) {
+      reportedDirtyRef.current = dirty;
+      persistenceRef.current.onDirtyChange?.(dirty);
+    }
+  }, []);
 
   const editor = useEditor({
     extensions: documentExtensions,
@@ -112,14 +139,21 @@ export const useDocumentEditor = ({
       // Normalize TipTap's trailing paragraph before capturing saved content.
       editor.view.dispatch(editor.state.tr);
       const content = JSON.stringify(editor.getJSON());
+      persistenceRef.current = { ...persistenceRef.current, baseline: content };
       setBaseline(content);
       setDraft(content);
+      reportDirty(false);
     },
     onUpdate: ({ editor }) => {
       const content = JSON.stringify(editor.getJSON());
       setDraft(content);
 
-      if (content === baseline) {
+      const savedContent = persistenceRef.current.baseline;
+      if (savedContent !== null) {
+        reportDirty(content !== savedContent);
+      }
+
+      if (content === savedContent) {
         setError(null);
       }
     },
@@ -182,6 +216,9 @@ export const useDocumentEditor = ({
           baseline: content,
         };
         setBaseline(content);
+        if (!editor.isDestroyed) {
+          reportDirty(JSON.stringify(editor.getJSON()) !== content);
+        }
       } else if (
         !editor.isDestroyed &&
         JSON.stringify(editor.getJSON()) !== savedContent
@@ -193,7 +230,7 @@ export const useDocumentEditor = ({
     });
     pendingSaveRef.current = pendingSave;
     return pendingSave;
-  }, [editor]);
+  }, [editor, reportDirty]);
 
   const flush = useCallback(async (): Promise<DocumentSaveResult> => {
     let result: DocumentSaveResult;

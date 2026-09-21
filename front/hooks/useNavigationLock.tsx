@@ -6,14 +6,16 @@ import {
 import { useAppRouter, useNavigationBlocker } from "@app/lib/platform";
 import React, { useCallback, useContext, useEffect } from "react";
 
+const DEFAULT_WARNING_DATA = {
+  title: "Discard your unsaved changes?",
+  message: "If you leave now, your latest edits won't be kept.",
+  validateLabel: "Discard",
+  cancelLabel: "Keep editing",
+};
+
 export function useNavigationLock(
   isEnabled = true,
-  warningData = {
-    title: "Discard your unsaved changes?",
-    message: "If you leave now, your latest edits won't be kept.",
-    validateLabel: "Discard",
-    cancelLabel: "Keep editing",
-  }
+  warningData = DEFAULT_WARNING_DATA
 ) {
   const router = useAppRouter();
   const confirm = useContext(ConfirmContext);
