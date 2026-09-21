@@ -406,6 +406,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "tdraier",
   },
+  fixed_window_fair_use: {
+    description:
+      "Enforce the per-user fair-use AWU credit limit over a fixed calendar week (Monday 00:00 to next Monday 00:00 UTC) instead of the default rolling window. The counter resets at each week boundary rather than sliding continuously.",
+    stage: "self_serve",
+    owner: "tdraier",
+  },
   archive_inactive_agents: {
     description:
       "Allow this workspace to preview and archive agents that have not been mentioned for a configurable number of days.",

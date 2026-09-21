@@ -27,7 +27,10 @@
 // DB transaction commit via `invalidateCacheAfterCommit`, and cache misses fall
 // back to DB and repopulate the relevant keys.
 //
-import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
+import {
+  makeFairUseAwuCreditsRateLimitKeyForUser,
+  makeFairUseFixedWindowBounds,
+} from "@app/lib/api/assistant/rate_limits";
 import { runOnRedis } from "@app/lib/api/redis";
 import { microCreditsToCredits } from "@app/lib/credits/units";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -35,6 +38,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { WeightedRateLimiterEntry } from "@app/lib/utils/rate_limiter";
 import {
+  getFixedWindowCount,
   getTimeframeSecondsFromLiteral,
   getWeightedRateLimiterEntries,
   getWeightedRateLimiterUsage,
@@ -172,10 +176,14 @@ export async function getFairUseAwuCreditsStatus({
   workspace,
   user,
   plan,
+  useFixedWindow = false,
 }: {
   workspace: LightWorkspaceType;
   user: UserType;
   plan: PlanType | null;
+  // When true (`fixed_window_fair_use`), read the fixed calendar-week counter
+  // instead of the rolling window, and report the week boundary as the reset.
+  useFixedWindow?: boolean;
 }): Promise<FairUseAwuCreditsStatus> {
   if (!plan) {
     return DEFAULT_FAIR_USE_AWU_CREDITS_STATUS;
@@ -193,12 +201,39 @@ export async function getFairUseAwuCreditsStatus({
     };
   }
 
-  const timeframeSeconds = getTimeframeSecondsFromLiteral(timeframe);
   const key = makeFairUseAwuCreditsRateLimitKeyForUser(
     workspace,
     user,
     timeframe
   );
+
+  if (useFixedWindow) {
+    const bounds = makeFairUseFixedWindowBounds();
+    const nextResetAt = new Date(bounds.windowEndMs).toISOString();
+    const countResult = await getFixedWindowCount({ key, bounds });
+    if (countResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          userId: user.sId,
+          error: countResult.error,
+        },
+        "Failed to read fixed-window fair-use AWU credits usage status."
+      );
+      return { limit, timeframe, count: 0, nextResetAt, refillSchedule: [] };
+    }
+    return {
+      limit,
+      timeframe,
+      count: Math.min(microCreditsToCredits(countResult.value), limit),
+      nextResetAt,
+      // The fixed window resets all at once at `nextResetAt`; there is no
+      // gradual per-entry refill to schedule.
+      refillSchedule: [],
+    };
+  }
+
+  const timeframeSeconds = getTimeframeSecondsFromLiteral(timeframe);
   const [usageResult, entriesResult] = await Promise.all([
     getWeightedRateLimiterUsage({ key, timeframeSeconds }),
     getWeightedRateLimiterEntries({ key, timeframeSeconds }),
@@ -261,10 +296,14 @@ export async function getFairUseAwuCreditsUsedCountsByUser({
   workspace,
   users,
   plan,
+  useFixedWindow = false,
 }: {
   workspace: LightWorkspaceType;
   users: UserType[];
   plan: PlanType | null;
+  // Mirror `getFairUseAwuCreditsStatus`: read the fixed calendar-week counter so
+  // the sort key matches the displayed value.
+  useFixedWindow?: boolean;
 }): Promise<Map<string, number>> {
   if (!plan || plan.limits.assistant.maxAwuCredits === -1) {
     return new Map();
@@ -272,7 +311,6 @@ export async function getFairUseAwuCreditsUsedCountsByUser({
 
   const { maxAwuCredits: limit, maxAwuCreditsTimeframe: timeframe } =
     plan.limits.assistant;
-  const timeframeSeconds = getTimeframeSecondsFromLiteral(timeframe);
 
   const keyByUserId = new Map(
     users.map((user) => [
@@ -281,6 +319,24 @@ export async function getFairUseAwuCreditsUsedCountsByUser({
     ])
   );
 
+  if (useFixedWindow) {
+    const bounds = makeFairUseFixedWindowBounds();
+    const entries = await Promise.all(
+      Array.from(keyByUserId, async ([sId, key]) => {
+        const countResult = await getFixedWindowCount({ key, bounds });
+        return [
+          sId,
+          Math.min(
+            microCreditsToCredits(countResult.isOk() ? countResult.value : 0),
+            limit
+          ),
+        ] as const;
+      })
+    );
+    return new Map(entries);
+  }
+
+  const timeframeSeconds = getTimeframeSecondsFromLiteral(timeframe);
   const result = await getWeightedRateLimiterUsageForKeys({
     keys: Array.from(keyByUserId.values()),
     timeframeSeconds,

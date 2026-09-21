@@ -92,6 +92,31 @@ export const makeFairUseAwuCreditsRateLimitKeyForUser = (
   return `workspace:${owner.id}:user:${user.id}:fair_use_awu_credit_count:${maxAwuCreditsTimeframe}:v2_microcredits`;
 };
 
+// Fixed-window bounds for the per-user fair-use AWU cap when
+// `fixed_window_fair_use` is enabled: a fixed calendar week from Monday 00:00
+// UTC to the next Monday 00:00 UTC. Pure — both the enforcer (`conversation.ts`)
+// and the recorder (`credit_cost.ts`) derive the window from the same clock so
+// they hit the same Redis key. Labelled by the week's Monday so each week is a
+// distinct key that expires on its own. Shares the base key with the rolling
+// path (`makeFairUseAwuCreditsRateLimitKeyForUser`); the `:<label>` suffix and
+// the different Redis type (INCRBY string vs sorted set) keep the two counters
+// physically separate, so flipping the flag never collides with existing data.
+export const makeFairUseFixedWindowBounds = (
+  now: Date = new Date()
+): FixedWindowBounds => {
+  const start = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+  // getUTCDay: 0=Sunday..6=Saturday. Rewind to the most recent Monday.
+  const daysSinceMonday = (start.getUTCDay() + 6) % 7;
+  start.setUTCDate(start.getUTCDate() - daysSinceMonday);
+
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 7);
+
+  return { label: `week-${start.getTime()}`, windowEndMs: end.getTime() };
+};
+
 export const PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK = 25;
 export const PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS = 7 * 24 * 60 * 60;
 
@@ -363,19 +388,30 @@ export async function resetFairUseAwuCreditsRateLimitForUser({
     return new Err(new Error("The workspace plan has no AWU fair-use limit."));
   }
 
-  const resetResult = await expireRateLimiterKey({
-    key: makeFairUseAwuCreditsRateLimitKeyForUser(
-      workspace,
-      user,
-      maxAwuCreditsTimeframe
-    ),
-  });
+  const baseKey = makeFairUseAwuCreditsRateLimitKeyForUser(
+    workspace,
+    user,
+    maxAwuCreditsTimeframe
+  );
+
+  // Reset regardless of the enforcement mode: expire both the rolling key and
+  // the current fixed-window key (`<base>:<label>`), which are distinct Redis
+  // keys, so the button works whether or not `fixed_window_fair_use` is on.
+  const resetResult = await expireRateLimiterKey({ key: baseKey });
   if (resetResult.isErr()) {
     return resetResult;
   }
 
+  const fixedWindowBounds = makeFairUseFixedWindowBounds();
+  const fixedWindowResetResult = await expireRateLimiterKey({
+    key: `${baseKey}:${fixedWindowBounds.label}`,
+  });
+  if (fixedWindowResetResult.isErr()) {
+    return fixedWindowResetResult;
+  }
+
   return new Ok({
-    didResetExistingKey: resetResult.value,
+    didResetExistingKey: resetResult.value || fixedWindowResetResult.value,
     limit: maxAwuCredits,
     timeframe: maxAwuCreditsTimeframe,
   });

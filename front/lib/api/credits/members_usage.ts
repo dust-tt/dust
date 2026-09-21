@@ -19,6 +19,7 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   microCreditsToCredits,
   roundCreditsToMicroCredits,
@@ -2077,6 +2078,9 @@ async function resolveMembersUsagePageUsers({
         workspace,
         users: allUsers.map((u) => u.toJSON()),
         plan: auth.plan(),
+        useFixedWindow: (await getFeatureFlags(auth)).includes(
+          "fixed_window_fair_use"
+        ),
       });
       for (const u of allUsers) {
         sortMetaByUserId.set(u.sId, {
@@ -2371,6 +2375,9 @@ export async function getMembersUsage({
   const fairUseByUserId = new Map<string, MemberFairUseUsage | null>();
   if (includeAlertLinks) {
     const plan = auth.plan();
+    const useFixedWindow = (await getFeatureFlags(auth)).includes(
+      "fixed_window_fair_use"
+    );
     const entries = await concurrentExecutor(
       users,
       async (u) =>
@@ -2380,6 +2387,7 @@ export async function getMembersUsage({
             workspace,
             user: u.toJSON(),
             plan,
+            useFixedWindow,
           }),
         ] as const,
       { concurrency: 8 }

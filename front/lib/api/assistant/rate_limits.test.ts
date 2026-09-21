@@ -1,5 +1,6 @@
 import {
   getPremiumModelMessageUsage,
+  makeFairUseFixedWindowBounds,
   PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
   PREMIUM_MODEL_MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
 } from "@app/lib/api/assistant/rate_limits";
@@ -121,6 +122,53 @@ describe("getPremiumModelMessageUsage", () => {
         { date: "2026-08-26", usedMessages: 0 },
       ],
       refillSchedule: [],
+    });
+  });
+});
+
+describe("makeFairUseFixedWindowBounds", () => {
+  // 2026-08-26 is a Wednesday; the Monday of its week is 2026-08-24 00:00 UTC
+  // and the window ends at the next Monday, 2026-08-31 00:00 UTC.
+  const MONDAY_MS = Date.parse("2026-08-24T00:00:00.000Z");
+  const NEXT_MONDAY_MS = Date.parse("2026-08-31T00:00:00.000Z");
+
+  it("anchors mid-week to the current Monday", () => {
+    const bounds = makeFairUseFixedWindowBounds(
+      new Date("2026-08-26T10:30:00.000Z")
+    );
+    expect(bounds).toEqual({
+      label: `week-${MONDAY_MS}`,
+      windowEndMs: NEXT_MONDAY_MS,
+    });
+  });
+
+  it("treats Monday 00:00 as the start of its own window", () => {
+    const bounds = makeFairUseFixedWindowBounds(
+      new Date("2026-08-24T00:00:00.000Z")
+    );
+    expect(bounds).toEqual({
+      label: `week-${MONDAY_MS}`,
+      windowEndMs: NEXT_MONDAY_MS,
+    });
+  });
+
+  it("keeps Sunday in the week that opened the previous Monday", () => {
+    const bounds = makeFairUseFixedWindowBounds(
+      new Date("2026-08-30T23:59:59.000Z")
+    );
+    expect(bounds).toEqual({
+      label: `week-${MONDAY_MS}`,
+      windowEndMs: NEXT_MONDAY_MS,
+    });
+  });
+
+  it("rolls to the next window once the next Monday begins", () => {
+    const bounds = makeFairUseFixedWindowBounds(
+      new Date("2026-08-31T00:00:00.000Z")
+    );
+    expect(bounds).toEqual({
+      label: `week-${NEXT_MONDAY_MS}`,
+      windowEndMs: Date.parse("2026-09-07T00:00:00.000Z"),
     });
   });
 });
