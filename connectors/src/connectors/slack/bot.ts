@@ -10,6 +10,7 @@ import {
   streamConversationToSlack,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/stream_conversation_handler";
+import { resolveSlackBotInfo } from "@connectors/connectors/slack/lib/bot_identity";
 import {
   getBotUserIdResponse,
   getUserInfo,
@@ -27,7 +28,6 @@ import {
   getSlackClient,
   getSlackUserInfoMemoized,
   reportSlackUsage,
-  resolveSlackBotInfo,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {

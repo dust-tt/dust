@@ -13,7 +13,7 @@ vi.mock(import("@connectors/lib/throttle"), () => ({
 import {
   getSlackBotInfoFromMessage,
   resolveSlackBotInfo,
-} from "./slack_client";
+} from "@connectors/connectors/slack/lib/bot_identity";
 
 const connectorId = 123;
 const channelId = "C123";
@@ -52,10 +52,9 @@ describe("getSlackBotInfoFromMessage", () => {
       messageTs,
     });
 
-    expect(replies).toHaveBeenCalledWith({
-      channel: channelId,
-      ts: messageTs,
-    });
+    expect(replies).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: channelId, ts: messageTs })
+    );
     expect(info).toMatchObject({
       is_bot: true,
       real_name: "Onboarding requests",
@@ -87,10 +86,43 @@ describe("getSlackBotInfoFromMessage", () => {
       messageTs,
     });
 
-    expect(replies).toHaveBeenCalledWith({
-      channel: channelId,
-      ts: parentTs,
+    expect(replies).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: channelId, ts: parentTs })
+    );
+    expect(info?.real_name).toBe("Onboarding requests");
+  });
+
+  it("finds the reply on a later page of a long thread", async () => {
+    const parentTs = "1700000000.000001";
+    const parent = { ts: parentTs, user: "U123", text: "parent" };
+    const firstPage: Record<string, unknown>[] = [
+      parent,
+      { ts: "1700000009.000001", thread_ts: parentTs, user: "U123" },
+    ];
+    const secondPage: Record<string, unknown>[] = [
+      parent,
+      {
+        ts: messageTs,
+        thread_ts: parentTs,
+        subtype: "bot_message",
+        username: "Onboarding requests ",
+      },
+    ];
+    const slackClient = new WebClient("test-token");
+    vi.spyOn(slackClient.conversations, "replies")
+      .mockResolvedValueOnce({
+        ok: true,
+        messages: firstPage,
+        response_metadata: { next_cursor: "page-2" },
+      })
+      .mockResolvedValueOnce({ ok: true, messages: secondPage });
+
+    const info = await getSlackBotInfoFromMessage(connectorId, slackClient, {
+      channelId,
+      threadTs: parentTs,
+      messageTs,
     });
+
     expect(info?.real_name).toBe("Onboarding requests");
   });
 
