@@ -1002,7 +1002,7 @@ const usageColumns: ColumnDef<UsageRow>[] = [
     accessorKey: "agent",
     id: "agent",
     header: "Agent",
-    meta: { className: "w-full" },
+    meta: { className: "w-full", rowHeader: true },
     cell: (info) => (
       <DataTable.CellContent>{info.row.original.agent}</DataTable.CellContent>
     ),
@@ -1053,8 +1053,9 @@ const usageColumns: ColumnDef<UsageRow>[] = [
 /**
  * Column presets from `meta.type`: `numeric` right-aligns header and cells in
  * tabular figures, `row-actions` fixes the overflow-menu column at 48px and
- * makes it unsortable, `status` keeps labels on one line.
- * @summary Numeric, status and action column presets.
+ * makes it unsortable, `status` keeps labels on one line. `meta.rowHeader`
+ * renders the agent cells as row headers for screen readers.
+ * @summary Numeric, status and row-actions column presets.
  */
 export const ColumnTypes = () => {
   const [sorting, setSorting] = useState<SortingState>([
@@ -1066,6 +1067,7 @@ export const ColumnTypes = () => {
       columns={usageColumns}
       sorting={sorting}
       setSorting={setSorting}
+      getRowLabel={(row) => row.agent}
     />
   );
 };
