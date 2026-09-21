@@ -1342,6 +1342,7 @@ describe("listGeneratedFilesForConversation", () => {
         conversationId: conversation.sId,
         frameName: "Hello Frame",
       },
+      mountFilePath: `w/${workspace.sId}/conversations/${conversation.sId}/files/Hello Frame/manifest.json`,
     });
 
     const { action } = await ConversationFactory.createAgentMessage(auth, {

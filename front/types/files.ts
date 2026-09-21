@@ -1,5 +1,6 @@
 // Types.
 import type { DustError } from "@app/lib/error";
+import { getFrameV2NameFromManifestPath } from "@app/types/api/frame_manifest";
 import { z } from "zod";
 
 import { assertNever } from "./shared/utils/assert_never";
@@ -884,16 +885,20 @@ export function isFrameContentType(
   );
 }
 
+/**
+ * A Frames v2 file is its manifest, so `fileName` is always `manifest.json`. Its display name is
+ * the folder holding that manifest; see the `frame-name-is-the-source-folder` contract.
+ */
 export function getFileDisplayName(file: {
   contentType: string;
   fileName: string;
-  useCaseMetadata?: FileUseCaseMetadata | null;
+  mountFilePath?: string | null;
 }): string {
-  if (
-    isFrameV2ContentType(file.contentType) &&
-    file.useCaseMetadata?.frameName
-  ) {
-    return file.useCaseMetadata.frameName;
+  if (isFrameV2ContentType(file.contentType) && file.mountFilePath) {
+    const frameName = getFrameV2NameFromManifestPath(file.mountFilePath);
+    if (frameName) {
+      return frameName;
+    }
   }
 
   return file.fileName;

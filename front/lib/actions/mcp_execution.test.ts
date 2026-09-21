@@ -289,6 +289,7 @@ describe("processToolResults", () => {
         conversationId: toolContext.runContext.conversation.sId,
         frameName: "Hello Frame",
       },
+      mountFilePath: `w/w1/conversations/${toolContext.runContext.conversation.sId}/files/Hello Frame/manifest.json`,
     });
 
     const generatedFrame: ToolGeneratedFileType = {

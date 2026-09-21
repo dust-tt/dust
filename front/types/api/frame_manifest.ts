@@ -22,6 +22,52 @@ export const MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH = 255;
 export const MAX_FRAME_DATABASE_COUNT = 4;
 export const FRAME_DATABASE_NAME_REGEX = SANDBOX_DATABASE_NAME_REGEX;
 
+/**
+ * @cc [owner:davidebbo,label:product;backend] frame-name-is-the-source-folder
+ * A Frames v2 package is named by the folder holding its `manifest.json`, and by nothing else.
+ * The name MUST be derived from the Frame's current path wherever it is displayed, never stored
+ * alongside it: a stored copy drifts from the folder the file explorer shows the moment the Frame
+ * moves, which is the divergence this derivation exists to make impossible.
+ *
+ * Returns null when the path is not a manifest, or when the manifest has no folder of its own.
+ */
+export function getFrameV2NameFromManifestPath(
+  manifestPath: string
+): string | null {
+  const segments = manifestPath.split("/");
+  if (segments.pop() !== FRAME_MANIFEST_FILE) {
+    return null;
+  }
+
+  return segments.pop() || null;
+}
+
+/**
+ * @cc [owner:davidebbo,label:product;backend] frame-name-is-one-path-segment
+ * A Frame name MUST be a single non-empty path segment of at most `MAX_FRAME_NAME_LENGTH`
+ * characters, and MUST NOT be `.` or `..`. Renaming a Frame moves its source folder, so a name
+ * carrying a separator or a relative segment would escape the Frame's parent directory.
+ */
+export function validateFrameV2Name(name: string): Result<string, string> {
+  const trimmed = name.trim();
+  if (trimmed.length === 0) {
+    return new Err("Frame name cannot be empty.");
+  }
+  if (trimmed.length > MAX_FRAME_NAME_LENGTH) {
+    return new Err(
+      `Frame name cannot exceed ${MAX_FRAME_NAME_LENGTH} characters.`
+    );
+  }
+  if (trimmed.includes("/") || trimmed.includes("\\")) {
+    return new Err("Frame name cannot contain path separators.");
+  }
+  if (trimmed === "." || trimmed === "..") {
+    return new Err("Frame name cannot be '.' or '..'.");
+  }
+
+  return new Ok(trimmed);
+}
+
 /** Manifest paths are always relative to the Frame source folder. */
 export function isSafeFrameRelativePath(path: string): boolean {
   if (path.startsWith("/") || path.includes("\\")) {
