@@ -21,21 +21,21 @@ import maxBy from "lodash/maxBy";
 
 export type CreditSpendCheckpointDecision = "continue" | "decline";
 
+type FindPausedAgentMessageResult =
+  | { alreadyResolved: true }
+  | {
+      alreadyResolved: false;
+      agentLoopArgs: AgentLoopArgs;
+      agentMessage: AgentMessageType;
+      conversation: ConversationType;
+    };
+
 // Same lookup and permission rule as tool validation, plus the pause check.
 async function findPausedAgentMessage(
   auth: Authenticator,
   conversation: ConversationResource,
   { messageId }: { messageId: string }
-): Promise<
-  Result<
-    {
-      agentLoopArgs: AgentLoopArgs;
-      agentMessage: AgentMessageType;
-      conversation: ConversationType;
-    },
-    DustError
-  >
-> {
+): Promise<Result<FindPausedAgentMessageResult, DustError>> {
   const {
     agentMessageId,
     agentMessageVersion,
@@ -64,6 +64,10 @@ async function findPausedAgentMessage(
       auth,
       { agentMessageId }
     );
+  // A prior request already resolved this pause
+  if (status === "acknowledged" || status === "stopped") {
+    return new Ok({ alreadyResolved: true });
+  }
   if (status !== "paused") {
     return new Err(
       new DustError(
@@ -91,6 +95,7 @@ async function findPausedAgentMessage(
   }
 
   return new Ok({
+    alreadyResolved: false,
     agentLoopArgs,
     agentMessage: dataRes.value.agentMessage,
     conversation: dataRes.value.conversation,
@@ -104,10 +109,11 @@ function nextStep(agentMessage: AgentMessageType): number {
 
 /**
  * @cc [owner:avervaet,label:backend;concurrency] checkpoint-single-resolution
- * A pause MUST be resolved at most once: the `paused` status is transitioned with a conditional
- * update and, when another resolution already applied, the call MUST return `Ok` without doing
- * anything else. The message MUST NOT be put back to `paused` when a workflow for it is already
- * running, since that would let another caller reclaim and relaunch an already-resolved pause.
+ * A pause MUST be resolved at most once: whether a resolution already applied is detected at the
+ * initial status read or at the conditional update that races another concurrent resolution, the
+ * call MUST return `Ok` without doing anything else. The message MUST NOT be put back to `paused`
+ * when a workflow for it is already running, since that would let another caller reclaim and
+ * relaunch an already-resolved pause.
  */
 /**
  * @cc [owner:avervaet,label:backend] checkpoint-resume-next-step
@@ -126,6 +132,9 @@ export async function continueCreditSpendCheckpointPause(
   });
   if (foundRes.isErr()) {
     return foundRes;
+  }
+  if (foundRes.value.alreadyResolved) {
+    return new Ok(undefined);
   }
   const { agentLoopArgs, agentMessage } = foundRes.value;
   const agentMessageModelId: ModelId = agentMessage.agentMessageId;
@@ -209,6 +218,9 @@ export async function declineCreditSpendCheckpointPause(
   });
   if (foundRes.isErr()) {
     return foundRes;
+  }
+  if (foundRes.value.alreadyResolved) {
+    return new Ok(undefined);
   }
   const { agentMessage } = foundRes.value;
 
