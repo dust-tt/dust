@@ -10,7 +10,7 @@ Loading both stylesheets together breaks existing gradients and applies some tra
 
 ## Result
 
-A global compatibility stylesheet can restore the **133 missing class names** in the current generated Viz vocabulary. The generator produces `tailwind-v3-compat.css`. It must be compiled by Tailwind V4; it is not an additional V3 runtime.
+A global compatibility stylesheet can restore the **133 missing class names** in the current generated Viz vocabulary. The checked-in prototype is `tailwind-v3-compat.css`, with a generator to reproduce it. It must be compiled by Tailwind V4; it is not an additional V3 runtime.
 
 The small part is seven width/order/zero-blur mappings. The substantial part is six old separate-opacity APIs: their color utilities must also consume the old alpha values. The prototype copies only the relevant color declarations, preserving existing ordering and applying them only to elements carrying a matching legacy opacity class. Normal V4 elements do not match these guards. Private alpha variable names avoid changing native Tailwind variables; the ring color variable remains shared because V4 consumes it.
 
@@ -100,7 +100,7 @@ node --max-old-space-size=6144 design_docs/viz_tailwind_css_audit/generate-compa
 node --max-old-space-size=6144 design_docs/viz_tailwind_css_audit/verify-compat.mjs "$PWD" "$viz_compat_dir"
 ```
 
-The two output directories contain the full per-class diff and generated source/compiled compatibility CSS. The 7 MB compatibility stylesheet, raw audit stylesheets, and compressed full diff are regenerated instead of committed. The generator and the seven small aliases are checked in alongside the measured results. `manifest.json` records the source revision, compiler versions, vocabulary hash, and configuration/global-style hashes. Counts can change as Viz sources or installed dependencies change. The committed results were reproduced from a clean checkout of the recorded revision.
+The two output directories contain the full per-class diff and generated source/compiled compatibility CSS. The complete 7 MB compatibility source stylesheet is checked in and marked as generated, alongside its generator, seven small aliases, and measured results. Raw audit stylesheets and the compressed full diff are regenerated instead of committed. `manifest.json` records the source revision, compiler versions, vocabulary hash, and configuration/global-style hashes. Counts can change as Viz sources or installed dependencies change. The committed results were reproduced from a clean checkout of the recorded revision.
 
 For the smaller compiler experiments:
 
