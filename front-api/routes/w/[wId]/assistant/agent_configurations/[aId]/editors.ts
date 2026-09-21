@@ -1,14 +1,17 @@
-import {
-  getAgentConfiguration,
-  updateAgentPermissions,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentEditors } from "@app/lib/api/assistant/editors";
+import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentEditorsLightResponseBody,
   AgentEditorsResponseBody,
 } from "@app/types/api/assistant/configuration/editors";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -40,6 +43,89 @@ const PatchAgentEditorsRequestBodySchema = z
         "Either addEditorIds or removeEditorIds must be provided and contain at least one ID.",
     }
   );
+
+type EditorDeltaErrorCode =
+  | "user_already_member"
+  | "user_not_member"
+  | "user_not_found"
+  | "internal_error";
+
+// Applies this endpoint's add/remove editor deltas by translating them into the complete editor set
+// and persisting it through `AgentResource.updateConfiguration` — the single editor-edit path
+// (admin-gated, applied in place with no new version; see `agent-edit-in-place`). The caller has
+// already checked admin access, archived and global status.
+/**
+ * @cc [owner:philipperolet,label:security;product] editor-removal-uses-grants
+ * Removing an editor MUST validate against the grant-backed editor set (`listEditors`); removing a
+ * user who holds no editor grant MUST fail with `user_not_member` and change no grant.
+ */
+/**
+ * @cc [owner:philipperolet,label:security;product] editor-add-requires-membership
+ * Adding an editor requires active workspace membership: a non-member MUST fail with
+ * `user_not_found` before any editor grant is changed. Adding a user who is already an editor MUST
+ * fail with `user_already_member`.
+ */
+async function applyEditorDelta(
+  auth: Authenticator,
+  agent: LightAgentConfigurationType,
+  {
+    usersToAdd,
+    usersToRemove,
+  }: { usersToAdd: UserResource[]; usersToRemove: UserResource[] }
+): Promise<Result<AgentResource, DustError<EditorDeltaErrorCode>>> {
+  const agentResource = AgentResource.fromAgentConfiguration(auth, agent);
+  const currentEditors = (await agentResource.listEditors(auth)) ?? [];
+  const currentEditorIds = new Set(currentEditors.map((u) => u.id));
+
+  if (usersToAdd.some((u) => currentEditorIds.has(u.id))) {
+    return new Err(
+      new DustError(
+        "user_already_member",
+        "The user is already a member of the agent editors group."
+      )
+    );
+  }
+
+  if (usersToRemove.some((u) => !currentEditorIds.has(u.id))) {
+    return new Err(
+      new DustError(
+        "user_not_member",
+        "The user is not a member of the agent editors group."
+      )
+    );
+  }
+
+  if (usersToAdd.length > 0) {
+    const { total: activeMembershipCount } =
+      await MembershipResource.getActiveMemberships({
+        users: usersToAdd,
+        workspace: auth.getNonNullableWorkspace(),
+      });
+    if (activeMembershipCount !== usersToAdd.length) {
+      return new Err(
+        new DustError(
+          "user_not_found",
+          "The user was not found in the workspace."
+        )
+      );
+    }
+  }
+
+  const removeEditorModelIds = new Set(usersToRemove.map((u) => u.id));
+  const nextEditors = [
+    ...currentEditors.filter((u) => !removeEditorModelIds.has(u.id)),
+    ...usersToAdd,
+  ].map((u) => u.toJSON());
+
+  const updateRes = await agentResource.updateConfiguration(auth, {
+    editors: nextEditors,
+  });
+  if (updateRes.isErr()) {
+    return new Err(new DustError("internal_error", updateRes.error.message));
+  }
+
+  return new Ok(updateRes.value.resource);
+}
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/editors.
 const app = workspaceApp();
@@ -186,25 +272,17 @@ app.patch(
       }
     }
 
-    const updateRes = await updateAgentPermissions(auth, {
-      agent,
-      usersToAdd: usersToAdd.map((u) => u.toJSON()),
-      usersToRemove: usersToRemove.map((u) => u.toJSON()),
+    const updateRes = await applyEditorDelta(auth, agent, {
+      usersToAdd,
+      usersToRemove,
     });
 
     if (updateRes.isErr()) {
       switch (updateRes.error.code) {
-        case "unauthorized":
+        case "user_already_member":
+        case "user_not_member":
           return apiError(ctx, {
-            status_code: 401,
-            api_error: {
-              type: "workspace_auth_error",
-              message: "You are not authorized to update the agent editors.",
-            },
-          });
-        case "invalid_request_error":
-          return apiError(ctx, {
-            status_code: 400,
+            status_code: 409,
             api_error: {
               type: "invalid_request_error",
               message: updateRes.error.message,
@@ -215,24 +293,7 @@ app.patch(
             status_code: 404,
             api_error: {
               type: "user_not_found",
-              message: "The user was not found in the workspace.",
-            },
-          });
-        case "user_not_member":
-          return apiError(ctx, {
-            status_code: 409,
-            api_error: {
-              type: "invalid_request_error",
-              message: "The user is not a member of the agent editors group.",
-            },
-          });
-        case "user_already_member":
-          return apiError(ctx, {
-            status_code: 409,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "The user is already a member of the agent editors group.",
+              message: updateRes.error.message,
             },
           });
         case "internal_error":

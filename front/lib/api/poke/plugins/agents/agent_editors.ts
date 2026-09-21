@@ -1,7 +1,7 @@
-import { updateAgentPermissions } from "@app/lib/api/assistant/configuration/agent";
 import { getEditors } from "@app/lib/api/assistant/editors";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getMembers } from "@app/lib/api/workspace";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
@@ -81,21 +81,19 @@ export const updateEditorsPlugin = createPlugin({
       });
     }
 
-    // Fetch user details for logging and display
-    const allUserIds = [...usersToAdd, ...usersToRemove];
+    // Fetch user details for logging and display, plus the full selected set to persist.
+    const allUserIds = [...new Set([...selectedMemberIds, ...usersToRemove])];
     const userResources =
       allUserIds.length > 0 ? await UserResource.fetchByIds(allUserIds) : [];
     const userMap = new Map(
       userResources.map((user) => [user.sId, user.toJSON()])
     );
 
-    // Update permissions
-    const updateResult = await updateAgentPermissions(auth, {
-      agent: resource,
-      usersToAdd: usersToAdd
-        .map((id) => userMap.get(id))
-        .filter((user): user is UserType => user !== undefined),
-      usersToRemove: usersToRemove
+    // Editor changes go through the single editor-edit path (`updateConfiguration`, admin-gated and
+    // applied in place — see `agent-edit-in-place`), which takes the complete editor set.
+    const agentResource = AgentResource.fromAgentConfiguration(auth, resource);
+    const updateResult = await agentResource.updateConfiguration(auth, {
+      editors: selectedMemberIds
         .map((id) => userMap.get(id))
         .filter((user): user is UserType => user !== undefined),
     });

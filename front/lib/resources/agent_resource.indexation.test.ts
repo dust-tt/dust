@@ -1,7 +1,6 @@
 import {
   archiveAgentConfiguration,
   restoreAgentConfiguration,
-  updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -92,17 +91,18 @@ describe("resource-owned agent search indexation", () => {
     await MembershipFactory.associate(workspace, editor, { role: "user" });
     const target = { workspaceId: workspace.sId, agentId: agent.sId };
 
-    const mutations = [
-      { usersToAdd: [editor.toJSON()], usersToRemove: [] },
-      { usersToAdd: [], usersToRemove: [editor.toJSON()] },
-    ];
-    for (const { usersToAdd, usersToRemove } of mutations) {
+    const resource = await AgentResource.fetchById(auth, agent.sId);
+    assert(resource !== null);
+    const baseEditors = ((await resource.listEditors(auth)) ?? []).map((u) =>
+      u.toJSON()
+    );
+
+    // Editor changes go through the in-place path of `updateConfiguration`, which enqueues one
+    // indexation per change: first add the editor, then remove them again.
+    const editorSets = [[...baseEditors, editor.toJSON()], baseEditors];
+    for (const editors of editorSets) {
       vi.mocked(launchIndexAgentSearchWorkflow).mockClear();
-      const result = await updateAgentPermissions(auth, {
-        agent,
-        usersToAdd,
-        usersToRemove,
-      });
+      const result = await resource.updateConfiguration(auth, { editors });
       expect(result.isOk()).toBe(true);
       expect(launchIndexAgentSearchWorkflow).toHaveBeenCalledExactlyOnceWith(
         target

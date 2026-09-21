@@ -7,7 +7,6 @@ import {
   restoreAgentConfiguration,
   unsafeHardDeleteAgentConfiguration,
   updateAgentConfigurationsScope,
-  updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
@@ -1442,10 +1441,15 @@ describe("publish agent capability", () => {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
 
-    const result = await updateAgentPermissions(adminAuth, {
-      agent,
-      usersToAdd: [user.toJSON()],
-      usersToRemove: [],
+    const agentResourceToSeed = await AgentResource.fetchById(
+      adminAuth,
+      agent.sId
+    );
+    assert(agentResourceToSeed);
+    const seedEditors =
+      (await agentResourceToSeed.listEditors(adminAuth)) ?? [];
+    const result = await agentResourceToSeed.updateConfiguration(adminAuth, {
+      editors: [...seedEditors.map((u) => u.toJSON()), user.toJSON()],
     });
     assert(result.isOk());
 
