@@ -1,5 +1,5 @@
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
-import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
+import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
@@ -214,7 +214,7 @@ export const SpaceCategoriesList = ({
         agentId={agentId}
         onClose={() => setAgentId(null)}
       />
-      <SkillDetailsSheetById
+      <SkillDetailsSheet
         owner={owner}
         user={user}
         skillId={skillId}

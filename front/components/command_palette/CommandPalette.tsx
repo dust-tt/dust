@@ -7,7 +7,7 @@ import { CommandPaletteActionPhase } from "@app/components/command_palette/Comma
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
-import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
+import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSkills } from "@app/lib/swr/skill_configurations";
@@ -270,7 +270,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         onClose={() => setAgentDetailsId(null)}
       />
 
-      <SkillDetailsSheetById
+      <SkillDetailsSheet
         owner={owner}
         user={user}
         skillId={skillDetailsId}

@@ -4,7 +4,7 @@ import {
 } from "@app/components/actions/mcp/AddToolsDialog";
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
-import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
+import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
@@ -446,7 +446,7 @@ export const AdminActionsList = ({
         agentId={agentId}
         onClose={() => setAgentId(null)}
       />
-      <SkillDetailsSheetById
+      <SkillDetailsSheet
         owner={owner}
         user={user}
         skillId={skillId}

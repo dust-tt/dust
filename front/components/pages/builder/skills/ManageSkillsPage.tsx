@@ -15,7 +15,6 @@ import {
   sortSkillsByName,
 } from "@app/components/pages/builder/skills/utils";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
-import type { SkillLoadErrorReason } from "@app/components/skills/SkillDetailsBody";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
 import { BatchAvailabilityDialog } from "@app/components/skills/SkillsBatchEdit";
@@ -34,15 +33,12 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
-  useSkill,
   useSkillsWithRelations,
-  useUpdateSkillFavorite,
   useUpdateSkillsAvailability,
 } from "@app/lib/swr/skill_configurations";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
-import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
   Button,
@@ -65,22 +61,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-function getSkillLoadErrorReason({
-  isHidden,
-  isNotFound,
-}: {
-  isHidden: boolean;
-  isNotFound: boolean;
-}): SkillLoadErrorReason {
-  if (isHidden) {
-    return "editors_only";
-  }
-  if (isNotFound) {
-    return "not_found";
-  }
-  return "unavailable";
-}
 
 export function ManageSkillsPage() {
   const owner = useWorkspace();
@@ -117,7 +97,6 @@ export function ManageSkillsPage() {
   };
 
   const doUpdateAvailability = useUpdateSkillsAvailability({ owner });
-  const { updateSkillFavorite } = useUpdateSkillFavorite({ owner });
 
   const isSearchActive = !isEmptyString(skillSearch);
   const isFilterActive = isSearchActive || availabilityFilter !== "all";
@@ -289,50 +268,6 @@ export function ManageSkillsPage() {
     }
   };
 
-  const {
-    skill: selectedSkill,
-    isSkillError,
-    isSkillNotFound,
-    mutateSkill,
-  } = useSkill({
-    workspaceId: owner.sId,
-    skillId: skillIdParam ?? null,
-    withRelations: true,
-    disabled: !skillIdParam,
-    shouldRetryOnError: false,
-  });
-  // Same rule as the list: unpublished skills stay hidden from non-editors. Admins get them, as
-  // they could reveal them with "Show hidden skills" anyway.
-  const isSelectedSkillHidden =
-    selectedSkill !== null &&
-    !canBypassEditorVisibility &&
-    !(
-      selectedSkill.status === "suggested" &&
-      canCreateSkill &&
-      selectedSkill.canAdministrate
-    ) &&
-    !isSkillVisibleToViewer({
-      availability: selectedSkill.availability,
-      viewerCanWrite: selectedSkill.canWrite,
-    });
-  const skillLoadErrorReason = getSkillLoadErrorReason({
-    isHidden: isSelectedSkillHidden,
-    isNotFound: isSkillNotFound,
-  });
-
-  const handleFavoriteChange = useCallback(
-    async (
-      skill: GetSkillsWithRelationsResponseBody["skills"][number],
-      isFavorite: boolean
-    ) => {
-      const didUpdate = await updateSkillFavorite(skill, isFavorite);
-      if (didUpdate) {
-        void mutateSkill();
-      }
-    },
-    [updateSkillFavorite, mutateSkill]
-  );
-
   const searchBarRef = useRef<HTMLInputElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -396,13 +331,9 @@ export function ManageSkillsPage() {
   return (
     <>
       <SkillDetailsSheet
-        skill={isSelectedSkillHidden ? null : selectedSkill}
-        open={!!skillIdParam}
-        isError={isSkillError || isSelectedSkillHidden}
-        errorReason={skillLoadErrorReason}
-        onRetry={mutateSkill}
+        skillId={skillIdParam ?? null}
         onClose={() => handleSkillSelect(null)}
-        onFavoriteChange={handleFavoriteChange}
+        showFavoriteButton
         user={user}
         owner={owner}
       />

@@ -4,8 +4,14 @@ import {
   SkillDetailsHeader,
   SkillLoadError,
 } from "@app/components/skills/SkillDetailsBody";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import {
+  useSkill,
+  useUpdateSkillFavorite,
+} from "@app/lib/swr/skill_configurations";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Sheet,
@@ -16,36 +22,83 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import { useCallback } from "react";
 
 interface SkillDetailsProps {
-  skill: SkillWithRelationsType | null;
-  open?: boolean;
-  isError?: boolean;
-  errorReason?: SkillLoadErrorReason;
-  onRetry?: () => void;
+  skillId: string | null;
   onClose: () => void;
-  onFavoriteChange?: (
-    skill: GetSkillsWithRelationsResponseBody["skills"][number],
-    isFavorite: boolean
-  ) => Promise<void>;
+  showFavoriteButton?: boolean;
   owner: WorkspaceType;
   user: UserType;
   replaceOnEdit?: boolean;
 }
 
+function getSkillLoadErrorReason({
+  isHidden,
+  isNotFound,
+}: {
+  isHidden: boolean;
+  isNotFound: boolean;
+}): SkillLoadErrorReason {
+  if (isHidden) {
+    return "editors_only";
+  }
+  if (isNotFound) {
+    return "not_found";
+  }
+  return "unavailable";
+}
+
 export function SkillDetailsSheet({
-  skill,
-  open,
-  isError = false,
-  errorReason,
-  onRetry,
+  skillId,
   onClose,
-  onFavoriteChange,
+  showFavoriteButton = false,
   user,
   owner,
   replaceOnEdit,
 }: SkillDetailsProps) {
-  const isOpen = open ?? skill !== null;
+  const { isAdmin } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
+  const { skill, isSkillError, isSkillNotFound, mutateSkill } = useSkill({
+    workspaceId: owner.sId,
+    skillId,
+    withRelations: true,
+    disabled: !skillId,
+    shouldRetryOnError: false,
+  });
+  const { updateSkillFavorite } = useUpdateSkillFavorite({ owner });
+  const isOpen = skillId !== null;
+
+  // Unpublished skills stay hidden from non-editors, except for suggestions they can manage.
+  const isSkillHidden =
+    skill !== null &&
+    !isAdmin &&
+    !(
+      skill.status === "suggested" &&
+      hasPermission("create", "skill") &&
+      skill.canAdministrate
+    ) &&
+    !isSkillVisibleToViewer({
+      availability: skill.availability,
+      viewerCanWrite: skill.canWrite,
+    });
+  const errorReason = getSkillLoadErrorReason({
+    isHidden: isSkillHidden,
+    isNotFound: isSkillNotFound,
+  });
+
+  const handleFavoriteChange = useCallback(
+    async (
+      skill: GetSkillsWithRelationsResponseBody["skills"][number],
+      isFavorite: boolean
+    ) => {
+      const didUpdate = await updateSkillFavorite(skill, isFavorite);
+      if (didUpdate) {
+        void mutateSkill();
+      }
+    },
+    [updateSkillFavorite, mutateSkill]
+  );
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -53,7 +106,7 @@ export function SkillDetailsSheet({
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>
-        {skill ? (
+        {skill && !isSkillHidden ? (
           <>
             <SheetHeader>
               <SkillDetailsHeader
@@ -61,15 +114,17 @@ export function SkillDetailsSheet({
                 owner={owner}
                 onClose={onClose}
                 replaceOnEdit={replaceOnEdit}
-                onFavoriteChange={onFavoriteChange}
+                onFavoriteChange={
+                  showFavoriteButton ? handleFavoriteChange : undefined
+                }
               />
             </SheetHeader>
             <SheetContainer className="pb-4">
               <SkillDetailsContent skill={skill} user={user} owner={owner} />
             </SheetContainer>
           </>
-        ) : isError ? (
-          <SkillLoadError reason={errorReason} onRetry={onRetry} />
+        ) : isSkillError || isSkillHidden ? (
+          <SkillLoadError reason={errorReason} onRetry={mutateSkill} />
         ) : isOpen ? (
           <div className="flex h-full w-full items-center justify-center">
             <Spinner size="lg" />
