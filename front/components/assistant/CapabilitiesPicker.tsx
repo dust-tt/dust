@@ -28,7 +28,10 @@ import {
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
-import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillListItemType,
+  SkillWithoutInstructionsAndToolsType,
+} from "@app/types/assistant/skill_configuration";
 import {
   assertNever,
   assertNeverAndIgnore,
@@ -56,8 +59,8 @@ import {
 import { useMemo, useState } from "react";
 
 type CapabilityPickerSkill = Pick<
-  SkillListItemType,
-  "sId" | "name" | "icon" | "userFacingDescription"
+  SkillListItemType | SkillWithoutInstructionsAndToolsType,
+  "sId" | "name" | "icon" | "userFacingDescription" | "editedBy"
 > & { isFavorite?: boolean };
 
 interface CapabilityPickerItemBase extends CapabilitySearchIndexItem {
