@@ -200,6 +200,28 @@ describe("allowed model tiers permissions", () => {
     expect(resolved.source).toBe("groups");
   });
 
+  it("ignores group tier overrides for auths without a backing user", async () => {
+    // A tier-override group grants premium; the workspace default is capped lower.
+    await setWorkspaceMaxAllowedTierName(auth, "cost_efficient");
+    await setGroupMaxAllowedTier(auth, {
+      groupId: group.sId,
+      tierName: "premium",
+    });
+
+    // An internal auth carrying every workspace group (including the tier-override group) but no
+    // backing user must not inherit the group override — tier overrides are per-user.
+    const internalAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId,
+      { dangerouslyRequestAllGroups: true }
+    );
+    expect(internalAuth.user()).toBeNull();
+
+    const resolved = await resolveAllowedTierNames(internalAuth);
+
+    expect(resolved.tiers).toEqual(expandTiersUpTo("cost_efficient"));
+    expect(resolved.source).toBe("workspace");
+  });
+
   it("user tier override takes precedence over groups and workspace", async () => {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
