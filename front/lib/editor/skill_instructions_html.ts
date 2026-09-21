@@ -341,3 +341,35 @@ export function applyInstructionEditsToHtml(
     ),
   });
 }
+
+/**
+ * Convert agent-authored instructions HTML into both stored forms: `instructions` (markdown,
+ * what agents read at run time) and `instructionsHtml` (block-structured, what the builder edits).
+ */
+export function convertHtmlToSkillInstructions(
+  html: string
+): AppliedSkillInstructions {
+  const {
+    document,
+    domParser,
+    extensions,
+    markdownManager,
+    renderToHTMLString,
+  } = getMarkdownPipeline();
+
+  const json: JSONContent = parseInstructionsHtml(html, {
+    document,
+    domParser,
+  }).toJSON();
+  addBlockIds(json);
+
+  return {
+    instructions: postProcessMarkdown(markdownManager.serialize(json)).trim(),
+    instructionsHtml: stripPresentationAttributes(
+      renderToHTMLString({
+        content: prepareNodesForStaticRenderer(json),
+        extensions,
+      })
+    ),
+  };
+}

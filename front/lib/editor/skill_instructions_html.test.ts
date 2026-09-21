@@ -1,6 +1,7 @@
 // @vitest-environment node: the server has no DOM globals, jsdom must not hide a reliance on them.
 import {
   applyInstructionEditsToHtml,
+  convertHtmlToSkillInstructions,
   convertMarkdownToBlockHtml,
 } from "@app/lib/editor/skill_instructions_html";
 import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
@@ -429,5 +430,32 @@ describe("applyInstructionEditsToHtml", () => {
     ]);
 
     expect(result.isErr()).toBe(true);
+  });
+});
+
+describe("convertHtmlToSkillInstructions", () => {
+  it("derives markdown instructions and block-structured html from html", () => {
+    const { instructions, instructionsHtml } = convertHtmlToSkillInstructions(
+      "<h2>Steps</h2><ol><li>Collect facts</li><li>Write the summary</li></ol>"
+    );
+
+    expect(instructions).toBe(
+      "## Steps\n\n1. Collect facts\n2. Write the summary"
+    );
+
+    const $ = load(instructionsHtml);
+    const root = $(`div[data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"]`);
+    expect(root).toHaveLength(1);
+    expect(root.attr("data-block-id")).toBe(INSTRUCTIONS_ROOT_TARGET_BLOCK_ID);
+    expect($("h2").attr("data-block-id")).toMatch(HEX_BLOCK_ID);
+    expect($("ol").attr("data-block-id")).toMatch(HEX_BLOCK_ID);
+  });
+
+  it("falls back to an empty paragraph for empty html", () => {
+    const { instructions, instructionsHtml } =
+      convertHtmlToSkillInstructions("");
+
+    expect(instructions).toBe("");
+    expect(load(instructionsHtml)("p")).toHaveLength(1);
   });
 });

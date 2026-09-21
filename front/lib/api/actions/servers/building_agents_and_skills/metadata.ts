@@ -1,4 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { SkillNameSchema } from "@app/lib/api/skills/schemas";
 import {
   AGENT_FACING_DESCRIPTION_MAX_LENGTH,
   USER_FACING_DESCRIPTION_MAX_LENGTH,
@@ -23,6 +24,8 @@ export const SUGGEST_AGENT_DELETION_TOOL_NAME =
 export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME =
   "suggest_skill_user_facing_description" as const;
 export const SUGGEST_SKILL_NAME_TOOL_NAME = "suggest_skill_name" as const;
+export const SUGGEST_SKILL_CREATION_TOOL_NAME =
+  "suggest_skill_creation" as const;
 
 // Bounds the O(n²) pairwise conflict check in hasSuggestionSelfConflict; larger rewrites
 // should target the instructions root block instead.
@@ -213,6 +216,54 @@ export type SuggestSkillNameArgs = z.infer<
   typeof SUGGEST_SKILL_NAME_INPUT_SCHEMA
 >;
 
+export const SUGGEST_SKILL_CREATION_INPUT_SCHEMA = z.object({
+  name: SkillNameSchema.describe(
+    "Unique, human-readable name of the new skill."
+  ),
+  userFacingDescription: z
+    .string()
+    .min(1)
+    .max(USER_FACING_DESCRIPTION_MAX_LENGTH)
+    .describe(
+      "Short description shown to users browsing skills, at most " +
+        `${USER_FACING_DESCRIPTION_MAX_LENGTH} characters.`
+    ),
+  agentFacingDescription: z
+    .string()
+    .min(1)
+    .max(AGENT_FACING_DESCRIPTION_MAX_LENGTH)
+    .describe("Description used by agents to decide when to use the skill."),
+  instructions: z
+    .string()
+    .min(1)
+    .describe(
+      "The skill's instructions as HTML (paragraphs, headings, lists), not markdown. " +
+        "Instructions only: nested skills, knowledge and tools are attached in the builder."
+    ),
+  bypassSimilarSkillCheck: z
+    .boolean()
+    .optional()
+    .describe(
+      "Bypass the similar skill check and suggest the skill anyway. Set to true only after " +
+        "the user explicitly confirms they want a separate skill."
+    ),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Why the workspace needs this new skill."),
+  title: z
+    .string()
+    .max(25)
+    .optional()
+    .describe(
+      "A short, action-oriented user-facing title for this suggestion (at most 25 characters)."
+    ),
+});
+
+export type SuggestSkillCreationArgs = z.infer<
+  typeof SUGGEST_SKILL_CREATION_INPUT_SCHEMA
+>;
+
 export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   {
     name: DESCRIBE_SKILL_TOOL_NAME,
@@ -324,6 +375,22 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting skill name",
       done: "Suggest skill name",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_SKILL_CREATION_TOOL_NAME,
+    description:
+      "Suggest a new custom Skill. The skill is not created directly: it is drafted as a " +
+      "suggested skill and recorded as a pending suggestion that users allowed to create skills " +
+      "can review, accept, or reject. Refused when a skill with the same name already exists, " +
+      "and when similar skills exist unless the user confirmed they want a separate one.",
+    schema: SUGGEST_SKILL_CREATION_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting skill creation",
+      done: "Suggest skill creation",
     },
     toolCostCategory: "basic",
     freeUsage: true,

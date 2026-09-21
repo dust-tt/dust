@@ -1261,6 +1261,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return count > 0;
   }
 
+  // Uniqueness is enforced on (workspaceId, name, status), and accepting a suggested draft turns
+  // it active, so a name held by a draft is not free for a second draft either.
+  static async isNameTakenIncludingSuggested(
+    auth: Authenticator,
+    name: string
+  ): Promise<boolean> {
+    const count = await this.model.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        name,
+        status: { [Op.ne]: "archived" },
+      },
+    });
+
+    return count > 0;
+  }
+
   static async fetchByNames(
     auth: Authenticator,
     names: string[]
