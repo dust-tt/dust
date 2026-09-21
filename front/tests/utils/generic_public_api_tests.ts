@@ -17,17 +17,17 @@ import { createMocks } from "node-mocks-http";
  * @param options Configuration options
  * @param options.systemKey If true, creates a system API key instead of regular key (default: false)
  * @param options.method HTTP method to use for the request (default: "GET")
- * @param options.role Role to assign to the regular key ("user" | "builder" | "admin"). Ignored when systemKey is true. Defaults to "builder".
+ * @param options.role Role to assign to the regular key. Ignored when systemKey is true. Defaults to "manager".
  */
 export const createPublicApiMockRequest = async ({
   systemKey = false,
   method = "GET",
-  role = "builder",
+  role = "manager",
   plan = "basic",
 }: {
   systemKey?: boolean;
   method?: RequestMethod;
-  role?: "user" | "builder" | "admin";
+  role?: "user" | "manager" | "admin";
   plan?: TestWorkspacePlan;
 } = {}) => {
   const workspace = await workspaceForPlan(plan);

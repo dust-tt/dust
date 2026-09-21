@@ -301,7 +301,6 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
   { role: "admin", permissions: ["read"] },
   { role: "manager", permissions: ["read"] },
   { role: "user", permissions: ["read"] },
-  { role: "builder", permissions: ["read"] },
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

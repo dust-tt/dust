@@ -1,10 +1,6 @@
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { isFullUserType } from "@app/components/members/MemberSelectionTable";
-import {
-  displayRole,
-  normalizeDisplayRole,
-  ROLES_DATA,
-} from "@app/components/members/Roles";
+import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import assert from "@app/lib/utils/assert";
 import type { MembershipOriginType } from "@app/types/memberships";
@@ -40,17 +36,12 @@ type RowData = {
 type Info = CellContext<RowData, string>;
 
 function RoleCell({ role }: { role: RoleType }) {
-  // `builder` is deprecated: display it as a regular member.
-  const displayedRole = normalizeDisplayRole(role);
-
   return (
     <DataTable.CellContent>
       <Chip
-        label={capitalize(displayRole(displayedRole))}
+        label={capitalize(displayRole(role))}
         color={
-          displayedRole !== "none"
-            ? ROLES_DATA[displayedRole]["color"]
-            : undefined
+          role !== "none" ? ROLES_DATA[role]["color"] : undefined
         }
       />
     </DataTable.CellContent>

@@ -12,18 +12,8 @@ export function displayRoleCapitalized(role: RoleType): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-// `builder` is deprecated: surface it to end users as a regular member.
-export function normalizeDisplayRole<T extends RoleType>(role: T): T | "user" {
-  if (role === "builder") {
-    return "user";
-  }
-  return role;
-}
+export type RoleFilter = ActiveRoleType | "all";
 
-export type RoleFilter = Exclude<ActiveRoleType, "builder"> | "all";
-
-// `builder` is not offered: it is deprecated and displayed as a regular member,
-// so the `user` filter covers it (see `searchMembers`).
 export const ROLE_FILTER_OPTIONS: { value: RoleFilter; label: string }[] = [
   { value: "all", label: "All roles" },
   { value: "admin", label: displayRoleCapitalized("admin") },
@@ -47,9 +37,6 @@ export const ROLES_DATA: Record<
   manager: {
     color: "highlight",
   },
-  builder: {
-    color: "info",
-  },
   user: {
     color: "success",
   },
@@ -57,8 +44,6 @@ export const ROLES_DATA: Record<
 
 const ROLE_DESCRIPTIONS: Record<ActiveRoleType, string> = {
   user: "Can use agents in conversations. Building permissions are set by admins.",
-  builder:
-    "Can use agents in conversations. Building permissions are set by admins.",
   manager: "Can manage members, groups, roles, and workspace analytics.",
   admin:
     "Full administrative control, including settings, connections, billing, and governance.",

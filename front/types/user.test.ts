@@ -6,8 +6,6 @@ describe("lowestRole", () => {
     expect(lowestRole("admin", "manager")).toBe("manager");
     expect(lowestRole("manager", "admin")).toBe("manager");
     expect(lowestRole("admin", "user")).toBe("user");
-    expect(lowestRole("manager", "builder")).toBe("builder");
-    expect(lowestRole("builder", "user")).toBe("user");
   });
 
   it("treats `none` as the least privileged role", () => {

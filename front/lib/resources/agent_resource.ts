@@ -118,7 +118,6 @@ const HIDDEN_AGENT_ROLE_GRANTS: RoleGrant[] = [
 const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
   { role: "admin", permissions: ["read", "admin"] },
   { role: "manager", permissions: ["read"] },
-  { role: "builder", permissions: ["read"] },
   { role: "user", permissions: ["read"] },
   { role: "none", permissions: ["read"] },
 ];

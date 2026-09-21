@@ -22,12 +22,6 @@ const SearchMembersQuerySchema = z.object({
   groupKind: z.enum(USER_VISIBLE_GROUP_KINDS).optional(),
   // Restricts the results to the members holding that role.
   role: ActiveRoleSchema.optional(),
-  // Deprecated: the builder-role filter was removed; accepted but ignored to
-  // avoid breaking clients that still send it. Remove once no client does.
-  buildersOnly: z
-    .string()
-    .transform((v) => v === "true")
-    .optional(),
 });
 
 // Mounted at /api/w/:wId/members/search.

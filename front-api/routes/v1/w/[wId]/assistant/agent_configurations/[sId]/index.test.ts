@@ -8,7 +8,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
-async function setupTest(role: "admin" | "builder" | "user" = "admin") {
+async function setupTest(role: "admin" | "manager" | "user" = "admin") {
   const { workspace, key } = await createPublicApiMockRequest({ role });
 
   await SpaceFactory.defaults(
@@ -150,7 +150,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
 
   it.each([
     "admin",
-    "builder",
+    "manager",
     "user",
   ] as const)("reports edit permissions for a %s key on a published agent", async (role) => {
     const { workspace, key, agentConfig } = await setupTest(role);
@@ -175,7 +175,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
 
   it.each([
     "admin",
-    "builder",
+    "manager",
   ] as const)("only allows an admin key to access an unpublished agent (%s)", async (role) => {
     const { workspace, key, auth } = await setupTest(role);
     const agent = await AgentConfigurationFactory.createTestAgent(auth, {
@@ -232,7 +232,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
   });
 
   it("returns 404 for a retired global agent (e.g. gpt-4)", async () => {
-    const { workspace, key } = await setupTest("builder");
+    const { workspace, key } = await setupTest("manager");
 
     const response = await getAgentConfiguration(workspace, key, "gpt-4");
 

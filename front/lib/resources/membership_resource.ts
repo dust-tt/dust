@@ -27,6 +27,7 @@ import type {
 } from "@app/types/memberships";
 import {
   initialCreditStateForSeatType,
+  isMembershipRoleType,
   isMembershipSeatType,
 } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -90,6 +91,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     blob: Attributes<MembershipModel>,
     { user }: { user?: Attributes<UserModel> } = {}
   ) {
+    assert(
+      isMembershipRoleType(blob.role),
+      `Invalid membership role: ${blob.role}`
+    );
     super(MembershipModel, blob);
 
     this.user = user;
@@ -580,7 +585,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
       transaction,
     });
-    return membership?.role ?? "none";
+    const role = membership?.role ?? "none";
+    assert(
+      role === "none" || isMembershipRoleType(role),
+      `Invalid membership role: ${role}`
+    );
+    return role;
   }
 
   // Cache eviction is handled by Redis's allkeys-lfu eviction policy.

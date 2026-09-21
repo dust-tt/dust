@@ -2436,26 +2436,26 @@ describe("SkillResource", () => {
 
     it("refuses the option to a non-admin, who gets null without it", async () => {
       const { skill } = await createRestrictedSkill();
-      const builder = await UserFactory.basic();
-      await MembershipFactory.associate(testContext.workspace, builder, {
-        role: "builder",
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, member, {
+        role: "user",
       });
-      const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        builder.sId,
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        member.sId,
         testContext.workspace.sId
       );
 
       await expect(
-        SkillResource.fetchById(builderAuth, skill.sId, {
+        SkillResource.fetchById(memberAuth, skill.sId, {
           permissionFiltering: "redact_unreadable",
         })
       ).rejects.toThrow("Only admins");
       await expect(
-        SkillResource.listByWorkspace(builderAuth, {
+        SkillResource.listByWorkspace(memberAuth, {
           permissionFiltering: "redact_unreadable",
         })
       ).rejects.toThrow("Only admins");
-      expect(await SkillResource.fetchById(builderAuth, skill.sId)).toBeNull();
+      expect(await SkillResource.fetchById(memberAuth, skill.sId)).toBeNull();
     });
 
     it("returns the full skill to an admin with the admin_can_see_private_entities flag", async () => {

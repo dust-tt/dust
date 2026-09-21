@@ -29,7 +29,7 @@ import type {
   LightWorkspaceType,
   RoleType,
 } from "@app/types/user";
-import { formatUserFullName } from "@app/types/user";
+import { formatUserFullName, isRoleType } from "@app/types/user";
 import { blake3 } from "@napi-rs/blake-hash";
 import assert from "assert";
 import type {
@@ -153,6 +153,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     model: ModelStaticWorkspaceAware<KeyModel>,
     blob: Attributes<KeyModel>
   ) {
+    assert(isRoleType(blob.role), `Invalid API key role: ${blob.role}`);
     super(KeyModel, blob);
   }
 

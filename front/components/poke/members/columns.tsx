@@ -147,13 +147,6 @@ export function makeColumnsForMembers({
                 revoked
               </option>
             )}
-            {member.role === "builder" && (
-              // `builder` is deprecated and no longer assignable, but legacy
-              // builders still need to display their current role.
-              <option value="builder" disabled>
-                builder
-              </option>
-            )}
             {ASSIGNABLE_ROLES.map((role) => (
               <option key={role} value={role}>
                 {role}

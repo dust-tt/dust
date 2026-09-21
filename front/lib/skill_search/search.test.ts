@@ -185,7 +185,7 @@ describe("custom skill search", () => {
   });
 
   it.each(
-    (["user", "builder", "manager", "admin"] as const).flatMap((role) =>
+    (["user", "manager", "admin"] as const).flatMap((role) =>
       (["active", "archived"] as const).map((status) => ({ role, status }))
     )
   )("enforces every space/pod/availability/editor combination for $role / $status", async ({

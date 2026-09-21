@@ -83,7 +83,7 @@ async function setupTestAgents(workspace: WorkspaceType) {
 describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
   it.each([
     "admin",
-    "builder",
+    "manager",
     "user",
   ] as const)("reports edit permissions for a %s key", async (role) => {
     const { workspace, key } = await createPublicApiMockRequest({ role });

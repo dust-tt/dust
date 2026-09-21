@@ -19,6 +19,8 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { ActiveRoleType, LightWorkspaceType } from "@app/types/user";
+import { isActiveRoleType } from "@app/types/user";
+import assert from "assert";
 import { verify } from "jsonwebtoken";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -46,6 +48,10 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     blob: Attributes<MembershipInvitationModel>,
     { workspace }: { workspace: WorkspaceModel }
   ) {
+    assert(
+      isActiveRoleType(blob.initialRole),
+      `Invalid membership invitation role: ${blob.initialRole}`
+    );
     super(MembershipInvitationModel, blob);
     this.workspace = workspace;
   }

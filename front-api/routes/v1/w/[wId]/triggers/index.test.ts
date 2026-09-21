@@ -42,7 +42,7 @@ function listTriggers(
 describe("GET /api/v1/w/:wId/triggers", () => {
   it("returns 403 for a non-admin key", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
-      role: "builder",
+      role: "manager",
     });
 
     const response = await listTriggers(workspace, key);
