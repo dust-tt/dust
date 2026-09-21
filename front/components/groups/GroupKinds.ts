@@ -21,7 +21,6 @@ export function getGroupKindChip(kind: GroupKind): {
     case "regular_manual":
       return { label: "Manual", color: "info" };
     // Only provisioned and manual groups are surfaced to users, so this should never be displayed.
-    case "agent_editors":
     case "global":
     case "regular_auto":
     case "system":

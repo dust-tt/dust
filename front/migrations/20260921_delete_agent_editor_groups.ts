@@ -3,9 +3,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
-import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { Logger } from "@app/logger/logger";
@@ -18,8 +16,6 @@ import { Op, QueryTypes } from "sequelize";
 const DEFAULT_BATCH_SIZE = 1_000;
 const WORKSPACE_CONCURRENCY = 4;
 
-const GroupModelBypass: ModelStaticWorkspaceAware<GroupModel> = GroupModel;
-
 // Batched equivalent of the API-key cleanup in `GroupResource.delete`.
 const REMOVE_GROUPS_FROM_KEYS_SQL = `
   UPDATE keys
@@ -30,6 +26,38 @@ const REMOVE_GROUPS_FROM_KEYS_SQL = `
   )
   WHERE "workspaceId" = :workspaceId
     AND "groupIds" && ARRAY[:groupModelIds]::bigint[]
+`;
+
+const SELECT_AGENT_EDITOR_GROUP_WORKSPACE_MODEL_IDS_SQL = `
+  SELECT DISTINCT "workspaceId"
+  FROM groups
+  WHERE kind = 'agent_editors'
+  ORDER BY "workspaceId"
+`;
+
+const SELECT_AGENT_EDITOR_GROUP_MODEL_IDS_SQL = `
+  SELECT id
+  FROM groups
+  WHERE "workspaceId" = :workspaceId
+    AND kind = 'agent_editors'
+    AND id > :afterGroupModelId
+  ORDER BY id
+  LIMIT :batchSize
+`;
+
+const DELETE_AGENT_EDITOR_GROUPS_SQL = `
+  DELETE FROM groups
+  WHERE "workspaceId" = :workspaceId
+    AND kind = 'agent_editors'
+    AND id IN (:groupModelIds)
+  RETURNING id
+`;
+
+const COUNT_AGENT_EDITOR_GROUPS_SQL = `
+  SELECT COUNT(*)::int AS count
+  FROM groups
+  WHERE "workspaceId" = :workspaceId
+    AND kind = 'agent_editors'
 `;
 
 type MigrationWorkspace = Pick<LightWorkspaceType, "id" | "sId">;
@@ -111,14 +139,14 @@ async function deleteGroupBatch(
       where: { workspaceId: workspace.id, groupId: groupModelIds },
       transaction,
     });
-    const deletedGroups = await GroupModel.destroy({
-      where: {
-        id: groupModelIds,
-        workspaceId: workspace.id,
-        kind: "agent_editors",
-      },
-      transaction,
-    });
+    const deletedGroups = await frontSequelize.query<{ id: ModelId }>(
+      DELETE_AGENT_EDITOR_GROUPS_SQL,
+      {
+        replacements: { workspaceId: workspace.id, groupModelIds },
+        type: QueryTypes.SELECT,
+        transaction,
+      }
+    );
 
     const memberUserModelIds = [
       ...new Set(memberships.map(({ userId }) => userId)),
@@ -139,23 +167,60 @@ async function deleteGroupBatch(
       );
     });
 
-    return deletedGroups;
+    return deletedGroups.length;
   });
 }
 
 async function fetchAgentEditorGroupWorkspaceModelIds(): Promise<ModelId[]> {
-  // WORKSPACE_ISOLATION_BYPASS: This grouped query only discovers the workspaces that contain
-  // legacy groups so the migration can avoid scanning every workspace.
-  const rows = await GroupModelBypass.findAll({
-    attributes: ["workspaceId"],
-    where: { kind: "agent_editors" },
-    group: ["workspaceId"],
-    raw: true,
-    // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
-    dangerouslyBypassWorkspaceIsolationSecurity: true,
-  });
+  const rows = await frontSequelize.query<{ workspaceId: ModelId }>(
+    SELECT_AGENT_EDITOR_GROUP_WORKSPACE_MODEL_IDS_SQL,
+    {
+      type: QueryTypes.SELECT,
+    }
+  );
 
   return rows.map(({ workspaceId }) => workspaceId);
+}
+
+async function fetchAgentEditorGroupModelIds({
+  workspace,
+  afterGroupModelId,
+  batchSize,
+}: {
+  workspace: MigrationWorkspace;
+  afterGroupModelId: ModelId;
+  batchSize: number;
+}): Promise<ModelId[]> {
+  const rows = await frontSequelize.query<{ id: ModelId }>(
+    SELECT_AGENT_EDITOR_GROUP_MODEL_IDS_SQL,
+    {
+      replacements: {
+        workspaceId: workspace.id,
+        afterGroupModelId,
+        batchSize,
+      },
+      type: QueryTypes.SELECT,
+    }
+  );
+
+  return rows.map(({ id }) => id);
+}
+
+async function countAgentEditorGroups(
+  workspace: MigrationWorkspace
+): Promise<number> {
+  const [row] = await frontSequelize.query<{ count: number }>(
+    COUNT_AGENT_EDITOR_GROUPS_SQL,
+    {
+      replacements: { workspaceId: workspace.id },
+      type: QueryTypes.SELECT,
+    }
+  );
+  if (!row) {
+    throw new Error("Agent-editor group count query returned no row.");
+  }
+
+  return row.count;
 }
 
 /**
@@ -189,21 +254,15 @@ export async function deleteWorkspaceAgentEditorGroups({
   let afterGroupModelId = 0;
 
   while (true) {
-    const groups = await GroupModel.findAll({
-      attributes: ["id"],
-      where: {
-        workspaceId: workspace.id,
-        kind: "agent_editors",
-        id: { [Op.gt]: afterGroupModelId },
-      },
-      order: [["id", "ASC"]],
-      limit: batchSize,
+    const groupModelIds = await fetchAgentEditorGroupModelIds({
+      workspace,
+      afterGroupModelId,
+      batchSize,
     });
-    if (groups.length === 0) {
+    if (groupModelIds.length === 0) {
       break;
     }
 
-    const groupModelIds = groups.map(({ id }) => id);
     afterGroupModelId = groupModelIds[groupModelIds.length - 1];
     stats.groups += groupModelIds.length;
     stats.batches += 1;
@@ -241,9 +300,7 @@ export async function deleteWorkspaceAgentEditorGroups({
   }
 
   if (execute) {
-    const remainingGroups = await GroupModel.count({
-      where: { workspaceId: workspace.id, kind: "agent_editors" },
-    });
+    const remainingGroups = await countAgentEditorGroups(workspace);
     if (remainingGroups > 0) {
       throw new Error(
         `Workspace ${workspace.sId} still has ${remainingGroups} agent-editor groups.`
@@ -297,6 +354,12 @@ if (process.argv[1]?.endsWith("20260921_delete_agent_editor_groups.ts")) {
           fromWorkspaceId: fromWorkspace,
           where,
         }
+      );
+
+      logger.info(
+        execute
+          ? "Legacy agent-editor group deletion completed"
+          : "Legacy agent-editor group deletion dry run completed"
       );
     }
   );

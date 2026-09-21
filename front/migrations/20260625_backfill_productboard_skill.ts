@@ -4,14 +4,12 @@ import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
-import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -309,62 +307,46 @@ async function createProductboardSkill(
 async function addAgentEditorsToSkill(
   auth: Authenticator,
   {
-    agentConfigurationModelIds,
+    agents,
     logger,
     skill,
   }: {
-    agentConfigurationModelIds: ModelId[];
+    agents: AgentConfigurationModel[];
     logger: Logger;
     skill: SkillResource;
   }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  if (agentConfigurationModelIds.length === 0) {
+  if (agents.length === 0) {
     return;
   }
 
-  const agentEditorLinks = await GroupAgentModel.findAll({
-    where: {
-      workspaceId: owner.id,
-      agentConfigurationId: { [Op.in]: agentConfigurationModelIds },
-    },
-  });
-  const agentEditorGroupModelIds = [
-    ...new Set(agentEditorLinks.map((link) => link.groupId)),
-  ];
-
-  if (agentEditorGroupModelIds.length === 0) {
-    logger.warn(
-      { skillId: skill.sId, workspaceId: owner.sId },
-      "No agent editor groups found for Productboard agents"
-    );
-    return;
-  }
-
-  const agentEditorGroups = await GroupResource.dangerouslyFetchByModelIds(
+  const editorsByAgentId = await AgentResource.batchListEditors(
     auth,
-    agentEditorGroupModelIds
+    agents.map((agent) =>
+      AgentResource.fromAgentConfigurationModel(auth, agent)
+    )
   );
-
-  const activeAgentEditorMemberships =
-    await GroupResource.getActiveMembershipsForGroups(auth, agentEditorGroups);
-  const agentEditorUserModelIds = [
-    ...new Set(Object.values(activeAgentEditorMemberships).flat()),
+  const agentEditors = [
+    ...new Map(
+      [...editorsByAgentId.values()]
+        .flatMap((editors) => editors ?? [])
+        .map((user) => [user.id, user])
+    ).values(),
   ];
 
-  if (agentEditorUserModelIds.length === 0) {
+  if (agentEditors.length === 0) {
     logger.warn(
       { skillId: skill.sId, workspaceId: owner.sId },
-      "No agent editor members found for Productboard agents"
+      "No agent editors found for Productboard agents"
     );
     return;
   }
 
-  const users = await UserResource.fetchByModelIds(agentEditorUserModelIds);
   const { memberships } = await MembershipResource.getActiveMemberships({
-    users,
-    workspace: auth.getNonNullableWorkspace(),
+    users: agentEditors,
+    workspace: owner,
   });
   const builderUserModelIds = new Set(
     memberships
@@ -376,7 +358,7 @@ async function addAgentEditorsToSkill(
   const existingSkillEditorModelIds = new Set(
     existingSkillEditors.map((user) => user.id)
   );
-  const usersToAdd = users.filter(
+  const usersToAdd = agentEditors.filter(
     (user) =>
       builderUserModelIds.has(user.id) &&
       !existingSkillEditorModelIds.has(user.id)
@@ -386,7 +368,7 @@ async function addAgentEditorsToSkill(
     logger.info(
       {
         skippedNonBuilderEditorCount:
-          agentEditorUserModelIds.length - builderUserModelIds.size,
+          agentEditors.length - builderUserModelIds.size,
         skillId: skill.sId,
         workspaceId: owner.sId,
       },
@@ -405,7 +387,7 @@ async function addAgentEditorsToSkill(
     {
       addedEditorCount: usersToAdd.length,
       skippedNonBuilderEditorCount:
-        agentEditorUserModelIds.length - builderUserModelIds.size,
+        agentEditors.length - builderUserModelIds.size,
       skillId: skill.sId,
       workspaceId: owner.sId,
     },
@@ -433,11 +415,13 @@ async function backfillWorkspace(
 
   const existingSkill = await fetchActiveProductboardSkill(auth);
 
-  const productboardAgentModelIds = productboardAgents.map((agent) => agent.id);
+  const productboardAgentConfigurationModelIds = productboardAgents.map(
+    (agent) => agent.id
+  );
 
   logger.info(
     {
-      agentIdsToLink: productboardAgentModelIds.length,
+      agentIdsToLink: productboardAgentConfigurationModelIds.length,
       productboardAgentCount: productboardAgents.length,
       productboardAgents: productboardAgents.map((agent) => ({
         agentId: agent.sId,
@@ -465,14 +449,14 @@ async function backfillWorkspace(
     // We add some editors to the skill to make sure we're not creating a skill with 0 editor.
     // We take the agent editors as they are the most prone to know about Productboard at their company.
     await addAgentEditorsToSkill(auth, {
-      agentConfigurationModelIds: productboardAgentModelIds,
+      agents: productboardAgents,
       logger,
       skill,
     });
   }
 
   await AgentSkillModel.bulkCreate(
-    productboardAgentModelIds.map((agentConfigurationModelId) => ({
+    productboardAgentConfigurationModelIds.map((agentConfigurationModelId) => ({
       agentConfigurationId: agentConfigurationModelId,
       customSkillId: skill.id,
       globalSkillId: null,
@@ -489,7 +473,7 @@ async function backfillWorkspace(
 
   logger.info(
     {
-      agentIdsToLink: productboardAgentModelIds.length,
+      agentIdsToLink: productboardAgentConfigurationModelIds.length,
       productboardMCPServerConfigurationsRemoved:
         productboardMCPServerConfigurationModelIds.length,
       skillId: skill.sId,

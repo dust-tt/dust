@@ -7,8 +7,6 @@ import {
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
 import { hasContractSeatSubscription } from "@app/lib/metronome/seats";
-import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -30,10 +28,6 @@ import {
 import logger from "@app/logger/logger";
 import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
 import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
 import type { GrantVerb } from "@app/types/group_permissions";
 import type {
   GroupGrantableRole,
@@ -43,11 +37,9 @@ import type {
   UserVisibleGroupKind,
 } from "@app/types/groups";
 import {
-  AGENT_GROUP_PREFIX,
   CAP_ELIGIBLE_GROUP_KINDS,
   GROUP_GRANTABLE_ROLES,
   GROUP_KINDS,
-  isAgentEditorGroupKind,
   isManageableGroupKind,
   isRegularManualGroupKind,
   USER_VISIBLE_GROUP_KINDS,
@@ -110,7 +102,7 @@ export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
  * - `read`: seeing the group and its membership.
  * - `write`: renaming a `regular_manual` group and adding or removing its members.
  * - `admin`: deleting a `regular_manual` group.
- * `global` and `provisioned` groups are read-only. `regular_auto`, `agent_editors` and `system`
+ * `global` and `provisioned` groups are read-only. `regular_auto` and `system`
  * groups hold no verbs and MUST only be used by paths with a separate authorization context.
  */
 export class GroupResource extends BaseResource<GroupModel> {
@@ -128,11 +120,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     (k): k is Exclude<GroupKind, "system"> => k !== "system"
   );
 
-  // Group kinds returned to system API keys by listWorkspaceGroupsFromKey.
-  // Excludes agent_editors which are per-agent
-  // and not relevant to system auth.
-  private static readonly groupKindsFromSystemKey: GroupKind[] =
-    GROUP_KINDS.filter((k) => !isAgentEditorGroupKind(k));
+  private static readonly groupKindsFromSystemKey: GroupKind[] = [
+    ...GROUP_KINDS,
+  ];
 
   private static readonly workspaceGroupsFromSystemKeyCacheKeyResolver = (
     workspaceModelId: ModelId
@@ -415,49 +405,6 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Creates a new agent editors group for the given agent and adds the creating
-   * user to it.
-   */
-  static async makeNewAgentEditorsGroup(
-    auth: Authenticator,
-    agent: AgentConfigurationModel,
-    { transaction, authorId }: { transaction?: Transaction; authorId: ModelId }
-  ) {
-    const workspace = auth.getNonNullableWorkspace();
-
-    if (agent.workspaceId !== workspace.id) {
-      throw new DustError(
-        "internal_error",
-        "Unexpected: agent and workspace mismatch"
-      );
-    }
-
-    // Create a default group for the agent and add the author to it.
-    const defaultGroup = await GroupResource.makeNew(
-      {
-        workspaceId: workspace.id,
-        name: `${AGENT_GROUP_PREFIX} ${agent.name} (${agent.sId})`,
-        kind: "agent_editors",
-      },
-      { transaction, memberIds: [authorId] }
-    );
-
-    // Associate the group with the agent configuration.
-    const groupAgentResult = await defaultGroup.addGroupToAgentConfiguration({
-      auth,
-      agentConfiguration: agent,
-      transaction,
-    });
-    // If association fails, the transaction will automatically rollback.
-    if (groupAgentResult.isErr()) {
-      // Explicitly throw error to ensure rollback
-      throw groupAgentResult.error;
-    }
-
-    return defaultGroup;
-  }
-
-  /**
    * Creates a new regular_manual group. These groups are created and managed
    * manually by workspace admins and managers from the UI to grant
    * permissions to their members.
@@ -540,76 +487,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok({ group, addedUsers: memberUsers });
   }
 
-  /**
-   * TODO(governance): to be removed, replaced by findRegularAutoGroupForGrant/listRegularAutoGroupsForResource
-   * Finds the specific editor group associated with an agent configuration.
-   */
-  static async findEditorGroupForAgent(
-    auth: Authenticator,
-    agent: LightAgentConfigurationType
-  ): Promise<
-    Result<
-      GroupResource,
-      DustError<
-        "group_not_found" | "internal_error" | "unauthorized" | "invalid_id"
-      >
-    >
-  > {
-    const owner = auth.getNonNullableWorkspace();
-
-    const groupAgents = await GroupAgentModel.findAll({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: owner.id,
-      },
-      attributes: ["groupId"],
-    });
-    if (groupAgents.length === 0) {
-      return new Err(
-        new DustError(
-          "group_not_found",
-          "Editor group association not found for agent."
-        )
-      );
-    }
-
-    if (groupAgents.length > 1) {
-      return new Err(
-        new DustError(
-          "internal_error",
-          "Multiple editor group associations found for agent."
-        )
-      );
-    }
-
-    const [groupAgent] = groupAgents;
-    const groups = await this.baseFetch(auth, {
-      where: {
-        id: groupAgent.groupId,
-      },
-    });
-
-    const [group] = groups;
-    if (!group) {
-      return new Err(
-        new DustError("group_not_found", "Editor group not found for agent.")
-      );
-    }
-
-    if (group.kind !== "agent_editors") {
-      // Should not happen based on creation logic, but good to check.
-      // Might change when we allow other group kinds to be associated with agents.
-      return new Err(
-        new DustError(
-          "internal_error",
-          "Associated group is not an agent_editors group."
-        )
-      );
-    }
-
-    return new Ok(group);
-  }
-
   static async makeDefaultsForWorkspace(
     workspace: LightWorkspaceType,
     { transaction }: { transaction?: Transaction } = {}
@@ -676,7 +553,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Use with care as this gives access to all groups in the workspace.
   static async internalFetchAllWorkspaceGroups({
     workspaceId,
-    groupKinds = GROUP_KINDS.filter((k) => !isAgentEditorGroupKind(k)),
+    groupKinds = [...GROUP_KINDS],
     transaction,
   }: {
     workspaceId: ModelId;
@@ -972,67 +849,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: "provisioned",
       workspaceId: owner.id,
     });
-  }
-
-  /**
-   * TODO(governance): to be removed, replaced by findRegularAutoGroupForGrant/listRegularAutoGroupsForResource
-   */
-  static async fetchByAgentConfiguration({
-    auth,
-    agentConfiguration,
-    isDeletionFlow = false,
-  }: {
-    auth: Authenticator;
-    agentConfiguration: AgentConfigurationModel | AgentConfigurationType;
-    isDeletionFlow?: boolean;
-  }): Promise<GroupResource | null> {
-    const workspace = auth.getNonNullableWorkspace();
-
-    const agentGroups = await GroupAgentModel.findAll({
-      where: {
-        agentConfigurationId: agentConfiguration.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    const groups = await this.baseFetch(auth, {
-      where: {
-        id: {
-          [Op.in]: agentGroups.map((ag) => ag.groupId),
-        },
-        kind: "agent_editors",
-      },
-    });
-
-    if (
-      agentConfiguration.status === "draft" ||
-      agentConfiguration.scope === "global"
-    ) {
-      if (groups.length === 0) {
-        return null;
-      }
-
-      throw new Error(
-        "Unexpected: draft or global agent shouldn't have an editor group."
-      );
-    }
-
-    // In the case of agents deletion, it is possible that the agent has no
-    // editor group associated with it, because the group may have been deleted
-    // when deleting another version of the agent with the same sId.
-    if (isDeletionFlow && groups.length === 0) {
-      return null;
-    }
-
-    // In other cases, the agent should always have exactly one editor group.
-    if (groups.length !== 1) {
-      throw new Error(
-        "Unexpected: agent should have exactly one editor group."
-      );
-    }
-
-    const [group] = groups;
-    return group;
   }
 
   static async fetchWorkspaceGlobalGroup(
@@ -1634,7 +1450,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     assert(
       this.isRegularAuto() ||
         this.isRegularManual() ||
-        this.kind === "agent_editors" ||
         (allowProvisionedGroups && this.kind === "provisioned"),
       `You can't add members to ${this.kind} groups.`
     );
@@ -1807,7 +1622,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     assert(
       this.isRegularAuto() ||
         this.isRegularManual() ||
-        this.kind === "agent_editors" ||
         (allowProvisionedGroups && this.kind === "provisioned"),
       `You can't remove members from ${this.kind} groups.`
     );
@@ -2567,14 +2381,6 @@ export class GroupResource extends BaseResource<GroupModel> {
         }
       );
 
-      await GroupAgentModel.destroy({
-        where: {
-          groupId: this.id,
-          workspaceId: owner.id,
-        },
-        transaction,
-      });
-
       await GroupMembershipModel.destroy({
         where: {
           groupId: this.id,
@@ -2662,11 +2468,10 @@ export class GroupResource extends BaseResource<GroupModel> {
           { role: "builder", permissions: ["read"] },
         ];
         break;
-      // system, regular_auto, agent_editors: no permission for anyone. Access to a regular_auto
+      // system, regular_auto: no permission for anyone. Access to a regular_auto
       // group is decided on the resource it is linked to, and its owner fetches it without a check.
       case "system":
       case "regular_auto":
-      case "agent_editors":
         roleGrants = [];
         break;
       default:
@@ -3497,49 +3302,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     await GroupResource.recomputeAndSyncWorkspaceSeatsForUsers(auth, members);
 
     return new Ok(undefined);
-  }
-
-  /**
-   * Associates a group with an agent configuration.
-   */
-  async addGroupToAgentConfiguration({
-    auth,
-    agentConfiguration,
-    transaction,
-  }: {
-    auth: Authenticator;
-    agentConfiguration: AgentConfigurationModel;
-    transaction?: Transaction;
-  }): Promise<Result<void, Error>> {
-    assert(
-      this.kind === "agent_editors",
-      "Group must be an agent editors group"
-    );
-    const owner = auth.getNonNullableWorkspace();
-    if (
-      owner.id !== this.workspaceId ||
-      owner.id !== agentConfiguration.workspaceId
-    ) {
-      return new Err(
-        new Error(
-          "Group and agent configuration must belong to the same workspace."
-        )
-      );
-    }
-
-    try {
-      await GroupAgentModel.create(
-        {
-          groupId: this.id,
-          agentConfigurationId: agentConfiguration.id,
-          workspaceId: owner.id,
-        },
-        { transaction }
-      );
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
   }
 
   // JSON Serialization

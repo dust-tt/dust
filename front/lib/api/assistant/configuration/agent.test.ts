@@ -15,7 +15,6 @@ import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
-import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
@@ -281,31 +280,6 @@ describe("getAgentConfigurations", () => {
 });
 
 describe("stable agent identities", () => {
-  it("does not create legacy editor links for new agents or versions", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const firstVersion =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-    await AgentConfigurationFactory.updateTestAgent(
-      authenticator,
-      firstVersion.sId
-    );
-
-    const versions = await AgentConfigurationModel.findAll({
-      where: { sId: firstVersion.sId, workspaceId: workspace.id },
-      attributes: ["id"],
-    });
-    expect(
-      await GroupAgentModel.count({
-        where: {
-          workspaceId: workspace.id,
-          agentConfigurationId: versions.map((version) => version.id),
-        },
-      })
-    ).toBe(0);
-  });
-
   it("reuses one identity across agent versions", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
@@ -496,15 +470,6 @@ describe("saveAgentConfiguration with pending agent", () => {
         (editor) => editor.sId
       )
     ).toEqual([user.sId]);
-    expect(
-      await GroupAgentModel.count({
-        where: {
-          workspaceId: workspace.id,
-          agentConfigurationId: pendingAgent.id,
-        },
-      })
-    ).toBe(0);
-
     // Convert the pending agent to active by passing its sId as agentConfigurationId
     const result = await saveAgentConfiguration(authenticator, {
       name: "My New Agent",
@@ -545,15 +510,6 @@ describe("saveAgentConfiguration with pending agent", () => {
     expect(agent.status).toBe("active");
     expect(agent.name).toBe("My New Agent");
     expect(agent.version).toBe(0); // Version should remain 0 (updated in place)
-    expect(
-      await GroupAgentModel.count({
-        where: {
-          workspaceId: workspace.id,
-          agentConfigurationId: agent.id,
-        },
-      })
-    ).toBe(0);
-
     expect(
       new Set(
         (await pendingGrantGroup.getActiveMembers(authenticator)).map(
