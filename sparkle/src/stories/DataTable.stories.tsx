@@ -1013,15 +1013,45 @@ interface UsageRow {
   agent: string;
   runs: number;
   costCents: number;
+  costTrend: "up" | "down" | "flat";
   status: "active" | "paused";
+  owner: string;
   menuItems?: MenuItem[];
 }
 
 const usageRows: UsageRow[] = [
-  { agent: "Sales assistant", runs: 12840, costCents: 41250, status: "active" },
-  { agent: "Support triage", runs: 3391, costCents: 9820, status: "active" },
-  { agent: "Weekly digest", runs: 52, costCents: 1204, status: "paused" },
-  { agent: "Onboarding coach", runs: 987, costCents: 15075, status: "active" },
+  {
+    agent: "Sales assistant",
+    runs: 12840,
+    costCents: 41250,
+    costTrend: "up",
+    status: "active",
+    owner: "Maya Patel",
+  },
+  {
+    agent: "Support triage",
+    runs: 3391,
+    costCents: 9820,
+    costTrend: "down",
+    status: "active",
+    owner: "Noah Garcia",
+  },
+  {
+    agent: "Weekly digest",
+    runs: 52,
+    costCents: 1204,
+    costTrend: "flat",
+    status: "paused",
+    owner: "Olivia Martinez",
+  },
+  {
+    agent: "Onboarding coach",
+    runs: 987,
+    costCents: 15075,
+    costTrend: "up",
+    status: "active",
+    owner: "Paul Kim",
+  },
 ];
 
 const usageColumns: ColumnDef<UsageRow>[] = [
@@ -1040,7 +1070,10 @@ const usageColumns: ColumnDef<UsageRow>[] = [
     header: "Status",
     meta: { type: "status", className: "w-24" },
     cell: (info) => (
-      <DataTable.BasicCellContent label={info.row.original.status} />
+      <DataTable.StatusCellContent
+        label={info.row.original.status === "active" ? "Active" : "Paused"}
+        color={info.row.original.status === "active" ? "success" : "primary"}
+      />
     ),
   },
   {
@@ -1049,8 +1082,9 @@ const usageColumns: ColumnDef<UsageRow>[] = [
     header: "Runs",
     meta: { type: "numeric", className: "w-28" },
     cell: (info) => (
-      <DataTable.BasicCellContent
-        label={info.row.original.runs.toLocaleString("en-US")}
+      <DataTable.NumericCellContent
+        value={info.row.original.runs}
+        locale="en-US"
       />
     ),
   },
@@ -1058,10 +1092,16 @@ const usageColumns: ColumnDef<UsageRow>[] = [
     accessorKey: "costCents",
     id: "cost",
     header: "Cost",
-    meta: { type: "numeric", className: "w-28" },
+    meta: { type: "numeric", className: "w-32" },
     cell: (info) => (
-      <DataTable.BasicCellContent
-        label={`$${(info.row.original.costCents / 100).toFixed(2)}`}
+      <DataTable.NumericCellContent
+        value={info.row.original.costCents / 100}
+        locale="en-US"
+        precision={2}
+        unit="$"
+        unitPosition="prefix"
+        trend={info.row.original.costTrend}
+        upIsPositive={false}
       />
     ),
   },
@@ -1078,11 +1118,13 @@ const usageColumns: ColumnDef<UsageRow>[] = [
 ];
 
 /**
- * Column presets from `meta.type`: `numeric` right-aligns header and cells in
- * tabular figures, `row-actions` fixes the overflow-menu column at 48px and
- * makes it unsortable, `status` keeps labels on one line. `meta.rowHeader`
+ * Column presets from `meta.type` paired with their cell helpers: `numeric`
+ * right-aligns header and cells, and `NumericCellContent` formats the value
+ * with a unit and a trend arrow whose colour is paired with the arrow, never
+ * alone; `status` keeps `StatusCellContent` chips on one line; `row-actions`
+ * fixes the overflow-menu column at 48px and makes it unsortable. `meta.rowHeader`
  * renders the agent cells as row headers for screen readers.
- * @summary Numeric, status and row-actions column presets.
+ * @summary Numeric, status and row-actions column presets with their cell helpers.
  */
 export const ColumnTypes = () => {
   const [sorting, setSorting] = useState<SortingState>([
@@ -1148,6 +1190,60 @@ export const Loading = () => {
         columns={usageColumns}
         isLoading={isLoading}
       />
+    </div>
+  );
+};
+
+const relaxedColumns: ColumnDef<UsageRow>[] = [
+  {
+    accessorKey: "agent",
+    id: "agent",
+    header: "Agent",
+    meta: { className: "w-full" },
+    cell: (info) => (
+      <DataTable.CellContent
+        avatarUrl="https://avatars.githubusercontent.com/u/1?s=200&v=4"
+        secondaryLine={`Owned by ${info.row.original.owner}`}
+        trailing={
+          <DataTable.StatusCellContent
+            label={info.row.original.status === "active" ? "Active" : "Paused"}
+            color={
+              info.row.original.status === "active" ? "success" : "primary"
+            }
+          />
+        }
+      >
+        {info.row.original.agent}
+      </DataTable.CellContent>
+    ),
+  },
+  ...usageColumns.filter(
+    (column) => column.id === "runs" || column.id === "cost"
+  ),
+];
+
+/**
+ * At `relaxed` density `CellContent` gains a `secondaryLine` under the main
+ * text and a 32px avatar; `trailing` pins content to the end of the cell. The
+ * same columns at `default` density hide the secondary line, so a table can
+ * switch density without changing its column definitions.
+ * @summary Two-line cells with a trailing chip at relaxed density.
+ */
+export const RelaxedSecondaryLine = () => {
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-2">
+        <div className="heading-sm">Relaxed</div>
+        <DataTable
+          data={usageRows}
+          columns={relaxedColumns}
+          density="relaxed"
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <div className="heading-sm">Default (secondary line hidden)</div>
+        <DataTable data={usageRows} columns={relaxedColumns} />
+      </div>
     </div>
   );
 };
