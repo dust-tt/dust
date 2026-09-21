@@ -9,6 +9,7 @@ export function buildSkillDefaultSort(
     case "relevance":
       return [
         { _score: { order: "desc" } },
+        { active_users_count: { order: "desc", missing: "_last" } },
         // Skill ID is the tie-breaker.
         { skill_id: { order: "asc" } },
       ];
@@ -26,7 +27,7 @@ export function buildSkillDefaultSort(
 /**
  * @cc [owner:aubin-tchoi,label:product] indexed-skill-name-matching
  * Name matching uses both autocomplete fields and Elasticsearch relevance, without
- * description matching or usage boosts. Skill ID breaks relevance ties.
+ * description matching or usage boosts. Usage breaks relevance ties, then skill ID.
  */
 export function buildSkillNameAutocompleteQuery(
   searchTerm: string
