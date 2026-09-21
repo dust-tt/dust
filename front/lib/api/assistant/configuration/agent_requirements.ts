@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { invalidateAgentResourceCaches } from "@app/lib/resources/agent_resource_cache";
+import { launchAgentSearchIndexation } from "@app/lib/resources/agent_resource_indexation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -33,11 +34,14 @@ export async function updateAgentRequirements(
       }
     );
 
-  await invalidateAgentResourceCaches(
-    owner.id,
-    updatedConfigurations.map((configuration) => configuration.sId),
-    transaction
+  const updatedAgentIds = updatedConfigurations.map(
+    (configuration) => configuration.sId
   );
+
+  await invalidateAgentResourceCaches(owner.id, updatedAgentIds, transaction);
+
+  // `requestedSpaceIds` is indexed, so the search documents of the updated agents are now stale.
+  await launchAgentSearchIndexation(owner.sId, updatedAgentIds, transaction);
 
   return new Ok(updatedCount > 0);
 }

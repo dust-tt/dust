@@ -1,4 +1,7 @@
-import { destroyAgentConfigurationRow } from "@app/lib/api/assistant/configuration/agent";
+import {
+  destroyAgentConfigurationRow,
+  syncAgentSearchAfterRowDestroyed,
+} from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
@@ -94,16 +97,22 @@ async function deleteDraftAgentConfigurationAndRelatedResources(
 
   // Finally delete the agent configuration, re-pointing or deleting its identity.
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  await withTransaction(async (t) => {
-    await destroyAgentConfigurationRow(
+  const agentResource = AgentResource.fromAgentConfigurationModel(auth, agent);
+  const { agentDeleted } = await withTransaction(async (t) =>
+    destroyAgentConfigurationRow(
       auth,
-      {
-        agent: AgentResource.fromAgentConfigurationModel(auth, agent),
-        configurationId: agent.id,
-      },
+      { agent: agentResource, configurationId: agent.id },
       t
-    );
+    )
+  );
+
+  const searchResult = await syncAgentSearchAfterRowDestroyed(auth, {
+    agent: agentResource,
+    agentDeleted,
   });
+  if (searchResult.isErr()) {
+    throw searchResult.error;
+  }
 
   return true;
 }

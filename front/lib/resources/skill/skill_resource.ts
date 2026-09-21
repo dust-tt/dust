@@ -4564,9 +4564,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.model.destroy({
       where: { workspaceId },
     });
-    await launchDeleteWorkspaceSkillSearchWorkflow({
+    const deleteSearchResult = await launchDeleteWorkspaceSkillSearchWorkflow({
       workspaceId: auth.getNonNullableWorkspace().sId,
     });
+    if (deleteSearchResult.isErr()) {
+      throw deleteSearchResult.error;
+    }
   }
 
   private static replaceSkillReferenceTags(
