@@ -33,8 +33,6 @@ export function PodFileTabContent({
     !!metadata?.contentType &&
     isFrameContentType(stripMimeParameters(metadata.contentType));
 
-  // Frames still load via the processed renderable bundle; other previewable
-  // files reuse the shared file preview stack (including markdown edit).
   if (isFileMetadataLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -48,13 +46,7 @@ export function PodFileTabContent({
   }
 
   if (!isFrame) {
-    return (
-      <PodFileTabPreview
-        owner={owner}
-        filePath={tab.path}
-        canEdit={podInfo.isEditor}
-      />
-    );
+    return <PodFileTabPreview owner={owner} filePath={tab.path} />;
   }
 
   return (

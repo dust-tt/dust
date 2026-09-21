@@ -9,7 +9,6 @@ import {
   isValidPodTabValue,
   usePodTabs,
 } from "@app/hooks/useSpaceProjectTabs";
-import { ViewChangeLockContext } from "@app/hooks/useViewChangeGuard";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useActivationPod } from "@app/lib/swr/activation";
 import { usePodFiles } from "@app/lib/swr/pods";
@@ -82,7 +81,7 @@ export function PodPage() {
 
   const isMobile = useIsMobile();
 
-  const { currentTab, handleTabChange, lockViewChange } = usePodTabs({
+  const { currentTab, handleTabChange } = usePodTabs({
     podId,
     podUiPreferences,
     setPodUiPreferences,
@@ -240,17 +239,15 @@ export function PodPage() {
             )}
         </div>
 
-        <ViewChangeLockContext.Provider value={lockViewChange}>
-          <PodPageContent
-            podInfo={podInfo}
-            isGoalPod={isGoalPod}
-            onTabChange={handleTabChange}
-            podUiPreferences={podUiPreferences}
-            setPodUiPreferences={setPodUiPreferences}
-            mutatePodInfo={mutatePodInfo}
-            fileTabs={fileTabs}
-          />
-        </ViewChangeLockContext.Provider>
+        <PodPageContent
+          podInfo={podInfo}
+          isGoalPod={isGoalPod}
+          onTabChange={handleTabChange}
+          podUiPreferences={podUiPreferences}
+          setPodUiPreferences={setPodUiPreferences}
+          mutatePodInfo={mutatePodInfo}
+          fileTabs={fileTabs}
+        />
       </NavTabPill>
     </div>
   );

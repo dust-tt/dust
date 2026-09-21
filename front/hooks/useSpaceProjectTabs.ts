@@ -1,6 +1,5 @@
 import { DEFAULT_TASK_OWNER_FILTER } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import type { PodUiScopedPreferences } from "@app/hooks/useScopedUIPreferences";
-import { useViewChangeGuard } from "@app/hooks/useViewChangeGuard";
 import {
   isPodFileTabValue,
   makePodFileTabValue,
@@ -86,7 +85,8 @@ interface UsePodTabsParams {
  *
  * System tabs use `#conversations` etc. Frame tabs use `#frame/<encoded-path>`.
  *
- * Tab clicks are blocked while the active document has pending changes.
+ * Tab clicks go through `handleTabChange`, which writes URL + state
+ * synchronously and bypasses the sync function.
  *
  * Leaving Connected Data also drops its navigation query params (`dsvId`,
  * `parentId`, `q`). Non-admin-controlled Pods cannot stay on that tab.
@@ -98,9 +98,7 @@ export function usePodTabs({
 }: UsePodTabsParams): {
   currentTab: PodTab;
   handleTabChange: (tab: PodTab) => void;
-  lockViewChange: ReturnType<typeof useViewChangeGuard>["lockViewChange"];
 } {
-  const { lockViewChange, changeView } = useViewChangeGuard();
   const onHashChangeRef = useRef<() => void>(() => {});
 
   onHashChangeRef.current = () => {
@@ -139,18 +137,15 @@ export function usePodTabs({
 
   const handleTabChange = useCallback(
     (newTab: PodTab) => {
-      changeView(() => {
-        replaceUrlWithTab(newTab);
-        setPodUiPreferences({ ...podUiPreferences, tab: newTab });
-      });
+      replaceUrlWithTab(newTab);
+      setPodUiPreferences({ ...podUiPreferences, tab: newTab });
     },
-    [changeView, podUiPreferences, setPodUiPreferences]
+    [podUiPreferences, setPodUiPreferences]
   );
 
   return {
     currentTab: podUiPreferences.tab,
     handleTabChange,
-    lockViewChange,
   };
 }
 

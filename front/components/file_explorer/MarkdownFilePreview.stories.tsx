@@ -138,7 +138,7 @@ export const FailedSave: Story = {
   },
 };
 
-/** @summary Restricted files remain read-only without editing controls or persistence. */
+/** @summary Pinned documents and restricted files stay read-only without persistence. */
 export const ReadOnly: Story = {
   args: { canEdit: false },
   play: async ({ canvas, args }) => {
@@ -151,6 +151,8 @@ export const ReadOnly: Story = {
     );
     await expect(editor).toHaveAttribute("contenteditable", "false");
     await expect(canvas.queryByRole("button")).not.toBeInTheDocument();
+    await userEvent.click(editor);
+    await userEvent.keyboard("{Control>}s{/Control}");
     await expect(args.onSave).not.toHaveBeenCalled();
   },
 };
