@@ -1,0 +1,152 @@
+import { useAgentMessageConsumption } from "@app/hooks/conversations/useAgentMessageConsumption";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
+import type { CreditSpendCheckpointDecision } from "@app/lib/api/assistant/conversation/credit_spend_checkpoint_pause";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { formatCreditValue } from "@app/lib/client/credits";
+import { useResolveCreditSpendCheckpoint } from "@app/lib/swr/tool_actions";
+import type { CreditSpendCheckpointStatus } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import {
+  Avatar,
+  Button,
+  Card,
+  Check,
+  PieChart01,
+  XClose,
+} from "@dust-tt/sparkle";
+import { useState } from "react";
+
+interface CreditSpendCheckpointPausedCardProps {
+  owner: LightWorkspaceType;
+  conversationId: string;
+  messageId: string;
+  status: Extract<CreditSpendCheckpointStatus, "paused" | "stopped">;
+  triggeringUser: UserType | null;
+  creditsUsed: number | null;
+}
+
+export function CreditSpendCheckpointPausedCard({
+  owner,
+  conversationId,
+  messageId,
+  status,
+  triggeringUser,
+  creditsUsed,
+}: CreditSpendCheckpointPausedCardProps) {
+  const { user } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [submittingDecision, setSubmittingDecision] =
+    useState<CreditSpendCheckpointDecision | null>(null);
+
+  const { resolveCreditSpendCheckpoint } = useResolveCreditSpendCheckpoint({
+    owner,
+    onError: setErrorMessage,
+  });
+
+  const { consumption } = useAgentMessageConsumption({
+    conversationId,
+    workspaceId: owner.sId,
+    messageId,
+    disabled: !hasFeature("conversation_consumption_details"),
+  });
+  const displayedCredits = consumption?.totalBilledCredits ?? creditsUsed;
+
+  const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({
+    parentUserId: triggeringUser?.sId,
+    currentUserId: user?.sId,
+  });
+
+  // On success the card stays in its submitting state until the stream reports the resolution
+  // and the parent unmounts it, so the buttons cannot be clicked twice.
+  const handleDecision = async (decision: CreditSpendCheckpointDecision) => {
+    setErrorMessage(null);
+    setSubmittingDecision(decision);
+    const { success } = await resolveCreditSpendCheckpoint({
+      conversationId,
+      messageId,
+      decision,
+    });
+    if (!success) {
+      setSubmittingDecision(null);
+    }
+  };
+
+  if (status === "stopped") {
+    const stoppedBy = triggeringUser?.fullName ?? "the user";
+    return (
+      <Card
+        variant="secondary"
+        containerClassName="w-full max-w-xl"
+        className="flex flex-col shadow gap-2"
+      >
+        <div className="flex items-center gap-2">
+          <Avatar icon={PieChart01} size="sm" />
+          <div className="heading-base">
+            Stopped to avoid excessive credit use
+          </div>
+        </div>
+        <div className="text-base text-muted-foreground">
+          {displayedCredits !== null
+            ? `${stoppedBy} stopped this task after it used ${formatCreditValue(displayedCredits)}.`
+            : `${stoppedBy} stopped this task because it was using a lot of credits.`}
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card
+      variant="secondary"
+      containerClassName="w-full max-w-xl"
+      className="flex flex-col shadow gap-4"
+    >
+      <div className="flex items-center gap-2">
+        <Avatar icon={PieChart01} size="sm" />
+        <div className="heading-base">Paused to avoid excessive credit use</div>
+      </div>
+
+      <div className="text-base text-muted-foreground">
+        {displayedCredits !== null
+          ? `This task has used ${formatCreditValue(displayedCredits)} so far. Continue running it?`
+          : "This task has used a lot of credits. Continue running it?"}
+      </div>
+
+      {canCurrentUserRespond ? (
+        <>
+          {errorMessage && (
+            <div className="text-sm font-medium text-warning-800">
+              {errorMessage}
+            </div>
+          )}
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button
+              label="No, stop"
+              variant="outline"
+              icon={XClose}
+              disabled={submittingDecision !== null}
+              isLoading={submittingDecision === "decline"}
+              onClick={() => void handleDecision("decline")}
+            />
+            <Button
+              label="Yes, continue"
+              variant="highlight"
+              icon={Check}
+              disabled={submittingDecision !== null}
+              isLoading={submittingDecision === "continue"}
+              onClick={() => void handleDecision("continue")}
+            />
+          </div>
+        </>
+      ) : (
+        <div className="text-sm text-muted-foreground">
+          Waiting for{" "}
+          <span className="font-semibold text-foreground">
+            {triggeringUser?.fullName}
+          </span>{" "}
+          to decide whether to continue.
+        </div>
+      )}
+    </Card>
+  );
+}

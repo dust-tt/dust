@@ -13,6 +13,7 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -946,9 +947,9 @@ export async function finalizeCreditStop(
 }
 
 /**
- * Credit spend checkpoint pause: persists the pause on the message and flags the conversation as
- * needing the user's attention. Runs in the non-cancellable finalize so the persisted status can
- * never say "paused" while the loop is still running.
+ * Credit spend checkpoint pause: persists the pause on the message, flags the conversation as
+ * needing the user's attention and notifies the client. Runs in the non-cancellable finalize so
+ * the persisted status can never say "paused" while the loop is still running.
  */
 export async function finalizeCreditSpendCheckpointPause(
   authType: AuthenticatorType,
@@ -974,7 +975,10 @@ export async function finalizeCreditSpendCheckpointPause(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
     );
   }
-  const { auth, agentMessage, conversation } = runAgentDataRes.value;
+  const { auth, agentConfiguration, agentMessage, conversation } =
+    runAgentDataRes.value;
+
+  const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
 
   // A stop or cancellation can land around the pause. The terminal status wins: a cancelled
   // message must not be flagged paused and waiting for the user.
@@ -990,11 +994,31 @@ export async function finalizeCreditSpendCheckpointPause(
     return;
   }
 
-  await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(auth, {
-    agentMessage,
-  });
+  const { applied } =
+    await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(
+      auth,
+      { agentMessage }
+    );
+  if (!applied) {
+    return;
+  }
+
+  if (!conversation.actionRequired) {
+    notifyManualActionRequired(auth, { conversationId: conversation.sId });
+  }
   await ConversationResource.markAsActionRequired(auth, { conversation });
 
+  await publishConversationRelatedEvent({
+    conversationId: conversation.sId,
+    step,
+    event: {
+      type: "agent_credit_spend_checkpoint_updated",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      status: "paused",
+    },
+  });
   logger.info(
     {
       agentMessageId: agentMessage.sId,

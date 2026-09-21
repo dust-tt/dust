@@ -10,6 +10,7 @@ import { markdownCitationToAttachmentCitation } from "@app/components/assistant/
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { CreditCostPopover } from "@app/components/assistant/conversation/CreditCostPopover";
+import { CreditSpendCheckpointPausedCard } from "@app/components/assistant/conversation/CreditSpendCheckpointPausedCard";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -471,6 +472,7 @@ export function AgentMessage({
           case "tool_notification":
           case "tool_params":
           case "agent_context_pruned":
+          case "agent_credit_spend_checkpoint_updated":
             break;
           default:
             assertNeverAndIgnore(eventPayload.data);
@@ -1266,6 +1268,30 @@ function AgentMessageContent({
 
   const blockedAction = getFirstBlockedActionForMessage(sId);
 
+  // Shown while the loop waits on the user, and kept once the user declined so the transcript
+  // says why the message ended there. An acknowledged pause leaves no trace.
+  const creditSpendCheckpointStatus =
+    agentMessage.creditSpendCheckpointStatus === "paused" &&
+    agentMessage.status !== "created"
+      ? null
+      : agentMessage.creditSpendCheckpointStatus;
+  const creditSpendCheckpointPausedElement =
+    creditSpendCheckpointStatus === "paused" ||
+    creditSpendCheckpointStatus === "stopped" ? (
+      <CreditSpendCheckpointPausedCard
+        owner={owner}
+        conversationId={conversationId}
+        messageId={sId}
+        status={creditSpendCheckpointStatus}
+        triggeringUser={triggeringUser}
+        creditsUsed={
+          agentMessage.costCredits !== null
+            ? agentMessage.costCredits + (agentMessage.subAgentCostCredits ?? 0)
+            : null
+        }
+      />
+    ) : null;
+
   const retryHandlerWithResetState = useCallback(
     // Conversation and message might be different than the current ones in case of subagents.
     async (conversationAndMessage: {
@@ -1481,6 +1507,7 @@ function AgentMessageContent({
           isLastMessage={isLastMessage}
         />
         {blockedActionElement}
+        {creditSpendCheckpointPausedElement}
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
           collapsible={uiView === "compact"}
@@ -1523,9 +1550,10 @@ function AgentMessageContent({
          * Cancelled messages render the standard message footer (feedback + full menu,
          * including Retry), so we only show the "Generation stopped." note here.
          */}
-        {agentMessage.status === "cancelled" && (
-          <div className="text-sm text-faint">Generation stopped.</div>
-        )}
+        {agentMessage.status === "cancelled" &&
+          creditSpendCheckpointStatus !== "stopped" && (
+            <div className="text-sm text-faint">Generation stopped.</div>
+          )}
         {agentMessage.status === "interrupted" && (
           <div className="flex flex-col gap-2">
             <div className="text-sm text-faint">

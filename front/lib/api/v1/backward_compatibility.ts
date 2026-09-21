@@ -189,13 +189,19 @@ export function addBackwardCompatibleAgentMessageFields(
 
 /**
  * Transforms an internal agent message stream event into the public
- * `AgentMessageEventType` exposed by the v1 SSE endpoint. Enriches `run_agent`
- * tool notifications with child conversation URLs.
+ * `AgentMessageEventType` exposed by the v1 SSE endpoint, or `null` to drop an
+ * internal-only event. Enriches `run_agent` tool notifications with child
+ * conversation URLs.
  */
 export function toPublicAgentMessageEvent(
   auth: Authenticator,
   event: MessageStreamEvent
-): AgentMessageEventType {
+): AgentMessageEventType | null {
+  // UI-only signal: the pause is resolved from the web app, never through the public API.
+  if (event.data.type === "agent_credit_spend_checkpoint_updated") {
+    return null;
+  }
+
   if (event.data.type === "tool_notification") {
     const { label, output: originalOutput } =
       event.data.notification._meta.data;

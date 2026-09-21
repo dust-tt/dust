@@ -699,6 +699,30 @@ export function useAgentMessageStream({
           );
           break;
 
+        // Both the pause and its resolution are streamed, so replayed history lands on the state
+        // the server persisted: nothing runs while paused, the loop only runs again once
+        // acknowledged. A decline is followed by the terminal cancelled event.
+        case "agent_credit_spend_checkpoint_updated": {
+          const { status } = eventPayload.data;
+          methods.data.map((m) =>
+            isAgentMessageWithStreaming(m) && m.sId === sId
+              ? {
+                  ...m,
+                  creditSpendCheckpointStatus: status,
+                  streaming:
+                    status === "acknowledged"
+                      ? { ...m.streaming, agentState: "thinking" }
+                      : {
+                          ...m.streaming,
+                          agentState: "done",
+                          pendingToolCalls: [],
+                        },
+                }
+              : m
+          );
+          break;
+        }
+
         case "agent_generation_cancelled": {
           isStreamTerminated.current = true;
           updateMessageThrottled.cancel();
