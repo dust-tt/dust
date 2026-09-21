@@ -1,7 +1,10 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import { DropdownAnchorTrigger } from "@app/components/assistant/conversation/input_bar/DropdownAnchorTrigger";
 import type { CapabilitySearchIndexItem } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import { searchCapabilityIndex } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import {
+  MAX_RENDERED_CAPABILITY_ITEMS,
+  searchCapabilityIndex,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import {
   getMcpServerViewDescription,
@@ -10,13 +13,14 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
 import {
   useAvailableMCPServers,
   useJITMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
-import { useSkills } from "@app/lib/swr/skill_configurations";
+import { useSearchSkills, useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -24,7 +28,7 @@ import {
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import {
   assertNever,
   assertNeverAndIgnore,
@@ -51,6 +55,11 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
+type CapabilityPickerSkill = Pick<
+  SkillListItemType,
+  "sId" | "name" | "icon" | "userFacingDescription"
+> & { isFavorite?: boolean };
+
 interface CapabilityPickerItemBase extends CapabilitySearchIndexItem {
   description?: string;
   id: string;
@@ -62,7 +71,7 @@ type CapabilityPickerSearchItem = CapabilityPickerItemBase &
   (
     | {
         kind: "skill";
-        skill: SkillWithoutInstructionsAndToolsType;
+        skill: CapabilityPickerSkill;
       }
     | {
         kind: "tool";
@@ -166,7 +175,9 @@ interface CapabilitiesPickerProps {
   owner: WorkspaceType;
   user: UserType | null;
   onSelect: (serverView: MCPServerViewLightType) => void;
-  onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
+  onSkillSelect: (
+    skill: Pick<SkillListItemType, "sId" | "name" | "icon">
+  ) => void;
   onSetupServer: (server: MCPServerType) => void;
   isLoading?: boolean;
   disabled?: boolean;
@@ -193,6 +204,8 @@ export function CapabilitiesPicker({
   onExternalOpenChange,
   anchorRef,
 }: CapabilitiesPickerProps) {
+  const { hasFeature } = useFeatureFlags();
+  const useSkillSearch = hasFeature("skills_search");
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [internalOpen, setInternalOpen] = useState(false);
@@ -233,11 +246,30 @@ export function CapabilitiesPicker({
       swrOptions: CAPABILITIES_SWR_OPTIONS,
     });
 
-  const { skills, isSkillsLoading } = useSkills({
+  const { skills: listedSkills, isSkillsLoading: isListedSkillsLoading } =
+    useSkills({
+      owner,
+      status: "active",
+      disabled: useSkillSearch,
+      swrOptions: CAPABILITIES_SWR_OPTIONS,
+    });
+  const {
+    skills: searchSkills,
+    isSkillsLoading: isSearchSkillsLoading,
+    isSkillsError,
+  } = useSearchSkills({
     owner,
-    status: "active",
+    searchTerm: searchText,
+    limit: MAX_RENDERED_CAPABILITY_ITEMS,
+    disabled: !useSkillSearch || !isOpen,
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
+  const skills: CapabilityPickerSkill[] = useSkillSearch
+    ? searchSkills
+    : listedSkills;
+  const isSkillsLoading = useSkillSearch
+    ? isSearchSkillsLoading
+    : isListedSkillsLoading;
 
   const isSkillsDataReady = !isSkillsLoading;
   const isToolsDataReady =
@@ -248,7 +280,7 @@ export function CapabilitiesPicker({
     setIsOpen(false);
   };
 
-  const selectSkill = (skill: SkillWithoutInstructionsAndToolsType) => {
+  const selectSkill = (skill: CapabilityPickerSkill) => {
     trackEvent({
       area: TRACKING_AREAS.TOOLS,
       object: "skill_select",
@@ -372,11 +404,21 @@ export function CapabilitiesPicker({
 
   const capabilityPickerSearchResults = useMemo(
     () =>
-      searchCapabilityIndex({
-        items: capabilityPickerIndex,
-        query: normalizedSearchText,
-      }),
-    [capabilityPickerIndex, normalizedSearchText]
+      useSkillSearch
+        ? [
+            ...capabilityPickerIndex.filter((item) => item.kind === "skill"),
+            ...searchCapabilityIndex({
+              items: capabilityPickerIndex.filter(
+                (item) => item.kind !== "skill"
+              ),
+              query: normalizedSearchText,
+            }),
+          ].slice(0, MAX_RENDERED_CAPABILITY_ITEMS)
+        : searchCapabilityIndex({
+            items: capabilityPickerIndex,
+            query: normalizedSearchText,
+          }),
+    [capabilityPickerIndex, normalizedSearchText, useSkillSearch]
   );
 
   const capabilityPickerItems = useMemo(
@@ -399,7 +441,10 @@ export function CapabilitiesPicker({
   );
 
   const hasNoVisibleItems =
-    isSkillsDataReady && isToolsDataReady && capabilityPickerItems.length === 0;
+    isSkillsDataReady &&
+    isToolsDataReady &&
+    !isSkillsError &&
+    capabilityPickerItems.length === 0;
 
   const shouldShowCapabilityDropdownList =
     capabilityPickerItems.length > 0 || hasNoVisibleItems;
@@ -481,6 +526,15 @@ export function CapabilitiesPicker({
         >
           {(!isSkillsDataReady || !isToolsDataReady) && (
             <CapabilitiesPickerLoading />
+          )}
+
+          {isSkillsError && (
+            <div
+              role="alert"
+              className="px-2 py-4 text-sm text-muted-foreground"
+            >
+              Could not load skills. Try again.
+            </div>
           )}
 
           {shouldShowCapabilityDropdownList && (
