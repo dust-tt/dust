@@ -267,6 +267,10 @@ interface ConsumptionDailyChartProps {
  * @cc [owner:aubin-tchoi,label:product] active-users-legend-remains-toggleable
  * Hiding active users must keep its legend available, including when credits are zero.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] active-users-toggle-preserves-layout
+ * Toggling active users must preserve the positions and widths of bars and date ticks.
+ */
 export function ConsumptionDailyChart({
   timeseries,
   isTimeseriesLoading,
@@ -409,11 +413,14 @@ export function ConsumptionDailyChart({
             className: "fill-muted-foreground text-xs",
           }}
         />
-        {hasActiveUsers && isActiveUsersVisible && (
+        {hasActiveUsers && (
           <YAxis
             yAxisId="activeUsers"
             orientation="right"
-            className="text-xs text-faint"
+            className={cn(
+              "text-xs text-faint",
+              !isActiveUsersVisible && "invisible"
+            )}
             tickLine={false}
             axisLine={false}
             tickMargin={8}
