@@ -1,5 +1,6 @@
 import { SKILL_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
   buildSkillSearchQuery,
   MAX_SKILL_SEARCH_RESULTS,
@@ -24,8 +25,9 @@ const SkillSearchSortSchema = z.array(
 
 /**
  * @cc [owner:aubin-tchoi,label:security;performance] indexed-skill-search-listings
- * Return only workspace-scoped indexed metadata using the caller's hydrated grants, with no
- * database reads. Permission-bearing document changes are eventually consistent; full-skill
+ * Return only workspace-scoped or eligible code-defined indexed metadata using hydrated grants.
+ * Result projection must not read the database; code-defined eligibility is resolved before the query.
+ * Permission-bearing document changes are eventually consistent; full-skill
  * access remains separately authorized. Callers must authorize admin-only redaction upstream.
  * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
  * Preserve Elasticsearch hit order without exposing scores or readability flags in skill listings.
@@ -35,7 +37,8 @@ const SkillSearchSortSchema = z.array(
 
 /**
  * @cc [owner:aubin-tchoi,label:security;product] unified-search-pagination
- * Skills follow Elasticsearch order; cursors advance only past consumed hits.
+ * Custom and code-defined skills share one ES-ranked stream; cursors advance only past
+ * consumed hits.
  * Cursors encode the ES sort tuple as an opaque string and convey no authorization.
  * Every page applies hydrated grants to indexed requirements.
  * Pagination reads the live index; concurrent index changes may cause skips or duplicates.
@@ -70,7 +73,12 @@ export async function searchSkills(
     searchAfter = sort.data;
   }
 
-  const query = buildSkillSearchQuery(auth, options);
+  const codeDefinedSkillIds =
+    await SkillResource.listAvailableCodeDefinedIds(auth);
+  const query = buildSkillSearchQuery(auth, {
+    ...options,
+    codeDefinedSkillIds,
+  });
 
   const result = await withEs((client) =>
     client.search<SkillSearchDocument>({
