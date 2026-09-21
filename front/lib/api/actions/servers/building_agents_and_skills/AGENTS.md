@@ -35,10 +35,18 @@ and the parsed payload, and call `toJSON()`.
 - Validation that a manual route already performs (e.g. `PATCH /skills/:sId/editors`) must be
   extracted to `front/lib/api/skills/` and shared with that route, so the apply step can re-run
   it against live state.
+- Pass `source: "conversational"` explicitly in every `createSuggestionForAgent` /
+  `createSuggestionForSkill` call from a tool (`explicit-suggestion-source` in `CONTRACTS`): the
+  column's `sidekick`/legacy default is not a fallback for new callers, and factories used by the
+  new tests need the same explicit `source` (see `AgentSuggestionFactory`/`SkillSuggestionFactory`).
 - Prune conflicting pending suggestions of the same kind and mark them `outdated`
-  (`front/lib/reinforcement/skill_suggestion_pruning.ts`).
-- Output a directive: `:skill_suggestion[]{sId=... kind=<kind> skillId=...}` or
-  `:agent_suggestion[]{sId=... kind=<kind> agentId=...}`.
+  (`front/lib/reinforcement/skill_suggestion_pruning.ts`). If the prune-then-insert sequence must
+  guarantee a single open pending suggestion per target (`no-direct-deletion`-style contracts),
+  serialize it with `executeWithLockResult` (`front/lib/lock.ts`) keyed by the target id — the
+  read/outdate/insert steps are not otherwise atomic.
+- Output a directive with `formatSkillSuggestionDirective`/`formatAgentSuggestionDirective`
+  (`directives.ts`) rather than hand-building the `:skill_suggestion[]{...}` /
+  `:agent_suggestion[]{...}` string: it is the one place that knows the syntax.
 - `tools/index.ts`: register the handler. Add `@cc` contracts for security-relevant invariants
   (see `requires-skill-write`).
 
@@ -68,7 +76,16 @@ Server-side: `PATCH /w/:wId/assistant/skills/:sId/suggestions` with `applyToSkil
 - Test in `front-api/routes/.../skills/[sId]/suggestions.test.ts` (`PATCH with applyToSkill`).
 
 Agents:
-no server-side apply yet; the sidekick patches the builder form client-side.
+Server-side: `PATCH /w/:wId/assistant/agent_configurations/:aId/suggestions` with
+`applyToAgent: true` calls `applyAgentSuggestions`
+(`front/lib/api/assistant/apply_agent_suggestions.ts`) before `bulkUpdateState`. The route
+enforces `approved`, `agent.canEdit` and `pending`. Only `create` is applied today: it turns the
+`pending` placeholder into an active, hidden agent. Sidekick kinds are still patched into the
+builder form client-side and are rejected by `applyAgentSuggestions`.
+
+- Add a `case "<kind>"` in `applyAgentSuggestions`.
+- Test in `front-api/routes/.../agent_configurations/[aId]/suggestions.test.ts`
+  (`PATCH with applyToAgent`).
 
 ### Update the conversational-building skill 
 

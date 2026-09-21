@@ -666,10 +666,15 @@ export function SkillBuilderInstructionsEditor({
 
     for (const suggestion of suggestions) {
       switch (suggestion.kind) {
+        case "availability":
+        case "create":
+        case "delete":
+        case "editors":
+        case "name":
+        case "user_facing_description":
+          continue;
         case "edit":
           break;
-        case "editors":
-          continue;
         default:
           assertNeverAndIgnore(suggestion);
           continue;

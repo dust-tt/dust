@@ -72,19 +72,23 @@ describe("conversational building seed script integration test", () => {
       [user.sId, LUKE_USER_SID].toSorted()
     );
 
-    // Five pending conversational suggestions.
-    expect(skillSuggestions.size).toBe(5);
+    // Nine pending conversational suggestions.
+    expect(skillSuggestions.size).toBe(9);
     const listed = await SkillSuggestionResource.listBySkillConfigurationId(
       authenticator,
       skill!.sId,
       { sources: ["conversational"] }
     );
     expect(listed.map((s) => s.toJSON().kind).toSorted()).toEqual([
+      "availability",
+      "delete",
       "edit",
       "edit",
       "edit",
       "edit",
       "editors",
+      "name",
+      "user_facing_description",
     ]);
     expect(listed.every((s) => s.toJSON().state === "pending")).toBe(true);
 
@@ -119,6 +123,35 @@ describe("conversational building seed script integration test", () => {
       ]);
     }
 
+    const descriptionSuggestion = skillSuggestions
+      .get("skillUserFacingDescription")!
+      .toJSON();
+    expect(descriptionSuggestion.kind).toBe("user_facing_description");
+    if (descriptionSuggestion.kind === "user_facing_description") {
+      expect(descriptionSuggestion.suggestion.userFacingDescription).toContain(
+        "Paste raw meeting notes"
+      );
+    }
+
+    const nameSuggestion = skillSuggestions.get("skillName")!.toJSON();
+    expect(nameSuggestion.kind).toBe("name");
+    if (nameSuggestion.kind === "name") {
+      expect(nameSuggestion.suggestion.name).toBe("MeetingSummarizer");
+    }
+
+    const deleteSuggestion = skillSuggestions.get("skillDelete")!.toJSON();
+    expect(deleteSuggestion.kind).toBe("delete");
+
+    const availabilitySuggestion = skillSuggestions
+      .get("skillAvailability")!
+      .toJSON();
+    expect(availabilitySuggestion.kind).toBe("availability");
+    if (availabilitySuggestion.kind === "availability") {
+      expect(availabilitySuggestion.suggestion.availability).toBe(
+        "workspace_users"
+      );
+    }
+
     // The conversation embeds each suggestion as a directive, with no leftover placeholder.
     const conversation = await ConversationResource.fetchById(
       authenticator,
@@ -129,7 +162,7 @@ describe("conversational building seed script integration test", () => {
       authenticator,
       conversation!
     );
-    expect(agentMessageIds).toHaveLength(3);
+    expect(agentMessageIds).toHaveLength(7);
     expect(text).not.toContain("__");
     for (const suggestion of skillSuggestions.values()) {
       expect(text).toContain(
@@ -141,7 +174,7 @@ describe("conversational building seed script integration test", () => {
     const rerun = await seedConversationalBuilding(ctx);
     expect(rerun.skills.get(SKILL_NAME)!.sId).toBe(skill!.sId);
     expect(rerun.toolView!.sId).toBe(toolView!.sId);
-    expect(rerun.skillSuggestions.size).toBe(5);
+    expect(rerun.skillSuggestions.size).toBe(9);
     for (const [id, suggestion] of skillSuggestions) {
       expect(rerun.skillSuggestions.get(id)!.sId).not.toBe(suggestion.sId);
     }
@@ -153,7 +186,7 @@ describe("conversational building seed script integration test", () => {
           { sources: ["conversational"] }
         )
       ).length
-    ).toBe(5);
+    ).toBe(9);
 
     const rerunConversation = await ConversationResource.fetchById(
       authenticator,

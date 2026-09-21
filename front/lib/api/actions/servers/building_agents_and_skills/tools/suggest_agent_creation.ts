@@ -3,6 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentCreationArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import {
   createPendingAgentConfiguration,
@@ -23,7 +24,7 @@ import { Err, Ok } from "@app/types/shared/result";
  */
 export async function suggestAgentCreation(
   auth: Authenticator,
-  { name, description, instructions }: SuggestAgentCreationArgs
+  { name, description, instructions, analysis }: SuggestAgentCreationArgs
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   const user = auth.user();
   if (!user) {
@@ -59,9 +60,10 @@ export async function suggestAgentCreation(
     {
       kind: "create",
       suggestion: { name, description, instructions },
-      analysis: null,
+      analysis: analysis ?? null,
       state: "pending",
       conversationId: null,
+      source: "conversational",
     }
   );
   return new Ok(suggestion);
@@ -81,9 +83,7 @@ export async function suggestAgentCreationHandler(
   return new Ok([
     {
       type: "text" as const,
-      text:
-        `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind} ` +
-        `agentId=${suggestion._agentConfigurationId}}`,
+      text: formatAgentSuggestionDirective(suggestion),
     },
   ]);
 }

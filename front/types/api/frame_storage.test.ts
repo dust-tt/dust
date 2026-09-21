@@ -2,7 +2,7 @@ import {
   getFrameBasePath,
   getFrameDatabaseReplicaBasePath,
   getFrameDatabaseReplicasBasePath,
-  getFrameDataFilesBasePath,
+  getFramePersistentFilesBasePath,
   getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
   getFramePublicationFunctionsArchivePath,
@@ -51,8 +51,8 @@ describe("Frames v2 GCS paths", () => {
     ).toBe("w/w_123/frames/fil_456/state/databases/task_store.db/");
   });
 
-  it("keeps the durable files folder beside the SQLite replicas", () => {
-    expect(getFrameDataFilesBasePath(IDS)).toBe(
+  it("keeps the persistent files folder beside the SQLite replicas", () => {
+    expect(getFramePersistentFilesBasePath(IDS)).toBe(
       "w/w_123/frames/fil_456/state/files/"
     );
   });
@@ -75,7 +75,7 @@ describe("Frames v2 GCS paths", () => {
       })
     ).toThrow("Invalid databaseName");
     expect(() =>
-      getFrameDataFilesBasePath({
+      getFramePersistentFilesBasePath({
         workspaceId: IDS.workspaceId,
         frameId: "../other",
       })

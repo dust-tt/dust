@@ -4,6 +4,13 @@ import tracer from "@app/logger/tracer";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 
+const LOCK_KEY_PREFIX = "lock:";
+
+export type LockOwnership = {
+  lockKey: string;
+  lockValue: string;
+};
+
 // Distributed lock implementation using Redis
 // Returns the lock value if the lock is acquired, that can be used to unlock, otherwise undefined.
 export async function distributedLock(
@@ -11,7 +18,7 @@ export async function distributedLock(
   key: string,
   lockTtlMs: number = 5_000
 ): Promise<string | undefined> {
-  const lockKey = `lock:${key}`;
+  const lockKey = `${LOCK_KEY_PREFIX}${key}`;
   const lockValue = `${Date.now()}-${Math.random()}`;
 
   // Try to acquire the lock using SET with NX and PX options
@@ -34,7 +41,7 @@ export async function distributedUnlock(
   key: string,
   lockValue: string
 ): Promise<void> {
-  const lockKey = `lock:${key}`;
+  const lockKey = `${LOCK_KEY_PREFIX}${key}`;
 
   // Use Lua script to ensure atomic unlock (only delete if we own the lock: lock value matches)
   const luaScript = `
@@ -148,9 +155,13 @@ export const executeWithLock = async <T>(
   return runWithAcquiredLock(client, lockName, lockValue, callback);
 };
 
+/**
+ * @cc [owner:flvndvd,label:concurrency] callback-lock-ownership
+ * The callback MUST receive the key and value of the lease released after it returns.
+ */
 export const executeWithLockResult = async <T, E>(
   lockName: string,
-  callback: () => Promise<Result<T, E>>,
+  callback: (lock: LockOwnership) => Promise<Result<T, E>>,
   timeoutMs: number = 30_000,
   options: ExecuteWithLockOptions = {}
 ): Promise<Result<T, E | LockAcquisitionTimeoutError>> => {
@@ -160,5 +171,7 @@ export const executeWithLockResult = async <T, E>(
     return new Err(new LockAcquisitionTimeoutError(lockName));
   }
 
-  return runWithAcquiredLock(client, lockName, lockValue, callback);
+  return runWithAcquiredLock(client, lockName, lockValue, () =>
+    callback({ lockKey: `${LOCK_KEY_PREFIX}${lockName}`, lockValue })
+  );
 };

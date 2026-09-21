@@ -16,7 +16,7 @@ import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
-  getMcpServerDisplayName,
+  getMcpServerViewDisplayName,
   getServerTypeAndIdFromSId,
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
@@ -107,7 +107,7 @@ export function ConnectMCPServerDialog({
 
   const toolName = useMemo(() => {
     if (mcpServerView.server) {
-      return getMcpServerDisplayName(mcpServerView.server);
+      return getMcpServerViewDisplayName(mcpServerView);
     }
     return "MCP Server";
   }, [mcpServerView]);
@@ -316,7 +316,7 @@ export function ConnectMCPServerDialog({
       const connectionCreationRes = await createMCPServerConnection({
         credentialId,
         mcpServerId: mcpServerView.server.sId,
-        mcpServerDisplayName: getMcpServerDisplayName(mcpServerView.server),
+        mcpServerDisplayName: getMcpServerViewDisplayName(mcpServerView),
         provider: authorization.provider,
       });
       if (!connectionCreationRes) {

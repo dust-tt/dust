@@ -14,6 +14,7 @@ import {
   AUTO_MODEL_ID,
   isModelStreamId,
 } from "@app/types/assistant/models/auto";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import {
   getTierForModel,
   STATIC_MODEL_SUPPORTED_REASONING_EFFORTS,
@@ -23,8 +24,10 @@ import type {
   ModelConfigurationType,
   ModelIdType,
   ModelMakerIdType,
+  ModelResolutionMethodType,
   ModelSelectionType,
   ReasoningEffort,
+  ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { RegionType } from "@app/types/region";
@@ -46,6 +49,68 @@ const MODEL_TIER_LOCKED_TOOLTIP =
 
 export function getDegradedModelTooltip(displayName: string): string {
   return `${displayName} is unstable right now. You may want to select another model.`;
+}
+
+export function getTierFallbackTooltip(
+  tierName: string,
+  replacementModelName: string
+): string {
+  return `${tierName} is temporarily using ${replacementModelName} while its preferred model is unstable.`;
+}
+
+const PINNED_MODEL_RETRY_ERROR_CATEGORIES = [
+  "retryable_model_error",
+  "provider_internal_error",
+  "stream_error",
+  "empty_content",
+] as const;
+
+const PICKER_TIER_BY_MODELS_TIER: Record<ModelsTierName, ModelTierId> = {
+  cost_efficient: "fast",
+  balanced: "standard",
+  premium: "complex",
+};
+
+/**
+ * @cc [owner:frankaloia,label:product;error-handling] pinned-model-retry-uses-tier
+ * When a model-related failure ran a pinned (non-stream) model, the failure UI MUST offer retry
+ * on that model's tier and send that tier as `modelSelection`. It MUST NOT read or write the
+ * input-bar picker. Stream-resolved failures and every other retry MUST send no override.
+ * Stream resolution consults the current degraded set server-side (`retry-model-selection`).
+ */
+export function getPinnedModelRetryTier({
+  failedModel,
+  modelResolutionMethod,
+  errorCategory,
+}: {
+  failedModel: ResolvedRequestedModel | undefined;
+  modelResolutionMethod: ModelResolutionMethodType | null | undefined;
+  errorCategory: unknown;
+}): ModelTierId | null {
+  if (!failedModel) {
+    return null;
+  }
+  if (
+    modelResolutionMethod === "fair_use_downgrade" ||
+    (modelResolutionMethod !== undefined &&
+      modelResolutionMethod !== null &&
+      isModelStreamId(modelResolutionMethod))
+  ) {
+    return null;
+  }
+  if (
+    !(PINNED_MODEL_RETRY_ERROR_CATEGORIES as readonly string[]).includes(
+      errorCategory as string
+    )
+  ) {
+    return null;
+  }
+
+  const tierName = getTierForModel(
+    failedModel.modelId,
+    failedModel.reasoningEffort
+  );
+  return tierName ? PICKER_TIER_BY_MODELS_TIER[tierName] : null;
 }
 
 /**

@@ -1,5 +1,5 @@
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { CellInfo } from "@app/types/cell";
@@ -82,7 +82,7 @@ export async function submitConnectMCPServerDialogForm({
   await createMCPServerConnection({
     connectionId: connectionResult.value.connection_id,
     mcpServerId: mcpServerView.server.sId,
-    mcpServerDisplayName: getMcpServerDisplayName(mcpServerView.server),
+    mcpServerDisplayName: getMcpServerViewDisplayName(mcpServerView),
     provider: authorization.provider,
   });
 

@@ -46,7 +46,7 @@ import {
   batchFetchContentsFromGcs,
   batchWriteContentsToGcs,
   deleteActionOutputsFromGcs,
-  warmGcsContentCache,
+  stageMcpOutputContentCache,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -1091,7 +1091,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
-   * Writes output content to GCS and creates its DB rows.
+   * Creates output item rows and stages content in Redis so callers can read
+   * without waiting on GCS. When `deferDurablePersist` is true, the GCS write
+   * runs in the background — await {@link awaitDeferredOutputPersist} before
+   * the activity/request ends (e.g. after `markAsSucceeded`).
+   *
    * Content is also written to DB to ease rollback during the migration period.
    */
   async createOutputItems(
@@ -1099,27 +1103,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     contents: Array<{
       content: CallToolResult["content"][number];
       fileId?: ModelId;
-    }>
+    }>,
+    options?: { deferDurablePersist?: boolean }
   ): Promise<Result<ToolOutputItemType[], Error>> {
-    // Write GCS first: the helper retries and cleans up partial batches, and DB insertion only
-    // starts once every object has been persisted.
-    const gcsResult = await batchWriteContentsToGcs(
-      auth,
-      this,
-      contents.map(({ content }) => content)
-    );
-
-    if (gcsResult.isErr()) {
-      return new Err(gcsResult.error);
-    }
-
+    // Leave `contentGcsPath` null until the GCS write succeeds — readers with a null
+    // path use the DB content column (legacy path); staged Redis covers the hot window.
     let outputItems: AgentMCPActionOutputItemModel[];
     try {
       outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
-        contents.map((c, index) => {
-          const contentGcsPath = gcsResult.value[index];
-          assert(contentGcsPath, "GCS path not found for output item.");
-
+        contents.map((c) => {
           const { generatedFilePath, generatedFileContentType } =
             isToolGeneratedFilePath(c.content)
               ? {
@@ -1132,7 +1124,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             agentMCPActionId: this.id,
             // Write content to DB (kept during migration period to ease rollback).
             content: c.content,
-            contentGcsPath,
+            contentGcsPath: null,
             citations: getCitationsFromToolOutput([c.content]),
             fileId: c.fileId,
             workspaceId: this.workspaceId,
@@ -1142,32 +1134,35 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         })
       );
     } catch (err) {
-      // A DB error can be ambiguous after commit, so keep the GCS objects rather than risk
-      // deleting content referenced by committed rows. Action-prefix cleanup removes orphans.
       return new Err(normalizeError(err));
     }
 
     try {
-      await warmGcsContentCache(
+      await stageMcpOutputContentCache(
         auth,
-        removeNulls(
-          outputItems.map((item) =>
-            item.contentGcsPath
-              ? {
-                  itemId: item.id,
-                  gcsPath: item.contentGcsPath,
-                  content: item.content,
-                }
-              : null
-          )
-        )
+        outputItems.map((item) => ({
+          itemId: item.id,
+          content: item.content,
+          gcsPath: "",
+        }))
       );
     } catch (err) {
-      // Cache warming is best-effort and must not turn a successful persistence into a retry.
+      // Staging is best-effort when we still have DB content; durable GCS follows.
       logger.warn(
         { err: normalizeError(err), actionId: this.sId },
-        "Failed to warm MCP output content cache"
+        "Failed to stage MCP output content cache"
       );
+    }
+
+    const durablePersist = this.persistOutputItemsToGcs(auth, outputItems);
+
+    if (options?.deferDurablePersist) {
+      this.deferredOutputPersist = durablePersist;
+    } else {
+      const persistResult = await durablePersist;
+      if (persistResult.isErr()) {
+        return new Err(persistResult.error);
+      }
     }
 
     // Return the stored contents in the generic tool output item shape.
@@ -1185,6 +1180,58 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         )
       )
     );
+  }
+
+  private deferredOutputPersist: Promise<Result<void, Error>> | undefined;
+
+  /**
+   * Awaits a durable GCS persist started by {@link createOutputItems} with
+   * `deferDurablePersist: true`. Safe to call when nothing was deferred.
+   */
+  async awaitDeferredOutputPersist(): Promise<Result<void, Error>> {
+    const pending = this.deferredOutputPersist;
+    this.deferredOutputPersist = undefined;
+    if (!pending) {
+      return new Ok(undefined);
+    }
+    return pending;
+  }
+
+  private async persistOutputItemsToGcs(
+    auth: Authenticator,
+    outputItems: AgentMCPActionOutputItemModel[]
+  ): Promise<Result<void, Error>> {
+    const gcsResult = await batchWriteContentsToGcs(
+      auth,
+      this,
+      outputItems.map((item) => item.content)
+    );
+
+    if (gcsResult.isErr()) {
+      // Rows already exist with DB content; log and surface the error so deferred
+      // callers can decide. Sync callers treat this as createOutputItems failure.
+      logger.error(
+        { err: gcsResult.error, actionId: this.sId },
+        "Failed to write MCP output items to GCS"
+      );
+      return new Err(gcsResult.error);
+    }
+
+    try {
+      await Promise.all(
+        outputItems.map(async (item, index) => {
+          const contentGcsPath = gcsResult.value[index];
+          assert(contentGcsPath, "GCS path not found for output item.");
+          await item.update({ contentGcsPath });
+        })
+      );
+    } catch (err) {
+      // Keep the GCS objects rather than risk deleting content that may already be
+      // referenced; action-prefix cleanup removes orphans.
+      return new Err(normalizeError(err));
+    }
+
+    return new Ok(undefined);
   }
 
   static async fetchOutputItemsByActionIds(
@@ -1595,9 +1642,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
-   * Atomically blocks a running sandbox parent. Multiple children may block concurrently, so the
-   * target status is idempotent. Every other source status is an invariant violation: in
-   * particular, a late sandbox child must never rewind a final parent into a resumable state.
+   * Atomically blocks a sandbox parent that has not run to completion. Multiple children may block
+   * concurrently, so the target status is idempotent. The parent is accepted while still `ready_*`
+   * too: on a resume the loop dispatches the parent and its approved children in parallel, so a
+   * child can block before the parent's own activity flips it to `running`. Only a final parent is
+   * an invariant violation: a late sandbox child must never rewind it into a resumable state.
    */
   async blockForSandboxChild(auth: Authenticator): Promise<void> {
     await withTransaction(async (transaction) => {
@@ -1616,7 +1665,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         return;
       }
       assert(
-        action.status === "running",
+        action.status === "running" ||
+          action.status === "ready_allowed_explicitly" ||
+          action.status === "ready_allowed_implicitly",
         `Sandbox parent action ${this.sId} cannot transition from ${action.status} to blocked_child_action_input_required.`
       );
 

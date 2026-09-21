@@ -114,7 +114,7 @@ describe("softDeleteDataSourceAndLaunchScrubWorkflow", () => {
       if (result.isErr()) {
         expect(result.error.code).toBe("unauthorized_deletion");
         expect(result.error.message).toContain(
-          "Only builders can delete data sources"
+          "You do not have permission to delete this data source"
         );
       }
       expect(launchScrubDataSourceWorkflow).not.toHaveBeenCalled();

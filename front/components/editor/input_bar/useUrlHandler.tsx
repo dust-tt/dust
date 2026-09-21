@@ -40,11 +40,7 @@ const useUrlHandler = (
   editor: Editor | null,
   selectedNode: DataSourceViewContentNode | null,
   candidate: UrlCandidate | NodeCandidate | null,
-  onUrlReplaced: () => void,
-  // With inline references enabled, the pasted URL is replaced by a knowledge
-  // node carrying the full node data (read back at submit time) instead of a
-  // dataSourceLink chip mirrored into the attachment state.
-  { insertKnowledgeNode = false }: { insertKnowledgeNode?: boolean } = {}
+  onUrlReplaced: () => void
 ) => {
   const replaceUrl = useCallback(
     async (pendingUrl: URLState, node: DataSourceViewContentNode) => {
@@ -76,23 +72,12 @@ const useUrlHandler = (
             needsLeadingSpace = !!textBefore && !/\s$/.test(textBefore);
           }
 
-          // Create the replacement content
-          const chip = insertKnowledgeNode
-            ? {
-                type: KNOWLEDGE_NODE_TYPE,
-                attrs: { selectedItems: [knowledgeNodeToItem(node)] },
-              }
-            : {
-                type: "dataSourceLink",
-                attrs: {
-                  nodeId: node.internalId,
-                  title: node.title,
-                  provider: node.dataSourceView.dataSource.connectorProvider,
-                  spaceId: node.dataSourceView.spaceId,
-                  url: pendingUrl.url,
-                },
-                text: `:content_node_mention[${node.title}]{url=${pendingUrl.url}}`,
-              };
+          // The pasted URL is replaced by a knowledge node carrying the full
+          // node data (read back at submit time).
+          const chip = {
+            type: KNOWLEDGE_NODE_TYPE,
+            attrs: { selectedItems: [knowledgeNodeToItem(node)] },
+          };
           const content = [
             ...(needsLeadingSpace ? [{ type: "text", text: " " }] : []),
             chip,
@@ -126,7 +111,7 @@ const useUrlHandler = (
         }, 0);
       });
     },
-    [editor, insertKnowledgeNode]
+    [editor]
   );
 
   useEffect(() => {

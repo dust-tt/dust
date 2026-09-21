@@ -29,7 +29,8 @@ GitHub reviews, contract reviews, and Slack notifications require a human reques
 Requests are accepted on open, closed, and merged PRs. The bot skips the PR author and logs a warning
 for review requests GitHub rejects with a validation error, while still sending the Slack notification.
 
-Each eligible request also posts to `#engineering_pr_reviews` (`C09GELMTTRT`):
+Each eligible request naming at least one reviewer also posts to `#engineering_pr_reviews`
+(`C09GELMTTRT`):
 
 ```text
 r? @reviewer please take a look https://github.com/dust-tt/dust/pull/123 (req:@requester)
@@ -52,7 +53,8 @@ require an `r?` command or requester write access, and never removes labels.
 Each eligible event containing an `r?` request triggers one contract review, regardless of whether
 `cc` appears in the reviewer list or how many request lines it contains. Description edits retaining
 the request trigger another review, just like human reviewers. Bare `cc` stays plain text in Slack
-and is never sent to GitHub as a reviewer.
+and is never sent to GitHub as a reviewer. A request with only `cc` and no reviewer, such as
+`r? cc`, skips the Slack notification.
 
 The workflow calls the pinned
 [`spolu/code-contracts` contract-review action](https://github.com/spolu/code-contracts/tree/main/.github/actions/contract-review)

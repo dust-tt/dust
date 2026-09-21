@@ -1,10 +1,12 @@
+import type { SkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
+import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
+import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
 import {
   AttachedKnowledgeSchema,
   SkillNameSchema,
 } from "@app/lib/api/skills/schemas";
 import {
-  findSkillEditorsWithoutSpaceAccess,
-  getReferencedSkillSpaceModelIds,
+  findSkillEditorsWithoutAccessToSpaceIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -12,8 +14,8 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
+import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import logger from "@app/logger/logger";
 import type {
   DeleteSkillResponseBody,
@@ -25,9 +27,11 @@ import type { SkillWithRelationsType } from "@app/types/assistant/skill_configur
 import {
   availabilityFromIsDefault,
   SKILL_AVAILABILITIES,
+  SKILL_REINFORCEMENT_MODES,
 } from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -35,7 +39,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { rejectArchivedSkill } from "@front-api/routes/w/[wId]/skills/guards";
 import type { Context, TypedResponse } from "hono";
 import uniq from "lodash/uniq";
-import uniqBy from "lodash/uniqBy";
 import { z } from "zod";
 
 import editors from "./editors";
@@ -53,7 +56,7 @@ const ParamsSchema = z.object({
 const PatchSkillRequestBodySchema = z.object({
   name: SkillNameSchema,
   agentFacingDescription: z.string(),
-  userFacingDescription: z.string(),
+  userFacingDescription: z.string().max(USER_FACING_DESCRIPTION_MAX_LENGTH),
   instructions: z.string(),
   icon: z.string().nullable(),
   tools: z.array(
@@ -68,7 +71,7 @@ const PatchSkillRequestBodySchema = z.object({
   // @deprecated Use availability instead. Kept while old clients still send it.
   isDefault: z.boolean().optional(),
   availability: z.enum(SKILL_AVAILABILITIES).optional(),
-  reinforcement: z.enum(["auto", "on", "off"]).optional(),
+  reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
 });
 
 // Shared per-request prelude: resolve :sId to a SkillResource or return a
@@ -201,65 +204,6 @@ app.patch(
     const { skill } = loaded;
 
     const body = ctx.req.valid("json");
-    const name = body.name.trim();
-
-    if (!name) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Skill name cannot be empty.",
-        },
-      });
-    }
-
-    // Resolve the requested availability once: isDefault is a deprecated alias; an explicit
-    // availability takes priority over it.
-    const requestedAvailability =
-      body.availability ??
-      (body.isDefault !== undefined
-        ? availabilityFromIsDefault(body.isDefault)
-        : undefined);
-
-    const availabilityChanged =
-      requestedAvailability !== undefined &&
-      requestedAvailability !== skill.availability;
-
-    // Changing a skill's availability requires the workspace-level permission to publish
-    // skills — even for editors.
-    if (
-      availabilityChanged &&
-      !(await auth.hasWorkspacePermission("publish", "skill"))
-    ) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message:
-            "You don't have permission to change this skill's availability.",
-        },
-      });
-    }
-
-    // without make skill discoverable permission, a user can neither make a skill
-    // auto-discoverable nor change an already auto-discoverable skill's availability.
-    const involvesAutoDiscoverable =
-      requestedAvailability === "users_and_agents" ||
-      skill.availability === "users_and_agents";
-    if (
-      availabilityChanged &&
-      involvesAutoDiscoverable &&
-      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
-    ) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message:
-            "You don't have permission to change this skill's auto-discoverable status.",
-        },
-      });
-    }
 
     const archivedError = rejectArchivedSkill(ctx, skill);
     if (archivedError) {
@@ -278,18 +222,77 @@ app.patch(
       });
     }
 
-    // Check for existing active skill with the same name (excluding current skill).
-    const existingSkill = await SkillResource.fetchByName(auth, name);
+    // Resolve the requested availability once: isDefault is a deprecated alias; an explicit
+    // availability takes priority over it.
+    const requestedAvailability =
+      body.availability ??
+      (body.isDefault !== undefined
+        ? availabilityFromIsDefault(body.isDefault)
+        : undefined);
 
-    if (existingSkill && existingSkill.id !== skill.id) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `A skill with the name "${name}" already exists.`,
-        },
-      });
+    let availabilityChange: SkillAvailabilityChange | null = null;
+    if (requestedAvailability !== undefined) {
+      const availabilityValidation = await validateSkillAvailabilityChange(
+        auth,
+        skill,
+        { availability: requestedAvailability }
+      );
+      if (availabilityValidation.isErr()) {
+        switch (availabilityValidation.error.code) {
+          case "not_authorized":
+          case "publish_denied":
+          case "make_discoverable_denied":
+            return apiError(ctx, {
+              status_code: 403,
+              api_error: {
+                type: "app_auth_error",
+                message: availabilityValidation.error.message,
+              },
+            });
+          case "archived":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: availabilityValidation.error.message,
+              },
+            });
+          default:
+            assertNever(availabilityValidation.error.code);
+        }
+      }
+      availabilityChange = availabilityValidation.value;
     }
+
+    const nameValidation = await validateSkillNameChange(auth, skill, {
+      name: body.name,
+    });
+    if (nameValidation.isErr()) {
+      switch (nameValidation.error.code) {
+        case "not_authorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "app_auth_error",
+              message: nameValidation.error.message,
+            },
+          });
+        case "archived":
+        case "empty":
+        case "too_long":
+        case "already_exists":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: nameValidation.error.message,
+            },
+          });
+        default:
+          assertNever(nameValidation.error.code);
+      }
+    }
+    const { name } = nameValidation.value;
 
     // Validate MCP server view IDs.
     for (const tool of body.tools) {
@@ -363,17 +366,6 @@ app.patch(
       })
     );
 
-    const computedRequestedSpaceIds =
-      await SkillResource.computeRequestedSpaceIds(auth, {
-        mcpServerViews,
-        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
-      });
-    const referencedSkillSpaceIds = await getReferencedSkillSpaceModelIds(
-      auth,
-      body.instructions,
-      skill.sId
-    );
-
     // `additionalRequestedSpaceIds` is the wire name of the skill's manual space selection, stored
     // as `manuallyRequestedSpaceIds`.
     let additionalRequestedSpaceIds: ModelId[];
@@ -401,27 +393,23 @@ app.patch(
       additionalRequestedSpaceIds = [...skill.manuallyRequestedSpaceIds];
     }
 
-    // A skill requests a space for one of four reasons: one of its tools lives there, some of its
-    // attached knowledge does, a skill it references requests it, or a person picked it by hand.
-    // Only the last one is stored; the other three are derived, and disappear with what pulled
-    // them in.
-    const requestedSpaceIds = uniq([
-      ...computedRequestedSpaceIds, // Tools and attached knowledge.
-      ...referencedSkillSpaceIds, // Nested skills.
-      ...additionalRequestedSpaceIds, // Picked by hand.
-    ]);
-
-    // Adding a restricted space can lock out editors that are already on the skill. `updateSkill`
-    // also makes the caller an editor, so they are part of the set to validate.
-    const editors = (await skill.listEditors(auth)) ?? [];
-    const requestedSpaces = await SpaceResource.fetchByModelIds(
+    const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
       auth,
+      {
+        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        excludedSkillId: skill.sId,
+        instructions: body.instructions,
+        manuallyRequestedSpaceIds: additionalRequestedSpaceIds,
+        mcpServerViews,
+      }
+    );
+
+    // Adding a restricted space can lock out editors that are already on the skill.
+    const editorsAccessError = await findSkillEditorsWithoutAccessToSpaceIds(
+      auth,
+      skill,
       requestedSpaceIds
     );
-    const editorsAccessError = await findSkillEditorsWithoutSpaceAccess(auth, {
-      editors: uniqBy([...editors, auth.getNonNullableUser()], "id"),
-      requestedSpaces,
-    });
     if (editorsAccessError) {
       return apiError(ctx, {
         status_code: 400,
@@ -480,7 +468,7 @@ app.patch(
       icon: body.icon,
       instructions: body.instructions,
       instructionsHtml: body.instructionsHtml,
-      availability: requestedAvailability,
+      availability: availabilityChange?.availability,
       manuallyRequestedSpaceIds: additionalRequestedSpaceIds,
       mcpServerViews,
       name,

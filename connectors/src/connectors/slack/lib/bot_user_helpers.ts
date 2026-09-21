@@ -126,7 +126,7 @@ async function getBotName({
 
     // Return null instead of undefined to avoid Redis "Invalid argument type" error
     // when caching the result - undefined cannot be JSON.stringified properly for Redis storage.
-    return slackBotOrWorkflowInfo.display_name ?? null;
+    return slackBotOrWorkflowInfo?.display_name ?? null;
   } catch (err) {
     if (isSlackWebAPIPlatformErrorBotNotFound(err)) {
       logger.info(

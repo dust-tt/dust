@@ -2,10 +2,13 @@ import {
   FRAME_DATABASE_NAME_REGEX,
   FRAME_DEFAULT_UI_ENTRY_POINT,
   FrameManifestSchema,
+  getFrameV2NameFromManifestPath,
   isSafeFrameRelativePath,
   MAX_FRAME_DATABASE_COUNT,
   MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH,
+  MAX_FRAME_NAME_LENGTH,
   parseFrameManifest,
+  validateFrameV2Name,
 } from "@app/types/api/frame_manifest";
 import {
   DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
@@ -15,7 +18,6 @@ import { describe, expect, it } from "vitest";
 
 const MANIFEST = {
   version: 1,
-  name: "Task List",
   description: "Track tasks.",
 };
 
@@ -34,6 +36,18 @@ describe("FrameManifestSchema", () => {
       expect(parsed.data.uiEntryPoint).toBe(FRAME_DEFAULT_UI_ENTRY_POINT);
       expect(parsed.data.functions).toEqual([]);
       expect(parsed.data.databases).toEqual([]);
+    }
+  });
+
+  it("ignores a legacy name field", () => {
+    const parsed = FrameManifestSchema.safeParse({
+      ...MANIFEST,
+      name: "Task List",
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect("name" in parsed.data).toBe(false);
     }
   });
 
@@ -199,5 +213,53 @@ describe("isSafeFrameRelativePath", () => {
     ["src\\index.tsx", false],
   ])("validates %s", (relativePath, expected) => {
     expect(isSafeFrameRelativePath(relativePath)).toBe(expected);
+  });
+});
+
+describe("getFrameV2NameFromManifestPath", () => {
+  it("returns the folder holding the manifest", () => {
+    expect(
+      getFrameV2NameFromManifestPath(
+        "w/w1/pods/p1/files/Sales Dashboard/manifest.json"
+      )
+    ).toBe("Sales Dashboard");
+  });
+
+  it("reads a scoped path the same way", () => {
+    expect(
+      getFrameV2NameFromManifestPath("pod-p1/Sales Dashboard/manifest.json")
+    ).toBe("Sales Dashboard");
+  });
+
+  it("returns null when the path is not a manifest", () => {
+    expect(
+      getFrameV2NameFromManifestPath("pod-p1/Status/index.tsx")
+    ).toBeNull();
+  });
+
+  it("returns null for a manifest with no folder of its own", () => {
+    expect(getFrameV2NameFromManifestPath("manifest.json")).toBeNull();
+    expect(getFrameV2NameFromManifestPath("/manifest.json")).toBeNull();
+  });
+});
+
+describe("validateFrameV2Name", () => {
+  it("accepts and trims a plain name", () => {
+    const result = validateFrameV2Name("  Sales Dashboard  ");
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toBe("Sales Dashboard");
+    }
+  });
+
+  it.each(["", "   ", "a/b", "a\\b", ".", ".."])("rejects %j", (candidate) => {
+    expect(validateFrameV2Name(candidate).isErr()).toBe(true);
+  });
+
+  it("rejects a name longer than the limit", () => {
+    expect(
+      validateFrameV2Name("a".repeat(MAX_FRAME_NAME_LENGTH + 1)).isErr()
+    ).toBe(true);
   });
 });

@@ -13,6 +13,13 @@ interface AvailableScopeOption extends ScopeOption {
   disabled: boolean;
 }
 
+export const SHARE_SCOPE_ICONS: Record<FileShareScope, typeof Lock01> = {
+  emails_only: Lock01,
+  workspace_and_emails: Users01,
+  workspace: Users01,
+  public: Globe01,
+};
+
 // Scopes allowed by each workspace sharing policy.
 const ALLOWED_SCOPES_BY_POLICY: Record<
   WorkspaceSharingPolicy,
@@ -26,21 +33,21 @@ const ALLOWED_SCOPES_BY_POLICY: Record<
 function getScopeOptions(canInviteExternal: boolean): ScopeOption[] {
   return [
     {
-      icon: Lock01,
+      icon: SHARE_SCOPE_ICONS.emails_only,
       label: canInviteExternal
         ? "Invite only"
         : "Invited workspace members only",
       value: "emails_only",
     },
     {
-      icon: Users01,
+      icon: SHARE_SCOPE_ICONS.workspace_and_emails,
       label: canInviteExternal
         ? "All workspace members + invites"
         : "All workspace members",
       value: "workspace_and_emails",
     },
     {
-      icon: Globe01,
+      icon: SHARE_SCOPE_ICONS.public,
       label: "Anyone with the link",
       value: "public",
     },

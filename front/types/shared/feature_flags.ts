@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  skills_search: {
+    description: "Enable Elasticsearch-backed skill search",
+    stage: "dust_only",
+    owner: "aubin-tchoi",
+  },
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
@@ -195,6 +200,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "davidebbo",
   },
+  simulated_failure_model_feature: {
+    description: "Access to the simulated failure model",
+    stage: "dust_only",
+    owner: "frankaloia",
+  },
+  automatic_model_health_routing: {
+    description:
+      "Let a model-health breach seen on this workspace's traffic degrade the endpoint",
+    stage: "dust_only",
+    owner: "frankaloia",
+  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
@@ -324,12 +340,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "fontanierh",
   },
-  inline_tool_knowledge_reference: {
-    description:
-      "Insert selected tools and knowledge as inline chips in the conversation input bar and attach them to the conversation at message submit.",
-    stage: "dust_only",
-    owner: "ykmsd",
-  },
   disable_formatting_prompt: {
     description:
       "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
@@ -359,12 +369,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the Dust Pod Goal skill for persistent job loops in Pods",
     stage: "dust_only",
     owner: "frankaloia",
-  },
-  group_permissions_shadow: {
-    description:
-      "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
-    stage: "dust_only",
-    owner: "philipperolet",
   },
   user_memory: {
     description:
@@ -431,6 +435,18 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the building_agents_and_skills MCP server: agents can propose agent and skill updates from a conversation as reviewable suggestions.",
     stage: "dust_only",
     owner: "fabiencelier",
+  },
+  agent_message_consumption_writes: {
+    description:
+      "Write agent-message consumption items and outbox events as usage is incurred. Shadow mode keeps existing billing.",
+    stage: "dust_only",
+    owner: "id13",
+  },
+  agent_message_consumption_bills: {
+    description:
+      "Use agent-message consumption items for Metronome, costCredits, and usage counters. Requires agent_message_consumption_writes.",
+    stage: "dust_only",
+    owner: "id13",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

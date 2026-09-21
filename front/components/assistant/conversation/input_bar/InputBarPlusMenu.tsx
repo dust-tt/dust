@@ -47,14 +47,11 @@ interface InputBarPlusMenuProps {
   disabled: boolean;
   hideCapabilities: boolean;
   hideAttachments: boolean;
-  selectedMCPServerViews: MCPServerViewLightType[];
   onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   onSetupServer: (server: MCPServerType) => void;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
-  onNodeUnselect: (node: DataSourceViewContentNode) => void;
-  attachedNodes: DataSourceViewContentNode[];
   conversation?: ConversationWithoutContentType;
   spaceId?: string;
   selectedSpaceIds: string[];
@@ -74,14 +71,11 @@ export function InputBarPlusMenu({
   disabled,
   hideCapabilities,
   hideAttachments,
-  selectedMCPServerViews,
   onMCPServerViewSelect,
   onSkillSelect,
   onSetupServer,
   fileUploaderService,
   onNodeSelect,
-  onNodeUnselect,
-  attachedNodes,
   conversation,
   spaceId,
   selectedSpaceIds,
@@ -129,7 +123,6 @@ export function InputBarPlusMenu({
       type={isMobile ? "dropdown" : "subdropdown"}
       owner={owner}
       user={user}
-      selectedMCPServerViews={selectedMCPServerViews}
       onSelect={onMCPServerViewSelect}
       onSkillSelect={onSkillSelect}
       onSetupServer={onSetupServer}
@@ -154,8 +147,6 @@ export function InputBarPlusMenu({
       fileUploaderService={fileUploaderService}
       isLoading={false}
       onNodeSelect={onNodeSelect}
-      onNodeUnselect={onNodeUnselect}
-      attachedNodes={attachedNodes}
       buttonSize={buttonSize}
       onOpenChange={onAttachmentsPickerOpenChange}
       toolFileUpload={{

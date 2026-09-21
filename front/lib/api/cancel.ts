@@ -49,14 +49,39 @@ export async function terminateMessageGeneration(
 
   // Fallback for messages whose workflow couldn't be signalled: mark them directly
   // so they don't stay stuck in "created" state.
+  await finalizeAgentMessagesWithoutWorkflow(auth, {
+    conversation,
+    messageIds: failedMessageIds,
+    status,
+  });
+}
+
+/**
+ * Terminal transition for agent messages that have no running workflow to finalize them, such as
+ * a paused loop or one whose workflow is gone. Skips messages already finalized and publishes the
+ * terminal event for the ones it transitioned.
+ */
+export async function finalizeAgentMessagesWithoutWorkflow(
+  auth: Authenticator,
+  {
+    conversation,
+    messageIds,
+    status,
+  }: {
+    conversation: ConversationResource;
+    messageIds: string[];
+    status: "cancelled" | "interrupted";
+  }
+): Promise<void> {
+  const conversationId = conversation.sId;
   const messageRows = await ConversationResource.getMessageByIds(
     auth,
     conversation,
-    failedMessageIds
+    messageIds
   );
 
   const foundMessageIds = new Set(messageRows.map((m) => m.sId));
-  for (const messageId of failedMessageIds) {
+  for (const messageId of messageIds) {
     if (!foundMessageIds.has(messageId)) {
       logger.warn(
         { messageId, conversationId },

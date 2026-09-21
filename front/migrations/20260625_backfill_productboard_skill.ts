@@ -1,3 +1,4 @@
+// @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
 import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
@@ -10,6 +11,7 @@ import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_h
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -276,6 +278,7 @@ async function fetchActiveProductboardSkill(
 async function createProductboardSkill(
   auth: Authenticator
 ): Promise<SkillResource> {
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   return SkillResource.makeNew(
     auth,
     {
@@ -290,7 +293,7 @@ async function createProductboardSkill(
       name: PRODUCTBOARD_SKILL_NAME,
       reinforcement: "on",
       // The MCP server views are all on the global space in practice.
-      requestedSpaceIds: [],
+      requestedSpaceIds: [globalSpace.id],
       source: null,
       sourceMetadata: null,
       status: "active",

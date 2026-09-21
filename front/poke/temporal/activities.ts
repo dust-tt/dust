@@ -31,6 +31,7 @@ import { ActivationPodResource } from "@app/lib/resources/activation_pod_resourc
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import { invalidateAgentResourceCaches } from "@app/lib/resources/agent_resource_cache";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -42,7 +43,6 @@ import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -422,15 +422,6 @@ export async function deleteAgentsActivity({
       },
     });
 
-    const group = await GroupResource.fetchByAgentConfiguration({
-      auth,
-      agentConfiguration: agent,
-      isDeletionFlow: true,
-    });
-    if (group) {
-      await group.delete(auth);
-    }
-
     hardDeleteLogger.info({ agentId: agent.sId }, "Deleting agent");
     await agent.destroy();
   }
@@ -438,6 +429,12 @@ export async function deleteAgentsActivity({
   await AgentModel.destroy({
     where: { workspaceId: workspace.id },
   });
+
+  // Cache entries have no TTL, so workspace deletion must drop every agent's cached snapshot.
+  await invalidateAgentResourceCaches(
+    workspace.id,
+    agents.map((agent) => agent.sId)
+  );
 }
 
 export async function deleteAppsActivity({

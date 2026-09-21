@@ -3,10 +3,7 @@ import {
   AttachedKnowledgeSchema,
   SkillNameSchema,
 } from "@app/lib/api/skills/schemas";
-import {
-  getReferencedSkillSpaceModelIds,
-  resolveAdditionalRequestedSpaceModelIds,
-} from "@app/lib/api/skills/space_requirements";
+import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { fetchSkillUsageCounts } from "@app/lib/api/skills/usage";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -41,6 +38,7 @@ import detect from "./detect";
 import importRoute from "./import";
 import reinforcementDailySpend from "./reinforcement_daily_spend";
 import reinforcementSpend from "./reinforcement_spend";
+import search from "./search";
 import similar from "./similar";
 
 const SkillStatusSchema = z
@@ -120,6 +118,7 @@ app.route("/detect", detect);
 app.route("/import", importRoute);
 app.route("/reinforcement_daily_spend", reinforcementDailySpend);
 app.route("/reinforcement_spend", reinforcementSpend);
+app.route("/search", search);
 app.route("/similar", similar);
 
 /** @ignoreswagger */
@@ -482,16 +481,6 @@ app.post(
       })
     );
 
-    const computedRequestedSpaceIds =
-      await SkillResource.computeRequestedSpaceIds(auth, {
-        mcpServerViews,
-        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
-      });
-    const referencedSkillSpaceIds = await getReferencedSkillSpaceModelIds(
-      auth,
-      body.instructions
-    );
-
     const additionalRequestedSpaceIdsRes =
       await resolveAdditionalRequestedSpaceModelIds(
         auth,
@@ -508,11 +497,15 @@ app.post(
       });
     }
 
-    const requestedSpaceIds = uniq([
-      ...computedRequestedSpaceIds,
-      ...referencedSkillSpaceIds,
-      ...additionalRequestedSpaceIdsRes.value,
-    ]);
+    const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
+      auth,
+      {
+        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        instructions: body.instructions,
+        manuallyRequestedSpaceIds: additionalRequestedSpaceIdsRes.value,
+        mcpServerViews,
+      }
+    );
 
     // Validate file attachments if provided.
     let files: FileResource[] | undefined;

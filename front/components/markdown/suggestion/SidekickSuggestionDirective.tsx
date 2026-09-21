@@ -7,16 +7,18 @@
  */
 
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
+import { AgentSuggestionActionCard } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import {
-  mapSuggestionStateToCardState,
   SidekickSuggestionCard,
   SuggestionCardSkeleton,
 } from "@app/components/markdown/suggestion/SidekickSuggestionCard";
-import { getIcon } from "@app/components/resources/resources_icons";
-import { useAgentSuggestions } from "@app/lib/swr/agent_suggestions";
+import {
+  useAgentSuggestionActions,
+  useAgentSuggestions,
+} from "@app/lib/swr/agent_suggestions";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
-import { ActionCardBlock, Avatar } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 import { SKIP, visit } from "unist-util-visit";
 
@@ -140,47 +142,68 @@ export function getSidekickSuggestionPlugin() {
   return SidekickSuggestionPlugin;
 }
 
+const CONVERSATION_AGENT_SUGGESTION_KINDS = ["create", "delete"] as const;
+
+type ConversationAgentSuggestionKind =
+  (typeof CONVERSATION_AGENT_SUGGESTION_KINDS)[number];
+
+function isConversationAgentSuggestionKind(
+  kind: AgentSuggestionKind
+): kind is ConversationAgentSuggestionKind {
+  return CONVERSATION_AGENT_SUGGESTION_KINDS.includes(
+    kind as ConversationAgentSuggestionKind
+  );
+}
+
 interface ConversationAgentSuggestionProps {
   owner: LightWorkspaceType;
   agentId: string;
+  kind: ConversationAgentSuggestionKind;
   sId: string;
 }
 
 function ConversationAgentSuggestion({
   owner,
   agentId,
+  kind,
   sId,
 }: ConversationAgentSuggestionProps) {
-  const { suggestions, isSuggestionsLoading } = useAgentSuggestions({
-    agentConfigurationId: agentId,
+  const { suggestions, isSuggestionsLoading, mutateSuggestions } =
+    useAgentSuggestions({
+      agentConfigurationId: agentId,
+      workspaceId: owner.sId,
+    });
+
+  const { isSuggestionPending, acceptSuggestion, rejectSuggestion } =
+    useAgentSuggestionActions({
+      agentConfigurationId: agentId,
+      workspaceId: owner.sId,
+      mutateSuggestions,
+    });
+
+  const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
+    agentConfigurationId: agentId,
+    disabled: kind !== "delete",
   });
 
   if (isSuggestionsLoading) {
-    return <SuggestionCardSkeleton kind="create" />;
+    return <SuggestionCardSkeleton kind={kind} />;
   }
 
   const suggestion = suggestions.find((s) => s.sId === sId);
-  if (!suggestion || suggestion.kind !== "create") {
+  if (!suggestion || suggestion.kind !== kind) {
     return null;
   }
 
-  const cardState =
-    suggestion.state === "pending"
-      ? "disabled"
-      : mapSuggestionStateToCardState(suggestion.state);
-
   return (
     <div data-suggestion-s-id={sId}>
-      <ActionCardBlock
-        title={`Create "${suggestion.suggestion.name}" agent`}
-        applyLabel="Accept"
-        acceptedTitle={`"${suggestion.suggestion.name}" agent creation accepted`}
-        rejectedTitle={`"${suggestion.suggestion.name}" agent creation rejected`}
-        visual={<Avatar icon={getIcon("ActionRobotIcon")} size="sm" />}
-        description={suggestion.analysis ?? suggestion.suggestion.description}
-        state={cardState}
-        actionsPosition="header"
+      <AgentSuggestionActionCard
+        agentSuggestion={suggestion}
+        pictureUrl={agentConfiguration?.pictureUrl}
+        disabled={isSuggestionPending(suggestion)}
+        onAccept={() => void acceptSuggestion(suggestion)}
+        onReject={() => void rejectSuggestion(suggestion)}
       />
     </div>
   );
@@ -200,8 +223,13 @@ export function getConversationAgentSuggestionPlugin(
     kind,
     agentId,
   }: ConversationAgentSuggestionPluginProps) =>
-    sId && kind === "create" && agentId ? (
-      <ConversationAgentSuggestion owner={owner} agentId={agentId} sId={sId} />
+    sId && kind && isConversationAgentSuggestionKind(kind) && agentId ? (
+      <ConversationAgentSuggestion
+        owner={owner}
+        agentId={agentId}
+        kind={kind}
+        sId={sId}
+      />
     ) : null;
 
   return ConversationAgentSuggestionPlugin;

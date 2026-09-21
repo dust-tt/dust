@@ -1,7 +1,6 @@
 import {
   archiveAgentConfiguration,
   cleanupAgentScopedResourcesForHardDeletion,
-  createAgentConfiguration,
   createPendingAgentConfiguration,
   getAgentConfiguration,
   getAgentConfigurations,
@@ -11,7 +10,6 @@ import {
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getEditors } from "@app/lib/api/assistant/editors";
-import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
@@ -27,18 +25,17 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
-import logger from "@app/logger/logger";
 import * as scheduleClient from "@app/temporal/triggers/schedule_client";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
@@ -50,25 +47,20 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe.each([
-  false,
-  true,
-])("getAgentConfigurations (grants: %s)", (grants) => {
+describe("getAgentConfigurations", () => {
   it.each([
     "system key",
     "Poke",
-  ] as const)("reports %s edit access without a permission shadow mismatch", async (caller) => {
+  ] as const)("reports %s edit access", async (caller) => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       {
         scope: "hidden",
       }
     );
-    await FeatureFlagFactory.basic(authenticator, "group_permissions_shadow");
     const auth =
       caller === "system key"
         ? await Authenticator.fromKey(
@@ -79,21 +71,12 @@ describe.each([
             wId: workspace.sId,
             pokePrincipal: { email: "operator@dust.tt", name: "Operator" },
           });
-    const warn = vi.spyOn(logger, "warn");
-    try {
-      const configuration = await getAgentConfiguration(auth, {
-        agentId: agent.sId,
-        variant: "light",
-      });
+    const configuration = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
 
-      expect(configuration).toMatchObject({ canRead: true, canEdit: true });
-      expect(warn).not.toHaveBeenCalledWith(
-        expect.objectContaining({ check: "agent_permissions" }),
-        "group_permissions_shadow_mismatch"
-      );
-    } finally {
-      warn.mockRestore();
-    }
+    expect(configuration).toMatchObject({ canRead: true, canEdit: true });
   });
 
   it.each([
@@ -103,7 +86,6 @@ describe.each([
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       { scope: "hidden" }
@@ -111,8 +93,6 @@ describe.each([
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId, {
       dangerouslyRequestAllGroups,
     });
-    await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
-    const warn = vi.spyOn(logger, "warn");
 
     const configuration = await getAgentConfiguration(auth, {
       agentId: agent.sId,
@@ -123,24 +103,23 @@ describe.each([
       canRead: dangerouslyRequestAllGroups,
       canEdit: dangerouslyRequestAllGroups,
     });
-    expect(warn).not.toHaveBeenCalledWith(
-      expect.objectContaining({ check: "agent_permissions" }),
-      "group_permissions_shadow_mismatch"
-    );
   });
 
-  it("does not report the space read gate as a permission mismatch", async () => {
+  it("denies read and edit on an agent backed by an unreadable space", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "user",
     });
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const restrictedSpace = await SpaceFactory.regular(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
-      { scope: "hidden", requestedSpaceIds: [restrictedSpace.id] }
+      { scope: "hidden" }
     );
-    await FeatureFlagFactory.basic(authenticator, "group_permissions_shadow");
-    const warn = vi.spyOn(logger, "warn");
+    // Put the agent behind the restricted space after creation: nobody can create an agent on a
+    // space they cannot read, but an existing agent can end up on one the caller cannot read.
+    await AgentConfigurationModel.update(
+      { requestedSpaceIds: [restrictedSpace.id] },
+      { where: { sId: agent.sId, workspaceId: workspace.id } }
+    );
 
     const configuration = await getAgentConfiguration(authenticator, {
       agentId: agent.sId,
@@ -148,27 +127,24 @@ describe.each([
       dangerouslySkipPermissionFiltering: true,
     });
 
-    // Grants deny read and write on an agent backed by a space the editor cannot read.
-    expect(configuration).toMatchObject(
-      grants
-        ? { canRead: false, canEdit: false }
-        : { canRead: true, canEdit: true }
-    );
-    expect(warn).not.toHaveBeenCalledWith(
-      expect.objectContaining({ check: "agent_permissions" }),
-      "group_permissions_shadow_mismatch"
-    );
+    // The space read gate denies read and write even to the agent's own editor.
+    expect(configuration).toMatchObject({ canRead: false, canEdit: false });
   });
 
-  it("does not report the space read gate for a scoped system key without the admin role", async () => {
+  it("denies a scoped system key without the admin role on an unreadable space", async () => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const restrictedSpace = await SpaceFactory.regular(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
-      { scope: "hidden", requestedSpaceIds: [restrictedSpace.id] }
+      { scope: "hidden" }
+    );
+    // Put the agent behind the restricted space after creation: nobody can create an agent on a
+    // space they cannot read, but an existing agent can end up on one the caller cannot read.
+    await AgentConfigurationModel.update(
+      { requestedSpaceIds: [restrictedSpace.id] },
+      { where: { sId: agent.sId, workspaceId: workspace.id } }
     );
     const group = await GroupFactory.regularManual(workspace, "Agent editors");
     const resource = AgentResource.fromAgentConfiguration(authenticator, agent);
@@ -179,14 +155,12 @@ describe.each([
       resourceType: "agent",
       resourceId: resource.id,
     });
-    await FeatureFlagFactory.basic(authenticator, "group_permissions_shadow");
     const auth = await Authenticator.fromKey(
       await KeyFactory.system(systemGroup),
       workspace.sId,
       [group.sId],
       "user"
     );
-    const warn = vi.spyOn(logger, "warn");
 
     const configuration = await getAgentConfiguration(auth, {
       agentId: agent.sId,
@@ -195,17 +169,12 @@ describe.each([
     });
 
     expect(configuration).toMatchObject({ canRead: false, canEdit: false });
-    expect(warn).not.toHaveBeenCalledWith(
-      expect.objectContaining({ check: "agent_permissions" }),
-      "group_permissions_shadow_mismatch"
-    );
   });
 
   it("respects the agent grants of a scoped system key", async () => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const otherAgent = await AgentConfigurationFactory.createTestAgent(
@@ -242,7 +211,6 @@ describe.each([
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const admin = await UserFactory.basic();
@@ -357,10 +325,16 @@ describe("stable agent identities", () => {
     expect(await currentVersion(firstVersion.sId)).toBe(1);
 
     // Rolling back the newest version moves the pointer back to the previous one.
-    await unsafeHardDeleteAgentConfiguration(authenticator, secondVersion);
+    await unsafeHardDeleteAgentConfiguration(
+      authenticator,
+      AgentResource.fromAgentConfiguration(authenticator, secondVersion)
+    );
     expect(await currentVersion(firstVersion.sId)).toBe(0);
 
-    await unsafeHardDeleteAgentConfiguration(authenticator, firstVersion);
+    await unsafeHardDeleteAgentConfiguration(
+      authenticator,
+      AgentResource.fromAgentConfiguration(authenticator, firstVersion)
+    );
     expect(await currentVersion(firstVersion.sId)).toBeNull();
   });
 
@@ -417,7 +391,10 @@ describe("stable agent identities", () => {
       throw new Error("Agent editor grant was not created");
     }
 
-    await unsafeHardDeleteAgentConfiguration(authenticator, secondVersion);
+    await unsafeHardDeleteAgentConfiguration(
+      authenticator,
+      AgentResource.fromAgentConfiguration(authenticator, secondVersion)
+    );
     expect(
       await AgentModel.findOne({
         where: { sId: firstVersion.sId, workspaceId: workspace.id },
@@ -429,7 +406,10 @@ describe("stable agent identities", () => {
       ])
     ).toHaveLength(1);
 
-    await unsafeHardDeleteAgentConfiguration(authenticator, firstVersion);
+    await unsafeHardDeleteAgentConfiguration(
+      authenticator,
+      AgentResource.fromAgentConfiguration(authenticator, firstVersion)
+    );
     expect(
       await AgentModel.findOne({
         where: { sId: firstVersion.sId, workspaceId: workspace.id },
@@ -443,7 +423,7 @@ describe("stable agent identities", () => {
   });
 });
 
-describe("createAgentConfiguration with pending agent", () => {
+describe("saveAgentConfiguration with pending agent", () => {
   it("converts pending agent to active when agentConfigurationId points to a pending agent", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",
@@ -490,9 +470,8 @@ describe("createAgentConfiguration with pending agent", () => {
         (editor) => editor.sId
       )
     ).toEqual([user.sId]);
-
     // Convert the pending agent to active by passing its sId as agentConfigurationId
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "My New Agent",
       description: "A test agent",
       instructions: "Test instructions",
@@ -531,7 +510,6 @@ describe("createAgentConfiguration with pending agent", () => {
     expect(agent.status).toBe("active");
     expect(agent.name).toBe("My New Agent");
     expect(agent.version).toBe(0); // Version should remain 0 (updated in place)
-
     expect(
       new Set(
         (await pendingGrantGroup.getActiveMembers(authenticator)).map(
@@ -548,14 +526,16 @@ describe("createAgentConfiguration with pending agent", () => {
     ).toEqual([user.sId]);
   });
 
-  it("creates new agent if agentConfigurationId does not exist", async () => {
+  it("returns an error when agentConfigurationId does not exist", async () => {
     const { authenticator, user } = await createResourceTest({
       role: "admin",
     });
 
     const nonExistentId = generateRandomModelSId();
 
-    const result = await createAgentConfiguration(authenticator, {
+    // `updateConfiguration` is an instance method reached through a read-gated fetch, so an id that
+    // resolves to no agent cannot be saved (it no longer falls through to creating a new agent).
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Fallback Agent",
       description: "Test",
       instructions: null,
@@ -576,12 +556,9 @@ describe("createAgentConfiguration with pending agent", () => {
       authorId: user.id,
     });
 
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      // Should have created a new agent with the provided sId
-      expect(result.value.sId).toBe(nonExistentId);
-      expect(result.value.name).toBe("Fallback Agent");
-      expect(result.value.status).toBe("active");
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("Agent configuration not found.");
     }
   });
 
@@ -611,7 +588,7 @@ describe("createAgentConfiguration with pending agent", () => {
     const { sId: pendingId } = otherPendingAgentRes.value;
 
     // Should return an error because pending agents owned by other users cannot be updated
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "My Agent",
       description: "Test",
       instructions: null,
@@ -632,11 +609,11 @@ describe("createAgentConfiguration with pending agent", () => {
       authorId: user.id,
     });
 
+    // The caller is not the author, an editor, nor a reader of the other user's (hidden) pending
+    // agent, so the read-gated fetch in front of `updateConfiguration` rejects the save.
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toContain(
-        "Cannot update a pending agent owned by another user."
-      );
+      expect(result.error.message).toContain("Agent configuration not found.");
     }
   });
 
@@ -649,7 +626,7 @@ describe("createAgentConfiguration with pending agent", () => {
     const existingAgent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Updated Agent",
       description: "Test",
       instructions: null,
@@ -711,7 +688,7 @@ describe("createAgentConfiguration with pending agent", () => {
       }
     );
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Agent From Pending With Suggestions",
       description: "Test agent",
       instructions: "Test instructions",
@@ -772,7 +749,7 @@ describe("create agent capability", () => {
     const { workspace } = await createResourceTest({ role: "admin" });
     const { authenticator, user } = await memberAuthInGroup(workspace);
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Unauthorized Agent",
       description: "Test",
       instructions: null,
@@ -802,7 +779,7 @@ describe("create agent capability", () => {
     const { workspace } = await createResourceTest({ role: "admin" });
     const { authenticator, user } = await memberAuthInGroup(workspace);
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Unauthorized Agent",
       description: "Test",
       instructions: null,
@@ -815,7 +792,9 @@ describe("create agent capability", () => {
         modelId: "claude-sonnet-4-5-20250929",
         temperature: 0.7,
       },
-      // Doesn't match any real row, so this would otherwise take the "create new" branch.
+      // Doesn't match any real row. The read-gated fetch in front of `updateConfiguration` returns
+      // nothing, so the save is rejected before it could reach the create branch — the id cannot be
+      // used to bypass the create-agent capability.
       agentConfigurationId: generateRandomModelSId(),
       templateId: null,
       requestedSpaceIds: [],
@@ -826,7 +805,7 @@ describe("create agent capability", () => {
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.message).toBe("Creating agents is restricted.");
+      expect(result.error.message).toContain("Agent configuration not found.");
     }
   });
 
@@ -842,7 +821,7 @@ describe("create agent capability", () => {
     });
     const { authenticator, user } = await memberAuthInGroup(workspace, group);
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Authorized Agent",
       description: "Test",
       instructions: null,
@@ -875,17 +854,24 @@ describe("create agent capability", () => {
     );
     const { authenticator, user } = await memberAuthInGroup(workspace);
     // No capability grant for this user; only editing rights on the existing agent matter here.
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+    // Grant the agent's `editor` role (read + write + admin) so the user can read the agent — a
+    // prerequisite for saving it — and is authorized to edit it without the create capability.
+    const editResource = AgentResource.fromAgentConfiguration(
       adminAuth,
       existingAgent
     );
-    if (editorGroupRes.isErr()) {
-      throw editorGroupRes.error;
+    const grantRes = await GroupPermissionResource.grantToUser(adminAuth, {
+      user: user.toJSON(),
+      resourceType: "agent",
+      resourceId: editResource.id,
+      grantType: "editor",
+    });
+    if (grantRes.isErr()) {
+      throw grantRes.error;
     }
-    await GroupFactory.withMembers(adminAuth, editorGroupRes.value, [user]);
     await authenticator.refresh();
 
-    const result = await createAgentConfiguration(authenticator, {
+    const result = await saveAgentConfiguration(authenticator, {
       name: "Updated Agent",
       description: "Test",
       instructions: null,
@@ -940,21 +926,32 @@ describe("create agent capability", () => {
 });
 
 describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
-  it("keeps editor group memberships active while archiving and restoring", async () => {
+  it("keeps editor grants active while archiving and restoring", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
 
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+    const agentResource = AgentResource.fromAgentConfiguration(
       authenticator,
       agent
     );
-    if (editorGroupRes.isErr()) {
-      throw editorGroupRes.error;
+    if (agentResource.id === null) {
+      throw new Error("Agent identity was not created");
     }
-    const editorGroup = editorGroupRes.value;
+    const editorGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(
+        authenticator,
+        {
+          grantType: "editor",
+          resourceType: "agent",
+          resourceId: agentResource.id,
+        }
+      );
+    if (!editorGroup) {
+      throw new Error("Agent editor grant was not created");
+    }
 
     const membershipsBeforeArchive = await GroupMembershipModel.findAll({
       where: {
@@ -1327,10 +1324,7 @@ describe("updateAgentConfigurationsScope", () => {
     expect(row!.scope).toBe("hidden");
   });
 
-  it.each([
-    false,
-    true,
-  ])("disables non-editor triggers when hiding an agent (grants: %s)", async (grants) => {
+  it("disables non-editor triggers when hiding an agent", async () => {
     const test = await createResourceTest({
       plan: "creditPriced",
       role: "admin",
@@ -1343,13 +1337,13 @@ describe("updateAgentConfigurationsScope", () => {
       { scope: "visible" }
     );
 
-    // A workspace member who is not in the agent's editor group.
+    // A workspace member who does not have an editor grant on the agent.
     const nonEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, nonEditor, {
       role: "user",
     });
 
-    // Trigger owned by the admin (member of the editor group).
+    // Trigger owned by the admin (an agent editor).
     const editorTriggerRes = await TriggerResource.makeNew(authenticator, {
       workspaceId: workspace.id,
       name: "editor-trigger",
@@ -1387,17 +1381,6 @@ describe("updateAgentConfigurationsScope", () => {
       ? nonEditorTriggerRes.value
       : null;
 
-    // A stale editor-group membership must not retain access after leaving the workspace.
-    const editorGroup = await GroupResource.findEditorGroupForAgent(
-      authenticator,
-      agent
-    );
-    if (editorGroup.isErr()) {
-      throw editorGroup.error;
-    }
-    await GroupFactory.withMembers(authenticator, editorGroup.value, [
-      nonEditor,
-    ]);
     expect(
       (
         await MembershipResource.revokeMembership({
@@ -1406,8 +1389,6 @@ describe("updateAgentConfigurationsScope", () => {
         })
       ).isOk()
     ).toBe(true);
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
-
     const result = await updateAgentConfigurationsScope(
       authenticator,
       [agent.sId],
@@ -1480,7 +1461,7 @@ describe("publish agent capability", () => {
     user: Awaited<ReturnType<typeof UserFactory.basic>>,
     scope: "hidden" | "visible"
   ) {
-    return createAgentConfiguration(auth, {
+    return saveAgentConfiguration(auth, {
       name: agent.name,
       description: "Test",
       instructions: null,
@@ -1699,7 +1680,6 @@ it("revokes grant-only editors when saving the complete editor set", async () =>
       })
     ).isOk()
   );
-  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(false);
   await AgentConfigurationFactory.updateTestAgent(auth, agent.sId);
   expect((await getEditors(auth, agent)).map((user) => user.id)).not.toContain(
     editor.id

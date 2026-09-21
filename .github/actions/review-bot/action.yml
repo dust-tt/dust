@@ -33,6 +33,9 @@ runs:
           const notification = await requestReviews({ github, context, core });
           if (notification) {
             core.setOutput('pull-request-number', notification.pullNumber);
+          }
+          const hasReviewers = notification?.requests.some((request) => request.reviewers.length > 0);
+          if (hasReviewers) {
             const text = await formatSlackNotification({
               notification,
               authors: readFileSync('.authors', 'utf8'),

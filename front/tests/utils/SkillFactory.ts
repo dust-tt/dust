@@ -1,12 +1,16 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import type { GlobalSkillId } from "@app/lib/resources/skill/code_defined/global_registry";
+import { SYSTEM_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/system";
 import type { SystemSkillId } from "@app/lib/resources/skill/code_defined/system_registry";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { SKILL_ICON } from "@app/lib/skill";
+import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import type {
@@ -37,6 +41,27 @@ type CreateSkillOverrides = Partial<{
 }>;
 
 export class SkillFactory {
+  static createCodeDefinedSearchDocuments(): SkillSearchDocument[] {
+    return [...GLOBAL_SKILLS_ARRAY, ...SYSTEM_SKILLS_ARRAY].map((skill) => ({
+      workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID,
+      skill_id: skill.sId,
+      status: "active",
+      availability:
+        skill.kind === "global" ? "users_and_agents" : "workspace_users",
+      name: skill.name,
+      description: skill.userFacingDescription,
+      icon: skill.icon,
+      last_edited_by_user_id: null,
+      editor_ids: [],
+      requested_space_ids: [],
+      mcp_server_view_ids: [],
+      active_users_count: null,
+      favorite_count: 0,
+      created_at: null,
+      updated_at: null,
+    }));
+  }
+
   static async createSearchDocuments(
     auth: Authenticator,
     skills: SkillResource[]
@@ -49,7 +74,7 @@ export class SkillFactory {
       lastEditors.map((user) => [user.id, user])
     );
     return skills.map((skill) =>
-      skill.toSearchDocument(auth.getNonNullableWorkspace(), {
+      skill.toSearchDocument(auth, {
         editors: editors.get(skill.sId) ?? [],
         lastEditedByUser:
           skill.editedBy === null
@@ -111,7 +136,8 @@ export class SkillFactory {
     const instructions = overrides.instructions ?? "Test skill instructions";
     const status = overrides.status ?? "active";
     const editedBy = overrides.status === "suggested" ? null : user.id;
-    const requestedSpaceIds = overrides.requestedSpaceIds ?? [];
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+    const requestedSpaceIds = overrides.requestedSpaceIds ?? [globalSpace.id];
     const manuallyRequestedSpaceIds = overrides.manuallyRequestedSpaceIds ?? [];
     const attachedKnowledge = overrides.attachedKnowledge ?? [];
     const mcpServerViews = overrides.mcpServerViews ?? [];

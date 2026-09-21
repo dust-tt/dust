@@ -18,6 +18,7 @@ import { extractKnowledgeTagSignatures } from "@app/lib/editor/knowledge_node_co
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
@@ -37,9 +38,7 @@ function requireInteractiveUser(
   const user = auth.user();
   if (!user) {
     return new Err(
-      new MCPError(
-        "Skill authoring requires an interactive builder user context."
-      )
+      new MCPError("Skill authoring requires an interactive user context.")
     );
   }
 
@@ -310,6 +309,7 @@ export async function createSkill(
     }
   }
 
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const skill = await SkillResource.makeNew(
     auth,
     {
@@ -320,7 +320,7 @@ export async function createSkill(
       instructions,
       instructionsHtml: convertMarkdownToBlockHtml(instructions),
       editedBy: user.value.id,
-      requestedSpaceIds: [],
+      requestedSpaceIds: [globalSpace.id],
       icon: resolvedIcon,
       source: "agent",
       sourceMetadata: null,

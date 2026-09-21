@@ -138,7 +138,7 @@ export function buildSkillAggregationPrompt(
 ): { systemPrompt: string; userMessage: string } {
   const systemPrompt = buildSkillAggregationSystemPrompt();
 
-  let userMessage = `${formatSkillContext(skill)}
+  let userMessage = `${formatSkillContext(skill, "light")}
 
 ## Synthetic suggestions from conversation analyses
 

@@ -84,5 +84,55 @@
         }
       ]
     }
+  },
+  {
+    "id": "skillUserFacingDescription",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "user_facing_description",
+    "title": "Describe the skill for members",
+    "analysis": "Members browsing skills only see the user-facing description. It should say what to paste in and what comes back, not just what the skill does internally.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "userFacingDescription": "Paste raw meeting notes, a call transcript or a Slack thread and get back a clean summary with the decisions and the action items, each with an owner and a due date."
+    }
+  },
+  {
+    "id": "skillName",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "name",
+    "title": "Rename to match its scope",
+    "analysis": "The skill now covers call transcripts and Slack threads, not only meeting notes, and its output is a decisions-and-actions summary. The name should say so.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "name": "MeetingSummarizer"
+    }
+  },
+  {
+    "id": "skillDelete",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "delete",
+    "title": "Delete this skill",
+    "analysis": "Nobody has sent meeting notes through this skill in three months; the team now formats notes directly in the meeting tool.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {}
+  },
+  {
+    "id": "skillAvailability",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "availability",
+    "title": "Stop agents from auto-picking it",
+    "analysis": "Agents keep discovering this skill on their own and applying it to messages that are not meeting notes. Keeping it available to members, but not to agents, lets people choose it when it fits.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "availability": "workspace_users"
+    }
   }
 ]

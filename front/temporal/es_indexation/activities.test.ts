@@ -92,7 +92,11 @@ describe("skill search indexation", () => {
     );
     expect(updated).toHaveBeenCalledExactlyOnceWith({
       workspaceId: workspace.sId,
-      skillIds: [skill.sId, unused.sId, archived.sId],
+      skills: [
+        expect.objectContaining({ sId: skill.sId }),
+        expect.objectContaining({ sId: unused.sId }),
+        expect.objectContaining({ sId: archived.sId }),
+      ],
       activeUsers: { [skill.sId]: 3, "go-deep": 4 },
     });
   });

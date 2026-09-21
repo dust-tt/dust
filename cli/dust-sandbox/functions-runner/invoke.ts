@@ -8,6 +8,10 @@ import {
   type Output,
   type RequestInput,
 } from "./protocol.ts";
+import {
+  runWithToolTimingsCollector,
+  takeToolTimings,
+} from "./tool_timings.ts";
 
 interface ZodLike {
   safeParse(
@@ -24,6 +28,19 @@ interface FunctionHandler {
 export type InvokePhaseTimingsMs = {
   import: number;
   handler: number;
+  tools?: {
+    total: number;
+    count: number;
+    calls: Array<{
+      server: string;
+      tool: string;
+      post: number;
+      poll: number;
+      offload?: number;
+      dust?: Record<string, unknown>;
+      total: number;
+    }>;
+  };
 };
 
 export type InvokeResult = {
@@ -56,8 +73,11 @@ function getProperty(value: unknown, property: string): unknown {
   return value[property];
 }
 
-function elapsedMs(startedAt: number): number {
-  return Math.max(0, Math.round(performance.now() - startedAt));
+function withCollectedToolTimings(
+  timingsMs: InvokePhaseTimingsMs
+): InvokePhaseTimingsMs {
+  const tools = takeToolTimings();
+  return tools === undefined ? timingsMs : { ...timingsMs, tools };
 }
 
 /**
@@ -79,12 +99,12 @@ export async function invoke(
   input: RequestInput,
   invocationEnv?: Readonly<Record<string, string>>
 ): Promise<InvokeResult> {
+  const run = () =>
+    runWithToolTimingsCollector(() => invokeInContext(handlerPath, input));
   if (invocationEnv !== undefined) {
-    return runWithInvocationEnv(invocationEnv, () =>
-      invokeInContext(handlerPath, input)
-    );
+    return runWithInvocationEnv(invocationEnv, run);
   }
-  return invokeInContext(handlerPath, input);
+  return run();
 }
 
 async function invokeInContext(
@@ -110,7 +130,10 @@ async function invokeInContext(
   } catch (e) {
     return {
       output: fail("import_failed", e),
-      timingsMs: { import: elapsedMs(importStartedAt), handler: 0 },
+      timingsMs: withCollectedToolTimings({
+        import: elapsedMs(importStartedAt),
+        handler: 0,
+      }),
     };
   }
   const importMs = elapsedMs(importStartedAt);
@@ -122,7 +145,7 @@ async function invokeInContext(
     if (validationError) {
       return {
         output: { ok: false, error: validationError },
-        timingsMs: { import: importMs, handler: 0 },
+        timingsMs: withCollectedToolTimings({ import: importMs, handler: 0 }),
       };
     }
   }
@@ -140,7 +163,10 @@ async function invokeInContext(
   } catch (e) {
     return {
       output: fail("threw", e),
-      timingsMs: { import: importMs, handler: elapsedMs(handlerStartedAt) },
+      timingsMs: withCollectedToolTimings({
+        import: importMs,
+        handler: elapsedMs(handlerStartedAt),
+      }),
     };
   }
   if (!(response instanceof Response)) {
@@ -149,14 +175,24 @@ async function invokeInContext(
         "bad_return",
         new Error(`function returned ${typeOf(response)}, expected a Response`)
       ),
-      timingsMs: { import: importMs, handler: elapsedMs(handlerStartedAt) },
+      timingsMs: withCollectedToolTimings({
+        import: importMs,
+        handler: elapsedMs(handlerStartedAt),
+      }),
     };
   }
   const output = await parseOutput(response, schemaOutput);
   return {
     output,
-    timingsMs: { import: importMs, handler: elapsedMs(handlerStartedAt) },
+    timingsMs: withCollectedToolTimings({
+      import: importMs,
+      handler: elapsedMs(handlerStartedAt),
+    }),
   };
+}
+
+function elapsedMs(startedAt: number): number {
+  return Math.max(0, Math.round(performance.now() - startedAt));
 }
 
 function validateBody(

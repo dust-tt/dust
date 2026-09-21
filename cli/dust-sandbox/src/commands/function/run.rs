@@ -42,10 +42,13 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
     // Durable cold path only: land this publication's functions.tar locally
     // and fill the per-sha bundle cache. Fast path does the same inside
     // ensure_publication_worker.
+    let archive_started = Instant::now();
+    let mut archive_ms = None;
     if !warm::warm_execution_enabled() {
         if let Ok(dir) = functions_dir() {
             let _ = archive::ensure_functions_archive_extracted(&dir);
         }
+        archive_ms = Some(archive_started.elapsed().as_millis() as u64);
     }
 
     let warm_started = Instant::now();
@@ -63,8 +66,10 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
                     resolve: None,
                     resolve_kind: None,
                     child: None,
+                    archive: None,
                     import: None,
                     handler: phase.as_ref().and_then(|p| p.handler),
+                    tools: None,
                 }),
             ),
             0,
@@ -119,8 +124,10 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
             resolve: Some(resolve_ms),
             resolve_kind: Some(resolve_kind),
             child: Some(child_ms),
+            archive: archive_ms,
             import: None,
             handler: None,
+            tools: None,
         },
     )
 }
@@ -229,6 +236,9 @@ fn merge_runner_phase_timings(
     if let Some(handler) = sidecar.get("handler").and_then(|v| v.as_u64()) {
         timings_ms.handler = Some(handler);
     }
+    if let Some(tools) = sidecar.get("tools").cloned() {
+        timings_ms.tools = Some(tools);
+    }
     timings_ms
 }
 
@@ -268,8 +278,10 @@ mod tests {
             resolve: None,
             resolve_kind: None,
             child: None,
+            archive: None,
             import: None,
             handler: None,
+            tools: None,
         }
     }
 
@@ -293,7 +305,7 @@ mod tests {
             Ok((
                 0,
                 Some(
-                    r#"{"ok":true,"output":1,"_dustTimingsMs":{"import":40,"handler":5}}"#
+                    r#"{"ok":true,"output":1,"_dustTimingsMs":{"import":40,"handler":5,"tools":{"total":12,"count":1,"calls":[{"server":"gmail","tool":"get_messages","post":3,"poll":9,"total":12}]}}}"#
                         .to_string(),
                 ),
             )),
@@ -307,6 +319,20 @@ mod tests {
         let timings = envelope.timings_ms.expect("timings present");
         assert_eq!(timings.import, Some(40));
         assert_eq!(timings.handler, Some(5));
+        assert_eq!(
+            timings.tools,
+            Some(serde_json::json!({
+                "total": 12,
+                "count": 1,
+                "calls": [{
+                    "server": "gmail",
+                    "tool": "get_messages",
+                    "post": 3,
+                    "poll": 9,
+                    "total": 12
+                }]
+            }))
+        );
     }
 
     #[test]

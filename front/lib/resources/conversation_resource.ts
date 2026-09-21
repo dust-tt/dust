@@ -35,6 +35,7 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageStatus,
+  AgentMessageType,
   CompactionMessageStatus,
   ConversationForkedChildType,
   ConversationForkedFromType,
@@ -834,6 +835,83 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       triggeringUserMessageAuthMethod,
       previousCostCredits: agentMessage.costCredits,
     };
+  }
+
+  /**
+   * Loads the agent message's credit spend checkpoint status. Returns null when the message
+   * cannot be found (the caller must then not pause).
+   */
+  static async fetchAgentMessageCreditSpendCheckpointStatus(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<AgentMessageModel["creditSpendCheckpointStatus"] | null> {
+    const agentMessageRow = await MessageModel.findOne({
+      where: {
+        sId: agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: ["id"],
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["creditSpendCheckpointStatus"],
+        },
+      ],
+    });
+
+    return agentMessageRow?.agentMessage?.creditSpendCheckpointStatus ?? null;
+  }
+
+  // Conditional on the message still running: a terminal status that landed in between wins.
+  static async markAgentMessageCreditSpendCheckpointPaused(
+    auth: Authenticator,
+    { agentMessage }: { agentMessage: AgentMessageType }
+  ): Promise<{ applied: boolean }> {
+    if (agentMessage.status !== "created") {
+      return { applied: false };
+    }
+
+    const [updatedCount] = await AgentMessageModel.update(
+      { creditSpendCheckpointStatus: "paused" },
+      {
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: "created",
+        },
+      }
+    );
+
+    return { applied: updatedCount > 0 };
+  }
+
+  // Conditional so concurrent resolutions of the same pause cannot both apply.
+  static async transitionAgentMessageCreditSpendCheckpointStatus(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      from,
+      to,
+    }: {
+      agentMessageModelId: ModelId;
+      from: AgentMessageModel["creditSpendCheckpointStatus"];
+      to: AgentMessageModel["creditSpendCheckpointStatus"];
+    }
+  ): Promise<{ applied: boolean }> {
+    const [updatedCount] = await AgentMessageModel.update(
+      { creditSpendCheckpointStatus: to },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          creditSpendCheckpointStatus: from,
+        },
+      }
+    );
+
+    return { applied: updatedCount > 0 };
   }
 
   /**

@@ -698,7 +698,12 @@ function AgentBuilderForm({
     isTriggersValidating ||
     isEditorsValidating;
 
+  // A pristine form has nothing to save; a duplicate always does (it starts clean but must be
+  // created). Same "has unsaved work" test the navigation lock uses below.
+  const hasUnsavedChanges = isDirty || !!duplicateAgentId;
+
   const isSaveDisabled =
+    !hasUnsavedChanges ||
     isSubmitting ||
     hasAgentDataLoadError ||
     isAgentDataValidating ||
@@ -734,7 +739,7 @@ function AgentBuilderForm({
   };
 
   // Disable navigation lock during save process for new agents
-  useNavigationLock((isDirty || !!duplicateAgentId) && !isSaving);
+  useNavigationLock(hasUnsavedChanges && !isSaving);
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 

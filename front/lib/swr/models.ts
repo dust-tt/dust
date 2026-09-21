@@ -40,6 +40,10 @@ export function useModels({
     () => (data ? new Set(data.degradedModelIds) : EMPTY_DEGRADED_MODEL_IDS),
     [data]
   );
+  const fallbackStreamIds = useMemo(
+    () => new Set(data?.fallbackStreamIds ?? []),
+    [data]
+  );
 
   return {
     models:
@@ -47,6 +51,7 @@ export function useModels({
       emptyArray<EnabledModelConfigurationType>(),
     defaultModel: data?.defaultModel ?? null,
     streams: data?.streams ?? null,
+    fallbackStreamIds,
     degradedModelIds,
     isModelsLoading: !error && !data && !disabled,
     isModelsError: !!error,

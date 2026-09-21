@@ -1,0 +1,12 @@
+@cc [owner:philipperolet,label:security;backend] access-control-verbs-documented
+Every resource implementing `WithAccessControl` (`getAllowedVerbs`) MUST carry a code contract on
+its resource class defining what each of its verbs authorizes.
+
+@cc [owner:philipperolet,label:security;backend] permission-checked-fetch
+A resource with permissioning is one implementing `WithAccessControl` (`getAllowedVerbs`).
+A method that fetches or lists such resources MUST either:
+- return no resource for which `resource.canFetch(auth)` is false, as `canFetch` is defined by that
+  class (dropped from a list; `null` or an error for a single fetch); or
+- carry `dangerously` in its name (`dangerouslyFetchByModelIds`), or take an option whose name or
+  value carries it (`permissionFiltering: "dangerously_skip"`), and say in a comment which check is
+  skipped and why.

@@ -225,33 +225,10 @@ function SidekickSuggestionsProviderContent({
       }
 
       switch (suggestion.kind) {
-        case "tools":
-        case "sub_agent": {
-          const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
-          if (!tool) {
-            return null;
-          }
-
-          return { ...suggestion, relations: { tool } };
-        }
-
-        case "skills": {
-          const skill = skillsMap.get(suggestion.suggestion.skillId);
-          if (!skill) {
-            return null;
-          }
-
-          return { ...suggestion, relations: { skill } };
-        }
-
-        case "model": {
-          const model = getModelConfigByModelId(suggestion.suggestion.modelId);
-          if (!model) {
-            return null;
-          }
-
-          return { ...suggestion, relations: { model } };
-        }
+        case "create":
+        case "delete":
+        case "instructions":
+          return { ...suggestion, relations: null };
 
         case "knowledge": {
           const dataSourceView = dataSourceViewsMap.get(
@@ -273,9 +250,33 @@ function SidekickSuggestionsProviderContent({
           };
         }
 
-        case "instructions":
-        case "create":
-          return { ...suggestion, relations: null };
+        case "model": {
+          const model = getModelConfigByModelId(suggestion.suggestion.modelId);
+          if (!model) {
+            return null;
+          }
+
+          return { ...suggestion, relations: { model } };
+        }
+
+        case "skills": {
+          const skill = skillsMap.get(suggestion.suggestion.skillId);
+          if (!skill) {
+            return null;
+          }
+
+          return { ...suggestion, relations: { skill } };
+        }
+
+        case "sub_agent":
+        case "tools": {
+          const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
+          if (!tool) {
+            return null;
+          }
+
+          return { ...suggestion, relations: { tool } };
+        }
 
         default:
           assertNeverAndIgnore(suggestion);

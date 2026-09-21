@@ -1,0 +1,223 @@
+/* Share the utilities layer and precede generated utilities, as in V3. */
+
+/* Responsive typography and spacing utilities - opt-in for any component */
+.responsive-text .text-xs {
+  font-size: var(--responsive-text-xs);
+}
+.responsive-text .text-sm {
+  font-size: var(--responsive-text-sm);
+}
+.responsive-text .text-base {
+  font-size: var(--responsive-text-base);
+}
+.responsive-text .text-lg {
+  font-size: var(--responsive-text-lg);
+}
+.responsive-text .text-xl {
+  font-size: var(--responsive-text-xl);
+}
+.responsive-text .text-2xl {
+  font-size: var(--responsive-text-2xl);
+}
+.responsive-text .text-3xl {
+  font-size: var(--responsive-text-3xl);
+}
+.responsive-text .text-4xl {
+  font-size: var(--responsive-text-4xl);
+}
+.responsive-text .text-5xl {
+  font-size: var(--responsive-text-5xl);
+}
+.responsive-text .text-6xl {
+  font-size: var(--responsive-text-6xl);
+}
+.responsive-text .text-7xl {
+  font-size: var(--responsive-text-7xl);
+}
+.responsive-text .text-8xl {
+  font-size: var(--responsive-text-8xl);
+}
+.responsive-text .text-9xl {
+  font-size: var(--responsive-text-9xl);
+}
+
+.responsive-text .gap-1 {
+  gap: var(--responsive-space-1);
+}
+.responsive-text .gap-2 {
+  gap: var(--responsive-space-2);
+}
+.responsive-text .gap-3 {
+  gap: var(--responsive-space-3);
+}
+.responsive-text .gap-4 {
+  gap: var(--responsive-space-4);
+}
+.responsive-text .gap-6 {
+  gap: var(--responsive-space-6);
+}
+.responsive-text .gap-8 {
+  gap: var(--responsive-space-8);
+}
+.responsive-text .gap-12 {
+  gap: var(--responsive-space-12);
+}
+.responsive-text .gap-16 {
+  gap: var(--responsive-space-16);
+}
+
+.responsive-text .space-y-1 > * + * {
+  margin-top: var(--responsive-space-1);
+}
+.responsive-text .space-y-2 > * + * {
+  margin-top: var(--responsive-space-2);
+}
+.responsive-text .space-y-3 > * + * {
+  margin-top: var(--responsive-space-3);
+}
+.responsive-text .space-y-4 > * + * {
+  margin-top: var(--responsive-space-4);
+}
+.responsive-text .space-y-6 > * + * {
+  margin-top: var(--responsive-space-6);
+}
+.responsive-text .space-y-8 > * + * {
+  margin-top: var(--responsive-space-8);
+}
+.responsive-text .space-y-12 > * + * {
+  margin-top: var(--responsive-space-12);
+}
+
+.responsive-text .mt-1 {
+  margin-top: var(--responsive-space-1);
+}
+.responsive-text .mt-2 {
+  margin-top: var(--responsive-space-2);
+}
+.responsive-text .mt-3 {
+  margin-top: var(--responsive-space-3);
+}
+.responsive-text .mt-4 {
+  margin-top: var(--responsive-space-4);
+}
+.responsive-text .mt-6 {
+  margin-top: var(--responsive-space-6);
+}
+.responsive-text .mt-8 {
+  margin-top: var(--responsive-space-8);
+}
+.responsive-text .mt-12 {
+  margin-top: var(--responsive-space-12);
+}
+.responsive-text .mt-16 {
+  margin-top: var(--responsive-space-16);
+}
+
+.responsive-text .mb-1 {
+  margin-bottom: var(--responsive-space-1);
+}
+.responsive-text .mb-2 {
+  margin-bottom: var(--responsive-space-2);
+}
+.responsive-text .mb-3 {
+  margin-bottom: var(--responsive-space-3);
+}
+.responsive-text .mb-4 {
+  margin-bottom: var(--responsive-space-4);
+}
+.responsive-text .mb-6 {
+  margin-bottom: var(--responsive-space-6);
+}
+.responsive-text .mb-8 {
+  margin-bottom: var(--responsive-space-8);
+}
+.responsive-text .mb-12 {
+  margin-bottom: var(--responsive-space-12);
+}
+
+.responsive-text .p-1 {
+  padding: var(--responsive-space-1);
+}
+.responsive-text .p-2 {
+  padding: var(--responsive-space-2);
+}
+.responsive-text .p-3 {
+  padding: var(--responsive-space-3);
+}
+.responsive-text .p-4 {
+  padding: var(--responsive-space-4);
+}
+.responsive-text .p-6 {
+  padding: var(--responsive-space-6);
+}
+.responsive-text .p-8 {
+  padding: var(--responsive-space-8);
+}
+.responsive-text .p-12 {
+  padding: var(--responsive-space-12);
+}
+
+/* Slide variant padding */
+.slide-top-padding {
+  padding: var(--responsive-space-8);
+  padding-top: var(--responsive-space-12);
+}
+.slide-centered-padding {
+  padding: var(--responsive-space-8);
+}
+
+.slide-cover-light {
+  @apply bg-background;
+  color: hsl(var(--slide-cover-foreground));
+}
+
+.slide-cover-dark {
+  background-color: hsl(var(--slide-cover-foreground));
+  color: #ffffff;
+}
+
+.slide-cover-light .slide-title {
+  @apply text-black;
+}
+
+.slide-cover-dark .slide-title {
+  @apply text-white;
+}
+
+.slide-title {
+  font-size: var(--responsive-slide-text-title);
+}
+
+.slide-heading1 {
+  @apply leading-tight m-0 break-normal hyphens-none leading-96p;
+  font-size: var(--responsive-slide-text-heading1);
+  font-family: var(--font-inter);
+}
+
+.slide-heading2 {
+  @apply leading-tight m-0 break-normal text-7xl hyphens-none leading-103p;
+  font-family: var(--font-inter);
+}
+
+.slide-content {
+  color: hsl(var(--slide-content-text));
+}
+
+/* Chart axis styling for better visibility in slideshows */
+.responsive-text .recharts-cartesian-axis-tick text {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* V4 space-y uses the previous child’s bottom margin. The responsive V3
+ * overrides above use the following child’s top margin. Avoid applying both.
+ */
+.responsive-text .space-y-1 > :where(:not(:last-child)),
+.responsive-text .space-y-2 > :where(:not(:last-child)),
+.responsive-text .space-y-3 > :where(:not(:last-child)),
+.responsive-text .space-y-4 > :where(:not(:last-child)),
+.responsive-text .space-y-6 > :where(:not(:last-child)),
+.responsive-text .space-y-8 > :where(:not(:last-child)),
+.responsive-text .space-y-12 > :where(:not(:last-child)) {
+  margin-block-end: 0;
+}

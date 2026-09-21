@@ -34,7 +34,10 @@ import type {
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
-import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
+import {
+  isVisualizationRPCRequest,
+  TailwindMissingClassesMessageSchema,
+} from "@app/types/assistant/visualization";
 import { isAPIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -353,7 +356,7 @@ function SandboxFunctionInvocation({
     buildEventSourceURL,
     onEventCallback,
     `sandbox-function-invocation-${invocationId}`,
-    { onTerminalError }
+    { onTerminalError, workspaceId }
   );
 
   return null;
@@ -439,6 +442,12 @@ function nextBlockedActionGroup(
 }
 
 // Custom hook to encapsulate the logic for handling visualization messages.
+/**
+ * @cc [owner:flvndvd,label:security] frame-style-diagnostics-source
+ * Missing-style diagnostics MUST be schema-validated and originate from this
+ * Frame's iframe window with its matching identifier before they are logged.
+ * They MUST NOT set the Frame's error state or block rendering.
+ */
 function useVisualizationDataHandler({
   conversationId,
   createSandboxFunctionInvocation,
@@ -504,6 +513,22 @@ function useVisualizationDataHandler({
 
       const isOriginatingFromViz =
         event.source && event.source === vizIframeRef.current?.contentWindow;
+
+      const missingStyles = TailwindMissingClassesMessageSchema.safeParse(data);
+      if (
+        missingStyles.success &&
+        isOriginatingFromViz &&
+        missingStyles.data.identifier === visualization.identifier
+      ) {
+        datadogLogger.info("Frame uses unavailable Tailwind classes", {
+          fileId: visualization.identifier,
+          workspaceId,
+          conversationId,
+          buildId: missingStyles.data.buildId,
+          classNames: missingStyles.data.classNames,
+        });
+        return;
+      }
 
       // Handle EXPORT_ERROR messages
       if (

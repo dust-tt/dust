@@ -1,0 +1,9 @@
+@cc [owner:aubin-tchoi,label:error-handling] standalone-cli-errors
+Within this standalone CLI, invalid input, failed HTTP requests, invalid model output, and invalid
+saved artifacts may throw Error. Only the CLI entry point may catch those errors to print a message
+and exit nonzero; library callers must propagate them.
+
+@cc [owner:aubin-tchoi,label:security] tag-inputs-semantic-fields-only
+Text sent to the tagging model and persisted in snapshots must contain only skill names,
+descriptions, instructions, and enabled tool names and descriptions. Credentials, headers,
+argument schemas, timestamps, and internal IDs other than the skill sId must never be included.

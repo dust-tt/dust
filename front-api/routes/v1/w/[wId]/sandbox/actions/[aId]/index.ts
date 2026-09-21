@@ -4,6 +4,10 @@ import {
   isSandboxExecTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
 } from "@app/lib/api/sandbox/access_tokens";
+import {
+  httpStatusForSandboxFunctionMCPActionResponse,
+  toSandboxFunctionMCPActionHttpResponse,
+} from "@app/lib/api/sandbox_functions/sandbox_function_mcp_action_http";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -84,43 +88,23 @@ app.get(
         });
       }
 
-      switch (action.status) {
-        case "running":
-        case "blocked_authentication_required":
-        case "blocked_validation_required":
-          return ctx.json({ status: "pending", actionId: action.sId }, 202);
-        case "succeeded":
-        case "errored": {
-          const outputResult = await action.readOutput();
-          if (outputResult.isErr()) {
-            return apiError(ctx, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: "Failed to read the action output.",
-              },
-            });
-          }
-          const output = outputResult.value;
-          return ctx.json(
-            {
-              status: "success",
-              action: {
-                ...action.toJSON(),
-                output: output?.content ?? null,
-                ...(output?.structuredContent !== undefined
-                  ? { structuredContent: output.structuredContent }
-                  : {}),
-              },
-            },
-            200
-          );
-        }
-        case "denied":
-          return ctx.json({ status: "rejected" }, 403);
-        default:
-          assertNever(action.status);
+      const responseResult =
+        await toSandboxFunctionMCPActionHttpResponse(action);
+      if (responseResult.isErr()) {
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to read the action output.",
+          },
+        });
       }
+
+      const response = responseResult.value;
+      return ctx.json(
+        response,
+        httpStatusForSandboxFunctionMCPActionResponse(response)
+      );
     }
 
     if (!isSandboxExecTokenPayload(claims)) {

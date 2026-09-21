@@ -13,7 +13,6 @@ import {
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -108,17 +107,7 @@ async function deleteAgentAndRelatedResources(
     },
   });
 
-  // 6. Delete editor group (if exists)
-  const group = await GroupResource.fetchByAgentConfiguration({
-    auth,
-    agentConfiguration: agent,
-    isDeletionFlow: true,
-  });
-  if (group) {
-    await group.delete(auth);
-  }
-
-  // 7. Finally delete the agent configuration itself, re-pointing or deleting its identity.
+  // 6. Finally delete the agent configuration itself, re-pointing or deleting its identity.
   await withTransaction(async (t) => {
     await destroyAgentConfigurationRow(
       auth,

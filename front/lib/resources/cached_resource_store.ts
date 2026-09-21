@@ -37,11 +37,14 @@ type CacheKeyMigrationDefinition<Input> = {
   copyToOtherKey: "after_load" | "after_read";
 };
 
-type CachedResourceLookupDefinition<Input, Snapshot, Resource> = {
+export type CachedResourceLookupDefinition<Input, Snapshot, Resource> = {
   id: string;
   version: number;
   key: (input: Input) => string;
   migration?: CacheKeyMigrationDefinition<Input>;
+  // When set, `fetch` loads from the database (round-tripping the snapshot) and `invalidate` no-ops,
+  // so the cache is wired but touches no Redis. For staged rollout of a new cache.
+  dryRun?: boolean;
   loadFromDatabase: (
     input: Input,
     transaction?: Transaction
@@ -112,14 +115,16 @@ class ResourceDatabaseLoadError {
 
 /**
  * Low-level single-value lookup with hand-written snapshots. Internal to this module: resources
- * should declare a `defineCachedResourceStore` (single row, blob snapshot) or a
- * `defineCachedResourceList` instead.
+ * should declare a `defineCachedResourceStore` (single row, attribute-derived blob), a
+ * `defineCachedResourceValue` (single value, hand-written snapshot) or a `defineCachedResourceList`
+ * instead.
  */
 function defineCachedResourceLookup<Input, Snapshot, Resource>({
   id,
   version,
   key,
   migration,
+  dryRun = false,
   loadFromDatabase,
   toSnapshot,
   fromSnapshot,
@@ -193,6 +198,12 @@ function defineCachedResourceLookup<Input, Snapshot, Resource>({
         return loadFromDatabase(input, transaction);
       }
 
+      if (dryRun) {
+        // Round-trip the snapshot so serialization is still exercised while no Redis is touched.
+        const resource = await loadFromDatabase(input);
+        return resource === null ? null : fromSnapshot(toSnapshot(resource));
+      }
+
       try {
         const snapshot = await fetchSnapshot(input);
         return snapshot !== null ? fromSnapshot(snapshot) : null;
@@ -208,6 +219,9 @@ function defineCachedResourceLookup<Input, Snapshot, Resource>({
       }
     },
     invalidate: async (input, transaction) => {
+      if (dryRun) {
+        return;
+      }
       if (transaction) {
         invalidateCacheAfterCommit(transaction, () =>
           invalidateSnapshot(input)
@@ -217,6 +231,9 @@ function defineCachedResourceLookup<Input, Snapshot, Resource>({
       await invalidateSnapshot(input);
     },
     invalidateMany: async (inputs, transaction) => {
+      if (dryRun) {
+        return;
+      }
       const argsList = inputs.map((input): [Input] => [input]);
       if (transaction) {
         invalidateCacheAfterCommit(transaction, () =>
@@ -433,6 +450,22 @@ export function defineCachedResourceStore<
       blobLookup.invalidate(input, transaction),
     createCacheOperations: blobLookup.createCacheOperations,
   };
+}
+
+export type CachedResourceValue<Input, Resource> = CachedResourceLookup<
+  Input,
+  Resource
+>;
+
+/**
+ * Single-value counterpart to `defineCachedResourceList`: caches one nullable Resource per key via a
+ * hand-written `toSnapshot`/`fromSnapshot`, so a resource assembled from multiple rows can be cached.
+ * Bump `version` on any snapshot-shape change (entries carry no shape marker).
+ */
+export function defineCachedResourceValue<Input, Snapshot, Resource>(
+  definition: CachedResourceLookupDefinition<Input, Snapshot, Resource>
+): CachedResourceValue<Input, Resource> {
+  return defineCachedResourceLookup(definition);
 }
 
 /**

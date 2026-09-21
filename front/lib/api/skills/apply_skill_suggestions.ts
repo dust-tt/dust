@@ -3,8 +3,11 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
+import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
 import type { SkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
+import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
 import type { Authenticator } from "@app/lib/auth";
 import type { AppliedSkillInstructions } from "@app/lib/editor/skill_instructions_html";
 import {
@@ -12,26 +15,42 @@ import {
   convertMarkdownToBlockHtml,
 } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
-import { pruneConflictingSkillEditorsSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
+import {
+  pruneConflictingSkillAvailabilitySuggestions,
+  pruneConflictingSkillEditorsSuggestions,
+  pruneConflictingSkillNameSuggestions,
+  pruneConflictingSkillUserFacingDescriptionSuggestions,
+} from "@app/lib/reinforcement/skill_suggestion_pruning";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
 import {
+  isAvailabilitySkillSuggestion,
   isEditorsSkillSuggestion,
+  isNameSkillSuggestion,
+  isUserFacingDescriptionSkillSuggestion,
   parseSkillSuggestionData,
 } from "@app/types/suggestions/skill_suggestion";
 
 /**
  * What a suggestion asks to change on the skill. `editors` is not a skill field: it is written as
- * per-user grants, so it travels here but is applied separately from `updateSkill`.
+ * per-user grants, so it travels here but is applied separately from `updateSkill`. `archive` is
+ * not a field either: it is a terminal status change applied through `skill.archive`, never
+ * combined with other edits in practice, but folded in here so a mixed batch still fails loudly
+ * instead of silently dropping the deletion.
  */
 interface SkillEdits {
   agentFacingDescription?: string;
+  userFacingDescription?: string;
+  name?: string;
+  availability?: SkillAvailability;
   editors?: { addUserIds: string[]; removeUserIds: string[] };
   instructionEdits?: SkillInstructionEditItemType[];
+  archive?: boolean;
 }
 
 function editsForSuggestion(
@@ -43,6 +62,20 @@ function editsForSuggestion(
   });
 
   switch (data.kind) {
+    case "availability":
+      return new Ok({ availability: data.suggestion.availability });
+
+    case "create":
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          "Skill creation suggestions cannot be applied to the skill yet."
+        )
+      );
+
+    case "delete":
+      return new Ok({ archive: true });
+
     case "edit":
       return new Ok({
         agentFacingDescription:
@@ -52,6 +85,14 @@ function editsForSuggestion(
 
     case "editors":
       return new Ok({ editors: data.suggestion });
+
+    case "name":
+      return new Ok({ name: data.suggestion.name });
+
+    case "user_facing_description":
+      return new Ok({
+        userFacingDescription: data.suggestion.userFacingDescription,
+      });
 
     default:
       assertNever(data);
@@ -67,19 +108,44 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
     (merged, next) => next.agentFacingDescription ?? merged,
     undefined
   );
+  const userFacingDescription = edits.reduce<string | undefined>(
+    (merged, next) => next.userFacingDescription ?? merged,
+    undefined
+  );
+  const name = edits.reduce<string | undefined>(
+    (merged, next) => next.name ?? merged,
+    undefined
+  );
+  const availability = edits.reduce<SkillAvailability | undefined>(
+    (merged, next) => next.availability ?? merged,
+    undefined
+  );
 
   // Concatenated in suggestion order: every accepted edit is applied, each to its own block.
   const instructionEdits = edits.flatMap((e) => e.instructionEdits ?? []);
 
+  const archive = edits.some((e) => e.archive);
+
   // Union, not last-wins: approving two suggestions must apply both editor changes.
   const editorsEdits = edits.flatMap((e) => e.editors ?? []);
   if (editorsEdits.length === 0) {
-    return { agentFacingDescription, instructionEdits };
+    return {
+      agentFacingDescription,
+      userFacingDescription,
+      name,
+      availability,
+      instructionEdits,
+      archive,
+    };
   }
 
   return {
     agentFacingDescription,
+    userFacingDescription,
+    name,
+    availability,
     instructionEdits,
+    archive,
     editors: {
       addUserIds: [...new Set(editorsEdits.flatMap((e) => e.addUserIds))],
       removeUserIds: [...new Set(editorsEdits.flatMap((e) => e.removeUserIds))],
@@ -89,10 +155,17 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
 
 function hasSkillFieldEdits({
   agentFacingDescription,
+  userFacingDescription,
+  name,
+  availability,
   instructionEdits,
 }: SkillEdits): boolean {
   return (
-    agentFacingDescription !== undefined || (instructionEdits?.length ?? 0) > 0
+    agentFacingDescription !== undefined ||
+    userFacingDescription !== undefined ||
+    name !== undefined ||
+    availability !== undefined ||
+    (instructionEdits?.length ?? 0) > 0
   );
 }
 
@@ -115,7 +188,13 @@ function resolveInstructions(
 async function applySkillFieldEdits(
   auth: Authenticator,
   skill: SkillResource,
-  { agentFacingDescription, instructionEdits }: SkillEdits
+  {
+    agentFacingDescription,
+    userFacingDescription,
+    name,
+    availability,
+    instructionEdits,
+  }: SkillEdits
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
   const instructions = resolveInstructions(skill, instructionEdits);
   if (instructions.isErr()) {
@@ -123,6 +202,7 @@ async function applySkillFieldEdits(
   }
 
   const attachedKnowledge = await skill.getAttachedKnowledge(auth);
+  const previousAvailability = skill.availability;
 
   // `updateSkill` replaces the whole skill, so every field no suggestion touched is carried over
   // from the current values.
@@ -130,16 +210,34 @@ async function applySkillFieldEdits(
     agentFacingDescription:
       agentFacingDescription ?? skill.agentFacingDescription,
     attachedKnowledge,
+    availability,
     icon: skill.icon,
     instructions: instructions.value?.instructions ?? skill.instructions,
     instructionsHtml:
       instructions.value?.instructionsHtml ?? skill.instructionsHtml,
     manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
     mcpServerViews: skill.mcpServerViews,
-    name: skill.name,
+    name: name ?? skill.name,
     requestedSpaceIds: skill.requestedSpaceIds,
-    userFacingDescription: skill.userFacingDescription,
+    userFacingDescription: userFacingDescription ?? skill.userFacingDescription,
   });
+
+  if (availability !== undefined && availability !== previousAvailability) {
+    void emitAuditLogEvent({
+      auth,
+      action: "skill.availability_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        { type: "skill", id: skill.sId, name: skill.name },
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        skill_name: skill.name,
+        previous_availability: previousAvailability,
+        new_availability: availability,
+      },
+    });
+  }
 
   return new Ok(undefined);
 }
@@ -203,7 +301,34 @@ export async function applySkillSuggestions(
     perSuggestionEdits.push(suggestionEdits.value);
   }
 
-  const edits = mergeSkillEdits(perSuggestionEdits);
+  let edits = mergeSkillEdits(perSuggestionEdits);
+
+  if (edits.name !== undefined) {
+    const validation = await validateSkillNameChange(auth, skill, {
+      name: edits.name,
+    });
+    if (validation.isErr()) {
+      return new Err(
+        new DustError("invalid_request_error", validation.error.message)
+      );
+    }
+    // Write the validator's trimmed name, never the raw suggestion payload.
+    edits = { ...edits, name: validation.value.name };
+  }
+
+  // `updateSkill` asserts the publish capabilities whenever it receives an availability, so one is
+  // only passed on when a suggestion asked for it and the value actually changes.
+  if (edits.availability !== undefined) {
+    const validation = await validateSkillAvailabilityChange(auth, skill, {
+      availability: edits.availability,
+    });
+    if (validation.isErr()) {
+      return new Err(
+        new DustError("invalid_request_error", validation.error.message)
+      );
+    }
+    edits = { ...edits, availability: validation.value?.availability };
+  }
 
   let editorsChange: SkillEditorsChange | null = null;
   if (edits.editors) {
@@ -221,6 +346,15 @@ export async function applySkillSuggestions(
     editorsChange = validation.value;
   }
 
+  if (edits.archive) {
+    const validation = validateSkillDeletion(auth, skill);
+    if (validation.isErr()) {
+      return new Err(
+        new DustError("invalid_request_error", validation.error.message)
+      );
+    }
+  }
+
   // TODO(achilleburah): make the editor change and skill update atomic so if editors changes fails,
   //  the skill update is rolled back.
 
@@ -230,7 +364,25 @@ export async function applySkillSuggestions(
     if (updateRes.isErr()) {
       return updateRes;
     }
+    await pruneConflictingSkillUserFacingDescriptionSuggestions(
+      auth,
+      skill,
+      suggestions.filter(isUserFacingDescriptionSkillSuggestion)
+    );
+    await pruneConflictingSkillNameSuggestions(
+      auth,
+      skill,
+      suggestions.filter(isNameSkillSuggestion)
+    );
   }
+
+  // An accepted availability suggestion whose value already matches the skill still resolves
+  // every other pending availability suggestion, so this prunes outside the field-write guard.
+  await pruneConflictingSkillAvailabilitySuggestions(
+    auth,
+    skill,
+    suggestions.filter(isAvailabilitySkillSuggestion)
+  );
 
   if (editorsChange) {
     const applyRes = await applyEditorsChange(auth, skill, editorsChange);
@@ -243,6 +395,12 @@ export async function applySkillSuggestions(
       skill,
       suggestions.filter(isEditorsSkillSuggestion)
     );
+  }
+
+  // Archiving is terminal, so it runs last: any other edit in the batch is applied to the skill
+  // first, exactly as if it had been accepted on its own right before the deletion.
+  if (edits.archive) {
+    await skill.archive(auth);
   }
 
   return new Ok(undefined);
