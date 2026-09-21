@@ -261,14 +261,12 @@ export async function getMessagesEventsBatch({
       );
     }
 
-    const events: MessageStreamBatchEvent[] = [...history, ...liveEvents]
-      .sort((left, right) =>
-        left.id.localeCompare(right.id, undefined, { numeric: true })
-      )
-      .map((event) => ({
+    const events: MessageStreamBatchEvent[] = [...history, ...liveEvents].map(
+      (event) => ({
         eventId: event.id,
         data: JSON.parse(event.message.payload),
-      }));
+      })
+    );
     return events;
   } finally {
     signal.removeEventListener("abort", onAbort);

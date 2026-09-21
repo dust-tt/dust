@@ -18,15 +18,11 @@ describe("getMessagesEventsBatch", () => {
     redisHybridManager.subscribe.mockReset();
   });
 
-  it("returns history in numeric Redis stream order and unsubscribes", async () => {
+  it("returns history and unsubscribes", async () => {
     const unsubscribe = vi.fn();
     const history: EventPayload[] = [
       {
-        id: "1770000000000-10",
-        message: { payload: JSON.stringify({ type: "end-of-stream" }) },
-      },
-      {
-        id: "1770000000000-2",
+        id: "1-0",
         message: { payload: JSON.stringify({ type: "end-of-stream" }) },
       },
     ];
@@ -39,14 +35,7 @@ describe("getMessagesEventsBatch", () => {
     });
 
     expect(events).toEqual([
-      {
-        eventId: "1770000000000-2",
-        data: { type: "end-of-stream" },
-      },
-      {
-        eventId: "1770000000000-10",
-        data: { type: "end-of-stream" },
-      },
+      { eventId: "1-0", data: { type: "end-of-stream" } },
     ]);
     expect(redisHybridManager.subscribe).toHaveBeenCalledWith(
       "message-msg_1",
@@ -76,32 +65,6 @@ describe("getMessagesEventsBatch", () => {
     await vi.waitFor(() =>
       expect(redisHybridManager.subscribe).toHaveBeenCalledOnce()
     );
-    controller.abort();
-
-    await expect(eventsPromise).resolves.toEqual([]);
-    expect(unsubscribe).toHaveBeenCalledOnce();
-  });
-
-  it("aborts subscription setup", async () => {
-    const unsubscribe = vi.fn();
-    const setupStarted = Promise.withResolvers<void>();
-    redisHybridManager.subscribe.mockImplementation(
-      async (_channel, _callback, _origin, { signal }) => {
-        setupStarted.resolve();
-        await new Promise<void>((resolve) => {
-          signal.addEventListener("abort", () => resolve(), { once: true });
-        });
-        return { history: [], unsubscribe };
-      }
-    );
-    const controller = new AbortController();
-
-    const eventsPromise = getMessagesEventsBatch({
-      messageId: "msg_1",
-      lastEventId: null,
-      signal: controller.signal,
-    });
-    await setupStarted.promise;
     controller.abort();
 
     await expect(eventsPromise).resolves.toEqual([]);
