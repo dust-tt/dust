@@ -271,6 +271,10 @@ interface ConsumptionDailyChartProps {
  * @cc [owner:aubin-tchoi,label:product] active-users-toggle-preserves-layout
  * Toggling active users must preserve the positions and widths of bars and date ticks.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] category-visibility-preserves-legend
+ * Hiding categories must preserve legend entries, order, and colors, even when all are hidden.
+ */
 export function ConsumptionDailyChart({
   timeseries,
   isTimeseriesLoading,
@@ -280,6 +284,9 @@ export function ConsumptionDailyChart({
   additionalControls,
 }: ConsumptionDailyChartProps) {
   const [isActiveUsersVisible, setIsActiveUsersVisible] = useState(true);
+  const [hiddenGroupKeys, setHiddenGroupKeys] = useState(
+    () => new Set<string>()
+  );
   const displayActiveUsers = showActiveUsers && isActiveUsersVisible;
   const groups = useMemo(() => timeseries?.groups ?? [], [timeseries]);
   const totalUsers = timeseries?.workspaceMemberCount ?? null;
@@ -327,7 +334,9 @@ export function ConsumptionDailyChart({
     (props: TooltipContentProps<number, string>) => (
       <ConsumptionDailyTooltip
         {...props}
-        groups={orderedGroups}
+        groups={orderedGroups.filter(
+          (group) => !hiddenGroupKeys.has(group.groupKey)
+        )}
         colorByGroupKey={colorByGroupKey}
         partialTimestamp={partialTimestamp}
         currentBucketLabel={currentBucketLabel}
@@ -337,6 +346,7 @@ export function ConsumptionDailyChart({
     ),
     [
       orderedGroups,
+      hiddenGroupKeys,
       colorByGroupKey,
       partialTimestamp,
       currentBucketLabel,
@@ -352,6 +362,17 @@ export function ConsumptionDailyChart({
       key: group.groupKey,
       label: group.name,
       colorClassName: colorByGroupKey.get(group.groupKey) ?? "",
+      isActive: !hiddenGroupKeys.has(group.groupKey),
+      onClick: () =>
+        setHiddenGroupKeys((previous) => {
+          const next = new Set(previous);
+          if (next.has(group.groupKey)) {
+            next.delete(group.groupKey);
+          } else {
+            next.add(group.groupKey);
+          }
+          return next;
+        }),
     })),
     ...(hasActiveUsers
       ? [
@@ -456,6 +477,7 @@ export function ConsumptionDailyChart({
               }
               name={group.name}
               stackId="credits"
+              hide={hiddenGroupKeys.has(group.groupKey)}
               isAnimationActive={false}
             >
               {chartData.map((datum) => (
