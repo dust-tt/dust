@@ -115,14 +115,29 @@ export function useSkillBuilderSlashCommandCapabilities({
   owner: LightWorkspaceType;
   query: string;
 }) {
+  const { hasFeature } = useFeatureFlags();
+  const useSkillSearch = hasFeature("skills_search");
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: "all",
   });
-  const { skills, isSkillsLoading } = useSkills({
-    owner,
-    status: "active",
-  });
+  const { skills: listedSkills, isSkillsLoading: isListedSkillsLoading } =
+    useSkills({
+      owner,
+      status: "active",
+      disabled: useSkillSearch,
+    });
+  const { skills: searchSkills, isSkillsLoading: isSearchSkillsLoading } =
+    useSearchSkills({
+      owner,
+      searchTerm: query,
+      limit: MAX_RENDERED_CAPABILITY_ITEMS,
+      disabled: !useSkillSearch,
+    });
+  const skills = useSkillSearch ? searchSkills : listedSkills;
+  const isSkillsLoading = useSkillSearch
+    ? isSearchSkillsLoading
+    : isListedSkillsLoading;
   const { serverViews, isLoading: isServerViewsLoading } =
     useMCPServerViewsFromSpaces(owner, spaces, {
       includeRestrictedToSkills: true,
@@ -140,10 +155,11 @@ export function useSkillBuilderSlashCommandCapabilities({
         query,
         skills,
         tools,
+        useSearchRanking: useSkillSearch,
         toolFilter: (serverView) =>
           getMCPServerRequirements(serverView).noRequirement,
       }),
-    [excludeSkillId, query, skills, tools]
+    [excludeSkillId, query, skills, tools, useSkillSearch]
   );
 
   return {
