@@ -84,6 +84,7 @@ import type { TagType } from "@app/types/tag";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import assert from "assert";
+import isEqual from "lodash/isEqual";
 import uniq from "lodash/uniq";
 import type { Attributes, Transaction } from "sequelize";
 import { Op, UniqueConstraintError, ValidationError } from "sequelize";
@@ -226,6 +227,42 @@ export type AgentResourceSnapshot = {
   modelConfiguration: SerializedModelConfiguration;
   content: SerializedAgentResourceContent;
 };
+
+// Reduces a save's params to the comparable essence of a configuration version: the fields a new
+// version would actually persist, normalized so equal configurations compare equal — optional model
+// fields defaulted, collections reduced to sorted identifier lists (order-insensitive), and actions
+// reduced to sorted stable serializations. The version author is intentionally excluded: it is
+// version metadata, not part of the configuration.
+function canonicalizeSaveParamsForComparison(
+  params: SaveAgentConfigurationParams
+): unknown {
+  return {
+    name: params.name,
+    description: params.description,
+    instructions: params.instructions ?? null,
+    instructionsHtml: params.instructionsHtml ?? null,
+    pictureUrl: params.pictureUrl,
+    status: params.status,
+    scope: params.scope,
+    model: {
+      providerId: params.model.providerId,
+      modelId: params.model.modelId,
+      temperature: params.model.temperature,
+      reasoningEffort: params.model.reasoningEffort ?? null,
+      responseFormat: params.model.responseFormat ?? null,
+      metaData: params.model.metaData ?? null,
+    },
+    templateId: params.templateId ?? null,
+    requestedSpaceIds: [...params.requestedSpaceIds].sort((a, b) => a - b),
+    reinforcement: params.reinforcement ?? "auto",
+    tags: params.tags.map((tag) => tag.sId).sort(),
+    editors: params.editors.map((editor) => editor.id).sort((a, b) => a - b),
+    skills: (params.skills ?? []).map((skill) => skill.sId).sort(),
+    actions: (params.actions ?? [])
+      .map((action) => JSON.stringify(action))
+      .sort(),
+  };
+}
 
 // Ship the cache dark: wired end to end but touching no Redis. Flip to `false` to turn it on.
 const AGENT_RESOURCE_CACHE_DRY_RUN = true;
@@ -1672,6 +1709,15 @@ export class AgentResource
    * associations — MUST be committed in one transaction owned by this method, so a failure in any
    * part leaves no partial agent version behind and needs no external rollback.
    */
+  /**
+   * @cc [owner:tdraier,label:backend] save-skips-noop-version
+   * Saving an existing active agent whose incoming configuration is identical to its current version
+   * MUST NOT create a new version: it returns the current resource unchanged. The comparison covers
+   * every persisted field — name, description, instructions, picture, status, scope, model, template,
+   * requested spaces, reinforcement, tags, editors, tools and skills — but not the version author,
+   * and it MUST be conservative: any uncertainty about equality MUST fall through to a normal save so
+   * a real edit is never silently dropped.
+   */
   private static async _saveConfiguration(
     auth: Authenticator,
     {
@@ -1733,6 +1779,51 @@ export class AgentResource
     });
     if (publishCheck.isErr()) {
       return new Err(publishCheck.error);
+    }
+
+    // Skip saving a new version when the incoming configuration is identical to the agent's current
+    // one. Only the regular update path of an existing active agent carries a prior version worth
+    // comparing against — a brand-new agent or an in-place pending update does not (see
+    // `save-skips-noop-version`).
+    if (agentConfigurationId) {
+      const currentAgent = await AgentResource.fetchById(
+        auth,
+        agentConfigurationId
+      );
+      if (currentAgent?.isFull() && currentAgent.status === "active") {
+        const currentParams = await currentAgent.buildResaveParams(auth);
+        const isUnchanged = isEqual(
+          canonicalizeSaveParamsForComparison(currentParams),
+          canonicalizeSaveParamsForComparison({
+            name,
+            description,
+            instructions,
+            instructionsHtml,
+            pictureUrl,
+            status,
+            scope,
+            model,
+            templateId,
+            requestedSpaceIds,
+            tags,
+            editors,
+            authorId,
+            reinforcement,
+            actions,
+            skills,
+          })
+        );
+        if (isUnchanged) {
+          logger.info(
+            {
+              workspaceId: owner.sId,
+              agentConfigurationId,
+            },
+            "Skipping agent save: configuration unchanged, no new version created."
+          );
+          return new Ok(currentAgent);
+        }
+      }
     }
 
     // Track removed editors so their triggers can be disabled if this save leaves the agent hidden.

@@ -1063,6 +1063,54 @@ describe("AgentResource", () => {
       expect(toolsAfter).toHaveLength(1);
     });
 
+    it("does not create a new version when the model is unchanged", async () => {
+      const { authenticator } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            temperature: 0.7,
+          },
+        }
+      );
+
+      // First change bumps the version and pins the reasoning effort.
+      const first = await AgentResource.bulkUpdateModel(
+        authenticator,
+        [agent.sId],
+        { providerId: "openai", modelId: "gpt-5", reasoningEffort: "medium" }
+      );
+      expect(first.updatedAgentIds).toEqual([agent.sId]);
+
+      const afterFirst = await AgentResource.fetchById(
+        authenticator,
+        agent.sId
+      );
+      assert(afterFirst?.isFull());
+      expect(afterFirst.content.version).toBe(agent.version + 1);
+
+      // Re-applying the exact same model is a no-op: no new version is created.
+      const second = await AgentResource.bulkUpdateModel(
+        authenticator,
+        [agent.sId],
+        { providerId: "openai", modelId: "gpt-5", reasoningEffort: "medium" }
+      );
+      expect(second).toEqual({
+        updatedAgentIds: [agent.sId],
+        skippedAgentIds: [],
+      });
+
+      const afterSecond = await AgentResource.fetchById(
+        authenticator,
+        agent.sId
+      );
+      assert(afterSecond?.isFull());
+      expect(afterSecond.content.version).toBe(afterFirst.content.version);
+    });
+
     it("skips archived agents and reports them", async () => {
       const { authenticator } = testContext;
 
