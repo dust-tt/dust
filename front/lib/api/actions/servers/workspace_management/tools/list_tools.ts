@@ -11,7 +11,7 @@ import {
 import { listAvailableTools } from "@app/lib/api/assistant/workspace_capabilities";
 import { Err, Ok } from "@app/types/shared/result";
 
-// Same inventory as the copilot's `get_available_tools`: the tools of the spaces the caller is a
+// Same inventory as sidekick's `get_available_tools`: the tools of the spaces the caller is a
 // member of, minus the knowledge ones, which agents and skills configure as knowledge instead.
 export async function listTools(
   {

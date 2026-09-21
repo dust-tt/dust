@@ -98,11 +98,6 @@ export async function listActiveAgentsUsingNonRegionalModels(
  * Excludes knowledge tools (search, query tables, include data, etc.) that
  * require data source configuration, these are handled separately as knowledge.
  */
-/**
- * @cc [owner:fabiencelier,label:security] available-tools-scoped-to-caller-spaces
- * The result MUST only contain views of spaces the caller can read (global space and regular
- * spaces they are a member of); views of other restricted spaces MUST NOT be returned.
- */
 export async function listAvailableTools(
   auth: Authenticator
 ): Promise<AvailableTool[]> {
@@ -169,11 +164,6 @@ export async function listAvailableSkills(
  * Fetch detailed information about a specific MCP server by its sId.
  * Returns the MCPServerType (including its tools list) or null if not found.
  */
-/**
- * @cc [owner:fabiencelier,label:security] describe-mcp-server-requires-read-access
- * A view whose space the caller cannot read MUST be reported as not found (`null`), exactly like an
- * unknown id, so that tool names and schemas of restricted spaces are not disclosed.
- */
 export async function describeMcpServer(
   auth: Authenticator,
   mcpId: string
@@ -187,6 +177,8 @@ export async function describeMcpServer(
       "sharedSecret",
     ],
   });
+  // A view the caller cannot read or admin is reported like an unknown id, so that the tool names and
+  // schemas of restricted spaces are not disclosed.
   if (!view || !view.canReadOrAdministrate(auth)) {
     return null;
   }
