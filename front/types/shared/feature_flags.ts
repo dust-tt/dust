@@ -53,7 +53,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
-    stage: "self_serve",
+    stage: "dust_only",
     owner: "pmilliotte",
   },
   audit_logs: {

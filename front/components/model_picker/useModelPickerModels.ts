@@ -1,5 +1,6 @@
 import type { MakerGroup } from "@app/components/model_picker/modelPickerUtils";
 import { MODEL_TIERS } from "@app/components/model_picker/modelPickerUtils";
+import { useRunsOnRegionalHosting } from "@app/hooks/useRunsOnRegionalHosting";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
@@ -23,10 +24,9 @@ const EMPTY_DEGRADED_MODEL_IDS: ReadonlySet<string> = new Set();
 
 /**
  * @cc [owner:Nils-Fedrigo,label:product] hosting-region-only-when-guaranteed
- * `modelProps.hostingRegion` is the current cell's region when the workspace
- * runs models on Dust-managed regional hosting, and `null` otherwise —
- * `use_vertex_for_supported_models` disabled, or a BYOK plan whose models run
- * on the customer's own provider keys.
+ * `modelProps.hostingRegion` is the current cell's region when
+ * `useRunsOnRegionalHosting` says the workspace runs models on Dust-managed
+ * regional hosting, and `null` otherwise.
  */
 // The model lists every surface rendering `ModelPickerContent` offers, and what
 // the member is allowed to pick from them.
@@ -78,10 +78,8 @@ export function useModelPickerModels({
   // only" toggle already hard-filters the catalog, so the flag is reassurance
   // rather than enforcement.
   const { cellInfo } = useCellContext();
-  const hostingRegion =
-    hasFeature("use_vertex_for_supported_models") && !subscription.plan.isByok
-      ? cellInfo.region
-      : null;
+  const runsOnRegionalHosting = useRunsOnRegionalHosting();
+  const hostingRegion = runsOnRegionalHosting ? cellInfo.region : null;
 
   // Concrete models (meta-models are surfaced as tiers instead).
   const allModels = useMemo<ModelConfigurationType[]>(() => {
