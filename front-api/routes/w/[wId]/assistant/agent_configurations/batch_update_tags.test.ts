@@ -92,7 +92,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
   });
 
   it("tags an unpublished agent of another member built on a restricted space", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+    const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
