@@ -8,9 +8,10 @@ import { useCommandPalette } from "@app/components/command_palette/CommandPalett
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useSkills } from "@app/lib/swr/skill_configurations";
+import { useSearchSkills, useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { filterAndSortAgents, subFilter } from "@app/lib/utils";
 import {
@@ -30,8 +31,12 @@ interface CommandPaletteProps {
   user: UserType;
 }
 
+const MAX_DISPLAYED_SKILLS = 5;
+
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const { isOpen, close } = useCommandPalette();
+  const { hasFeature } = useFeatureFlags();
+  const useSkillSearch = hasFeature("skills_search");
   const router = useAppRouter();
 
   // Dialog state.
@@ -54,11 +59,25 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
       disabled: !isOpen,
     });
 
-  const { skills, isSkillsLoading } = useSkills({
+  const { skills, isSkillsLoading: isListedSkillsLoading } = useSkills({
     owner,
-    disabled: !isOpen,
+    disabled: !isOpen || useSkillSearch,
     status: "active",
   });
+  const {
+    skills: searchSkills,
+    hasMore: hasMoreSearchSkills,
+    isSkillsLoading: isSearchSkillsLoading,
+    isSkillsError,
+  } = useSearchSkills({
+    owner,
+    searchTerm: searchQuery.trim(),
+    limit: MAX_DISPLAYED_SKILLS,
+    disabled: !isOpen || !useSkillSearch,
+  });
+  const isSkillsLoading = useSkillSearch
+    ? isSearchSkillsLoading
+    : isListedSkillsLoading;
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
@@ -96,7 +115,6 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   // proper list virtualization (@tanstack/react-virtual).
   const MAX_DISPLAYED_AGENTS = 5;
   const MAX_DISPLAYED_PODS = 5;
-  const MAX_DISPLAYED_SKILLS = 5;
 
   const allFilteredAgents = useMemo(
     () =>
@@ -135,12 +153,23 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     () => ({
       filteredAgents: allFilteredAgents.slice(0, MAX_DISPLAYED_AGENTS),
       filteredPods: allFilteredPods.slice(0, MAX_DISPLAYED_PODS),
-      filteredSkills: allFilteredSkills.slice(0, MAX_DISPLAYED_SKILLS),
+      filteredSkills: useSkillSearch
+        ? searchSkills
+        : allFilteredSkills.slice(0, MAX_DISPLAYED_SKILLS),
       hasMoreAgents: allFilteredAgents.length > MAX_DISPLAYED_AGENTS,
       hasMorePods: allFilteredPods.length > MAX_DISPLAYED_PODS,
-      hasMoreSkills: allFilteredSkills.length > MAX_DISPLAYED_SKILLS,
+      hasMoreSkills: useSkillSearch
+        ? hasMoreSearchSkills
+        : allFilteredSkills.length > MAX_DISPLAYED_SKILLS,
     }),
-    [allFilteredAgents, allFilteredPods, allFilteredSkills]
+    [
+      allFilteredAgents,
+      allFilteredPods,
+      allFilteredSkills,
+      useSkillSearch,
+      searchSkills,
+      hasMoreSearchSkills,
+    ]
   );
 
   const isLoading =
@@ -199,7 +228,11 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         return;
       }
       // Skills without administration access have only one action (view details).
-      if (item.kind === "skill" && !item.skill.canAdministrate) {
+      if (
+        item.kind === "skill" &&
+        "canAdministrate" in item.skill &&
+        !item.skill.canAdministrate
+      ) {
         executeAction(item, "view_details");
       } else {
         setSelectedItem(item);
@@ -247,6 +280,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               hasMorePods={hasMorePods}
               hasMoreSkills={hasMoreSkills}
               isLoading={isLoading}
+              isSkillsError={isSkillsError}
               selectedIndex={selectedIndex}
               onSelectedIndexChange={setSelectedIndex}
               onItemSelect={handleItemSelect}
@@ -254,6 +288,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             />
           ) : selectedItem ? (
             <CommandPaletteActionPhase
+              owner={owner}
               item={selectedItem}
               onAction={handleAction}
               onBack={handleBack}

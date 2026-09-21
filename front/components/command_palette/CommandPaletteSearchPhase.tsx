@@ -7,26 +7,34 @@ import {
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillListItemType,
+  SkillWithoutInstructionsAndToolsType,
+} from "@app/types/assistant/skill_configuration";
 import type { PodType } from "@app/types/space";
 import { Avatar, cn, Icon, LoadingBlock, SearchInput } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
+type CommandPaletteSkill =
+  | SkillListItemType
+  | SkillWithoutInstructionsAndToolsType;
+
 export type CommandPaletteItem =
   | { kind: "agent"; agent: LightAgentConfigurationType }
   | { kind: "pod"; pod: PodType }
-  | { kind: "skill"; skill: SkillWithoutInstructionsAndToolsType };
+  | { kind: "skill"; skill: CommandPaletteSkill };
 
 interface CommandPaletteSearchPhaseProps {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
   agents: LightAgentConfigurationType[];
   pods: PodType[];
-  skills: SkillWithoutInstructionsAndToolsType[];
+  skills: CommandPaletteSkill[];
   hasMoreAgents: boolean;
   hasMorePods: boolean;
   hasMoreSkills: boolean;
   isLoading: boolean;
+  isSkillsError: boolean;
   selectedIndex: number;
   onSelectedIndexChange: (index: number) => void;
   onItemSelect: (item: CommandPaletteItem) => void;
@@ -36,7 +44,7 @@ interface CommandPaletteSearchPhaseProps {
 function getFlatItems(
   agents: LightAgentConfigurationType[],
   pods: PodType[],
-  skills: SkillWithoutInstructionsAndToolsType[]
+  skills: CommandPaletteSkill[]
 ): CommandPaletteItem[] {
   return [
     ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
@@ -55,6 +63,7 @@ export function CommandPaletteSearchPhase({
   hasMorePods,
   hasMoreSkills,
   isLoading,
+  isSkillsError,
   selectedIndex,
   onSelectedIndexChange,
   onItemSelect,
@@ -142,6 +151,11 @@ export function CommandPaletteSearchPhase({
         />
       </div>
       <div className="flex max-h-125 flex-col gap-2 overflow-y-auto p-1.5">
+        {isSkillsError && (
+          <div role="alert" className="px-3 py-2 text-sm text-muted-foreground">
+            Could not load skills. Try again.
+          </div>
+        )}
         {isLoading && flatItems.length === 0 && (
           <div className="flex flex-col gap-1 p-1">
             {Array.from({ length: 9 }, (_, i) => (
@@ -155,9 +169,12 @@ export function CommandPaletteSearchPhase({
             ))}
           </div>
         )}
-        {!isLoading && flatItems.length === 0 && searchQuery.length > 0 && (
-          <ItemEmptyState>No results found.</ItemEmptyState>
-        )}
+        {!isLoading &&
+          !isSkillsError &&
+          flatItems.length === 0 &&
+          searchQuery.length > 0 && (
+            <ItemEmptyState>No results found.</ItemEmptyState>
+          )}
         {!isLoading && flatItems.length === 0 && searchQuery.length === 0 && (
           <ItemEmptyState>
             Type to search agents, pods and skills.

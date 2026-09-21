@@ -1,6 +1,8 @@
 import { KeyboardHints } from "@app/components/command_palette/CommandPaletteItems";
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { useSkill } from "@app/lib/swr/skill_configurations";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   ArrowLeft,
   Avatar,
@@ -8,6 +10,7 @@ import {
   Edit04,
   Eye,
   Icon,
+  LoadingBlock,
   MessageCircle01,
 } from "@dust-tt/sparkle";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -21,6 +24,7 @@ export type ActionPhaseItem = Extract<
 >;
 
 interface CommandPaletteActionPhaseProps {
+  owner: LightWorkspaceType;
   item: ActionPhaseItem;
   onAction: (action: CommandPaletteAction) => void;
   onBack: () => void;
@@ -34,21 +38,34 @@ interface ActionDefinition {
   icon: typeof Eye;
 }
 
-function canEdit(item: ActionPhaseItem): boolean {
-  switch (item.kind) {
-    case "agent":
-      return item.agent.canEdit;
-    case "skill":
-      return item.skill.canAdministrate;
-  }
-}
-
 export function CommandPaletteActionPhase({
+  owner,
   item,
   onAction,
   onBack,
   onClose,
 }: CommandPaletteActionPhaseProps) {
+  // Search results don't contain action permissions. Fetch only the selected skill.
+  const { skill, isSkillLoading, isSkillError } = useSkill({
+    workspaceId: owner.sId,
+    skillId:
+      item.kind === "skill" && !("canAdministrate" in item.skill)
+        ? item.skill.sId
+        : null,
+  });
+  const canEdit =
+    item.kind === "agent"
+      ? item.agent.canEdit
+      : "canAdministrate" in item.skill
+        ? item.skill.canAdministrate
+        : (skill?.canAdministrate ?? false);
+
+  useEffect(() => {
+    if (skill && !skill.canAdministrate) {
+      onAction("view_details");
+    }
+  }, [skill, onAction]);
+
   const actions = useMemo(() => {
     const result: ActionDefinition[] = [];
     if (item.kind === "agent") {
@@ -65,7 +82,7 @@ export function CommandPaletteActionPhase({
       description: "View description and settings",
       icon: Eye,
     });
-    if (canEdit(item)) {
+    if (canEdit) {
       result.push({
         action: "edit",
         label: "Edit",
@@ -74,7 +91,7 @@ export function CommandPaletteActionPhase({
       });
     }
     return result;
-  }, [item]);
+  }, [item, canEdit]);
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -103,7 +120,9 @@ export function CommandPaletteActionPhase({
         break;
       case "Enter":
         e.preventDefault();
-        onAction(actions[selectedIndex].action);
+        if (!isSkillLoading) {
+          onAction(actions[selectedIndex].action);
+        }
         break;
       case "Backspace":
         e.preventDefault();
@@ -150,28 +169,37 @@ export function CommandPaletteActionPhase({
       </button>
 
       <div className="p-1.5">
-        {actions.map(({ action, label, description, icon }, i) => (
-          <div
-            key={action}
-            className={cn(
-              "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors duration-100",
-              "text-foreground",
-              selectedIndex === i
-                ? "bg-primary-100"
-                : "hover:bg-muted-background"
-            )}
-            onClick={() => onAction(action)}
-            onMouseEnter={() => setSelectedIndex(i)}
-          >
-            <Icon visual={icon} size="sm" className="shrink-0" />
-            <div className="flex flex-col">
-              <span className="text-sm font-medium">{label}</span>
-              <span className="text-xs text-muted-foreground">
-                {description}
-              </span>
-            </div>
+        {isSkillError && (
+          <div role="alert" className="px-3 py-2 text-sm text-muted-foreground">
+            Could not load skill actions. Open details to try again.
           </div>
-        ))}
+        )}
+        {isSkillLoading ? (
+          <LoadingBlock className="m-3 h-12 rounded-lg" />
+        ) : (
+          actions.map(({ action, label, description, icon }, i) => (
+            <div
+              key={action}
+              className={cn(
+                "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors duration-100",
+                "text-foreground",
+                selectedIndex === i
+                  ? "bg-primary-100"
+                  : "hover:bg-muted-background"
+              )}
+              onClick={() => onAction(action)}
+              onMouseEnter={() => setSelectedIndex(i)}
+            >
+              <Icon visual={icon} size="sm" className="shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-sm font-medium">{label}</span>
+                <span className="text-xs text-muted-foreground">
+                  {description}
+                </span>
+              </div>
+            </div>
+          ))
+        )}
       </div>
       <KeyboardHints
         hints={[
