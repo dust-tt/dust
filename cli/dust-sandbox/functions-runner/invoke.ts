@@ -37,6 +37,7 @@ export type InvokePhaseTimingsMs = {
       post: number;
       poll: number;
       offload?: number;
+      dust?: Record<string, unknown>;
       total: number;
     }>;
   };

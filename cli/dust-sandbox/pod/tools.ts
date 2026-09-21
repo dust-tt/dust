@@ -26,7 +26,10 @@
 import { z } from "zod";
 
 import { podEnv } from "./context.ts";
-import { recordToolTiming } from "./tool_timings.ts";
+import {
+  recordToolTiming,
+  type ToolCallServerTimingsMs,
+} from "./tool_timings.ts";
 
 export const TOOLS_API_URL_ENV = "DUST_API_URL";
 export const TOOLS_SANDBOX_TOKEN_ENV = "DUST_SANDBOX_TOKEN";
@@ -200,6 +203,7 @@ const resultSchema = z.object({
       post: z.number(),
       poll: z.number(),
       offload: z.number().optional(),
+      server: z.record(z.unknown()).optional(),
       total: z.number(),
     })
     .optional(),
@@ -417,6 +421,9 @@ export const tools = {
           ...(fromDsbx.offload === undefined
             ? {}
             : { offload: fromDsbx.offload }),
+          ...(fromDsbx.server === undefined
+            ? {}
+            : { dust: fromDsbx.server as ToolCallServerTimingsMs }),
           total: fromDsbx.total,
         });
       } else {
