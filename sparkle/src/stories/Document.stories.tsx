@@ -1,6 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { expect, fn, mocked, userEvent, waitFor, within } from "storybook/test";
+import {
+  expect,
+  fn,
+  mocked,
+  spyOn,
+  userEvent,
+  waitFor,
+  within,
+} from "storybook/test";
 import {
   Document,
   type DocumentProps,
@@ -57,6 +65,49 @@ export const DocumentPage: Story = {
     await expect(canvas.getByRole("status")).toHaveTextContent(/^Saved$/);
     await expect(args.onSave).not.toHaveBeenCalled();
   },
+};
+
+/** @summary Heading links scroll within the document without opening a tab. */
+export const HeadingLinks: Story = {
+  args: {
+    initialContent:
+      "# Project brief\n\n[Résumé Café](#r%C3%A9sum%C3%A9-caf%C3%A9)\n\n## Résumé Café\n\nThe next steps for the team.",
+  },
+  beforeEach: () => {
+    const open = spyOn(window, "open").mockReturnValue(null);
+    return () => open.mockRestore();
+  },
+  play: async ({ canvas, args }) => {
+    const heading = await canvas.findByRole("heading", { name: "Résumé Café" });
+    const scroll = spyOn(heading, "scrollIntoView");
+    const href = window.location.href;
+    const link = canvas.getByRole("link", { name: "Résumé Café" });
+    const bounds = link.getBoundingClientRect();
+
+    try {
+      await userEvent.pointer({
+        keys: "[MouseLeft]",
+        target: link,
+        coords: {
+          clientX: bounds.left + bounds.width / 2,
+          clientY: bounds.top + bounds.height / 2,
+        },
+      });
+
+      await expect(window.open).not.toHaveBeenCalled();
+      await expect(scroll).toHaveBeenCalledWith({ block: "start" });
+      await expect(window.location.href).toBe(href);
+      await expect(args.onSave).not.toHaveBeenCalled();
+    } finally {
+      scroll.mockRestore();
+    }
+  },
+};
+
+/** @summary Read-only documents keep heading navigation inside the current document. */
+export const ReadOnlyHeadingLinks: Story = {
+  ...HeadingLinks,
+  args: { ...HeadingLinks.args, readOnly: true },
 };
 
 /** @summary Insert blocks with slash commands and keyboard navigation. */

@@ -3,6 +3,9 @@ import type { Node } from "@tiptap/pm/model";
 import { Plugin } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
 
+// TipTap's Link extension opens tabs on mouseup at priority 1,000.
+const DOCUMENT_ANCHOR_PRIORITY = 1_001;
+
 const decodeHash = (hash: string) => {
   const value = hash.slice(1);
 
@@ -86,9 +89,14 @@ const followLocalAnchor = (view: EditorView, event: MouseEvent) => {
   return true;
 };
 
+/**
+ * @cc [owner:flvndvd,label:product] document-local-anchor-navigation
+ * Unmodified primary clicks on local heading links MUST scroll within this document
+ * without opening a tab or changing the URL, in both editable and read-only modes.
+ */
 export const DocumentAnchors = Extension.create({
   name: "documentAnchors",
-  priority: 1_000,
+  priority: DOCUMENT_ANCHOR_PRIORITY,
   addProseMirrorPlugins: () => [
     new Plugin({
       state: {
