@@ -6,6 +6,7 @@ import {
 } from "@viz/app/lib/frame-function-hooks";
 import type { FrameRuntimeImportName } from "@viz/app/lib/frame-runtime-imports";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
+import * as dustDocumentV1 from "@viz/components/dust/document/v1";
 import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
 import * as dustSlideshowV2 from "@viz/components/dust/slideshow/v2";
 import * as shadcn from "@viz/components/ui";
@@ -46,6 +47,7 @@ export function createFrameRuntimeImports({
     "motion/react": motion,
     "@dust/slideshow/v1": dustSlideshowV1,
     "@dust/slideshow/v2": dustSlideshowV2,
+    "@dust/document/v1": dustDocumentV1,
     "@dust/react-hooks": {
       SandboxFunctionCallError,
       callFunction: (functionId: string, input?: unknown) =>

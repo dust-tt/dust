@@ -17,12 +17,14 @@
     "isolatedModules": true,
     "jsx": "react",
     "paths": {
-      "@sparkle/*": ["./src/*"]
+      "@sparkle/*": ["./src/*"],
+      "@viz/*": ["../viz/*"]
     },
     "declaration": true,
     "sourceMap": true,
     "declarationMap": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "dist"]
+  // Viz stories render another workspace and are built by Storybook, not the Sparkle library.
+  "exclude": ["node_modules", "dist", "src/stories/viz"]
 }

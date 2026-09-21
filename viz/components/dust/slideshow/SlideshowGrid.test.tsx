@@ -448,7 +448,9 @@ it.each([
 
 it("keeps grid controls and duplicate previews out of PDF exports", () => {
   render(
-    <VizContext.Provider value={{ isPdfMode: true, editText: null }}>
+    <VizContext.Provider
+      value={{ isEditable: false, isPdfMode: true, editText: null }}
+    >
       <Slideshow>
         <Slide>First</Slide>
         <Slide>Last</Slide>

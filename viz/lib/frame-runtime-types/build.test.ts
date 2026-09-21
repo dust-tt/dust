@@ -97,6 +97,39 @@ export default function App() {
     ).toEqual([]);
   });
 
+  it("exposes a document interface without editor or typography controls", () => {
+    expect(
+      check({
+        "index.tsx": `
+import { Document, type DocumentSaveResult } from "@dust/document/v1";
+export default function App() {
+  return <Document className="mx-auto max-w-3xl" initialContent="# Hello" onSave={async (contentJson): Promise<DocumentSaveResult> => ({ ok: true })} />;
+}
+`,
+      })
+    ).toEqual([]);
+    expect(
+      check({
+        "index.tsx": `
+import { Document } from "@dust/document/v1";
+export default () => <Document initialContent="# Hello" fontFamily="Comic Sans" />;
+`,
+      })
+    ).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 2322 })])
+    );
+    expect(
+      check({
+        "index.tsx": `
+import { useEditor } from "@tiptap/react";
+export default () => null;
+`,
+      })
+    ).toEqual(
+      expect.arrayContaining([expect.objectContaining({ code: 2307 })])
+    );
+  });
+
   it.each([
     [
       'import { fakeThing } from "react"; export default () => <div>{fakeThing()}</div>',

@@ -11,5 +11,6 @@ export const FRAME_RUNTIME_IMPORT_NAMES = [
   "motion/react",
   "@dust/slideshow/v1",
   "@dust/slideshow/v2",
+  "@dust/document/v1",
   "@dust/react-hooks",
 ] as const;

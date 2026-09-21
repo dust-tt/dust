@@ -51,7 +51,7 @@ The heading uses an explicit chroma accent (\`text-indigo-700\`). The structural
 
 - Tailwind classes are precompiled. Any arbitrary value in a className, such as \`h-[600px]\`, \`text-[14px]\`, \`bg-[#ff0000]\`, or \`grid-cols-[200px_1fr]\`, fails validation. Use predefined utilities such as \`h-96\`, \`text-sm\`, and \`bg-red-500\`, or use the \`style\` prop for exact values.
 - Use \`bg-background\` and \`bg-card\` for surfaces instead of hardcoded \`bg-white\`.
-- Every frame needs at least one explicit accent color from literal Tailwind chroma classes such as \`indigo-*\`, \`emerald-*\`, \`violet-*\`, or \`sky-*\`, or from a small hex palette constant.
+- Custom Frame UI needs at least one explicit accent color from literal Tailwind chroma classes such as \`indigo-*\`, \`emerald-*\`, \`violet-*\`, or \`sky-*\`, or from a small hex palette constant. Documents using \`@dust/document/v1\` keep Dust's fixed appearance instead.
 - Apply the accent deliberately on headings, primary actions, important metrics, and selected state. Do not leave color only in tiny status pills.
 - \`bg-primary\`, \`text-primary\`, and the default shadcn button style are near-black in this environment. They are not a brand color.
 - \`bg-background\`, \`bg-card\`, \`bg-secondary\`, \`text-foreground\`, and \`text-muted-foreground\` are structural neutrals. They are not a palette by themselves.
@@ -162,8 +162,16 @@ These apply to data from any source: the user's prompt, attached files, tool out
 
 - Default output is a single Frame React component with a default export.
 - Use \`@dust/slideshow/v2\` only when the user explicitly asks for slides, a presentation, a deck, or multi-slide content.
-- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, \`motion/react\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
+- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, \`@dust/document/v1\`, \`motion/react\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
 - No other third-party libraries are installed or available.
+
+### Documents
+
+- Use \`import { Document } from "@dust/document/v1"\`. Dust owns typography and formatting controls: inline formatting appears beside selected text, and typing \`/\` on a new paragraph opens block commands. Do not build another editor, add a permanent formatting toolbar, override document styles, or offer font controls. Use \`className\` for the outer container’s layout and surface styling; keep the inner reading typography intact. Raw TipTap packages are not available to Frame code.
+- Pass the model-provided Markdown as \`initialContent\` with \`contentType="markdown"\`. On reopening, pass the saved document string with \`contentType="json"\`. Mount after the initial content has loaded; do not replace an open draft when a read revalidates.
+- \`onSave(contentJson)\` receives the serialized document string. Persist it unchanged through a Frame function, then return \`{ ok: true }\`; return \`{ ok: false, error: "..." }\` on failure or conflict. The component manages dirty state and retains edits made during a save. Shared views and PDF mode always render read-only, regardless of the supplied props. Without \`onSave\`, or with \`readOnly\`, it cannot be edited.
+- Document autosaves after three seconds without edits, skips unchanged content, and allows only one save in flight. Cmd/Ctrl+S saves immediately. Failed saves keep the draft and pause automatic retries until Retry or Cmd/Ctrl+S. Do not add another autosave timer or Save button. Its status shows when changes are saved; closing before “Saved” can discard pending changes.
+- Live function data is unavailable to standalone PDF rendering. Public sharing is restricted for Frames with active functions. A read-only published snapshot is a separate step; never claim an unsaved draft or a live function result is automatically included in an export.
 `;
 
 export const INTERACTIVE_CONTENT_USE_FILE_EXAMPLES_V2 = `\
