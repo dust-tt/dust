@@ -211,7 +211,9 @@ async function resolveInstructionAttachments(
   const mcpServerViews = mcpServerViewIds.length
     ? await MCPServerViewResource.fetchByIds(auth, mcpServerViewIds)
     : [];
-  const resolvedToolIds = new Set(mcpServerViews.map((v) => v.sId));
+  const resolvedToolIds = new Set(
+    mcpServerViews.filter((v) => v.canRead(auth)).map((v) => v.sId)
+  );
 
   const knowledgeReferences = extractKnowledgeTagReferences(instructions);
   const dataSourceViewIds = uniq(
@@ -221,7 +223,9 @@ async function resolveInstructionAttachments(
     ? await DataSourceViewResource.fetchByIds(auth, dataSourceViewIds)
     : [];
   const dataSourceViewsById = new Map(
-    dataSourceViews.map((dsv) => [dsv.sId, dsv])
+    dataSourceViews
+      .filter((dsv) => dsv.canRead(auth))
+      .map((dsv) => [dsv.sId, dsv])
   );
 
   const attachedKnowledge: SkillAttachedKnowledge[] = [];
