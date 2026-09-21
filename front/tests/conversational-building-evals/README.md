@@ -35,25 +35,16 @@ seed workspace (skills, admin member) from the scenario
 
 ## Test case structure
 
-```typescript
-interface TestCase {
-  scenarioId: string;
-  userMessage: string; // or `conversation: ConversationMessage[]`
-  workspaceSeed: { skills: SeedSkill[] }; // created in the scenario's workspace before the run
-  expectedFinalToolCall:
-    | {
-        type: "suggestSkillUpdate";
-        skillKey: string; // SeedSkill.key: sIds are assigned at seed time
-        edits?: ("instructionEdits" | "agentFacingDescriptionEdit")[];
-      }
-    | { type: "suggestAgentCreation" };
-  judgeCriteria: string; // scenario-specific only, see below
-}
-```
+See `TestCase` in `lib/types.ts`: a scenario is a user message (or a short conversation), a
+`WorkspaceSeed` created before the run, an `expectedFinalToolCall` assertion, and
+scenario-specific `judgeCriteria`. The assertion variants are listed under
+`FinalToolCallAssertion` in the same file and checked in `lib/assertions.ts`.
 
 `SeedSkill.instructions` is markdown; it is converted to block-structured HTML (with
-`data-block-id`) at seed time, so the agent can target blocks like in production. Scenarios and
-assertions refer to skills by `key` because the database assigns the sIds.
+`data-block-id`) at seed time, so the agent can target blocks like in production. `members` are
+regular (non-admin) workspace members the agent can find through `list_workspace_members`, e.g.
+to add them as editors. Scenarios and assertions refer to skills and members by `key` because
+the database assigns the sIds.
 
 ### Writing `judgeCriteria`
 
@@ -95,8 +86,8 @@ RUN_CONVERSATIONAL_BUILDING_EVAL=true VERBOSE=true \
 ## Adding tests
 
 1. Create or edit a suite in `test-suites/` and export it from `test-suites/index.ts`.
-2. To assert on another terminal tool (`suggest_skill_editors`, `suggest_skill_deletion`, …),
-   add a `FinalToolCallAssertion` variant in `lib/types.ts` + `lib/assertions.ts`. Tools added to
+2. To assert on another terminal tool (`suggest_agent_deletion`, …), add a
+   `FinalToolCallAssertion` variant in `lib/types.ts` + `lib/assertions.ts`. Tools added to
    either server are picked up automatically by the tool runner.
 3. Scenarios needing other seeded entities (agents, members, groups) extend `WorkspaceSeed` and
    `lib/seed.ts` with the matching factories.
