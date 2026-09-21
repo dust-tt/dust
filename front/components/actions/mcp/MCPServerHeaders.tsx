@@ -63,7 +63,7 @@ export function MCPServerHeaders() {
         })}
       </div>
       <Button
-        className="mt-4"
+        className="mt-4 self-start"
         variant="outline"
         label="Add Header"
         onClick={() => append({ key: "", value: "" })}
