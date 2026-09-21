@@ -633,7 +633,9 @@ describe("saveAgentConfiguration with pending agent", () => {
       instructionsHtml: null,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
       status: "active",
-      scope: "hidden",
+      // Keep the agent's current scope: this test is about a definition change bumping the version,
+      // not about (un)publishing (which would need the `publish` capability the caller lacks).
+      scope: "visible",
       model: {
         providerId: "anthropic",
         modelId: "claude-sonnet-4-5-20250929",

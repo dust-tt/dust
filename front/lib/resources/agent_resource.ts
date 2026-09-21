@@ -23,6 +23,7 @@ import {
   assertPublishPermissionForScopeChange,
   resolveAgentIdentity,
   resolveExistingAgentAndVersion,
+  syncAgentEditors,
   syncAgentTags,
   validateAgentSaveInputs,
   writeAgentConfigurationRow,
@@ -323,7 +324,8 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  * @cc [owner:philipperolet,label:security;product] agent-publish-capability
  * `publish` on the `agent` type means deciding whether an active agent is visible to the whole
  * workspace. Moving an active agent to scope `visible`, or an active visible agent to `hidden`,
- * MUST require `hasWorkspacePermission("publish", "agent")`, even for its editors. Editing an
+ * MUST require the `publish` capability — resolved per-resource as `auth.can("publish", r)` for a
+ * scope write (see `scope-change-requires-edit-and-publish`) — even for its editors. Editing an
  * agent without changing that, or changing the scope of a draft, pending or archived agent, MUST
  * NOT require it. Protected tags and linking Slack channels to an agent are gated by it too.
  */
@@ -1638,7 +1640,7 @@ export class AgentResource
     if (
       scopeChange &&
       !(
-        (await auth.hasWorkspacePermission("publish", "agent")) &&
+        auth.can("publish", this) &&
         (auth.can("write", this) || auth.can("admin", this))
       )
     ) {
@@ -1668,7 +1670,8 @@ export class AgentResource
       }
     }
     if (editorsChange) {
-      const editorsRes = await this.updateEditorsInPlace(auth, {
+      const editorsRes = await syncAgentEditors(auth, {
+        agentResource: this,
         editors: editorsChange,
       });
       if (editorsRes.isErr()) {
@@ -1686,13 +1689,13 @@ export class AgentResource
   // triggers of non-editors.
   /**
    * @cc [owner:tdraier,label:security;product] scope-change-requires-edit-and-publish
-   * (Un)publishing an agent — changing its scope — requires BOTH the `publish` agent capability AND
-   * `write` or `admin` on the agent. Both MUST be enforced wherever a scope is written
-   * (`updateScopeInPlace`, and `bulkUpdate` per agent): the scope of an agent the caller does not fully
-   * satisfy MUST NOT be written. `write`/`admin` are the per-agent verbs (`auth.can`); `publish` is
-   * the workspace-wide agent capability, resolved either directly
-   * (`auth.hasWorkspacePermission("publish", "agent")`) or as the per-resource verb `auth.can`
-   * folds it into.
+   * (Un)publishing an agent — changing its scope — requires BOTH `publish` AND (`write` or `admin`)
+   * on the agent, all resolved per-resource via `auth.can`. Both MUST be enforced wherever a scope is
+   * written (`updateScopeInPlace`, and `bulkUpdate` per agent): the scope of an agent the caller does
+   * not fully satisfy `auth.can("publish", r) && (auth.can("write", r) || auth.can("admin", r))` MUST
+   * NOT be written. `publish` is a workspace-wide capability that `getGovernanceGrantVerbs` folds
+   * into every instance's verbs, so it resolves per-resource via `auth.can("publish", r)` (grant-
+   * backed, never role-derived).
    */
   /**
    * @cc [owner:tdraier,label:security] hide-disables-non-editor-triggers
@@ -1709,7 +1712,7 @@ export class AgentResource
     }
     if (
       !(
-        (await auth.hasWorkspacePermission("publish", "agent")) &&
+        auth.can("publish", this) &&
         (auth.can("write", this) || auth.can("admin", this))
       )
     ) {
@@ -1748,72 +1751,6 @@ export class AgentResource
     // Hiding an agent removes non-editors' access to it, so their triggers must be disabled.
     if (scope === "hidden" && previousScope === "visible") {
       await AgentResource.disableTriggersForNonEditors(auth, [this]);
-    }
-
-    return new Ok(undefined);
-  }
-
-  // Replaces this agent's editor set in place — no new version: grants the incoming editors and
-  // revokes every current editor omitted from the set (see `complete-editor-set-replaces-grants`),
-  // then disables the triggers of removed editors when the agent is hidden (see
-  // `hide-disables-non-editor-triggers`). A no-op when the set is unchanged, so it is safe to call
-  // unconditionally and does not require permission for an unchanged set; a real change requires
-  // `admin` (see `agent-verbs`).
-  async updateEditorsInPlace(
-    auth: Authenticator,
-    { editors }: { editors: UserType[] }
-  ): Promise<Result<undefined, Error>> {
-    const currentEditors = (await this.listEditors(auth)) ?? [];
-    const currentIds = new Set(currentEditors.map((e) => e.id));
-    const nextIds = new Set(editors.map((e) => e.id));
-    const changed =
-      currentIds.size !== nextIds.size ||
-      [...nextIds].some((id) => !currentIds.has(id));
-    if (!changed) {
-      return new Ok(undefined);
-    }
-    if (!auth.can("admin", this)) {
-      return new Err(
-        new Error("You don't have permission to change this agent's editors.")
-      );
-    }
-
-    const removedEditors = await withTransaction(async (t) => {
-      await this.grantEditors(auth, { editors, transaction: t });
-      const editorsBeforeRevoke = await this.listEditors(auth, {
-        transaction: t,
-      });
-      assert(editorsBeforeRevoke !== null);
-      const editorModelIds = new Set(editors.map((e) => e.id));
-      const removed = editorsBeforeRevoke
-        .filter((editor) => !editorModelIds.has(editor.id))
-        .map((editor) => editor.toJSON());
-      await this.revokeEditors(auth, { editors: removed, transaction: t });
-      return removed;
-    });
-
-    if (removedEditors.length > 0 && this.scope === "hidden") {
-      const triggersToDisableRes =
-        await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
-          agentConfigurationId: this.sId,
-          editorIds: removedEditors.map((editor) => editor.id),
-        });
-      if (triggersToDisableRes.isOk()) {
-        for (const trigger of triggersToDisableRes.value) {
-          const disableResult = await trigger.disable(auth);
-          if (disableResult.isErr()) {
-            logger.error(
-              {
-                workspaceId: auth.getNonNullableWorkspace().sId,
-                agentConfigurationId: this.sId,
-                triggerId: trigger.sId,
-                error: disableResult.error,
-              },
-              `Failed to disable trigger ${trigger.sId} when removing editor from agent ${this.sId}`
-            );
-          }
-        }
-      }
     }
 
     return new Ok(undefined);

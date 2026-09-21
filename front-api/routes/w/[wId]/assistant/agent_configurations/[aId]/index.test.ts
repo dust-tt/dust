@@ -10,8 +10,10 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -337,18 +339,20 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - updated", () =
     );
   });
 
-  it("reports updated true for an in-place scope change with no new version", async () => {
+  it("reports updated true for an in-place editor change with no new version", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest({
       role: "admin",
       method: "PATCH",
     });
     await SpaceFactory.defaults(auth);
 
-    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
-      scope: "visible",
-    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
-    // Same configuration, only the scope flips: applied in place, so `updated` is true but the
+    // Add a second editor to the workspace so the editor set can actually change.
+    const newEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, newEditor, { role: "user" });
+
+    // Same configuration, only the editor set grows: applied in place, so `updated` is true but the
     // version does not move.
     const response = await patch(workspace, agent.sId, {
       assistant: {
@@ -357,7 +361,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - updated", () =
         instructions: agent.instructions,
         pictureUrl: agent.pictureUrl,
         status: "active",
-        scope: "hidden",
+        scope: agent.scope,
         model: {
           providerId: agent.model.providerId,
           modelId: agent.model.modelId,
@@ -366,7 +370,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - updated", () =
         actions: [],
         templateId: null,
         tags: [],
-        editors: [{ sId: user.sId }],
+        editors: [{ sId: user.sId }, { sId: newEditor.sId }],
         skills: [],
         additionalRequestedSpaceIds: [],
       },
@@ -375,7 +379,6 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - updated", () =
     const data = await response.json();
     expect(data.updated).toBe(true);
     expect(data.agentConfiguration.version).toBe(agent.version);
-    expect(data.agentConfiguration.scope).toBe("hidden");
   });
 });
 
