@@ -2,7 +2,7 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
-import { DataTable } from "@dust-tt/sparkle";
+import { Chip, DataTable, Tooltip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 interface SkillSearchTableProps {
@@ -25,7 +25,7 @@ export function SkillSearchTable({
       id: "name",
       header: "Name",
       cell: ({ row: { original: skill } }) => {
-        const SkillAvatar = getSkillAvatarIcon(skill.icon);
+        const SkillAvatar = getSkillAvatarIcon(skill);
         return (
           <DataTable.CellContent>
             <button
@@ -50,12 +50,19 @@ export function SkillSearchTable({
     {
       id: "availability",
       header: "Availability",
-      cell: ({ row: { original: skill } }) => (
-        <DataTable.BasicCellContent
-          label={SKILL_AVAILABILITY_DISPLAY[skill.availability].label}
-          tooltip={SKILL_AVAILABILITY_DISPLAY[skill.availability].tooltip}
-        />
-      ),
+      cell: ({ row: { original: skill } }) => {
+        const display = SKILL_AVAILABILITY_DISPLAY[skill.availability];
+        return (
+          <DataTable.CellContent>
+            <Tooltip
+              label={display.tooltip}
+              trigger={
+                <Chip size="xs" color={display.color} label={display.label} />
+              }
+            />
+          </DataTable.CellContent>
+        );
+      },
       meta: { className: "w-40" },
     },
     {
@@ -71,7 +78,7 @@ export function SkillSearchTable({
           }
         />
       ),
-      meta: { className: "w-24 tabular-nums" },
+      meta: { className: "w-24 font-mono tabular-nums" },
     },
     {
       id: "updatedAt",
