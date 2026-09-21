@@ -1101,7 +1101,7 @@ describe("building_agents_and_skills tools", () => {
         },
         makeExtra(authenticator)
       );
-      expectMcpError(result, "Invalid reasoning effort");
+      expectMcpError(result, 'does not support the "none" reasoning effort');
     });
 
     it("returns an MCPError for a model not available in the workspace", async () => {
