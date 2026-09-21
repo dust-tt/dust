@@ -1,6 +1,7 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { PatchAgentTagsResponseBody } from "@app/types/api/assistant/configuration/agent_tags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -41,6 +42,19 @@ app.patch(
   async (ctx): HandlerResult<PatchAgentTagsResponseBody> => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
+
+    const isSaveAgentConfigurationsDisabled =
+      await KillSwitchResource.isKillSwitchEnabled("save_agent_configurations");
+    if (isSaveAgentConfigurationsDisabled) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "Saving agent configurations is temporarily disabled, try again later.",
+        },
+      });
+    }
 
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,
@@ -103,18 +117,24 @@ app.patch(
       });
     }
 
-    await Promise.all([
-      concurrentExecutor(tagsToAdd, (tag) => tag.addToAgent(auth, agent), {
-        concurrency: 10,
-      }),
-      concurrentExecutor(
-        tagsToRemove,
-        (tag) => tag.removeFromAgent(auth, agent),
-        { concurrency: 10 }
-      ),
-    ]);
+    // The tag change is persisted as a new agent version through `AgentResource.bulkUpdate` (the
+    // single agent-mutation path, which invalidates the cache and reindexes): each delta resolves
+    // against the current tag set, so the other tags are kept, and the write is gated on
+    // `write`/`admin` per the `tags-change-requires-edit` contract.
+    await AgentResource.bulkUpdate(auth, [agent.sId], {
+      addTags: tagsToAdd,
+      removeTags: tagsToRemove,
+    });
 
-    const tags = await TagResource.listForAgent(auth, agent.id);
+    // Re-read the current version to return the tags of the version just created (tag associations
+    // are per-version, so `agent.id` above points at the previous version's row).
+    const updatedAgent = await getAgentConfiguration(auth, {
+      agentId: aId,
+      variant: "light",
+    });
+    const tags = updatedAgent
+      ? await TagResource.listForAgent(auth, updatedAgent.id)
+      : [];
 
     return ctx.json({ tags: tags.map((t) => t.toJSON()) });
   }
