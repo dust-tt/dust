@@ -13,8 +13,9 @@ export async function listCommand(): Promise<Result<void>> {
   }
 
   const multiplexer = await getConfiguredMultiplexer();
-  const sessionActivity =
-    (await multiplexer.getSessionActivityTimes?.()) ?? new Map<string, Date>();
+  const sessionActivity = multiplexer.getSessionActivityTimes
+    ? await multiplexer.getSessionActivityTimes().catch(() => new Map<string, Date>())
+    : new Map<string, Date>();
 
   // Print header
   console.log();
