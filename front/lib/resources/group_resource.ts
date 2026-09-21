@@ -209,7 +209,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }: {
     user: { id: ModelId };
     workspace: { id: ModelId };
-  }) => `groups:v2:user:${user.id}:workspace:${workspace.id}`;
+  }) => `groups:v3:user:${user.id}:workspace:${workspace.id}`;
 
   private static async dangerouslyListUserGroupsForAuthUncached({
     user,
@@ -232,7 +232,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
-  // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
+  // One-hour TTL, so a membership change missed by an invalidation is never served indefinitely.
   private static dangerouslyListUserGroupsForAuthCached = cacheWithRedis(
     ({
       user,
@@ -246,7 +246,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         workspace,
       }),
     GroupResource.groupIdsCacheKeyResolver,
-    { cacheNullValues: false }
+    { cacheNullValues: false, ttlMs: 60 * 60 * 1000 }
   );
 
   private static _invalidateGroupIdsCacheForUser = invalidateCacheWithRedis(
