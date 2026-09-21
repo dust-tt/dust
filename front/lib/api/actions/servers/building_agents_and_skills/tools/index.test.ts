@@ -690,6 +690,7 @@ describe("building_agents_and_skills tools", () => {
           name: "Incident Helper",
           description: "Helps triage incidents.",
           instructions: "Collect impact and timeline.",
+          analysis: "Incident response had no dedicated helper.",
         },
         makeExtra(authenticator)
       );
@@ -723,6 +724,7 @@ describe("building_agents_and_skills tools", () => {
           description: "Helps triage incidents.",
           instructions: "Collect impact and timeline.",
         },
+        analysis: "Incident response had no dedicated helper.",
       });
 
       // The suggestion targets a hidden, pending, instructions-less placeholder
