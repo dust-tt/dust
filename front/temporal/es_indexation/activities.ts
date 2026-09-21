@@ -293,7 +293,7 @@ export async function refreshWorkspaceSearchUsageActivity({
   });
   const updated = await updateSkillSearchActiveUsers({
     workspaceId,
-    skillIds: skills.map((skill) => skill.sId),
+    skills,
     activeUsers: activeUsers.value,
   });
   if (updated.isErr()) {

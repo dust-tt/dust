@@ -6,14 +6,13 @@ const mocks = vi.hoisted(() => ({
   bulk: vi.fn(),
 }));
 
-vi.mock("@app/lib/api/elasticsearch", async () => {
+vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/elasticsearch")>();
   const { Err, Ok } = await import("@app/types/shared/result");
-  const { ElasticsearchError } = await vi.importActual<
-    typeof import("@app/lib/api/elasticsearch")
-  >("@app/lib/api/elasticsearch");
 
   return {
-    ElasticsearchError,
+    ...actual,
     SKILL_SEARCH_ALIAS_NAME: "front.skills",
     withEs: async (
       fn: (client: typeof mocks) => Promise<unknown>
@@ -27,12 +26,16 @@ vi.mock("@app/lib/api/elasticsearch", async () => {
   };
 });
 
+import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
   deleteSkillDocument,
   deleteWorkspaceSkillDocuments,
   indexSkillDocument,
   updateSkillSearchActiveUsers,
 } from "@app/lib/skill_search";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { Err } from "@app/types/shared/result";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 
 const document: SkillSearchDocument = {
@@ -77,6 +80,11 @@ describe("skill search indexing", () => {
   });
 
   it("updates daily usage, resets unused skills, and never upserts", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const skill = await SkillFactory.create(auth);
+    const unused = await SkillFactory.create(auth, { name: "Unused skill" });
     mocks.bulk.mockResolvedValue({
       items: [
         { update: { status: 200 } },
@@ -84,9 +92,9 @@ describe("skill search indexing", () => {
       ],
     });
     const result = await updateSkillSearchActiveUsers({
-      workspaceId: "workspace-1",
-      skillIds: ["skill-1", "skill-2"],
-      activeUsers: { "skill-1": 4 },
+      workspaceId: workspace.sId,
+      skills: [skill, unused],
+      activeUsers: { [skill.sId]: 4 },
     });
     expect(result.isOk()).toBe(true);
     expect(mocks.bulk).toHaveBeenCalledWith({
@@ -94,7 +102,7 @@ describe("skill search indexing", () => {
         {
           update: {
             _index: "front.skills",
-            _id: "workspace-1_skill-1",
+            _id: `${workspace.sId}_${skill.sId}`,
             retry_on_conflict: 3,
           },
         },
@@ -102,7 +110,7 @@ describe("skill search indexing", () => {
         {
           update: {
             _index: "front.skills",
-            _id: "workspace-1_skill-2",
+            _id: `${workspace.sId}_${unused.sId}`,
             retry_on_conflict: 3,
           },
         },
@@ -111,23 +119,27 @@ describe("skill search indexing", () => {
     });
   });
 
-  it("updates all 600 skills in one bulk request", async () => {
+  it("sends all 600 updates in one bulk request", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const skill = await SkillFactory.create(auth);
+    const skills = Array.from({ length: 600 }, () => skill);
     mocks.bulk.mockResolvedValue({ items: [] });
-    const skillIds = Array.from({ length: 600 }, (_, i) => `skill-${i}`);
     const result = await updateSkillSearchActiveUsers({
-      workspaceId: "workspace-1",
-      skillIds,
+      workspaceId: workspace.sId,
+      skills,
       activeUsers: {},
     });
 
     expect(result.isOk()).toBe(true);
     expect(mocks.bulk).toHaveBeenCalledTimes(1);
     expect(mocks.bulk).toHaveBeenCalledWith({
-      operations: skillIds.flatMap((skillId) => [
+      operations: skills.flatMap((skill) => [
         {
           update: {
             _index: "front.skills",
-            _id: `workspace-1_${skillId}`,
+            _id: `${workspace.sId}_${skill.sId}`,
             retry_on_conflict: 3,
           },
         },
@@ -139,7 +151,7 @@ describe("skill search indexing", () => {
   it("skips bulk writes when there are no custom skills", async () => {
     const result = await updateSkillSearchActiveUsers({
       workspaceId: "workspace-1",
-      skillIds: [],
+      skills: [],
       activeUsers: {},
     });
     expect(result.isOk()).toBe(true);
@@ -147,6 +159,11 @@ describe("skill search indexing", () => {
   });
 
   it("propagates usage failures for retry", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const skill = await SkillFactory.create(auth);
+    const otherSkill = await SkillFactory.create(auth, { name: "Other skill" });
     mocks.bulk.mockResolvedValueOnce({
       items: [
         { update: { status: 200 } },
@@ -154,12 +171,36 @@ describe("skill search indexing", () => {
       ],
     });
     const result = await updateSkillSearchActiveUsers({
-      workspaceId: "workspace-1",
-      skillIds: ["skill-1", "skill-2"],
+      workspaceId: workspace.sId,
+      skills: [skill, otherSkill],
       activeUsers: {},
     });
-    expect(result.isErr()).toBe(true);
+    expect(result).toEqual(
+      new Err(
+        new ElasticsearchError(
+          "query_error",
+          "Failed to update 1 skill usage snapshots"
+        )
+      )
+    );
     expect(mocks.bulk).toHaveBeenCalledTimes(1);
+  });
+
+  it("propagates bulk request failures", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const skill = await SkillFactory.create(auth);
+    const error = new ElasticsearchError("connection_error", "Write failed");
+    mocks.bulk.mockRejectedValueOnce(error);
+
+    const result = await updateSkillSearchActiveUsers({
+      workspaceId: workspace.sId,
+      skills: [skill],
+      activeUsers: {},
+    });
+
+    expect(result).toEqual(new Err(error));
   });
 
   it("scopes single-skill deletion by workspace and skill", async () => {

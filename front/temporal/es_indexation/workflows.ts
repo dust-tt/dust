@@ -133,7 +133,6 @@ export async function deleteWorkspaceAgentSearchWorkflow({
 const { listWorkspaceIdsActivity, refreshWorkspaceSearchUsageActivity } =
   proxyActivities<typeof activities>({
     startToCloseTimeout: "10 minutes",
-    retry: { maximumAttempts: 3 },
   });
 
 export async function refreshSearchUsageWorkflow(): Promise<void> {
