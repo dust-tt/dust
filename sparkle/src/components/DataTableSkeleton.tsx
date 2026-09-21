@@ -1,6 +1,7 @@
 import {
   ALIGN_JUSTIFY_CLASS,
   ALIGN_TEXT_CLASS,
+  DATA_TABLE_HEADER_HEIGHT_PX,
   DATA_TABLE_ROW_HEIGHT_PX,
   type DataTableDensity,
   getDataTableColumnPresets,
@@ -87,8 +88,9 @@ export function DataTableSkeleton<
                 <th
                   key={header.id}
                   scope="col"
+                  style={{ height: DATA_TABLE_HEADER_HEIGHT_PX[density] }}
                   className={cn(
-                    "heading-xs p-2 capitalize text-foreground",
+                    "heading-sm px-2 capitalize text-foreground",
                     ALIGN_TEXT_CLASS[presets.headerAlign],
                     presets.headerClassName,
                     header.column.columnDef.meta?.className

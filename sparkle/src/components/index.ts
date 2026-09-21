@@ -106,6 +106,7 @@ export {
   createRadioSelectionColumn,
   createSelectionColumn,
   DATA_TABLE_DENSITIES,
+  DATA_TABLE_HEADER_HEIGHT_PX,
   DATA_TABLE_ROW_HEIGHT_PX,
   DataTable,
   getDataTableColumnPresets,
