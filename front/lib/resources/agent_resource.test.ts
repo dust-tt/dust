@@ -1030,7 +1030,7 @@ describe("AgentResource", () => {
     });
   });
 
-  describe("bulkUpdateModel", () => {
+  describe("bulkUpdate (model)", () => {
     it("saves a new version with the new model, keeping the agent's tools and author", async () => {
       const { authenticator, globalSpace } = testContext;
 
@@ -1069,10 +1069,16 @@ describe("AgentResource", () => {
       ).get(before.agentConfigurationModelId);
       expect(toolsBefore).toHaveLength(1);
 
-      const result = await AgentResource.bulkUpdateModel(
+      const result = await AgentResource.bulkUpdate(
         authenticator,
         [agent.sId],
-        { providerId: "openai", modelId: "gpt-5", reasoningEffort: "medium" }
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5",
+            reasoningEffort: "medium",
+          },
+        }
       );
 
       expect(result).toEqual({
@@ -1114,11 +1120,13 @@ describe("AgentResource", () => {
       );
 
       // First change bumps the version and pins the reasoning effort.
-      const first = await AgentResource.bulkUpdateModel(
-        authenticator,
-        [agent.sId],
-        { providerId: "openai", modelId: "gpt-5", reasoningEffort: "medium" }
-      );
+      const first = await AgentResource.bulkUpdate(authenticator, [agent.sId], {
+        model: {
+          providerId: "openai",
+          modelId: "gpt-5",
+          reasoningEffort: "medium",
+        },
+      });
       expect(first.updatedAgentIds).toEqual([agent.sId]);
 
       const afterFirst = await AgentResource.fetchById(
@@ -1129,10 +1137,16 @@ describe("AgentResource", () => {
       expect(afterFirst.content.version).toBe(agent.version + 1);
 
       // Re-applying the exact same model is a no-op: no new version is created.
-      const second = await AgentResource.bulkUpdateModel(
+      const second = await AgentResource.bulkUpdate(
         authenticator,
         [agent.sId],
-        { providerId: "openai", modelId: "gpt-5", reasoningEffort: "medium" }
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5",
+            reasoningEffort: "medium",
+          },
+        }
       );
       expect(second).toEqual({
         updatedAgentIds: [agent.sId],
@@ -1162,10 +1176,16 @@ describe("AgentResource", () => {
       );
       await archiveAgentConfiguration(authenticator, agent.sId);
 
-      const result = await AgentResource.bulkUpdateModel(
+      const result = await AgentResource.bulkUpdate(
         authenticator,
         [agent.sId],
-        { providerId: "openai", modelId: "gpt-5", reasoningEffort: "medium" }
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5",
+            reasoningEffort: "medium",
+          },
+        }
       );
 
       expect(result).toEqual({

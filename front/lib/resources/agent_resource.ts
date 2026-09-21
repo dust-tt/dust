@@ -33,7 +33,6 @@ import {
   AGENT_RESOURCE_CACHE_VERSION,
   agentResourceCacheKey,
   invalidateAgentResourceCache,
-  invalidateAgentResourceCaches,
 } from "@app/lib/resources/agent_resource_cache";
 import { launchAgentSearchIndexation } from "@app/lib/resources/agent_resource_indexation";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
@@ -105,7 +104,7 @@ const NON_INDEXABLE_AGENT_STATUSES: AgentConfigurationStatus[] = [
 // Each agent in a bulk model update goes through a full save (new version + tools/skills recreated),
 // so keep the parallelism low: enough to keep a large selection responsive, not enough to flood the
 // connection pool.
-const BULK_UPDATE_MODEL_CONCURRENCY = 4;
+const BULK_UPDATE_CONCURRENCY = 4;
 
 // Human workspace admins manage editors but must grant themselves editor access to change the agent.
 // The admin role alone does not read a hidden agent (see the `hidden-agent-content` contract).
@@ -151,10 +150,10 @@ type AgentResourceExtraBlob = {
   content: AgentResourceContent | null;
 };
 
-// The outcome of a bulk mutation (`bulkUpdateScope` writes the scope in place; `bulkUpdateModel`
-// saves a new version): the agents that were written, and the requested ids that were skipped (not
-// resolvable, not editable by the caller, archived, or failed to save). Reported back so callers
-// can tell the UI what was applied.
+// The outcome of a `bulkUpdate`: the agents whose save succeeded (`updatedAgentIds`, a change
+// applied or an already-satisfied no-op), and the requested ids that were skipped (not resolvable,
+// archived, not editable by the caller for the requested change, or failed to save). Reported back
+// so callers can tell the UI what was applied.
 export type BulkAgentUpdateResult = {
   updatedAgentIds: string[];
   skippedAgentIds: string[];
@@ -186,6 +185,16 @@ export type SaveAgentConfigurationParams = {
   // Skill associations to attach atomically with the agent version, in the same transaction.
   // Defaults to none.
   skills?: SkillResource[];
+};
+
+// A partial update applied by `saveConfiguration`/`bulkUpdate`: any subset of an agent's
+// configuration. Only provided properties are considered. `model` may itself be partial — the
+// provided fields are merged into the agent's current model, so a bulk model change can set the
+// provider/model/effort without discarding each agent's other model settings (e.g. temperature).
+export type AgentConfigurationUpdate = Partial<
+  Omit<SaveAgentConfigurationParams, "model">
+> & {
+  model?: Partial<AgentModelConfigurationType>;
 };
 
 // The `SaveAgentConfigurationParams` fields that define a configuration version (everything except
@@ -1061,18 +1070,16 @@ export class AgentResource
     });
   }
 
-  // Rescopes the agents the caller is allowed to (un)publish, emits the `agent.scope_changed` audit
-  // event, and on hide disables the triggers of non-editors. `loadResource` resolves rows
-  // caller-independently so an editor/admin is not blocked on agents backed by spaces they cannot
-  // read ("Show hidden agents"). Enforces the same scope-write rules as `updateScopeInPlace` — it
-  // MUST filter by `auth.can("publish", r) && (auth.can("write", r) || auth.can("admin", r))` (see
-  // `scope-change-requires-edit-and-publish`) and disable non-editor triggers on hide (see
-  // `hide-disables-non-editor-triggers`).
-  static async bulkUpdateScope(
+  // Applies the same partial change to a batch of agents by running each through `saveConfiguration`,
+  // so every rule holds per agent: per-property permissions, the version-or-in-place routing, the
+  // no-op skip, and the scope/editor in-place writes with their audit and trigger side effects.
+  // `loadResource` resolves rows caller-independently so an editor/admin is not blocked on agents
+  // backed by spaces they cannot read ("Show hidden agents"). An archived agent, one the caller may
+  // not change, or one that fails to save is reported as skipped.
+  static async bulkUpdate(
     auth: Authenticator,
     agentIds: string[],
-    scope: Exclude<AgentConfigurationScope, "global">,
-    { transaction }: { transaction?: Transaction } = {}
+    update: AgentConfigurationUpdate
   ): Promise<BulkAgentUpdateResult> {
     if (agentIds.length === 0) {
       return { updatedAgentIds: [], skippedAgentIds: [] };
@@ -1081,91 +1088,38 @@ export class AgentResource
     const workspaceModelId = auth.getNonNullableWorkspace().id;
     const resources = (
       await this.loadResource(workspaceModelId, { sId: agentIds })
-    ).filter(
-      (r) =>
-        r.status !== "archived" &&
-        auth.can("publish", r) &&
-        (auth.can("write", r) || auth.can("admin", r))
+    ).filter((r) => r.status !== "archived");
+
+    const saveResults = await concurrentExecutor(
+      resources,
+      async (r): Promise<{ sId: string; isUpdated: boolean }> => {
+        const res = await r.saveConfiguration(auth, update);
+        if (res.isErr()) {
+          logger.warn(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              agentConfigurationId: r.sId,
+              error: res.error,
+            },
+            "Skipped agent in bulk update"
+          );
+        }
+        return { sId: r.sId, isUpdated: res.isOk() };
+      },
+      { concurrency: BULK_UPDATE_CONCURRENCY }
     );
-    const updatedAgentIds = resources.map((r) => r.sId);
+
+    const updatedAgentIds = saveResults
+      .filter((result) => result.isUpdated)
+      .map((result) => result.sId);
     const updatedIdSet = new Set(updatedAgentIds);
     const skippedAgentIds = agentIds.filter((id) => !updatedIdSet.has(id));
-    if (resources.length === 0) {
-      return { updatedAgentIds, skippedAgentIds };
-    }
-
-    // Snapshot previous scopes before the bulk UPDATE: the static Sequelize update does not touch the
-    // in-memory resources, but the trigger step below depends on which agents transitioned.
-    const previousScopeByAgentId = new Map(
-      resources.map((r) => [r.sId, r.scope])
-    );
-
-    await AgentConfigurationModel.update(
-      { scope },
-      {
-        where: {
-          id: {
-            [Op.in]: resources.map((r) => r.agentConfigurationModelId),
-          },
-          workspaceId: workspaceModelId,
-        },
-        transaction,
-      }
-    );
-
-    // `scope` is a snapshot field, so each updated agent's cached current version changed.
-    await invalidateAgentResourceCaches(
-      workspaceModelId,
-      updatedAgentIds,
-      transaction
-    );
-
-    // Audit and trigger-disable are post-mutation side effects: they must reflect a durable scope
-    // change, so defer them until a supplied transaction commits (run inline when there is none).
-    const applySideEffects = async () => {
-      for (const resource of resources) {
-        void emitAuditLogEvent({
-          auth,
-          action: "agent.scope_changed",
-          targets: [
-            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-            buildAuditLogTarget("agent", resource),
-          ],
-          context: getAuditLogContext(auth),
-          metadata: {
-            agent_name: resource.name,
-            previous_scope:
-              previousScopeByAgentId.get(resource.sId) ?? resource.scope,
-            new_scope: scope,
-          },
-        });
-      }
-
-      // Hiding an agent removes non-editors' access to it, so their triggers must be disabled.
-      if (scope === "hidden") {
-        const transitioningAgents = resources.filter(
-          (r) => previousScopeByAgentId.get(r.sId) === "visible"
-        );
-        if (transitioningAgents.length > 0) {
-          await this.disableTriggersForNonEditors(auth, transitioningAgents);
-        }
-      }
-
-      await this.launchSearchIndexation(auth, updatedAgentIds);
-    };
-
-    if (transaction) {
-      transaction.afterCommit(applySideEffects);
-    } else {
-      await applySideEffects();
-    }
-
     return { updatedAgentIds, skippedAgentIds };
   }
 
   // Builds the save params that recreate this agent's current version as-is — its full configuration,
   // including tags, editors, tools and skills. Override a field on the result to save a new version
-  // that changes only that (e.g. the model in `bulkUpdateModel`). `this` must be `full`.
+  // that changes only that (e.g. the model in a bulk model update). `this` must be `full`.
   async buildResaveParams(
     auth: Authenticator
   ): Promise<SaveAgentConfigurationParams> {
@@ -1214,92 +1168,6 @@ export class AgentResource
       actions,
       skills,
     };
-  }
-
-  // Saves a new version of each editable agent with the model swapped and everything else carried
-  // over unchanged. Self-gated (`write || admin`) then saved via `saveConfiguration`, which re-gates
-  // a model-only change on `write || admin`, so an admin can re-model agents they do not edit.
-  /**
-   * @cc [owner:tdraier,label:security] model-change-requires-edit
-   * Only callers who hold `write` or `admin` on an agent (per `getAllowedVerbs`) may change its
-   * model: `saveConfiguration` MUST gate a model change on `auth.can("write", r) || auth.can("admin",
-   * r)` and `bulkUpdateModel` MUST additionally filter its loaded rows by the same predicate, so the
-   * model of any agent the caller cannot edit MUST NOT be written.
-   */
-  static async bulkUpdateModel(
-    auth: Authenticator,
-    agentIds: string[],
-    model: {
-      providerId: ModelProviderIdType;
-      modelId: ModelIdType;
-      reasoningEffort: ReasoningEffort;
-      responseFormat?: string;
-    }
-  ): Promise<BulkAgentUpdateResult> {
-    if (agentIds.length === 0) {
-      return { updatedAgentIds: [], skippedAgentIds: [] };
-    }
-
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-    const resources = (
-      await this.loadResource(workspaceModelId, { sId: agentIds })
-    ).filter(
-      (r) =>
-        r.status !== "archived" &&
-        (auth.can("write", r) || auth.can("admin", r))
-    );
-    const editableIdSet = new Set(resources.map((r) => r.sId));
-    const skippedAgentIds = agentIds.filter((id) => !editableIdSet.has(id));
-    if (resources.length === 0) {
-      return { updatedAgentIds: [], skippedAgentIds };
-    }
-
-    const saveResults = await concurrentExecutor(
-      resources,
-      async (r): Promise<{ sId: string; isUpdated: boolean }> => {
-        // Only the model changes; `saveConfiguration` reads the current version to fill the rest of
-        // the new version, skips a no-op, and gates a model-only change on `write`/`admin`. The merge
-        // preserves the current model's other fields (temperature, etc.).
-        const params = await r.buildResaveParams(auth);
-        const res = await r.saveConfiguration(auth, {
-          model: {
-            ...params.model,
-            providerId: model.providerId,
-            modelId: model.modelId,
-            reasoningEffort: model.reasoningEffort,
-            ...(model.responseFormat !== undefined
-              ? { responseFormat: model.responseFormat }
-              : {}),
-          },
-        });
-
-        if (res.isErr()) {
-          logger.warn(
-            {
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              agentConfigurationId: r.sId,
-              modelId: model.modelId,
-              error: res.error,
-            },
-            "Skipped agent while setting the model on a batch of agents"
-          );
-        }
-
-        return { sId: r.sId, isUpdated: res.isOk() };
-      },
-      { concurrency: BULK_UPDATE_MODEL_CONCURRENCY }
-    );
-
-    const updatedAgentIds = saveResults
-      .filter((result) => result.isUpdated)
-      .map((result) => result.sId);
-    for (const result of saveResults) {
-      if (!result.isUpdated) {
-        skippedAgentIds.push(result.sId);
-      }
-    }
-
-    return { updatedAgentIds, skippedAgentIds };
   }
 
   private static async disableTriggersForNonEditors(
@@ -1677,13 +1545,19 @@ export class AgentResource
    * MUST fall through to a real save so an edit is never silently dropped.
    */
   /**
+   * @cc [owner:tdraier,label:security] model-change-requires-edit
+   * Only callers who hold `write` or `admin` on an agent may change its model: `saveConfiguration`
+   * MUST gate a model change on `auth.can("write", this) || auth.can("admin", this)`, so the model of
+   * an agent the caller cannot edit MUST NOT be written (including through `bulkUpdate`).
+   */
+  /**
    * @cc [owner:philipperolet,label:security;product] complete-editor-set-replaces-grants
    * Saving an existing agent with its complete editor set MUST revoke every current editor grant
    * omitted from that set.
    */
   async saveConfiguration(
     auth: Authenticator,
-    update: Partial<SaveAgentConfigurationParams>
+    update: AgentConfigurationUpdate
   ): Promise<Result<AgentResource, Error>> {
     // A scope change needs no private content — `scope` is a core field carried by every resource.
     const scopeChange =
@@ -1716,9 +1590,14 @@ export class AgentResource
       const currentParams = await this.buildResaveParams(auth);
       const mergedParams: SaveAgentConfigurationParams = { ...currentParams };
       for (const key of providedDefinitionKeys) {
-        // Overriding a provided definition field; scope/editors stay current (applied in place
+        // Override each provided definition field; `model` is merged into the current one (the
+        // update may be partial) rather than replaced. Scope/editors stay current (applied in place
         // below) and the author defaults to the current version's unless the caller sets it.
-        (mergedParams as Record<string, unknown>)[key] = update[key];
+        if (key === "model") {
+          mergedParams.model = { ...currentParams.model, ...update.model };
+        } else {
+          (mergedParams as Record<string, unknown>)[key] = update[key];
+        }
       }
       mergedParams.authorId = update.authorId ?? currentParams.authorId;
 
@@ -1804,7 +1683,7 @@ export class AgentResource
   // Thin wrapper over `saveConfiguration` kept for existing callers.
   async updateConfiguration(
     auth: Authenticator,
-    params: Partial<SaveAgentConfigurationParams>
+    params: AgentConfigurationUpdate
   ): Promise<Result<AgentResource, Error>> {
     return this.saveConfiguration(auth, params);
   }
@@ -1817,7 +1696,7 @@ export class AgentResource
    * @cc [owner:tdraier,label:security;product] scope-change-requires-edit-and-publish
    * (Un)publishing an agent — changing its scope — requires BOTH the `publish` agent capability AND
    * `write` or `admin` on the agent. Both MUST be enforced wherever a scope is written
-   * (`updateScopeInPlace`, `bulkUpdateScope`): the scope of an agent the caller does not fully
+   * (`updateScopeInPlace`, and `bulkUpdate` per agent): the scope of an agent the caller does not fully
    * satisfy MUST NOT be written. `write`/`admin` are the per-agent verbs (`auth.can`); `publish` is
    * the workspace-wide agent capability, resolved either directly
    * (`auth.hasWorkspacePermission("publish", "agent")`) or as the per-resource verb `auth.can`
