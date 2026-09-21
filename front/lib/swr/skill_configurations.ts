@@ -212,11 +212,11 @@ export function useSearchSkills({
 
   const url = `/api/w/${owner.sId}/skills/search`;
   const body = {
+    ...filters,
     query: debouncedSearchTerm,
     cursor,
     limit,
     permissionFiltering,
-    ...filters,
   };
   const skillsFetcher: Fetcher<SearchSkillsResponseBody> = () =>
     fetcherWithBody([url, body, "POST"]);
