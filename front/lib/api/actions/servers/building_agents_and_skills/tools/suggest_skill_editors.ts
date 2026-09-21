@@ -6,11 +6,10 @@ import type {
 import { formatSkillSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestSkillEditorsArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
+import { fetchCustomSkillById } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
 import { pruneConflictingSkillEditorsSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
-import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isEditorsSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
@@ -33,16 +32,16 @@ export async function suggestSkillEditors(
     );
   }
 
-  if (!isResourceSId("skill", skillId)) {
-    return new Err(
-      new MCPError("Only custom workspace skills can receive suggestions.")
-    );
+  const skillResult = await fetchCustomSkillById(
+    auth,
+    skillId,
+    "Only custom workspace skills can receive suggestions."
+  );
+  if (skillResult.isErr()) {
+    return new Err(new MCPError(skillResult.error.message));
   }
 
-  const skill = await SkillResource.fetchById(auth, skillId);
-  if (!skill) {
-    return new Err(new MCPError("Skill not found."));
-  }
+  const skill = skillResult.value;
 
   const validation = await validateSkillEditorsChange(auth, skill, {
     addUserIds,
