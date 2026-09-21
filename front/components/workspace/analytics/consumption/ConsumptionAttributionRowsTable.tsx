@@ -108,6 +108,7 @@ function AttributionSkeletonCell({
         </div>
       );
     case "credits":
+    case "count":
     case "avgCredits":
     case "activeMembers":
     case "usageVsAverage":
