@@ -12,7 +12,7 @@ import {
   Type,
 } from "lucide-react";
 
-export function getBlockQuery(state: EditorState) {
+export const getBlockQuery = (state: EditorState) => {
   const { selection } = state;
   if (!isTextSelection(selection) || !selection.empty) {
     return null;
@@ -25,7 +25,7 @@ export function getBlockQuery(state: EditorState) {
   const text = $from.parent.textBetween(0, $from.parentOffset);
   const match = /^\/([\w ]*)$/.exec(text);
   return match ? { from: $from.start(), to: $from.pos, query: match[1] } : null;
-}
+};
 
 export const BLOCKS = [
   {

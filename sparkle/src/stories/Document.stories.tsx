@@ -199,11 +199,12 @@ export const FormatSelection: Story = {
   },
 };
 
-/** @summary Save after a pause and avoid requests for unchanged content. */
+/** @summary Configure the autosave delay and avoid requests for unchanged content. */
 export const Autosave: Story = {
   args: {
     initialContent:
       "# A quieter way to write\n\nYour changes save when you pause.",
+    autosaveDebounceMs: 1_000,
   },
   play: async ({ canvas, args }) => {
     const editor = await canvas.findByRole("textbox", {
@@ -211,21 +212,21 @@ export const Autosave: Story = {
     });
     await userEvent.clear(editor);
     await userEvent.type(editor, "A first thought");
-    await new Promise((resolve) => setTimeout(resolve, 1_800));
+    await new Promise((resolve) => setTimeout(resolve, 600));
     await userEvent.keyboard(" becomes a complete sentence.");
-    await new Promise((resolve) => setTimeout(resolve, 1_800));
+    await new Promise((resolve) => setTimeout(resolve, 600));
     await expect(args.onSave).not.toHaveBeenCalled();
     await expect(canvas.getByRole("status")).toHaveTextContent(
       "Changes pending"
     );
     await waitFor(() => expect(args.onSave).toHaveBeenCalledTimes(1), {
-      timeout: 2_500,
+      timeout: 1_000,
     });
     await expect(args.onSave).toHaveBeenCalledWith(
       expect.stringContaining("A first thought becomes a complete sentence.")
     );
     await expect(canvas.getByRole("status")).toHaveTextContent(/^Saved$/);
-    await new Promise((resolve) => setTimeout(resolve, 3_200));
+    await new Promise((resolve) => setTimeout(resolve, 1_200));
     await expect(args.onSave).toHaveBeenCalledTimes(1);
   },
 };
@@ -271,10 +272,10 @@ export const SaveFailure: Story = {
   },
 };
 
-function SlowSave(props: DocumentProps) {
+const SlowSave = (props: DocumentProps) => {
   const [finish, setFinish] = useState<(() => void) | null>(null);
   const [started, setStarted] = useState(0);
-  function save(): Promise<DocumentSaveResult> {
+  const save = (): Promise<DocumentSaveResult> => {
     setStarted((count) => count + 1);
     return new Promise((resolve) =>
       setFinish(() => () => {
@@ -282,7 +283,7 @@ function SlowSave(props: DocumentProps) {
         setFinish(null);
       })
     );
-  }
+  };
   return (
     <>
       <Document {...props} onSave={save} />
@@ -294,7 +295,7 @@ function SlowSave(props: DocumentProps) {
       )}
     </>
   );
-}
+};
 
 /** @summary Preserve new edits while a save is in flight. */
 export const EditWhileSaving: Story = {
@@ -374,7 +375,7 @@ export const NarrowDocument: Story = {
   ...DocumentPage,
   decorators: [
     (Story) => (
-      <div style={{ maxWidth: 400, margin: "0 auto" }}>
+      <div className="mx-auto max-w-100">
         <Story />
       </div>
     ),
