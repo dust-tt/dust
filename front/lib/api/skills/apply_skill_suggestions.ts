@@ -62,6 +62,20 @@ function editsForSuggestion(
   });
 
   switch (data.kind) {
+    case "availability":
+      return new Ok({ availability: data.suggestion.availability });
+
+    case "create":
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          "Skill creation suggestions cannot be applied to the skill yet."
+        )
+      );
+
+    case "delete":
+      return new Ok({ archive: true });
+
     case "edit":
       return new Ok({
         agentFacingDescription:
@@ -72,27 +86,13 @@ function editsForSuggestion(
     case "editors":
       return new Ok({ editors: data.suggestion });
 
+    case "name":
+      return new Ok({ name: data.suggestion.name });
+
     case "user_facing_description":
       return new Ok({
         userFacingDescription: data.suggestion.userFacingDescription,
       });
-
-    case "create":
-      return new Err(
-        new DustError(
-          "invalid_request_error",
-          "Skill creation suggestions cannot be applied to the skill yet."
-        )
-      );
-
-    case "name":
-      return new Ok({ name: data.suggestion.name });
-
-    case "delete":
-      return new Ok({ archive: true });
-
-    case "availability":
-      return new Ok({ availability: data.suggestion.availability });
 
     default:
       assertNever(data);
