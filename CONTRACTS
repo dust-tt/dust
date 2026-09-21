@@ -24,12 +24,8 @@ therefore acceptable.
 Never mutate arrays or objects passed as parameters to functions. Create and return new instances
 instead. This includes avoiding methods like `splice` that mutate arrays in place.
 
-PostCSS plugin callbacks are an exception for the stylesheet AST supplied for transformation:
-PostCSS requires visitors to update that tree through its node API. Configuration and other
-inputs remain subject to the no-mutation rule.
-
-Reviewer: Outside this exception, if you detect parameter mutation in the code (including array
-methods like `splice`), request the author to refactor the code to create and return new instances.
+Reviewer: If you detect parameter mutation in the code (including array methods like `splice`),
+request the author to refactor the code to create and return new instances instead.
 
 Example:
 

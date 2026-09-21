@@ -1,27 +1,26 @@
 # Viz styles
 
-`app/layout.tsx` loads `globals.css` for Frames and both slideshow versions. The global entry point uses the Tailwind V4 PostCSS plugin. `tailwind-v3-compat.css` defines seven aliases and six functional opacity utilities, with the same 21 opacity values per family emitted by the frozen safelist.
+`app/layout.tsx` loads the shared global stylesheet for Frames and both slideshow versions. Tailwind V4 supplies its own preflight, palette, and utility behavior. Viz keeps its existing semantic theme and slideshow styles. There is no V3 compatibility adapter.
 
-`postcss/tailwind-v3-compat.cjs` runs after Tailwind. It adapts the existing opaque color declarations to consume legacy alpha variables, retaining their selectors and cascade position. Color rules reset alpha so hover and other color variants still override a base opacity class. Explicit slash colors, raw semantic variables, and colors without a legacy opacity class retain their normal behavior. The adapter handles both nested development output and optimized production output, including merged base/slash selector lists. Its private CSS marker is removed during the build, and unrelated stylesheets are left alone.
+The default V4 theme is imported with `theme(inline)` so its values compile directly into utilities, avoiding repeated variable-color fallback rules across the broad safelist. Overriding default theme variables at runtime will not retheme those utilities. Viz's configured semantic colors still reference its live light/dark variables.
 
-`tailwind-v3-safelist.css` retains 151,563 generated V3 candidates, including classes absent from the repository: saved Frame source is only available at runtime. This broad vocabulary already existed under V3 and still produces a large global stylesheet. The adapter removes the duplicated compatibility color rules, without reducing that existing coverage.
+`tailwind-v3-safelist.css` retains the 151,563 candidates from the previous V3 build because Frame code arrives at runtime. V4 generates the candidates it recognizes, together with utilities found in Viz's local components. This is not an exhaustive catalog of V4 utilities. Frame instructions continue to require predefined utilities and the `style` prop for exact values.
 
-The [Frame authoring instructions](../../../front/lib/api/actions/servers/interactive_content/instructions_v2.ts) require predefined Tailwind utilities and the React `style` prop for exact values. The frozen safelist preserves this authoring model under V4. It does not cover every new V4 utility or support arbitrary values in generated Frames. Add newly supported utilities to the safelist explicitly so runtime content can use them without depending on local source detection.
+Every production build compares the safelist with class selectors in the actual emitted CSS and writes `public/tailwind-coverage.json`. That generated report contains the missing classes, coverage counts, build ID, and stylesheet hashes. Run `npm run audit:tailwind --workspace viz` to regenerate it from an existing production build.
 
-The reset, palette, blur/ring defaults, and container scales retain Viz's V3 values. Slideshow styles share the utilities layer and precede built-in utilities so their old specificity and source ordering still work. The container query theme holds compile-time thresholds while base variables retain the different V3 width/column scale. The animation plugin remains `tailwindcss-animate`.
+Rendered Frames fetch this small report and observe class usage, including nested Frames, portals, and later DOM updates. Each missing class is reported once per observer to the existing host logger, in batches of at most 50. Search Datadog for `Frame uses unavailable Tailwind classes`, with `classNames`, `fileId`, `workspaceId`, `conversationId`, and `buildId` fields. The host validates the message and checks its iframe source and identifier. Diagnostics never set the Frame's error state.
 
-This does not restore every V3 behavior: V4's generic spacing/divider edges and hidden-child selection, individual transforms and transform resets, outline semantics, logical axes, hover gating, and gradient interpolation still apply. Test representative saved content before rolling out this migration. Sparkle's separate stylesheet and theme are not integrated here.
+This measures usage of dropped safelisted V3 classes, not arbitrary unknown class names or visual changes to classes that still compile. Reports are skipped when unavailable or when their stylesheet hashes do not match the loaded page. An older host or a standalone Viz page without the host logger will not record events. Deploy the host receiver before Viz to collect rollout data.
 
-The baseline is the Tailwind 3.4.19 output documented in [the audit PR](https://github.com/dust-tt/dust/pull/32850). Do not trim the safelist based only on local component usage. The reset is the V3.4.19 preflight generated with Viz's configuration. There is no V3 compiler in the application dependency tree.
+A native V4 upgrade can change existing Frames even when every class name exists. Removed opacity utilities no longer work, while slash syntax such as `bg-black/80` does. Default colors, preflight, blur/ring scales, spacing/divider selectors, transforms, outlines, and hover behavior can differ. Review representative saved Frames and slideshows against [Tailwind's upgrade guide](https://tailwindcss.com/docs/upgrade-guide#changes-from-v3) before rollout. Sparkle integration remains separate.
 
-To validate the production styles, from the repository root:
+To validate the production styles and runtime diagnostics, from the repository root:
 
 ```sh
-npm run test --workspace viz -- postcss/tailwind-v3-compat.test.ts
 NODE_ENV=production npm run build --workspace viz
-npm run start --workspace viz -- --port 3007
+ALLOWED_VISUALIZATION_ORIGIN=http://localhost:3007 npm run start --workspace viz -- --port 3007
 # In another terminal, after installing Playwright Chromium if needed:
 npm run test:styles --workspace viz -- http://localhost:3007
 ```
 
-The browser check exercises every legacy opacity value, all seven aliases, slash/base color ordering, semantic and palette-token colors, visible divider borders, directional borders, child opacity isolation, hover colors, responsive classes, dark mode, and slideshow sizing/centering against the served build. It does not scan persisted Frames or prove equivalence across all class combinations or browsers.
+The browser check exercises slash opacity, V4's handling of removed opacity classes and hidden elements, slideshow typography/spacing/centering, gradients, hover, responsive classes, and dark mode. It also renders runtime code through the RPC wrapper, imports a child Frame, and checks diagnostic messages for initial and dynamically added classes without duplicates. It does not scan persisted Frames or prove visual equivalence across browsers.

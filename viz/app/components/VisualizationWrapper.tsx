@@ -2,6 +2,7 @@
 
 import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
+import { TailwindDiagnostics } from "@viz/app/components/TailwindDiagnostics";
 import { VizContext } from "@viz/app/components/VizContext";
 import { FrameFunctionHooksProvider } from "@viz/app/lib/frame-function-hooks";
 import { createFrameRuntimeImports } from "@viz/app/lib/frame-runtime-scope";
@@ -646,6 +647,7 @@ export function VisualizationWrapper({
       className={`relative font-sans group/viz ${heightClass}`}
       data-viz-ready={vizReady}
     >
+      <TailwindDiagnostics identifier={identifier} />
       {shouldShowControls && (
         <div className="flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
           <button

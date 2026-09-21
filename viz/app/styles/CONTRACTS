@@ -1,9 +1,5 @@
 @cc [owner:flvndvd,label:product] saved-frame-tailwind-coverage
-The Tailwind build MUST emit the frozen V3 utility vocabulary, including utilities absent from local
-components. Saved Frames are loaded at runtime and cannot be scanned during the build.
-
-@cc [owner:flvndvd,label:product] legacy-opacity-overrides-are-opt-in
-A matching legacy opacity class MUST be required to change a color's alpha. Without that class,
-adapted utilities MUST retain their rendered color. Explicit slash alpha and raw semantic colors
-MUST retain their normal behavior. Divider opacity MUST target the same children as V4's divider
-widths. Placeholder opacity MUST target the placeholder pseudo-element.
+The Tailwind build MUST request the frozen V3 utility vocabulary, including utilities absent from
+local components. Saved Frames are loaded at runtime and cannot be scanned during the build.
+Classes no longer emitted by V4 MUST be recorded in the build's coverage report. The migration uses
+V4 rendering behavior and does not promise V3 visual equivalence.

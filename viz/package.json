@@ -8,13 +8,14 @@
   "scripts": {
     "predev": "npm run build:runtime-types",
     "dev": "next dev -p 3007",
-    "build": "npm run build:runtime-types && next build",
+    "build": "npm run build:runtime-types && next build && npm run audit:tailwind",
     "build:runtime-types": "node scripts/build-frame-runtime-types.mjs",
     "start": "next start",
     "test": "vitest --run",
     "format": "biome format --write .",
     "format:check": "biome format .",
-    "test:styles": "node scripts/check-tailwind-compat.mjs"
+    "test:styles": "node scripts/check-tailwind-styles.mjs",
+    "audit:tailwind": "node scripts/audit-tailwind.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -81,7 +82,6 @@
     "@types/papaparse": "^5.3.14",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "color-name": "^1.1.4",
     "playwright": "1.57.0",
     "postcss": "^8",
     "postcss-selector-parser": "^7.1.1",
