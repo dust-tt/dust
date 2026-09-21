@@ -1,3 +1,5 @@
+import LayoutGrid02 from "@dust-tt/sparkle/dist/esm/icons/v2-stroke/LayoutGrid02";
+import XClose from "@dust-tt/sparkle/dist/esm/icons/v2-stroke/XClose";
 import { SlideThumbnail } from "@viz/components/dust/slideshow/SlideThumbnail";
 import {
   SLIDESHOW_BUTTON_CLASS_NAME,
@@ -15,7 +17,6 @@ import {
 } from "@viz/components/ui/drawer";
 import { ScrollArea } from "@viz/components/ui/scroll-area";
 import { cn } from "@viz/lib/utils";
-import { LayoutGrid, X } from "lucide-react";
 import {
   Children,
   type ReactNode,
@@ -111,7 +112,7 @@ export function SlideshowGrid({
             title="Show slide previews"
             tabIndex={isClosing ? -1 : undefined}
           >
-            <LayoutGrid
+            <LayoutGrid02
               className={SLIDESHOW_ICON_CLASS_NAME}
               aria-hidden="true"
             />
@@ -158,13 +159,13 @@ export function SlideshowGrid({
               title="Close slide previews"
             >
               <span className="relative size-5" aria-hidden="true">
-                <X
+                <XClose
                   className={cn(
                     SLIDESHOW_ICON_CLASS_NAME,
                     "absolute inset-0 transition-opacity duration-150 group-data-[state=closed]/drawer-content:opacity-0 motion-reduce:transition-none"
                   )}
                 />
-                <LayoutGrid
+                <LayoutGrid02
                   className={cn(
                     SLIDESHOW_ICON_CLASS_NAME,
                     "absolute inset-0 opacity-0 transition-opacity duration-150 group-data-[state=closed]/drawer-content:opacity-100 motion-reduce:transition-none"

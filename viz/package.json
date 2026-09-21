@@ -18,6 +18,7 @@
     "audit:tailwind": "node scripts/audit-tailwind.mjs"
   },
   "dependencies": {
+    "@dust-tt/sparkle": "^0.7.7",
     "@hookform/resolvers": "^5.2.1",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",

@@ -1,3 +1,5 @@
+import ChevronLeft from "@dust-tt/sparkle/dist/esm/icons/v2-stroke/ChevronLeft";
+import ChevronRight from "@dust-tt/sparkle/dist/esm/icons/v2-stroke/ChevronRight";
 import { FullscreenButton } from "@viz/components/dust/slideshow/FullscreenButton";
 import {
   SLIDESHOW_BUTTON_CLASS_NAME,
@@ -6,7 +8,6 @@ import {
 } from "@viz/components/dust/slideshow/styles";
 import { Button } from "@viz/components/ui/button";
 import { cn } from "@viz/lib/utils";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { RefObject } from "react";
 
 interface SlideshowControlsProps {
