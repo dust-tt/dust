@@ -32,11 +32,13 @@ import {
   formatCredits,
   formatCreditsCompact,
   getTriggerDescription,
+  getTriggerIcon,
+  TRIGGER_KIND_LABELS,
   TRIGGER_POOL_LABELS,
 } from "../data/triggers";
 import type { Trigger, TriggerPool } from "../data/types";
+import { AgentBadgeAvatar } from "./AgentBadgeAvatar";
 import { EmptyState } from "./EmptyState";
-import { TriggerRunAvatar } from "./TriggerRunAvatar";
 
 interface TriggersManageViewProps {
   triggers: Trigger[];
@@ -57,7 +59,12 @@ const POOL_OPTIONS: { value: TriggerPool; label: string }[] = [
   { value: "workspace", label: TRIGGER_POOL_LABELS.workspace },
 ];
 
-/** The agent leads the row, badged with what makes the trigger fire. */
+/**
+ * The agent leads the row, badged with what makes the trigger fire: this is
+ * the table where a schedule has to be told apart from an event, so the badge
+ * says the kind rather than that the work is automated, which the table says
+ * on every row anyway.
+ */
 function AgentCell({ trigger }: { trigger: Trigger }) {
   const agent = getAgentById(trigger.agentId);
 
@@ -67,7 +74,12 @@ function AgentCell({ trigger }: { trigger: Trigger }) {
       tooltipTriggerAsChild
       trigger={
         <div className="flex min-w-0 items-center gap-3">
-          <TriggerRunAvatar trigger={trigger} />
+          <AgentBadgeAvatar
+            agentId={trigger.agentId}
+            fallbackName={trigger.name}
+            badgeIcon={getTriggerIcon(trigger)}
+            badgeLabel={TRIGGER_KIND_LABELS[trigger.kind]}
+          />
           <span className="truncate text-sm">
             {agent?.name ?? "Unknown agent"}
           </span>

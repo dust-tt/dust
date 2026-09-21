@@ -282,7 +282,7 @@ function Inbox() {
     | { kind: "templates" }
     | { kind: "build"; section: BuildSection };
 
-  const [p2View, setP2View] = useState<P2View>({ kind: "inbox" });
+  const [p2View, setP2View] = useState<P2View>({ kind: "inboxAlt" });
 
   // P3: conversation from a space (level 2), a file opened from a pod's
   // files screen, or a side panel opened from the level-1 conversation.
@@ -1246,8 +1246,8 @@ function Inbox() {
   const p2Label = (() => {
     if (p2View.kind === "build")
       return BUILD_SECTION_DISPLAY[p2View.section].label;
-    if (p2View.kind === "inbox") return "Inbox";
-    if (p2View.kind === "inboxAlt") return "Inbox Alt";
+    if (p2View.kind === "inbox") return "Inbox (Old)";
+    if (p2View.kind === "inboxAlt") return "Inbox";
     if (p2View.kind === "requests") return "Requests";
     if (p2View.kind === "conversations") return "Conversations";
     if (p2View.kind === "automations") return "Automated work";
@@ -1831,7 +1831,7 @@ function Inbox() {
     if (p2View.kind === "inbox")
       return (
         <Breadcrumbs
-          items={[{ label: "Inbox", icon: Inbox01 }]}
+          items={[{ label: "Inbox (Old)", icon: Inbox01 }]}
           size="sm"
           hasLighterFont
         />
@@ -1839,7 +1839,7 @@ function Inbox() {
     if (p2View.kind === "inboxAlt")
       return (
         <Breadcrumbs
-          items={[{ label: "Inbox Alt", icon: Inbox01 }]}
+          items={[{ label: "Inbox", icon: Inbox01 }]}
           size="sm"
           hasLighterFont
         />
@@ -2021,18 +2021,8 @@ function Inbox() {
               <NavigationListItem
                 label="Inbox"
                 icon={Inbox01}
-                selected={p2View.kind === "inbox"}
-                count={unreadCount > 0 ? unreadCount : undefined}
-                onClick={() => {
-                  setP2View({ kind: "inbox" });
-                  setP3View(null);
-                  setP4View(null);
-                }}
-              />
-              <NavigationListItem
-                label="Inbox Alt"
-                icon={Inbox01}
                 selected={p2View.kind === "inboxAlt"}
+                count={unreadCount > 0 ? unreadCount : undefined}
                 onClick={() => {
                   setP2View({ kind: "inboxAlt" });
                   setP3View(null);
@@ -2069,6 +2059,16 @@ function Inbox() {
                 selected={p2View.kind === "automations"}
                 onClick={() => {
                   setP2View({ kind: "automations" });
+                  setP3View(null);
+                  setP4View(null);
+                }}
+              />
+              <NavigationListItem
+                label="Inbox (Old)"
+                icon={Inbox01}
+                selected={p2View.kind === "inbox"}
+                onClick={() => {
+                  setP2View({ kind: "inbox" });
                   setP3View(null);
                   setP4View(null);
                 }}
