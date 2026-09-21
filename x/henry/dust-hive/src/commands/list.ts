@@ -1,5 +1,6 @@
 import { getEnvironment, listEnvironments } from "../lib/environment";
 import { logger } from "../lib/logger";
+import { getConfiguredMultiplexer, getSessionName } from "../lib/multiplexer";
 import { Ok, type Result } from "../lib/result";
 import { formatState, getStateInfo } from "../lib/state";
 
@@ -11,12 +12,16 @@ export async function listCommand(): Promise<Result<void>> {
     return Ok(undefined);
   }
 
+  const multiplexer = await getConfiguredMultiplexer();
+  const sessionActivity =
+    (await multiplexer.getSessionActivityTimes?.()) ?? new Map<string, Date>();
+
   // Print header
   console.log();
   console.log(
-    `${"NAME".padEnd(20)} ${"STATE".padEnd(12)} ${"PORTS".padEnd(12)} ${"BRANCH".padEnd(30)}`
+    `${"NAME".padEnd(20)} ${"STATE".padEnd(12)} ${"PORTS".padEnd(12)} ${"BRANCH".padEnd(30)} LAST USED`
   );
-  console.log("-".repeat(76));
+  console.log("-".repeat(87));
 
   for (const name of envNames) {
     const env = await getEnvironment(name);
@@ -27,9 +32,13 @@ export async function listCommand(): Promise<Result<void>> {
     const stateInfo = await getStateInfo(env);
     const stateStr = formatState(stateInfo);
     const portRange = `${env.ports.base}-${env.ports.base + 999}`;
+    const lastUsed = sessionActivity.get(getSessionName(name))?.toLocaleString(undefined, {
+      dateStyle: "short",
+      timeStyle: "short",
+    });
 
     console.log(
-      `${name.padEnd(20)} ${stateStr.padEnd(12)} ${portRange.padEnd(12)} ${env.metadata.workspaceBranch.padEnd(30)}`
+      `${name.padEnd(20)} ${stateStr.padEnd(12)} ${portRange.padEnd(12)} ${env.metadata.workspaceBranch.padEnd(30)} ${lastUsed ?? "-"}`
     );
 
     // Print warnings on next line if any

@@ -92,6 +92,9 @@ export interface MultiplexerAdapter {
    */
   listSessions(): Promise<string[]>;
 
+  /** Get each session's last activity time, when supported */
+  getSessionActivityTimes?(): Promise<Map<string, Date>>;
+
   /**
    * Check if a session with the given name exists
    */
