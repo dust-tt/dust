@@ -335,7 +335,7 @@ export type CachedResourceStore<
   baseFetch: (
     options?: Omit<FindOptions<Attributes<M>>, "attributes">
   ) => Promise<Resource[]>;
-  fetchCached: (
+  fetch: (
     input: Attributes<M>[K],
     transaction?: Transaction
   ) => Promise<Resource | null>;
@@ -467,7 +467,7 @@ export function defineCachedResourceStore<
         options?.transaction ?? undefined
       );
     },
-    fetchCached: async (input, transaction) => {
+    fetch: async (input, transaction) => {
       const [resource] = await fetchMany([input], transaction);
       return resource ?? null;
     },

@@ -306,7 +306,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     wId: string,
     transaction?: Transaction
   ): Promise<WorkspaceResource | null> {
-    return WorkspaceResource.store.fetchCached(wId, transaction);
+    return WorkspaceResource.store.fetch(wId, transaction);
   }
 
   static async fetchByName(name: string): Promise<WorkspaceResource | null> {
