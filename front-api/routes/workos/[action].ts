@@ -222,23 +222,37 @@ async function handleLogin(ctx: Context) {
       organizationIdToUse = organizationId;
     }
 
+    /**
+     * @cc [owner:tdraier,label:security] workos-login-force-sso-only-when-enforced
+     * `handleLogin` MUST only pin the request to the organization's SSO
+     * connection (which forces the IdP) when that workspace enforces SSO. An
+     * `organizationId` on its own only binds the org context (org selection,
+     * cross-cell login) and MUST still let members — including guests on
+     * non-SSO email domains — authenticate with email/password.
+     */
     const enterpriseParams: { organizationId?: string; connectionId?: string } =
       {};
     if (organizationIdToUse) {
       enterpriseParams.organizationId = organizationIdToUse;
 
-      // TODO(workos): We will want to cache this data
-      const connections = await getWorkOS().sso.listConnections({
-        organizationId: organizationIdToUse,
-      });
+      const workspace =
+        await WorkspaceResource.fetchByWorkOSOrganizationId(
+          organizationIdToUse
+        );
+      if (workspace?.ssoEnforced) {
+        // TODO(workos): We will want to cache this data
+        const connections = await getWorkOS().sso.listConnections({
+          organizationId: organizationIdToUse,
+        });
 
-      const connection =
-        connections.data.length > 0
-          ? connections.data.find((c) => c.state === "active")
-          : undefined;
+        const connection =
+          connections.data.length > 0
+            ? connections.data.find((c) => c.state === "active")
+            : undefined;
 
-      if (connection) {
-        enterpriseParams.connectionId = connection.id;
+        if (connection) {
+          enterpriseParams.connectionId = connection.id;
+        }
       }
     }
 
