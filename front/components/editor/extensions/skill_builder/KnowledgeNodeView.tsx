@@ -102,7 +102,7 @@ function KnowledgeDisplayComponent({
 
   if (isFetchingNode || (needsFetch && !isFullKnowledgeItem(item))) {
     return (
-      <Chip label={item.label} color="primary" size="xs">
+      <Chip label={item.label} color="primary" size="xs" className="max-w-44">
         <Spinner size="xs" />
       </Chip>
     );
