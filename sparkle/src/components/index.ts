@@ -97,10 +97,16 @@ export {
   ConversationMessageTitle,
 } from "./ConversationMessages";
 export { Counter } from "./Counter";
-export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
+export type {
+  DataTableDensity,
+  DataTableMoreButtonProps,
+  MenuItem,
+} from "./DataTable";
 export {
   createRadioSelectionColumn,
   createSelectionColumn,
+  DATA_TABLE_DENSITIES,
+  DATA_TABLE_ROW_HEIGHT_PX,
   DataTable,
   getDataTableColumnPresets,
   ScrollableDataTable,

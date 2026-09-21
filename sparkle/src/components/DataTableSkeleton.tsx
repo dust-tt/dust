@@ -1,4 +1,8 @@
-import { getDataTableColumnPresets } from "@sparkle/components/DataTable";
+import {
+  DATA_TABLE_ROW_HEIGHT_PX,
+  type DataTableDensity,
+  getDataTableColumnPresets,
+} from "@sparkle/components/DataTable";
 import { Icon } from "@sparkle/components/Icon";
 import { ChevronSelectorVertical } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
@@ -35,8 +39,10 @@ export interface DataTableSkeletonProps<
   SkeletonCell: ComponentType<DataTableSkeletonCellProps<NoInfer<TColumnId>>>;
   /** Number of placeholder rows. Defaults to 10. */
   rowCount?: number;
-  /** Row height in pixels; match the loaded table. Defaults to 48. */
+  /** Row height in pixels; match the loaded table. Defaults to the `density` height (48). */
   rowHeight?: number;
+  /** Density of the loaded table; sets the row height unless `rowHeight` is given. */
+  density?: DataTableDensity;
 }
 
 /**
@@ -55,7 +61,8 @@ export function DataTableSkeleton<
   columns,
   SkeletonCell,
   rowCount = 10,
-  rowHeight = 48,
+  density = "default",
+  rowHeight = DATA_TABLE_ROW_HEIGHT_PX[density],
 }: DataTableSkeletonProps<TData, TValue, TColumnId>) {
   const table = useReactTable({
     data: [],
