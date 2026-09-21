@@ -1,4 +1,8 @@
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
+import {
+  buildFrameFunctionsTarArchive,
+  parseFrameFunctionsTarArchive,
+} from "@app/lib/api/frames/functions_archive";
 import { getFramePublishLockName } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationFunctionArtifact } from "@app/lib/api/frames/publication_storage";
 import {
@@ -32,16 +36,11 @@ import {
 import { FramePublicationDescriptorSchema } from "@app/types/api/frame_publication";
 import {
   getFramePublicationDescriptorPath,
-  getFramePublicationFunctionBundlePath,
   getFramePublicationFunctionsArchivePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import {
-  frameContentType,
-  frameV2ContentType,
-  sandboxFunctionContentType,
-} from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -240,27 +239,23 @@ describe("storeFramePublication", () => {
       frameId: frame.sId,
       publicationId: result.value.publicationId,
     };
-    const bundlePath = getFramePublicationFunctionBundlePath({
-      ...identity,
-      functionName: "add-task",
-    });
     const archivePath = getFramePublicationFunctionsArchivePath(identity);
     const savedPaths = fileStorageMock.saveFileCalls.map(
       ({ filePath }) => filePath
     );
 
-    expect(savedPaths).toContain(bundlePath);
+    expect(savedPaths.some((p) => p.endsWith("/functions/add-task.ts"))).toBe(
+      false
+    );
     expect(savedPaths).toContain(archivePath);
     expect(savedPaths.at(-1)).toBe(getFramePublicationDescriptorPath(identity));
-    expect(fileStorageMock.getObject(bundlePath)).toBe(
-      functionArtifacts[0].bundleCode
+    const archiveObject = fileStorageMock.getObject(archivePath);
+    expect(archiveObject).toBeDefined();
+    await expect(
+      parseFrameFunctionsTarArchive(Buffer.from(archiveObject!))
+    ).resolves.toEqual(
+      new Map([["add-task", functionArtifacts[0].bundleCode]])
     );
-    expect(fileStorageMock.getObject(archivePath)).toBeTruthy();
-    expect(
-      fileStorageMock.saveFileCalls.find(
-        ({ filePath }) => filePath === bundlePath
-      )?.contentType
-    ).toBe(sandboxFunctionContentType);
     expect(
       fileStorageMock.saveFileCalls.find(
         ({ filePath }) => filePath === archivePath
@@ -756,14 +751,18 @@ describe("activateFramePublication", () => {
     if (stored.isErr()) {
       return;
     }
+    const archivePath = getFramePublicationFunctionsArchivePath({
+      workspaceId,
+      frameId: frame.sId,
+      publicationId: stored.value.publicationId,
+    });
     fileStorageMock.setObject(
-      getFramePublicationFunctionBundlePath({
-        workspaceId,
-        frameId: frame.sId,
-        publicationId: stored.value.publicationId,
-        functionName: "add-task",
-      }),
-      "export const tampered = true;"
+      archivePath,
+      (
+        await buildFrameFunctionsTarArchive([
+          { name: "add-task", content: "export const tampered = true;" },
+        ])
+      ).toString("utf8")
     );
 
     const result = await activateFramePublication(auth, {
@@ -1073,7 +1072,7 @@ describe("publishFramePublication", () => {
       description: "Track tasks.",
     });
     fileStorageMock.setFileSaveFails((filePath) =>
-      filePath.endsWith("/functions/add-task.ts")
+      filePath.endsWith("/functions.tar")
     );
 
     await expect(

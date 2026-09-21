@@ -216,6 +216,7 @@
     "swr": "^2.2.4",
     "tailwind-merge": "^2.2.1",
     "tailwindcss": "^4.3.0",
+    "tar": "^7.5.22",
     "tldts": "^7.0.27",
     "tmp": "^0.2.5",
     "tsconfig-paths-webpack-plugin": "^4.1.0",

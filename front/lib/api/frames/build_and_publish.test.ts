@@ -23,7 +23,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FrameManifestSchema } from "@app/types/api/frame_manifest";
 import {
-  getFramePublicationFunctionBundlePath,
+  getFramePublicationFunctionsArchivePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -389,16 +389,16 @@ describe("buildAndPublishFramePublication", () => {
     const savedPaths = fileStorageMock.saveFileCalls.map(
       ({ filePath }) => filePath
     );
-    for (const functionName of ["add-task", "list-tasks"]) {
-      expect(savedPaths).toContain(
-        getFramePublicationFunctionBundlePath({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          frameId: frame.sId,
-          publicationId,
-          functionName,
-        })
-      );
-    }
+    expect(savedPaths).toContain(
+      getFramePublicationFunctionsArchivePath({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        frameId: frame.sId,
+        publicationId,
+      })
+    );
+    expect(
+      savedPaths.some((filePath) => /\/functions\/[^/]+\.ts$/.test(filePath))
+    ).toBe(false);
     expect(savedPaths.some((filePath) => filePath.includes("/source/"))).toBe(
       false
     );
