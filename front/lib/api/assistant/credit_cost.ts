@@ -225,7 +225,9 @@ export async function computeAndStoreAgentMessageCredits(
     let burnDurationHours = 0;
 
     if (featureFlags.includes("fixed_window_fair_use")) {
-      const bounds = makeFairUseFixedWindowBounds();
+      const bounds = makeFairUseFixedWindowBounds(
+        assistantLimits.maxAwuCreditsTimeframe
+      );
       if (deltaMicroCredits > 0) {
         await addFixedWindowCount({
           key: fairUseKey,

@@ -408,7 +408,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   fixed_window_fair_use: {
     description:
-      "Enforce the per-user fair-use AWU credit limit over a fixed calendar week (Monday 00:00 to next Monday 00:00 UTC) instead of the default rolling window. The counter resets at each week boundary rather than sliding continuously.",
+      "Enforce the per-user fair-use AWU credit limit over a fixed UTC calendar window matching the plan timeframe (day, ISO week Monday→Monday, or calendar month) instead of the default rolling window. The counter resets at each window boundary rather than sliding continuously.",
     stage: "self_serve",
     owner: "tdraier",
   },

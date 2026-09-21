@@ -181,8 +181,9 @@ export async function getFairUseAwuCreditsStatus({
   workspace: LightWorkspaceType;
   user: UserType;
   plan: PlanType | null;
-  // When true (`fixed_window_fair_use`), read the fixed calendar-week counter
-  // instead of the rolling window, and report the week boundary as the reset.
+  // When true (`fixed_window_fair_use`), read the fixed UTC-calendar counter for
+  // the plan timeframe instead of the rolling window, and report the window
+  // boundary as the reset.
   useFixedWindow?: boolean;
 }): Promise<FairUseAwuCreditsStatus> {
   if (!plan) {
@@ -208,7 +209,7 @@ export async function getFairUseAwuCreditsStatus({
   );
 
   if (useFixedWindow) {
-    const bounds = makeFairUseFixedWindowBounds();
+    const bounds = makeFairUseFixedWindowBounds(timeframe);
     const nextResetAt = new Date(bounds.windowEndMs).toISOString();
     const countResult = await getFixedWindowCount({ key, bounds });
     if (countResult.isErr()) {
@@ -301,7 +302,7 @@ export async function getFairUseAwuCreditsUsedCountsByUser({
   workspace: LightWorkspaceType;
   users: UserType[];
   plan: PlanType | null;
-  // Mirror `getFairUseAwuCreditsStatus`: read the fixed calendar-week counter so
+  // Mirror `getFairUseAwuCreditsStatus`: read the fixed UTC-calendar counter so
   // the sort key matches the displayed value.
   useFixedWindow?: boolean;
 }): Promise<Map<string, number>> {
@@ -320,7 +321,7 @@ export async function getFairUseAwuCreditsUsedCountsByUser({
   );
 
   if (useFixedWindow) {
-    const bounds = makeFairUseFixedWindowBounds();
+    const bounds = makeFairUseFixedWindowBounds(timeframe);
     const entries = await Promise.all(
       Array.from(keyByUserId, async ([sId, key]) => {
         const countResult = await getFixedWindowCount({ key, bounds });

@@ -3129,7 +3129,7 @@ async function isMessagesLimitReached(
     const result = featureFlags.includes("fixed_window_fair_use")
       ? await getFixedWindowCount({
           key: fairUseKey,
-          bounds: makeFairUseFixedWindowBounds(),
+          bounds: makeFairUseFixedWindowBounds(maxAwuCreditsTimeframe),
         })
       : await getWeightedRateLimiterCount({
           key: fairUseKey,

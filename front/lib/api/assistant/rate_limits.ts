@@ -14,6 +14,7 @@ import type {
   MaxMessagesTimeframeType,
 } from "@app/types/plan";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
@@ -93,28 +94,58 @@ export const makeFairUseAwuCreditsRateLimitKeyForUser = (
 };
 
 // Fixed-window bounds for the per-user fair-use AWU cap when
-// `fixed_window_fair_use` is enabled: a fixed calendar week from Monday 00:00
-// UTC to the next Monday 00:00 UTC. Pure — both the enforcer (`conversation.ts`)
+// `fixed_window_fair_use` is enabled: a plain UTC calendar window matching the
+// plan's `maxAwuCreditsTimeframe` (day, ISO week Monday→Monday, or calendar
+// month; `lifetime` never rolls). Pure — both the enforcer (`conversation.ts`)
 // and the recorder (`credit_cost.ts`) derive the window from the same clock so
-// they hit the same Redis key. Labelled by the week's Monday so each week is a
+// they hit the same Redis key. Labelled by the window start so each window is a
 // distinct key that expires on its own. Shares the base key with the rolling
 // path (`makeFairUseAwuCreditsRateLimitKeyForUser`); the `:<label>` suffix and
 // the different Redis type (INCRBY string vs sorted set) keep the two counters
 // physically separate, so flipping the flag never collides with existing data.
 export const makeFairUseFixedWindowBounds = (
+  timeframe: MaxAwuCreditsTimeframeType,
   now: Date = new Date()
 ): FixedWindowBounds => {
-  const start = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-  );
-  // getUTCDay: 0=Sunday..6=Saturday. Rewind to the most recent Monday.
-  const daysSinceMonday = (start.getUTCDay() + 6) % 7;
-  start.setUTCDate(start.getUTCDate() - daysSinceMonday);
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const date = now.getUTCDate();
 
-  const end = new Date(start);
-  end.setUTCDate(start.getUTCDate() + 7);
-
-  return { label: `week-${start.getTime()}`, windowEndMs: end.getTime() };
+  switch (timeframe) {
+    case "day": {
+      const start = Date.UTC(year, month, date);
+      // Date.UTC normalizes day/month/year overflow, so no manual carry needed.
+      return {
+        label: `day-${start}`,
+        windowEndMs: Date.UTC(year, month, date + 1),
+      };
+    }
+    case "week": {
+      // getUTCDay: 0=Sunday..6=Saturday. Rewind to the most recent Monday.
+      const daysSinceMonday =
+        (new Date(Date.UTC(year, month, date)).getUTCDay() + 6) % 7;
+      const start = Date.UTC(year, month, date - daysSinceMonday);
+      return {
+        label: `week-${start}`,
+        windowEndMs: Date.UTC(year, month, date - daysSinceMonday + 7),
+      };
+    }
+    case "month": {
+      const start = Date.UTC(year, month, 1);
+      return {
+        label: `month-${start}`,
+        windowEndMs: Date.UTC(year, month + 1, 1),
+      };
+    }
+    case "lifetime": {
+      // Never rolls: a single stable bucket whose expiry is far enough out that
+      // the counter effectively lasts the seat's lifetime (mirrors the spend-cap
+      // lifetime bounds). Reset clears it explicitly via `expireRateLimiterKey`.
+      return { label: "lifetime", windowEndMs: Date.UTC(2100, 0, 1) };
+    }
+    default:
+      assertNever(timeframe);
+  }
 };
 
 export const PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK = 25;
@@ -402,7 +433,9 @@ export async function resetFairUseAwuCreditsRateLimitForUser({
     return resetResult;
   }
 
-  const fixedWindowBounds = makeFairUseFixedWindowBounds();
+  const fixedWindowBounds = makeFairUseFixedWindowBounds(
+    maxAwuCreditsTimeframe
+  );
   const fixedWindowResetResult = await expireRateLimiterKey({
     key: `${baseKey}:${fixedWindowBounds.label}`,
   });
