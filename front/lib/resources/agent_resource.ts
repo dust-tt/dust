@@ -187,7 +187,7 @@ export type SaveAgentConfigurationParams = {
   skills?: SkillResource[];
 };
 
-// A partial update applied by `saveConfiguration`/`bulkUpdate`: any subset of an agent's
+// A partial update applied by `updateConfiguration`/`bulkUpdate`: any subset of an agent's
 // configuration. Only provided properties are considered. `model` may itself be partial — the
 // provided fields are merged into the agent's current model, so a bulk model change can set the
 // provider/model/effort without discarding each agent's other model settings (e.g. temperature).
@@ -199,7 +199,7 @@ export type AgentConfigurationUpdate = Partial<
 
 // The `SaveAgentConfigurationParams` fields that define a configuration version (everything except
 // `scope`/`editors`, which are applied in place, and `authorId`, which is version metadata). A save
-// that changes any of these creates a new version; see `saveConfiguration`/`agent-edit-in-place`.
+// that changes any of these creates a new version; see `updateConfiguration`/`agent-edit-in-place`.
 const AGENT_CONFIGURATION_KEYS = [
   "name",
   "description",
@@ -331,7 +331,7 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  * @cc [owner:tdraier,label:security] agent-edit-requires-write
  * Creating a new configuration version of an existing agent by changing a definition field other
  * than the model (see `agent-edit-in-place`) MUST require `write` on that agent
- * (`auth.can("write", this)`), enforced inside the resource (`saveConfiguration`) — callers may
+ * (`auth.can("write", this)`), enforced inside the resource (`updateConfiguration`) — callers may
  * double-check, but MUST NOT be the sole gate. `read` alone (any member can read a visible agent)
  * MUST NOT allow editing the definition. For human and system-key callers the workspace `admin` role
  * alone (which grants `admin`, not `write`, on agents they do not edit) MUST NOT allow editing a
@@ -1070,7 +1070,7 @@ export class AgentResource
     });
   }
 
-  // Applies the same partial change to a batch of agents by running each through `saveConfiguration`,
+  // Applies the same partial change to a batch of agents by running each through `updateConfiguration`,
   // so every rule holds per agent: per-property permissions, the version-or-in-place routing, the
   // no-op skip, and the scope/editor in-place writes with their audit and trigger side effects.
   // `loadResource` resolves rows caller-independently so an editor/admin is not blocked on agents
@@ -1093,7 +1093,7 @@ export class AgentResource
     const saveResults = await concurrentExecutor(
       resources,
       async (r): Promise<{ sId: string; isUpdated: boolean }> => {
-        const res = await r.saveConfiguration(auth, update);
+        const res = await r.updateConfiguration(auth, update);
         if (res.isErr()) {
           logger.warn(
             {
@@ -1546,7 +1546,7 @@ export class AgentResource
    */
   /**
    * @cc [owner:tdraier,label:security] model-change-requires-edit
-   * Only callers who hold `write` or `admin` on an agent may change its model: `saveConfiguration`
+   * Only callers who hold `write` or `admin` on an agent may change its model: `updateConfiguration`
    * MUST gate a model change on `auth.can("write", this) || auth.can("admin", this)`, so the model of
    * an agent the caller cannot edit MUST NOT be written (including through `bulkUpdate`).
    */
@@ -1555,10 +1555,10 @@ export class AgentResource
    * Saving an existing agent with its complete editor set MUST revoke every current editor grant
    * omitted from that set.
    */
-  async saveConfiguration(
+  async updateConfiguration(
     auth: Authenticator,
     update: AgentConfigurationUpdate
-  ): Promise<Result<AgentResource, Error>> {
+  ): Promise<Result<{ resource: AgentResource; changed: boolean }, Error>> {
     // A scope change needs no private content — `scope` is a core field carried by every resource.
     const scopeChange =
       update.scope !== undefined && update.scope !== this.scope
@@ -1619,7 +1619,7 @@ export class AgentResource
     if (!versionParams && !scopeChange && !editorsChange) {
       // Nothing changed: no version, no in-place write, no permission check (see
       // `save-skips-noop-version`).
-      return new Ok(this);
+      return new Ok({ resource: this, changed: false });
     }
 
     // Check every required permission up front so a save never partially succeeds.
@@ -1677,15 +1677,7 @@ export class AgentResource
     }
 
     const updated = await AgentResource.fetchById(auth, this.sId);
-    return new Ok(updated ?? this);
-  }
-
-  // Thin wrapper over `saveConfiguration` kept for existing callers.
-  async updateConfiguration(
-    auth: Authenticator,
-    params: AgentConfigurationUpdate
-  ): Promise<Result<AgentResource, Error>> {
-    return this.saveConfiguration(auth, params);
+    return new Ok({ resource: updated ?? this, changed: true });
   }
 
   // Changes this agent's scope in place — no new version. A no-op when the scope is unchanged, so it
@@ -1832,7 +1824,7 @@ export class AgentResource
   // managed transaction, so a failure anywhere rolls the whole save back before it is returned as
   // `Err`. This is the low-level version writer and ALWAYS creates a version; it does NOT change
   // scope or an existing agent's editor set (those are applied in place, see `agent-edit-in-place`).
-  // The version-or-not decision lives in `saveConfiguration`; `makeNew` uses this to create an
+  // The version-or-not decision lives in `updateConfiguration`; `makeNew` uses this to create an
   // agent's first version. (In `NODE_ENV=test` the ambient CLS transaction is reused with no
   // savepoint, so this rollback is not exercised by the suite — the test's own transaction rolls back
   // at teardown.)

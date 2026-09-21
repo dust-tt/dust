@@ -343,13 +343,14 @@ async function processTriggers({
 
 // The saved configuration returned to the caller, plus out-of-band markers about the save that are
 // not part of the configuration itself: `_warning` for a partial success (Slack linking still
-// running) and `_versionCreated` (false when the save was a no-op — nothing changed).
+// running) and `_updated` (false when the save was a no-op — nothing changed; true also for an
+// in-place scope/editor change that creates no new version).
 export type SubmittedAgentConfiguration = (
   | LightAgentConfigurationType
   | AgentConfigurationType
 ) & {
   _warning?: "slack_channel_linking_in_progress";
-  _versionCreated?: boolean;
+  _updated?: boolean;
 };
 
 export async function submitAgentBuilderForm({
@@ -520,14 +521,14 @@ export async function submitAgentBuilderForm({
 
     const result: {
       agentConfiguration: LightAgentConfigurationType | AgentConfigurationType;
-      versionCreated?: boolean;
+      updated?: boolean;
     } = await response.json();
 
-    // A create always yields a new version; only the PATCH (update) endpoint reports no-op saves.
-    const versionCreated = result.versionCreated ?? true;
+    // A create always persists a change; only the PATCH (update) endpoint reports no-op saves.
+    const updated = result.updated ?? true;
     const agentConfiguration: SubmittedAgentConfiguration = {
       ...result.agentConfiguration,
-      _versionCreated: versionCreated,
+      _updated: updated,
     };
 
     // Track agent creation (only for new agents, not updates)
