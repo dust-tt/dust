@@ -1199,11 +1199,11 @@ describe("AgentResource", () => {
   });
 
   describe("bulkUpdate (tags)", () => {
-    async function currentTagSIds(
+    async function currentTagIds(
       auth: Authenticator,
-      sId: string
+      agentId: string
     ): Promise<string[]> {
-      const agent = await AgentResource.fetchById(auth, sId);
+      const agent = await AgentResource.fetchById(auth, agentId);
       assert(agent);
       const tags = await TagResource.listForAgent(
         auth,
@@ -1240,7 +1240,7 @@ describe("AgentResource", () => {
       assert(after?.isFull());
       // A new version was created and both tags are attached to it.
       expect(after.content.version).toBe(agent.version + 1);
-      expect(await currentTagSIds(authenticator, agent.sId)).toEqual(
+      expect(await currentTagIds(authenticator, agent.sId)).toEqual(
         [existingTag.sId, newTag.sId].sort()
       );
     });
@@ -1269,7 +1269,7 @@ describe("AgentResource", () => {
       const after = await AgentResource.fetchById(authenticator, agent.sId);
       assert(after?.isFull());
       expect(after.content.version).toBe(agent.version + 1);
-      expect(await currentTagSIds(authenticator, agent.sId)).toEqual([]);
+      expect(await currentTagIds(authenticator, agent.sId)).toEqual([]);
     });
 
     it("does not create a new version when the tag is already present", async () => {
@@ -1325,7 +1325,7 @@ describe("AgentResource", () => {
         updatedAgentIds: [agent.sId],
         skippedAgentIds: [],
       });
-      expect(await currentTagSIds(authenticator, agent.sId)).toEqual([tag.sId]);
+      expect(await currentTagIds(authenticator, agent.sId)).toEqual([tag.sId]);
     });
   });
 

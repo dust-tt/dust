@@ -24,11 +24,11 @@ function batchUpdateTags(workspace: { sId: string }, body: unknown) {
 
 // Tags are attached to a specific configuration version, so a batch tag edit creates a new version
 // per agent; read the tags of the current version by re-fetching the agent.
-async function currentTagSIds(
+async function currentTagIds(
   auth: Authenticator,
-  sId: string
+  agentId: string
 ): Promise<string[]> {
-  const agent = await AgentResource.fetchById(auth, sId);
+  const agent = await AgentResource.fetchById(auth, agentId);
   if (!agent) {
     return [];
   }
@@ -81,8 +81,8 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
 
     // Both agents end up with only the added tag: the removal took, and re-adding a tag the first
     // agent already had is not duplicated.
-    expect(await currentTagSIds(auth, firstAgent.sId)).toEqual([tagToAdd.sId]);
-    expect(await currentTagSIds(auth, secondAgent.sId)).toEqual([tagToAdd.sId]);
+    expect(await currentTagIds(auth, firstAgent.sId)).toEqual([tagToAdd.sId]);
+    expect(await currentTagIds(auth, secondAgent.sId)).toEqual([tagToAdd.sId]);
 
     // The change is a new version, not an in-place mutation of the current one.
     const after = await AgentResource.fetchById(auth, firstAgent.sId);
@@ -129,7 +129,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
       updatedAgentIds: [agent.sId],
       skippedAgentIds: [],
     });
-    expect(await currentTagSIds(agentOwnerAuth, agent.sId)).toEqual([tag.sId]);
+    expect(await currentTagIds(agentOwnerAuth, agent.sId)).toEqual([tag.sId]);
   });
 
   it("returns 404 when a tag id is unknown", async () => {
