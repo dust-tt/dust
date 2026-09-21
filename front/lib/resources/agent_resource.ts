@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { getEffectiveReasoningEffort } from "@app/lib/llms/model_configurations";
 import {
   AgentConfigurationModel,
   AgentModel,
@@ -1516,7 +1517,9 @@ export class AgentResource
   /**
    * @cc [owner:sfriquet,label:backend;security] agent-search-serialization
    * Serialize a custom agent from its core fields, deriving user sIds from supplied editor
-   * resources; perform no I/O and never include private agent content.
+   * resources; perform no I/O and never include private agent content. `model.reasoning_effort`
+   * MUST always carry the effort the agent runs at, never null: an agent that configures none
+   * runs at its model's default.
    */
   toSearchDocument(
     workspace: LightWorkspaceType,
@@ -1551,6 +1554,11 @@ export class AgentResource
       agent_id: this.sId,
       status: this.status,
       scope: this.scope,
+      model: {
+        provider_id: this.modelConfiguration.providerId,
+        model_id: this.modelConfiguration.modelId,
+        reasoning_effort: getEffectiveReasoningEffort(this.modelConfiguration),
+      },
       name: this.name,
       picture_url: this.pictureUrl,
       last_edited_by_user_id: lastEditedByUser?.sId ?? null,

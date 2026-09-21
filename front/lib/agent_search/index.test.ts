@@ -40,6 +40,11 @@ const document: AgentSearchDocument = {
   agent_id: "agent-1",
   status: "active",
   scope: "visible",
+  model: {
+    provider_id: "anthropic",
+    model_id: "claude-sonnet-5",
+    reasoning_effort: "medium",
+  },
   name: "Agent",
   picture_url: "https://dust.tt/static/agent.png",
   last_edited_by_user_id: null,

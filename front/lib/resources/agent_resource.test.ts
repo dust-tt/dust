@@ -894,6 +894,11 @@ describe("AgentResource", () => {
         agent_id: agent.sId,
         status: "active",
         scope: "hidden",
+        model: {
+          provider_id: "openai",
+          model_id: "gpt-5-mini",
+          reasoning_effort: "medium",
+        },
         name: "Indexed",
         description: "Indexed description",
         picture_url: agent.pictureUrl,
@@ -909,6 +914,36 @@ describe("AgentResource", () => {
         feedback_negative_count: 1,
         active_users_count: null,
         favorite_count: 4,
+      });
+    });
+
+    it("serializes a model stream at its default reasoning effort", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { model: { providerId: "auto", modelId: "auto" } }
+      );
+      const resource = await AgentResource.fetchById(
+        testContext.authenticator,
+        agent.sId
+      );
+      assert(resource);
+
+      const document = resource.toSearchDocument(testContext.workspace, {
+        activeUsersCount: null,
+        editors: [],
+        favoriteCount: 0,
+        feedbackNegativeCount: 0,
+        feedbackPositiveCount: 0,
+        lastEditedByUser: null,
+        mcpServerViewIds: [],
+        skillIds: [],
+        tagIds: [],
+      });
+
+      expect(document.model).toEqual({
+        provider_id: "auto",
+        model_id: "auto",
+        reasoning_effort: "none",
       });
     });
 
