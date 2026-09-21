@@ -9,9 +9,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
- * Pre-GCS stage for sandbox-function invocation blobs. The Temporal activity
- * (and other processes) must read input/context before the deferred GCS write
- * finishes; Redis bridges that window the same way action-output staging does.
+ * Pre-GCS stage for sandbox-function invocation blobs. Redis bridges the window
+ * between create/terminal transitions and the deferred GCS write the same way
+ * action-output staging does.
  */
 export const SANDBOX_FUNCTION_INVOCATION_BLOB_CACHE_TTL_MS =
   GCS_CONTENT_CACHE_TTL_MS;
@@ -49,6 +49,14 @@ const invalidateSandboxFunctionInvocationBlob = invalidateCacheWithRedis(
   invocationBlobCacheKey
 );
 
+/**
+ * @cc [owner:Fraggle] stage-before-deferred-gcs
+ * Callers that defer the GCS write MUST stage via this helper first so other
+ * processes (notably the Temporal activity) can read input/context before the
+ * deferred upload finishes. Failures MUST be returned as `Err` (not thrown) so
+ * callers can fall back to a synchronous GCS write without catching repository
+ * exceptions.
+ */
 export async function stageSandboxFunctionInvocationBlob(
   invocationId: string,
   data: object
@@ -61,6 +69,13 @@ export async function stageSandboxFunctionInvocationBlob(
   }
 }
 
+/**
+ * @cc [owner:Fraggle] staged-read-falls-back-explicitly
+ * Redis/JSON failures MUST be returned as `Err` so `getData` can fall back to
+ * GCS via an explicit result rather than catching helper exceptions. A cache
+ * miss (`Ok(null)`) is not an error — it means the write-behind window expired
+ * or was never warmed.
+ */
 export async function readStagedSandboxFunctionInvocationBlob(
   invocationId: string
 ): Promise<Result<object | null, Error>> {
@@ -71,7 +86,12 @@ export async function readStagedSandboxFunctionInvocationBlob(
   }
 }
 
-/** Drop the stage (e.g. on invocation delete, or when replacing the blob from GCS only). */
+/**
+ * @cc [owner:Fraggle] clear-stage-best-effort
+ * Cleanup failures MUST be returned as `Err` so delete paths can log and
+ * continue without catching repository exceptions. Callers treat clear as
+ * best-effort after the durable GCS object (or row) is already gone.
+ */
 export async function clearStagedSandboxFunctionInvocationBlob(
   invocationId: string
 ): Promise<Result<void, Error>> {
