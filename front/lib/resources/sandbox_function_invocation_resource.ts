@@ -195,17 +195,6 @@ function migrateStoredInvocationData(
   }
 }
 
-interface SandboxFunctionInvocationForLLM {
-  bundleSha256?: string;
-  createdAt: string;
-  error?: StoredSandboxFunctionCallError;
-  input: unknown;
-  invocationId: string;
-  result?: unknown;
-  status: SandboxFunctionInvocationStatus;
-  updatedAt: string;
-}
-
 function safeParseStoredInvocationData(
   content: string
 ): Result<StoredInvocationData, Error> {
@@ -278,7 +267,17 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     SandboxFunctionInvocationModel;
 
   readonly sandboxFunction: SandboxFunctionResource;
-  private data: SandboxFunctionInvocationData;
+  private _data: SandboxFunctionInvocationData;
+  /**
+   * @cc [owner:Fraggle] data-resolved-means-settled
+   * `_dataResolved` MUST be true only after the blob was supplied at construction
+   * (`makeNew`) or after `getData` finished a load attempt. An unparseable GCS blob
+   * MUST still set `_dataResolved` with a degraded empty `_data` so callers do not
+   * retry forever.
+   */
+  private _dataResolved: boolean;
+  /** Coalesces concurrent `getData` calls into one download. */
+  private _pendingDataLoad: Promise<SandboxFunctionInvocationData> | undefined;
 
   /**
    * In-flight blob persistence for an inline execution: the deferred initial write (blob +
@@ -327,18 +326,27 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     blob: Attributes<SandboxFunctionInvocationModel>,
     {
       sandboxFunction,
-      data = {
-        version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
-        input: undefined,
-      },
+      data,
+      dataResolved = false,
     }: {
       sandboxFunction: SandboxFunctionResource;
       data?: SandboxFunctionInvocationData;
+      /**
+       * @cc [owner:Fraggle] construction-data-is-resolved
+       * When `data` is the real invocation blob (notably `makeNew`), callers MUST pass
+       * `dataResolved: true`. Fetch paths that only have the DB row MUST leave it false so
+       * `getData` loads from GCS.
+       */
+      dataResolved?: boolean;
     }
   ) {
     super(model, blob);
     this.sandboxFunction = sandboxFunction;
-    this.data = data;
+    this._data = data ?? {
+      version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+      input: undefined,
+    };
+    this._dataResolved = dataResolved;
   }
 
   get sId(): string {
@@ -380,24 +388,31 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     };
   }
 
-  get input(): unknown {
-    return this.data.input;
+  /**
+   * @cc [owner:Fraggle] get-data-returns-resolved-blob
+   * Resolves the invocation blob once and returns it. Callers that need
+   * input/context/result/error MUST use the returned value (or call `getData` again after
+   * `replaceData`) rather than reading private `_data` while unresolved.
+   */
+  async getData(): Promise<SandboxFunctionInvocationData> {
+    if (this._dataResolved) {
+      return this._data;
+    }
+    if (!this._pendingDataLoad) {
+      this._pendingDataLoad = this.loadDataFromGcs().finally(() => {
+        this._pendingDataLoad = undefined;
+      });
+    }
+    return this._pendingDataLoad;
   }
 
-  get context(): SandboxFunctionInvocationContext | undefined {
-    return this.data.context;
+  private replaceData(data: SandboxFunctionInvocationData): void {
+    this._data = data;
+    this._dataResolved = true;
   }
 
-  get result(): unknown {
-    return this.data.result;
-  }
-
-  get error(): StoredSandboxFunctionCallError | undefined {
-    return this.data.error;
-  }
-
-  get bundleSha256(): string | undefined {
-    return this.data.bundleSha256;
+  async getContext(): Promise<SandboxFunctionInvocationContext | undefined> {
+    return (await this.getData()).context;
   }
 
   // WHERE-guarded compare-and-swap on status. Same pattern as
@@ -432,13 +447,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   /**
-   * Persist the terminal blob (input, context, outcome), set on `this.data` by the caller.
+   * Persist the terminal blob (input, context, outcome), set via `replaceData` by the caller.
    *
    * Inline path (a deferred initial persistence is pending): the write chains behind it,
    * write-behind. The caller's response and the result event carry the outcome, and every
    * cross-process blob reader is either explicitly settled first (the workflow handoff awaits
    * settleInitialPersistence) or reads well after the write's ~100-500ms window (inspection,
-   * listings), so nothing is left holding a request on GCS tail latency. The cost is a
+   * listings), so nothing is left holding a request on GCS. The cost is a
    * narrower durability guarantee: a write that fails, or a process that dies right after
    * responding, leaves a terminal row whose blob is missing the outcome. Logged loudly; the
    * outcome itself was still delivered to the caller and the event stream.
@@ -452,12 +467,14 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     if (this.pendingInitialPersistence !== undefined) {
       const pending = this.pendingInitialPersistence;
       this.pendingInitialPersistence = (async () => {
-        // Invariant: `pending` never rejects — its producers settle internally (makeNew logs
-        // its write failure, createAndStartExecution wraps in Promise.allSettled) — and
-        // writeDataToGcs returns a Result, so this floating chain cannot produce an unhandled
-        // rejection. The claim is deliberately kept on failure, unlike the awaited branch:
-        // releasing here would strand a row whose caller already got the outcome, with nothing
-        // left to retry it.
+        /**
+         * @cc [owner:Fraggle] write-behind-chain-never-rejects
+         * `pending` MUST NOT reject: its producers settle internally (`makeNew` logs write
+         * failures; `createAndStartExecution` wraps in `Promise.allSettled`) and
+         * `writeDataToGcs` returns a `Result`. This floating chain MUST NOT produce an
+         * unhandled rejection. The claim is kept on failure — releasing would strand a row
+         * whose caller already got the outcome, with nothing left to retry it.
+         */
         await pending;
         const writeResult = await this.writeDataToGcs();
         if (writeResult.isErr()) {
@@ -500,6 +517,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async fail(error: Error | SandboxFunctionCallError): Promise<boolean> {
+    const current = await this.getData();
+
     const callError: SandboxFunctionCallError =
       error instanceof Error
         ? { code: "invocation_failed", message: error.message }
@@ -523,10 +542,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return false;
     }
 
-    this.data = {
+    this.replaceData({
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
-      input: this.input,
-      context: this.context,
+      input: current.input,
+      context: current.context,
       ...(this.executedBundleSha256 === undefined
         ? {}
         : { bundleSha256: this.executedBundleSha256 }),
@@ -534,7 +553,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // why an invocation failed, and dropping them here would leave the message as the only
       // record of a failure the stream classified precisely.
       error: callError,
-    };
+    });
     await this.persistTerminalData("errored");
     await publishSandboxFunctionInvocationEvent(
       {
@@ -551,6 +570,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async succeed(result: unknown): Promise<boolean> {
+    const current = await this.getData();
+
     const claimed = await this.casStatus({
       from: "created",
       to: "succeeded",
@@ -570,15 +591,15 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return false;
     }
 
-    this.data = {
+    this.replaceData({
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
-      input: this.input,
-      context: this.context,
+      input: current.input,
+      context: current.context,
       ...(this.executedBundleSha256 === undefined
         ? {}
         : { bundleSha256: this.executedBundleSha256 }),
       result,
-    };
+    });
     await this.persistTerminalData("succeeded");
     await publishSandboxFunctionInvocationEvent(
       {
@@ -607,6 +628,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     auth: Authenticator,
     { inline = false }: { inline?: boolean } = {}
   ): Promise<Result<undefined, Error>> {
+    const data = await this.getData();
+
     if (this.status !== "created") {
       logger.info(
         {
@@ -760,9 +783,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           "x-dust-sandbox-function-id": sandboxFunction.sId,
           "x-dust-sandbox-function-invocation-id": this.sId,
         },
-        ...(this.input === undefined
+        ...(data.input === undefined
           ? {}
-          : { body: JSON.stringify(this.input) }),
+          : { body: JSON.stringify(data.input) }),
         encoding: "utf8",
         // From the persisted row, like the mode above: the warm server refuses to serve a
         // bundle that does not hash to this, so a republished function is never run from a
@@ -948,7 +971,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return makeSId("sandbox_function_invocation", { id, workspaceId });
   }
 
-  private async loadDataFromGcs(): Promise<void> {
+  private async loadDataFromGcs(): Promise<SandboxFunctionInvocationData> {
     const downloadResult = await withRetry(() =>
       getPrivateUploadBucket().file(this.gcsPath).download()
     );
@@ -961,9 +984,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       buffer.toString("utf-8")
     );
     if (storedResult.isErr()) {
-      // Listings load every invocation's blob, so failing here would take down a whole listing
-      // over one unreadable record: a truncated write, or a blob a newer deploy wrote mid-rollout.
-      // Degrade to an empty record and keep the rest of the listing readable.
+      // Unparseable blobs must not take down a whole listing over one bad record (truncated
+      // write, or a blob a newer deploy wrote mid-rollout). Degrade to an empty record and
+      // mark resolved so getData does not retry forever — this is a resolved miss, not a
+      // successful payload load.
       logger.error(
         {
           ...this.observabilityContext(),
@@ -972,18 +996,22 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         },
         "Invalid sandbox function invocation data"
       );
-      this.data = { version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION };
-
-      return;
+      const empty: SandboxFunctionInvocationData = {
+        version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+      };
+      this.replaceData(empty);
+      return empty;
     }
 
-    this.data = migrateStoredInvocationData(storedResult.value);
+    const data = migrateStoredInvocationData(storedResult.value);
+    this.replaceData(data);
+    return data;
   }
 
   private async writeDataToGcs(): Promise<Result<undefined, Error>> {
     try {
       await getPrivateUploadBucket().uploadBufferToBucket({
-        buffer: Buffer.from(JSON.stringify(this.data), "utf-8"),
+        buffer: Buffer.from(JSON.stringify(this._data), "utf-8"),
         contentType: "application/json",
         filePath: this.gcsPath,
       });
@@ -1053,6 +1081,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const resource = new this(this.model, invocation.get(), {
         sandboxFunction,
         data,
+        dataResolved: true,
       });
       const gcsPath = resource.buildGcsPath(auth);
       await resource.update({ gcsPath }, t);
@@ -1169,7 +1198,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           ...invocation.observabilityContext(auth),
           reason: "sandbox_not_running",
         },
-        "Escalating a fast sandbox function invocation to the invocation workflow"
+        "Escalating an inline sandbox function invocation to the invocation workflow"
       );
     }
 
@@ -1272,15 +1301,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       ...rest,
     });
 
-    return concurrentExecutor(
-      invocations,
-      async (invocation) => {
-        const blob = invocation.get();
-        const resource = new this(this.model, blob, { sandboxFunction });
-        await resource.loadDataFromGcs();
-        return resource;
-      },
-      { concurrency: GCS_CONCURRENCY }
+    return invocations.map(
+      (invocation) =>
+        new this(this.model, invocation.get(), { sandboxFunction })
     );
   }
 
@@ -1316,6 +1339,36 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
 
     return invocation ?? null;
+  }
+
+  static async existsForFunction(
+    auth: Authenticator,
+    {
+      sandboxFunction,
+      invocationId,
+    }: {
+      sandboxFunction: SandboxFunctionResource;
+      invocationId: string;
+    }
+  ): Promise<boolean> {
+    if (!isResourceSId("sandbox_function_invocation", invocationId)) {
+      return false;
+    }
+
+    const invocationModelId = getResourceIdFromSId(invocationId);
+    if (invocationModelId === null) {
+      return false;
+    }
+
+    const row = await this.model.findOne({
+      attributes: ["id"],
+      where: {
+        id: invocationModelId,
+        sandboxFunctionId: sandboxFunction.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    return row !== null;
   }
 
   static async listRecent(
@@ -1621,10 +1674,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
   // The listing shape plus the GCS-backed payload this resource carries once hydrated, and the
   // MCP actions the caller resolved for it.
-  toPokeJSON(
+  async toPokeJSON(
     user: UserResource | null,
     mcpActions: PokeSandboxFunctionMCPAction[]
-  ): PokeSandboxFunctionInvocationDetails {
+  ): Promise<PokeSandboxFunctionInvocationDetails> {
+    const data = await this.getData();
     return {
       ...SandboxFunctionInvocationResource.rowToPokeJSON(
         {
@@ -1638,9 +1692,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         },
         user
       ),
-      input: this.input,
-      result: this.result,
-      error: this.error ?? null,
+      input: data.input,
+      result: data.result,
+      error: data.error ?? null,
       mcpActions,
     };
   }
@@ -1651,23 +1705,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       functionId: this.sandboxFunction.sId,
       status: this.status,
       createdAt: this.createdAt.toISOString(),
-    };
-  }
-
-  toJSONForLLM(): SandboxFunctionInvocationForLLM {
-    return {
-      createdAt: this.createdAt.toISOString(),
-      input: this.input,
-      invocationId: this.sId,
-      status: this.status,
-      updatedAt: this.updatedAt.toISOString(),
-      // Which publish served this invocation: comparable against the hash `publish` and `get`
-      // echo. Absent when the invocation predates the stamping or never reached execution.
-      ...(this.bundleSha256 !== undefined
-        ? { bundleSha256: this.bundleSha256 }
-        : {}),
-      ...(this.result !== undefined ? { result: this.result } : {}),
-      ...(this.error !== undefined ? { error: this.error } : {}),
     };
   }
 }

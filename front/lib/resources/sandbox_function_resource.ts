@@ -387,12 +387,16 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   }
 
   /**
-   * Gets the function if a matching invocation exists.
+   * Gets the function if a matching invocation row exists.
    * In the context of a temporal activity or a sandbox callback, we don't have the original
    * caller's grant (e.g. a frame share token) in the auth, so the space permission filter is
    * deliberately skipped. The invocation ties the pair together; callers are trusted because
    * their (function, invocation) ids come from server-minted inputs — workflow args or verified
    * sandbox JWT claims — never from user input.
+   *
+   * Checks only that the invocation row exists for the function — it does not load the
+   * invocation payload (input/context/result). Callers that need those must fetch the
+   * invocation separately.
    */
   static async fetchByIdForExecution(
     auth: Authenticator,
@@ -413,13 +417,11 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       return null;
     }
 
-    // We don't need the invocation itself, just its existence.
-    const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
-      sandboxFunction,
-      invocationId,
-      access: "system",
-    });
-    return invocation ? sandboxFunction : null;
+    const exists = await SandboxFunctionInvocationResource.existsForFunction(
+      auth,
+      { sandboxFunction, invocationId }
+    );
+    return exists ? sandboxFunction : null;
   }
 
   // Lives here rather than on SandboxFunctionMCPActionResource: that resource can only type-import
