@@ -33,14 +33,6 @@ export async function suggestSkillEditors(
     );
   }
 
-  if (addUserIds.length === 0 && removeUserIds.length === 0) {
-    return new Err(
-      new MCPError(
-        "Provide at least one user in `addUserIds` or `removeUserIds`."
-      )
-    );
-  }
-
   if (!isResourceSId("skill", skillId)) {
     return new Err(
       new MCPError("Only custom workspace skills can receive suggestions.")
@@ -58,6 +50,14 @@ export async function suggestSkillEditors(
   });
   if (validation.isErr()) {
     return new Err(new MCPError(validation.error.message));
+  }
+
+  if (addUserIds.length === 0 && removeUserIds.length === 0) {
+    return new Err(
+      new MCPError(
+        "Provide at least one user in `addUserIds` or `removeUserIds`."
+      )
+    );
   }
 
   // `createSuggestionForSkill` only requires `canWrite`, which `canAdministrate` implies.

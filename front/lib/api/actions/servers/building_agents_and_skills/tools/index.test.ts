@@ -617,6 +617,18 @@ describe("building_agents_and_skills tools", () => {
       expectMcpError(result, "not found");
     });
 
+    it("rejects an empty addUserIds and removeUserIds", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Empty Lists" });
+
+      const result = await getTool(SUGGEST_SKILL_EDITORS_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "Provide at least one user");
+    });
+
     it("rejects a user present in both addUserIds and removeUserIds", async () => {
       const { authenticator, workspace } = await createResourceTest({
         role: "user",
