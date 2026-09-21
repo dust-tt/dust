@@ -4,21 +4,15 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { SuggestSkillUserFacingDescriptionArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
+import { fetchWritableSkill } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
 import { pruneConflictingSkillUserFacingDescriptionSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
-import { isResourceSId } from "@app/lib/resources/string_ids";
 import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isUserFacingDescriptionSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 
-/**
- * @cc [owner:achilleburah,label:security] requires-skill-write
- * A suggestion MUST only be created for a custom skill the calling user can write; otherwise the
- * call fails with an `MCPError` and no row is created.
- */
 export async function suggestSkillUserFacingDescription(
   auth: Authenticator,
   {
@@ -36,30 +30,11 @@ export async function suggestSkillUserFacingDescription(
     );
   }
 
-  if (!isResourceSId("skill", skillId)) {
-    return new Err(
-      new MCPError("Only custom workspace skills can receive suggestions.")
-    );
+  const skillResult = await fetchWritableSkill(auth, skillId);
+  if (skillResult.isErr()) {
+    return new Err(new MCPError(skillResult.error.message));
   }
-
-  const skill = await SkillResource.fetchById(auth, skillId);
-  if (!skill) {
-    return new Err(new MCPError("Skill not found."));
-  }
-
-  if (!skill.canWrite(auth)) {
-    return new Err(
-      new MCPError(
-        "You need to be added as an editor of this skill before you can suggest changes."
-      )
-    );
-  }
-
-  if (skill.status === "archived") {
-    return new Err(
-      new MCPError("This skill is archived and cannot receive suggestions.")
-    );
-  }
+  const skill = skillResult.value;
 
   if (userFacingDescription.length === 0) {
     return new Err(

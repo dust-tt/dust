@@ -450,6 +450,24 @@ describe("building_agents_and_skills tools", () => {
 
       expect(result.isErr()).toBe(true);
     });
+
+    it("rejects an archived skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Archived",
+        status: "archived",
+      });
+
+      const result = await getTool(SUGGEST_SKILL_UPDATE_TOOL_NAME).handler(
+        {
+          skillId: skill.sId,
+          agentFacingDescriptionEdit: { content: "Whatever." },
+        },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "archived");
+    });
   });
 
   describe(SUGGEST_SKILL_EDITORS_TOOL_NAME, () => {
