@@ -187,7 +187,7 @@ describe("commitmentAccessTranches", () => {
     expect(tranches).toHaveLength(12);
     // Each whole month unlocks a full month's worth, on the month anniversary.
     tranches.forEach((tranche, k) => {
-      expect(tranche.amount).toBeCloseTo(30 * 44, 6);
+      expect(tranche.amountCurrencyUnits).toBeCloseTo(30 * 44, 6);
       expect(tranche.startingAt).toEqual(new Date(Date.UTC(2026, k, 1)));
       expect(tranche.endingBefore).toEqual(new Date(Date.UTC(2026, k + 1, 1)));
     });
@@ -202,7 +202,7 @@ describe("commitmentAccessTranches", () => {
       end: oneYear,
     });
     expect(tranches).toHaveLength(1);
-    expect(tranches[0].amount).toBe(30 * 528);
+    expect(tranches[0].amountCurrencyUnits).toBe(30 * 528);
     expect(tranches[0].startingAt).toEqual(start);
     expect(tranches[0].endingBefore).toEqual(oneYear);
   });
@@ -217,9 +217,34 @@ describe("commitmentAccessTranches", () => {
       end: contractEnd,
     });
     expect(tranches).toHaveLength(2);
-    expect(tranches[0].amount).toBeCloseTo(20, 6);
-    expect(tranches[1].amount).toBeCloseTo(20 * (12 / 31), 6);
+    expect(tranches[0].amountCurrencyUnits).toBeCloseTo(20, 6);
+    expect(tranches[1].amountCurrencyUnits).toBeCloseTo(20 * (12 / 31), 6);
     expect(tranches[1].endingBefore).toEqual(contractEnd);
+  });
+
+  it("aligns first-of-month tranches to the 1st with a prorated leading stub", () => {
+    // Sep 7 → Dec 1, billed on the 1st.
+    const monthStart = new Date(Date.UTC(2026, 8, 7));
+    const tranches = commitmentAccessTranches({
+      minSeats: 1,
+      ratePerPeriod: 30,
+      isAnnual: false,
+      start: monthStart,
+      end: new Date(Date.UTC(2026, 11, 1)),
+      billingAnchor: "first_billing_period",
+    });
+    expect(tranches).toHaveLength(3);
+    // Stub: Sep 7 → Oct 1, prorated over September's 30 days (24 remain).
+    expect(tranches[0].startingAt).toEqual(monthStart);
+    expect(tranches[0].endingBefore).toEqual(new Date(Date.UTC(2026, 9, 1)));
+    expect(tranches[0].amountCurrencyUnits).toBeCloseTo(30 * (24 / 30), 6);
+    // Full calendar months on 1st → 1st boundaries.
+    expect(tranches[1].startingAt).toEqual(new Date(Date.UTC(2026, 9, 1)));
+    expect(tranches[1].endingBefore).toEqual(new Date(Date.UTC(2026, 10, 1)));
+    expect(tranches[1].amountCurrencyUnits).toBeCloseTo(30, 6);
+    expect(tranches[2].startingAt).toEqual(new Date(Date.UTC(2026, 10, 1)));
+    expect(tranches[2].endingBefore).toEqual(new Date(Date.UTC(2026, 11, 1)));
+    expect(tranches[2].amountCurrencyUnits).toBeCloseTo(30, 6);
   });
 
   it("sums to commitmentAmount for the same inputs", () => {
@@ -230,10 +255,11 @@ describe("commitmentAccessTranches", () => {
       start: contractStart,
       end: contractEnd,
     };
-    const sum = commitmentAccessTranches(args).reduce(
-      (total, tranche) => total + tranche.amount,
+    const sumCurrencyUnits = commitmentAccessTranches(args).reduce(
+      (totalCurrencyUnits, tranche) =>
+        totalCurrencyUnits + tranche.amountCurrencyUnits,
       0
     );
-    expect(sum).toBeCloseTo(commitmentAmount(args), 6);
+    expect(sumCurrencyUnits).toBeCloseTo(commitmentAmount(args), 6);
   });
 });

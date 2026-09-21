@@ -653,8 +653,12 @@ async function stepContractEdits({
 
   // The commitment period bounds every prepaid commit and invoice schedule on
   // this contract: it runs to the contract end, or one year out when the
-  // contract is open-ended.
-  const commitmentEnd = commitmentPeriodEnd(alignedStart, endingAtDate);
+  // contract is open-ended. Floor an operator-provided end to the hour, matching
+  // how `alignedStart` is aligned, so the prorated period math and the
+  // hour-floored schedule timestamps sit on the same grid.
+  const commitmentEnd = new Date(
+    floorToHourISO(commitmentPeriodEnd(alignedStart, endingAtDate))
+  );
 
   // Optional recurring free AWU credit pool, granted directly on this
   // contract (not baked into the package) — e.g. the Partner Demo shared
@@ -807,15 +811,19 @@ async function stepContractEdits({
       // seat billing period (monthly for a monthly seat, yearly for a yearly one)
       // so the committed funds unlock in step with the seat's own billing cadence
       // — e.g. a monthly seat unlocks its month's worth on each contract
-      // month-anniversary rather than a full year upfront.
+      // month-anniversary rather than a full year upfront. The tranche grid
+      // follows the package's billing anchor so the unlock lines up with when
+      // Metronome actually charges the seat (contract-start day-of-month, or the
+      // 1st for first-of-month-anchored packages).
       const accessScheduleItems = commitmentAccessTranches({
         minSeats: seat.minSeats,
         ratePerPeriod: rateNative,
         isAnnual: billingFrequency === "ANNUAL",
         start: alignedStart,
         end: commitmentEnd,
+        billingAnchor: pkg.billingAnchor,
       }).map((tranche) => ({
-        amount: Math.round(tranche.amount * 100) / 100,
+        amount: Math.round(tranche.amountCurrencyUnits * 100) / 100,
         starting_at: floorToHourISO(tranche.startingAt),
         ending_before: floorToHourISO(tranche.endingBefore),
       }));
