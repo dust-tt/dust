@@ -91,7 +91,7 @@ describe("custom skill search", () => {
       globalSpace,
       conversationsSpace,
     } = await createResourceTest({ role: "user" });
-    const query = buildSkillSearchQuery(auth, { searchTerm: "report b" });
+    const query = buildSkillSearchQuery(auth, { searchTerm: "  report b  " });
     expect(query).toEqual({
       bool: {
         must: [
@@ -101,6 +101,7 @@ describe("custom skill search", () => {
               type: "bool_prefix",
               operator: "and",
               fields: [
+                "name.keyword",
                 "name.autocomplete",
                 "name.autocomplete._2gram",
                 "name.autocomplete_preserved",
