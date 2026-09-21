@@ -119,7 +119,7 @@
  *           type: string
  *         role:
  *           type: string
- *           enum: [admin, manager, builder, user, none]
+ *           enum: [admin, manager, user, none]
  *         segmentation:
  *           type: string
  *           nullable: true

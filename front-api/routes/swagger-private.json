@@ -11235,7 +11235,6 @@
             "enum": [
               "admin",
               "manager",
-              "builder",
               "user",
               "none"
             ]

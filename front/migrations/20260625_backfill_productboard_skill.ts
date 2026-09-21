@@ -18,7 +18,6 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { ModelId } from "@app/types/shared/model_id";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Op } from "sequelize";
 
@@ -368,23 +367,9 @@ async function addAgentEditorsToSkill(
     users,
     workspace: auth.getNonNullableWorkspace(),
   });
-  const eligibleUserModelIds = new Set(
+  const builderUserModelIds = new Set(
     memberships
-      .filter((membership) => {
-        switch (membership.role) {
-          case "admin":
-          case "manager":
-            return true;
-          case "user":
-            return false;
-          case "builder":
-            throw new Error(
-              `Productboard skill backfill cannot run with deprecated builder membership for user ${membership.userId}`
-            );
-          default:
-            assertNever(membership.role);
-        }
-      })
+      .filter((membership) => membership.isBuilder)
       .map((membership) => membership.userId)
   );
 
@@ -394,15 +379,15 @@ async function addAgentEditorsToSkill(
   );
   const usersToAdd = users.filter(
     (user) =>
-      eligibleUserModelIds.has(user.id) &&
+      builderUserModelIds.has(user.id) &&
       !existingSkillEditorModelIds.has(user.id)
   );
 
   if (usersToAdd.length === 0) {
     logger.info(
       {
-        skippedIneligibleEditorCount:
-          agentEditorUserModelIds.length - eligibleUserModelIds.size,
+        skippedNonBuilderEditorCount:
+          agentEditorUserModelIds.length - builderUserModelIds.size,
         skillId: skill.sId,
         workspaceId: owner.sId,
       },
@@ -420,8 +405,8 @@ async function addAgentEditorsToSkill(
   logger.info(
     {
       addedEditorCount: usersToAdd.length,
-      skippedIneligibleEditorCount:
-        agentEditorUserModelIds.length - eligibleUserModelIds.size,
+      skippedNonBuilderEditorCount:
+        agentEditorUserModelIds.length - builderUserModelIds.size,
       skillId: skill.sId,
       workspaceId: owner.sId,
     },
@@ -446,18 +431,6 @@ async function backfillWorkspace(
   }
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
-  const { memberships: builderMemberships } =
-    await MembershipResource.getActiveMemberships({
-      workspace: auth.getNonNullableWorkspace(),
-      roles: ["builder"],
-    });
-  const [builderMembership] = builderMemberships;
-  if (builderMembership) {
-    throw new Error(
-      `Productboard skill backfill cannot run with deprecated builder membership for user ${builderMembership.userId}`
-    );
-  }
 
   const existingSkill = await fetchActiveProductboardSkill(auth);
 
