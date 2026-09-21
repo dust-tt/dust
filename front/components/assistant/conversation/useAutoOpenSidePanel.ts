@@ -8,6 +8,7 @@ import {
   SET_FILES_SIDE_PANEL_TOOL_NAME,
 } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { FILES_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
@@ -86,6 +87,8 @@ export function useAutoOpenSidePanel({
   const { workspace } = useAuth();
   const conversationId = useActiveConversationId();
   const isMobile = useIsMobile();
+  const clientType = useClientType();
+  const isPanelOverlay = isMobile || clientType === "extension";
 
   // Track the last opened fileId to prevent double-opening glitch.
   //
@@ -164,7 +167,7 @@ export function useAutoOpenSidePanel({
 
   // Single effect with explicit priority: interactive content (1) > file explorer (2).
   React.useEffect(() => {
-    if (isMobile) {
+    if (isPanelOverlay) {
       return;
     }
 
@@ -228,7 +231,7 @@ export function useAutoOpenSidePanel({
     openPanel,
     closePanel,
     currentPanel,
-    isMobile,
+    isPanelOverlay,
   ]);
 
   return { interactiveFiles: completedInteractiveFiles };

@@ -7,6 +7,8 @@ import {
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import {
   attachmentUsageHintsFor,
+  contentNodeAttachmentParentsFilter,
+  contentNodeAttachmentsDataSourceConfigurations,
   getAttachmentFromContentNodeContentFragment,
   getAttachmentFromFileContentFragment,
   makeFileAttachment,
@@ -16,7 +18,11 @@ import type { AttachmentCapabilityContext } from "@app/types/api/assistant/conve
 import type {
   ContentNodeContentFragmentType,
   FileContentFragmentType,
+  SupportedContentFragmentType,
 } from "@app/types/content_fragment";
+import type { ContentNodeType } from "@app/types/core/content_node";
+import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import { describe, expect, it } from "vitest";
 
 const CAT_TOOL = getPrefixedToolName(
@@ -154,8 +160,16 @@ function makeFileContentFragment({
 
 function makeContentNodeContentFragment({
   sourceUrl = null,
+  nodeId = "node_abc",
+  nodeType = "document",
+  contentType = "text/plain",
+  title = "dashboard.tsx",
 }: {
   sourceUrl?: string | null;
+  nodeId?: string;
+  nodeType?: ContentNodeType;
+  contentType?: SupportedContentFragmentType;
+  title?: string;
 }): ContentNodeContentFragmentType & { expiredReason: null } {
   return {
     type: "content_fragment",
@@ -166,8 +180,8 @@ function makeContentNodeContentFragment({
     version: 1,
     rank: 0,
     sourceUrl,
-    title: "dashboard.tsx",
-    contentType: "text/plain",
+    title,
+    contentType,
     context: {
       username: null,
       fullName: null,
@@ -178,23 +192,96 @@ function makeContentNodeContentFragment({
     contentFragmentVersion: "latest",
     expiredReason: null,
     contentFragmentType: "content_node",
-    nodeId: "node_abc",
+    nodeId,
     nodeDataSourceViewId: "dsv_xyz",
-    nodeType: "document",
+    nodeType,
     contentNodeData: {
-      nodeId: "node_abc",
+      nodeId,
       nodeDataSourceViewId: "dsv_xyz",
-      nodeType: "document",
+      nodeType,
       provider: null,
       spaceName: "My Space",
     },
   };
 }
 
+function makeDataSourceRootContentFragment(): ContentNodeContentFragmentType & {
+  expiredReason: null;
+} {
+  return makeContentNodeContentFragment({
+    nodeId: DATA_SOURCE_NODE_ID,
+    nodeType: "folder",
+    contentType: DATA_SOURCE_MIME_TYPE,
+    title: "Connected folder",
+  });
+}
+
+describe("contentNodeAttachmentParentsFilter", () => {
+  it("scopes to the node subtree for a regular content node", () => {
+    const attachment = getAttachmentFromContentNodeContentFragment({
+      cf: makeContentNodeContentFragment({}),
+    });
+
+    expect(contentNodeAttachmentParentsFilter(attachment)).toEqual({
+      in: ["node_abc"],
+      not: [],
+    });
+  });
+
+  it("returns null for a data source root so the whole data source is searched", () => {
+    const attachment = getAttachmentFromContentNodeContentFragment({
+      cf: makeDataSourceRootContentFragment(),
+    });
+
+    expect(contentNodeAttachmentParentsFilter(attachment)).toBeNull();
+  });
+});
+
+describe("contentNodeAttachmentsDataSourceConfigurations", () => {
+  it("collapses attachments of one view into a single configuration with the union of node ids", () => {
+    const attachments = ["node_a", "node_b", "node_a"].map((nodeId) =>
+      getAttachmentFromContentNodeContentFragment({
+        cf: makeContentNodeContentFragment({ nodeId }),
+      })
+    );
+
+    expect(
+      contentNodeAttachmentsDataSourceConfigurations("w_1", attachments)
+    ).toEqual([
+      {
+        workspaceId: "w_1",
+        dataSourceViewId: "dsv_xyz",
+        filter: { parents: { in: ["node_a", "node_b"], not: [] }, tags: null },
+      },
+    ]);
+  });
+
+  it("widens a view to a null parents filter when a data source root is attached alongside a node", () => {
+    const attachments = [
+      getAttachmentFromContentNodeContentFragment({
+        cf: makeContentNodeContentFragment({ nodeId: "node_a" }),
+      }),
+      getAttachmentFromContentNodeContentFragment({
+        cf: makeDataSourceRootContentFragment(),
+      }),
+    ];
+
+    expect(
+      contentNodeAttachmentsDataSourceConfigurations("w_1", attachments)
+    ).toEqual([
+      {
+        workspaceId: "w_1",
+        dataSourceViewId: "dsv_xyz",
+        filter: { parents: null, tags: null },
+      },
+    ]);
+  });
+});
+
 describe("renderAttachmentXml", () => {
   const legacyUsage = attachmentUsageHintsFor(LEGACY);
 
-  it("always includes nodeId for content node attachments even when sourceUrl is null", () => {
+  it("includes nodeId for a regular content node even when sourceUrl is null", () => {
     const attachment = getAttachmentFromContentNodeContentFragment({
       cf: makeContentNodeContentFragment({ sourceUrl: null }),
     });
@@ -206,6 +293,18 @@ describe("renderAttachmentXml", () => {
     expect(xml).not.toContain("isIncludable");
     expect(xml).not.toContain("isQueryable");
     expect(xml).not.toContain("isSearchable");
+  });
+
+  it("omits nodeId for a data source root attachment, whose nodeId resolves to nothing", () => {
+    const attachment = getAttachmentFromContentNodeContentFragment({
+      cf: makeDataSourceRootContentFragment(),
+    });
+
+    const xml = renderAttachmentXml({ attachment, usage: legacyUsage });
+
+    expect(xml).not.toContain("nodeId");
+    expect(xml).not.toContain(DATA_SOURCE_NODE_ID);
+    expect(xml).toContain('title="Connected folder"');
   });
 
   it("includes both nodeId and sourceUrl for content node attachments with a source URL", () => {

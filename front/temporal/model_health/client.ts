@@ -68,14 +68,15 @@ async function describeDegradedSinceMs(
  * that path alone.
  */
 export async function launchModelHealthRecovery(
-  endpoint: DegradedModelEndpointType
+  endpoint: DegradedModelEndpointType,
+  persistDegradation: boolean
 ): Promise<Result<LaunchRecoveryOutcome, Error>> {
   const client = await getTemporalClientForFrontNamespace();
   const workflowId = recoveryWorkflowId(endpoint);
 
   try {
     await client.workflow.start(modelHealthRecoveryWorkflow, {
-      args: [endpoint],
+      args: [endpoint, persistDegradation],
       taskQueue: QUEUE_NAME,
       workflowId,
     });

@@ -27,6 +27,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AuthorizedFileAccessAllowlist,
@@ -34,8 +35,10 @@ import type {
 } from "@app/types/files";
 import {
   frameContentType,
+  frameV2ContentType,
   isUnverifiableFrameFileRefsShareError,
 } from "@app/types/files";
+import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -139,6 +142,27 @@ describe("isAuthorizedFileRef", () => {
     expect(isAuthorizedFileRef(allowlist, "conversation/other.csv")).toBe(
       false
     );
+  });
+
+  it("matches frame_relative_path refs and resolves against packageRoot", () => {
+    const allowlist = makeAllowlist({
+      refs: [
+        {
+          kind: "frame_relative_path",
+          ref: "./data.csv",
+          fileName: "data.csv",
+        },
+      ],
+    });
+
+    expect(isAuthorizedFileRef(allowlist, "./data.csv")).toBe(true);
+    expect(
+      resolveAllowlistedCanonicalPath(allowlist, "./data.csv", {
+        packageRoot: "conversation-conv_123/MyFrame",
+      })
+    ).toBe("conversation-conv_123/MyFrame/data.csv");
+    expect(resolveAllowlistedCanonicalPath(allowlist, "./data.csv")).toBeNull();
+    expect(isAuthorizedFileRef(allowlist, "data.csv")).toBe(false);
   });
 
   it("matches project/ requests against pod/ legacy aliases", () => {
@@ -263,6 +287,60 @@ describe("computeAuthorizedFileAccess", () => {
       ])
     );
     expect(result.unverifiableRefs).toBeUndefined();
+  });
+
+  it("resolves package-relative useFile refs against the Frame v2 source root", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+      mountFilePath: `${getConversationFilesBasePath({
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
+      })}MyFrame/${FRAME_MANIFEST_FILE}`,
+    });
+
+    const frameContent = `useFile("./data.csv");`;
+    const canonicalPath = `conversation-${conversation.sId}/MyFrame/data.csv`;
+
+    const mockFs = {
+      stat: vi.fn().mockResolvedValue(
+        new Ok({
+          contentType: "text/csv",
+          sizeBytes: 12,
+          isDirectory: false,
+        })
+      ),
+      read: vi.fn(),
+    };
+
+    vi.spyOn(DustFileSystem, "fromScopedPath").mockResolvedValue(
+      new Ok(mockFs as unknown as DustFileSystem)
+    );
+
+    const result = await frameFile.computeAuthorizedFileAccess(auth, {
+      frameContent,
+    });
+
+    expect(result.refs).toEqual([
+      {
+        kind: "frame_relative_path",
+        ref: "./data.csv",
+        fileName: "data.csv",
+      },
+    ]);
+    expect(result.unverifiableRefs).toBeUndefined();
+    expect(mockFs.stat).toHaveBeenCalledWith(canonicalPath);
   });
 
   it("merges refs from nested frame imports", async () => {

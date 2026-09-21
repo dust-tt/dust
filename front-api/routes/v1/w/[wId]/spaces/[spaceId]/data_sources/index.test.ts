@@ -7,11 +7,11 @@ import { describe, expect, it } from "vitest";
 
 function getDataSources(
   workspace: { sId: string },
-  spaceSId: string,
+  spaceId: string,
   key: { secret: string }
 ) {
   return honoApp.request(
-    `/api/v1/w/${workspace.sId}/spaces/${spaceSId}/data_sources`,
+    `/api/v1/w/${workspace.sId}/spaces/${spaceId}/data_sources`,
     {
       headers: { authorization: `Bearer ${key.secret}` },
     }

@@ -7,6 +7,7 @@ import {
 } from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { AppFactory } from "@app/tests/utils/AppFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
@@ -25,19 +26,7 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/apps/:aId", () => {
       await createPrivateApiMockRequest({ role: "admin" });
     await FeatureFlagFactory.basic(auth, "legacy_dust_apps");
 
-    const app = await AppResource.makeNew(
-      {
-        description: "Test app",
-        dustAPIProjectId: "dust-api-project-id",
-        name: "Test App",
-        savedConfig: "{}",
-        savedSpecification: "[]",
-        sId: generateRandomModelSId(),
-        visibility: "private",
-        workspaceId: workspace.id,
-      },
-      globalSpace
-    );
+    const app = await AppFactory.basic(workspace, globalSpace);
 
     const agentId = generateRandomModelSId();
     const agentIdentity = await AgentModel.create({
@@ -119,19 +108,7 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/apps/:aId", () => {
     });
     await FeatureFlagFactory.basic(auth, "legacy_dust_apps");
 
-    const app = await AppResource.makeNew(
-      {
-        description: "Test app",
-        dustAPIProjectId: "dust-api-project-id",
-        name: "Test App",
-        savedConfig: "{}",
-        savedSpecification: "[]",
-        sId: generateRandomModelSId(),
-        visibility: "private",
-        workspaceId: workspace.id,
-      },
-      globalSpace
-    );
+    const app = await AppFactory.basic(workspace, globalSpace);
 
     const response = await deleteApp(workspace, globalSpace.sId, app.sId);
 

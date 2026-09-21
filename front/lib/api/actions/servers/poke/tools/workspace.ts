@@ -267,13 +267,13 @@ export const workspaceHandlers: WorkspaceHandlers = {
       }
     } else {
       // Search by exact name or sId.
-      const [byName, bySId] = await Promise.all([
+      const [byName, byId] = await Promise.all([
         WorkspaceResource.fetchByName(query),
         WorkspaceResource.fetchById(query),
       ]);
       // Deduplicate in case name and sId match the same workspace.
       const seen = new Set<number>();
-      for (const w of [byName, bySId]) {
+      for (const w of [byName, byId]) {
         if (w && !seen.has(w.id)) {
           seen.add(w.id);
           workspaces.push(w);

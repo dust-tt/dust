@@ -1,3 +1,4 @@
+import { destroyConversationMessages } from "@app/lib/api/assistant/conversation/destroy";
 import {
   AgentMessageModel,
   MessageModel,
@@ -8,6 +9,43 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 
 import type { ConversationAsset, CreatedAgent, SeedContext } from "./types";
+
+function replacePlaceholders(
+  content: string,
+  placeholders: Record<string, string>
+): string {
+  let result = content;
+  for (const [placeholder, value] of Object.entries(placeholders)) {
+    result = result.replace(new RegExp(placeholder, "g"), value);
+  }
+  return result;
+}
+
+// Seeded conversations only hold user/agent messages with text step contents, so a DB-only
+// delete is enough (no content fragments, actions or conversation data source to clean up).
+async function deleteConversation(
+  ctx: SeedContext,
+  conversation: ConversationResource
+): Promise<void> {
+  const { auth, workspace } = ctx;
+  const messages = await MessageModel.findAll({
+    attributes: [
+      "id",
+      "userMessageId",
+      "agentMessageId",
+      "contentFragmentId",
+      "compactionMessageId",
+    ],
+    where: { conversationId: conversation.id, workspaceId: workspace.id },
+  });
+  await destroyConversationMessages(auth, messages);
+  const deleteResult = await conversation.delete(auth);
+  if (deleteResult.isErr()) {
+    throw new Error(
+      `Failed to delete conversation ${conversation.sId}: ${deleteResult.error.message}`
+    );
+  }
+}
 
 interface SeedConversationsOptions {
   agents?: Map<string, CreatedAgent>;
@@ -80,8 +118,18 @@ export async function seedConversations(
       );
 
       if (existingConversation) {
-        logger.info({ sId: conv.sId }, "Conversation already exists, skipping");
-        continue;
+        if (!conv.overwrite) {
+          logger.info(
+            { sId: conv.sId },
+            "Conversation already exists, skipping"
+          );
+          continue;
+        }
+        logger.info(
+          { sId: conv.sId },
+          "Conversation already exists, deleting to recreate it"
+        );
+        await deleteConversation(ctx, existingConversation);
       }
 
       // Create conversation with deterministic sId
@@ -109,14 +157,15 @@ export async function seedConversations(
       for (let i = 0; i < conv.exchanges.length; i++) {
         const exchange = conv.exchanges[i];
 
-        // Replace all placeholders in user message content
-        let userContent = exchange.user.content;
-        for (const [placeholder, value] of Object.entries(placeholders)) {
-          userContent = userContent.replace(
-            new RegExp(placeholder, "g"),
-            value
-          );
-        }
+        // Replace all placeholders in message contents (agent mentions, suggestion directives...)
+        const userContent = replacePlaceholders(
+          exchange.user.content,
+          placeholders
+        );
+        const agentContent = replacePlaceholders(
+          exchange.agent.content,
+          placeholders
+        );
 
         // Create user message
         const userMessageRow = await UserMessageModel.create({
@@ -161,7 +210,7 @@ export async function seedConversations(
           type: "text_content",
           value: {
             type: "text_content",
-            value: exchange.agent.content,
+            value: agentContent,
           },
         });
 

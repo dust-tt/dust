@@ -4,7 +4,9 @@ import type {
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import {
   computeHasChildren,
+  getFirstKnowledgeItem,
   isFullKnowledgeItem,
+  serializeKnowledgeTag,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import {
   KNOWLEDGE_TAG,
@@ -170,35 +172,12 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
   },
 
   // Markdown serialization and deserialization.
-  //
-  // IMPORTANT: The serialization format (especially hasChildren) is designed to match
-  // the output of renderNode() in lib/actions/mcp_internal_actions/rendering.ts.
-  // This ensures agents see consistent data structure between:
-  // - Knowledge attached in instructions (serialized here)
-  // - Tool outputs from data_sources_file_system server (rendered by renderNode)
-  // If you change this format, review renderNode() and vice versa.
 
   renderMarkdown: (node) => {
-    if (
-      node.attrs &&
-      "selectedItems" in node.attrs &&
-      node.attrs.selectedItems &&
-      node.attrs.selectedItems.length > 0
-    ) {
-      const [item] = node.attrs.selectedItems as KnowledgeItem[];
-
-      // Compute hasChildren with special logic for Notion if we have full node data.
-      const hasChildren = isFullKnowledgeItem(item)
-        ? computeHasChildren(item.node)
-        : item.hasChildren;
-
-      // Serialize essential data for model understanding and API fetching.
-      // Format kept aligned with renderNode() output for consistency.
-      return `<${KNOWLEDGE_TAG} id="${item.nodeId}" title="${item.label}" space="${item.spaceId}" dsv="${item.dataSourceViewId}" hasChildren="${hasChildren}" />`;
-    }
+    const item = getFirstKnowledgeItem(node.attrs ?? {});
 
     // Don't serialize search state, empty nodes shouldn't be saved.
-    return "";
+    return item ? serializeKnowledgeTag(item) : "";
   },
 
   parseMarkdown: (token) => {

@@ -349,7 +349,7 @@ describe("POST /api/v1/w/[wId]/skills", () => {
   it("imports a skill with a 256-character name", async () => {
     const { workspace } = await createPublicApiMockRequest();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    await SpaceFactory.defaults(auth);
+    const { globalSpace } = await SpaceFactory.defaults(auth);
     const name = "a".repeat(256);
     const file = await makeSkillZipFile({ name, instructions: "Instructions" });
 
@@ -361,6 +361,9 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.imported[0]?.name).toBe(name);
+      expect(result.value.imported[0]?.requestedSpaceIds).toEqual([
+        globalSpace.id,
+      ]);
     }
   });
 

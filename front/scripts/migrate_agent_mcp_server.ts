@@ -32,7 +32,7 @@ function summarizeMcpServerView(view: MCPServerViewResource) {
     spaceId: view.space.sId,
     spaceKind: view.space.kind,
     serverType: view.serverType,
-    serverSId: server.sId,
+    serverId: server.sId,
     serverName: server.name,
     internalMCPServerId: view.internalMCPServerId,
     remoteMCPServerId: view.remoteMCPServerId,
@@ -132,9 +132,9 @@ makeScript(
             | AgentConfigurationModel
             | undefined;
           return {
-            configId: c.id,
-            configSId: c.sId,
-            agentSId: agent?.sId ?? "unknown",
+            configModelId: c.id,
+            configId: c.sId,
+            agentId: agent?.sId ?? "unknown",
             agentName: agent?.name ?? "unknown",
           };
         }),
@@ -155,8 +155,8 @@ makeScript(
           | undefined;
         logger.info(
           {
-            configId: config.id,
-            configSId: config.sId,
+            configModelId: config.id,
+            configId: config.sId,
             agentName: agent?.name ?? "unknown",
             oldMcpServerViewId: config.mcpServerViewId,
             oldInternalMCPServerId: config.internalMCPServerId,

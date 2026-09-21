@@ -20,6 +20,7 @@ export type UpdateConnectorErrorCode =
 export type RetrievePermissionsErrorCode =
   | "INVALID_PARENT_INTERNAL_ID"
   | "INVALID_FILTER_PERMISSION"
+  | "CONTENT_NODE_NOT_FOUND"
   | "EXTERNAL_OAUTH_TOKEN_ERROR"
   | "CONNECTOR_OAUTH_USER_MUST_BE_ADMIN"
   | "CONNECTOR_NOT_FOUND"

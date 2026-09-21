@@ -295,6 +295,7 @@ describe("ConsumptionAttributionTable", () => {
           modelId: null,
           modelDisplayName: null,
           credits: 500,
+          count: 10,
           avgCredits: 100,
           activeMembers: 2,
           totalMembers: 5,
@@ -337,12 +338,78 @@ describe("ConsumptionAttributionTable", () => {
     expect(usagePercentage.parentElement?.querySelector("svg")).toBeNull();
   });
 
+  it("shows the message count for agents and the invocation count for tools", () => {
+    const row: ConsumptionTopRow = {
+      id: "row-1",
+      name: "Row",
+      pictureUrl: null,
+      description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
+      credits: 500,
+      count: 1_234,
+      avgCredits: 0.4,
+      previousCredits: null,
+    };
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [row],
+      totalCredits: 1_000,
+      totalActiveMembers: 10,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    const { rerender } = render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    // jsdom has no container queries, so assert the collapse classes rather
+    // than visibility.
+    expect(screen.getByRole("columnheader", { name: "Messages" })).toHaveClass(
+      "w-0",
+      "@sm:w-auto"
+    );
+    expect(screen.getByText("1,234")).toBeInTheDocument();
+
+    rerender(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="tool"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByRole("columnheader", { name: "Invocations" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "Messages" })
+    ).not.toBeInTheDocument();
+  });
+
   it("caps the available pages and fetches the selected fixed-size page", async () => {
     const rows = Array.from({ length: 1_025 }, (_, index) => ({
       id: `agent-${index + 1}`,
       name: `Agent ${index + 1}`,
       pictureUrl: null,
       credits: 100 - index,
+      count: 10,
       avgCredits: 10,
     }));
     mockUseConsumptionTop.mockImplementation(
@@ -397,6 +464,7 @@ describe("ConsumptionAttributionTable", () => {
       modelId: null,
       modelDisplayName: null,
       credits: 100 - index,
+      count: 10,
       avgCredits: 10,
     }));
     let secondPageLoaded = false;
@@ -498,6 +566,7 @@ describe("ConsumptionAttributionTable", () => {
       name: "Jane Doe",
       pictureUrl: null,
       credits: 100,
+      count: 10,
       avgCredits: 10,
     };
     mockUseConsumptionTop.mockReturnValue({
@@ -596,6 +665,7 @@ describe("ConsumptionAttributionTable", () => {
             modelId: null,
             modelDisplayName: null,
             credits: 100,
+            count: 10,
             avgCredits: 10,
           },
         ],
@@ -667,6 +737,7 @@ describe("ConsumptionAttributionTable", () => {
           modelId: null,
           modelDisplayName: null,
           credits: 100,
+          count: 10,
           avgCredits: 10,
         },
       ],
@@ -729,6 +800,7 @@ describe("ConsumptionAttributionTable", () => {
           modelId: null,
           modelDisplayName: null,
           credits: 100,
+          count: 10,
           avgCredits: 10,
           previousCredits: null,
         },
@@ -775,6 +847,7 @@ describe("ConsumptionAttributionTable", () => {
           modelId: null,
           modelDisplayName: null,
           credits: 100,
+          count: 10,
           avgCredits: 10,
         },
       ],
@@ -849,6 +922,7 @@ describe("ConsumptionAttributionTable", () => {
         modelId: "model-id",
         modelDisplayName: "Model",
         credits: 100,
+        count: 10,
         avgCredits: 10,
         previousCredits: null,
       },
@@ -864,6 +938,7 @@ describe("ConsumptionAttributionTable", () => {
         modelId: null,
         modelDisplayName: null,
         credits: 100,
+        count: 10,
         avgCredits: 10,
         previousCredits: null,
       },
@@ -917,6 +992,7 @@ describe("ConsumptionAttributionTable", () => {
           modelId: null,
           modelDisplayName: null,
           credits: 100,
+          count: 10,
           avgCredits: 10,
         },
       ],

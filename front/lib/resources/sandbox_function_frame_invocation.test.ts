@@ -9,7 +9,6 @@ describe("SandboxFunctionResource.fetchInvocationByFrameAndId", () => {
     const { auth, frame, invocation } = await makeTestFrameInvocation();
     await frame.setActiveFramePublication({
       publicationId: "publication-2",
-      name: "Task List",
       description: "Track tasks.",
     });
 

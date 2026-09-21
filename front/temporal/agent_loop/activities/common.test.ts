@@ -12,12 +12,21 @@ import type {
 } from "@app/types/assistant/agent";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { ApplicationFailure } from "@temporalio/common";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   finalizeCancellation,
+  finalizeCreditSpendCheckpointPause,
   processEventForDatabase,
   updateAgentMessageDBAndMemory,
 } from "./common";
+
+const { mockNotifyManualActionRequired } = vi.hoisted(() => ({
+  mockNotifyManualActionRequired: vi.fn(),
+}));
+
+vi.mock("@app/lib/notifications/workflows/manual-action-required", () => ({
+  notifyManualActionRequired: mockNotifyManualActionRequired,
+}));
 
 // Helper to create an event with runIds for testing
 function createEventWithRunIds(
@@ -1356,5 +1365,196 @@ describe("finalizeCancellation", () => {
         error.type === "ModelNotFound"
       );
     });
+  });
+});
+
+describe("finalizeCreditSpendCheckpointPause", () => {
+  it("marks the message paused and flags the conversation as needing action", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+    const { messageRow: userMessageRow, userMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Hello",
+      });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig,
+        parentMessageModelId: userMessageRow.id,
+        rank: 1,
+      }
+    );
+
+    await finalizeCreditSpendCheckpointPause(auth.toJSON(), {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+      userMessageOrigin: userMessage.context.origin,
+    });
+
+    const messageRes = await ConversationResource.getMessageByIdInConversation(
+      auth,
+      conversation,
+      agentMessage.sId
+    );
+    if (messageRes.isErr()) {
+      throw messageRes.error;
+    }
+    const dbMessage = messageRes.value.agentMessage;
+    expect(dbMessage?.creditSpendCheckpointStatus).toBe("paused");
+    expect(dbMessage?.status).toBe("created");
+
+    const { actionRequired } =
+      await ConversationResource.getActionRequiredAndLastReadAtForUser(
+        auth,
+        conversation.id
+      );
+    expect(actionRequired).toBe(true);
+    expect(mockNotifyManualActionRequired).toHaveBeenCalledWith(
+      expect.anything(),
+      { conversationId: conversation.sId }
+    );
+  });
+
+  it("clears the pause when a terminal status lands afterwards", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+    const { messageRow: userMessageRow, userMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Hello",
+      });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig,
+        parentMessageModelId: userMessageRow.id,
+        rank: 1,
+      }
+    );
+
+    await finalizeCreditSpendCheckpointPause(auth.toJSON(), {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+      userMessageOrigin: userMessage.context.origin,
+    });
+
+    const where = {
+      id: agentMessage.agentMessageId,
+      workspaceId: workspace.id,
+    };
+    const pausedRow = await AgentMessageModel.findOne({ where });
+    expect(pausedRow?.creditSpendCheckpointStatus).toBe("paused");
+
+    // As finalizeCancellation would after a stop landing around the pause.
+    const result = await updateAgentMessageWithFinalStatus(auth, {
+      conversation,
+      agentMessage,
+      status: "cancelled",
+    });
+    expect(result.applied).toBe(true);
+
+    const cancelledRow = await AgentMessageModel.findOne({ where });
+    expect(cancelledRow?.status).toBe("cancelled");
+    expect(cancelledRow?.creditSpendCheckpointStatus).toBeNull();
+  });
+
+  it("leaves a message already finalized by another path untouched", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+    const { messageRow: userMessageRow, userMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Hello",
+      });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig,
+        parentMessageModelId: userMessageRow.id,
+        rank: 1,
+      }
+    );
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "cancelled",
+    });
+
+    await finalizeCreditSpendCheckpointPause(auth.toJSON(), {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+      userMessageOrigin: userMessage.context.origin,
+    });
+
+    const messageRes = await ConversationResource.getMessageByIdInConversation(
+      auth,
+      conversation,
+      agentMessage.sId
+    );
+    if (messageRes.isErr()) {
+      throw messageRes.error;
+    }
+    const dbMessage = messageRes.value.agentMessage;
+    expect(dbMessage?.status).toBe("cancelled");
+    expect(dbMessage?.creditSpendCheckpointStatus).toBeNull();
+
+    const { actionRequired } =
+      await ConversationResource.getActionRequiredAndLastReadAtForUser(
+        auth,
+        conversation.id
+      );
+    expect(actionRequired).toBe(false);
   });
 });

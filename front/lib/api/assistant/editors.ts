@@ -1,75 +1,13 @@
-import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
-import { shadowCompare } from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
-
-function sortedUserModelIds(users: { id: number }[]): number[] {
-  return [...new Set(users.map((user) => user.id))].sort((a, b) => a - b);
-}
-
-function sameModelIds(left: number[], right: number[]): boolean {
-  return (
-    left.length === right.length &&
-    left.every((modelId, index) => modelId === right[index])
-  );
-}
-
-export async function getAgentEditorsShadowed(
-  auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType,
-  legacyEditors: UserResource[],
-  callSite: string,
-  reverse = false
-): Promise<UserResource[]> {
-  await shadowCompare({
-    auth,
-    reverse,
-    legacy: sortedUserModelIds(legacyEditors),
-    candidate: async () => {
-      if (reverse) {
-        const editors = await getAgentEditors(
-          auth,
-          agentConfiguration,
-          callSite,
-          {
-            legacyOnly: true,
-          }
-        );
-        if (editors.isErr() && editors.error.code !== "group_not_found") {
-          throw editors.error;
-        }
-        return sortedUserModelIds(editors.isOk() ? editors.value : []);
-      }
-      const resource = AgentResource.fromAgentConfiguration(
-        auth,
-        agentConfiguration
-      );
-      const editors = await resource.listEditors(auth);
-      assert(editors !== null);
-      return sortedUserModelIds(editors);
-    },
-    context: {
-      check: "agent_editors",
-      callSite,
-      agentId: agentConfiguration.sId,
-      agentConfigurationModelId: agentConfiguration.id,
-      workspaceId: auth.getNonNullableWorkspace().sId,
-    },
-    equals: sameModelIds,
-  });
-
-  return legacyEditors;
-}
 
 export const getAuthors = async (
   agentConfigurations: LightAgentConfigurationType[]
@@ -81,58 +19,29 @@ export const getAuthors = async (
   return authors.map((a) => a.toJSON());
 };
 
+/**
+ * @cc [owner:philipperolet,label:product] global-agents-have-no-editors
+ * A global agent has no editor grant and MUST NOT be treated as having an empty editor set:
+ * `getAgentEditors` fails with `group_not_found` so callers keep returning 404 rather than an
+ * editable empty list.
+ */
 export async function getAgentEditors(
   auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType,
-  callSite: string,
-  { legacyOnly = false } = {}
-): Promise<
-  Result<
-    UserResource[],
-    DustError<
-      "group_not_found" | "internal_error" | "unauthorized" | "invalid_id"
-    >
-  >
-> {
-  if (
-    !legacyOnly &&
-    agentConfiguration.scope !== "global" &&
-    !isLegacyAclsEnabled()
-  ) {
-    const resource = AgentResource.fromAgentConfiguration(
-      auth,
-      agentConfiguration
+  agentConfiguration: LightAgentConfigurationType
+): Promise<Result<UserResource[], DustError<"group_not_found">>> {
+  if (agentConfiguration.scope === "global") {
+    return new Err(
+      new DustError("group_not_found", "Global agents have no editors.")
     );
-    const editors = await resource.listEditors(auth);
-    assert(editors !== null);
-    await getAgentEditorsShadowed(
-      auth,
-      agentConfiguration,
-      editors,
-      callSite,
-      true
-    );
-    return new Ok(editors);
   }
-  const editorGroupRes = await GroupResource.findEditorGroupForAgent(
+
+  const resource = AgentResource.fromAgentConfiguration(
     auth,
     agentConfiguration
   );
-  if (legacyOnly) {
-    return editorGroupRes.isErr()
-      ? editorGroupRes
-      : new Ok(await editorGroupRes.value.getActiveMembers(auth));
-  }
-  if (editorGroupRes.isErr()) {
-    await getAgentEditorsShadowed(auth, agentConfiguration, [], callSite);
-    return editorGroupRes;
-  }
-  const editors = await getAgentEditorsShadowed(
-    auth,
-    agentConfiguration,
-    await editorGroupRes.value.getActiveMembers(auth),
-    callSite
-  );
+  const editors = await resource.listEditors(auth);
+  assert(editors !== null);
+
   return new Ok(editors);
 }
 
@@ -140,7 +49,7 @@ export const getEditors = async (
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<UserType[]> => {
-  const editors = await getAgentEditors(auth, agentConfiguration, "getEditors");
+  const editors = await getAgentEditors(auth, agentConfiguration);
   if (editors.isErr()) {
     // We could do better here but this is not a critical path.
     return [];
@@ -148,138 +57,27 @@ export const getEditors = async (
   return editors.value.map((editor) => editor.toJSON());
 };
 
-async function shadowAgentEditorsBatch(
-  auth: Authenticator,
-  agents: LightAgentConfigurationType[],
-  legacyEditors: Record<string, UserType[]>,
-  reverse = false
-): Promise<void> {
-  const customAgents = agents.filter((agent) => agent.scope !== "global");
-  const normalizedLegacyEditors = customAgents
-    .map(
-      (agent) =>
-        [agent.sId, sortedUserModelIds(legacyEditors[agent.sId] ?? [])] as const
-    )
-    .sort(([left], [right]) => left.localeCompare(right));
-
-  await shadowCompare({
-    auth,
-    reverse,
-    legacy: normalizedLegacyEditors,
-    candidate: async () => {
-      if (reverse) {
-        const editors = await getAgentsEditors(auth, customAgents, {
-          legacyOnly: true,
-        });
-        return customAgents
-          .map(
-            (agent) =>
-              [agent.sId, sortedUserModelIds(editors[agent.sId] ?? [])] as const
-          )
-          .sort(([left], [right]) => left.localeCompare(right));
-      }
-      const resources = AgentResource.fromAgentConfigurations(
-        auth,
-        customAgents
-      );
-      const editorsByAgentId = await AgentResource.batchListEditors(
-        auth,
-        resources
-      );
-
-      const normalizedCandidateEditors = customAgents
-        .map(
-          (agent) =>
-            [
-              agent.sId,
-              sortedUserModelIds(editorsByAgentId.get(agent.sId) ?? []),
-            ] as const
-        )
-        .sort(([left], [right]) => left.localeCompare(right));
-
-      return normalizedCandidateEditors;
-    },
-    context: {
-      check: "agent_editors_batch",
-      workspaceId: auth.getNonNullableWorkspace().sId,
-    },
-    equals: (legacy, candidate) =>
-      legacy.length === candidate.length &&
-      legacy.every(
-        ([agentId, editorModelIds], index) =>
-          agentId === candidate[index][0] &&
-          sameModelIds(editorModelIds, candidate[index][1])
-      ),
-  });
-}
-
 /**
  * @cc [owner:philipperolet,label:product] active-agent-editors
  * Returned editors must have active membership in the workspace and their agent's editor group.
  */
 export const getAgentsEditors = async (
   auth: Authenticator,
-  agentConfigurations: LightAgentConfigurationType[],
-  { legacyOnly = false } = {}
+  agentConfigurations: LightAgentConfigurationType[]
 ): Promise<Record<string, UserType[]>> => {
-  if (!legacyOnly && !isLegacyAclsEnabled()) {
-    const resources = AgentResource.fromAgentConfigurations(
-      auth,
-      agentConfigurations.filter((agent) => agent.scope !== "global")
-    );
-    const editorsByAgentId = await AgentResource.batchListEditors(
-      auth,
-      resources
-    );
-    const result = Object.fromEntries(
-      [...editorsByAgentId].map(([agentId, editors]) => {
-        assert(editors !== null);
-        return [agentId, editors.map((editor) => editor.toJSON())];
-      })
-    );
-    await shadowAgentEditorsBatch(auth, agentConfigurations, result, true);
-    return result;
-  }
-  const editorGroups = await GroupResource.findEditorGroupsForAgents(
+  const resources = AgentResource.fromAgentConfigurations(
     auth,
-    agentConfigurations
+    agentConfigurations.filter((agent) => agent.scope !== "global")
   );
-  const result: Record<string, UserType[]> = {};
-  if (editorGroups.isOk()) {
-    const activeMemberships = await GroupResource.getActiveMembershipsForGroups(
-      auth,
-      Object.values(editorGroups.value)
-    );
-    const users = await UserResource.fetchByModelIds([
-      ...new Set(Object.values(activeMemberships).flat()),
-    ]);
-    // Batch lookup uses the memberships (workspaceId, userId, startAt, endAt) index.
-    const { memberships } = await MembershipResource.getActiveMemberships({
-      users,
-      workspace: auth.getNonNullableWorkspace(),
-    });
-    const activeUserModelIds = new Set(
-      memberships.map((membership) => membership.userId)
-    );
-    // Create a map from userId to UserType for quick lookup
-    const userMap = new Map(
-      users
-        .filter((user) => activeUserModelIds.has(user.id))
-        .map((user) => [user.id, user.toJSON()])
-    );
+  const editorsByAgentId = await AgentResource.batchListEditors(
+    auth,
+    resources
+  );
 
-    // Build the result map: { agentId: [editors] }
-    for (const [agentId, group] of Object.entries(editorGroups.value)) {
-      const userModelIds = activeMemberships[group.id] ?? [];
-      result[agentId] = removeNulls(
-        userModelIds.map((userModelId) => userMap.get(userModelId))
-      );
-    }
-  }
-
-  if (!legacyOnly) {
-    await shadowAgentEditorsBatch(auth, agentConfigurations, result);
-  }
-
-  return result;
+  return Object.fromEntries(
+    [...editorsByAgentId].map(([agentId, editors]) => {
+      assert(editors !== null);
+      return [agentId, editors.map((editor) => editor.toJSON())];
+    })
+  );
 };

@@ -43,6 +43,8 @@ import type { ReactNode } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
 
+export type AttachmentCitationIconSize = "sm" | "md" | "lg";
+
 export const isAudioContentType = (attachmentCitation: AttachmentCitation) => {
   if (attachmentCitation.type === "node") {
     return false;
@@ -67,7 +69,7 @@ export const IconForAttachmentCitation = ({
   iconName?: string;
   /** Improves icons for some MIME types (e.g. extension → frame). */
   fileName?: string;
-  size?: "md" | "sm" | "lg";
+  size?: AttachmentCitationIconSize;
 }): ReactNode => {
   const { isDark } = useTheme();
 
@@ -214,7 +216,8 @@ export function contentFragmentToAttachmentCitation(
 }
 
 export function attachmentToAttachmentCitation(
-  attachment: Attachment
+  attachment: Attachment,
+  { iconSize }: { iconSize?: AttachmentCitationIconSize } = {}
 ): FileAttachmentCitation | NodeAttachmentCitation {
   if (attachment.type === "file") {
     return {
@@ -229,6 +232,7 @@ export function attachmentToAttachmentCitation(
           contentType={attachment.contentType}
           fileName={attachment.title}
           iconName={attachment.iconName}
+          size={iconSize}
         />
       ),
       description: attachment.description ?? null,

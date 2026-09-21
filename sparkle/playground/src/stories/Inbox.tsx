@@ -50,10 +50,13 @@ import {
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
+  PuzzlePiece01,
+  Robot,
   ScrollArea,
   ScrollBar,
   SearchInput,
   Settings01,
+  ShapesPlus,
   SlackLogo,
   Star01,
   Trash01,
@@ -74,7 +77,12 @@ import {
 } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
-import { BuildNav } from "../components/BuildNav";
+import {
+  BUILD_SECTIONS,
+  type BuildSection,
+  BuildNav,
+  isBuildSection,
+} from "../components/BuildNav";
 import {
   ConversationActions,
   conversationFilesFor,
@@ -91,6 +99,9 @@ import { GroupConversationView } from "../components/GroupConversationView";
 import { InboxAltView } from "../components/InboxAltView";
 import { InboxView } from "../components/InboxView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
+import { ManageAgentsView } from "../components/ManageAgentsView";
+import { ManageSkillsView } from "../components/ManageSkillsView";
+import { ManageToolsView } from "../components/ManageToolsView";
 import {
   type AgentSort,
   type AgentType,
@@ -268,7 +279,8 @@ function Inbox() {
     | { kind: "conversation"; conversationId: string }
     | { kind: "space"; spaceId: string }
     | { kind: "profile" }
-    | { kind: "templates" };
+    | { kind: "templates" }
+    | { kind: "build"; section: BuildSection };
 
   const [p2View, setP2View] = useState<P2View>({ kind: "inbox" });
 
@@ -337,6 +349,9 @@ function Inbox() {
   const [activeTab, setActiveTab] = useState<"chat" | "build" | "admin">(
     "chat"
   );
+  // Which Build row is highlighted. Only three of them have a screen, so this
+  // outlives `p2View` — a Space stays lit without the panel changing.
+  const [buildNavItem, setBuildNavItem] = useState("agents");
   const [searchText, setSearchText] = useState("");
   const [welcomeAgentTab, setWelcomeAgentTab] =
     useState<WelcomeAgentTab>("favorites");
@@ -1217,7 +1232,20 @@ function Inbox() {
   }
 
   // ── P2 content ────────────────────────────────────────────────────────────
+  // What the three Build screens are called and badged with, in one place: the
+  // sidebar row, the breadcrumb and the panel label all read from it.
+  const BUILD_SECTION_DISPLAY: Record<
+    BuildSection,
+    { label: string; icon: ComponentType }
+  > = {
+    agents: { label: "Agents", icon: Robot },
+    skills: { label: "Skills", icon: PuzzlePiece01 },
+    tools: { label: "Tools", icon: ShapesPlus },
+  };
+
   const p2Label = (() => {
+    if (p2View.kind === "build")
+      return BUILD_SECTION_DISPLAY[p2View.section].label;
     if (p2View.kind === "inbox") return "Inbox";
     if (p2View.kind === "inboxAlt") return "Inbox Alt";
     if (p2View.kind === "requests") return "Requests";
@@ -1232,6 +1260,13 @@ function Inbox() {
   })();
 
   const p2Content = (() => {
+    if (p2View.kind === "build") {
+      if (p2View.section === "agents")
+        return <ManageAgentsView currentUserId={user.id} />;
+      if (p2View.section === "skills")
+        return <ManageSkillsView currentUserId={user.id} />;
+      return <ManageToolsView />;
+    }
     if (p2View.kind === "profile" && user) return <ProfilePanel user={user} />;
     if (p2View.kind === "inbox")
       return (
@@ -1775,6 +1810,16 @@ function Inbox() {
   })();
 
   const p2TopBarLeft = (() => {
+    if (p2View.kind === "build") {
+      const section = BUILD_SECTION_DISPLAY[p2View.section];
+      return (
+        <Breadcrumbs
+          items={[{ label: section.label, icon: section.icon }]}
+          size="sm"
+          hasLighterFont
+        />
+      );
+    }
     if (p2View.kind === "conversation" && selectedConversation)
       return (
         <Breadcrumbs
@@ -1904,11 +1949,27 @@ function Inbox() {
     <Breadcrumbs items={[{ label: p4Label }]} size="sm" hasLighterFont />
   ) : null;
 
+  /** Opens a Build screen, from the nav or from landing on the Build tab. */
+  const openBuildSection = (section: BuildSection) => {
+    setBuildNavItem(section);
+    setP2View({ kind: "build", section });
+    setP3View(null);
+    setP4View(null);
+  };
+
   // ── Sidebar (Nav) top bar ─────────────────────────────────────────────────
   const navTopBar = (
     <NavTabPill
       value={activeTab}
-      onValueChange={(v) => setActiveTab(v as "chat" | "build" | "admin")}
+      onValueChange={(v) => {
+        const tab = v as "chat" | "build" | "admin";
+        setActiveTab(tab);
+        // Build opens on its first section rather than keeping whatever the
+        // Work tab had in the panel.
+        if (tab === "build") {
+          openBuildSection(BUILD_SECTIONS[0]);
+        }
+      }}
     >
       <NavTabPillList>
         <NavTabPillTrigger value="chat" icon={IntersectDust}>
@@ -2204,6 +2265,14 @@ function Inbox() {
 
       {activeTab === "build" && (
         <BuildNav
+          selectedItem={buildNavItem}
+          onSelectItem={(item) => {
+            if (isBuildSection(item)) {
+              openBuildSection(item);
+            } else {
+              setBuildNavItem(item);
+            }
+          }}
           onNewAgentFromTemplate={() => {
             setP2View({ kind: "templates" });
             setP3View(null);

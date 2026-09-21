@@ -4,7 +4,6 @@ import { MCPServerDetailsSharing } from "@app/components/actions/mcp/MCPServerDe
 import { ConfirmContext } from "@app/components/Confirm";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
 import {
-  getMcpServerDisplayName,
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
@@ -178,7 +177,7 @@ export function MCPServerDetailsSheet({
                               <div>
                                 Are you sure you want to remove {""}
                                 <span className="font-semibold">
-                                  {getMcpServerDisplayName(server)}
+                                  {getMcpServerViewDisplayName(mcpServerView)}
                                 </span>
                                 ?
                                 <div className="mt-2 font-semibold">

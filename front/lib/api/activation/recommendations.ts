@@ -101,7 +101,7 @@ export async function listActivationRecommendationsForUser(
     }
   );
 
-  return recs.map(({ resource, conversationSId }) => ({
+  return recs.map(({ resource, conversationId }) => ({
     sId: resource.sId,
     title: resource.title,
     content: resource.content,
@@ -110,7 +110,7 @@ export async function listActivationRecommendationsForUser(
     ctaLabel: resource.ctaLabel,
     sourceIcon: resource.sourceIcon,
     sourceLabel: resource.sourceLabel,
-    conversationId: conversationSId,
+    conversationId,
     createdAt: resource.createdAt.getTime(),
   }));
 }

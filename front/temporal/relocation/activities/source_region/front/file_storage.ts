@@ -1,3 +1,4 @@
+import { getBucketInstance } from "@app/lib/file_storage";
 import fileStorageConfig from "@app/lib/file_storage/config";
 import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resources/content_fragment_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -7,9 +8,13 @@ import type {
   CreateDataSourceProjectResult,
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
-import { StorageTransferService } from "@app/temporal/relocation/lib/file_storage/transfer";
+import {
+  StorageTransferService,
+  TRANSFER_OPERATION_PREFIX,
+} from "@app/temporal/relocation/lib/file_storage/transfer";
 import type { CellType } from "@app/types/cell";
 import { getBaseMountPathForWorkspace } from "@app/types/mount_path";
+import { isDevelopment } from "@app/types/shared/env";
 
 export async function startTransferFrontPublicFiles({
   destBucket,
@@ -133,17 +138,32 @@ export async function startTransferFrontPrivateFiles({
   return transferResult.value;
 }
 
+/**
+ * @cc [owner:flvndvd,label:backend] skipped-transfers-are-complete
+ * A null job name MUST complete without contacting STS.
+ */
+/**
+ * @cc [owner:flvndvd,label:backend] poll-original-transfer-operation
+ * Operation IDs MUST poll that operation even after its job has been reused.
+ * Legacy job IDs MUST remain supported for existing workflow histories.
+ */
 export async function isFileStorageTransferComplete({
   jobName,
 }: {
-  jobName: string;
+  jobName: string | null;
 }): Promise<boolean> {
+  if (jobName === null) {
+    return true;
+  }
+
   const storageTransfer = new StorageTransferService();
 
-  const result = await storageTransfer.isTransferJobDone({
-    jobName,
-    transferProjectId: config.getGcsTransferProjectId(),
-  });
+  const result = jobName.startsWith(TRANSFER_OPERATION_PREFIX)
+    ? await storageTransfer.isTransferOperationDone(jobName)
+    : await storageTransfer.isTransferJobDone({
+        jobName,
+        transferProjectId: config.getGcsTransferProjectId(),
+      });
 
   if (result.isErr()) {
     throw result.error;
@@ -160,6 +180,11 @@ function makeCoreTableDestPath(
   return `project-${dustAPIProjectId}/${dustAPIDataSourceId}/`;
 }
 
+/**
+ * @cc [owner:flvndvd,label:performance] skip-empty-core-table-transfers
+ * Empty source prefixes MUST return null without creating an STS job.
+ * Listing failures MUST fail the activity.
+ */
 export async function startTransferCoreTableFiles({
   dataSourceCoreIds,
   destBucket,
@@ -174,9 +199,8 @@ export async function startTransferCoreTableFiles({
   destCell: CellType;
   sourceCell: CellType;
   workspaceId: string;
-}): Promise<string> {
-  const storageTransferService = new StorageTransferService();
-
+}): Promise<string | null> {
+  const sourceBucket = fileStorageConfig.getDustTablesBucket();
   const sourcePath = makeCoreTableDestPath(dataSourceCoreIds);
 
   const localLogger = logger.child({
@@ -187,13 +211,28 @@ export async function startTransferCoreTableFiles({
     workspaceId,
   });
 
+  // Match relocation staging storage: use Workload Identity in production.
+  const files = await getBucketInstance(sourceBucket, {
+    useServiceAccount: isDevelopment(),
+  }).getFiles({
+    prefix: sourcePath,
+    maxResults: 1,
+  });
+
+  if (files.length === 0) {
+    localLogger.info("[Storage Transfer] Skipping empty table files transfer.");
+    return null;
+  }
+
   localLogger.info("[Storage Transfer] Initiating table files transfer.");
 
-  const transferResult = await storageTransferService.createTransferJob({
+  const storageTransferService = new StorageTransferService();
+
+  const transferResult = await storageTransferService.startPooledTransfer({
     destBucket,
     destPath: makeCoreTableDestPath(destIds),
     destCell,
-    sourceBucket: fileStorageConfig.getDustTablesBucket(),
+    sourceBucket,
     sourcePath,
     transferProjectId: config.getGcsTransferProjectId(),
     sourceCell,
@@ -205,7 +244,7 @@ export async function startTransferCoreTableFiles({
       {
         error: transferResult.error,
       },
-      "[Storage Transfer] Failed to create table files transfer job."
+      "[Storage Transfer] Failed to start table files transfer."
     );
 
     throw transferResult.error;
@@ -213,9 +252,9 @@ export async function startTransferCoreTableFiles({
 
   localLogger.info(
     {
-      jobName: transferResult.value,
+      operationName: transferResult.value,
     },
-    "[Storage Transfer] Table files transfer job created successfully."
+    "[Storage Transfer] Table files transfer started successfully."
   );
 
   return transferResult.value;

@@ -3,16 +3,22 @@ import type {
   ContentNode,
   ContentNodeWithParent,
 } from "@app/types/connectors/connectors_api";
+import type { FetchChildResourcesError } from "@app/types/connectors/content_nodes";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export type FetchChildResources = (
   parentId: string
-) => Promise<Result<ContentNode[], Error>>;
+) => Promise<Result<ContentNode[], FetchChildResourcesError>>;
 
 export type SelectableNodeWithParents = {
   node: ContentNode;
   parents: string[];
+};
+
+export type SelectAllCollection = {
+  nodes: SelectableNodeWithParents[];
+  skippedNodes: ContentNode[];
 };
 
 type SelectionStatus = {
@@ -37,6 +43,12 @@ type NodeWithParents = {
  * the selectable descendants instead of the container. If `fetchChildResources` is
  * omitted, prevented nodes MUST be skipped and MUST NOT be selected.
  */
+/**
+ * @cc [owner:frankaloia,label:product] continue-after-inaccessible-container
+ * When loading a container fails with `resource_inaccessible`, Select All MUST
+ * continue through other containers and report the inaccessible container in
+ * `skippedNodes`. Fatal failures MUST abort the collection.
+ */
 export async function collectSelectableNodesForSelectAll({
   nodes,
   parentIds,
@@ -45,8 +57,9 @@ export async function collectSelectableNodesForSelectAll({
   nodes: ContentNode[];
   parentIds: string[];
   fetchChildResources?: FetchChildResources;
-}): Promise<Result<SelectableNodeWithParents[], Error>> {
+}): Promise<Result<SelectAllCollection, Error>> {
   const selected: SelectableNodeWithParents[] = [];
+  const skippedNodes: ContentNode[] = [];
   const visitedInternalIds = new Set<string>();
   let currentLevel: NodeWithParents[] = nodes.map((node) => ({
     node,
@@ -84,7 +97,11 @@ export async function collectSelectableNodesForSelectAll({
     const nextLevel: NodeWithParents[] = [];
     for (const [index, childResult] of childResults.entries()) {
       if (childResult.isErr()) {
-        return childResult;
+        if (childResult.error.type === "resource_inaccessible") {
+          skippedNodes.push(containersToExpand[index].node);
+          continue;
+        }
+        return new Err(childResult.error.error);
       }
       const parent = containersToExpand[index];
       nextLevel.push(
@@ -97,7 +114,7 @@ export async function collectSelectableNodesForSelectAll({
     currentLevel = nextLevel;
   }
 
-  return new Ok(selected);
+  return new Ok({ nodes: selected, skippedNodes });
 }
 
 /**

@@ -19,6 +19,7 @@ DEV_WORKSPACE_SID=MyWorkspace npx tsx scripts/seed/<folder>/seed.ts --execute
 - `analytics/` - Creates members, teams, skills, agents and triggers, then fills the consumption index behind the Analytics page
 - `basics/` - Creates a custom agent with skills and sample conversations
 - `byok/` - Setup workspace to test Bring your own key
+- `conversational_building/` - Creates a skill with conversational suggestions and a Dust conversation rendering them, for testing the conversational builder
 - `governance/` - Creates users and skills for testing admin governance
 - `mcp_tools/` - Creates data-source-backed agents with internal MCP tools
 - `reinforcement/` - Creates skills with conversations, feedbacks, Dust conversations with JIT skills for testing reinforcement

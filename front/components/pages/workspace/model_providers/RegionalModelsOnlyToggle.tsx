@@ -1,5 +1,5 @@
 import { RegionalFlag } from "@app/components/shared/RegionalFlag";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useRunsOnRegionalHosting } from "@app/hooks/useRunsOnRegionalHosting";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { useUpdateWorkspaceRegionalModelsOnly } from "@app/lib/swr/workspaces";
 import type { RegionType } from "@app/types/region";
@@ -37,10 +37,10 @@ export function RegionalModelsOnlyToggle({
     updateWorkspaceRegionalModelsOnly,
     isUpdatingWorkspaceRegionalModelsOnly,
   } = useUpdateWorkspaceRegionalModelsOnly({ owner: workspace });
-  const { hasFeature } = useFeatureFlags();
+  const runsOnRegionalHosting = useRunsOnRegionalHosting();
 
-  if (!hasFeature("use_vertex_for_supported_models")) {
-    return <></>;
+  if (!runsOnRegionalHosting) {
+    return null;
   }
 
   const config = REGIONAL_MODELS_ONLY_TOGGLE_CONFIG[cellInfo.region];

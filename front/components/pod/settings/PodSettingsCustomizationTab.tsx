@@ -123,9 +123,9 @@ export function PodSettingsCustomizationTab({
     [podMetadata]
   );
   const selectedDefaultSkillIdSet = new Set(defaultSkillIds);
-  const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
+  const skillById = new Map(skills.map((skill) => [skill.sId, skill]));
   const selectedDefaultSkills = defaultSkillIds.flatMap((skillId) => {
-    const skill = skillBySId.get(skillId);
+    const skill = skillById.get(skillId);
     return skill ? [skill] : [];
   });
   const normalizedSkillSearch = skillSearchText.trim().toLowerCase();

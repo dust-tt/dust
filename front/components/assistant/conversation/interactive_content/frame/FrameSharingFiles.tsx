@@ -19,6 +19,7 @@ interface FrameSharingFilesProps {
 }
 
 const SOURCE_LABELS: Record<ShareFrameViewerFile["sourceKind"], string> = {
+  frame: "Frame",
   conversation: "Conversation",
   pod: "Pod",
   workspace: "Workspace",

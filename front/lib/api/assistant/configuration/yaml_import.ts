@@ -156,7 +156,7 @@ async function saveAgentConfigurationFromAssistant({
   }
 
   return new Ok({
-    agentConfiguration: agentConfigurationRes.value,
+    agentConfiguration: agentConfigurationRes.value.agentConfiguration,
     skippedActions,
   });
 }

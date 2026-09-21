@@ -127,6 +127,27 @@ And one that is **not** compile-forced, so nothing turns red if you skip it:
 > and `resolveModel` swaps in a fallback model instead of erroring. Releasing a gated family
 > is a separate, deliberate change.
 
+> **An `eu/agent-platform` endpoint takes `EU_AGENT_PLATFORM_ENDPOINT_FILTER`, never `{}`.**
+> Dust-managed EU hosting is sold to credit-priced plans and to workspaces carrying
+> `use_vertex_for_supported_models`; that rule lives once, in
+> `front/lib/llms/utils/endpoint_filters.ts`, and every `*_eu_agent_platform.ts` dust wrapper
+> assigns it verbatim:
+>
+> ```ts
+> static readonly endpointFilter = EU_AGENT_PLATFORM_ENDPOINT_FILTER;
+> ```
+>
+> Copy the constant, not a sibling's inline literal — a hand-written copy is how six Gemini
+> Flash EU endpoints ended up on `{}`, routing legacy workspaces to EU hosting nobody had
+> promised them while the picker showed no EU flag. The client mirrors the same constant in
+> `useRunsOnRegionalHosting` (`front/hooks/useRunsOnRegionalHosting.ts`) to decide whether to
+> show a workspace its hosting region, so an endpoint that opts out makes that indicator lie.
+>
+> A model-specific gate composes with it rather than replacing it — `{ and: [FILTER, { featureFlags: … }] }`.
+> This is about `region = EUROPE` **on `host = AGENT_PLATFORM`** only: provider-hosted EU
+> endpoints (`*_eu_openai_responses`, `*_eu_mistral`) run on the provider's own EU
+> infrastructure, are available to everyone, and keep `endpointFilter = {}`.
+
 ### C. `model_constructors` — the endpoint classes (stream)
 
 | File | What to add |
@@ -147,7 +168,7 @@ And one that is **not** compile-forced, so nothing turns red if you skip it:
 | File | What to add |
 |------|-------------|
 | `front/lib/llms/providers/{provider}/models/{model}.ts` | **Dust config mixin** `WithDustXConfig(Base)` — `Object.assign`es the legacy `X_MODEL_CONFIG` onto the class and overrides `displayName`/`description`/`byok` (and any caps). |
-| `front/lib/llms/stream/endpoints/{...}.ts` | One thin dust wrapper per endpoint extending the `model_constructors` class via the dust mixin; call `defineDustStreamEndpoint(...)`. |
+| `front/lib/llms/stream/endpoints/{...}.ts` | One thin dust wrapper per endpoint extending the `model_constructors` class via the dust mixin; call `defineDustStreamEndpoint(...)`. This is where `endpointFilter` lives — `EU_AGENT_PLATFORM_ENDPOINT_FILTER` on every `*_eu_agent_platform.ts`, `{}` otherwise. |
 | `front/lib/llms/stream/index.ts` | Register each **available** dust endpoint in `DUST_STREAM_ENDPOINTS` (`satisfies Record<StreamEndpointId, ...>`). |
 
 ### F. SDK + UI
@@ -489,6 +510,9 @@ on `makeScript`. Template: `front/migrations/20260608_migrate_deepseek_r1_models
       models rather than a bespoke schema on the new one
 - [ ] Every endpoint sharing the config mixin re-run green (all regions / provider APIs)
 - [ ] `llms` dust layer: dust mixin + endpoint(s) + `llms/stream/index.ts`
+- [ ] Every `*_eu_agent_platform.ts` added carries `EU_AGENT_PLATFORM_ENDPOINT_FILTER` (NOT
+      compile-forced — `{}` silently routes ineligible workspaces to EU hosting and makes the
+      picker's region flag lie)
 - [ ] UI `model_configs.ts`; SDK union updated **and types rebuilt before `tsgo`**
 - [ ] `USED_MODEL_CONFIGS` holds at most two versions of the family; every model evicted by
       that rule is `isLegacy: true` + `isLatest: false` and no longer named by any hardcoded

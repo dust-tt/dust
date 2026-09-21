@@ -1,10 +1,12 @@
 import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
-import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import {
+  DataSourceList,
+  toDataSourceListItem,
+} from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { ConfirmContext } from "@app/components/Confirm";
+import { buildSpaceItems } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
-import { getSpaceIcon } from "@app/lib/spaces";
 import type { EnrichedSpaceType } from "@app/types/space";
-import { SPACE_KINDS } from "@app/types/space";
 import { useCallback, useContext, useMemo } from "react";
 
 interface DataSourceSpaceSelectorProps {
@@ -19,50 +21,17 @@ export function DataSourceSpaceSelector({
   const confirm = useContext(ConfirmContext);
 
   const { spaceItems, projectItems } = useMemo(() => {
-    const sortedSpaces = spaces.toSorted((a, b) => {
-      // First, sort by kind according to the specified order
-      const aKindIndex = SPACE_KINDS.indexOf(a.kind);
-      const bKindIndex = SPACE_KINDS.indexOf(b.kind);
-
-      // If kinds are different, sort by kind order
-      if (aKindIndex !== bKindIndex) {
-        return aKindIndex - bKindIndex;
-      }
-
-      // If kinds are the same, sort by isRestricted (non-restricted first)
-      if (a.isRestricted !== b.isRestricted) {
-        return a.isRestricted ? 1 : -1;
-      }
-
-      // If kinds and isRestricted are the same, sort by name alphabetically
-      return a.name.localeCompare(b.name);
-    });
-
-    const spaceItems = sortedSpaces
-      .filter((space) => space.kind !== "project")
-      .map((space) => ({
-        id: space.sId,
-        title: space.name,
-        icon: getSpaceIcon(space),
-        onClick: () => setSpaceEntry(space),
-        entry: {
-          type: "space" as const,
-          space: space,
-        },
-      }));
-    const projectItems = sortedSpaces
-      .filter((space) => space.kind === "project")
-      .map((space) => ({
-        id: space.sId,
-        title: space.name,
-        icon: getSpaceIcon(space),
-        onClick: () => setSpaceEntry(space),
-        entry: {
-          type: "space" as const,
-          space: space,
-        },
-      }));
-    return { spaceItems, projectItems };
+    const items = buildSpaceItems(spaces);
+    const toListItem = (item: (typeof items)[number]) =>
+      toDataSourceListItem(item, () => setSpaceEntry(item.space));
+    return {
+      spaceItems: items
+        .filter((item) => item.group === "spaces")
+        .map(toListItem),
+      projectItems: items
+        .filter((item) => item.group === "pods")
+        .map(toListItem),
+    };
   }, [spaces, setSpaceEntry]);
 
   const handleSpaceSelectionChange = useCallback(

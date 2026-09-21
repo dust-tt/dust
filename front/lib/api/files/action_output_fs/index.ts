@@ -9,6 +9,7 @@ import {
 } from "@app/lib/api/files/action_output_fs/registry";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { conversationScopedPath, podScopedPath } from "@app/types/file_system";
 import type { AllSupportedFileContentType } from "@app/types/files";
@@ -210,6 +211,19 @@ export async function persistToolOutput(
   block: CallToolResult["content"][number],
   { toolName, serverName }: { toolName: string; serverName: string }
 ): Promise<Result<PersistedToolOutput | null, Error>> {
+  if (runContext.contextType === "sandbox_function" && !runContext.pod) {
+    logger.info(
+      {
+        actionId: runContext.action.sId,
+        invocationId: runContext.invocation.sId,
+        toolName,
+        serverName,
+      },
+      "Sandbox function running for a Frame without a Pod, skipping persisting outputs."
+    );
+    return new Ok(null);
+  }
+
   // Resource blocks (registered mimeTypes).
   const resolved = resolveResourceOutput(block);
   if (resolved) {

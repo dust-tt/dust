@@ -8,15 +8,21 @@ use tokio::time::sleep;
 
 use super::error::DustApiError;
 use super::types::{
-    parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
-    CallToolResponse, CallToolResult, FrameCallByIdRequest, FrameCallFromSourceRequest,
-    FrameCallResponse, FrameDatabaseListResponse, FrameDatabaseQueryRequest,
-    FrameDatabaseQueryResponse, FramePublishRequest, FramePublishResponse, FrameRegisterRequest,
-    FrameRegisterResponse, FrameShareLinkResponse, FrameValidateRequest, FrameValidateResponse,
-    MCPServerView, SandboxServerViewsResponse,
+    interpret_call_tool_post_response, parse_action_poll_response, ActionPollResponse,
+    CallToolPostOutcome, CallToolPostResponse, CallToolRequest, CallToolResponse, CallToolResult,
+    FrameCallByIdRequest, FrameCallFromSourceRequest, FrameCallResponse, FrameDatabaseListResponse,
+    FrameDatabaseQueryRequest, FrameDatabaseQueryResponse, FramePublishRequest,
+    FramePublishResponse, FrameRegisterRequest, FrameRegisterResponse, FrameShareLinkResponse,
+    FrameValidateRequest, FrameValidateResponse, MCPServerView, SandboxServerViewsResponse,
 };
 
-const POLL_INTERVAL: Duration = Duration::from_millis(500);
+// Action poll schedule after a 202 create: Temporal + MCP need time before
+// the first GET can succeed, so skip the useless immediate check. Then poll
+// denser while warm tools usually finish, and ease off for long runners.
+const POLL_INITIAL_DELAY: Duration = Duration::from_millis(500);
+const POLL_FAST_INTERVAL: Duration = Duration::from_millis(200);
+const POLL_FAST_WINDOW: Duration = Duration::from_secs(2);
+const POLL_SLOW_INTERVAL: Duration = Duration::from_millis(500);
 // Hard cap so a wedged action can't pin the CLI forever.
 const POLL_MAX_DURATION: Duration = Duration::from_secs(10 * 60);
 const HTTP_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
@@ -28,6 +34,14 @@ const HTTP_REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const POLL_MAX_CONSECUTIVE_NETWORK_ERRORS: u32 = 30;
 const POLL_RETRY_BACKOFF_BASE: Duration = Duration::from_millis(500);
 const POLL_RETRY_BACKOFF_CAP: Duration = Duration::from_secs(5);
+
+fn pending_poll_interval(elapsed: Duration) -> Duration {
+    if elapsed < POLL_FAST_WINDOW {
+        POLL_FAST_INTERVAL
+    } else {
+        POLL_SLOW_INTERVAL
+    }
+}
 
 const SANDBOX_TOKEN_ENV: &str = "DUST_SANDBOX_TOKEN";
 const API_URL_ENV: &str = "DUST_API_URL";
@@ -304,9 +318,14 @@ impl DustApiClient {
     }
 
     async fn poll_action_result(&self, action_id: &str) -> anyhow::Result<CallToolResponse> {
-        let deadline = Instant::now() + POLL_MAX_DURATION;
+        let started = Instant::now();
+        let deadline = started + POLL_MAX_DURATION;
         let mut announced = false;
         let mut consecutive_network_errors: u32 = 0;
+
+        // Fresh creates are never done yet; wait before the first GET.
+        sleep(POLL_INITIAL_DELAY).await;
+
         loop {
             let poll_result = self.get_action_status(action_id).await;
             let response = match poll_result {
@@ -355,7 +374,7 @@ impl DustApiClient {
                         eprintln!("waiting on action {action_id}...");
                         announced = true;
                     }
-                    sleep(POLL_INTERVAL).await;
+                    sleep(pending_poll_interval(started.elapsed())).await;
                 }
                 ActionPollResponse::Rejected => {
                     bail!("action {action_id} was rejected");
@@ -370,6 +389,7 @@ impl DustApiClient {
                             content,
                             structured_content,
                             is_error,
+                            timings_ms: None,
                         },
                     });
                 }
@@ -383,15 +403,56 @@ impl DustApiClient {
         tool_name: &str,
         arguments: Option<serde_json::Value>,
     ) -> anyhow::Result<CallToolResponse> {
+        let started = Instant::now();
         let body = CallToolRequest {
             server_view_id: view_id.to_string(),
             tool_name: tool_name.to_string(),
             arguments,
         };
-        let CallToolPostResponse::Pending { action_id } =
-            self.post("sandbox/actions/call", &body).await?;
+        let post_started = Instant::now();
+        let post_response: CallToolPostResponse = self.post("sandbox/actions/call", &body).await?;
+        let post_ms = post_started.elapsed().as_millis() as u64;
 
-        self.poll_action_result(&action_id).await
+        match interpret_call_tool_post_response(post_response) {
+            CallToolPostOutcome::Ready {
+                content,
+                structured_content,
+                is_error,
+                server_timings_ms,
+            } => Ok(CallToolResponse {
+                result: CallToolResult {
+                    content,
+                    structured_content,
+                    is_error,
+                    timings_ms: Some(super::types::ToolCallTimingsMs {
+                        post: post_ms,
+                        poll: 0,
+                        offload: None,
+                        server: server_timings_ms,
+                        total: started.elapsed().as_millis() as u64,
+                    }),
+                },
+            }),
+            CallToolPostOutcome::Rejected => {
+                bail!("action was rejected");
+            }
+            CallToolPostOutcome::Pending {
+                action_id,
+                server_timings_ms,
+            } => {
+                let poll_started = Instant::now();
+                let mut response = self.poll_action_result(&action_id).await?;
+                let poll_ms = poll_started.elapsed().as_millis() as u64;
+                response.result.timings_ms = Some(super::types::ToolCallTimingsMs {
+                    post: post_ms,
+                    poll: poll_ms,
+                    offload: None,
+                    server: server_timings_ms,
+                    total: started.elapsed().as_millis() as u64,
+                });
+                Ok(response)
+            }
+        }
     }
 }
 
@@ -402,7 +463,27 @@ mod tests {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
     use tokio::net::TcpListener;
 
-    use super::DustApiClient;
+    use super::{
+        pending_poll_interval, DustApiClient, POLL_FAST_INTERVAL, POLL_FAST_WINDOW,
+        POLL_SLOW_INTERVAL,
+    };
+
+    #[test]
+    fn pending_poll_interval_is_fast_until_two_seconds_then_slow() {
+        assert_eq!(
+            pending_poll_interval(Duration::from_millis(500)),
+            POLL_FAST_INTERVAL
+        );
+        assert_eq!(
+            pending_poll_interval(POLL_FAST_WINDOW - Duration::from_millis(1)),
+            POLL_FAST_INTERVAL
+        );
+        assert_eq!(pending_poll_interval(POLL_FAST_WINDOW), POLL_SLOW_INTERVAL);
+        assert_eq!(
+            pending_poll_interval(Duration::from_secs(30)),
+            POLL_SLOW_INTERVAL
+        );
+    }
 
     #[tokio::test]
     async fn frame_database_list_survives_a_cold_start_beyond_the_default_timeout() {

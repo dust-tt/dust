@@ -14,51 +14,51 @@ interface PodMembersUpdateValidationDetailsProps {
 }
 
 function formatMemberName({
-  memberSId,
-  currentUserSId,
-  memberDisplayBySId,
+  memberId,
+  currentUserId,
+  memberDisplayById,
   isMembersLoading,
 }: {
-  memberSId: string;
-  currentUserSId: string;
-  memberDisplayBySId: Record<string, MemberDisplayInfo>;
+  memberId: string;
+  currentUserId: string;
+  memberDisplayById: Record<string, MemberDisplayInfo>;
   isMembersLoading: boolean;
 }): string {
-  if (memberSId === currentUserSId) {
+  if (memberId === currentUserId) {
     return "You";
   }
-  const member = memberDisplayBySId[memberSId];
+  const member = memberDisplayById[memberId];
   if (member) {
     return member.fullName;
   }
   if (isMembersLoading) {
     return "Loading…";
   }
-  return memberSId;
+  return memberId;
 }
 
 interface MemberChangeRowProps {
-  memberSId: string;
+  memberId: string;
   action: "add" | "remove";
   role?: "member" | "editor";
-  currentUserSId: string;
-  memberDisplayBySId: Record<string, MemberDisplayInfo>;
+  currentUserId: string;
+  memberDisplayById: Record<string, MemberDisplayInfo>;
   isMembersLoading: boolean;
 }
 
 function MemberChangeRow({
-  memberSId,
+  memberId,
   action,
   role,
-  currentUserSId,
-  memberDisplayBySId,
+  currentUserId,
+  memberDisplayById,
   isMembersLoading,
 }: MemberChangeRowProps) {
-  const member = memberDisplayBySId[memberSId];
+  const member = memberDisplayById[memberId];
   const displayName = formatMemberName({
-    memberSId,
-    currentUserSId,
-    memberDisplayBySId,
+    memberId,
+    currentUserId,
+    memberDisplayById,
     isMembersLoading,
   });
 
@@ -113,15 +113,15 @@ export function PodMembersUpdateValidationDetails({
     conversationId,
   });
 
-  const memberSIds = useMemo(
+  const memberIds = useMemo(
     () => [
       ...new Set([...addEntries.map(([userId]) => userId), ...membersToRemove]),
     ],
     [addEntries, membersToRemove]
   );
-  const { membersBySId, isMembersLoading } = useMemberDetails({
+  const { membersById, isMembersLoading } = useMemberDetails({
     workspaceId: owner.sId,
-    userIds: memberSIds,
+    userIds: memberIds,
   });
 
   const summaryParts: string[] = [];
@@ -156,14 +156,14 @@ export function PodMembersUpdateValidationDetails({
               "divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background"
             )}
           >
-            {addEntries.map(([memberSId, role]) => (
+            {addEntries.map(([memberId, role]) => (
               <MemberChangeRow
-                key={`add-${memberSId}`}
-                memberSId={memberSId}
+                key={`add-${memberId}`}
+                memberId={memberId}
                 action="add"
                 role={role}
-                currentUserSId={user.sId}
-                memberDisplayBySId={membersBySId}
+                currentUserId={user.sId}
+                memberDisplayById={membersById}
                 isMembersLoading={isMembersLoading}
               />
             ))}
@@ -181,13 +181,13 @@ export function PodMembersUpdateValidationDetails({
               "divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background"
             )}
           >
-            {membersToRemove.map((memberSId) => (
+            {membersToRemove.map((memberId) => (
               <MemberChangeRow
-                key={`remove-${memberSId}`}
-                memberSId={memberSId}
+                key={`remove-${memberId}`}
+                memberId={memberId}
                 action="remove"
-                currentUserSId={user.sId}
-                memberDisplayBySId={membersBySId}
+                currentUserId={user.sId}
+                memberDisplayById={membersById}
                 isMembersLoading={isMembersLoading}
               />
             ))}

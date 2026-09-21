@@ -1,4 +1,8 @@
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
+import {
+  buildFrameFunctionsTarArchive,
+  parseFrameFunctionsTarArchive,
+} from "@app/lib/api/frames/functions_archive";
 import { getFramePublishLockName } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationFunctionArtifact } from "@app/lib/api/frames/publication_storage";
 import {
@@ -7,6 +11,7 @@ import {
   publishFramePublication,
   storeFramePublication,
 } from "@app/lib/api/frames/publication_storage";
+import { seedFramePublicationFunctionsArchive } from "@app/lib/api/frames/seed_functions_archive";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
@@ -31,21 +36,21 @@ import {
 import { FramePublicationDescriptorSchema } from "@app/types/api/frame_publication";
 import {
   getFramePublicationDescriptorPath,
-  getFramePublicationFunctionBundlePath,
+  getFramePublicationFunctionsArchivePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import {
-  frameContentType,
-  frameV2ContentType,
-  sandboxFunctionContentType,
-} from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/frames/database_reconciliation", () => ({
   reconcileFramePublicationDatabases: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/frames/seed_functions_archive", () => ({
+  seedFramePublicationFunctionsArchive: vi.fn().mockResolvedValue(undefined),
 }));
 
 async function setupFrame({
@@ -80,13 +85,11 @@ async function setupFrame({
 
 const manifest = FrameManifestSchema.parse({
   version: 1,
-  name: "Task List",
   description: "Track tasks.",
 });
 
 const manifestWithFunction = FrameManifestSchema.parse({
   version: 1,
-  name: "Task List",
   description: "Track tasks.",
   functions: [
     {
@@ -99,7 +102,6 @@ const manifestWithFunction = FrameManifestSchema.parse({
 
 const manifestWithDatabase = FrameManifestSchema.parse({
   version: 1,
-  name: "Task List",
   description: "Track tasks.",
   databases: [{ name: "tasks", schema: "databases/tasks.db.ts" }],
 });
@@ -162,6 +164,8 @@ beforeEach(() => {
   vi.mocked(reconcileFramePublicationDatabases).mockResolvedValue(
     new Ok(undefined)
   );
+  vi.mocked(seedFramePublicationFunctionsArchive).mockClear();
+  vi.mocked(seedFramePublicationFunctionsArchive).mockResolvedValue(undefined);
   fileStorageMock.reset();
 });
 
@@ -235,24 +239,28 @@ describe("storeFramePublication", () => {
       frameId: frame.sId,
       publicationId: result.value.publicationId,
     };
-    const bundlePath = getFramePublicationFunctionBundlePath({
-      ...identity,
-      functionName: "add-task",
-    });
+    const archivePath = getFramePublicationFunctionsArchivePath(identity);
     const savedPaths = fileStorageMock.saveFileCalls.map(
       ({ filePath }) => filePath
     );
 
-    expect(savedPaths).toContain(bundlePath);
+    expect(savedPaths.some((p) => p.endsWith("/functions/add-task.ts"))).toBe(
+      false
+    );
+    expect(savedPaths).toContain(archivePath);
     expect(savedPaths.at(-1)).toBe(getFramePublicationDescriptorPath(identity));
-    expect(fileStorageMock.getObject(bundlePath)).toBe(
-      functionArtifacts[0].bundleCode
+    const archiveObject = fileStorageMock.getObject(archivePath);
+    expect(archiveObject).toBeDefined();
+    await expect(
+      parseFrameFunctionsTarArchive(Buffer.from(archiveObject!))
+    ).resolves.toEqual(
+      new Map([["add-task", functionArtifacts[0].bundleCode]])
     );
     expect(
       fileStorageMock.saveFileCalls.find(
-        ({ filePath }) => filePath === bundlePath
+        ({ filePath }) => filePath === archivePath
       )?.contentType
-    ).toBe(sandboxFunctionContentType);
+    ).toBe("application/x-tar");
     const descriptor = await loadFramePublicationDescriptor(auth, {
       frame,
       publicationId: result.value.publicationId,
@@ -607,11 +615,11 @@ describe("activateFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       stored.value.publicationId
     );
-    expect(reloaded?.useCaseMetadata?.frameName).toBe("Task List");
+    // Activation records the description; the source folder names the Frame.
     expect(reloaded?.useCaseMetadata?.frameDescription).toBe("Track tasks.");
   });
 
-  it("refreshes the stored name and description on republish", async () => {
+  it("refreshes the stored description on republish, leaving the name alone", async () => {
     const { auth, frame } = await setupFrame();
     const first = await storeFramePublication(auth, {
       frame,
@@ -631,7 +639,6 @@ describe("activateFramePublication", () => {
 
     const renamedManifest = FrameManifestSchema.parse({
       ...manifest,
-      name: "Renamed Tasks",
       description: "Renamed description.",
     });
     const second = await storeFramePublication(auth, {
@@ -652,7 +659,6 @@ describe("activateFramePublication", () => {
     expect(activated.isOk()).toBe(true);
 
     const reloaded = await FileResource.fetchById(auth, frame.sId);
-    expect(reloaded?.useCaseMetadata?.frameName).toBe("Renamed Tasks");
     expect(reloaded?.useCaseMetadata?.frameDescription).toBe(
       "Renamed description."
     );
@@ -745,14 +751,18 @@ describe("activateFramePublication", () => {
     if (stored.isErr()) {
       return;
     }
+    const archivePath = getFramePublicationFunctionsArchivePath({
+      workspaceId,
+      frameId: frame.sId,
+      publicationId: stored.value.publicationId,
+    });
     fileStorageMock.setObject(
-      getFramePublicationFunctionBundlePath({
-        workspaceId,
-        frameId: frame.sId,
-        publicationId: stored.value.publicationId,
-        functionName: "add-task",
-      }),
-      "export const tampered = true;"
+      archivePath,
+      (
+        await buildFrameFunctionsTarArchive([
+          { name: "add-task", content: "export const tampered = true;" },
+        ])
+      ).toString("utf8")
     );
 
     const result = await activateFramePublication(auth, {
@@ -966,6 +976,30 @@ describe("publishFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       published.value.publicationId
     );
+    expect(seedFramePublicationFunctionsArchive).not.toHaveBeenCalled();
+  });
+
+  it("fire-and-forgets functions.tar seed when the publication has functions", async () => {
+    const { auth, frame } = await setupFrame();
+
+    const published = await publishFramePublication(auth, {
+      frame,
+      functionArtifacts,
+      manifest: manifestWithFunction,
+      sourceFiles: sourceFilesWithFunction,
+      uiBundleCode,
+    });
+
+    expect(published.isOk()).toBe(true);
+    if (published.isErr()) {
+      return;
+    }
+    // Allow the voided promise to settle.
+    await Promise.resolve();
+    expect(seedFramePublicationFunctionsArchive).toHaveBeenCalledWith(auth, {
+      frame,
+      publicationId: published.value.publicationId,
+    });
   });
 
   it("reconciles declared databases before activation", async () => {
@@ -997,7 +1031,6 @@ describe("publishFramePublication", () => {
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     await frame.setActiveFramePublication({
       publicationId: activePublicationId,
-      name: "Task List",
       description: "Track tasks.",
     });
     vi.mocked(reconcileFramePublicationDatabases).mockResolvedValueOnce(
@@ -1036,11 +1069,10 @@ describe("publishFramePublication", () => {
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     await frame.setActiveFramePublication({
       publicationId: activePublicationId,
-      name: "Task List",
       description: "Track tasks.",
     });
     fileStorageMock.setFileSaveFails((filePath) =>
-      filePath.endsWith("/functions/add-task.ts")
+      filePath.endsWith("/functions.tar")
     );
 
     await expect(

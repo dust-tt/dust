@@ -13,17 +13,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        region: [ eu, us ]
+        target:
+          - { name: eu, domain: e2b-juliett.dev }
+          - { name: us, domain: e2b.dev }
+          - { name: cell-00002, domain: e2b-juliett.dev }
     steps:
-      - name: Configure E2B for ${{ matrix.region }}
+      - name: Configure E2B for ${{ matrix.target.name }}
         run: |
-          if [ "${{ matrix.region }}" = "eu" ]; then
-            echo "E2B_API_KEY=${{ secrets.E2B_API_KEY }}" >> "$GITHUB_ENV"
-            echo "E2B_DOMAIN=e2b-juliett.dev" >> "$GITHUB_ENV"
-          else
-            echo "E2B_API_KEY=${{ secrets.E2B_US_API_KEY }}" >> "$GITHUB_ENV"
-            echo "E2B_DOMAIN=e2b.dev" >> "$GITHUB_ENV"
-          fi
+          case "${{ matrix.target.name }}" in
+            eu)          E2B_KEY="${{ secrets.E2B_API_KEY }}" ;;
+            us)          E2B_KEY="${{ secrets.E2B_US_API_KEY }}" ;;
+            cell-00002)  E2B_KEY="${{ secrets.E2B_CELL_00002_API_KEY }}" ;;
+            *)
+              echo "::error::no E2B API key mapped for target ${{ matrix.target.name }}"
+              exit 1 ;;
+          esac
+          echo "E2B_API_KEY=$E2B_KEY" >> "$GITHUB_ENV"
+          echo "E2B_DOMAIN=${{ matrix.target.domain }}" >> "$GITHUB_ENV"
 
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -37,6 +43,6 @@ jobs:
         working-directory: front
         run: |
           if ! npx tsx scripts/sandbox_image_verify.ts; then
-            echo "::error::Sandbox template verification failed (${{ matrix.region }}). Build the missing templates from main with the Sandbox Image Registry workflow before deploying."
+            echo "::error::Sandbox template verification failed (${{ matrix.target.name }}). Build the missing templates from main with the Sandbox Image Registry workflow before deploying."
             exit 1
           fi

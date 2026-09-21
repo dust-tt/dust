@@ -39,7 +39,6 @@ export class PlanFactory {
       maxDataSourcesCount: -1,
       maxDataSourcesDocumentsCount: -1,
       maxDataSourcesDocumentsSizeMb: 100,
-      trialPeriodDays: 0,
       canUseProduct: true,
       isByok: false,
       hasAdvancedModelAccess: true,

@@ -13,6 +13,7 @@ export type DegradedModelEndpointType = {
 
 export type DegradedModelEndpointUpdateType = DegradedModelEndpointType & {
   degraded: boolean;
+  expiresAt?: Date | null;
 };
 
 export function degradedModelEndpointKey({

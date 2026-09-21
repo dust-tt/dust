@@ -17,7 +17,9 @@ pub use frame::{
     cmd_frame_call, cmd_frame_create, cmd_frame_publish, cmd_frame_register, cmd_frame_share_link,
     cmd_frame_validate,
 };
-pub use function::{cmd_function_build, cmd_function_get, cmd_function_run};
+pub use function::{
+    cmd_function_build, cmd_function_get, cmd_function_materialize_archive, cmd_function_run,
+};
 pub use healthcheck::cmd_healthcheck;
 pub use resolve::cmd_resolve;
 pub use tools::{cmd_exec, cmd_list_servers, cmd_list_tools, OffloadResolutionError};

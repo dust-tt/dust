@@ -49,7 +49,7 @@ app.patch(
     const { permission, enabled } = ctx.req.valid("json");
 
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
-      serverSId: serverId,
+      serverId,
       toolName,
       permission: permission ?? "high",
       enabled: enabled ?? true,

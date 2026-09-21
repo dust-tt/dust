@@ -49,7 +49,7 @@ export function registerPodsListTool(server: McpServer) {
     },
     async (auth, { access = "member", q, limit = 20, lastValue }) => {
       const owner = auth.getNonNullableWorkspace();
-      const workspaceSId = owner.sId;
+      const workspaceId = owner.sId;
 
       const decodedPageOffset = lastValue ? Number.parseInt(lastValue, 10) : 0;
       const pageOffset =
@@ -80,7 +80,7 @@ export function registerPodsListTool(server: McpServer) {
       const pods = pagePods.map((pod) => ({
         id: pod.sId,
         name: pod.name,
-        url: `${config.getAppUrl()}${getPodRoute(workspaceSId, pod.sId)}`,
+        url: `${config.getAppUrl()}${getPodRoute(workspaceId, pod.sId)}`,
       }));
 
       return mcpJsonResponse({

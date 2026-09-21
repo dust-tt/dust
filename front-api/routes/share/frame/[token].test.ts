@@ -288,7 +288,7 @@ describe("GET /api/share/frame/:token - title", () => {
     expect((await response.json()).title).toBe("Test");
   });
 
-  it("uses the published Frame name for a Frame v2", async () => {
+  it("names a Frame v2 after the folder holding its manifest", async () => {
     const file = await FileFactory.create(auth, user, {
       contentType: frameV2ContentType,
       fileName: "manifest.json",
@@ -297,9 +297,10 @@ describe("GET /api/share/frame/:token - title", () => {
       useCase: "project_context",
       useCaseMetadata: {
         activePublicationId: "publication-1",
-        frameName: "Task List",
         frameDescription: "Track tasks.",
       },
+      // Only the last two segments matter: the folder holding the manifest names the Frame.
+      mountFilePath: "w/w1/pods/vlt_p1/files/Task List/manifest.json",
     });
     await file.setShareScope(auth, "public");
     const shareInfo = await file.getShareInfo();

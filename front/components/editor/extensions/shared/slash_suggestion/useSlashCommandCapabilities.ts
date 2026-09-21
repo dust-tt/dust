@@ -12,7 +12,6 @@ import {
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { RefObject } from "react";
 import { useMemo } from "react";
 
 import { buildCapabilitySlashCommandItems } from "./buildSlashCommandItems";
@@ -62,12 +61,10 @@ export function useInputBarSlashCommandCapabilities({
   excludeSkillId,
   owner,
   query,
-  selectedMCPServerViewIdsRef,
 }: {
   excludeSkillId?: string | null;
   owner: LightWorkspaceType;
   query: string;
-  selectedMCPServerViewIdsRef?: RefObject<Set<string>>;
 }) {
   const { spaces: globalSpaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
@@ -95,12 +92,8 @@ export function useInputBarSlashCommandCapabilities({
         query,
         skills,
         tools: serverViews,
-        toolFilter: (serverView) =>
-          !(selectedMCPServerViewIdsRef?.current ?? new Set()).has(
-            serverView.sId
-          ),
       }),
-    [excludeSkillId, query, selectedMCPServerViewIdsRef, serverViews, skills]
+    [excludeSkillId, query, serverViews, skills]
   );
 
   return {

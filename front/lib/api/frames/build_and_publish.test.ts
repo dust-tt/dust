@@ -23,7 +23,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FrameManifestSchema } from "@app/types/api/frame_manifest";
 import {
-  getFramePublicationFunctionBundlePath,
+  getFramePublicationFunctionsArchivePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -164,12 +164,34 @@ beforeEach(() => {
 });
 
 describe("buildAndPublishFramePublication", () => {
+  it("leaves package-path authoring checks to the Frame linter", async () => {
+    const { auth, conversation } = await setup();
+    const result = await validateFramePublication(auth, {
+      conversation,
+      manifest: uiOnlyManifest,
+      sourceFiles: [
+        {
+          ...sourceFiles[0],
+          content: Buffer.from(
+            'export default () => <main>{"conversation-test/MyFrame/data.csv"}</main>'
+          ),
+        },
+        {
+          relativePath: "data.csv",
+          content: Buffer.from("value\n42\n"),
+          contentType: "text/csv",
+        },
+      ],
+    });
+
+    expect(result.isOk()).toBe(true);
+  });
+
   it("rejects forbidden Tailwind values without writing a publication", async () => {
     const { auth, conversation, frame } = await setup();
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     await frame.setActiveFramePublication({
       publicationId: activePublicationId,
-      name: "Task List",
       description: "Track tasks.",
     });
 
@@ -215,7 +237,7 @@ describe("buildAndPublishFramePublication", () => {
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
-  it("refuses to publish a UI that calls an undeclared function", async () => {
+  it("leaves function-name authoring checks to the Frame linter", async () => {
     const { auth, conversation, frame } = await setup();
 
     const result = await buildAndPublishFramePublication(auth, {
@@ -236,16 +258,12 @@ describe("buildAndPublishFramePublication", () => {
       ],
     });
 
-    expect(result.isErr() && result.error).toMatchObject({
-      code: "invalid_function_reference",
-    });
-    // The reference check runs before any build work, so nothing was bundled or stored.
-    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    expect(result.isOk()).toBe(true);
     expect(ensureConversationSandboxReadyWithScope).not.toHaveBeenCalled();
     expect(
       (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
         ?.activePublicationId
-    ).toBeUndefined();
+    ).toBe(result.isOk() ? result.value.publicationId : undefined);
   });
 
   it("builds and publishes the UI without starting a sandbox", async () => {
@@ -371,16 +389,16 @@ describe("buildAndPublishFramePublication", () => {
     const savedPaths = fileStorageMock.saveFileCalls.map(
       ({ filePath }) => filePath
     );
-    for (const functionName of ["add-task", "list-tasks"]) {
-      expect(savedPaths).toContain(
-        getFramePublicationFunctionBundlePath({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          frameId: frame.sId,
-          publicationId,
-          functionName,
-        })
-      );
-    }
+    expect(savedPaths).toContain(
+      getFramePublicationFunctionsArchivePath({
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        frameId: frame.sId,
+        publicationId,
+      })
+    );
+    expect(
+      savedPaths.some((filePath) => /\/functions\/[^/]+\.ts$/.test(filePath))
+    ).toBe(false);
     expect(savedPaths.some((filePath) => filePath.includes("/source/"))).toBe(
       false
     );
@@ -500,7 +518,6 @@ describe("buildAndPublishFramePublication", () => {
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     await frame.setActiveFramePublication({
       publicationId: activePublicationId,
-      name: "Task List",
       description: "Track tasks.",
     });
 

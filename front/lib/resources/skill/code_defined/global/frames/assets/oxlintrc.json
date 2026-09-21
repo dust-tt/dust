@@ -1,0 +1,27 @@
+{
+  "plugins": ["typescript", "react"],
+  "jsPlugins": [{"name": "dust", "specifier": "./frame-rules.cjs"}, "oxlint-tailwindcss"],
+  "categories": { "correctness": "off" },
+  "ignorePatterns": ["node_modules/**"],
+  "rules": {
+    "tailwindcss/no-arbitrary-value": "error",
+    "typescript/no-floating-promises": "error",
+    "react/rules-of-hooks": "error",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": [
+              "*", "!*/", "!./**", "!../**", "!fil_*",
+              "!conversation-*", "!conversation-*/**", "!pod-*", "!pod-*/**",
+              "!conversation/**", "!pod/**", "!project/**"
+            ],
+            "caseSensitive": true,
+            "message": "Use a library exposed by Viz, a relative UI import or a Dust file reference"
+          }
+        ]
+      }
+    ]
+  }
+}

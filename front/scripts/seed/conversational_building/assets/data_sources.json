@@ -1,0 +1,13 @@
+[
+  {
+    "name": "Meeting Notes Archive",
+    "description": "Seeded team glossary used by the MeetingNotesFormatter skill.",
+    "documents": [
+      {
+        "id": "meeting_notes_team_glossary",
+        "title": "Team Glossary",
+        "content": "Team Glossary\n\nOKR: Objectives and Key Results, the quarterly goal-setting framework used by the team.\nRFC: Request For Comments, a written design proposal circulated before implementation.\nSev1: A production incident with customer impact that requires an immediate response.\nDRI: Directly Responsible Individual, the single owner accountable for a task or decision.\n"
+      }
+    ]
+  }
+]

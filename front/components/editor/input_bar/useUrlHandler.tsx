@@ -1,3 +1,5 @@
+import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import { knowledgeNodeToItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isUrlCandidate } from "@app/lib/connectors";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
@@ -70,20 +72,15 @@ const useUrlHandler = (
             needsLeadingSpace = !!textBefore && !/\s$/.test(textBefore);
           }
 
-          // Create the replacement content
+          // The pasted URL is replaced by a knowledge node carrying the full
+          // node data (read back at submit time).
+          const chip = {
+            type: KNOWLEDGE_NODE_TYPE,
+            attrs: { selectedItems: [knowledgeNodeToItem(node)] },
+          };
           const content = [
             ...(needsLeadingSpace ? [{ type: "text", text: " " }] : []),
-            {
-              type: "dataSourceLink",
-              attrs: {
-                nodeId: node.internalId,
-                title: node.title,
-                provider: node.dataSourceView.dataSource.connectorProvider,
-                spaceId: node.dataSourceView.spaceId,
-                url: pendingUrl.url,
-              },
-              text: `:content_node_mention[${node.title}]{url=${pendingUrl.url}}`,
-            },
+            chip,
             { type: "text", text: " " },
           ];
 

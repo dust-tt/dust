@@ -267,8 +267,8 @@ export const subNavigationAdmin = ({
   const canAdminBilling = hasPermission("admin", "billing");
   const canAdminSecurity = hasPermission("admin", "security");
 
-  // Admins and managers see the admin sidebar; builders and members do
-  // not. Each item is then individually enabled/disabled based on permission.
+  // Admins and managers see the admin sidebar. Each item is then individually enabled/disabled
+  // based on permission.
   if (!isManager(owner) && !canAdminBilling && !canAdminSecurity) {
     return nav;
   }

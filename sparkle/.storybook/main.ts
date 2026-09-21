@@ -1,6 +1,7 @@
 import type { StorybookConfig } from "@storybook/react-vite";
 import { fileURLToPath } from "url";
 import path from "path";
+import { searchForWorkspaceRoot } from "vite";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
@@ -24,16 +25,34 @@ const config: StorybookConfig = {
     "storybook-addon-tag-badges",
   ],
 
-  viteFinal: async (config) => {
-    config.resolve = {
-      ...(config.resolve || {}),
-      alias: {
-        ...(config.resolve?.alias || {}),
-        "@sparkle": path.resolve(__dirname, "../src/"),
+  viteFinal: async (viteConfig) => {
+    return {
+      ...viteConfig,
+      server: {
+        ...viteConfig.server,
+        fs: {
+          ...viteConfig.server?.fs,
+          allow: [
+            ...(viteConfig.server?.fs?.allow ?? [
+              searchForWorkspaceRoot(__dirname),
+            ]),
+            path.resolve(
+              path.dirname(
+                fileURLToPath(import.meta.resolve("@storybook/addon-vitest"))
+              ),
+              "../../.."
+            ),
+          ],
+        },
+      },
+      resolve: {
+        ...(viteConfig.resolve ?? {}),
+        alias: {
+          ...(viteConfig.resolve?.alias ?? {}),
+          "@sparkle": path.resolve(__dirname, "../src/"),
+        },
       },
     };
-
-    return config;
   },
 
   framework: {

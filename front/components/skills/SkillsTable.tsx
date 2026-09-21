@@ -614,7 +614,7 @@ export function SkillsTable({
   );
   const totalSelectableCount = selectableRowIds.length;
 
-  const skillsBySId = useMemo(
+  const skillsById = useMemo(
     () => new Map(skills.map((skill) => [skill.sId, skill])),
     [skills]
   );
@@ -623,11 +623,11 @@ export function SkillsTable({
     () =>
       selectableRowIds
         .filter((sId) => selectionSet.has(sId))
-        .map((sId) => skillsBySId.get(sId))
+        .map((sId) => skillsById.get(sId))
         .filter(
           (s): s is GetSkillsWithRelationsResponseBody["skills"][number] => !!s
         ),
-    [selectableRowIds, selectionSet, skillsBySId]
+    [selectableRowIds, selectionSet, skillsById]
   );
 
   if (!isLoading && rows.length === 0) {

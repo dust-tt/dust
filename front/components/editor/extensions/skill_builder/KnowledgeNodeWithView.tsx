@@ -26,8 +26,9 @@ const KnowledgeNodeReadOnlyView: React.FC<NodeViewProps> = ({ node }) => {
 
 export const KnowledgeNodeWithView = KnowledgeNode.extend({
   addNodeView() {
-    return ReactNodeViewRenderer(
-      this.options.readOnly ? KnowledgeNodeReadOnlyView : KnowledgeNodeView
-    );
+    if (this.options.readOnly) {
+      return ReactNodeViewRenderer(KnowledgeNodeReadOnlyView);
+    }
+    return ReactNodeViewRenderer(KnowledgeNodeView);
   },
 });

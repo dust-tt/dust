@@ -1,8 +1,8 @@
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
-import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
+import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
 import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
@@ -617,7 +617,7 @@ export const SpaceResourcesList = ({
         agentId={agentId}
         onClose={() => setAgentId(null)}
       />
-      <SkillDetailsSheetById
+      <SkillDetailsSheet
         owner={owner}
         user={user}
         skillId={skillId}

@@ -4,6 +4,7 @@ import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { ModelSelectionSchema } from "@app/types/assistant/models/types";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -12,6 +13,10 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   cId: z.string(),
   mId: z.string(),
+});
+
+const PostRetryRequestBodySchema = z.object({
+  modelSelection: ModelSelectionSchema.optional(),
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/retry.
@@ -46,6 +51,24 @@ const app = workspaceApp();
  *           type: string
  *     security:
  *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               modelSelection:
+ *                 type: object
+ *                 description: Optional model tier or concrete model selection for the retry.
+ *                 required: [providerId, modelId]
+ *                 properties:
+ *                   providerId:
+ *                     type: string
+ *                   modelId:
+ *                     type: string
+ *                   reasoningEffort:
+ *                     type: string
  *     responses:
  *       200:
  *         description: Successfully retried message
@@ -60,124 +83,134 @@ const app = workspaceApp();
  *         description: Unauthorized
  */
 
-app.post("/", validate("param", ParamsSchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
+app.post(
+  "/",
+  validate("param", ParamsSchema),
+  validate("json", PostRetryRequestBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
+    const { modelSelection } = ctx.req.valid("json");
 
-  const conversationResource = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-
-  if (!conversationResource) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: "Conversation not found.",
-      },
-    });
-  }
-
-  const messageRes = await conversationResource.getMessageById(auth, messageId);
-  if (messageRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "message_not_found",
-        message:
-          "The message you're trying to retry does not exist or is not accessible.",
-      },
-    });
-  }
-
-  const messageModel = messageRes.value;
-  if (!messageModel.agentMessage) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message:
-          "The message you're trying to retry does not exist or is not an agent message.",
-      },
-    });
-  }
-
-  const conversation = conversationResource.toJSON();
-
-  const renderRes = await batchRenderMessages(
-    auth,
-    conversationResource,
-    [messageModel],
-    "full"
-  );
-  if (renderRes.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to render message.",
-      },
-    });
-  }
-
-  const message = renderRes.value[0];
-  if (!message || !isAgentMessageType(message)) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to render message.",
-      },
-    });
-  }
-
-  // If the query parameter `blocked_only` is true, we retry only the blocked
-  // actions.
-  if (ctx.req.query("blocked_only") === "true") {
-    const retryBlockedActionsRes = await retryBlockedActions(
+    const conversationResource = await ConversationResource.fetchById(
       auth,
-      conversation,
-      { messageId }
+      conversationId
     );
 
-    if (retryBlockedActionsRes.isErr()) {
-      const { error } = retryBlockedActionsRes;
-
-      if (
-        error instanceof DustError &&
-        error.code === "agent_loop_already_running"
-      ) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: error.message,
-          },
-        });
-      }
-
+    if (!conversationResource) {
       return apiError(ctx, {
-        status_code: 500,
+        status_code: 404,
         api_error: {
-          type: "invalid_request_error",
-          message: "Failed to retry blocked actions.",
+          type: "conversation_not_found",
+          message: "Conversation not found.",
         },
       });
     }
 
-    return ctx.json({ message });
-  }
+    const messageRes = await conversationResource.getMessageById(
+      auth,
+      messageId
+    );
+    if (messageRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "message_not_found",
+          message:
+            "The message you're trying to retry does not exist or is not accessible.",
+        },
+      });
+    }
 
-  const retriedMessageRes = await retryAgentMessage(auth, {
-    conversationResource,
-    message,
-  });
-  if (retriedMessageRes.isErr()) {
-    return apiError(ctx, retriedMessageRes.error);
-  }
+    const messageModel = messageRes.value;
+    if (!messageModel.agentMessage) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "The message you're trying to retry does not exist or is not an agent message.",
+        },
+      });
+    }
 
-  return ctx.json({ message: retriedMessageRes.value });
-});
+    const conversation = conversationResource.toJSON();
+
+    const renderRes = await batchRenderMessages(
+      auth,
+      conversationResource,
+      [messageModel],
+      "full"
+    );
+    if (renderRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to render message.",
+        },
+      });
+    }
+
+    const message = renderRes.value[0];
+    if (!message || !isAgentMessageType(message)) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to render message.",
+        },
+      });
+    }
+
+    // If the query parameter `blocked_only` is true, we retry only the blocked
+    // actions.
+    if (ctx.req.query("blocked_only") === "true") {
+      const retryBlockedActionsRes = await retryBlockedActions(
+        auth,
+        conversation,
+        { messageId }
+      );
+
+      if (retryBlockedActionsRes.isErr()) {
+        const { error } = retryBlockedActionsRes;
+
+        if (
+          error instanceof DustError &&
+          error.code === "agent_loop_already_running"
+        ) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: error.message,
+            },
+          });
+        }
+
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Failed to retry blocked actions.",
+          },
+        });
+      }
+
+      return ctx.json({ message });
+    }
+
+    const retriedMessageRes = await retryAgentMessage(auth, {
+      conversationResource,
+      message,
+      modelSelection,
+    });
+    if (retriedMessageRes.isErr()) {
+      return apiError(ctx, retriedMessageRes.error);
+    }
+
+    return ctx.json({ message: retriedMessageRes.value });
+  }
+);
 
 export default app;

@@ -44,9 +44,9 @@ import { literal, Op } from "sequelize";
 import { z } from "zod";
 
 // Grants are cached in a Redis hash per workspace, one field per groupId, so a caller reads its
-// own groups and fills only what is missing. Fields never expire: readers fill with HSETNX and
-// mutations overwrite with HSET after commit, so a stale in-flight read cannot replace a fresher
-// value.
+// own groups and fills only what is missing. Readers fill with HSETNX and mutations delete after
+// commit, so a stale in-flight read cannot replace a fresher value. The hash expires one hour after
+// its creation, so an entry missed by an invalidation is never served indefinitely.
 
 export type GroupGrant = {
   groupId: ModelId;
@@ -56,7 +56,7 @@ export type GroupGrant = {
 };
 
 // Bump to orphan hashes written under the previous field encoding.
-const CACHE_SCHEMA_VERSION = 1;
+const CACHE_SCHEMA_VERSION = 2;
 
 type SerializedGrant = [GrantType, GroupPermissionResourceType, number];
 
@@ -789,6 +789,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       for (const [field, value] of encodeFields(missingGroupModelIds, loaded)) {
         multi.hSetNX(key, field, value);
       }
+      // `NX`: only the fill that creates the hash sets its expiry, later fills do not extend it.
+      multi.expire(key, 60 * 60, "NX");
       await multi.exec();
 
       return [...grants, ...loaded];
@@ -820,8 +822,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         "result:ok",
       ]);
     } catch (err) {
-      // Fields never expire, so a lost delete keeps revoked grants readable until the next
-      // mutation on those groups or a Poke flush.
+      // A lost delete keeps revoked grants readable until the hash expires, the next mutation on
+      // those groups or a Poke flush.
       logger.error(
         { panic: true, err: normalizeError(err), workspaceId: workspace.id },
         "group_permissions cache invalidation failed"

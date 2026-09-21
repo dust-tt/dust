@@ -8,6 +8,10 @@ import {
   type Output,
   type RequestInput,
 } from "./protocol.ts";
+import {
+  runWithToolTimingsCollector,
+  takeToolTimings,
+} from "./tool_timings.ts";
 
 interface ZodLike {
   safeParse(
@@ -20,6 +24,29 @@ interface ZodLike {
 interface FunctionHandler {
   fetch(request: Request): unknown;
 }
+
+export type InvokePhaseTimingsMs = {
+  import: number;
+  handler: number;
+  tools?: {
+    total: number;
+    count: number;
+    calls: Array<{
+      server: string;
+      tool: string;
+      post: number;
+      poll: number;
+      offload?: number;
+      dust?: Record<string, unknown>;
+      total: number;
+    }>;
+  };
+};
+
+export type InvokeResult = {
+  output: Output;
+  timingsMs: InvokePhaseTimingsMs;
+};
 
 function isValidator(value: unknown): value is ZodLike {
   return (
@@ -46,6 +73,13 @@ function getProperty(value: unknown, property: string): unknown {
   return value[property];
 }
 
+function withCollectedToolTimings(
+  timingsMs: InvokePhaseTimingsMs
+): InvokePhaseTimingsMs {
+  const tools = takeToolTimings();
+  return tools === undefined ? timingsMs : { ...timingsMs, tools };
+}
+
 /**
  * Import a function handler and run one invocation.
  *
@@ -56,24 +90,28 @@ function getProperty(value: unknown, property: string): unknown {
  * callers without touching process.env. Without it (cold runs, where the
  * process environment IS the invocation's), no context is entered and
  * @dust/pod falls back to process.env.
+ *
+ * `timingsMs` splits dynamic import from handler fetch so dsbx/front can see
+ * which phase dominates cold runs.
  */
 export async function invoke(
   handlerPath: string,
   input: RequestInput,
   invocationEnv?: Readonly<Record<string, string>>
-): Promise<Output> {
+): Promise<InvokeResult> {
+  const run = () =>
+    runWithToolTimingsCollector(() => invokeInContext(handlerPath, input));
   if (invocationEnv !== undefined) {
-    return runWithInvocationEnv(invocationEnv, () =>
-      invokeInContext(handlerPath, input)
-    );
+    return runWithInvocationEnv(invocationEnv, run);
   }
-  return invokeInContext(handlerPath, input);
+  return run();
 }
 
 async function invokeInContext(
   handlerPath: string,
   input: RequestInput
-): Promise<Output> {
+): Promise<InvokeResult> {
+  const importStartedAt = performance.now();
   let handler: FunctionHandler;
   let schemaInput: unknown;
   let schemaOutput: unknown;
@@ -90,15 +128,25 @@ async function invokeInContext(
     schemaInput = getProperty(schema, "input");
     schemaOutput = getProperty(schema, "output");
   } catch (e) {
-    return fail("import_failed", e);
+    return {
+      output: fail("import_failed", e),
+      timingsMs: withCollectedToolTimings({
+        import: elapsedMs(importStartedAt),
+        handler: 0,
+      }),
+    };
   }
+  const importMs = elapsedMs(importStartedAt);
 
   const body = decodeRequestBody(input);
 
   if (isValidator(schemaInput)) {
     const validationError = validateBody(body, schemaInput);
     if (validationError) {
-      return { ok: false, error: validationError };
+      return {
+        output: { ok: false, error: validationError },
+        timingsMs: withCollectedToolTimings({ import: importMs, handler: 0 }),
+      };
     }
   }
 
@@ -108,19 +156,43 @@ async function invokeInContext(
     body: body as BodyInit | undefined,
   });
 
+  const handlerStartedAt = performance.now();
   let response: unknown;
   try {
     response = await handler.fetch(request);
   } catch (e) {
-    return fail("threw", e);
+    return {
+      output: fail("threw", e),
+      timingsMs: withCollectedToolTimings({
+        import: importMs,
+        handler: elapsedMs(handlerStartedAt),
+      }),
+    };
   }
   if (!(response instanceof Response)) {
-    return fail(
-      "bad_return",
-      new Error(`function returned ${typeOf(response)}, expected a Response`)
-    );
+    return {
+      output: fail(
+        "bad_return",
+        new Error(`function returned ${typeOf(response)}, expected a Response`)
+      ),
+      timingsMs: withCollectedToolTimings({
+        import: importMs,
+        handler: elapsedMs(handlerStartedAt),
+      }),
+    };
   }
-  return parseOutput(response, schemaOutput);
+  const output = await parseOutput(response, schemaOutput);
+  return {
+    output,
+    timingsMs: withCollectedToolTimings({
+      import: importMs,
+      handler: elapsedMs(handlerStartedAt),
+    }),
+  };
+}
+
+function elapsedMs(startedAt: number): number {
+  return Math.max(0, Math.round(performance.now() - startedAt));
 }
 
 function validateBody(
@@ -220,6 +292,20 @@ async function parseOutput(
   return { ok: true, output: JSON.parse(serializedOutput) };
 }
 
+function typeOf(value: unknown): string {
+  if (value === null) {
+    return "null";
+  }
+  if (Array.isArray(value)) {
+    return "array";
+  }
+  return typeof value;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 function makeError(code: NonHttpErrorCode, error: unknown): InvocationError {
   return { code, message: errorMessage(error) };
 }
@@ -233,18 +319,4 @@ function failHttp(error: unknown, status: number): Output {
     ok: false,
     error: { code: "http_error", message: errorMessage(error), status },
   };
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-function typeOf(v: unknown): string {
-  if (v === null) {
-    return "null";
-  }
-  if (Array.isArray(v)) {
-    return "array";
-  }
-  return typeof v;
 }

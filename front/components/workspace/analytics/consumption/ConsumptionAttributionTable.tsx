@@ -236,10 +236,19 @@ function usageDifferenceFromAveragePercent({
   );
 }
 
+// Optional columns collapse to zero width below a container breakpoint
+// (DataTable.Root is a @container, variants are defined in front-spa's
+// index.css) instead of display: none, so the breakdown row's colSpan keeps
+// matching the number of laid out columns. The per-column restore classes
+// are spelled out because Tailwind only picks up static literals; their px-2
+// mirrors the DataTable.Head and DataTable.Cell padding.
+const COLLAPSED_COLUMN_CLASSES = "w-0 max-w-0 overflow-hidden px-0";
+
 function buildColumns({
   dimension,
   hasAvatar,
   isAvatarRounded,
+  countLabel,
   avgLabel,
   totalCredits,
   totalActiveMembers,
@@ -250,6 +259,7 @@ function buildColumns({
   dimension: ConsumptionDimension;
   hasAvatar: boolean;
   isAvatarRounded: boolean;
+  countLabel: string;
   avgLabel: string;
   totalCredits: number;
   totalActiveMembers: number;
@@ -263,7 +273,7 @@ function buildColumns({
       accessorKey: "name",
       header: "Name",
       enableSorting: false,
-      meta: { sizeRatio: 32, headerAlign: "left" },
+      meta: { headerAlign: "left" },
       cell: (info) => {
         const row = info.row.original;
         const { name, pictureUrl, description, icon } = row;
@@ -363,7 +373,13 @@ function buildColumns({
             id: "activeMembers",
             header: "Active / total members",
             enableSorting: false,
-            meta: { sizeRatio: 18, headerAlign: "right" },
+            meta: {
+              className: cn(
+                COLLAPSED_COLUMN_CLASSES,
+                "@xs:w-auto @xs:max-w-none @xs:px-2"
+              ),
+              headerAlign: "right",
+            },
             cell: (info) => (
               <DataTable.BasicCellContent
                 className="justify-end text-right tabular-nums"
@@ -384,7 +400,13 @@ function buildColumns({
             id: "usageVsAverage",
             header: "Vs workspace avg",
             enableSorting: false,
-            meta: { sizeRatio: 22, headerAlign: "right" },
+            meta: {
+              className: cn(
+                COLLAPSED_COLUMN_CLASSES,
+                "@md:w-auto @md:max-w-none @md:px-2"
+              ),
+              headerAlign: "right",
+            },
             cell: (info) => {
               const usagePercent = usageDifferenceFromAveragePercent({
                 credits: info.row.original.credits,
@@ -407,8 +429,10 @@ function buildColumns({
             header: "Consumption share",
             enableSorting: true,
             meta: {
-              className: "w-36",
-              sizeRatio: 20,
+              className: cn(
+                COLLAPSED_COLUMN_CLASSES,
+                "@xs:w-36 @xs:max-w-none @xs:px-2"
+              ),
               headerAlign: "left",
             },
             cell: (info) => (
@@ -428,7 +452,7 @@ function buildColumns({
       id: "credits",
       accessorKey: "credits",
       header: "Total credits",
-      meta: { sizeRatio: 20, headerAlign: "right" },
+      meta: { headerAlign: "right" },
       cell: (info) => (
         <DataTable.BasicCellContent
           className="justify-end text-right tabular-nums"
@@ -437,11 +461,36 @@ function buildColumns({
       ),
     },
     {
+      id: "count",
+      accessorKey: "count",
+      header: countLabel,
+      enableSorting: false,
+      meta: {
+        className: cn(
+          COLLAPSED_COLUMN_CLASSES,
+          "@sm:w-auto @sm:max-w-none @sm:px-2"
+        ),
+        headerAlign: "right",
+      },
+      cell: (info) => (
+        <DataTable.BasicCellContent
+          className="justify-end text-right tabular-nums"
+          label={info.row.original.count.toLocaleString()}
+        />
+      ),
+    },
+    {
       id: "avgCredits",
       accessorKey: "avgCredits",
       header: avgLabel,
       enableSorting: false,
-      meta: { sizeRatio: 22, headerAlign: "right" },
+      meta: {
+        className: cn(
+          COLLAPSED_COLUMN_CLASSES,
+          "@md:w-auto @md:max-w-none @md:px-2"
+        ),
+        headerAlign: "right",
+      },
       cell: (info) => (
         <DataTable.BasicCellContent
           className="justify-end text-right tabular-nums"
@@ -453,7 +502,13 @@ function buildColumns({
       id: "vsPrev",
       header: "vs prev",
       enableSorting: false,
-      meta: { className: "w-24", sizeRatio: 18, headerAlign: "right" },
+      meta: {
+        className: cn(
+          COLLAPSED_COLUMN_CLASSES,
+          "@lg:w-24 @lg:max-w-none @lg:px-2"
+        ),
+        headerAlign: "right",
+      },
       cell: (info) => (
         <VsPrevCell
           credits={info.row.original.credits}
@@ -630,7 +685,8 @@ export function ConsumptionAttributionRowsView({
   queryState: { pagination, setPagination, sorting, onSortingChange },
   RowsTableComponent,
 }: ConsumptionAttributionRowsViewProps) {
-  const { hasAvatar, avgLabel } = CONSUMPTION_DIMENSION_CONFIG[dimension];
+  const { hasAvatar, countLabel, avgLabel } =
+    CONSUMPTION_DIMENSION_CONFIG[dimension];
   const { isDark } = useTheme();
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const shouldReduceMotion = useReducedMotion();
@@ -646,6 +702,7 @@ export function ConsumptionAttributionRowsView({
         dimension,
         hasAvatar,
         isAvatarRounded: dimension === "user",
+        countLabel,
         avgLabel,
         totalCredits,
         totalActiveMembers,
@@ -656,6 +713,7 @@ export function ConsumptionAttributionRowsView({
     [
       hasAvatar,
       dimension,
+      countLabel,
       avgLabel,
       totalCredits,
       totalActiveMembers,

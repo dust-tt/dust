@@ -1,6 +1,5 @@
 import path from "node:path";
 import type { FramePublicationError } from "@app/lib/api/frames/publication_storage";
-
 import {
   loadFramePublicationDescriptor,
   readFramePublicationFunctionBundle,
@@ -14,6 +13,7 @@ import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { getFrameV2NameFromManifestPath } from "@app/types/api/frame_manifest";
 import { getFrameBasePath } from "@app/types/api/frame_storage";
 import type {
   SandboxFunctionExecutionMode,
@@ -70,7 +70,9 @@ function toPokeFrameListItem(
   return {
     sId: frame.sId,
     fileName: frame.fileName,
-    name: frame.useCaseMetadata?.frameName ?? null,
+    name: frame.mountFilePath
+      ? getFrameV2NameFromManifestPath(frame.mountFilePath)
+      : null,
     description: frame.useCaseMetadata?.frameDescription ?? null,
     status: frame.status,
     mountFilePath: frame.mountFilePath,

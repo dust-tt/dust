@@ -195,6 +195,32 @@ describe("sandbox child blocking", () => {
     pauseSandbox.mockRestore();
   });
 
+  // On a resume the loop dispatches the parent bash and its approved children in parallel, so a
+  // child can block before the parent's own activity flips it to `running`.
+  it("blocks a parent still dispatched but not yet running", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "ready_allowed_explicitly",
+    });
+    const { sId: childId } = await createAction({
+      name: "child_tool",
+      status: "blocked_authentication_required",
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
+    expect(child).not.toBeNull();
+    const pauseSandbox = vi
+      .spyOn(ConversationSandboxAdapter, "pauseSandboxForApproval")
+      .mockResolvedValue(new Ok(undefined));
+
+    await pauseSandboxBashForBlockedChild(auth, child!, conversation);
+
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    expect(parent?.status).toBe("blocked_child_action_input_required");
+    expect(pauseSandbox).toHaveBeenCalledTimes(1);
+    pauseSandbox.mockRestore();
+  });
+
   it("keeps an already-blocked parent blocked for a concurrent sibling", async () => {
     const { sId: parentId } = await createAction({
       name: "bash",

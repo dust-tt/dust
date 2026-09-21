@@ -1,14 +1,18 @@
 import { makeInitialMessageStreamState } from "@app/components/assistant/conversation/types";
 import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
+import type { ClientType } from "@app/lib/context/clientType";
 import { mockAgentMessage } from "@app/tests/utils/conversation_test_factories";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { closePanel, openPanel } = vi.hoisted(() => ({
-  closePanel: vi.fn(),
-  openPanel: vi.fn(),
-}));
+const { closePanel, openPanel, surface } = vi.hoisted(() => {
+  const surface: { clientType: ClientType; isMobile: boolean } = {
+    clientType: "web",
+    isMobile: false,
+  };
+  return { closePanel: vi.fn(), openPanel: vi.fn(), surface };
+});
 
 vi.mock(
   "@app/components/assistant/conversation/ConversationSidePanelContext",
@@ -33,14 +37,70 @@ vi.mock("@app/lib/auth/AuthContext", () => ({
   useAuth: () => ({ workspace: { sId: "workspace-1" } }),
 }));
 
-vi.mock("@app/lib/swr/useIsMobile", () => ({
-  useIsMobile: () => false,
+vi.mock("@app/lib/context/clientType", () => ({
+  useClientType: () => surface.clientType,
 }));
+
+vi.mock("@app/lib/swr/useIsMobile", () => ({
+  useIsMobile: () => surface.isMobile,
+}));
+
+const regularFile = {
+  contentType: "text/csv",
+  fileId: "fil_regular",
+  title: "report.csv",
+  hidden: false,
+};
+
+function renderWithRegularFile() {
+  const agentMessage = makeInitialMessageStreamState({
+    ...mockAgentMessage({ content: "Done." }),
+    sId: "agent-message-1",
+    generatedFiles: [regularFile],
+  });
+
+  return renderHook(() =>
+    useAutoOpenSidePanel({ agentMessage, isLastMessage: true })
+  );
+}
 
 describe("useAutoOpenSidePanel", () => {
   beforeEach(() => {
     closePanel.mockClear();
     openPanel.mockClear();
+    surface.clientType = "web";
+    surface.isMobile = false;
+  });
+
+  it("opens the files panel for a generated file on the desktop web app", async () => {
+    renderWithRegularFile();
+
+    await waitFor(() => {
+      expect(openPanel).toHaveBeenCalledWith({ type: "files" });
+    });
+  });
+
+  it("does not open any panel in the extension, where the panel covers the conversation", async () => {
+    surface.clientType = "extension";
+
+    const { result } = renderWithRegularFile();
+
+    expect(result.current.interactiveFiles).toEqual([]);
+    await waitFor(() => {
+      expect(openPanel).not.toHaveBeenCalled();
+      expect(closePanel).not.toHaveBeenCalled();
+    });
+  });
+
+  it("does not open any panel on mobile", async () => {
+    surface.isMobile = true;
+
+    renderWithRegularFile();
+
+    await waitFor(() => {
+      expect(openPanel).not.toHaveBeenCalled();
+      expect(closePanel).not.toHaveBeenCalled();
+    });
   });
 
   it("classifies a completed Frames v2 file as a Frame and opens it", async () => {
