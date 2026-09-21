@@ -16,6 +16,7 @@ const SELECTED_MODEL: ConsumptionTopRow = {
   modelId: null,
   modelDisplayName: null,
   credits: 100,
+  count: 10,
   avgCredits: 10,
   previousCredits: null,
 };

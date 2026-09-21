@@ -148,7 +148,7 @@ describe("PATCH /api/w/:wId/subscriptions", () => {
       role: "user",
     });
 
-    const response = await patch(workspace, { action: "cancel_free_trial" });
+    const response = await patch(workspace, { action: "upgrade_to_business" });
 
     expect(response.status).toBe(403);
   });
@@ -164,10 +164,10 @@ describe("PATCH /api/w/:wId/subscriptions", () => {
       resourceType: "billing",
     });
 
-    const response = await patch(workspace, { action: "cancel_free_trial" });
+    const response = await patch(workspace, { action: "upgrade_to_business" });
 
-    // The caller clears the billing-permission gate: the request now fails on the subscription
-    // state (not trialing) rather than on authorization.
+    // The caller clears the billing-permission gate: the request now fails on
+    // the subscription state rather than on authorization.
     expect(response.status).not.toBe(403);
   });
 });

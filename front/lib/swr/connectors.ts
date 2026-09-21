@@ -12,9 +12,13 @@ import type {
   ConnectorPermission,
   ContentNode,
 } from "@app/types/connectors/connectors_api";
-import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type {
+  ContentNodesViewType,
+  FetchChildResourcesError,
+} from "@app/types/connectors/content_nodes";
 import type { DataSourceType } from "@app/types/data_source";
 import type { APIError } from "@app/types/error";
+import { isAPIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -53,6 +57,24 @@ function getConnectorPermissionsUrl({
     url += `&filterPermission=${filterPermission}`;
   }
   return url;
+}
+
+/**
+ * @cc [owner:frankaloia,label:error-handling;product] child-permission-auth-is-resource-scoped
+ * Authorization and missing-document errors from a child permissions request
+ * MUST be classified as `resource_inaccessible` so bulk selection can skip that
+ * branch. Other errors MUST remain fatal.
+ */
+function getFetchChildResourcesError(error: unknown): FetchChildResourcesError {
+  const isResourceInaccessible =
+    isAPIError(error) &&
+    (error.type === "data_source_auth_error" ||
+      error.type === "data_source_document_not_found");
+
+  return {
+    error: normalizeError(error),
+    type: isResourceInaccessible ? "resource_inaccessible" : "fatal",
+  };
 }
 
 export function useConnectorPermissions<T extends ConnectorPermission | null>({
@@ -116,8 +138,9 @@ export function useFetchConnectorPermissions({
   owner: LightWorkspaceType;
   dataSource: DataSourceType;
   viewType?: ContentNodesViewType;
-}): (parentId: string) => Promise<Result<ContentNode[], Error>> {
-  const { fetcher } = useFetcher();
+}): (
+  parentId: string
+) => Promise<Result<ContentNode[], FetchChildResourcesError>> {
   const { featureFlags } = useFeatureFlags();
   const { trigger } = useSWRMutation(
     getConnectorPermissionsUrl({
@@ -127,25 +150,27 @@ export function useFetchConnectorPermissions({
       viewType,
     }),
     async (_key: string, { arg: parentId }: { arg: string }) => {
-      try {
-        const data: GetDataSourcePermissionsResponseBody = await fetcher(
-          getConnectorPermissionsUrl({
-            owner,
-            dataSource,
-            parentId,
-            viewType,
-          })
-        );
-        return new Ok(
-          data.resources.filter(
-            (resource) =>
-              resource.providerVisibility !== "private" ||
-              featureFlags.includes("index_private_slack_channel")
-          )
-        );
-      } catch (error) {
-        return new Err(normalizeError(error));
+      const response = await clientFetch(
+        getConnectorPermissionsUrl({
+          owner,
+          dataSource,
+          parentId,
+          viewType,
+        })
+      );
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        return new Err(getFetchChildResourcesError(error));
       }
+
+      const data: GetDataSourcePermissionsResponseBody = await response.json();
+      return new Ok(
+        data.resources.filter(
+          (resource) =>
+            resource.providerVisibility !== "private" ||
+            featureFlags.includes("index_private_slack_channel")
+        )
+      );
     }
   );
 

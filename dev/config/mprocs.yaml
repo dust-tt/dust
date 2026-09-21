@@ -4,3 +4,9 @@
 scrollback: 20000
 mouse_scroll_speed: 3
 proc_list_width: 28
+
+# Dual-write process output to the TUI and to files so agents can grep logs
+# without relying on the mprocs scrollback buffer.
+proc_log:
+  dir: /tmp/dust-infra/mprocs-logs
+  mode: append

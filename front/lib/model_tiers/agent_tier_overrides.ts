@@ -11,9 +11,9 @@ const SIDEKICK_MAX_MODEL_TIER: ModelsTierName = "balanced";
 // Tiers an agent may use regardless of the member's own tier grants, or null when
 // the member's grants apply as usual.
 export function getAgentAllowedTierNamesOverride(
-  agentSId: string
+  agentId: string
 ): ModelsTierName[] | null {
-  return agentSId === GLOBAL_AGENTS_SID.SIDEKICK
+  return agentId === GLOBAL_AGENTS_SID.SIDEKICK
     ? expandTiersUpTo(SIDEKICK_MAX_MODEL_TIER)
     : null;
 }

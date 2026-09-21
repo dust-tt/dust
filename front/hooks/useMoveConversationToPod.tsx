@@ -137,7 +137,7 @@ export function useBulkMoveConversationsToPod(owner: LightWorkspaceType) {
       }
 
       let successCount = 0;
-      const movedConversationSIds = new Set<string>();
+      const movedConversationIds = new Set<string>();
       for (const conversation of conversationsToMove) {
         const res = await clientFetch(
           `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}`,
@@ -152,13 +152,13 @@ export function useBulkMoveConversationsToPod(owner: LightWorkspaceType) {
 
         if (res.ok) {
           successCount += 1;
-          movedConversationSIds.add(conversation.sId);
+          movedConversationIds.add(conversation.sId);
         }
       }
 
-      if (movedConversationSIds.size > 0) {
+      if (movedConversationIds.size > 0) {
         void mutateConversations((prev) =>
-          prev?.filter((c) => !movedConversationSIds.has(c.sId))
+          prev?.filter((c) => !movedConversationIds.has(c.sId))
         );
       }
       void mutatePodConversationsSummary();

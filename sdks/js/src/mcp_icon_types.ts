@@ -75,6 +75,7 @@ export const MCPInternalActionIconSchema = z.enum([
   "PuzzleIcon",
   "SalesforceLogo",
   "SemrushLogo",
+  "SiitLogo",
   "ShopifyLogo",
   "SlackLogo",
   "SnowflakeLogo",

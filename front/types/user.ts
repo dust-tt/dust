@@ -336,25 +336,6 @@ export function isManager(
   }
 }
 
-export function isBuilder(
-  owner: WorkspaceType | null
-): owner is WorkspaceType & { role: "builder" | "manager" | "admin" } {
-  if (!owner) {
-    return false;
-  }
-  switch (owner.role) {
-    case "admin":
-    case "manager":
-    case "builder":
-      return true;
-    case "user":
-    case "none":
-      return false;
-    default:
-      assertNever(owner.role);
-  }
-}
-
 export function isUser(owner: WorkspaceType | null): owner is WorkspaceType & {
   role: "user" | "builder" | "manager" | "admin";
 } {

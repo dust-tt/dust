@@ -51,7 +51,7 @@ reading and rewriting, because the round-trip through the agent loses the bytes.
 
 To show a **task** as an interactive chip in the conversation, use this markdown directive with the task's \`sId\`:
 
-\`:pod_task[Short readable label]{sId=<podTaskSId>}\`
+\`:pod_task[Short readable label]{sId=<podTaskId>}\`
 
 Use the \`sId\` from \`pod_tasks\` tools (e.g. \`list_tasks\`, \`create_tasks\`) or from the kickoff message when you are working on a task. The bracket text is display-only; keep it concise.
 
@@ -65,7 +65,7 @@ When you need to find information, use this order (skip steps if the relevant to
 `,
 
   mcpServers: [{ name: "pod_manager" }, { name: "pod_tasks" }],
-  version: 4,
+  version: 5,
   icon: "ActionFolderIcon",
   isRestricted: undefined,
   getAutoEnabledOrEquippedForAgentLoop: ({ conversation }) =>

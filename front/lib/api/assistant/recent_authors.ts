@@ -1,6 +1,7 @@
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
@@ -254,10 +255,11 @@ export async function agentConfigurationWasUpdatedBy({
   agent,
   auth,
 }: {
-  agent: LightAgentConfigurationType;
+  agent: AgentResource;
   auth: Authenticator;
 }) {
-  const { sId: agentId, version, versionAuthorId: authorId } = agent;
+  const { sId: agentId, versionAuthorId: authorId } = agent;
+  const { version } = agent.content;
   if (!authorId) {
     return;
   }

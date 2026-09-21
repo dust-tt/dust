@@ -2,7 +2,7 @@ import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_co
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import {
-  isContentFragmentDataSourceNode,
+  contentNodeAttachmentsDataSourceConfigurations,
   isContentNodeAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import {
@@ -20,44 +20,6 @@ import type { ContentNodeAttachmentType } from "@app/types/api/assistant/convers
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 type PodSemanticSearchScope = "files" | "conversations" | "all";
-
-function mergeContentNodeDataSourceConfigurations(
-  workspaceId: string,
-  nodes: ContentNodeAttachmentType[]
-): DataSourceConfiguration[] {
-  const byViewId = new Map<
-    string,
-    { hasFullView: boolean; parentIds: Set<string> }
-  >();
-
-  for (const node of nodes) {
-    const viewId = node.nodeDataSourceViewId;
-    let agg = byViewId.get(viewId);
-    if (!agg) {
-      agg = { hasFullView: false, parentIds: new Set() };
-      byViewId.set(viewId, agg);
-    }
-    if (isContentFragmentDataSourceNode(node)) {
-      agg.hasFullView = true;
-    } else {
-      agg.parentIds.add(node.nodeId);
-    }
-  }
-
-  return Array.from(byViewId.entries()).map(([dataSourceViewId, agg]) => ({
-    workspaceId,
-    dataSourceViewId,
-    filter: {
-      parents: agg.hasFullView
-        ? null
-        : {
-            in: Array.from(agg.parentIds),
-            not: [],
-          },
-      tags: null,
-    },
-  }));
-}
 
 function podDataSourceFilter(
   scope: PodSemanticSearchScope,
@@ -157,7 +119,7 @@ export async function buildPodSearchDataSources(
     (a): a is ContentNodeAttachmentType =>
       isContentNodeAttachmentType(a) && a.isSearchable
   );
-  const contentNodeConfigs = mergeContentNodeDataSourceConfigurations(
+  const contentNodeConfigs = contentNodeAttachmentsDataSourceConfigurations(
     owner.sId,
     searchableContentNodes
   );

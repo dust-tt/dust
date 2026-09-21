@@ -1,6 +1,6 @@
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import { shadowUsageConfigIds } from "@app/lib/api/assistant/agent_permissions";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import type { UsedBySkillType } from "@app/types/assistant/skill_configuration";
@@ -28,7 +28,7 @@ interface MCPServerUsageRow {
  * non-admin visibility filtering).
  */
 async function getVisibleAgentIds(auth: Authenticator): Promise<ModelId[]> {
-  return shadowUsageConfigIds(auth, "getToolsUsage");
+  return AgentResource.listEditorConfigModelIds(auth);
 }
 
 /**

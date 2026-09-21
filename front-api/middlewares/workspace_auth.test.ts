@@ -60,7 +60,7 @@ describe("workspaceAuth factory — narrow bypass globs", () => {
     // /subscriptions/pricing must fall through to the default catch-all so
     // that the canUseProduct check still applies — the parent override is
     // intentionally scoped to /subscriptions (bare), /checkout-status/*,
-    // /status/*, and /trial-info/*.
+    // /status/*, and /checkout/*.
     const workspace = await WorkspaceFactory.freeNoProductAccess();
     await createPrivateApiMockRequest({ workspace, role: "admin" });
 

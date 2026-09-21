@@ -1,34 +1,18 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
-import { DataSourceList } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import {
+  DataSourceList,
+  toDataSourceListItem,
+} from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { ConfirmContext } from "@app/components/Confirm";
+import { buildCategoryItems } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { emptyArray } from "@app/lib/swr/swr";
-import type {
-  DataSourceViewCategory,
-  DataSourceViewCategoryWithoutApps,
-} from "@app/types/api/public/spaces";
-import {
-  DATA_SOURCE_VIEW_CATEGORIES,
-  isDataSourceViewCategoryWithoutApps,
-} from "@app/types/api/public/spaces";
-import type { AgentsUsageType } from "@app/types/data_source";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import { Spinner } from "@dust-tt/sparkle";
-import type React from "react";
 import { useCallback, useContext, useMemo } from "react";
-
-interface CategoryRowData {
-  id: DataSourceViewCategoryWithoutApps;
-  title: string;
-  onClick: () => void;
-  icon: React.ComponentType;
-}
 
 interface DataSourceCategoryBrowserProps {
   space: SpaceType;
@@ -49,26 +33,9 @@ export function DataSourceCategoryBrowser({
 
   const categoryItems = useMemo((): DataSourceListItem[] => {
     if (!isSpaceInfoLoading && spaceInfo) {
-      const categoryRows = getCategoryRows(
-        spaceInfo.categories,
-        hasFeature,
-        (category) => {
-          if (isDataSourceViewCategoryWithoutApps(category)) {
-            setCategoryEntry(category);
-          }
-        }
+      return buildCategoryItems(spaceInfo.categories, hasFeature).map((item) =>
+        toDataSourceListItem(item, () => setCategoryEntry(item.category))
       );
-
-      return categoryRows.map((category) => ({
-        id: category.id,
-        title: category.title,
-        icon: category.icon,
-        onClick: category.onClick,
-        entry: {
-          type: "category",
-          category: category.id,
-        },
-      }));
     }
     return emptyArray<DataSourceListItem>();
   }, [hasFeature, isSpaceInfoLoading, setCategoryEntry, spaceInfo]);
@@ -106,35 +73,4 @@ export function DataSourceCategoryBrowser({
       onSelectionChange={handleCategorySelectionChange}
     />
   );
-}
-
-type SpaceCategory = {
-  [p: string]: {
-    usage: AgentsUsageType;
-    count: number;
-  };
-};
-
-function getCategoryRows(
-  spaceCategories: SpaceCategory,
-  hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean,
-  onSelect: (category: DataSourceViewCategory) => void
-): CategoryRowData[] {
-  return spaceCategories
-    ? removeNulls(
-        DATA_SOURCE_VIEW_CATEGORIES.map((category) =>
-          spaceCategories[category] &&
-          spaceCategories[category].count > 0 &&
-          hasFeature(CATEGORY_DETAILS[category].flag) &&
-          isDataSourceViewCategoryWithoutApps(category)
-            ? {
-                id: category,
-                title: CATEGORY_DETAILS[category].label,
-                icon: CATEGORY_DETAILS[category].icon,
-                onClick: () => onSelect(category),
-              }
-            : null
-        )
-      )
-    : [];
 }

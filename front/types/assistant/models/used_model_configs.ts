@@ -40,10 +40,12 @@ import {
   GPT_5_6_TERRA_MODEL_CONFIG,
   GPT_6_ASTRA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
+import { SIMULATED_FAILURE_MODEL_CONFIG } from "@app/types/assistant/models/simulated_failure_model";
 import type { ModelConfig } from "@app/types/assistant/models/types";
 import { GROK_4_6_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 
 export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
+  SIMULATED_FAILURE_MODEL_CONFIG,
   GPT_6_ASTRA_MODEL_CONFIG,
   GPT_5_6_SOL_MODEL_CONFIG,
   GPT_5_6_TERRA_MODEL_CONFIG,

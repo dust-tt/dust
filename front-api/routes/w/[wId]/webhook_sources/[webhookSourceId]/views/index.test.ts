@@ -59,12 +59,12 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/views", () => {
 
   it("should return 404 when webhook source does not exist", async () => {
     const { workspace } = await setupTest();
-    const fakeSId = makeSId("webhook_source", {
+    const fakeId = makeSId("webhook_source", {
       id: 999999,
       workspaceId: workspace.id,
     });
 
-    const response = await listViews(workspace.sId, fakeSId);
+    const response = await listViews(workspace.sId, fakeId);
 
     expect(response.status).toBe(404);
     const data = await response.json();

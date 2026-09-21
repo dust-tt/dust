@@ -87,7 +87,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 function getCacheKeyForUser(userId: number, workspaceId: number): string {
   // The function name is empty because an anonymous arrow function is passed to cacheWithRedis
-  return `cacheWithRedis--groups:v2:user:${userId}:workspace:${workspaceId}`;
+  return `cacheWithRedis--groups:v3:user:${userId}:workspace:${workspaceId}`;
 }
 
 function getCacheKeyForWorkspaceGroupsFromSystemKey(

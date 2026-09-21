@@ -1,5 +1,4 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { UserResource } from "@app/lib/resources/user_resource";
 
 import type { SeedContext, UserAsset } from "./types";
@@ -20,6 +19,13 @@ export async function seedUsers(
         { sId: existingUser.sId, email: userAsset.email },
         "User already exists, skipping creation"
       );
+      if (existingUser.sId !== userAsset.sId) {
+        logger.warn(
+          { sId: existingUser.sId, assetId: userAsset.sId },
+          "Existing user has a different sId than the asset: assets referencing the asset sId " +
+            "(e.g. skill editors suggestions) will not resolve to this user"
+        );
+      }
       // The user may exist without being a member of the workspace, for instance when a previous
       // seed run created them and failed before the rest of the seed. Everything downstream needs
       // the membership, so add it back.
@@ -44,8 +50,9 @@ export async function seedUsers(
     }
 
     if (execute) {
+      // Seeded users use the asset sId so other assets can reference them directly.
       const user = await UserResource.makeNew({
-        sId: generateRandomModelSId(),
+        sId: userAsset.sId,
         workOSUserId: `workos-${userAsset.sId}`,
         provider: "google",
         providerId: `provider-${userAsset.sId}`,

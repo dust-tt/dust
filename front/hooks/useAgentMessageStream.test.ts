@@ -6,6 +6,7 @@ import {
   upsertPendingToolCall,
   useAgentMessageStream,
 } from "@app/hooks/useAgentMessageStream";
+import { isTerminalAgentLoopEvent } from "@app/lib/client/agent_loop_stream";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   InlineActivityStep,
@@ -286,6 +287,24 @@ describe("appendThinkingStep", () => {
 });
 
 describe("useAgentMessageStream", () => {
+  it.each([
+    ["agent_message_success", true],
+    ["agent_message_gracefully_stopped", true],
+    ["agent_generation_cancelled", true],
+    ["agent_error", true],
+    ["tool_error", true],
+    ["end-of-stream", true],
+    ["generation_tokens", false],
+  ])("classifies %s as terminal: %s", (type, expected) => {
+    expect(
+      isTerminalAgentLoopEvent(JSON.stringify({ eventId: "1", data: { type } }))
+    ).toBe(expected);
+  });
+
+  it("does not treat malformed events as terminal", () => {
+    expect(isTerminalAgentLoopEvent("not json")).toBe(false);
+  });
+
   it("clears stale database content before replaying fresh-mount tokens", () => {
     let currentMessage = makeInitialMessageStreamState(makeLightAgentMessage());
     const snapshots: Array<{
@@ -327,6 +346,18 @@ describe("useAgentMessageStream", () => {
         conversationId: "conv_123",
         owner: mockOwner,
         streamId: "stream_123",
+      })
+    );
+
+    expect(mockUseEventSource).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.any(Function),
+      "message-msg_123",
+      expect.objectContaining({
+        isTerminalEvent: isTerminalAgentLoopEvent,
+        keepAliveOnUnmount: true,
+        replayBufferedEventsOnMount: true,
+        restartKey: "stream_123",
       })
     );
 

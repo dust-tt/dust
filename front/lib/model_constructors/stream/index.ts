@@ -67,6 +67,7 @@ import { OpenAIGptFiveNanoEuropeOpenAIResponsesStream } from "@app/lib/model_con
 import { OpenAIGptFiveNanoGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_nano_global_openai_responses";
 import { OpenAIGptSixAstraEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_astra_eu_openai_responses";
 import { OpenAIGptSixAstraGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_astra_global_openai_responses";
+import { OpenAISimulatedFailureModelGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_simulated_failure_model_global_openai_responses";
 import { ThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { XaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_five_global_xai";
 import { XaiGrokFourDotSixGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_six_global_xai";
@@ -158,6 +159,8 @@ export const STREAM_ENDPOINTS = {
   [MistralMistralSmallEuropeMistralStream.id]:
     MistralMistralSmallEuropeMistralStream,
   [NoopNoopGlobalNoopStream.id]: NoopNoopGlobalNoopStream,
+  [OpenAISimulatedFailureModelGlobalOpenAIResponsesStream.id]:
+    OpenAISimulatedFailureModelGlobalOpenAIResponsesStream,
   [OpenAIGptFiveDotFiveEuropeOpenAIResponsesStream.id]:
     OpenAIGptFiveDotFiveEuropeOpenAIResponsesStream,
   [OpenAIGptFiveDotFourMiniEuropeOpenAIResponsesStream.id]:

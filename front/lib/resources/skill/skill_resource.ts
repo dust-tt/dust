@@ -30,6 +30,7 @@ import {
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -40,11 +41,13 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type {
   CodeDefinedSkillFile,
   SkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
+import { SYSTEM_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/system";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import type {
   SkillConfigurationFindOptions,
@@ -59,6 +62,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
 import {
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
@@ -71,7 +75,11 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
+import {
+  launchDeleteSkillSearchWorkflow,
+  launchDeleteWorkspaceSkillSearchWorkflow,
+  launchIndexSkillSearchWorkflow,
+} from "@app/temporal/es_indexation/client";
 import type {
   AgentConfigurationWithoutModelType,
   LightAgentConfigurationType,
@@ -104,7 +112,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -159,7 +166,7 @@ export type SkillPermissionFilteringMode =
   | "redact_unreadable"
   | "dangerously_skip";
 
-type SkillFetchContext = {
+export type SkillFetchContext = {
   permissionFiltering?: SkillPermissionFilteringMode;
 } & (
   | {
@@ -174,23 +181,23 @@ type SkillFetchContext = {
 
 type SkillResourceConstructorOptions =
   | {
+      codeDefinedSkillId: string;
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       // When true, the global skill's instructions are exposed to the front-end.
       exposeInstructions?: boolean;
       fileAttachments: FileResource[];
       // Files that ship with a code-defined skill (addressable, not embedded).
       files?: readonly CodeDefinedSkillFile[];
-      globalSId: string;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
     }
   | {
+      codeDefinedSkillId?: undefined;
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       // Custom skills always expose their own instructions; this flag is unused.
       exposeInstructions?: undefined;
       fileAttachments: FileResource[];
       files?: readonly CodeDefinedSkillFile[];
-      globalSId?: undefined;
       mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
     };
@@ -252,7 +259,7 @@ export interface SkillResource
  * - Global skills use synthetic database fields (id: -1, editedBy: -1)
  * - Mutations (update/delete) require runtime checks to reject global skills
  * - Mixed queries limited to simple equality filters (name, sId, status)
- * - Some internal complexity to distinguish types via `globalSId` presence
+ * - Some internal complexity to distinguish types via `codeDefinedSkillId` presence
  *
  * ## Key Limitations
  *
@@ -262,7 +269,7 @@ export interface SkillResource
  * 2. **No Sequelize Features for Global Skills**: Pagination, ordering, and joins only work fully
  *    for custom skills. Global skills are in-memory filtered.
  *
- * 3. **Type Detection is Implicit**: Global skills identified by presence of `globalSId` field.
+ * 3. **Type Detection is Implicit**: Global skills identified by presence of `codeDefinedSkillId` field.
  *    No explicit type enum exposed externally.
  *
  * 4. **Synthetic Fields Never Exposed**: The fake `id: -1` is internal only.
@@ -298,6 +305,47 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+/**
+ * @cc [owner:fabiencelier,label:security;product] skill-verbs
+ * The verbs a caller holds on a skill mean:
+ * - `read`: seeing and using the skill: listing it, fetching it, attaching it to an agent, running
+ *   it. Outside the explicit `admin_can_see_private_entities` admin override, fetching a custom
+ *   skill as readable MUST also require `read` on every space in its `requestedSpaceIds`. Its
+ *   `availability` MUST NOT affect this decision. `read` comes from grants (the workspace global
+ *   group's `reader` grant, or an editor's grant), never from a workspace role.
+ * - `write`: editing the skill's content: instructions, attached knowledge, files.
+ * - `admin`: the skill's lifecycle and editors: adding and removing editors, archiving,
+ *   restoring, deleting. The admin workspace role confers `admin` and MUST NOT confer `write`:
+ *   an admin who is not an editor manages editors without editing content.
+ * An admin may explicitly fetch a skill it cannot read through the redaction path. That path may
+ * expose public metadata such as its name and descriptions, but MUST hide instructions, tools and
+ * files. The admin override above may expose them in full.
+ * Global (code-defined) skills are `read`-only for every workspace member.
+ */
+/**
+ * @cc [owner:fabiencelier,label:security;product] skill-create-capability
+ * `create` on the `skill` type means bringing a new skill into the workspace: creating one,
+ * importing one (zip, GitHub) or detecting one from files. Every such path MUST require
+ * `hasWorkspacePermission("create", "skill")`. Editing an existing skill MUST NOT.
+ */
+/**
+ * @cc [owner:fabiencelier,label:security;product] skill-publish-capability
+ * `publish` on the `skill` type means deciding who the skill is available to. Any change of a
+ * skill's `availability` (`editors`, `workspace_users`, `users_and_agents`), including creating a
+ * skill with a non-default availability, MUST require `hasWorkspacePermission("publish", "skill")`,
+ * even for the skill's editors.
+ */
+/**
+ * @cc [owner:fabiencelier,label:security;product] skill-make-discoverable-capability
+ * `make_discoverable` on the `skill` type means letting agents pick the skill on their own. Setting
+ * a skill's availability to `users_and_agents`, or moving it off that value, MUST require
+ * `hasWorkspacePermission("make_discoverable", "skill")` on top of `publish`.
+ */
+/**
+ * @cc [owner:aubin-tchoi,label:backend;security] skill-stored-global-space
+ * Production callers creating skills or recomputing requestedSpaceIds must include the
+ * workspace's global space exactly once. Other update callers must preserve the stored IDs.
+ */
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
@@ -306,7 +354,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   private readonly codeDefinedFiles: readonly CodeDefinedSkillFile[];
   readonly version: number | null = null;
 
-  private readonly globalSId: string | null;
+  private readonly codeDefinedSkillId: string | null;
   // Only meaningful for global skills: whether their instructions may be
   // serialized to the front-end. Custom skills always expose their own.
   private readonly exposeInstructions: boolean;
@@ -322,11 +370,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     _: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
     {
+      codeDefinedSkillId,
       dataSourceConfigurations,
       exposeInstructions,
       fileAttachments,
       files,
-      globalSId,
       mcpServerConfigurations,
       version,
     }: SkillResourceConstructorOptions
@@ -337,14 +385,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     this.exposeInstructions = exposeInstructions ?? false;
     this.fileAttachments = fileAttachments ?? [];
     this.codeDefinedFiles = files ?? [];
-    this.globalSId = globalSId ?? null;
+    this.codeDefinedSkillId = codeDefinedSkillId ?? null;
     this._mcpServerConfigurations = mcpServerConfigurations;
     this.version = version ?? null;
   }
 
   get sId(): string {
-    if (this.globalSId) {
-      return this.globalSId;
+    if (this.codeDefinedSkillId) {
+      return this.codeDefinedSkillId;
     }
 
     return SkillResource.modelIdToSId({
@@ -413,10 +461,77 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Compute the requestedSpaceIds from MCP server views and attached knowledge.
-   * This is the source of truth for which spaces a skill needs access to.
+   * @cc [owner:matteotrab,label:security;product] requested-spaces-cover-every-requirement
+   * The result MUST hold every space the skill needs to function: the spaces of its tools and
+   * attached knowledge, the spaces requested by the skills its instructions reference, the
+   * hand-picked ones, and the global space.
    */
   static async computeRequestedSpaceIds(
+    auth: Authenticator,
+    {
+      attachedKnowledge,
+      excludedSkillId,
+      instructions,
+      manuallyRequestedSpaceIds,
+      mcpServerViews,
+    }: {
+      attachedKnowledge: SkillAttachedKnowledge[];
+      excludedSkillId?: string;
+      instructions: string;
+      manuallyRequestedSpaceIds: ModelId[];
+      mcpServerViews: MCPServerViewResource[];
+    }
+  ): Promise<ModelId[]> {
+    const toolAndKnowledgeSpaceIds = await this.computeToolAndKnowledgeSpaceIds(
+      auth,
+      { mcpServerViews, attachedKnowledge }
+    );
+    const referencedSkillSpaceIds = await this.listReferencedSkillSpaceIds(
+      auth,
+      instructions,
+      excludedSkillId
+    );
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+    return uniq([
+      ...toolAndKnowledgeSpaceIds, // Tools and attached knowledge.
+      ...referencedSkillSpaceIds, // Nested skills.
+      ...manuallyRequestedSpaceIds, // Picked by hand.
+      globalSpace.id, // Always required.
+    ]);
+  }
+
+  /**
+   * The spaces requested by the active skills `instructions` reference. `excludedSkillId` is the
+   * skill those instructions belong to: a reference back to it is skipped, since its own
+   * requirements are what the caller is recomputing.
+   */
+  static async listReferencedSkillSpaceIds(
+    auth: Authenticator,
+    instructions: string,
+    excludedSkillId?: string
+  ): Promise<ModelId[]> {
+    const referencedSkillIds = extractUniqueSkillReferenceIds(
+      instructions
+    ).filter((skillId) => skillId !== excludedSkillId);
+
+    if (referencedSkillIds.length === 0) {
+      return [];
+    }
+
+    const referencedSkills = await this.fetchByIds(auth, referencedSkillIds);
+
+    return uniq(
+      referencedSkills
+        .filter((skill) => skill.status === "active")
+        .flatMap((skill) => skill.requestedSpaceIds)
+    );
+  }
+
+  /**
+   * The spaces `mcpServerViews` and `attachedKnowledge` live in.
+   */
+  static async computeToolAndKnowledgeSpaceIds(
     auth: Authenticator,
     {
       mcpServerViews,
@@ -446,7 +561,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   // Mirrors `SkillDefinition["kind"]` for code-defined skills; anything without a global sId is
   // authored in the workspace.
   get kind(): "custom" | "global" | "system" {
-    if (!this.globalSId) {
+    if (!this.codeDefinedSkillId) {
       return "custom";
     }
 
@@ -454,7 +569,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   get isSystemSkill(): boolean {
-    if (!this.globalSId) {
+    if (!this.codeDefinedSkillId) {
       return false;
     }
 
@@ -462,16 +577,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   get inheritsAgentConfigurationDataSources(): boolean {
-    if (!this.globalSId) {
+    if (!this.codeDefinedSkillId) {
       return false;
     }
 
     return (
       GlobalSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
-        this.globalSId
+        this.codeDefinedSkillId
       ) ||
       SystemSkillsRegistry.doesSkillInheritAgentConfigurationDataSources(
-        this.globalSId
+        this.codeDefinedSkillId
       )
     );
   }
@@ -574,6 +689,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // construction are now stale and the caller would not be an editor of the skill they just
     // created. Refresh the snapshot now that the write has committed, as space creation does.
     await auth.refresh();
+    await this.launchSearchIndexation(auth, [skillResource.sId]);
 
     return skillResource;
   }
@@ -636,13 +752,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return new Err(new Error("Some MCP server views are missing."));
     }
 
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const createdSuggestedSkill = await this.makeNew(
       auth,
       {
         ...blob,
         status: "suggested",
         editedBy: null,
-        requestedSpaceIds: [],
+        requestedSpaceIds: [globalSpace.id],
       },
       {
         mcpServerViews,
@@ -1149,6 +1266,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
+  // Use fetchByIds to apply isRestricted checks, feature flags, user preferences,
+  // etc. before including code-defined skill IDs in search.
+  static async listAvailableCodeDefinedIds(
+    auth: Authenticator
+  ): Promise<string[]> {
+    const skills = await this.fetchByIds(
+      auth,
+      [...GLOBAL_SKILLS_ARRAY, ...SYSTEM_SKILLS_ARRAY].map(
+        (skill) => skill.sId
+      ),
+      {
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
+      }
+    );
+
+    return skills.map((skill) => skill.sId);
+  }
+
   static async fetchByName(
     auth: Authenticator,
     name: string,
@@ -1172,6 +1309,25 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return resources[0];
   }
 
+  static async isNameTaken(
+    auth: Authenticator,
+    name: string,
+    excludeSkillModelId?: ModelId
+  ): Promise<boolean> {
+    const count = await this.model.count({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        name,
+        status: "active",
+        ...(excludeSkillModelId !== undefined
+          ? { id: { [Op.ne]: excludeSkillModelId } }
+          : {}),
+      },
+    });
+
+    return count > 0;
+  }
+
   static async fetchByNames(
     auth: Authenticator,
     names: string[]
@@ -1192,7 +1348,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     parentSkills: SkillResource[]
   ): Promise<Map<string, SkillResource[]>> {
     const workspace = auth.getNonNullableWorkspace();
-    const customParentSkills = parentSkills.filter((skill) => !skill.globalSId);
+    const customParentSkills = parentSkills.filter(
+      (skill) => !skill.codeDefinedSkillId
+    );
 
     if (customParentSkills.length === 0) {
       return new Map();
@@ -1334,8 +1492,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   private get skillReference():
     | { globalSkillId: string }
     | { customSkillId: ModelId } {
-    return this.globalSId
-      ? { globalSkillId: this.globalSId }
+    return this.codeDefinedSkillId
+      ? { globalSkillId: this.codeDefinedSkillId }
       : { customSkillId: this.id };
   }
 
@@ -1427,7 +1585,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
     }
 
-    if (!this.globalSId) {
+    if (!this.codeDefinedSkillId) {
       await this.model.increment("favoriteCount", {
         by: isFavorite ? 1 : -1,
         where: {
@@ -1435,6 +1593,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           workspaceId: workspace.id,
         },
       });
+      await SkillResource.launchSearchIndexation(auth, [this.sId]);
     }
 
     return new Ok(undefined);
@@ -1443,15 +1602,45 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async listByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
+    fetchContext: SkillFetchContext = {}
+  ): Promise<SkillResource[]> {
+    // Global agents hold no `AgentSkillModel` row: their skills are declared in code.
+    if (isGlobalAgentId(agentConfiguration.sId)) {
+      return this.fetchByIds(
+        auth,
+        agentConfiguration.codeDefinedSkillIds ?? [],
+        fetchContext
+      );
+    }
+
+    const refs = await this.getSkillReferencesByAgentConfigurationModelId(
+      auth,
+      agentConfiguration.id
+    );
+
+    if (refs.length === 0) {
+      return [];
+    }
+
+    return this.fetchBySkillReferences(auth, refs, fetchContext);
+  }
+
+  /**
+   * Skills of a non-global agent addressed by its `agent_configurations` row model id, for callers
+   * holding an agent's identity rather than a rendered configuration (see `AgentResource.listSkills`).
+   */
+  static async listByAgentConfigurationModelId(
+    auth: Authenticator,
+    agentConfigurationModelId: ModelId,
     {
       agentLoopData,
       effectiveSpaceIds,
       permissionFiltering,
     }: SkillFetchContext = {}
   ): Promise<SkillResource[]> {
-    const refs = await this.getSkillReferencesForAgent(
+    const refs = await this.getSkillReferencesByAgentConfigurationModelId(
       auth,
-      agentConfiguration
+      agentConfigurationModelId
     );
 
     if (refs.length === 0) {
@@ -1512,8 +1701,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const skillByCustomId = new Map<ModelId, SkillResource>();
     const skillByGlobalId = new Map<string, SkillResource>();
     for (const skill of allSkills) {
-      if (skill.globalSId) {
-        skillByGlobalId.set(skill.globalSId, skill);
+      if (skill.codeDefinedSkillId) {
+        skillByGlobalId.set(skill.codeDefinedSkillId, skill);
       } else {
         skillByCustomId.set(skill.id, skill);
       }
@@ -1543,40 +1732,26 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Returns skill references for an agent configuration.
-   * For global agents, returns references from the config's `codeDefinedSkillIds` field.
-   * For non-global agents, queries the database.
-   * TODO(2026-01-30 agent-resource): move this to an AgentResource that would bundle the logic
-   *   about loading skills and will expose a unified interface.
+   * @cc [owner:sfriquet,label:backend] skill-references-by-configuration-model-id
+   * `agentConfigurationModelId` MUST designate an `agent_configurations` row: an `AgentResource`
+   * passes its `agentConfigurationModelId`, NOT its `id`, which designates the `agents` row. Global
+   * agents MUST NOT be passed: they hold no `AgentSkillModel` row and share the `id: -1` sentinel
+   * (see `agent-resource-identity`), so their code-defined skills are resolved by `fetchByIds` on
+   * the ids their configuration declares instead.
    */
-  static async getSkillReferencesForAgent(
+  private static async getSkillReferencesByAgentConfigurationModelId(
     auth: Authenticator,
-    agentConfiguration: AgentLoopExecutionData["agentConfiguration"]
+    agentConfigurationModelId: ModelId
   ): Promise<
     {
       customSkillId: ModelId | null;
       globalSkillId: string | null;
     }[]
   > {
-    // For global agents, skills are defined in the config, not in the database.
-    if (
-      isGlobalAgentId(agentConfiguration.sId) &&
-      "codeDefinedSkillIds" in agentConfiguration
-    ) {
-      return (agentConfiguration.codeDefinedSkillIds ?? []).map(
-        (globalSkillId) => ({
-          customSkillId: null,
-          globalSkillId,
-        })
-      );
-    }
-
-    const workspace = auth.getNonNullableWorkspace();
-
     const agentSkills = await AgentSkillModel.findAll({
       where: {
-        agentConfigurationId: agentConfiguration.id,
-        workspaceId: workspace.id,
+        agentConfigurationId: agentConfigurationModelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 
@@ -1971,7 +2146,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     let discoverableSkills: SkillResource[] = [];
     let favoriteSkills: SkillResource[] = [];
-    if (allAgentSkills.some((s) => s.globalSId === "discover_skills")) {
+    if (
+      allAgentSkills.some((s) => s.codeDefinedSkillId === "discover_skills")
+    ) {
       discoverableSkills = await this.listDiscoverable(auth, {
         agentLoopData,
         effectiveSpaceIds,
@@ -2278,7 +2455,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         // Global skills do not have data source configurations.
         dataSourceConfigurations: [],
         exposeInstructions: def.exposeInstructions,
-        globalSId: def.sId,
+        codeDefinedSkillId: def.sId,
         mcpServerConfigurations,
         fileAttachments: [],
         files: def.files ?? [],
@@ -2327,6 +2504,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
+   * @cc [owner:achilleburah,label:security] canAdministrateCustomSkillId-matches-canAdministrate
+   * For a custom (never code-defined) skill, MUST return the same verdict as `canAdministrate`
+   * would for the fetched `SkillResource` with this id, without fetching or hydrating the row.
+   */
+  static canAdministrateCustomSkillId(
+    auth: Authenticator,
+    { id, workspaceId }: { id: ModelId; workspaceId: ModelId }
+  ): boolean {
+    if (auth.isKey()) {
+      return true;
+    }
+
+    return this.customSkillAllowedVerbs(auth, { id, workspaceId }).has("admin");
+  }
+
+  /**
    * The verbs the caller holds on this skill: the code role rules unioned with the caller's own
    * verbs resolved from its `group_permissions` grants — for skills, the per-user `editor` grants
    * held by the regular_auto group (see `grantToUser`).
@@ -2334,7 +2527,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     // Global skills carry no row, so there is no grant to look up (and their synthetic `id` of -1
     // is the type-wide sentinel, which would resolve the workspace-wide capability grants instead).
-    if (this.globalSId) {
+    if (this.codeDefinedSkillId) {
       return new Set(
         verbsFromRoleGrants(auth, GLOBAL_SKILL_ROLE_GRANTS, this.workspaceId)
       );
@@ -2461,7 +2654,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     if (spaceIdsRemovedFromThisSkill.length > 0) {
       actionsByAgentModelId = await fetchMCPServerActionConfigurations(auth, {
-        configurationIds: agentModelIds,
+        configurationModelIds: agentModelIds,
         variant: "full",
       });
 
@@ -2658,7 +2851,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
     // Code-defined global/system skills have no editors at all.
-    if (this.globalSId) {
+    if (this.codeDefinedSkillId) {
       return null;
     }
 
@@ -2724,7 +2917,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    return this.writeEditorUserGrants(auth, users, "grant");
+    const result = await this.writeEditorUserGrants(auth, users, "grant");
+    // Earlier editor updates may have succeeded even if a later one failed.
+    await SkillResource.launchSearchIndexation(auth, [this.sId]);
+    return result;
   }
 
   /**
@@ -2748,7 +2944,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    return this.writeEditorUserGrants(auth, users, "revoke");
+    const result = await this.writeEditorUserGrants(auth, users, "revoke");
+    // Earlier editor updates may have succeeded even if a later one failed.
+    await SkillResource.launchSearchIndexation(auth, [this.sId]);
+    return result;
   }
 
   // Editors are per-user grants: `grantToUser` holds them in one regular_auto group per skill, and
@@ -2821,9 +3020,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     // Separate custom skills from global skills.
     const customSkillIds = removeNulls(
-      skills.map((s) => (s.globalSId ? null : s.id))
+      skills.map((s) => (s.codeDefinedSkillId ? null : s.id))
     );
-    const globalSkillIds = removeNulls(skills.map((s) => s.globalSId));
+    const globalSkillIds = removeNulls(skills.map((s) => s.codeDefinedSkillId));
 
     // Single query: all agent-skill associations for the given skills.
     const agentSkills = await AgentSkillModel.findAll({
@@ -2861,14 +3060,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const agentConfigById = new Map(agentConfigs.map((a) => [a.id, a]));
 
     // Map AgentSkillModel references back to skill sId.
-    const sIdByCustomId = new Map(
-      skills.filter((s) => !s.globalSId).map((s) => [s.id, s.sId])
+    const skillIdByModelId = new Map(
+      skills.filter((s) => !s.codeDefinedSkillId).map((s) => [s.id, s.sId])
     );
 
     const result = new Map<string, AgentUsageAttributes[]>();
     for (const as of agentSkills) {
       const skillId = as.customSkillId
-        ? sIdByCustomId.get(as.customSkillId)
+        ? skillIdByModelId.get(as.customSkillId)
         : (as.globalSkillId ?? undefined);
       if (!skillId) {
         continue;
@@ -2922,8 +3121,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       skills.map((skill) => [skill.sId, []])
     );
 
-    const customSkills = skills.filter((skill) => !skill.globalSId);
-    const globalSkills = skills.filter((skill) => skill.globalSId);
+    const customSkills = skills.filter((skill) => !skill.codeDefinedSkillId);
+    const globalSkills = skills.filter((skill) => skill.codeDefinedSkillId);
     if (customSkills.length === 0 && globalSkills.length === 0) {
       return result;
     }
@@ -3001,7 +3200,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     // Code-defined global/system skills have no editors — see `listEditors`.
-    const customSkills = skills.filter((s) => !s.globalSId);
+    const customSkills = skills.filter((s) => !s.codeDefinedSkillId);
 
     if (customSkills.length === 0) {
       return result;
@@ -3117,65 +3316,86 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const workspace = auth.getNonNullableWorkspace();
 
-    const affectedCount = await withTransaction(async (transaction) => {
-      // Rename any existing archived skill with the same name to avoid unique constraint violation.
-      const existingArchivedSkill = await this.model.findOne({
-        where: {
-          workspaceId: workspace.id,
-          name: this.name,
-          status: "archived",
-        },
-        transaction,
-      });
-
-      if (existingArchivedSkill) {
-        const timestamp = formatTimestampToFriendlyDate(
-          existingArchivedSkill.updatedAt.getTime(),
-          "long"
-        );
-        const suffix = ` (archived on ${timestamp}, ${SkillResource.modelIdToSId(existingArchivedSkill)})`;
-        const name = existingArchivedSkill.name.slice(
-          0,
-          SKILL_NAME_MAX_LENGTH - suffix.length
-        );
-        await existingArchivedSkill.update(
-          { name: `${name}${suffix}` },
-          { transaction }
-        );
-      }
-
-      // We preserve AgentSkillModel, ConversationSkillModel, and
-      // SkillReferenceModel relationships so they can be restored when the skill
-      // is unarchived.
-      const [count] = await this.update({ status: "archived" }, transaction);
-
-      if (count > 0) {
-        // The skill no longer contributes any space requirement: drop its
-        // spaces from the agents using it (unless another active capability
-        // still requires them).
-        await this.updateActiveAgentsRequirements(
-          auth,
-          {
-            previousRequestedSpaceIds: this.requestedSpaceIds,
-            newRequestedSpaceIds: [],
-          },
-          { transaction }
-        );
-
-        await this.propagateReferenceUpdatesToParentSkills(
-          auth,
-          {
-            icon: this.icon,
+    const { affectedCount, referencingSkillIds, renamedSkillId } =
+      await withTransaction(async (transaction) => {
+        // Rename any existing archived skill with the same name to avoid unique constraint violation.
+        const existingArchivedSkill = await this.model.findOne({
+          where: {
+            workspaceId: workspace.id,
             name: this.name,
-            requestedSpaceIds: this.requestedSpaceIds,
             status: "archived",
           },
-          { transaction }
-        );
-      }
+          transaction,
+        });
 
-      return count;
-    });
+        if (existingArchivedSkill) {
+          const timestamp = formatTimestampToFriendlyDate(
+            existingArchivedSkill.updatedAt.getTime(),
+            "long"
+          );
+          const suffix = ` (archived on ${timestamp}, ${SkillResource.modelIdToSId(existingArchivedSkill)})`;
+          const name = existingArchivedSkill.name.slice(
+            0,
+            SKILL_NAME_MAX_LENGTH - suffix.length
+          );
+          await existingArchivedSkill.update(
+            { name: `${name}${suffix}` },
+            { transaction }
+          );
+        }
+
+        // We preserve AgentSkillModel, ConversationSkillModel, and
+        // SkillReferenceModel relationships so they can be restored when the skill
+        // is unarchived.
+        const [count] = await this.update({ status: "archived" }, transaction);
+
+        let referencingSkillIds: string[] = [];
+
+        if (count > 0) {
+          // The skill no longer contributes any space requirement: drop its
+          // spaces from the agents using it (unless another active capability
+          // still requires them).
+          await this.updateActiveAgentsRequirements(
+            auth,
+            {
+              previousRequestedSpaceIds: this.requestedSpaceIds,
+              newRequestedSpaceIds: [],
+            },
+            { transaction }
+          );
+
+          referencingSkillIds =
+            await this.propagateReferenceUpdatesToParentSkills(
+              auth,
+              {
+                icon: this.icon,
+                name: this.name,
+                requestedSpaceIds: this.requestedSpaceIds,
+                status: "archived",
+              },
+              { transaction }
+            );
+        }
+
+        return {
+          affectedCount: count,
+          referencingSkillIds,
+          renamedSkillId: existingArchivedSkill
+            ? SkillResource.modelIdToSId({
+                id: existingArchivedSkill.id,
+                workspaceId: workspace.id,
+              })
+            : null,
+        };
+      });
+
+    if (affectedCount > 0) {
+      await SkillResource.launchSearchIndexation(auth, [
+        this.sId,
+        ...referencingSkillIds,
+        ...(renamedSkillId ? [renamedSkillId] : []),
+      ]);
+    }
 
     return { affectedCount };
   }
@@ -3186,35 +3406,47 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       "User is not authorized to restore this skill"
     );
 
-    const affectedCount = await withTransaction(async (transaction) => {
-      const [count] = await this.update({ status: "active" }, transaction);
+    const { affectedCount, referencingSkillIds } = await withTransaction(
+      async (transaction) => {
+        const [count] = await this.update({ status: "active" }, transaction);
 
-      if (count > 0) {
-        // The skill contributes its space requirements again: add them back to
-        // the agents using it.
-        await this.updateActiveAgentsRequirements(
-          auth,
-          {
-            previousRequestedSpaceIds: [],
-            newRequestedSpaceIds: this.requestedSpaceIds,
-          },
-          { transaction }
-        );
+        let referencingSkillIds: string[] = [];
 
-        await this.propagateReferenceUpdatesToParentSkills(
-          auth,
-          {
-            icon: this.icon,
-            name: this.name,
-            requestedSpaceIds: this.requestedSpaceIds,
-            status: "active",
-          },
-          { transaction }
-        );
+        if (count > 0) {
+          // The skill contributes its space requirements again: add them back to
+          // the agents using it.
+          await this.updateActiveAgentsRequirements(
+            auth,
+            {
+              previousRequestedSpaceIds: [],
+              newRequestedSpaceIds: this.requestedSpaceIds,
+            },
+            { transaction }
+          );
+
+          referencingSkillIds =
+            await this.propagateReferenceUpdatesToParentSkills(
+              auth,
+              {
+                icon: this.icon,
+                name: this.name,
+                requestedSpaceIds: this.requestedSpaceIds,
+                status: "active",
+              },
+              { transaction }
+            );
+        }
+
+        return { affectedCount: count, referencingSkillIds };
       }
+    );
 
-      return count;
-    });
+    if (affectedCount > 0) {
+      await SkillResource.launchSearchIndexation(auth, [
+        this.sId,
+        ...referencingSkillIds,
+      ]);
+    }
 
     return { affectedCount };
   }
@@ -3292,7 +3524,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const previousIcon = this.icon;
     const previousStatus = this.status;
 
-    await withTransaction(async (transaction) => {
+    const referencingSkillIds = await withTransaction(async (transaction) => {
       // Save the current version before updating.
       await this.saveVersion(auth, { transaction });
 
@@ -3330,22 +3562,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await this.normalizeSkillReferenceTags(auth, { transaction });
       await this.syncSkillReferences(auth, { transaction });
 
+      let referencingSkillIds: string[] = [];
       if (
         name !== previousName ||
         icon !== previousIcon ||
         requestedSpaceIdsChanged ||
         statusChanged
       ) {
-        await this.propagateReferenceUpdatesToParentSkills(
-          auth,
-          {
-            icon,
-            name,
-            requestedSpaceIds,
-            status: status ?? this.status,
-          },
-          { transaction }
-        );
+        referencingSkillIds =
+          await this.propagateReferenceUpdatesToParentSkills(
+            auth,
+            {
+              icon,
+              name,
+              requestedSpaceIds,
+              status: status ?? this.status,
+            },
+            { transaction }
+          );
       }
 
       await this.updateMCPServerViews(auth, mcpServerViews, { transaction });
@@ -3363,6 +3597,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { previousRequestedSpaceIds },
         { transaction }
       );
+      return referencingSkillIds;
     });
 
     if (fileAttachments) {
@@ -3370,6 +3605,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     await this.upsertCurrentUserAsEditor(auth);
+    await SkillResource.launchSearchIndexation(auth, [
+      this.sId,
+      ...referencingSkillIds,
+    ]);
   }
 
   /**
@@ -3428,11 +3667,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       );
     });
+    await this.launchSearchIndexation(
+      auth,
+      changedSkills.map((skill) => skill.sId)
+    );
   }
 
   /**
    * Rewrites inline references to this skill in every parent skill so their tag
    * availability reflects this skill's current status and requested spaces.
+   */
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;performance] reference-refresh-targets
+   * Parent-reference rewrites preserve the existing writes and return every changed
+   * parent ID so callers can enqueue those parents after their transaction commits.
    */
   private async propagateReferenceUpdatesToParentSkills(
     auth: Authenticator,
@@ -3448,7 +3696,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       status: SkillStatus;
     },
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
+  ): Promise<string[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const references = await SkillReferenceModel.findAll({
@@ -3464,7 +3712,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     if (referencingSkillIds.length === 0) {
-      return;
+      return [];
     }
 
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
@@ -3492,6 +3740,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
     });
 
+    const changedSkillIds: string[] = [];
     // Each update carries distinct instructions content so it cannot be
     // batched. Bounded by the number of skills referencing this one.
     for (const referencingSkill of referencingSkills) {
@@ -3536,7 +3785,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { instructions, instructionsHtml },
         { transaction }
       );
+      changedSkillIds.push(
+        SkillResource.modelIdToSId({
+          id: referencingSkill.id,
+          workspaceId: workspace.id,
+        })
+      );
     }
+    return changedSkillIds;
   }
 
   async updateReinforcement(
@@ -3919,48 +4175,50 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async delete(auth: Authenticator): Promise<Result<number, Error>> {
-    try {
-      assert(
-        this.canAdministrate(auth),
-        "User does not have permission to delete this skill."
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new Error("User does not have permission to delete this skill.")
       );
+    }
 
-      const workspace = auth.getNonNullableWorkspace();
+    const workspace = auth.getNonNullableWorkspace();
 
-      const whereWorkspaceIdAndSkillId = {
-        skillConfigurationId: this.id,
-        workspaceId: workspace.id,
-      };
+    const whereWorkspaceIdAndSkillId = {
+      skillConfigurationId: this.id,
+      workspaceId: workspace.id,
+    };
 
-      // Collect file IDs from current attachments and all version snapshots.
-      const fileAttachmentRows = await SkillFileAttachmentModel.findAll({
-        where: whereWorkspaceIdAndSkillId,
-      });
-      const currentFileIds = fileAttachmentRows.map((a) => a.fileId);
+    // Collect file IDs from current attachments and all version snapshots.
+    const fileAttachmentRows = await SkillFileAttachmentModel.findAll({
+      where: whereWorkspaceIdAndSkillId,
+    });
+    const currentFileIds = fileAttachmentRows.map((a) => a.fileId);
 
-      const versionRows = await SkillVersionModel.findAll({
-        where: whereWorkspaceIdAndSkillId,
-        attributes: ["fileAttachmentIds"],
-      });
-      const versionFileIds = versionRows.flatMap((v) => v.fileAttachmentIds);
+    const versionRows = await SkillVersionModel.findAll({
+      where: whereWorkspaceIdAndSkillId,
+      attributes: ["fileAttachmentIds"],
+    });
+    const versionFileIds = versionRows.flatMap((v) => v.fileAttachmentIds);
 
-      const allFileIds = [...new Set([...currentFileIds, ...versionFileIds])];
-      const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
-        auth,
-        allFileIds
-      );
+    const allFileIds = [...new Set([...currentFileIds, ...versionFileIds])];
+    const filesToDelete = await FileResource.fetchByModelIdsWithAuth(
+      auth,
+      allFileIds
+    );
 
-      const affectedCount = await withTransaction(async (transaction) => {
-        await this.propagateReferenceUpdatesToParentSkills(
-          auth,
-          {
-            icon: this.icon,
-            name: this.name,
-            requestedSpaceIds: this.requestedSpaceIds,
-            status: "archived",
-          },
-          { transaction }
-        );
+    const { affectedCount, referencingSkillIds } = await withTransaction(
+      async (transaction) => {
+        const referencingSkillIds =
+          await this.propagateReferenceUpdatesToParentSkills(
+            auth,
+            {
+              icon: this.icon,
+              name: this.name,
+              requestedSpaceIds: this.requestedSpaceIds,
+              status: "archived",
+            },
+            { transaction }
+          );
 
         // Delete agent-skill associations.
         await AgentSkillModel.destroy({
@@ -4041,27 +4299,38 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-        return this.model.destroy({
+        const affectedCount = await this.model.destroy({
           where: {
             id: this.id,
             workspaceId: workspace.id,
           },
           transaction,
         });
-      });
-
-      // Delete files from cloud storage outside the transaction (I/O with GCS).
-      for (const file of filesToDelete) {
-        const res = await file.delete(auth);
-        if (res.isErr()) {
-          return res;
-        }
+        return {
+          affectedCount,
+          referencingSkillIds,
+        };
       }
+    );
 
-      return new Ok(affectedCount);
-    } catch (error) {
-      return new Err(normalizeError(error));
+    const deleteSearchResult = await launchDeleteSkillSearchWorkflow({
+      workspaceId: workspace.sId,
+      skillId: this.sId,
+    });
+    if (deleteSearchResult.isErr()) {
+      return deleteSearchResult;
     }
+    await SkillResource.launchSearchIndexation(auth, referencingSkillIds);
+
+    // Delete files from cloud storage outside the transaction (I/O with GCS).
+    for (const file of filesToDelete) {
+      const res = await file.delete(auth);
+      if (res.isErr()) {
+        return res;
+      }
+    }
+
+    return new Ok(affectedCount);
   }
 
   async addToAgent(
@@ -4080,12 +4349,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async addManyToAgent(
     auth: Authenticator,
     {
-      agentConfiguration,
+      agentResource,
       skills,
     }: {
-      agentConfiguration: LightAgentConfigurationType;
+      agentResource: AgentResource;
       skills: SkillResource[];
-    }
+    },
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     if (skills.length === 0) {
       return;
@@ -4097,8 +4367,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       skills.map((skill) => ({
         ...skill.skillReference,
         workspaceId: workspace.id,
-        agentConfigurationId: agentConfiguration.id,
-      }))
+        agentConfigurationId: agentResource.agentConfigurationModelId,
+      })),
+      { transaction }
     );
   }
 
@@ -4276,7 +4547,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
+  static async deleteAllForWorkspace(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     await AgentSkillModel.destroy({
@@ -4359,6 +4632,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     await this.model.destroy({
       where: { workspaceId },
+    });
+    return launchDeleteWorkspaceSkillSearchWorkflow({
+      workspaceId: auth.getNonNullableWorkspace().sId,
     });
   }
 
@@ -4498,11 +4774,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * @cc [owner:aubin-tchoi,label:backend;security] skill-search-serialization
-   * Serialize a custom skill fetched with tools, deriving user sIds from supplied editor
-   * resources; perform no I/O and never include private skill content.
+   * Serialize listing metadata without I/O or private content; fetch custom skills with tools.
+   * Custom skills use the authenticator's workspace; code-defined skills use the global namespace,
+   * without workspace-specific relationships, usage or dates.
    */
   toSearchDocument(
-    workspace: LightWorkspaceType,
+    auth: Authenticator,
     {
       lastEditedByUser,
       editors,
@@ -4513,30 +4790,35 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       activeUsersCount: number | null;
     }
   ): SkillSearchDocument {
-    assert(
-      !this.globalSId && this.workspaceId === workspace.id,
-      "Search documents require a custom skill in the workspace."
-    );
+    const isCodeDefined = this.codeDefinedSkillId !== null;
     return {
-      workspace_id: workspace.sId,
+      workspace_id: isCodeDefined
+        ? CODE_DEFINED_SKILLS_WORKSPACE_ID
+        : auth.getNonNullableWorkspace().sId,
       skill_id: this.sId,
       status: this.status,
       availability: this.availability,
       name: this.name,
       description: this.userFacingDescription,
       icon: this.icon,
-      last_edited_by_user_id: lastEditedByUser?.sId ?? null,
-      editor_ids: uniq(editors.map((editor) => editor.sId)).sort(),
-      requested_space_ids: this.requestedSpaceIds.map((id) =>
-        SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
-      ),
-      mcp_server_view_ids: uniq(
-        this.mcpServerViews.map((view) => view.sId)
-      ).sort(),
-      active_users_count: activeUsersCount,
+      last_edited_by_user_id: isCodeDefined
+        ? null
+        : (lastEditedByUser?.sId ?? null),
+      editor_ids: isCodeDefined
+        ? []
+        : uniq(editors.map((editor) => editor.sId)).sort(),
+      requested_space_ids: isCodeDefined
+        ? []
+        : this.requestedSpaceIds.map((id) =>
+            SpaceResource.modelIdToSId({ id, workspaceId: this.workspaceId })
+          ),
+      mcp_server_view_ids: isCodeDefined
+        ? []
+        : uniq(this.mcpServerViews.map((view) => view.sId)).sort(),
+      active_users_count: isCodeDefined ? null : activeUsersCount,
       favorite_count: this.favoriteCount,
-      created_at: this.createdAt.toISOString(),
-      updated_at: this.updatedAt.toISOString(),
+      created_at: isCodeDefined ? null : this.createdAt.toISOString(),
+      updated_at: isCodeDefined ? null : this.updatedAt.toISOString(),
     };
   }
 
@@ -4559,15 +4841,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // the public v1 API only returns custom skills, so this only surfaces on the
     // single-skill detail fetch.
     const hideInstructions =
-      (this.globalSId !== null && !this.exposeInstructions) ||
+      (this.codeDefinedSkillId !== null && !this.exposeInstructions) ||
       this.redactedForCaller;
 
     return {
       id: this.id,
       sId: this.sId,
-      createdAt: this.globalSId ? null : this.createdAt.getTime(),
-      updatedAt: this.globalSId ? null : this.updatedAt.getTime(),
-      editedBy: this.globalSId ? null : this.editedBy,
+      createdAt: this.codeDefinedSkillId ? null : this.createdAt.getTime(),
+      updatedAt: this.codeDefinedSkillId ? null : this.updatedAt.getTime(),
+      editedBy: this.codeDefinedSkillId ? null : this.editedBy,
       status: this.status,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,

@@ -5,20 +5,20 @@ import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory"
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
-function listSuggestions(workspace: { sId: string }, skillSId: string) {
+function listSuggestions(workspace: { sId: string }, skillId: string) {
   return honoApp.request(
-    `/api/poke/workspaces/${workspace.sId}/skills/${skillSId}/suggestions`
+    `/api/poke/workspaces/${workspace.sId}/skills/${skillId}/suggestions`
   );
 }
 
 function deleteSuggestion(
   workspace: { sId: string },
-  skillSId: string,
+  skillId: string,
   query: Record<string, string> = {}
 ) {
   const search = new URLSearchParams(query).toString();
   return honoApp.request(
-    `/api/poke/workspaces/${workspace.sId}/skills/${skillSId}/suggestions${
+    `/api/poke/workspaces/${workspace.sId}/skills/${skillId}/suggestions${
       search ? `?${search}` : ""
     }`,
     { method: "DELETE" }

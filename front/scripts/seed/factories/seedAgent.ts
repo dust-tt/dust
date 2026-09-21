@@ -1,8 +1,8 @@
-import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import {
   AUTO_COMPLEX_MODEL_ID,
@@ -100,7 +100,7 @@ export async function seedAgent(
       }
     }
 
-    const result = await createAgentConfiguration(auth, {
+    const result = await saveAgentConfiguration(auth, {
       name: agentAsset.name,
       description: agentAsset.description,
       instructions: agentAsset.instructions,

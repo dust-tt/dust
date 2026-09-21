@@ -138,7 +138,6 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
       plan_code: planCode,
       plan_name: activeSubscription.plan.name,
       plan_type: planType,
-      is_trial: activeSubscription.trialing ? "true" : "false",
     };
   }, [activeSubscription]);
 

@@ -7,6 +7,7 @@ import {
 } from "@app/lib/models/agent/agent";
 import { UserMessageModel } from "@app/lib/models/agent/conversation";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
+import { invalidateAgentResourceCaches } from "@app/lib/resources/agent_resource_cache";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -317,17 +318,25 @@ export async function mergeUserIdentities({
     );
   }
 
-  // Migrate authorship of agent configurations from the secondary user to the primary user.
-  const [agentConfigurationsCount] = await AgentConfigurationModel.update(
-    {
-      authorId: primaryUser.id,
-    },
-    {
-      where: {
-        authorId: secondaryUser.id,
-        workspaceId,
+  // Migrate authorship from the secondary user to the primary user. `returning` yields the reassigned
+  // rows so their cached AgentResource entries can be invalidated (authorship is a snapshot field).
+  const [agentConfigurationsCount, reassignedConfigurations] =
+    await AgentConfigurationModel.update(
+      {
+        authorId: primaryUser.id,
       },
-    }
+      {
+        where: {
+          authorId: secondaryUser.id,
+          workspaceId,
+        },
+        returning: ["sId"],
+      }
+    );
+
+  await invalidateAgentResourceCaches(
+    workspaceId,
+    reassignedConfigurations.map((configuration) => configuration.sId)
   );
 
   const userIdValues = {

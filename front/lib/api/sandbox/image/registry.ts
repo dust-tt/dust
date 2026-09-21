@@ -26,8 +26,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.110";
-const DSBX_CLI_VERSION = "0.1.59";
+const DUST_BASE_IMAGE_VERSION = "0.8.116";
+const DSBX_CLI_VERSION = "0.1.61";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
 // the stable identity used when creating the workload account.
@@ -58,6 +58,7 @@ const LIBREOFFICE_PPA = "ppa:libreoffice/ppa";
 const LITESTREAM_VERSION = "0.5.13";
 const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
 const LITESTREAM_LOCAL_DIR = path.resolve(__dirname, "litestream");
+const OXLINT_LOCAL_DIR = path.resolve(__dirname, "oxlint");
 const PROFILE_LOCAL_DIR = path.resolve(__dirname, "profile");
 const TELEMETRY_LOCAL_DIR = path.resolve(__dirname, "telemetry");
 const TOKEN_LOCAL_DIR = path.resolve(__dirname, "token");
@@ -448,6 +449,24 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
       },
       { name: "tsx", description: "TypeScript executor", runtime: "node" },
       {
+        name: "oxlint",
+        version: "1.83.0",
+        description: "Frame linting with TypeScript diagnostics",
+        runtime: "node",
+      },
+      {
+        name: "oxlint-tsgolint",
+        version: "7.0.2001",
+        description: "Type checking for Oxlint",
+        runtime: "node",
+      },
+      {
+        name: "oxlint-tailwindcss",
+        version: "1.12.0",
+        description: "Tailwind CSS lint rules for Frames",
+        runtime: "node",
+      },
+      {
         name: "pptxgenjs",
         version: "4.0.1",
         description: "PowerPoint generation library",
@@ -481,9 +500,17 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     ],
     {
       installCmd:
-        "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3 drizzle-orm@0.45.2 drizzle-kit@0.31.10 @libsql/client@0.17.4",
+        "npm install -g typescript tsx pptxgenjs@4.0.1 zod@4.4.3 drizzle-orm@0.45.2 drizzle-kit@0.31.10 @libsql/client@0.17.4 oxlint@1.83.0 oxlint-tsgolint@7.0.2001 oxlint-tailwindcss@1.12.0",
     }
   )
+  .runCmd("apt-get update && apt-get install -y libjemalloc2", { user: "root" })
+  // /opt/bin comes before npm's bin directory in the sandbox PATH.
+  .copy(getLocalContent(OXLINT_LOCAL_DIR, "oxlint.sh"), "/opt/bin/oxlint", {
+    user: "root",
+  })
+  .runCmd("chown root:root /opt/bin/oxlint && chmod 755 /opt/bin/oxlint", {
+    user: "root",
+  })
   .runCmd(
     `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/dsbx-linux-x86_64 -o /tmp/dsbx && ` +
       `curl -fsSL https://github.com/dust-tt/dust/releases/download/dsbx-v${DSBX_CLI_VERSION}/checksums-sha256.txt -o /tmp/checksums-sha256.txt && ` +

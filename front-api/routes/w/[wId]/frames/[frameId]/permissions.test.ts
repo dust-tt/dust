@@ -36,7 +36,10 @@ describe("GET /api/w/:wId/frames/:frameId/permissions", () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ isFrameAuthor: true });
+    await expect(response.json()).resolves.toEqual({
+      isFrameAuthor: true,
+      packageRoot: `conversation-${conversation.sId}/Admin`,
+    });
   });
 
   it("fails closed when the Frame v2 source has no writable scoped path", async () => {
@@ -57,7 +60,10 @@ describe("GET /api/w/:wId/frames/:frameId/permissions", () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ isFrameAuthor: false });
+    await expect(response.json()).resolves.toEqual({
+      isFrameAuthor: false,
+      packageRoot: null,
+    });
   });
 
   it("does not expose the permissions contract for a legacy Frame", async () => {

@@ -1,3 +1,4 @@
+import { MESSAGE_COUNT_LABEL } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
@@ -5,7 +6,7 @@ import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_s
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatAvgCredits, formatCredits } from "@app/lib/client/credits";
 import { ArrowUpRight, Button, LoadingBlock } from "@dust-tt/sparkle";
 
 export interface ConsumptionSummaryProps {
@@ -47,6 +48,13 @@ export function ConsumptionSummary({
       showUsageLink={isManager}
     />
   );
+}
+
+function averageCreditsPerMessage({
+  messageCount,
+  totalCredits,
+}: GetConsumptionOverviewResponse): number | null {
+  return messageCount > 0 ? totalCredits / messageCount : null;
 }
 
 interface ConsumptionSummaryData {
@@ -94,10 +102,11 @@ export function ConsumptionSummaryView({
         <div
           className={
             responsiveLayout
-              ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+              ? "grid grid-cols-1 gap-4 sm:grid-cols-3"
               : "flex items-stretch gap-6"
           }
         >
+          <LoadingBlock className={loadingCardClassName} />
           <LoadingBlock className={loadingCardClassName} />
           <LoadingBlock className={loadingCardClassName} />
         </div>
@@ -109,7 +118,8 @@ export function ConsumptionSummaryView({
     return null;
   }
 
-  const { topAgent, totalCredits } = overview;
+  const { messageCount, topAgent, totalCredits } = overview;
+  const averageCostPerMessage = averageCreditsPerMessage(overview);
   const creditUsage =
     analyticsScope.kind === "workspace" ? overview.creditUsage : null;
 
@@ -129,7 +139,7 @@ export function ConsumptionSummaryView({
       <div
         className={
           responsiveLayout
-            ? "grid grid-cols-1 gap-4 sm:grid-cols-2"
+            ? "grid grid-cols-1 gap-4 sm:grid-cols-3"
             : "flex items-stretch gap-6"
         }
       >
@@ -140,6 +150,15 @@ export function ConsumptionSummaryView({
             creditUsage
               ? `${creditUsage.status.usedPercentage}% of ${formatCredits(creditUsage.capCredits)} cap`
               : null
+          }
+        />
+        <SummaryCard
+          label={MESSAGE_COUNT_LABEL}
+          value={messageCount.toLocaleString()}
+          hint={
+            averageCostPerMessage === null
+              ? null
+              : `${formatAvgCredits(averageCostPerMessage)} credits / message`
           }
         />
         <SummaryCard
@@ -202,15 +221,10 @@ function AgentConsumptionSummaryView({
   }
 
   const messagesPerActiveUser =
-    overview.messageCount === undefined
-      ? null
-      : overview.members.active > 0
-        ? Math.round(overview.messageCount / overview.members.active)
-        : 0;
-  const averageCostPerMessage =
-    overview.messageCount !== undefined && overview.messageCount > 0
-      ? overview.totalCredits / overview.messageCount
-      : null;
+    overview.members.active > 0
+      ? Math.round(overview.messageCount / overview.members.active)
+      : 0;
+  const averageCostPerMessage = averageCreditsPerMessage(overview);
 
   return (
     <div className="flex flex-col gap-6">
@@ -230,7 +244,7 @@ function AgentConsumptionSummaryView({
         <SummaryCard
           className="h-20"
           label="Messages / active user"
-          value={messagesPerActiveUser?.toLocaleString() ?? "—"}
+          value={messagesPerActiveUser.toLocaleString()}
           hint={null}
         />
       </div>
@@ -253,7 +267,7 @@ function AgentConsumptionSummaryView({
           value={
             averageCostPerMessage === null
               ? "—"
-              : `${formatCredits(averageCostPerMessage)} credits`
+              : `${formatAvgCredits(averageCostPerMessage)} credits`
           }
           hint={null}
         />

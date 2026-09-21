@@ -262,7 +262,7 @@ type SearchDropdownContentProps = {
   filteredTags: TagType[];
   filteredAgents: LightAgentConfigurationType[];
   isLoading: boolean;
-  onTagClick: (tagSId: string) => void;
+  onTagClick: (tagId: string) => void;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
   onAgentMoreClick?: (agentId: string) => void;
   trackAgentBrowserEvents?: boolean;
@@ -359,12 +359,12 @@ export function useTagClick(
   setSelectedTag: (tag: string) => void
 ) {
   return useCallback(
-    (tagSId: string) => {
+    (tagId: string) => {
       setSelectedTab("all");
       setAssistantSearch("");
-      setSelectedTag(tagSId);
+      setSelectedTag(tagId);
       setTimeout(() => {
-        const element = document.getElementById(`anchor-${tagSId}`);
+        const element = document.getElementById(`anchor-${tagId}`);
         if (element) {
           element.scrollIntoView({
             behavior: "smooth",
@@ -476,7 +476,7 @@ export function AgentBrowserSearchDropdown({
   filteredTags: TagType[];
   filteredAgents: LightAgentConfigurationType[];
   isLoading: boolean;
-  onTagClick: (tagSId: string) => void;
+  onTagClick: (tagId: string) => void;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
   onAgentMoreClick?: (agentId: string) => void;
   trackAgentBrowserEvents?: boolean;

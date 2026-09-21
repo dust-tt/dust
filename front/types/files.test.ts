@@ -169,7 +169,7 @@ describe("authorizedFileAccessEntrySchema", () => {
     allowedAt: "2026-06-05T12:00:00.000Z",
   };
 
-  it("parses file_id, canonical_path, and unverifiable entries", () => {
+  it("parses file_id, canonical_path, frame_relative_path, and unverifiable entries", () => {
     const entries = [
       {
         kind: "file_id" as const,
@@ -181,6 +181,12 @@ describe("authorizedFileAccessEntrySchema", () => {
         kind: "canonical_path" as const,
         ref: "conversation-conv123/data.csv",
         legacyPath: "conversation/data.csv",
+        ...baseEntry,
+      },
+      {
+        kind: "frame_relative_path" as const,
+        ref: "./data.csv",
+        fileName: "data.csv",
         ...baseEntry,
       },
       {
@@ -241,6 +247,13 @@ describe("getAuthorizedFileRefLabel", () => {
         ref: "conversation-conv_123/charts/sales.png",
       })
     ).toBe("sales.png");
+
+    expect(
+      getAuthorizedFileRefLabel({
+        kind: "frame_relative_path",
+        ref: "./assets/logo.png",
+      })
+    ).toBe("logo.png");
   });
 });
 

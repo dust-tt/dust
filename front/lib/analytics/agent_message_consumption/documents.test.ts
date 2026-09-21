@@ -706,7 +706,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(
       context.auth,
       {
-        serverSId: server.sId,
+        serverId: server.sId,
         toolName: "disabled_tool",
         permission: "low",
         enabled: false,

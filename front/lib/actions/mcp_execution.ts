@@ -33,6 +33,11 @@ import { isInternalServerSideMCPToolConfiguration } from "@app/lib/actions/types
 import type { PersistedToolOutput } from "@app/lib/api/files/action_output_fs";
 import { persistToolOutput } from "@app/lib/api/files/action_output_fs";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
+import {
+  recordMcpPersistOutputMs,
+  recordMcpProcessBlocksMs,
+  roundMs,
+} from "@app/lib/api/sandbox_functions/sandbox_function_mcp_action_server_timings";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -43,6 +48,7 @@ import {
   getFileDisplayName,
   isSupportedFileContentType,
 } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import {
@@ -270,12 +276,15 @@ export async function processToolResults(
 ): Promise<{
   outputItems: ToolOutputItemType[];
   generatedFiles: ActionGeneratedFileType[];
+  /** Await after markAsSucceeded so GCS write-behind finishes before the activity exits. */
+  awaitDurablePersist: () => Promise<Result<void, Error>>;
 }> {
   const { runContext } = toolContext;
   assert(runContext, "processToolResults requires a tool run context.");
   const { toolConfiguration } = runContext;
 
   const timestamp = Date.now();
+  const processBlocksStarted = performance.now();
   const cleanContent: {
     content: CallToolResult["content"][number];
     file: FileResource | null;
@@ -548,6 +557,7 @@ export async function processToolResults(
       concurrency: 10,
     }
   );
+  recordMcpProcessBlocksMs(roundMs(processBlocksStarted));
 
   const generatedFiles: ActionGeneratedFileType[] = removeNulls(
     cleanContent.map((c) => {
@@ -582,25 +592,35 @@ export async function processToolResults(
   // Persist the processed contents on the run context's action: per-item rows for agent loop
   // actions, a single output object for sandbox function actions. Sandbox function actions also
   // persist the structuredContent so programmatic consumers get a machine-readable payload.
+  // Stage in Redis and return before GCS; the caller awaits durable persist after markAsSucceeded.
   const cleanContentItems = cleanContent.map((c) => ({
     content: sanitizeStringsDeep(c.content),
     fileId: c.file?.id,
   }));
+  const persistOutputStarted = performance.now();
   const outputRes = isSandboxFunctionRunContext(runContext)
     ? await runContext.action.createOutputItems(auth, cleanContentItems, {
         structuredContent:
           toolCallResultStructuredContent !== undefined
             ? sanitizeStringsDeep(toolCallResultStructuredContent)
             : undefined,
+        deferDurablePersist: true,
       })
-    : await runContext.action.createOutputItems(auth, cleanContentItems);
+    : await runContext.action.createOutputItems(auth, cleanContentItems, {
+        deferDurablePersist: true,
+      });
+  recordMcpPersistOutputMs(roundMs(persistOutputStarted));
 
   // Surfaced as an exception: there is no acceptable degraded state for unpersisted tool outputs.
   if (outputRes.isErr()) {
     throw outputRes.error;
   }
 
-  return { outputItems: outputRes.value, generatedFiles };
+  return {
+    outputItems: outputRes.value,
+    generatedFiles,
+    awaitDurablePersist: () => runContext.action.awaitDeferredOutputPersist(),
+  };
 }
 
 /**

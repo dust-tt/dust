@@ -3,7 +3,6 @@ import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { BatchUpdateAgentModelResponseBody } from "@app/types/api/assistant/configuration";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -24,7 +23,6 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsAdmin(),
   validate("json", BatchUpdateAgentModelRequestBodySchema),
   async (ctx): HandlerResult<BatchUpdateAgentModelResponseBody> => {
     const auth = ctx.get("auth");

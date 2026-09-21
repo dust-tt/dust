@@ -9,9 +9,11 @@ use tempfile::TempPath;
 use tokio::io::AsyncReadExt as _;
 use tokio::process::Command;
 
+mod archive;
 mod build;
 mod envelope;
 mod get;
+mod publication;
 mod run;
 mod warm;
 
@@ -19,6 +21,19 @@ pub use build::cmd_function_build;
 pub use envelope::ResultDelivery;
 pub use get::cmd_function_get;
 pub use run::cmd_function_run;
+
+/// Publish-time seed: extract `functions.tar` (or legacy-copy from fuse) and,
+/// when warm is enabled, start the publication worker with every slug already
+/// imported. Idempotent.
+pub async fn cmd_function_materialize_archive() -> Result<()> {
+    match publication::materialize_publication().await {
+        Ok(()) => {
+            println!("{}", serde_json::json!({ "ok": true }));
+            Ok(())
+        }
+        Err(msg) => Err(emit_error(anyhow!(msg))),
+    }
+}
 
 const FUNCTIONS_DIR_ENV: &str = "DUST_FUNCTIONS_DIR";
 const FUNCTION_WORKING_DIR_ENV: &str = "DUST_FUNCTION_WORKING_DIR";
@@ -73,6 +88,9 @@ pub enum FunctionCommand {
         /// Output path for the extracted JSON-Schema contract
         out_schema: String,
     },
+    /// Seed this publication: extract `functions.tar` (or legacy-copy) and
+    /// start the publication worker with every slug imported.
+    MaterializeArchive,
 }
 
 /// Whether `dsbx` is running privileged (effective uid 0).
@@ -291,7 +309,7 @@ pub(crate) async fn spawn_runner(
 /// NODE_PATH for the runner child: the global npm modules first, then any
 /// inherited entries. NODE_PATH is additive, so a missing dir (local dev) falls
 /// back to normal node_modules resolution.
-fn harness_node_path() -> String {
+pub(crate) fn harness_node_path() -> String {
     match std::env::var("NODE_PATH") {
         Ok(existing) if !existing.is_empty() => {
             format!("{FUNCTIONS_GLOBAL_NODE_MODULES}:{existing}")
@@ -368,7 +386,7 @@ pub(crate) fn resolve_existing(name: &str) -> Result<PathBuf> {
 }
 
 /// The configured functions directory (`$DUST_FUNCTIONS_DIR`), required.
-fn functions_dir() -> Result<PathBuf> {
+pub(crate) fn functions_dir() -> Result<PathBuf> {
     std::env::var(FUNCTIONS_DIR_ENV)
         .ok()
         .filter(|d| !d.is_empty())

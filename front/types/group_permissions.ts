@@ -18,6 +18,12 @@
 // - Add new verbs only at the end.
 // - Keep the total at most 31 verbs: JS bitwise operators work on 32-bit integers, so beyond that
 //   the shift overflows and masks break.
+/**
+ * @cc [owner:philipperolet,label:security;backend] verb-is-one-capability
+ * A verb names one granular capability on a resource type: `read` its content, `publish` it to the
+ * workspace, `invite` people from outside. A verb MUST NOT stand for a bundle of other verbs or for
+ * who someone is ("editor", "member"): those are roles, defined in `ROLE_REGISTRY`.
+ */
 export const GRANT_VERBS = [
   "read",
   "write",

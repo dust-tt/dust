@@ -87,6 +87,7 @@ import SalesforceLogo from "./Salesforce";
 import SalesloftLogo from "./Salesloft";
 import SemrushLogo from "./Semrush";
 import ShopifyLogo from "./Shopify";
+import SiitLogo from "./Siit";
 import SlabLogo from "./Slab";
 import SlackLogo from "./Slack";
 import SlideLogo from "./Slide";
@@ -204,6 +205,7 @@ export const PLATFORM_LOGOS = {
   SalesloftLogo,
   SemrushLogo,
   ShopifyLogo,
+  SiitLogo,
   SlabLogo,
   SlackLogo,
   SlideLogo,

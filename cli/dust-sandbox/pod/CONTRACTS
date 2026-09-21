@@ -1,0 +1,15 @@
+@cc [owner:pmilliotte,label:error-handling;api] sdk-throws-typed-errors
+This package is the runtime SDK linked into Frame and Pod function code, not repository code: its
+exported functions MAY throw expected failures, as an exception to `no-catching-own-errors`. A
+thrown expected failure MUST be an instance of an exported `Error` subclass that sets `name`, so a
+function author can branch on it with `instanceof`. Code in this package MUST NOT catch an expected
+failure raised by another function of this package. This exception covers failures raised by this
+package only; repository code elsewhere, including the functions runner and front, stays governed
+by `no-catching-own-errors`.
+
+@cc [owner:pmilliotte,label:error-handling;api] sdk-documents-thrown-errors
+Every exported function of this package that can throw an expected failure MUST carry an `@throws`
+line naming the error class and the condition that raises it, on its own documentation comment or,
+when the failure applies to all methods of an exported object, on that object's documentation
+comment. A failure that is not documented this way is not covered by `sdk-throws-typed-errors` and
+MUST be returned rather than thrown.

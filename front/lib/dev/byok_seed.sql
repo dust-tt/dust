@@ -23,7 +23,7 @@ existing_user AS (
 -- Step 1: Upsert FREE_BYOK plan (based on FREE_UPGRADED_PLAN with isByok = true)
 required_plan AS (
   INSERT INTO plans (
-    code, name, "trialPeriodDays", "canUseProduct",
+    code, name, "canUseProduct",
     "maxMessages", "maxMessagesTimeframe", "isDeepDiveAllowed",
     "maxUsersInWorkspace", "maxVaultsInWorkspace", "maxImagesPerWeek",
     "isSlackbotAllowed", "isManagedConfluenceAllowed", "isManagedSlackAllowed",
@@ -34,7 +34,7 @@ required_plan AS (
     "isByok", "createdAt", "updatedAt"
   )
   VALUES (
-    'FREE_BYOK', 'Free (BYOK)', 0, true,
+    'FREE_BYOK', 'Free (BYOK)', true,
     -1, 'lifetime', true,
     -1, -1, 50,
     true, true, true,
@@ -166,7 +166,7 @@ inserted_space_group_permissions AS (
 -- Step 7: Create subscription
 inserted_subscription AS (
   INSERT INTO subscriptions (
-    "workspaceId", "sId", status, trialing,
+    "workspaceId", "sId", status,
     "startDate", "endDate", "planId", "stripeSubscriptionId",
     "createdAt", "updatedAt"
   )
@@ -174,7 +174,6 @@ inserted_subscription AS (
     w.id,
     s.subscription_sid,
     'active',
-    false,
     NOW(),
     NULL,
     p.id,

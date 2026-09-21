@@ -27,14 +27,36 @@ export class ModelDegradationResource extends BaseResource<ModelDegradationModel
   }
 
   // Bounded by the endpoint catalog: at most a few dozen rows.
+  /**
+   * @cc [owner:frankaloia,label:backend] only-list-active-degradations
+   * Listing MUST NOT return degradation rows whose `expiresAt` is in the past.
+   */
   static async listDegradedEndpoints(): Promise<DegradedModelEndpointType[]> {
-    const rows = await ModelDegradationModel.findAll();
+    const rows = await ModelDegradationModel.findAll({
+      where: {
+        [Op.or]: [{ expiresAt: null }, { expiresAt: { [Op.gt]: new Date() } }],
+      },
+    });
 
     return rows.map(({ modelId, providerId, host }) => ({
       modelId,
       providerId,
       host,
     }));
+  }
+
+  static async fetchByEndpoint(
+    endpoint: DegradedModelEndpointType
+  ): Promise<ModelDegradationResource | null> {
+    const blob = await ModelDegradationModel.findOne({
+      where: {
+        ...endpoint,
+        [Op.or]: [{ expiresAt: null }, { expiresAt: { [Op.gt]: new Date() } }],
+      },
+    });
+    return blob
+      ? new ModelDegradationResource(ModelDegradationModel, blob.get())
+      : null;
   }
 
   static async updateDegradedEndpoints(
@@ -56,9 +78,10 @@ export class ModelDegradationResource extends BaseResource<ModelDegradationModel
     });
 
     const named = updates.map(endpointOf);
-    const toDegrade = updates
-      .filter(({ degraded }) => degraded)
-      .map(endpointOf);
+    const toDegrade = updates.flatMap(
+      ({ degraded, modelId, providerId, host, expiresAt }) =>
+        degraded ? [{ modelId, providerId, host, expiresAt }] : []
+    );
 
     await frontSequelize.transaction(async (transaction) => {
       await ModelDegradationModel.destroy({

@@ -32,15 +32,14 @@ pub enum RunnerKind {
     Cold,
 }
 
-/// Whether a warm worker served the invocation from a bundle it had already
-/// imported, or paid the import on this request. Observability for the
-/// pool's affinity routing: a high `fresh` share means functions keep
-/// landing on workers that do not hold their bundle.
+/// Where a cold run resolved the handler path from.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub enum ImportKind {
-    Cached,
-    Fresh,
+pub enum ResolveKind {
+    /// Local `~/.dust-fn/bundles/<sha>.js` hit (skips gcsfuse).
+    Cache,
+    /// `$DUST_FUNCTIONS_DIR` readdir + path (typically gcsfuse-backed).
+    Gcsfuse,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -52,9 +51,37 @@ pub struct TimingsMs {
     /// treats timingsMs as opaque, so this cannot break the wire contract.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runner_kind: Option<RunnerKind>,
-    /// Additive, warm runs only: see [`ImportKind`].
+    /// Warm path: time to ensure the publication worker is ready (spawn +
+    /// preload when the previous worker had idled out; ~0 when already up).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub import_kind: Option<ImportKind>,
+    pub ensure: Option<u64>,
+    /// Time spent in `try_warm_run` before a Miss (cold path only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub warm_attempt: Option<u64>,
+    /// Handler path resolution (cache lookup or functions-dir readdir).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolve: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resolve_kind: Option<ResolveKind>,
+    /// Cold path: wall time of the Bun child (spawn through exit), which
+    /// includes import + handler. Warm path omits this.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub child: Option<u64>,
+    /// Cold path: materialize `functions.tar` into the local sha cache before
+    /// resolve. ~0 when the extract already existed; absent on warm.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archive: Option<u64>,
+    /// Dynamic `import()` of the function bundle (cold Bun child only;
+    /// warm workers preload at start so this is omitted there).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub import: Option<u64>,
+    /// Handler `fetch` + response parse.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub handler: Option<u64>,
+    /// Nested tool-call timings collected inside the handler (durable path).
+    /// Shape: `{ total, count, calls: [{ server, tool, post, poll, offload?, total }] }`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tools: Option<serde_json::Value>,
 }
 
 impl ResultEnvelope {
@@ -104,7 +131,15 @@ mod tests {
                 total: 12,
                 runner: 8,
                 runner_kind: Some(RunnerKind::Warm),
-                import_kind: Some(ImportKind::Cached),
+                ensure: Some(1),
+                warm_attempt: None,
+                resolve: None,
+                resolve_kind: None,
+                child: None,
+                archive: None,
+                import: None,
+                handler: Some(2),
+                tools: None,
             }),
         );
 
@@ -115,7 +150,13 @@ mod tests {
                 "protocolVersion": 3,
                 "delivery": "stdout",
                 "outcome": { "ok": true, "output": { "hello": "world" } },
-                "timingsMs": { "total": 12, "runner": 8, "runnerKind": "warm", "importKind": "cached" },
+                "timingsMs": {
+                    "total": 12,
+                    "runner": 8,
+                    "runnerKind": "warm",
+                    "ensure": 1,
+                    "handler": 2,
+                },
             })
         );
     }

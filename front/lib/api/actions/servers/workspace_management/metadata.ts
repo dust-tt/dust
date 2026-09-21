@@ -1,4 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { KNOWLEDGE_CATEGORIES } from "@app/types/api/public/spaces";
 import type { AgentsGetViewType } from "@app/types/assistant/agent";
 import {
   SKILL_AVAILABILITIES,
@@ -14,6 +15,9 @@ export const LIST_AGENTS_TOOL_NAME = "list_agents" as const;
 export const GET_AGENT_DETAILS_TOOL_NAME = "get_agent_details" as const;
 export const LIST_SKILLS_TOOL_NAME = "list_skills" as const;
 export const GET_SKILL_DETAILS_TOOL_NAME = "get_skill_details" as const;
+export const LIST_TOOLS_TOOL_NAME = "list_tools" as const;
+export const GET_TOOL_DETAILS_TOOL_NAME = "get_tool_details" as const;
+export const SEARCH_KNOWLEDGE_TOOL_NAME = "search_knowledge" as const;
 export const LIST_WORKSPACE_MEMBERS_TOOL_NAME =
   "list_workspace_members" as const;
 export const LIST_GROUPS_TOOL_NAME = "list_groups" as const;
@@ -258,6 +262,44 @@ const getSkillSchema = {
   skillId: z.string().describe("The skill's id, as returned by list_skills."),
 };
 
+const listToolsSchema = {
+  namePrefix: z
+    .string()
+    .optional()
+    .describe(
+      "Only return tools whose name starts with this prefix (case-insensitive)."
+    ),
+  ...paginationSchemaShape,
+};
+
+const getToolDetailsSchema = {
+  toolId: z.string().describe("The tool's id, as returned by list_tools."),
+};
+
+const searchKnowledgeSchema = {
+  query: z
+    .string()
+    .optional()
+    .describe(
+      "Natural language query describing the knowledge needed. Omit to list all available sources."
+    ),
+  topK: z
+    .number()
+    .int()
+    .positive()
+    .max(10)
+    .default(5)
+    .describe(
+      "Maximum number of document hits to retrieve per data source (default: 5, only applies when query is provided)."
+    ),
+  category: z
+    .enum(KNOWLEDGE_CATEGORIES)
+    .optional()
+    .describe(
+      "Optional category to filter results: 'managed' (connected platforms), 'folder', or 'website'."
+    ),
+};
+
 export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
   {
     name: LIST_AGENTS_TOOL_NAME,
@@ -319,6 +361,54 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving skill",
       done: "Retrieved skill",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: LIST_TOOLS_TOOL_NAME,
+    description:
+      "List the tools (MCP servers) that can be equipped on agents and skills, " +
+      "with their id, name and description. Knowledge tools (search, tables, " +
+      "include data) are configured as knowledge instead and are not listed.",
+    schema: listToolsSchema,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Listing tools",
+      done: "Listed tools",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: GET_TOOL_DETAILS_TOOL_NAME,
+    description:
+      "Return a tool's (MCP server's) details: its description and, for each " +
+      "function it exposes, the name, description and input parameters.",
+    schema: getToolDetailsSchema,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Retrieving tool details",
+      done: "Retrieved tool details",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SEARCH_KNOWLEDGE_TOOL_NAME,
+    description:
+      "Browse or search the knowledge sources agents and skills can be given. " +
+      "Without a query: list all available data source views. With a query: " +
+      "semantically search them and return the matching data source views " +
+      "with individual document nodes.",
+    schema: searchKnowledgeSchema,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Searching knowledge sources",
+      done: "Searched knowledge sources",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -407,8 +497,7 @@ export const WORKSPACE_MANAGEMENT_SERVER = {
   serverInfo: {
     name: WORKSPACE_MANAGEMENT_SERVER_NAME,
     version: "1.0.0",
-    description:
-      "Inventory the workspace's agents and skills for admins and managers.",
+    description: "Inventory the workspace's agents, skills, tools and groups.",
     icon: "ActionListCheckIcon",
     authorization: null,
     documentationUrl: null,

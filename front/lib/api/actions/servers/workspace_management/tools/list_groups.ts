@@ -14,7 +14,7 @@ import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
 
 // Only the groups admins manage themselves are listed: provisioned (identity provider) and
-// regular_manual. The internal kinds (global, system, regular_auto, agent_editors) are
+// regular_manual. The internal kinds (global, system, regular_auto) are
 // implementation details of spaces and permissions, not groups a manager would reason about.
 export async function listGroups(
   {

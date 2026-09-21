@@ -1,4 +1,3 @@
-import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
@@ -17,8 +16,6 @@ import {
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import { syncSeatCount } from "@app/lib/metronome/seats";
 import { LEGACY_BUSINESS_PACKAGE_ALIAS } from "@app/lib/metronome/types";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { resolvePackageAliasForCurrency } from "@app/lib/plans/billing_currency";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
@@ -46,10 +43,8 @@ import {
   getProPlanProductId,
   getStripeSubscription,
 } from "@app/lib/plans/stripe";
-import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial/limits";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -64,10 +59,7 @@ import {
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import {
-  getWorkspaceFirstAdmin,
-  renderLightWorkspaceType,
-} from "@app/lib/workspace";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
   EnterpriseUpgradeFormType,
@@ -81,7 +73,6 @@ import { SUBSCRIPTION_CACHE_KEY_VERSION } from "@app/types/shared/cache_resource
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import keyBy from "lodash/keyBy";
 import type {
@@ -126,7 +117,6 @@ type CachedSubscription = {
   planId: number;
   sId: string;
   status: SubscriptionStatusType;
-  trialing: boolean;
   stripeSubscriptionId: string | null;
   metronomeContractId: string | null;
   startDate: number;
@@ -258,7 +248,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           workspaceId: workspaceModelId,
           planId: plan.id,
           status: "active",
-          trialing: false,
           startDate: now,
           metronomeContractId,
         },
@@ -287,7 +276,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       planId: subscription.planId,
       sId: subscription.sId,
       status: subscription.status,
-      trialing: subscription.trialing ?? false,
       stripeSubscriptionId: subscription.stripeSubscriptionId,
       metronomeContractId: subscription.metronomeContractId ?? null,
       startDate: subscription.startDate?.getTime() ?? Date.now(),
@@ -367,7 +355,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       updatedAt: now,
       startDate: data.startDate ? new Date(data.startDate) : now,
       endDate: data.endDate ? new Date(data.endDate) : null,
-      trialing: data.trialing,
       paymentFailingSince: data.paymentFailingSince
         ? new Date(data.paymentFailingSince)
         : null,
@@ -492,7 +479,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           "startDate",
           "status",
           "stripeSubscriptionId",
-          "trialing",
           "workspaceId",
         ],
         where: {
@@ -678,7 +664,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           workspaceId: workspaceModelId,
           planId: plan.id,
           status: "created_backend_only",
-          trialing: false,
           startDate,
           endDate: null,
           stripeSubscriptionId: null,
@@ -1348,7 +1333,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           workspaceId: this.workspaceId,
           planId: businessPlan.id,
           status: "active",
-          trialing: false,
           startDate: new Date(),
           endDate: null,
           stripeSubscriptionId: newStripeSubscriptionId,
@@ -1367,68 +1351,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     }
 
     return new Ok(undefined);
-  }
-
-  static async maybeCancelInactiveTrials(
-    auth: Authenticator,
-    eventStripeSubscription: Stripe.Subscription
-  ) {
-    const { id: stripeSubscriptionId } = eventStripeSubscription;
-
-    const subscription = await SubscriptionModel.findOne({
-      where: { stripeSubscriptionId },
-      include: [WorkspaceModel],
-    });
-
-    // Bail early if the DB subscription is not in trial mode.
-    if (!subscription || !subscription.trialing) {
-      return;
-    }
-
-    const { workspace } = subscription;
-
-    // This function can get called if the subscription is upgraded before the end of the trial.
-    // Ensure that the Stripe subscription still has a status set to `trialing`.
-    const stripeSubscription =
-      await getStripeSubscription(stripeSubscriptionId);
-    if (!stripeSubscription || stripeSubscription.status !== "trialing") {
-      logger.info(
-        { action: "cancelling-trial", workspaceId: workspace.sId },
-        "Proactive trial cancellation skipped due to active subscription."
-      );
-
-      return;
-    }
-
-    const isWorkspaceActive = await checkWorkspaceActivity(auth);
-
-    if (!isWorkspaceActive) {
-      logger.info(
-        { action: "cancelling-trial", workspaceId: workspace.sId },
-        "Cancelling inactive trial."
-      );
-
-      await cancelSubscriptionImmediately({
-        stripeSubscriptionId,
-      });
-
-      const firstAdmin = await getWorkspaceFirstAdmin(workspace);
-      if (!firstAdmin) {
-        logger.info(
-          { action: "cancelling-trial", workspaceId: auth.workspace()?.sId },
-          "No first adming found -- skipping email."
-        );
-
-        return;
-      } else {
-        await sendProactiveTrialCancelledEmail(firstAdmin.email);
-      }
-
-      await sendUserOperationMessage({
-        logger,
-        message: `Trial for workspace ${workspace.sId} cancelled proactively!`,
-      });
-    }
   }
 
   async delete(
@@ -1498,7 +1420,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           workspaceId: this.workspaceId,
           planId: newPlan.id,
           status: "active",
-          trialing: false,
           startDate: new Date(),
           endDate: null,
           stripeSubscriptionId: null,
@@ -1635,7 +1556,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   toJSON(): SubscriptionType {
     return {
       status: this.status ?? "active",
-      trialing: this.trialing === true,
       sId: this.sId || null,
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       stripeSubscriptionId: this.stripeSubscriptionId || null,
@@ -1663,7 +1583,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       updatedAt: now,
       startDate: now,
       endDate: now,
-      trialing: false,
       paymentFailingSince: null,
       planId: -1,
       stripeSubscriptionId: null,
@@ -1708,10 +1627,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     let plan: PlanAttributes = DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION;
 
     if (subscription) {
-      // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
-      if (isTrial(subscription)) {
-        plan = getTrialVersionForPlan(subscription.plan);
-      } else if (subscription.plan) {
+      if (subscription.plan) {
         // `.get()` so that `plan` is always plain attributes: spreading a
         // Sequelize instance would drop every attribute.
         plan = subscription.plan.get();
@@ -1811,17 +1727,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     );
   }
 
-  async markAsActive(
-    { trialing }: { trialing: boolean },
-    transaction?: Transaction
-  ): Promise<void> {
-    await this.update({ status: "active", trialing }, transaction);
-    const workspaceId = this.workspaceId;
-    invalidateCacheAfterCommit(transaction, () =>
-      SubscriptionResource.invalidateSubscriptionCache(workspaceId)
-    );
-  }
-
   /**
    * Helper method to end an active subscription if it exists
    * @param workspaceId The ID of the workspace
@@ -1894,32 +1799,4 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
     return false;
   }
-}
-
-/**
- * Check if a workspace is active during a trial based on the following conditions:
- *   - Existence of a connected data source
- *   - Existence of a custom agent
- *   - A conversation occurred within the past 7 days
- */
-async function checkWorkspaceActivity(auth: Authenticator) {
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const hasDataSource =
-    (await DataSourceResource.listByWorkspace(auth, { limit: 1 })).length > 0;
-
-  const hasCreatedAssistant = await AgentConfigurationModel.findOne({
-    where: { workspaceId: auth.getNonNullableWorkspace().id },
-  });
-
-  const hasRecentConversation = !!(await ConversationModel.findOne({
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      visibility: { [Op.ne]: "deleted" },
-      updatedAt: { [Op.gte]: sevenDaysAgo },
-    },
-  }));
-
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  return hasDataSource || hasCreatedAssistant || hasRecentConversation;
 }

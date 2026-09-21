@@ -19,30 +19,38 @@ async function fetchFileRefsRecursively(
 
   await Promise.all(
     refs.map(async (ref) => {
-      const key = ref.type === "fileId" ? ref.fileId : ref.scopedPath;
-      if (visited.has(key)) {
-        return;
-      }
-      visited.add(key);
-
       // The files endpoint accepts the "conversation/" and "pod/" prefixes (and
       // their canonical "conversation-{id}/" / "pod-{id}/" forms), but not the
       // legacy "project/" prefix, which older frame code may still reference and
       // which maps to the same Pod files. Rewrite only the request path; the
       // prefetched file stays keyed by the original scopedPath (`key`) so the
       // frame's useFile("project/...") lookup still resolves.
+      // Package-relative refs (`./data.csv`) are fetched under the synthetic
+      // `frame/` scope and keyed as `./…` for useFile lookup.
       let requestPath: string;
+      let key: string;
       if (ref.type === "fileId") {
+        key = ref.fileId;
         requestPath = ref.fileId;
+      } else if (ref.type === "frameRelative") {
+        key = `./${ref.relativePath}`;
+        requestPath = `frame/${ref.relativePath}`;
       } else if (ref.scopedPath.startsWith("project/")) {
         logger.info(
           { scopedPath: ref.scopedPath },
           "Legacy project/ file scope referenced in frame"
         );
+        key = ref.scopedPath;
         requestPath = `pod/${ref.scopedPath.slice("project/".length)}`;
       } else {
+        key = ref.scopedPath;
         requestPath = ref.scopedPath;
       }
+
+      if (visited.has(key)) {
+        return;
+      }
+      visited.add(key);
 
       const fileEndpoint = `${frontApiUrl}/api/v1/viz/files/${requestPath}`;
 

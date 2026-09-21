@@ -74,7 +74,7 @@ export function EditSpaceStaticDatasourcesViews({
         <Tooltip
           label={
             space.kind === "global"
-              ? `Only builders of the workspace can add a ${category} in the Company data space.`
+              ? `You need write access to add a ${category} in the Company data space.`
               : `Only members of the space can add a ${category}.`
           }
           side="top"

@@ -15,6 +15,7 @@ import {
   MISTRAL_SMALL_MODEL_ID,
 } from "./mistral";
 import { GPT_5_6_LUNA_MODEL_ID, GPT_5_6_SOL_MODEL_ID } from "./openai";
+import { SIMULATED_FAILURE_MODEL_ID } from "./simulated_failure_model";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
@@ -57,6 +58,11 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
     // reasoning effort. The last candidate (Sonnet at `light`) is the Basic-tier
     // floor so tier-capped users still resolve within the stream.
     [AUTO_MODEL_ID]: [
+      {
+        providerId: "openai",
+        modelId: SIMULATED_FAILURE_MODEL_ID,
+        reasoningEffort: "high",
+      },
       {
         providerId: "openai",
         modelId: GPT_5_6_LUNA_MODEL_ID,

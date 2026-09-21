@@ -1,5 +1,5 @@
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
-import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
   SKILL_INSTRUCTIONS_LABEL,

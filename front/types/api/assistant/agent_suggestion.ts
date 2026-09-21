@@ -4,6 +4,7 @@ import { z } from "zod";
 export const PatchSuggestionRequestBodySchema = z.object({
   suggestionIds: z.array(z.string()).min(1),
   state: z.enum(["approved", "rejected", "outdated"]),
+  applyToAgent: z.boolean().optional(),
 });
 
 export type PatchSuggestionRequestBody = z.infer<

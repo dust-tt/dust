@@ -242,16 +242,16 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
 
   static async markFileCopiedByDestSId(
     auth: Authenticator,
-    { childConversationSId }: { childConversationSId: string }
+    { childConversationId }: { childConversationId: string }
   ): Promise<void> {
     const owner = auth.getNonNullableWorkspace();
     const conv = await ConversationModel.findOne({
-      where: { sId: childConversationSId, workspaceId: owner.id },
+      where: { sId: childConversationId, workspaceId: owner.id },
       attributes: ["id"],
     });
     if (!conv) {
       logger.warn(
-        { childConversationSId, workspaceId: owner.id },
+        { childConversationId, workspaceId: owner.id },
         "[conversation_fork_queue] markFileCopiedByDestSId: conversation not found, fork may remain blocked."
       );
       return;

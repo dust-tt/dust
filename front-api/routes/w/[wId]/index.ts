@@ -325,10 +325,6 @@ app.use(
   workspaceAuth({ doesNotRequireCanUseProduct: true })
 );
 app.use(
-  "/subscriptions/trial-info/*",
-  workspaceAuth({ doesNotRequireCanUseProduct: true })
-);
-app.use(
   "/subscriptions/checkout/*",
   workspaceAuth({ doesNotRequireCanUseProduct: true })
 );

@@ -38,6 +38,7 @@
     "jsonwebtoken": "^9.0.0",
     "openai": "^6.46.0",
     "swagger-jsdoc": "^6.2.8",
+    "tar": "^7.5.22",
     "zod": "^3.25.76",
     "zod-validation-error": "^3.4.0"
   },

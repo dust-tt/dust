@@ -98,7 +98,6 @@ export type PlanType = {
   code: string;
   name: string;
   limits: LimitsType;
-  trialPeriodDays: number;
   isByok: boolean;
   isAuditLogsAllowed: boolean;
   hasAdvancedModelAccess: boolean;
@@ -109,7 +108,6 @@ export type SubscriptionType = {
   // means the workspace is not accessible.
   sId: string | null;
   status: SubscriptionStatusType;
-  trialing: boolean;
   // `null` means that this is a free plan. Otherwise, it's a paid plan.
   stripeSubscriptionId: string | null;
   metronomeContractId: string | null;

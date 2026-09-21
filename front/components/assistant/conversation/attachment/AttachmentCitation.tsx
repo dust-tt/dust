@@ -1,4 +1,7 @@
-import type { FileCitationCardSize } from "@app/components/assistant/conversation/attachment/FileCitationCard";
+import type {
+  FileCitationCardSize,
+  FileCitationCardVariant,
+} from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
 import type { AttachmentCitation } from "@app/components/assistant/conversation/attachment/types";
@@ -10,11 +13,13 @@ import { Icon, useTranscribingProgress } from "@dust-tt/sparkle";
 interface AttachmentCitationProps {
   attachmentCitation: AttachmentCitation;
   size?: FileCitationCardSize;
+  variant?: FileCitationCardVariant;
 }
 
 export function AttachmentCitation({
   attachmentCitation,
   size = "md",
+  variant = "card",
 }: AttachmentCitationProps) {
   const { openFramePreview } = useFilePreviewContext();
 
@@ -47,9 +52,12 @@ export function AttachmentCitation({
           <Icon visual={attachmentCitation.spaceIcon} />
           <p>{attachmentCitation.spaceName}</p>
         </div>
-        <div className="text-sm text-muted-foreground">
-          {attachmentCitation.path}
-        </div>
+        {/* The chip appends the description (path) to its tooltip itself. */}
+        {variant === "card" && (
+          <div className="text-sm text-muted-foreground">
+            {attachmentCitation.path}
+          </div>
+        )}
       </div>
     );
     const nodeUrl = attachmentCitation.sourceUrl;
@@ -59,6 +67,7 @@ export function AttachmentCitation({
       description: attachmentCitation.path ?? attachmentCitation.spaceName,
       onRemove: attachmentCitation.onRemove,
       size,
+      variant,
       tooltipLabel: tooltipContent,
     };
     return nodeUrl ? (
@@ -79,6 +88,7 @@ export function AttachmentCitation({
         title={title}
         description={attachmentCitation.description}
         size={size}
+        variant={variant}
         onClick={() => openFramePreview({ fileId })}
         onRemove={attachmentCitation.onRemove}
         tooltipLabel={title}
@@ -98,6 +108,7 @@ export function AttachmentCitation({
         icon={attachmentCitation.visual}
         description={attachmentCitation.description}
         size={size}
+        variant={variant}
         isLoading={isLoading}
         loadingLabel={loadingLabel}
         onRemove={attachmentCitation.onRemove}
@@ -112,6 +123,7 @@ export function AttachmentCitation({
     title,
     description: attachmentCitation.description,
     size,
+    variant,
     isLoading,
     loadingLabel,
     onRemove: attachmentCitation.onRemove,

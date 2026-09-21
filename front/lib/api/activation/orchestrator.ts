@@ -222,7 +222,7 @@ export async function runActivationForWorkspace(
   const users = await UserResource.fetchByIds([
     ...new Set(plan.eligible.map((p) => p.targetUserId)),
   ]);
-  const userBySId = new Map(users.map((user) => [user.sId, user]));
+  const userById = new Map(users.map((user) => [user.sId, user]));
 
   await concurrentExecutor(
     plan.eligible,
@@ -245,7 +245,7 @@ export async function runActivationForWorkspace(
         return;
       }
 
-      const user = userBySId.get(targetUserId) ?? null;
+      const user = userById.get(targetUserId) ?? null;
       if (!(await isEligibleForNudge(auth, { pod, activationPod, user }))) {
         logger.info(
           { workspaceId, spaceId, userId: targetUserId },

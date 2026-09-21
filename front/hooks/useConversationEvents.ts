@@ -41,6 +41,7 @@ export function useConversationEvents({
     onEvent,
     conversationId ? `conversation-${conversationId}` : "",
     {
+      workspaceId: owner.sId,
       isReadyToConsumeStream,
     }
   );

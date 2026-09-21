@@ -20,7 +20,10 @@ rm -rf sdks/js/dist
 export DUST_USE_START_MPROCS=1
 export DUST_IN_CONTAINER="${DUST_IN_CONTAINER:-1}"
 
+MPROCS_LOG_DIR="${DUST_INFRA_LOG_DIR}/mprocs-logs"
+mkdir -p "${MPROCS_LOG_DIR}"
 log "Starting mprocs (select a process and press r to restart; q to quit)"
+log "Process logs also under ${MPROCS_LOG_DIR}/<name>.log"
 cd "${DUST_REPO_ROOT}/tools"
 exec env \
   SHELL=/bin/bash \
@@ -29,4 +32,4 @@ exec env \
   LANG="${LANG}" \
   LC_ALL="${LC_ALL}" \
   DUST_IN_CONTAINER="${DUST_IN_CONTAINER}" \
-  mprocs --config mprocs.yaml
+  mprocs --config mprocs.yaml --log-dir "${MPROCS_LOG_DIR}"

@@ -43,7 +43,6 @@ export const useExtensionAuth = () => {
 const EXTENSION_SUBSCRIPTION: SubscriptionType = {
   sId: null,
   status: "active",
-  trialing: false,
   stripeSubscriptionId: null,
   metronomeContractId: null,
   startDate: null,
@@ -87,7 +86,6 @@ const EXTENSION_SUBSCRIPTION: SubscriptionType = {
       capabilities: { images: { maxImagesPerWeek: -1 } },
       canUseProduct: true,
     },
-    trialPeriodDays: 0,
     isByok: false,
     isAuditLogsAllowed: false,
     hasAdvancedModelAccess: false,

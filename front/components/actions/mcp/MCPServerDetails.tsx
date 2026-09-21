@@ -10,7 +10,7 @@ import { useSensitivityLabelsController } from "@app/components/shared/labels/us
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
-  getMcpServerDisplayName,
+  getMcpServerViewDisplayName,
   isRemoteMCPServerType,
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
@@ -447,7 +447,7 @@ export function MCPServerDetails({
 
           sendNotification({
             type: "success",
-            title: `${diff.serverView?.name ?? getMcpServerDisplayName(mcpServerView.server)} updated`,
+            title: `${diff.serverView?.name ?? getMcpServerViewDisplayName(mcpServerView)} updated`,
             description: "Your changes have been saved.",
           });
 
