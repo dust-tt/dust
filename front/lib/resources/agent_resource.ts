@@ -234,14 +234,53 @@ export type AgentResourceSnapshot = {
   content: SerializedAgentResourceContent;
 };
 
+// Serializes a value with object keys sorted recursively, so two structurally-equal values (whatever
+// their key order) produce the same string.
+function stableStringifyForComparison(value: unknown): string {
+  return JSON.stringify(value, (_key, val) =>
+    val !== null && typeof val === "object" && !Array.isArray(val)
+      ? Object.keys(val as Record<string, unknown>)
+          .sort()
+          .reduce<Record<string, unknown>>((acc, key) => {
+            acc[key] = (val as Record<string, unknown>)[key];
+            return acc;
+          }, {})
+      : val
+  );
+}
+
+// Projects an MCP action onto the fields that define it for a caller saving a configuration. The
+// persisted/reconstructed shape carries identity and presentation fields the incoming save payload
+// never sends (`id`, `sId`, `icon`, `internalMCPServerId`, `meta`); comparing them would make every
+// re-save of an agent with tools look changed, so they are dropped here.
+function normalizeActionForComparison(
+  action: ServerSideMCPServerConfigurationType
+): Record<string, unknown> {
+  return {
+    type: action.type,
+    name: action.name,
+    description: action.description ?? null,
+    mcpServerViewId: action.mcpServerViewId,
+    dataSources: action.dataSources ?? null,
+    tables: action.tables ?? null,
+    childAgentId: action.childAgentId ?? null,
+    additionalConfiguration: action.additionalConfiguration ?? {},
+    dustAppConfiguration: action.dustAppConfiguration ?? null,
+    secretName: action.secretName ?? null,
+    timeFrame: action.timeFrame ?? null,
+    jsonSchema: action.jsonSchema ?? null,
+    dustProject: action.dustProject ?? null,
+  };
+}
+
 // Reduces a save's params to the comparable essence of a configuration version: the fields a new
 // version would actually persist, normalized so equal configurations compare equal — optional model
 // fields defaulted, collections reduced to sorted identifier lists (order-insensitive), and actions
-// reduced to sorted stable serializations. The version author is intentionally excluded: it is
-// version metadata, not part of the configuration.
+// projected onto their defining fields and sorted by a stable serialization. The version author is
+// intentionally excluded: it is version metadata, not part of the configuration.
 function canonicalizeSaveParamsForComparison(
   params: SaveAgentConfigurationParams
-): unknown {
+): Record<string, unknown> {
   return {
     name: params.name,
     description: params.description,
@@ -265,7 +304,9 @@ function canonicalizeSaveParamsForComparison(
     editors: params.editors.map((editor) => editor.id).sort((a, b) => a - b),
     skills: (params.skills ?? []).map((skill) => skill.sId).sort(),
     actions: (params.actions ?? [])
-      .map((action) => JSON.stringify(action))
+      .map((action) =>
+        stableStringifyForComparison(normalizeActionForComparison(action))
+      )
       .sort(),
   };
 }
@@ -1795,28 +1836,27 @@ export class AgentResource
       );
       if (currentAgent?.isFull() && currentAgent.status === "active") {
         const currentParams = await currentAgent.buildResaveParams(auth);
-        const isUnchanged = isEqual(
-          canonicalizeSaveParamsForComparison(currentParams),
-          canonicalizeSaveParamsForComparison({
-            name,
-            description,
-            instructions,
-            instructionsHtml,
-            pictureUrl,
-            status,
-            scope,
-            model,
-            templateId,
-            requestedSpaceIds,
-            tags,
-            editors,
-            authorId,
-            reinforcement,
-            actions,
-            skills,
-          })
-        );
-        if (isUnchanged) {
+        const currentCanonical =
+          canonicalizeSaveParamsForComparison(currentParams);
+        const incomingCanonical = canonicalizeSaveParamsForComparison({
+          name,
+          description,
+          instructions,
+          instructionsHtml,
+          pictureUrl,
+          status,
+          scope,
+          model,
+          templateId,
+          requestedSpaceIds,
+          tags,
+          editors,
+          authorId,
+          reinforcement,
+          actions,
+          skills,
+        });
+        if (isEqual(currentCanonical, incomingCanonical)) {
           logger.info(
             {
               workspaceId: owner.sId,
