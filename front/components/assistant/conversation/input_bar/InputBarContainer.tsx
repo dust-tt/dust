@@ -14,6 +14,8 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
+import { LiveConversationButton } from "@app/components/assistant/conversation/LiveConversationButton";
+import { useLiveConversationContext } from "@app/components/assistant/conversation/LiveConversationContext";
 import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { getAvailableInputBarSlashCommands } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
@@ -338,6 +340,7 @@ const InputBarContainer = ({
     null
   );
   const { subscription } = useAuth();
+  const liveVoice = useLiveConversationContext();
   const { featureFlags } = useFeatureFlags();
   const isInlineReferenceEnabled = featureFlags.includes(
     "inline_tool_knowledge_reference"
@@ -1637,6 +1640,35 @@ const InputBarContainer = ({
     "px-3 md:pl-4 pt-3 md:pt-3.5"
   );
 
+  const liveAgentId =
+    selectedSingleAgent?.id ?? selectedAgent?.id ?? defaultAgentId;
+  const liveAgent = liveAgentId ? agentsById.get(liveAgentId) : undefined;
+  const isLiveVoiceActive =
+    !!liveVoice &&
+    ["connecting", "connected", "closing"].includes(liveVoice.live.status);
+  const liveVoiceButton =
+    liveVoice && !isAgentBuilder && !isLiveVoiceActive ? (
+      <LiveConversationButton
+        size={isCompact ? "sm" : buttonSize}
+        compact={isCompact}
+        agentName={liveAgent?.name}
+        isLoading={liveVoice.isCreating}
+        disabled={
+          disableInput || isSubmitting || isSubmitBlocked || !liveAgent?.canRead
+        }
+        onClick={() => {
+          if (liveAgent) {
+            void liveVoice.start({
+              conversationId: conversation?.sId ?? null,
+              agent: liveAgent,
+              spaceId: space?.sId,
+              selectedSpaceIds,
+            });
+          }
+        }}
+      />
+    ) : null;
+
   const isRecording = activeVoiceService.status === "recording";
   const isVoiceActive = activeVoiceService.status !== "idle";
   // Keep the send button (and its spinner) while a submit is in flight — the
@@ -1649,8 +1681,8 @@ const InputBarContainer = ({
     INPUT_BAR_DEFAULT_PLACEHOLDER;
 
   useEffect(() => {
-    onVoiceActiveChange?.(isVoiceActive);
-  }, [isVoiceActive, onVoiceActiveChange]);
+    onVoiceActiveChange?.(isVoiceActive || isLiveVoiceActive);
+  }, [isVoiceActive, isLiveVoiceActive, onVoiceActiveChange]);
 
   submitCompactVoiceMessageRef.current = async () => {
     if (disableAutoFocus) {
@@ -1730,17 +1762,21 @@ const InputBarContainer = ({
                 )}
                 data-compact-voice
               >
-                <VoicePicker
-                  status={activeVoiceService.status}
-                  level={activeVoiceService.level}
-                  elapsedSeconds={activeVoiceService.elapsedSeconds}
-                  onRecordStart={activeVoiceService.startRecording}
-                  onRecordStop={activeVoiceService.stopRecording}
-                  size="sm"
-                  compact
-                  showStopLabel={false}
-                  disabled={disableInput}
-                />
+                {liveVoice && !isAgentBuilder ? (
+                  liveVoiceButton
+                ) : (
+                  <VoicePicker
+                    status={activeVoiceService.status}
+                    level={activeVoiceService.level}
+                    elapsedSeconds={activeVoiceService.elapsedSeconds}
+                    onRecordStart={activeVoiceService.startRecording}
+                    onRecordStop={activeVoiceService.stopRecording}
+                    size="sm"
+                    compact
+                    showStopLabel={false}
+                    disabled={disableInput}
+                  />
+                )}
               </div>
             )}
         </div>
@@ -2053,19 +2089,22 @@ const InputBarContainer = ({
                       />
                     )}
                   </div>
-                  {canShowVoicePicker && (
-                    <VoicePicker
-                      status={activeVoiceService.status}
-                      level={activeVoiceService.level}
-                      elapsedSeconds={activeVoiceService.elapsedSeconds}
-                      onRecordStart={activeVoiceService.startRecording}
-                      onRecordStop={activeVoiceService.stopRecording}
-                      size={buttonSize}
-                      showStopLabel={!isWidthConstrained}
-                      disabled={disableInput}
-                      buttonProps={{ className: "rounded-full" }}
-                    />
-                  )}
+                  {canShowVoicePicker &&
+                    (liveVoice && !isAgentBuilder ? (
+                      liveVoiceButton
+                    ) : (
+                      <VoicePicker
+                        status={activeVoiceService.status}
+                        level={activeVoiceService.level}
+                        elapsedSeconds={activeVoiceService.elapsedSeconds}
+                        onRecordStart={activeVoiceService.startRecording}
+                        onRecordStop={activeVoiceService.stopRecording}
+                        size={buttonSize}
+                        showStopLabel={!isWidthConstrained}
+                        disabled={disableInput}
+                        buttonProps={{ className: "rounded-full" }}
+                      />
+                    ))}
                   {showSendButton && (
                     <TooltipProvider>
                       <TooltipRoot

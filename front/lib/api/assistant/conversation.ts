@@ -518,6 +518,7 @@ export function isUserMessageContextValid(
     case "reinforcement":
     case "system_activation":
     case "web":
+    case "voice":
       return false;
     default:
       assertNever(context.origin);

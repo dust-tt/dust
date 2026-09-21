@@ -93,6 +93,7 @@ export type LightMessageType =
 // client.
 export const CLIENT_MESSAGE_ORIGINS = [
   "web",
+  "voice",
   "project_kickoff",
   "extension",
   "agent_sidekick",
@@ -142,7 +143,9 @@ export type UserMessageOrigin =
 
 export const ACTIVATION_NUDGE_ORIGIN = "system_activation" as const;
 
+// Voice messages carry transcript context for the harness, not typed user messages.
 export const HIDDEN_MESSAGE_ORIGINS: UserMessageOrigin[] = [
+  "voice",
   "onboarding_conversation",
   "project_kickoff",
   "reinforced_skill_notification",

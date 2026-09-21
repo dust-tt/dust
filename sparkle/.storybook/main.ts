@@ -5,7 +5,11 @@ import path from "path";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 const config: StorybookConfig = {
-  stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  stories: [
+    "../src/**/*.mdx",
+    "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+    "../../front/stories/LiveConversationPanel.stories.tsx",
+  ],
 
   staticDirs: [
     { from: "../../front/public/static", to: "/static" },
@@ -30,6 +34,8 @@ const config: StorybookConfig = {
       alias: {
         ...(config.resolve?.alias || {}),
         "@sparkle": path.resolve(__dirname, "../src/"),
+        "@dust-tt/sparkle": path.resolve(__dirname, "../src/index.ts"),
+        "@app": path.resolve(__dirname, "../../front/"),
       },
     };
 
