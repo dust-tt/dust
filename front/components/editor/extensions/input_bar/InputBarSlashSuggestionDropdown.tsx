@@ -7,7 +7,6 @@ import { AttachContextSubMenuDropdown } from "@app/components/editor/extensions/
 import { applyAttachContextSelection } from "@app/components/editor/extensions/shared/slash_suggestion/applyAttachContextSelection";
 import { buildSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import { PickModelSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/PickModelSubMenuDropdown";
-import { SelectSpacesSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SelectSpacesSubMenuDropdown";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
@@ -18,13 +17,11 @@ import {
   clearSlashSubMenuStack,
   PICK_MODEL_SUB_MENU_ID,
   resolveSlashSubMenuFromQuery,
-  SELECT_SPACES_SUB_MENU_ID,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { SLASH_COMMAND_CAPABILITIES_LOADING_MESSAGE } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { useInputBarSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
 import { useSlashMenuStack } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashMenuStack";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
-import type { SelectableConversationSpaceType } from "@app/types/assistant/conversation";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
@@ -53,11 +50,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     onNodeSelectRef: RefObject<
       ((node: DataSourceViewContentNode) => void) | undefined
     >;
-    onSpaceSelectRef: RefObject<
-      ((space: SelectableConversationSpaceType) => void) | undefined
-    >;
     owner: LightWorkspaceType;
-    selectedSpaceIdsRef: RefObject<string[]>;
     slashCommandsRef: RefObject<InputBarSlashCommand[]>;
     spaceIdRef: RefObject<string | null | undefined>;
   }
@@ -75,11 +68,9 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       onDetailsRef,
       onModelSelectRef,
       onNodeSelectRef,
-      onSpaceSelectRef,
       owner,
       query,
       range,
-      selectedSpaceIdsRef,
       slashCommandsRef,
       spaceIdRef,
     },
@@ -120,16 +111,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         onClose();
       },
       [editor, onClose, onModelSelectRef, range, storage]
-    );
-
-    const handleSpaceSelect = useCallback(
-      (space: SelectableConversationSpaceType) => {
-        clearSlashSubMenuStack(storage);
-        editor.chain().focus().deleteRange(range).run();
-        onSpaceSelectRef.current?.(space);
-        onClose();
-      },
-      [editor, onClose, onSpaceSelectRef, range, storage]
     );
 
     const allCommandItems = useMemo(
@@ -193,8 +174,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         onKeyDown: ({ event }) => {
           if (
             activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID ||
-            activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID ||
-            activeFrame?.subMenuId === SELECT_SPACES_SUB_MENU_ID
+            activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID
           ) {
             // The command text is still in the editor: let Backspace edit it.
             if (queryFrame && event.key === "Backspace") {
@@ -257,25 +237,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           owner={owner}
           query={subMenuQuery}
           range={range}
-        />
-      );
-    }
-
-    if (activeFrame?.subMenuId === SELECT_SPACES_SUB_MENU_ID) {
-      return (
-        <SelectSpacesSubMenuDropdown
-          ref={subMenuRef}
-          activeFrame={activeFrame}
-          clientRect={clientRect}
-          conversationId={conversationIdRef?.current ?? null}
-          editor={editor}
-          onBack={() => pop(range)}
-          onClose={onClose}
-          onSelect={handleSpaceSelect}
-          owner={owner}
-          query={subMenuQuery}
-          range={range}
-          selectedSpaceIds={selectedSpaceIdsRef.current ?? []}
         />
       );
     }

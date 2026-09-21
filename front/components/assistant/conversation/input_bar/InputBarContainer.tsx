@@ -3,6 +3,7 @@ import { InputBarAttachmentsPicker } from "@app/components/assistant/conversatio
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
 import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
+import { InputBarSpacesPicker } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
 import {
   INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
@@ -32,6 +33,11 @@ import {
   SELECT_TOOL_SLASH_COMMAND_ACTION,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import type { SelectSpacesSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
+import {
+  isSelectSpacesSlashCommand,
+  SELECT_SPACES_SLASH_COMMAND_ACTION,
+} from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import { knowledgeNodeToItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
@@ -119,6 +125,7 @@ import { InputBarContext } from "./InputBarContext";
 
 type KnownSlashCommand =
   | RunCommandSlashCommand<InputBarSlashCommand>
+  | SelectSpacesSlashCommand
   | SkillSlashCommand
   | ToolSlashCommand;
 
@@ -126,6 +133,9 @@ function narrowToKnownSlashCommand(
   item: SlashCommand
 ): KnownSlashCommand | null {
   if (isRunCommandSlashCommand<InputBarSlashCommand>(item)) {
+    return item;
+  }
+  if (isSelectSpacesSlashCommand(item)) {
     return item;
   }
   if (isSkillSlashCommand(item)) {
@@ -368,6 +378,8 @@ const InputBarContainer = ({
   >(undefined);
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
+  const [showSpacesPicker, setShowSpacesPicker] = useState(false);
+  const inputBarButtonsRef = useRef<HTMLDivElement>(null);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const isWidthConstrained = useIsWidthConstrained();
   const shouldEnableSlashSuggestion = actions.includes("capabilities");
@@ -405,9 +417,6 @@ const InputBarContainer = ({
   includePickModelRef.current = actions.includes("model-picker");
   const includeSelectSpacesRef = useRef(false);
   includeSelectSpacesRef.current = shouldShowSpacesAction;
-  const onSpaceSelectRef = useRef<
-    ((space: SelectableConversationSpaceType) => void) | undefined
-  >(undefined);
   const modelSelectionCommitRef = useRef<
     ((selection: Selection) => void) | null
   >(null);
@@ -742,6 +751,10 @@ const InputBarContainer = ({
       case SELECT_TOOL_SLASH_COMMAND_ACTION:
         handleToolSelect(item.data.tool.view);
         break;
+      case SELECT_SPACES_SLASH_COMMAND_ACTION:
+        // The picker's searchbar autofocuses; refocusing the editor would close it.
+        setShowSpacesPicker(true);
+        return;
       default:
         assertNeverAndIgnore(item);
     }
@@ -764,6 +777,9 @@ const InputBarContainer = ({
         break;
       case SELECT_TOOL_SLASH_COMMAND_ACTION:
         setSelectedServerViewForDetails(item.data.tool.view);
+        break;
+      case SELECT_SPACES_SLASH_COMMAND_ACTION:
+        // The spaces picker has no details sheet.
         break;
       default:
         assertNeverAndIgnore(item);
@@ -804,8 +820,6 @@ const InputBarContainer = ({
       includeSelectSpacesRef,
       onModelSelectRef,
       onNodeSelectRef,
-      onSpaceSelectRef,
-      selectedSpaceIdsRef,
       spaceIdRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : placeholder,
@@ -908,17 +922,6 @@ const InputBarContainer = ({
     [handleSelectedSpaceIdsChange, sendNotification]
   );
 
-  onSpaceSelectRef.current = (space: SelectableConversationSpaceType) => {
-    if (selectedSpaceIdsRef.current.includes(space.sId)) {
-      return;
-    }
-
-    handleSelectedSpaceIdsChangeSafely([
-      ...selectedSpaceIdsRef.current,
-      space.sId,
-    ]);
-  };
-
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
       return;
@@ -948,6 +951,10 @@ const InputBarContainer = ({
   useEffect(() => {
     setOverlayOpen("knowledge-picker", showKnowledgePicker);
   }, [showKnowledgePicker, setOverlayOpen]);
+
+  useEffect(() => {
+    setOverlayOpen("spaces-picker", showSpacesPicker);
+  }, [showSpacesPicker, setOverlayOpen]);
 
   const handleAgentRemove = useCallback(() => {
     setSelectedSingleAgent(null);
@@ -1696,11 +1703,28 @@ const InputBarContainer = ({
               <div className={cn("flex w-full items-center px-3")}>
                 {!isRecording && (
                   <div
+                    ref={inputBarButtonsRef}
                     className={cn(
                       "flex items-center",
                       isWidthConstrained ? "gap-1" : "gap-1.5"
                     )}
                   >
+                    {shouldShowSpacesAction && (
+                      <InputBarSpacesPicker
+                        anchorRef={inputBarButtonsRef}
+                        canDeselectSelectedSpaces={!conversation?.sId}
+                        disabled={disableInput}
+                        externalOpen={showSpacesPicker}
+                        isLoading={isSelectableSpacesLoading}
+                        onExternalOpenChange={setShowSpacesPicker}
+                        onSelectedSpaceIdsChange={
+                          handleSelectedSpaceIdsChangeSafely
+                        }
+                        selectedSpaceIds={selectedSpaceIds}
+                        spaces={selectableSpaces}
+                        type="dropdown"
+                      />
+                    )}
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}

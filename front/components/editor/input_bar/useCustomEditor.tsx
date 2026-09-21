@@ -31,7 +31,6 @@ import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { extractFromEditorJSON } from "@app/lib/mentions/format";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { isMobile } from "@app/lib/utils";
-import type { SelectableConversationSpaceType } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WorkspaceType } from "@app/types/user";
@@ -358,10 +357,6 @@ export interface CustomEditorProps {
     onNodeSelectRef: React.RefObject<
       ((node: DataSourceViewContentNode) => void) | undefined
     >;
-    onSpaceSelectRef: React.RefObject<
-      ((space: SelectableConversationSpaceType) => void) | undefined
-    >;
-    selectedSpaceIdsRef: React.RefObject<string[]>;
     spaceIdRef: React.RefObject<string | null | undefined>;
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
@@ -522,9 +517,7 @@ export const buildEditorExtensions = ({
         onDetailsRef: slashSuggestion.onDetailsRef,
         onModelSelectRef: slashSuggestion.onModelSelectRef,
         onNodeSelectRef: slashSuggestion.onNodeSelectRef,
-        onSpaceSelectRef: slashSuggestion.onSpaceSelectRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,
-        selectedSpaceIdsRef: slashSuggestion.selectedSpaceIdsRef,
         slashCommandsRef: slashSuggestion.slashCommandsRef,
         includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,
         includePickModelRef: slashSuggestion.includePickModelRef,

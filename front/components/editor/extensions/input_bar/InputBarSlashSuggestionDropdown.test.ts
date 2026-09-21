@@ -4,12 +4,10 @@ import {
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { PICK_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import { SELECT_SPACES_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
 import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   PICK_MODEL_SUB_MENU_ID,
   resolveSlashSubMenuFromQuery,
-  SELECT_SPACES_SUB_MENU_ID,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { describe, expect, it } from "vitest";
 
@@ -234,27 +232,14 @@ describe("resolveSlashSubMenuFromQuery", () => {
     query: "",
   });
 
-  it("enters the select spaces sub-menu with the remainder as query", () => {
-    const resolved = resolveSlashSubMenuFromQuery({
-      commandItems: commandItemsWithSpaces,
-      query: "spaces mark",
-    });
-
-    expect(resolved?.frame.subMenuId).toBe(SELECT_SPACES_SUB_MENU_ID);
-    expect(resolved?.frame.command.action).toBe(
-      SELECT_SPACES_SLASH_COMMAND_ACTION
-    );
-    expect(resolved?.query).toBe("mark");
-
+  it("does not treat select spaces as a sub-menu", () => {
+    // Select spaces opens the spaces picker via onSelectRef, not a slash sub-menu.
     expect(
       resolveSlashSubMenuFromQuery({
         commandItems: commandItemsWithSpaces,
-        query: "sp ",
+        query: "spaces mark",
       })
-    ).toMatchObject({
-      frame: { subMenuId: SELECT_SPACES_SUB_MENU_ID },
-      query: "",
-    });
+    ).toBeNull();
   });
 
   it("enters the first matching sub-menu command with the remainder as query", () => {
