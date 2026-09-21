@@ -85,6 +85,11 @@ const DENSITY_ROW_HEIGHT_CLASS: Record<DataTableDensity, string> = {
   relaxed: "h-16",
 };
 
+// Header rows are as tall as body rows.
+export const DATA_TABLE_HEADER_HEIGHT_PX = DATA_TABLE_ROW_HEIGHT_PX;
+
+const DENSITY_HEADER_HEIGHT_CLASS = DENSITY_ROW_HEIGHT_CLASS;
+
 // Column minimum (124px) when the table scrolls horizontally, so columns do
 // not collapse to unreadable widths.
 const SCROLL_COLUMN_MIN_WIDTH_CLASS = "min-w-31";
@@ -1175,7 +1180,7 @@ DataTable.Head = function Head({
       type="button"
       onClick={onSort}
       className={cn(
-        "heading-xs flex w-full cursor-pointer items-center gap-1 whitespace-nowrap rounded-xs capitalize text-foreground",
+        "heading-sm flex w-full cursor-pointer items-center gap-1 whitespace-nowrap rounded-xs capitalize text-foreground",
         "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         "active:scale-[0.985] motion-reduce:active:scale-100",
         ALIGN_JUSTIFY_CLASS[presets.headerAlign]
@@ -1201,7 +1206,8 @@ DataTable.Head = function Head({
           : undefined
       }
       className={cn(
-        "heading-xs p-2 capitalize",
+        "heading-sm px-2 capitalize",
+        DENSITY_HEADER_HEIGHT_CLASS[layout.density],
         ALIGN_TEXT_CLASS[presets.headerAlign],
         "text-foreground",
         layout.enforceColumnMinWidth &&
