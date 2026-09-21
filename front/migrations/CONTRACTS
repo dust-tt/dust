@@ -4,4 +4,5 @@ do not delete it or change its implementation. The only exception is work explic
 same backfill to run again.
 
 If later application changes break a completed TypeScript backfill, add a top-level
-`// @ts-nocheck` instead of adapting its implementation. Its dedicated test may be deleted.
+`// @ts-nocheck` instead of adapting its implementation. If it has a dedicated test, 
+it may be deleted.
