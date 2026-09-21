@@ -60,6 +60,12 @@ import type { CreationOptional } from "sequelize";
  * - autoInvoiceFinalizationEnabled: When false, `cleanAndFinalizeMetronomeDraftInvoice`
  *   skips the Stripe finalization step and leaves the invoice as a cleaned draft
  *   for manual review. Defaults to true (finalization is automatic).
+ * - creditSpendCheckpointEnabled: Whether the credit spend checkpoint gate
+ *   (agent loop pausing for the user to confirm continuing once a message's
+ *   spend crosses a threshold) is active for the workspace at all. NULL means
+ *   the admin hasn't overridden it: the effective value then defaults based
+ *   on the workspace's plan. A non-NULL value is an explicit admin override
+ *   that applies regardless of plan.
  *
  * The Metronome balance-threshold alert id (used by the webhook to match the
  * firing alert) is NOT stored here: it is a Metronome-generated value resolved
@@ -80,6 +86,7 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare balanceThresholdAwuCredits: number | null;
   declare topUpEnabled: CreationOptional<boolean>;
   declare autoInvoiceFinalizationEnabled: CreationOptional<boolean>;
+  declare creditSpendCheckpointEnabled: boolean | null;
 }
 
 CreditUsageConfigurationModel.init(
@@ -166,6 +173,11 @@ CreditUsageConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED,
+    },
+    creditSpendCheckpointEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
