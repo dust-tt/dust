@@ -13,6 +13,7 @@ export function toSkillListItem(
     requestedSpaceIds: document.requested_space_ids,
     mcpServerViewIds: document.mcp_server_view_ids,
     editorIds: document.editor_ids,
+    editedBy: document.last_edited_by_user_id,
     availability: document.availability,
     activeUsersCount: document.active_users_count,
     updatedAt:

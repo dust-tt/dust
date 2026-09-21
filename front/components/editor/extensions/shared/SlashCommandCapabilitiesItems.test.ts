@@ -59,6 +59,7 @@ function toolSuggestion({
 }
 
 function skillSuggestion({
+  editedBy = 1,
   icon = null,
   requestedSpaceIds = [],
   sId,
@@ -67,6 +68,7 @@ function skillSuggestion({
 }: Pick<SlashCommandSkillSuggestion, "name" | "sId"> &
   Partial<SlashCommandSkillSuggestion>): SlashCommandSkillSuggestion {
   return {
+    editedBy,
     icon,
     name,
     requestedSpaceIds,

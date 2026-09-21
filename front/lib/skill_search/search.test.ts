@@ -473,6 +473,7 @@ describe("custom skill search", () => {
         requestedSpaceIds: [globalSpace.sId],
         mcpServerViewIds: ["tool-view-id"],
         editorIds: [auth.getNonNullableUser().sId],
+        editedBy: auth.getNonNullableUser().sId,
         availability: "workspace_users",
         activeUsersCount: null,
         updatedAt: active.updatedAt.getTime(),
@@ -524,6 +525,7 @@ describe("custom skill search", () => {
       expect(listings).toEqual([
         {
           ...toSkillListItem(global),
+          editedBy: null,
           updatedAt: null,
         },
       ]);

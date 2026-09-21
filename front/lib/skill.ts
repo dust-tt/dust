@@ -5,7 +5,6 @@ import {
   ResourceAvatar,
   ResourceAvatarWithBadge,
 } from "@app/components/resources/resources_icons";
-import { isResourceSId } from "@app/lib/resources/string_ids";
 import type {
   SkillListItemType,
   SkillRelations,
@@ -13,6 +12,7 @@ import type {
   SkillWithoutInstructionsAndToolsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import type { ModelId } from "@app/types/shared/model_id";
 import { cn, DustLogoSquare, PuzzlePiece01 } from "@dust-tt/sparkle";
 import type { AvatarSizeType } from "@dust-tt/sparkle/dist/esm/components/Avatar";
 import React from "react";
@@ -32,17 +32,23 @@ interface SkillAvatarIconProps {
 type SkillAvatarIconInput =
   | string
   | null
-  | Pick<SkillListItemType, "sId" | "icon">;
+  | Pick<
+      SkillListItemType | SkillWithoutInstructionsAndToolsType,
+      "editedBy" | "icon"
+    >;
 
-export function isDustProvidedSkill(
-  skill: Pick<SkillWithoutInstructionsAndToolsType, "editedBy">
-) {
+export function isDustProvidedSkill(skill: {
+  editedBy: string | ModelId | null;
+}) {
   return skill.editedBy === null;
 }
 
 function isSkillAvatarIconSkill(
   input: SkillAvatarIconInput
-): input is Pick<SkillListItemType, "sId" | "icon"> {
+): input is Pick<
+  SkillListItemType | SkillWithoutInstructionsAndToolsType,
+  "editedBy" | "icon"
+> {
   return input !== null && typeof input === "object";
 }
 
@@ -54,7 +60,7 @@ export function getSkillAvatarIcon(
 
   if (isSkillAvatarIconSkill(input)) {
     iconString = input.icon;
-    isDustProvided = !isResourceSId("skill", input.sId);
+    isDustProvided = isDustProvidedSkill(input);
   } else {
     iconString = input;
   }

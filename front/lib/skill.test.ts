@@ -7,12 +7,15 @@ describe("skill listing avatars", () => {
   it.each([
     { sId: "go-deep", editedBy: null },
     { sId: "skl_custom", editedBy: 1 },
-  ])("preserves the badge for $sId without an editor field", ({
+  ])("preserves the badge for $sId with a string editor ID", ({
     sId,
     editedBy,
   }) => {
     const fullSkill = { sId, editedBy, icon: null };
-    const listingIcon = getSkillAvatarIcon({ sId, icon: null });
+    const listingIcon = getSkillAvatarIcon({
+      editedBy: editedBy === null ? null : "user_1",
+      icon: null,
+    });
     const fullSkillIcon = getSkillAvatarIcon(fullSkill);
     expect(renderToStaticMarkup(createElement(listingIcon))).toBe(
       renderToStaticMarkup(createElement(fullSkillIcon))
