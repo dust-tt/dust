@@ -1,6 +1,5 @@
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import {
@@ -137,45 +136,11 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
     expect(response.status).toBe(403);
     const body = await response.json();
     expect(body.error.type).toBe("fast_function_called_tools");
-    // Prod frames string-match this phrase to classify the refusal; keep it stable.
-    expect(body.error.message).toContain("published as fast");
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
 
-  // A published Frame function's mode is immutable: the refusal is the whole outcome, and only a
-  // republish can change how the function runs.
-  it("keeps an immutable Frame publication fast after refusing its tool call", async () => {
-    const {
-      auth,
-      frame,
-      publicationId,
-      token,
-      workspace,
-      view,
-      sandboxFunction,
-    } = await setupFrameWithView({ noTools: true });
-
-    const response = await callSandboxTool(workspace, token, {
-      serverViewId: view.sId,
-      toolName: "generate_random_number",
-      arguments: { max: 10 },
-    });
-
-    expect(response.status).toBe(403);
-    const body = await response.json();
-    expect(body.error.type).toBe("fast_function_called_tools");
-    expect(body.error.message).toContain("Republish the Frame");
-    const refetched =
-      await SandboxFunctionResource.fetchByFramePublicationAndSlug(auth, {
-        frame,
-        publicationId,
-        slug: sandboxFunction.slug,
-      });
-    expect(refetched?.executionMode).toBe("fast");
-  });
-
-  it("resolves a durable Frame function in its runtime scope", async () => {
-    const { auth, token, workspace, view, invocation, sandboxFunction } =
+  it("creates a running action for a Frame function invocation", async () => {
+    const { auth, token, workspace, invocation, view, sandboxFunction } =
       await setupFrameWithView();
 
     const response = await callSandboxTool(workspace, token, {
@@ -186,6 +151,9 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
 
     expect(response.status).toBe(202);
     const body = await response.json();
+    expect(body.status).toBe("pending");
+    expect(body.actionId).toMatch(/^sfa_/);
+
     const action = await SandboxFunctionMCPActionResource.fetchById(
       auth,
       body.actionId

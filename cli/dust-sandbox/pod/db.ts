@@ -1,22 +1,19 @@
 import type { Changes, SQLQueryBindings, Statement } from "bun:sqlite";
 import { Database } from "bun:sqlite";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import { z } from "zod";
 
 import { podEnv } from "./context.ts";
 
 /**
- * Frame and Pod state databases.
+ * Frame state databases.
  *
- * `db(name)` returns a cached Drizzle instance over the sandbox owner's live
- * SQLite database at `${DUST_SANDBOX_DATABASES_DIR}/{prefix}{name}.db`. Pod names
- * may be prefixed; Frame names are unprefixed and must be declared by the
- * selected immutable publication. Databases are created by reconciliation,
- * never here: the file is opened must-exist so a typo'd name errors clearly
- * instead of minting an empty database. Functions that never call `db()` pay
- * nothing.
+ * `db(name)` returns a cached Drizzle instance over the Frame's live SQLite
+ * database at `${DUST_SANDBOX_DATABASES_DIR}/{prefix}{name}.db`. Names may be
+ * prefixed. Databases are created by reconciliation, never here: the file is
+ * opened must-exist so a typo'd name errors clearly instead of minting an
+ * empty database. Functions that never call `db()` pay nothing.
  *
  * `name` is the app-relative name the function's source writes, and the app
  * prefix comes from the environment ({@link SANDBOX_DATABASE_PREFIX_ENV}) rather
@@ -57,17 +54,8 @@ export const SANDBOX_DATABASES_DIR_ENV = "DUST_SANDBOX_DATABASES_DIR";
 /** Legacy env key read for sandboxes launched before the owner-neutral ABI. */
 export const POD_DATABASES_DIR_ENV = "DUST_POD_DATABASES_DIR";
 
-/**
- * Sandbox-global env var carrying the Pod sId for Pod-owned sandboxes.
- */
-export const POD_SPACE_ID_ENV = "SPACE_ID";
-
 /** Sandbox-global env var carrying the Frame sId for Frame-owned sandboxes. */
 export const FRAME_ID_ENV = "FRAME_ID";
-
-/** Exact immutable publication descriptor selected for a Frame invocation. */
-export const FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV =
-  "DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH";
 
 /**
  * Env var carrying the per-database size quota in bytes, required. Like the
@@ -115,16 +103,6 @@ export const SANDBOX_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
 
 /** Compatibility alias for existing `@dust/pod` consumers. */
 export const POD_DATABASE_NAME_REGEX = SANDBOX_DATABASE_NAME_REGEX;
-export const SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION = 1;
-
-const framePublicationDatabaseContractSchema = z.object({
-  schemaVersion: z.literal(SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION),
-  manifest: z.object({
-    databases: z.array(
-      z.object({ name: z.string().regex(SANDBOX_DATABASE_NAME_REGEX) })
-    ),
-  }),
-});
 
 /**
  * Compatibility ABI: shared errors keep their legacy `Pod*` `Error.name`
@@ -151,50 +129,21 @@ export class SandboxDatabaseInvalidNameError extends SandboxDatabaseError {
 export class SandboxDatabasesUnavailableError extends SandboxDatabaseError {
   constructor() {
     super(
-      `Databases are not available in this sandbox: neither ${POD_SPACE_ID_ENV} ` +
-        `nor ${FRAME_ID_ENV} is set, so the sandbox has no database owner. ` +
-        `db() only works in an owner-bound function sandbox.`
+      `Databases are not available in this sandbox: ${FRAME_ID_ENV} is not set, ` +
+        `so the sandbox has no Frame database owner. db() only works in a ` +
+        `Frame function sandbox.`
     );
     this.name = "PodDatabasesUnavailableError";
-  }
-}
-
-export class FramePublicationDescriptorError extends SandboxDatabaseError {
-  constructor(message: string) {
-    super(message);
-    this.name = "FramePublicationDescriptorError";
-  }
-}
-
-export class FrameDatabaseNotDeclaredError extends SandboxDatabaseError {
-  constructor(dbName: string) {
-    super(
-      `Frame database "${dbName}" is not declared in this publication. ` +
-        `Declare it in manifest.json and publish the Frame again.`
-    );
-    this.name = "FrameDatabaseNotDeclaredError";
   }
 }
 
 export class FrameDatabaseUnavailableError extends SandboxDatabaseError {
   constructor(dbName: string, path: string) {
     super(
-      `Frame database "${dbName}" is declared but unavailable (no database ` +
-        `file at ${path}). Publish the Frame again to reconcile its state.`
+      `Frame database "${dbName}" is unavailable (no database file at ${path}). ` +
+        `Publish the Frame again to reconcile its state.`
     );
     this.name = "FrameDatabaseUnavailableError";
-  }
-}
-
-export class PodDatabaseNotDeclaredError extends SandboxDatabaseError {
-  constructor(dbName: string, path: string) {
-    super(
-      `Pod database "${dbName}" does not exist (no database file at ${path}). ` +
-        `Databases are created by their first reconcile: define the tables in ` +
-        `databases/${dbName}.db.ts, apply it with the db_reconcile tool, and ` +
-        `declare "${dbName}" in the function's schema.databases.`
-    );
-    this.name = "PodDatabaseNotDeclaredError";
   }
 }
 
@@ -450,94 +399,30 @@ function applyPragmas(
 // One instance per resolved database file path, opened lazily on first db().
 const instances = new Map<string, SandboxDatabase>();
 
-// Publication descriptors are immutable, so declarations can be cached by
-// their exact mounted path without mixing warm invocations across publications.
-const frameDatabaseDeclarations = new Map<string, ReadonlySet<string>>();
-
-function declaredFrameDatabases(frameId: string): ReadonlySet<string> {
-  const descriptorPath = podEnv(FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV);
-  if (!descriptorPath) {
-    throw new FramePublicationDescriptorError(
-      `${FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV} is not set for Frame ` +
-        `${frameId}: db() requires the selected publication descriptor.`
-    );
-  }
-
-  const cached = frameDatabaseDeclarations.get(descriptorPath);
-  if (cached) {
-    return cached;
-  }
-
-  let descriptorJson: unknown;
-  try {
-    descriptorJson = JSON.parse(readFileSync(descriptorPath, "utf8"));
-  } catch {
-    throw new FramePublicationDescriptorError(
-      `The Frame publication descriptor at ${descriptorPath} cannot be read ` +
-        `or is not valid JSON.`
-    );
-  }
-
-  const descriptor =
-    framePublicationDatabaseContractSchema.safeParse(descriptorJson);
-  if (!descriptor.success) {
-    throw new FramePublicationDescriptorError(
-      `The Frame publication descriptor at ${descriptorPath} has an invalid ` +
-        `database contract.`
-    );
-  }
-
-  const declarations = new Set(
-    descriptor.data.manifest.databases.map(({ name }) => name)
-  );
-  frameDatabaseDeclarations.set(descriptorPath, declarations);
-  return declarations;
-}
-
-/** Returns whether this invocation uses Frame-owned state. */
-function assertDatabaseOwnerCanUse(name: string): boolean {
-  const frameId = podEnv(FRAME_ID_ENV);
-  if (frameId) {
-    if (!declaredFrameDatabases(frameId).has(name)) {
-      throw new FrameDatabaseNotDeclaredError(name);
-    }
-    return true;
-  }
-
-  const spaceId = podEnv(POD_SPACE_ID_ENV);
-  if (!spaceId) {
+/** Require a Frame-owned sandbox before opening state databases. */
+function assertFrameOwner(): void {
+  if (!podEnv(FRAME_ID_ENV)) {
     throw new SandboxDatabasesUnavailableError();
   }
-  return false;
 }
 
 /**
- * Get the sandbox owner's Drizzle handle for database `name`. A pod-scoped
- * sandbox resolves app-relative names through {@link resolveDatabasePath};
- * Frame functions use unprefixed names declared by the selected publication.
+ * Get the Frame's Drizzle handle for database `name`. Names are resolved
+ * through {@link resolveDatabasePath}.
  *
  * @throws SandboxDatabaseInvalidNameError when `name` does not match the contract.
- * @throws SandboxDatabasesUnavailableError when both SPACE_ID and FRAME_ID are
- *   absent, so this sandbox has no database owner.
- * @throws FramePublicationDescriptorError when a Frame invocation has no valid
- *   selected publication descriptor.
- * @throws FrameDatabaseNotDeclaredError when the selected Frame publication
- *   does not declare `name`.
- * @throws FrameDatabaseUnavailableError when declared state was not reconciled.
+ * @throws SandboxDatabasesUnavailableError when FRAME_ID is absent.
+ * @throws FrameDatabaseUnavailableError when the database file does not exist.
  * @throws SandboxDatabaseError when DUST_SANDBOX_DATABASES_DIR or
  *   DUST_SANDBOX_DATABASE_MAX_SIZE_BYTES is absent or invalid. db() only works
  *   in functions launched by `dsbx function run`.
- * @throws PodDatabaseNotDeclaredError for a pod-scoped sandbox when no database file exists.
- *   Databases are created by their first reconcile.
  * @throws SandboxDatabaseFullError (from queries) when the database hits its quota.
  */
 export function db(name: string): SandboxDatabase {
   if (!SANDBOX_DATABASE_NAME_REGEX.test(name)) {
     throw new SandboxDatabaseInvalidNameError(name);
   }
-  // Recheck before the instance cache: a warm worker may have opened this
-  // database for an older publication that declared it.
-  const isFrame = assertDatabaseOwnerCanUse(name);
+  assertFrameOwner();
   const path = resolveDatabasePath(sandboxDatabasesDir(), name);
   const cached = instances.get(path);
   if (cached !== undefined) {
@@ -550,10 +435,7 @@ export function db(name: string): SandboxDatabase {
     sqlite = new SandboxSqliteDatabase(path, name, maxSizeBytes);
   } catch (err) {
     if (isSqliteErrorWithCode(err, "SQLITE_CANTOPEN")) {
-      if (isFrame) {
-        throw new FrameDatabaseUnavailableError(name, path);
-      }
-      throw new PodDatabaseNotDeclaredError(name, path);
+      throw new FrameDatabaseUnavailableError(name, path);
     }
     throw err;
   }

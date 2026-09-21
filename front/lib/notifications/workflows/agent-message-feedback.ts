@@ -7,6 +7,7 @@ import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { getNovuClient } from "@app/lib/notifications";
 import { renderEmail as renderDigestEmail } from "@app/lib/notifications/email-templates/agent-message-feedback-digest";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -129,12 +130,12 @@ const shouldSkipNotification = async ({
     return true;
   }
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: payload.agentConfigurationId,
-    variant: "light",
-  });
+  const agentConfiguration = await AgentResource.fetchById(
+    auth,
+    payload.agentConfigurationId
+  );
 
-  return !agentConfiguration;
+  return !agentConfiguration || !auth.can("read", agentConfiguration);
 };
 
 export const agentMessageFeedbackWorkflow = workflow(

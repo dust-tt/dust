@@ -1,0 +1,5 @@
+@cc [owner:flvndvd,label:product] saved-frame-tailwind-coverage
+The Tailwind build MUST request the frozen V3 utility vocabulary, including utilities absent from
+local components. Saved Frames are loaded at runtime and cannot be scanned during the build.
+Classes no longer emitted by V4 MUST be recorded in the build's coverage report. The migration uses
+V4 rendering behavior and does not promise V3 visual equivalence.

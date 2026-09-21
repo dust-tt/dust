@@ -1145,7 +1145,7 @@ export function useRemoveMCPServerViewFromSpace(
                   space.kind === "system"
                     ? "Action removed from workspace"
                     : "Action removed from space",
-                description: `${getMcpServerDisplayName(serverView.server)} has been removed from the ${space.name} space successfully.`,
+                description: `${getMcpServerViewDisplayName(serverView)} has been removed from the ${space.name} space successfully.`,
               });
             } else {
               const res = await response.json();
@@ -1155,7 +1155,7 @@ export function useRemoveMCPServerViewFromSpace(
                 description:
                   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   res.error?.message ||
-                  `Could not remove ${getMcpServerDisplayName(serverView.server)} from the ${space.name} space. Please try again.`,
+                  `Could not remove ${getMcpServerViewDisplayName(serverView)} from the ${space.name} space. Please try again.`,
               });
             }
           }

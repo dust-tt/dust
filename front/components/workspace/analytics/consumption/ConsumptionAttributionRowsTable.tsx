@@ -80,6 +80,7 @@ function AttributionSkeletonCell({
         </div>
       );
     case "credits":
+    case "count":
     case "avgCredits":
     case "activeMembers":
     case "usageVsAverage":
@@ -162,7 +163,7 @@ export function ConsumptionAttributionRowsTableView({
   });
 
   return (
-    <DataTable.Root className="min-w-150">
+    <DataTable.Root>
       <DataTable.Header>
         {table.getHeaderGroups().map((headerGroup) => (
           <DataTable.Row key={headerGroup.id} widthClassName="w-full">

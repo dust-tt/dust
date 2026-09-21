@@ -27,21 +27,22 @@ export function sliceConversationForAgentMessage(
   slicedConversation: ConversationType;
   slicedAgentMessage: AgentMessageType;
 } {
-  const agentMessageIndex = conversation.content.findLastIndex(
-    (versions) =>
-      versions.length > agentMessageVersion &&
-      versions[agentMessageVersion].sId === agentMessageId
+  const isTargetAgentMessage = (
+    message: ConversationType["content"][number][number]
+  ) =>
+    message.sId === agentMessageId && message.version === agentMessageVersion;
+
+  const agentMessageIndex = conversation.content.findLastIndex((versions) =>
+    versions.some(isTargetAgentMessage)
   );
 
   assert(agentMessageIndex !== -1, "Agent message not found");
 
   const slicedAgentMessage =
-    conversation.content[agentMessageIndex][agentMessageVersion];
+    conversation.content[agentMessageIndex].find(isTargetAgentMessage);
 
   assert(
-    slicedAgentMessage &&
-      isAgentMessageType(slicedAgentMessage) &&
-      slicedAgentMessage.version === agentMessageVersion,
+    slicedAgentMessage && isAgentMessageType(slicedAgentMessage),
     "Unreachable: Agent message not found or mismatched."
   );
 

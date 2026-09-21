@@ -17,6 +17,10 @@ import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { CreateFolderDialog } from "@app/components/pod/files/CreateFolderDialog";
 import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
+import {
+  ARCHIVE_FILE_EXTENSION,
+  partitionArchiveFiles,
+} from "@app/components/pod/files/podArchiveUpload";
 import { RenameFileDialog } from "@app/components/pod/files/RenameFileDialog";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -32,6 +36,7 @@ import {
 } from "@app/lib/swr/files";
 import {
   useAddPodContextContentNodes,
+  useExtractPodArchive,
   useMovePodFile,
   usePodContextAttachments,
   usePodFiles,
@@ -438,6 +443,32 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
   });
 
   const movePodFile = useMovePodFile({ owner });
+  const extractPodArchive = useExtractPodArchive({ owner });
+  const [isExtractingArchives, setIsExtractingArchives] = useState(false);
+
+  // ZIP is not a supported upload content type: an archive enters the Pod by being expanded
+  // server-side into the current folder, mirroring the folder-as-ZIP download.
+  const extractArchivesIntoPod = useCallback(
+    async (archives: File[]) => {
+      const destCanonicalPath = currentFolderPath
+        ? `pod-${pod.sId}/${currentFolderPath}`
+        : `pod-${pod.sId}`;
+
+      setIsExtractingArchives(true);
+      try {
+        // Sequential on purpose: each call ships an archive the server buffers in memory and
+        // expands into storage, so concurrent extracts multiply peak memory for no real gain —
+        // a selection is nearly always a single archive. If this ever needs fanning out, use
+        // ConcurrentExecutor rather than Promise.all (see `bounded-promise-all`).
+        for (const archive of archives) {
+          await extractPodArchive({ archive, destCanonicalPath });
+        }
+      } finally {
+        setIsExtractingArchives(false);
+      }
+    },
+    [currentFolderPath, extractPodArchive, pod.sId]
+  );
 
   const uploadFilesToPod = useCallback(
     async (files: File[]) => {
@@ -445,7 +476,17 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         return;
       }
 
-      const uploadedBlobs = await podFileUpload.handleFilesUpload(files);
+      const { archives, regularFiles } = partitionArchiveFiles(files);
+      if (archives.length > 0) {
+        await extractArchivesIntoPod(archives);
+      }
+
+      if (regularFiles.length === 0) {
+        await refreshPodFiles();
+        return;
+      }
+
+      const uploadedBlobs = await podFileUpload.handleFilesUpload(regularFiles);
       if (!uploadedBlobs) {
         return;
       }
@@ -478,7 +519,14 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
 
       await refreshPodFiles();
     },
-    [movePodFile, pod.sId, currentFolderPath, podFileUpload, refreshPodFiles]
+    [
+      extractArchivesIntoPod,
+      movePodFile,
+      pod.sId,
+      currentFolderPath,
+      podFileUpload,
+      refreshPodFiles,
+    ]
   );
 
   const handleFileChange = useCallback(
@@ -649,7 +697,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     );
   }, [globalSpaceDSVs.length]);
 
-  const isUploading = podFileUpload.isProcessingFiles;
+  const isUploading = podFileUpload.isProcessingFiles || isExtractingArchives;
   const uploadButtonLabel = isUploading ? "Uploading..." : "Add";
   const isAddKnowledgeDisabled = !canManuallyManagePodKnowledge || isUploading;
 
@@ -838,7 +886,10 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         <input
           ref={fileInputRef}
           type="file"
-          accept={getSupportedFileExtensions().join(",")}
+          accept={[
+            ...getSupportedFileExtensions(),
+            ARCHIVE_FILE_EXTENSION,
+          ].join(",")}
           multiple
           style={{ display: "none" }}
           onChange={handleFileChange}

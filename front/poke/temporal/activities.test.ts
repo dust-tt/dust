@@ -9,11 +9,13 @@ import {
   deleteAgentsActivity,
   deleteSpacesActivity,
 } from "@app/poke/temporal/activities";
+import { launchDeleteWorkspaceAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { Err } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/data_sources", async (importOriginal) => {
@@ -45,6 +47,29 @@ describe("deleteAgentsActivity", () => {
     await expect(
       AgentModel.count({ where: { workspaceId: workspace.id } })
     ).resolves.toBe(0);
+  });
+
+  it("purges the workspace's agent search documents", async () => {
+    const workspace = await WorkspaceFactory.byok();
+    vi.mocked(launchDeleteWorkspaceAgentSearchWorkflow).mockClear();
+
+    await deleteAgentsActivity({ workspaceId: workspace.sId });
+
+    expect(
+      launchDeleteWorkspaceAgentSearchWorkflow
+    ).toHaveBeenCalledExactlyOnceWith({ workspaceId: workspace.sId });
+  });
+
+  it("fails the activity when the search purge cannot be launched", async () => {
+    const workspace = await WorkspaceFactory.byok();
+    const error = new Error("Temporal unavailable");
+    vi.mocked(launchDeleteWorkspaceAgentSearchWorkflow).mockResolvedValueOnce(
+      new Err(error)
+    );
+
+    await expect(
+      deleteAgentsActivity({ workspaceId: workspace.sId })
+    ).rejects.toThrow(error);
   });
 });
 

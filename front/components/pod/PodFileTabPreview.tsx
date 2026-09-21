@@ -2,6 +2,7 @@ import {
   FilePreviewContent,
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
+import { FilePreviewFallback } from "@app/components/file_explorer/FilePreviewFallback";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
@@ -9,11 +10,15 @@ import { MissingPodFileTabCallout } from "@app/components/pod/MissingPodFileTabC
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getFilePathContentApiPath,
+  getFilePathDownloadUrl,
   getFilePathViewUrl,
   useFileMetadataFromPath,
   writeFileContentByPath,
 } from "@app/lib/swr/files";
-import { contentTypeFromFileName } from "@app/types/files";
+import {
+  contentTypeFromFileName,
+  fileSizeToHumanReadable,
+} from "@app/types/files";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, cn, Spinner } from "@dust-tt/sparkle";
@@ -104,6 +109,8 @@ export function PodFileTabPreview({
     processedContent,
     hasError,
     isContentLoading,
+    isTooLarge,
+    sizeBytes,
   } = useFilePreviewContent({
     entry,
     fileUrl,
@@ -114,7 +121,8 @@ export function PodFileTabPreview({
     entry && canEdit && parseCanonicalScopedPath(entry.path)
       ? entry.path
       : null;
-  const canEditMarkdown = category === "markdown" && !!editableMarkdownFilePath;
+  const canEditMarkdown =
+    category === "markdown" && !!editableMarkdownFilePath && !isTooLarge;
   const isMarkdownDirty = markdownDraft !== markdownSavedContent;
 
   useEffect(() => {
@@ -232,12 +240,16 @@ export function PodFileTabPreview({
             </div>
           </div>
         )}
-        {hasError ? (
-          <div className="flex flex-1 items-center justify-center p-8">
-            <p className="text-sm text-muted-foreground">
-              Unable to preview this file.
-            </p>
-          </div>
+        {isTooLarge ? (
+          <FilePreviewFallback
+            download={{ href: getFilePathDownloadUrl(owner, filePath) }}
+            message={`This file is too large to preview (${fileSizeToHumanReadable(sizeBytes, 1)}).`}
+          />
+        ) : hasError ? (
+          <FilePreviewFallback
+            download={{ href: getFilePathDownloadUrl(owner, filePath) }}
+            message="Unable to preview this file."
+          />
         ) : (
           <div
             className={cn(

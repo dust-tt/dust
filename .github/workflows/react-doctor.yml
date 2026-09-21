@@ -26,7 +26,7 @@ jobs:
           fetch-depth: 0
       - uses: millionco/react-doctor@v2
         with:
-          version: "0.7.6"
+          version: "0.9.14"
           blocking: none
           scope: changed
           comment: false

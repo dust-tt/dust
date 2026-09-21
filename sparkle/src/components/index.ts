@@ -133,6 +133,11 @@ export {
 export { DiffBlock, type DiffChange } from "./DiffBlock";
 export type { DiscoveryGlintProps } from "./DiscoveryGlint";
 export { DiscoveryGlint } from "./DiscoveryGlint";
+export {
+  Document,
+  type DocumentProps,
+  type DocumentSaveResult,
+} from "./Document";
 export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,

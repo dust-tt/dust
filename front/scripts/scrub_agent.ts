@@ -4,6 +4,7 @@ import {
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
@@ -113,7 +114,13 @@ makeScript(
     );
 
     for (const version of versions) {
-      await unsafeHardDeleteAgentConfiguration(auth, version);
+      const deleteResult = await unsafeHardDeleteAgentConfiguration(
+        auth,
+        AgentResource.fromAgentConfiguration(auth, version)
+      );
+      if (deleteResult.isErr()) {
+        throw deleteResult.error;
+      }
       logger.info(
         { workspaceId, agentId, version: version.version },
         "Agent version hard-deleted."

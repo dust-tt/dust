@@ -1,8 +1,26 @@
-@import "tw-animate-css";
+@layer theme, base, components, utilities;
+/* Inline V4 defaults to avoid repeating variable color fallbacks across the safelist. */
+@import "tailwindcss/theme.css" layer(theme) theme(inline);
+@import "tailwindcss/preflight.css" layer(base);
+@import "./slideshow.css" layer(utilities);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@import "./tailwind-v3-safelist.css";
+@config "../../tailwind.config.ts";
+@source "../../components";
+@source "..";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@utility leading-96p {
+  line-height: 0.96;
+}
+@utility leading-103p {
+  line-height: 1.03;
+}
+@utility leading-123p {
+  line-height: 1.23;
+}
+@utility leading-140p {
+  line-height: 1.4;
+}
 
 @layer base {
   :root {
@@ -40,17 +58,21 @@
     --sidebar-ring: oklch(0.7752 0.0109 261.7847);
     --font-sans: Inter, ui-sans-serif, sans-serif, system-ui;
     --font-serif: Arvo, ui-serif, serif;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-      "Liberation Mono", "Courier New", monospace;
+    --font-mono:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
     --radius: 0.575rem;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0), 0 1px 2px -1px hsl(0 0% 0% / 0);
+    --shadow-sm:
+      0 1px 3px 0px hsl(0 0% 0% / 0), 0 1px 2px -1px hsl(0 0% 0% / 0);
     --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0), 0 1px 2px -1px hsl(0 0% 0% / 0);
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0), 0 2px 4px -1px hsl(0 0% 0% / 0);
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0), 0 4px 6px -1px hsl(0 0% 0% / 0);
-    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0),
-      0 8px 10px -1px hsl(0 0% 0% / 0);
+    --shadow-md:
+      0 1px 3px 0px hsl(0 0% 0% / 0), 0 2px 4px -1px hsl(0 0% 0% / 0);
+    --shadow-lg:
+      0 1px 3px 0px hsl(0 0% 0% / 0), 0 4px 6px -1px hsl(0 0% 0% / 0);
+    --shadow-xl:
+      0 1px 3px 0px hsl(0 0% 0% / 0), 0 8px 10px -1px hsl(0 0% 0% / 0);
     --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0);
     --tracking-normal: 0em;
     --spacing: 0.25rem;
@@ -91,17 +113,21 @@
     --sidebar-ring: oklch(0.439 0 0);
     --font-sans: Inter, ui-sans-serif, sans-serif, system-ui;
     --font-serif: Arvo, ui-serif, serif;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-      "Liberation Mono", "Courier New", monospace;
+    --font-mono:
+      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+      "Courier New", monospace;
     --radius: 0.575rem;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0), 0 1px 2px -1px hsl(0 0% 0% / 0);
+    --shadow-sm:
+      0 1px 3px 0px hsl(0 0% 0% / 0), 0 1px 2px -1px hsl(0 0% 0% / 0);
     --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0), 0 1px 2px -1px hsl(0 0% 0% / 0);
-    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0), 0 2px 4px -1px hsl(0 0% 0% / 0);
-    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0), 0 4px 6px -1px hsl(0 0% 0% / 0);
-    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0),
-      0 8px 10px -1px hsl(0 0% 0% / 0);
+    --shadow-md:
+      0 1px 3px 0px hsl(0 0% 0% / 0), 0 2px 4px -1px hsl(0 0% 0% / 0);
+    --shadow-lg:
+      0 1px 3px 0px hsl(0 0% 0% / 0), 0 4px 6px -1px hsl(0 0% 0% / 0);
+    --shadow-xl:
+      0 1px 3px 0px hsl(0 0% 0% / 0), 0 8px 10px -1px hsl(0 0% 0% / 0);
     --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0);
   }
 }
@@ -149,236 +175,8 @@
   }
 }
 
-@layer utilities {
-  .leading-96p {
-    line-height: 0.96;
-  } /* 0.96 × font-size  */
-
-  .leading-103p {
-    line-height: 1.03;
-  } /* 1.03 × font-size  */
-
-  .leading-123p {
-    line-height: 1.23;
-  } /* 1.23 × font-size  */
-
-  .leading-140p {
-    line-height: 1.4;
-  } /* 1.40 × font-size  */
-}
-
-@layer components {
-  /* Responsive typography and spacing utilities - opt-in for any component */
-  .responsive-text .text-xs {
-    font-size: var(--responsive-text-xs);
-  }
-  .responsive-text .text-sm {
-    font-size: var(--responsive-text-sm);
-  }
-  .responsive-text .text-base {
-    font-size: var(--responsive-text-base);
-  }
-  .responsive-text .text-lg {
-    font-size: var(--responsive-text-lg);
-  }
-  .responsive-text .text-xl {
-    font-size: var(--responsive-text-xl);
-  }
-  .responsive-text .text-2xl {
-    font-size: var(--responsive-text-2xl);
-  }
-  .responsive-text .text-3xl {
-    font-size: var(--responsive-text-3xl);
-  }
-  .responsive-text .text-4xl {
-    font-size: var(--responsive-text-4xl);
-  }
-  .responsive-text .text-5xl {
-    font-size: var(--responsive-text-5xl);
-  }
-  .responsive-text .text-6xl {
-    font-size: var(--responsive-text-6xl);
-  }
-  .responsive-text .text-7xl {
-    font-size: var(--responsive-text-7xl);
-  }
-  .responsive-text .text-8xl {
-    font-size: var(--responsive-text-8xl);
-  }
-  .responsive-text .text-9xl {
-    font-size: var(--responsive-text-9xl);
-  }
-
-  .responsive-text .gap-1 {
-    gap: var(--responsive-space-1);
-  }
-  .responsive-text .gap-2 {
-    gap: var(--responsive-space-2);
-  }
-  .responsive-text .gap-3 {
-    gap: var(--responsive-space-3);
-  }
-  .responsive-text .gap-4 {
-    gap: var(--responsive-space-4);
-  }
-  .responsive-text .gap-6 {
-    gap: var(--responsive-space-6);
-  }
-  .responsive-text .gap-8 {
-    gap: var(--responsive-space-8);
-  }
-  .responsive-text .gap-12 {
-    gap: var(--responsive-space-12);
-  }
-  .responsive-text .gap-16 {
-    gap: var(--responsive-space-16);
-  }
-
-  .responsive-text .space-y-1 > * + * {
-    margin-top: var(--responsive-space-1);
-  }
-  .responsive-text .space-y-2 > * + * {
-    margin-top: var(--responsive-space-2);
-  }
-  .responsive-text .space-y-3 > * + * {
-    margin-top: var(--responsive-space-3);
-  }
-  .responsive-text .space-y-4 > * + * {
-    margin-top: var(--responsive-space-4);
-  }
-  .responsive-text .space-y-6 > * + * {
-    margin-top: var(--responsive-space-6);
-  }
-  .responsive-text .space-y-8 > * + * {
-    margin-top: var(--responsive-space-8);
-  }
-  .responsive-text .space-y-12 > * + * {
-    margin-top: var(--responsive-space-12);
-  }
-
-  .responsive-text .mt-1 {
-    margin-top: var(--responsive-space-1);
-  }
-  .responsive-text .mt-2 {
-    margin-top: var(--responsive-space-2);
-  }
-  .responsive-text .mt-3 {
-    margin-top: var(--responsive-space-3);
-  }
-  .responsive-text .mt-4 {
-    margin-top: var(--responsive-space-4);
-  }
-  .responsive-text .mt-6 {
-    margin-top: var(--responsive-space-6);
-  }
-  .responsive-text .mt-8 {
-    margin-top: var(--responsive-space-8);
-  }
-  .responsive-text .mt-12 {
-    margin-top: var(--responsive-space-12);
-  }
-  .responsive-text .mt-16 {
-    margin-top: var(--responsive-space-16);
-  }
-
-  .responsive-text .mb-1 {
-    margin-bottom: var(--responsive-space-1);
-  }
-  .responsive-text .mb-2 {
-    margin-bottom: var(--responsive-space-2);
-  }
-  .responsive-text .mb-3 {
-    margin-bottom: var(--responsive-space-3);
-  }
-  .responsive-text .mb-4 {
-    margin-bottom: var(--responsive-space-4);
-  }
-  .responsive-text .mb-6 {
-    margin-bottom: var(--responsive-space-6);
-  }
-  .responsive-text .mb-8 {
-    margin-bottom: var(--responsive-space-8);
-  }
-  .responsive-text .mb-12 {
-    margin-bottom: var(--responsive-space-12);
-  }
-
-  .responsive-text .p-1 {
-    padding: var(--responsive-space-1);
-  }
-  .responsive-text .p-2 {
-    padding: var(--responsive-space-2);
-  }
-  .responsive-text .p-3 {
-    padding: var(--responsive-space-3);
-  }
-  .responsive-text .p-4 {
-    padding: var(--responsive-space-4);
-  }
-  .responsive-text .p-6 {
-    padding: var(--responsive-space-6);
-  }
-  .responsive-text .p-8 {
-    padding: var(--responsive-space-8);
-  }
-  .responsive-text .p-12 {
-    padding: var(--responsive-space-12);
-  }
-
-  /* Slide variant padding */
-  .slide-top-padding {
-    padding: var(--responsive-space-8);
-    padding-top: var(--responsive-space-12);
-  }
-  .slide-centered-padding {
-    padding: var(--responsive-space-8);
-  }
-
-  .slide-cover-light {
-    @apply bg-background;
-    color: hsl(var(--slide-cover-foreground));
-  }
-
-  .slide-cover-dark {
-    background-color: hsl(var(--slide-cover-foreground));
-    color: #ffffff;
-  }
-
-  .slide-cover-light .slide-title {
-    @apply text-black;
-  }
-
-  .slide-cover-dark .slide-title {
-    @apply text-white;
-  }
-
-  .slide-title {
-    font-size: var(--responsive-slide-text-title);
-  }
-
-  .slide-heading1 {
-    @apply leading-tight m-0 break-normal hyphens-none leading-96p;
-    font-size: var(--responsive-slide-text-heading1);
-    font-family: var(--font-inter);
-  }
-
-  .slide-heading2 {
-    @apply leading-tight m-0 break-normal text-7xl hyphens-none leading-103p;
-    font-family: var(--font-inter);
-  }
-
-  .slide-content {
-    color: hsl(var(--slide-content-text));
-  }
-
-  /* Chart axis styling for better visibility in slideshows */
-  .responsive-text .recharts-cartesian-axis-tick text {
-    font-size: 14px;
-    font-weight: 600;
-  }
-}
-
 /* Print styles for PDF export */
+
 @page {
   margin: 0;
 }
@@ -403,7 +201,12 @@
   }
 
   /* Ensure headings stay with following content */
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     break-after: avoid;
     page-break-after: avoid;
   }

@@ -1,8 +1,10 @@
 #!/usr/bin/env bun
 // Embedded runner for `dsbx function` and `dsbx db`. Subcommands:
 //   runner run <path>                            stdin request envelope -> stdout Output JSON
-//   runner serve <functionsDir> <socketPath>     warm worker: serve invocations of any function
-//                                                in <functionsDir> over a unix socket until idle
+//   runner serve <functionsDir> <socketPath> [readyPath]
+//                                                publication worker: preload every
+//                                                slug, bind the socket, optionally
+//                                                write readyPath, then serve until idle
 //   runner get <path>                            -> stdout FunctionSchema JSON (or {error})
 //   runner build <src> <outBundle> <outSchema>   bundle + extract schema to files
 //   runner db-reconcile <dbPath> <schemaFile>    additive-only DDL reconcile -> stdout envelope
@@ -16,7 +18,11 @@ import { errorEnvelope, podDatabaseMaxSizeBytes } from "./db/common.ts";
 import { runQuery } from "./db/query.ts";
 import { reconcile } from "./db/reconcile.ts";
 import { generateSchemaFileText } from "./db/schema.ts";
-import { applyResultSpillPolicy, emitEnvelopeLine } from "./emit.ts";
+import {
+  applyResultSpillPolicy,
+  attachRunnerTimings,
+  emitEnvelopeLine,
+} from "./emit.ts";
 import { invoke } from "./invoke.ts";
 import { BadInputError, parseInput, type RequestInput } from "./protocol.ts";
 import { getFunctionSchema } from "./schema.ts";
@@ -45,10 +51,14 @@ async function runHandler(handlerPath: string): Promise<number> {
     emitEnvelopeLine({ ok: false, error: { code: "bad_input", message } });
     return 2;
   }
-  const out = await invoke(handlerPath, input);
+  const { output, timingsMs } = await invoke(handlerPath, input);
   // An oversized result is spilled to a scratch file and replaced by a
   // pointer envelope; over the hard cap it becomes an output_too_large error.
-  const delivered = applyResultSpillPolicy(out);
+  // Phase timings ride as a sidecar dsbx lifts into the outer envelope.
+  const delivered = attachRunnerTimings(
+    applyResultSpillPolicy(output),
+    timingsMs
+  );
   emitEnvelopeLine(delivered);
   return delivered.ok ? 0 : 1;
 }
@@ -168,15 +178,15 @@ async function main(): Promise<number> {
     case "get":
       return getHandler(handlerPath);
     case "serve": {
-      const [functionsDir, socketPath] = rest;
+      const [functionsDir, socketPath, readyPath] = rest;
       if (!functionsDir || !socketPath) {
         process.stderr.write(
-          "usage: runner serve <functions-dir> <socket-path>\n"
+          "usage: runner serve <functions-dir> <socket-path> [ready-path]\n"
         );
         return 2;
       }
       // Never returns: the worker exits itself (idle, lifetime, staleness).
-      return serve(functionsDir, socketPath);
+      return serve(functionsDir, socketPath, readyPath);
     }
     default:
       process.stderr.write(`runner: unknown command "${command}"\n`);

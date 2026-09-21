@@ -298,7 +298,7 @@ function resolveSkillSuggestionPlaceholders(
   suggestion: SkillSuggestionAsset,
   placeholders: Record<string, string>
 ): SkillSuggestionAsset {
-  if (Object.keys(placeholders).length === 0) {
+  if (Object.keys(placeholders).length === 0 || suggestion.kind !== "edit") {
     return suggestion;
   }
 

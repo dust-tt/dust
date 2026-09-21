@@ -165,7 +165,6 @@ export function CapabilitiesPickerItemsList({
 interface CapabilitiesPickerProps {
   owner: WorkspaceType;
   user: UserType | null;
-  selectedMCPServerViews: MCPServerViewLightType[];
   onSelect: (serverView: MCPServerViewLightType) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   onSetupServer: (server: MCPServerType) => void;
@@ -182,7 +181,6 @@ interface CapabilitiesPickerProps {
 export function CapabilitiesPicker({
   owner,
   user,
-  selectedMCPServerViews,
   onSelect,
   onSkillSelect,
   onSetupServer,
@@ -298,9 +296,6 @@ export function CapabilitiesPicker({
 
   const capabilityPickerIndex = useMemo(() => {
     const items: CapabilityPickerSearchItem[] = [];
-    const selectedMCPServerViewIds = new Set(
-      selectedMCPServerViews.map((v) => v.sId)
-    );
 
     if (isSkillsDataReady && isToolsDataReady) {
       for (const skill of skills) {
@@ -323,10 +318,6 @@ export function CapabilitiesPicker({
       for (const serverView of serverViews) {
         const label = getMcpServerViewDisplayName(serverView);
         const description = getMcpServerViewDescription(serverView);
-
-        if (selectedMCPServerViewIds.has(serverView.sId)) {
-          continue;
-        }
 
         items.push({
           kind: "tool",
@@ -375,7 +366,6 @@ export function CapabilitiesPicker({
     isAdmin,
     isSkillsDataReady,
     isToolsDataReady,
-    selectedMCPServerViews,
     serverViews,
     skills,
   ]);

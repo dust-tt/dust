@@ -38,3 +38,9 @@ export type GetSpaceFilesResponseBody = {
 export type PostSpaceFolderResponseBody = {
   folder: FileSystemDirectoryEntry;
 };
+
+export type PostExtractArchiveResponseBody = {
+  directoriesCreated: number;
+  filesWritten: number;
+  skippedEntryCount: number;
+};

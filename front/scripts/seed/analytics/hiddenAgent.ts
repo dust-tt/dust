@@ -1,13 +1,11 @@
 import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar_picker/types";
-import {
-  createAgentConfiguration,
-  searchAgentConfigurationsByName,
-} from "@app/lib/api/assistant/configuration/agent";
+import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { CreatedAgent, SeedContext } from "@app/scripts/seed/factories";
+import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import { SPACE_GROUP_PREFIX } from "@app/types/groups";
 
 const AGENT_NAME = "SeedPrivateAgent";
@@ -91,7 +89,7 @@ export async function seedHiddenAgent(
 
   const space = await findOrCreateRestrictedSpace(ctx, internalAuth, owner);
 
-  const agentResult = await createAgentConfiguration(internalAuth, {
+  const agentResult = await saveAgentConfiguration(internalAuth, {
     name: AGENT_NAME,
     description: "Seeded agent that only its owner should see.",
     instructions: "You are a seeded agent used to test analytics visibility.",

@@ -45,7 +45,7 @@ export type ConsumptionOverview = {
     active: number;
     total: number;
   };
-  messageCount?: number;
+  messageCount: number;
   lastRecordAt: string | null;
   totalCredits: number;
   topAgent: ConsumptionOverviewTopAgent | null;

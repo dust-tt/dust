@@ -1,6 +1,9 @@
-import { BLOCK_ID_ATTRIBUTE } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
-import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import {
+  findBlockByBlockId,
+  parseHTMLToBlocks,
+  replaceBlock,
+} from "@app/lib/editor/instruction_blocks";
 import { Extension } from "@tiptap/core";
 import type { Node as PMNode, Schema, Slice } from "@tiptap/pm/model";
 import {
@@ -114,62 +117,6 @@ export function diffBlockContent(
     fromB: change.fromB - offset,
     toB: change.toB - offset,
   }));
-}
-
-function parseHTMLToBlocks(
-  html: string,
-  schema: Schema,
-  targetBlockId: string
-): PMNode[] {
-  const domParser = PMDOMParser.fromSchema(schema);
-  const tempDiv = document.createElement("div");
-  tempDiv.innerHTML = html;
-
-  const parsed = domParser.parse(tempDiv);
-
-  // The agent builder schema enforces doc > instructionsRoot > blocks.
-  // When we parse HTML like "<p>text</p>", the parser returns:
-  // doc > instructionsRoot > paragraph
-  // For root targets, return the instructionsRoot directly so all child blocks
-  // are preserved. For single-block targets, return all children of the
-  // instructionsRoot — this supports multi-block replacements where one block
-  // is replaced by several (e.g., "<p>A</p><p>B</p>").
-  const first = parsed.firstChild;
-  if (
-    first?.type.name === INSTRUCTIONS_ROOT_NODE_NAME &&
-    targetBlockId === INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
-  ) {
-    return [first];
-  }
-
-  const container =
-    first?.type.name === INSTRUCTIONS_ROOT_NODE_NAME ? first : parsed;
-  const children: PMNode[] = [];
-  container.content.forEach((child) => children.push(child));
-  return children;
-}
-
-function findBlockByBlockId(
-  doc: PMNode,
-  targetBlockId: string
-): { node: PMNode; pos: number } | null {
-  let result: { node: PMNode; pos: number } | null = null;
-
-  doc.descendants((node, pos) => {
-    if (result) {
-      return false;
-    }
-
-    if (node.attrs[BLOCK_ID_ATTRIBUTE] === targetBlockId) {
-      result = { node, pos };
-
-      return false;
-    }
-
-    return true;
-  });
-
-  return result;
 }
 
 // Returns the content to render in an addition widget for an inserted slice.
@@ -474,11 +421,10 @@ function buildDecorations(
 
       const { node: blockNode, pos: blockPos } = found;
 
-      const newNodes = parseHTMLToBlocks(
-        op.newContent,
-        schema,
-        op.targetBlockId
-      );
+      const newNodes = parseHTMLToBlocks(op.newContent, op.targetBlockId, {
+        document,
+        domParser: PMDOMParser.fromSchema(schema),
+      });
       if (newNodes.length === 0) {
         continue;
       }
@@ -789,39 +735,16 @@ export const InstructionSuggestionExtension = Extension.create<{
                 continue;
               }
 
-              const { node: blockNode, pos: blockPos } = found;
               const newNodes = parseHTMLToBlocks(
                 op.newContent,
-                schema,
-                op.targetBlockId
+                op.targetBlockId,
+                { document, domParser: PMDOMParser.fromSchema(schema) }
               );
               if (newNodes.length === 0) {
                 continue;
               }
 
-              if (newNodes.length === 1) {
-                const newNode = newNodes[0];
-                if (blockNode.type === newNode.type) {
-                  // Same type: replace inner content.
-                  const from = blockPos + 1;
-                  const to = blockPos + blockNode.nodeSize - 1;
-                  tr.replaceWith(from, to, newNode.content);
-                } else {
-                  // Cross-type: replace the entire block node.
-                  tr.replaceWith(
-                    blockPos,
-                    blockPos + blockNode.nodeSize,
-                    newNode
-                  );
-                }
-              } else {
-                // Multi-block: replace the old block with all new blocks.
-                tr.replaceWith(
-                  blockPos,
-                  blockPos + blockNode.nodeSize,
-                  newNodes
-                );
-              }
+              replaceBlock(tr, found, newNodes);
             }
 
             tr.setMeta(pluginKey, { type: "remove", id: suggestionId });

@@ -354,6 +354,10 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
   onDropdownClose: ({ storage }) => {
     clearSlashSubMenuStack(storage);
   },
+  // A new "/" always starts at the root, however the previous session ended.
+  onDropdownExit: ({ storage }) => {
+    clearSlashSubMenuStack(storage);
+  },
   preventEscapeDefault: true,
   shouldAppendDropdown: ({ props }) => Boolean(props.clientRect),
 });

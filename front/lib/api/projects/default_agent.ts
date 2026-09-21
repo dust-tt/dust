@@ -1,5 +1,5 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -17,11 +17,8 @@ export async function resolvePodDefaultAgentId(
     return GLOBAL_AGENTS_SID.DUST;
   }
 
-  const agent = await getAgentConfiguration(auth, {
-    agentId: candidateId,
-    variant: "extra_light",
-  });
-  if (!agent || agent.status !== "active") {
+  const agent = await AgentResource.fetchById(auth, candidateId);
+  if (!agent || !auth.can("read", agent) || agent.status !== "active") {
     return GLOBAL_AGENTS_SID.DUST;
   }
   return candidateId;

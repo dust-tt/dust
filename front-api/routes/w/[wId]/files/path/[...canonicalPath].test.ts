@@ -674,3 +674,129 @@ describe("DELETE /api/w/:wId/files/path/:canonicalPath", () => {
     expect((await response.json()).error.type).toBe("file_not_found");
   });
 });
+
+describe("POST /api/w/:wId/files/path/:canonicalPath?action=extract", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function archive(entries: { path: string; content?: string }[]): Buffer {
+    const zip = new AdmZip();
+    for (const entry of entries) {
+      if (entry.content === undefined) {
+        zip.addFile(`${entry.path.replace(/\/+$/, "")}/`, Buffer.alloc(0));
+      } else {
+        zip.addFile(entry.path, Buffer.from(entry.content));
+      }
+    }
+    return zip.toBuffer();
+  }
+
+  function extractRequest(
+    workspace: { sId: string },
+    canonicalPath: string,
+    body: Buffer,
+    query = "?action=extract"
+  ) {
+    const segments = canonicalPath.split("/").map(encodeURIComponent).join("/");
+    return honoApp.request(
+      `/api/w/${workspace.sId}/files/path/${segments}${query}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/zip" },
+        body: new Uint8Array(body),
+      }
+    );
+  }
+
+  it("extracts the archive into the destination folder", async () => {
+    const { workspace, conversation } = await setup();
+
+    const response = await extractRequest(
+      workspace,
+      `conversation-${conversation.sId}/inbox`,
+      archive([
+        { path: "reports/a.txt", content: "alpha" },
+        { path: "reports/nested/b.txt", content: "bravo" },
+      ])
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      directoriesCreated: 0,
+      filesWritten: 2,
+      skippedEntryCount: 0,
+    });
+    const gcsRoot = `w/${workspace.sId}/conversations/${conversation.sId}/files`;
+    expect(fileStorageMock.saveFileCalls).toContainEqual({
+      filePath: `${gcsRoot}/inbox/reports/a.txt`,
+      content: Buffer.from("alpha"),
+      contentType: "text/plain",
+    });
+    expect(fileStorageMock.saveFileCalls).toContainEqual({
+      filePath: `${gcsRoot}/inbox/reports/nested/b.txt`,
+      content: Buffer.from("bravo"),
+      contentType: "text/plain",
+    });
+  });
+
+  it("extracts at a mount root", async () => {
+    const { workspace, conversation } = await setup();
+
+    const response = await extractRequest(
+      workspace,
+      `conversation-${conversation.sId}`,
+      archive([{ path: "notes.md", content: "# hi" }])
+    );
+
+    expect(response.status).toBe(200);
+    expect(fileStorageMock.saveFileCalls).toContainEqual({
+      filePath: `w/${workspace.sId}/conversations/${conversation.sId}/files/notes.md`,
+      content: Buffer.from("# hi"),
+      contentType: "text/markdown",
+    });
+  });
+
+  it("returns 400 without the extract action", async () => {
+    const { workspace, conversation } = await setup();
+
+    const response = await extractRequest(
+      workspace,
+      `conversation-${conversation.sId}/inbox`,
+      archive([{ path: "a.txt", content: "alpha" }]),
+      ""
+    );
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("returns 400 when the body is not a ZIP archive", async () => {
+    const { workspace, conversation } = await setup();
+
+    const response = await extractRequest(
+      workspace,
+      `conversation-${conversation.sId}/inbox`,
+      Buffer.from("not a zip at all")
+    );
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("returns 404 when the destination mount does not exist", async () => {
+    const { workspace } = await setup();
+
+    const response = await extractRequest(
+      workspace,
+      "conversation-doesnotexist/inbox",
+      archive([{ path: "a.txt", content: "alpha" }])
+    );
+
+    expect(response.status).toBe(404);
+    expect((await response.json()).error.type).toBe("file_not_found");
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+});

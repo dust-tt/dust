@@ -114,6 +114,36 @@ describe("extractFileRefs", () => {
     ]);
   });
 
+  it("extracts package-relative paths only in ./asset.ext form", () => {
+    const code = `
+      import Chart from "./Chart";
+      const GAMES_CSV_PATH = "./data.csv";
+      const f = useFile(GAMES_CSV_PATH);
+      const withDot = useFile("./report.csv");
+      const bare = useFile("report.csv");
+      return <Image fileId="./assets/logo.png" />;
+    `;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "frameRelative", relativePath: "data.csv" },
+      { type: "frameRelative", relativePath: "report.csv" },
+      { type: "frameRelative", relativePath: "assets/logo.png" },
+    ]);
+  });
+
+  it("does not treat UI copy or source locations as package-relative refs", () => {
+    const code = `
+      const msg = "Could not load the games CSV.";
+      const loc = "index.tsx:116:6";
+      const again = "Please try again.";
+    `;
+    expect(extractFileRefs(code)).toEqual([]);
+  });
+
+  it("does not treat relative import paths as useFile refs", () => {
+    const code = `import Chart from "./Chart"; const x = "hello";`;
+    expect(extractFileRefs(code)).toEqual([]);
+  });
+
   it("ignores non-matching string literals", () => {
     const code = `
       const a = "hello world";

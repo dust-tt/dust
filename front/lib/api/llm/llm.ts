@@ -212,6 +212,7 @@ export abstract class LLM<
         host: this.host,
       },
       outcome: outcomeTelemetry,
+      auth: this.authenticator,
     });
 
     switch (outcomeTelemetry.outcome) {

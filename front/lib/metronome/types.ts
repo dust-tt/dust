@@ -102,6 +102,21 @@ export function classifyMetronomePackageCurrencyByName(
   return "usd";
 }
 
+// Billing-cycle anchor a package configures in Metronome. The value is not
+// exposed on the package list response, so it is inferred from the display
+// name: "(1st of month)" packages align billing periods to calendar-month
+// boundaries (`first_billing_period`); every other package recurs on the
+// contract-start day-of-month (`contract_start_date`). See
+// `BILLING_CYCLE_CONFIG` / `BILLING_CYCLE_CONFIG_FIRST_OF_MONTH` in
+// `setup_common.ts`.
+export function classifyMetronomePackageBillingAnchorByName(
+  name: string
+): "contract_start_date" | "first_billing_period" {
+  return /\b(?:1st|first) of month\b/i.test(name)
+    ? "first_billing_period"
+    : "contract_start_date";
+}
+
 export type UsageType =
   | typeof USAGE_TYPE_USER
   | typeof USAGE_TYPE_PROGRAMMATIC

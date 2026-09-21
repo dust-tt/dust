@@ -865,7 +865,7 @@ describe("SandboxResource.dangerouslyGetKillRequestedSandboxes", () => {
 
 describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
   let authenticator: Authenticator;
-  let agentConfigSId: string;
+  let agentConfigId: string;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -873,12 +873,12 @@ describe("SandboxResource.dangerouslyRequestKillForBaseImage", () => {
     authenticator = testSetup.authenticator;
     const agentConfig =
       await AgentConfigurationFactory.createTestAgent(authenticator);
-    agentConfigSId = agentConfig.sId;
+    agentConfigId = agentConfig.sId;
   });
 
   async function makeConversation(): Promise<ConversationType> {
     return ConversationFactory.create(authenticator, {
-      agentConfigurationId: agentConfigSId,
+      agentConfigurationId: agentConfigId,
       messagesCreatedAt: [new Date()],
     });
   }

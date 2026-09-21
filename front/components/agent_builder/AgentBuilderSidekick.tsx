@@ -8,10 +8,7 @@ import { ConversationViewer } from "@app/components/assistant/conversation/Conve
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
-import {
-  getSidekickSuggestionPlugin,
-  sidekickSuggestionDirective,
-} from "@app/components/markdown/suggestion/SidekickSuggestionDirective";
+import { getSidekickSuggestionPlugin } from "@app/components/markdown/suggestion/SidekickSuggestionDirective";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
@@ -100,10 +97,7 @@ function SidekickContent({
       }) as Components, // We need to force cast here as we don't use native html tags.
     []
   );
-  const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [sidekickSuggestionDirective],
-    []
-  );
+  const additionalMarkdownPlugins: PluggableList = useMemo(() => [], []);
 
   return (
     <>

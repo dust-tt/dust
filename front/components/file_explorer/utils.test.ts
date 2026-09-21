@@ -122,6 +122,16 @@ describe("file preview configuration", () => {
     expect(getFilePreviewConfig(contentType).category).toBe("text");
   });
 
+  it.each([
+    "text/csv",
+    "text/csv; charset=utf-8",
+    "text/comma-separated-values",
+    "text/tsv",
+    "text/tab-separated-values",
+  ])("classifies %s as delimited", (contentType) => {
+    expect(getFilePreviewConfig(contentType).category).toBe("delimited");
+  });
+
   it("keeps code and text in separate explorer filters", () => {
     const node: FileSystemFileTreeNode = {
       name: "file",

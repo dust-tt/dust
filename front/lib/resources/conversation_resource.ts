@@ -35,6 +35,7 @@ import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageStatus,
+  AgentMessageType,
   CompactionMessageStatus,
   ConversationForkedChildType,
   ConversationForkedFromType,
@@ -837,6 +838,83 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
+   * Loads the agent message's credit spend checkpoint status. Returns null when the message
+   * cannot be found (the caller must then not pause).
+   */
+  static async fetchAgentMessageCreditSpendCheckpointStatus(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<AgentMessageModel["creditSpendCheckpointStatus"] | null> {
+    const agentMessageRow = await MessageModel.findOne({
+      where: {
+        sId: agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: ["id"],
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["creditSpendCheckpointStatus"],
+        },
+      ],
+    });
+
+    return agentMessageRow?.agentMessage?.creditSpendCheckpointStatus ?? null;
+  }
+
+  // Conditional on the message still running: a terminal status that landed in between wins.
+  static async markAgentMessageCreditSpendCheckpointPaused(
+    auth: Authenticator,
+    { agentMessage }: { agentMessage: AgentMessageType }
+  ): Promise<{ applied: boolean }> {
+    if (agentMessage.status !== "created") {
+      return { applied: false };
+    }
+
+    const [updatedCount] = await AgentMessageModel.update(
+      { creditSpendCheckpointStatus: "paused" },
+      {
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: "created",
+        },
+      }
+    );
+
+    return { applied: updatedCount > 0 };
+  }
+
+  // Conditional so concurrent resolutions of the same pause cannot both apply.
+  static async transitionAgentMessageCreditSpendCheckpointStatus(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      from,
+      to,
+    }: {
+      agentMessageModelId: ModelId;
+      from: AgentMessageModel["creditSpendCheckpointStatus"];
+      to: AgentMessageModel["creditSpendCheckpointStatus"];
+    }
+  ): Promise<{ applied: boolean }> {
+    const [updatedCount] = await AgentMessageModel.update(
+      { creditSpendCheckpointStatus: to },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          creditSpendCheckpointStatus: from,
+        },
+      }
+    );
+
+    return { applied: updatedCount > 0 };
+  }
+
+  /**
    * Loads the message graph needed to build consumption analytics without exposing Sequelize rows
    * outside the Resource layer.
    *
@@ -1532,8 +1610,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     if (sIds.length === 0) {
       return new Map();
     }
-    const uniqueSIds = [...new Set(sIds)];
-    const conversations = await this.fetchByIds(auth, uniqueSIds);
+    const uniqueIds = [...new Set(sIds)];
+    const conversations = await this.fetchByIds(auth, uniqueIds);
     if (conversations.length === 0) {
       return new Map();
     }
@@ -1900,33 +1978,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return result;
     }
 
-    const sIdById = new Map<ModelId, string>(
+    const conversationIdByModelId = new Map<ModelId, string>(
       conversations.map((c) => [c.id, c.sId])
     );
 
     const agentToConvIds = new Map<string, Set<string>>();
     for (const p of participations) {
-      const convSId = sIdById.get(p.message!.conversationId);
-      if (!convSId) {
+      const convId = conversationIdByModelId.get(p.message!.conversationId);
+      if (!convId) {
         continue;
       }
       const agentId = p.agentConfigurationId;
       if (!agentToConvIds.has(agentId)) {
         agentToConvIds.set(agentId, new Set());
       }
-      agentToConvIds.get(agentId)!.add(convSId);
+      agentToConvIds.get(agentId)!.add(convId);
     }
 
-    let qualifyingConvSIds: Set<string>;
+    let qualifyingConvIds: Set<string>;
 
     if (!excludeHumanOutOfTheLoop) {
-      qualifyingConvSIds = new Set(conversations.map((c) => c.sId));
+      qualifyingConvIds = new Set(conversations.map((c) => c.sId));
     } else {
       const nonTriggered = conversations.filter((c) => c.triggerId === null);
       const triggered = conversations.filter((c) => c.triggerId !== null);
 
       if (triggered.length === 0) {
-        qualifyingConvSIds = new Set(nonTriggered.map((c) => c.sId));
+        qualifyingConvIds = new Set(nonTriggered.map((c) => c.sId));
       } else {
         const triggeredWithUserMessages = await MessageModel.findAll({
           attributes: [
@@ -1950,18 +2028,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           raw: true,
         });
 
-        qualifyingConvSIds = new Set([
+        qualifyingConvIds = new Set([
           ...nonTriggered.map((c) => c.sId),
           ...triggeredWithUserMessages
-            .map((m) => sIdById.get(m.conversationId))
+            .map((m) => conversationIdByModelId.get(m.conversationId))
             .filter((sId): sId is string => sId !== undefined),
         ]);
       }
     }
 
-    for (const [agentId, convSIds] of agentToConvIds) {
-      const qualifying = [...convSIds].filter((sId) =>
-        qualifyingConvSIds.has(sId)
+    for (const [agentId, convIds] of agentToConvIds) {
+      const qualifying = [...convIds].filter((sId) =>
+        qualifyingConvIds.has(sId)
       );
       if (qualifying.length > 0) {
         result.set(agentId, qualifying);
@@ -3008,7 +3086,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
    * @cc [owner:philipperolet,label:backend;concurrency] cancel-unavailable-agent-message
    * After an agent loop loses access to its data, cancel only its workspace-scoped message
    * version if still created; under the conversation lock, clear the running flag only if
-   * that transition applied and no current agent message is running.
+   * that transition applied and no current agent message is running. Return the cancellation
+   * timestamp when the transition applied, and null otherwise.
    */
   static async cancelUnavailableAgentMessage(
     auth: Authenticator,
@@ -3021,7 +3100,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       agentMessageId: string;
       agentMessageVersion: number;
     }
-  ): Promise<void> {
+  ): Promise<Date | null> {
     // Deletion or a permissions change may remove the loop's original access. This internal
     // cleanup stays scoped to its workspace and message; it never returns conversation content.
     const conversation = await this.fetchById(auth, conversationId, {
@@ -3029,11 +3108,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       dangerouslySkipPermissionFiltering: true,
     });
     if (!conversation) {
-      return;
+      return null;
     }
 
     const workspaceId = auth.getNonNullableWorkspace().id;
-    await withTransaction(async (transaction) => {
+    return withTransaction(async (transaction) => {
       await getConversationRankVersionLock(auth, conversation, transaction);
       const message = await MessageModel.findOne({
         where: {
@@ -3045,28 +3124,30 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         transaction,
       });
       if (!message?.agentMessageId) {
-        return;
+        return null;
       }
 
+      const completedAt = new Date();
       const [updatedCount] = await AgentMessageModel.update(
-        { status: "cancelled", completedAt: new Date() },
+        { status: "cancelled", completedAt },
         {
           where: { id: message.agentMessageId, workspaceId, status: "created" },
           transaction,
         }
       );
-      if (
-        updatedCount === 0 ||
-        (await conversation.getRunningAgentMessage(auth, { transaction }))
-      ) {
-        return;
+      if (updatedCount === 0) {
+        return null;
       }
 
-      await this.setIsRunningAgentLoop(auth, {
-        conversation: conversation.toJSON(),
-        isRunningAgentLoop: false,
-        transaction,
-      });
+      if (!(await conversation.getRunningAgentMessage(auth, { transaction }))) {
+        await this.setIsRunningAgentLoop(auth, {
+          conversation: conversation.toJSON(),
+          isRunningAgentLoop: false,
+          transaction,
+        });
+      }
+
+      return completedAt;
     });
   }
 

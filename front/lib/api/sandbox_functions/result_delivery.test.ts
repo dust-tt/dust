@@ -36,7 +36,7 @@ describe("parseStdoutResultEnvelope", () => {
       )
     ).toEqual({
       outcome: { ok: true, output: 1 },
-      timings: { runnerKind: "warm" },
+      timings: { total: 12, runner: 8, runnerKind: "warm" },
       spill: null,
     });
   });
@@ -113,7 +113,7 @@ describe("parseStdoutResultEnvelope", () => {
         resultFile: "/tmp/dust-fn-results/abc.json",
         resultBytes: 300_000,
       },
-      timings: { runnerKind: "cold" },
+      timings: { total: 12, runner: 8, runnerKind: "cold" },
     });
   });
 

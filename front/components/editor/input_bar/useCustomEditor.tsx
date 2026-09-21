@@ -15,6 +15,7 @@ import { URLStorageExtension } from "@app/components/editor/extensions/input_bar
 import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { KnowledgeNodeWithView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeWithView";
 import { ToolNodeWithView } from "@app/components/editor/extensions/skill_builder/ToolNodeWithView";
 import { VoicePartialNode } from "@app/components/editor/extensions/VoicePartialExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
@@ -254,10 +255,11 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
             mentions: [],
             skills: [],
             tools: [],
+            knowledge: [],
           };
         }
 
-        const { mentions, skills, tools } = extractFromEditorJSON(
+        const { mentions, skills, tools, knowledge } = extractFromEditorJSON(
           editor?.getJSON()
         );
 
@@ -266,6 +268,7 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
           mentions,
           skills,
           tools,
+          knowledge,
         };
       },
 
@@ -343,12 +346,10 @@ export interface CustomEditorProps {
     onSelectRef: React.RefObject<((item: SlashCommand) => void) | undefined>;
     onDetailsRef?: React.RefObject<((item: SlashCommand) => void) | undefined>;
     onSkillDetails?: (skillId: string) => void;
-    selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
     onToolDetailsById?: (mcpServerViewId: string) => void;
     slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
     includeAttachKnowledgeRef: React.RefObject<boolean>;
     includePickModelRef: React.RefObject<boolean>;
-    attachedNodesRef: React.RefObject<DataSourceViewContentNode[]>;
     onModelSelectRef: React.RefObject<
       ((selection: Selection) => void) | undefined
     >;
@@ -485,6 +486,7 @@ export const buildEditorExtensions = ({
     ToolNodeWithView.configure({
       onToolDetailsById: slashSuggestion?.onToolDetailsById,
     }),
+    KnowledgeNodeWithView,
     VoicePartialNode,
     createEmojiExtension({ onActiveChange: notifySuggestionActiveChange }),
     Placeholder.configure({
@@ -507,7 +509,6 @@ export const buildEditorExtensions = ({
   if (slashSuggestion) {
     extensions.push(
       InputBarSlashSuggestionExtension.configure({
-        attachedNodesRef: slashSuggestion.attachedNodesRef,
         owner,
         conversationIdRef: slashSuggestion.conversationIdRef,
         enabledRef: slashSuggestion.enabledRef,
@@ -516,8 +517,6 @@ export const buildEditorExtensions = ({
         onModelSelectRef: slashSuggestion.onModelSelectRef,
         onNodeSelectRef: slashSuggestion.onNodeSelectRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,
-        selectedMCPServerViewIdsRef:
-          slashSuggestion.selectedMCPServerViewIdsRef,
         slashCommandsRef: slashSuggestion.slashCommandsRef,
         includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,
         includePickModelRef: slashSuggestion.includePickModelRef,

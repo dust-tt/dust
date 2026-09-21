@@ -1,0 +1,4 @@
+@cc [owner:aubin-tchoi,label:error-handling] standalone-cli-errors
+Within this standalone CLI, invalid input, failed HTTP requests, and invalid saved artifacts may
+throw Error. Only the CLI entry point may catch those errors to print a message and exit nonzero;
+library callers must propagate them.

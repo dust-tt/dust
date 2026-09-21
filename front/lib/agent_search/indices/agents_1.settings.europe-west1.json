@@ -1,0 +1,43 @@
+{
+  "number_of_shards": 1,
+  "number_of_replicas": 1,
+  "refresh_interval": "30s",
+  "analysis": {
+    "normalizer": {
+      "folding_normalizer": {
+        "type": "custom",
+        "filter": ["icu_folding"]
+      }
+    },
+    "char_filter": {
+      "nfc": {
+        "type": "icu_normalizer",
+        "name": "nfc"
+      }
+    },
+    "filter": {
+      "preserve_words": {
+        "type": "word_delimiter_graph",
+        "split_on_case_change": true,
+        "split_on_numerics": false,
+        "stem_english_possessive": false
+      }
+    },
+    "analyzer": {
+      "exact_analyzer": {
+        "type": "custom",
+        "tokenizer": "keyword",
+        "filter": ["icu_folding"]
+      },
+      "autocomplete_analyzer": {
+        "type": "custom",
+        "char_filter": ["nfc"],
+        "tokenizer": "icu_tokenizer",
+        "filter": [
+          "preserve_words",
+          "icu_folding"
+        ]
+      }
+    }
+  }
+}

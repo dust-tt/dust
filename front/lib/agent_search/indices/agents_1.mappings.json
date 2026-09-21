@@ -1,0 +1,92 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "workspace_id": {
+      "type": "keyword"
+    },
+    "agent_id": {
+      "type": "keyword"
+    },
+    "status": {
+      "type": "keyword"
+    },
+    "scope": {
+      "type": "keyword"
+    },
+    "model": {
+      "type": "object",
+      "properties": {
+        "provider_id": {
+          "type": "keyword"
+        },
+        "model_id": {
+          "type": "keyword"
+        },
+        "reasoning_effort": {
+          "type": "keyword"
+        }
+      }
+    },
+    "name": {
+      "type": "text",
+      "analyzer": "exact_analyzer",
+      "fields": {
+        "keyword": {
+          "type": "keyword",
+          "normalizer": "folding_normalizer"
+        },
+        "autocomplete": {
+          "type": "search_as_you_type",
+          "analyzer": "autocomplete_analyzer"
+        },
+        "autocomplete_preserved": {
+          "type": "search_as_you_type",
+          "analyzer": "icu_analyzer"
+        }
+      }
+    },
+    "picture_url": {
+      "type": "keyword"
+    },
+    "last_edited_by_user_id": {
+      "type": "keyword"
+    },
+    "requested_space_ids": {
+      "type": "keyword"
+    },
+    "created_at": {
+      "type": "date"
+    },
+    "updated_at": {
+      "type": "date"
+    },
+    "description": {
+      "type": "text",
+      "analyzer": "icu_analyzer"
+    },
+    "skill_ids": {
+      "type": "keyword"
+    },
+    "mcp_server_view_ids": {
+      "type": "keyword"
+    },
+    "tag_ids": {
+      "type": "keyword"
+    },
+    "feedback_positive_count": {
+      "type": "integer"
+    },
+    "feedback_negative_count": {
+      "type": "integer"
+    },
+    "active_users_count": {
+      "type": "integer"
+    },
+    "favorite_count": {
+      "type": "integer"
+    },
+    "editor_ids": {
+      "type": "keyword"
+    }
+  }
+}

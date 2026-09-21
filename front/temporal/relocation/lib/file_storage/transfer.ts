@@ -1,4 +1,6 @@
 import config from "@app/lib/api/config";
+import type { PooledTransferConfig } from "@app/temporal/relocation/lib/file_storage/transfer_pool";
+import { startPooledTransfer } from "@app/temporal/relocation/lib/file_storage/transfer_pool";
 import type { CellType } from "@app/types/cell";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
@@ -9,7 +11,9 @@ import {
 } from "@google-cloud/storage-transfer";
 import type { google } from "@google-cloud/storage-transfer/build/protos/protos";
 
-interface TransferConfig {
+export const TRANSFER_OPERATION_PREFIX = "transferOperations/";
+
+export interface TransferConfig {
   destBucket: string;
   destPath?: string;
   destCell: CellType;
@@ -34,6 +38,12 @@ export class StorageTransferService {
     this.transferClient = new StorageTransferServiceClient({
       keyFilename: serviceAccountPath,
     });
+  }
+
+  async startPooledTransfer(
+    config: PooledTransferConfig
+  ): Promise<Result<string, Error>> {
+    return startPooledTransfer(this.transferClient, config);
   }
 
   async createTransferJob({
@@ -124,12 +134,21 @@ export class StorageTransferService {
         return new Ok(false);
       }
 
+      return this.isTransferOperationDone(latestOperationName);
+    } catch (error) {
+      return new Err(new Error(`Failed to check transfer status: ${error}`));
+    }
+  }
+
+  async isTransferOperationDone(
+    operationName: string
+  ): Promise<Result<boolean, Error>> {
+    try {
       const operationRequest: protos.google.longrunning.GetOperationRequest =
         new protos.google.longrunning.GetOperationRequest({
-          name: latestOperationName,
+          name: operationName,
         });
 
-      // Fetch the latest operation details using the operation name.
       const [operation] =
         await this.transferClient.getOperation(operationRequest);
 

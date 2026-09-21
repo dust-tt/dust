@@ -1,0 +1,7 @@
+@cc [owner:flvndvd,label:performance] oxlint-allocator-scope
+The launcher MUST preload jemalloc only for Oxlint and its child processes. It MUST NOT change
+the sandbox's overcommit policy or preload libraries for unrelated commands.
+
+@cc [owner:flvndvd,label:error-handling] oxlint-launcher-failures
+The launcher MUST preserve Oxlint's arguments and exit status. A missing allocator library MUST
+fail with an error before starting Oxlint.

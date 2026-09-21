@@ -2,6 +2,7 @@
 
 import { useVizContext } from "@viz/app/components/VizContext";
 import { SlideshowControls } from "@viz/components/dust/slideshow/SlideshowControls";
+import { SlideshowGrid } from "@viz/components/dust/slideshow/SlideshowGrid";
 import { cn } from "@viz/lib/utils";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -195,6 +196,12 @@ function InteractiveSlideshow({
       aria-label="Slideshow"
     >
       {children[activeIndex]}
+      <SlideshowGrid
+        slides={children}
+        activeIndex={activeIndex}
+        onSlideSelect={setActiveIndex}
+        slideshowRef={slideshowRef}
+      />
       <Navigation
         activeIndex={activeIndex}
         onNext={onNext}

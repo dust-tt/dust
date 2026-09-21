@@ -1,5 +1,6 @@
 import {
   getAttachmentFromContentNodeContentFragment,
+  isContentFragmentDataSourceNode,
   isContentNodeAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -144,6 +145,9 @@ export async function listProjectContextAttachments(
 
   const byView = new Map<string, string[]>();
   for (const a of contentNodeAttachments) {
+    if (isContentFragmentDataSourceNode(a)) {
+      continue;
+    }
     const ids = byView.get(a.nodeDataSourceViewId) ?? [];
     ids.push(a.nodeId);
     byView.set(a.nodeDataSourceViewId, ids);
@@ -153,10 +157,9 @@ export async function listProjectContextAttachments(
     string,
     Map<string, number | null>
   >();
-  const dataSourceViews = await DataSourceViewResource.fetchByIds(
-    auth,
-    Array.from(byView.keys())
-  );
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
+    ...new Set(contentNodeAttachments.map((a) => a.nodeDataSourceViewId)),
+  ]);
   const dataSourceViewById = new Map(
     dataSourceViews.map((dsView) => [dsView.sId, dsView])
   );
@@ -191,6 +194,13 @@ export async function listProjectContextAttachments(
   return attachments.map((a) => {
     if (!isContentNodeAttachmentType(a)) {
       return a;
+    }
+    if (isContentFragmentDataSourceNode(a)) {
+      const dsView = dataSourceViewById.get(a.nodeDataSourceViewId);
+      return {
+        ...a,
+        lastUpdatedAt: dsView?.dataSource.createdAt.getTime() ?? null,
+      };
     }
     const ts =
       lastUpdatedByViewAndNode.get(a.nodeDataSourceViewId)?.get(a.nodeId) ??

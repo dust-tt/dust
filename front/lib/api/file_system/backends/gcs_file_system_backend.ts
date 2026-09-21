@@ -1,4 +1,7 @@
-import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
+import type {
+  GCSMountProfile,
+  GCSMountTarget,
+} from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import { GCSSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -9,7 +12,10 @@ import type {
   FileSystemDirectoryEntry,
   FileSystemEntry,
 } from "@app/types/api/file_system/types";
-import { getFrameDatabaseReplicasBasePath } from "@app/types/api/frame_storage";
+import {
+  getFrameDatabaseReplicasBasePath,
+  getFramePersistentFilesBasePath,
+} from "@app/types/api/frame_storage";
 import type { FileSystemMount, SandboxOnlyMount } from "@app/types/file_system";
 import {
   DustFileSystemError,
@@ -715,8 +721,14 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       case "frame_publications":
         return `w/${this.workspaceId}/frames/${mount.frameId}/publications`;
 
-      case "frame_state":
+      case "frame_database_replicas":
         return getFrameDatabaseReplicasBasePath({
+          workspaceId: this.workspaceId,
+          frameId: mount.frameId,
+        }).replace(/\/$/, "");
+
+      case "frame_persistent_files":
+        return getFramePersistentFilesBasePath({
           workspaceId: this.workspaceId,
           frameId: mount.frameId,
         }).replace(/\/$/, "");
@@ -726,15 +738,19 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
   }
 
-  private sandboxOnlyMountProfile(
-    mount: SandboxOnlyMount
-  ): GCSMountTarget["mountProfile"] {
+  private sandboxOnlyMountProfile(mount: SandboxOnlyMount): GCSMountProfile {
     switch (mount.kind) {
       case "frame_publications":
         return "frame_publications";
 
-      case "frame_state":
+      case "frame_database_replicas":
         return "sandbox_state_replica";
+
+      // Read and written directly by the workload, so it takes the same `allow_other` access
+      // model as the agent-facing file mounts rather than the dust-state-only model the
+      // Litestream replica needs.
+      case "frame_persistent_files":
+        return "workload";
 
       default:
         assertNever(mount);

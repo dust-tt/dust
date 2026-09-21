@@ -415,21 +415,21 @@ export async function getAgentDataSourceConfigurations(
             new Error(`Data source configuration not found: ${configInfo.sId}`)
           );
         }
-        const dataSourceViewSId = DataSourceViewResource.modelIdToSId({
+        const dataSourceViewId = DataSourceViewResource.modelIdToSId({
           id: agentConfig.dataSourceViewId,
           workspaceId: agentConfig.workspaceId,
         });
 
-        const dataSourceView = dataSourceViewsMap.get(dataSourceViewSId);
+        const dataSourceView = dataSourceViewsMap.get(dataSourceViewId);
         if (!dataSourceView || !dataSourceView.canRead(auth)) {
           return new Err(
-            new Error(`Data source view not found: ${dataSourceViewSId}`)
+            new Error(`Data source view not found: ${dataSourceViewId}`)
           );
         }
 
         const resolved: ResolvedDataSourceConfiguration = {
           workspaceId: auth.getNonNullableWorkspace().sId,
-          dataSourceViewId: dataSourceViewSId,
+          dataSourceViewId,
           filter: {
             parents: {
               in: agentConfig.parentsIn ?? null,

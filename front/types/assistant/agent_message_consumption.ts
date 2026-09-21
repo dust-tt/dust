@@ -4,6 +4,22 @@ import type {
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 
+export const AGENT_MESSAGE_CONSUMPTION_MODES = [
+  "off",
+  "shadow",
+  "live",
+] as const;
+
+export type AgentMessageConsumptionMode =
+  (typeof AGENT_MESSAGE_CONSUMPTION_MODES)[number];
+
+export const ENABLED_AGENT_MESSAGE_CONSUMPTION_MODES = Object.freeze(
+  AGENT_MESSAGE_CONSUMPTION_MODES.filter((mode) => mode !== "off")
+);
+
+export type EnabledAgentMessageConsumptionMode =
+  (typeof ENABLED_AGENT_MESSAGE_CONSUMPTION_MODES)[number];
+
 export const AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES = [
   "system",
   "input",

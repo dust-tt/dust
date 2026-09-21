@@ -15,7 +15,6 @@ export * from "./create_space";
 export * from "./delete_labs_transcript_histories";
 export * from "./delete_workspace";
 export * from "./disable_sso_enforcement";
-export * from "./extend_trial";
 export * from "./extension_blacklist_domains";
 export * from "./grant_awu_credits";
 export * from "./grant_user_free_credits";

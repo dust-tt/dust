@@ -52,6 +52,7 @@ import type {
   MetronomeUsageWithGroupsResponse,
 } from "./types";
 import {
+  classifyMetronomePackageBillingAnchorByName,
   classifyMetronomePackageByName,
   classifyMetronomePackageCurrencyByName,
   DEFAULT_METRONOME_STRIPE_COLLECTION_METHOD,
@@ -728,9 +729,10 @@ export async function listMetronomePackages(): Promise<
           pkg.overrides,
           filteredSeatTypes
         ),
-        // billing_anchor_date is not exposed on PackageListResponse; default to
-        // contract_start_date which all current packages use.
-        billingAnchor: "contract_start_date" as const,
+        // billing_anchor_date is not exposed on PackageListResponse; infer it
+        // from the package name (the "(1st of month)" variants bill on calendar
+        // boundaries). Consumers key seat-commitment access tranches off this.
+        billingAnchor: classifyMetronomePackageBillingAnchorByName(name),
       });
     }
     packages.sort(comparePackagesForDisplay);

@@ -4,6 +4,7 @@ import {
   getEffortStopTooltip,
   getInitialEffort,
   getModelTier,
+  getPinnedModelRetryTier,
   getTierLockReason,
   isModelHostedInRegion,
   isPremiumModel,
@@ -38,6 +39,81 @@ import { describe, expect, it } from "vitest";
 
 const GATED = { lockPremiumEfforts: true };
 const UNGATED = { lockPremiumEfforts: false };
+
+describe("getPinnedModelRetryTier", () => {
+  const sonnetLight = {
+    providerId: "anthropic" as const,
+    modelId: CLAUDE_SONNET_5_MODEL_ID,
+    reasoningEffort: "light" as const,
+  };
+
+  for (const errorCategory of [
+    "retryable_model_error",
+    "provider_internal_error",
+    "stream_error",
+    "empty_content",
+  ] as const) {
+    it(`offers the model's tier for ${errorCategory}`, () => {
+      expect(
+        getPinnedModelRetryTier({
+          failedModel: sonnetLight,
+          modelResolutionMethod: "user",
+          errorCategory,
+        })
+      ).toBe("fast");
+    });
+  }
+
+  it("offers the tier for an agent-configured pinned model", () => {
+    expect(
+      getPinnedModelRetryTier({
+        failedModel: sonnetLight,
+        modelResolutionMethod: "agent",
+        errorCategory: "provider_internal_error",
+      })
+    ).toBe("fast");
+  });
+
+  it("offers the tier when the resolution method is unknown", () => {
+    expect(
+      getPinnedModelRetryTier({
+        failedModel: sonnetLight,
+        modelResolutionMethod: null,
+        errorCategory: "provider_internal_error",
+      })
+    ).toBe("fast");
+  });
+
+  it("does not offer a tier for stream-resolved failures", () => {
+    expect(
+      getPinnedModelRetryTier({
+        failedModel: sonnetLight,
+        modelResolutionMethod: "auto",
+        errorCategory: "provider_internal_error",
+      })
+    ).toBeNull();
+  });
+
+  it("does not offer a tier after a fair-use downgrade", () => {
+    expect(
+      getPinnedModelRetryTier({
+        failedModel: sonnetLight,
+        modelResolutionMethod: "fair_use_downgrade",
+        errorCategory: "provider_internal_error",
+      })
+    ).toBeNull();
+  });
+
+  it("rejects non-model errors", () => {
+    expect(
+      getPinnedModelRetryTier({
+        failedModel: sonnetLight,
+        modelResolutionMethod: "user",
+        errorCategory: "context_window_exceeded",
+      })
+    ).toBeNull();
+  });
+});
 
 const unavailabilityReasonByEffort = (
   stops: ReturnType<typeof getEffortStops>

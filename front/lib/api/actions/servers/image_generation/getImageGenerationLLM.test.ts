@@ -69,7 +69,6 @@ function makeAuth(): Authenticator {
       id: -1,
       sId: "test-subscription",
       status: "active",
-      trialing: null,
       paymentFailingSince: null,
       startDate: new Date(),
       endDate: null,

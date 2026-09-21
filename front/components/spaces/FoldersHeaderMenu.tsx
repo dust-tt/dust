@@ -46,7 +46,7 @@ export const FoldersHeaderMenu = ({
         <Tooltip
           label={
             space.kind === "global"
-              ? `Only builders of the workspace can add data in the ${GLOBAL_SPACE_NAME} space.`
+              ? `You need write access to add data in the ${GLOBAL_SPACE_NAME} space.`
               : `Only members of the space can add data.`
           }
           side="top"
@@ -69,7 +69,7 @@ export const FoldersHeaderMenu = ({
         <Tooltip
           label={
             space.kind === "global"
-              ? `Only builders of the workspace can edit a folder in the ${GLOBAL_SPACE_NAME} space.`
+              ? `You need write access to edit a folder in the ${GLOBAL_SPACE_NAME} space.`
               : `Only members of the space can edit a folder.`
           }
           side="top"

@@ -1,5 +1,7 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { isSseVerbose, setSseVerbose } from "@app/lib/client/sse_verbose";
 import type { ReactNode } from "react";
+import { useState } from "react";
 
 import { getFeatureFlagOverrides } from "./devFeatureFlagOverrides";
 import type { ExpandedPanel } from "./devModeConfig";
@@ -30,6 +32,7 @@ export function ToolbarControls({
   compact,
 }: ToolbarControlsProps) {
   const { theme, setTheme } = useTheme();
+  const [sseVerbose, setSseVerboseState] = useState(isSseVerbose);
   const overrideCount = Object.keys(getFeatureFlagOverrides()).length;
   const colorOverrideCount = Object.keys(readColorOverrides()).length;
   const fontFamilyOverrides = readFontFamilyOverrides();
@@ -77,6 +80,20 @@ export function ToolbarControls({
           {typoOverrideCount > 0 && (
             <span style={S.dockedBadge}>{typoOverrideCount}</span>
           )}
+        </button>
+        <span style={S.dockedSep} />
+        <button
+          type="button"
+          style={S.dockedTextBtn(sseVerbose)}
+          aria-pressed={sseVerbose}
+          title="Log SSE connection activity in the browser console"
+          onClick={() => {
+            const enabled = !sseVerbose;
+            setSseVerbose(enabled);
+            setSseVerboseState(enabled);
+          }}
+        >
+          {compact ? "SSE" : "SSE Logs"}
         </button>
       </div>
 

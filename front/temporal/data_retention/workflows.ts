@@ -48,26 +48,37 @@ export async function dataRetentionWorkflow(): Promise<void> {
 }
 
 /**
- * Batches one workflow run may process before it stops and leaves the rest to the next run, so a
- * large backlog cannot keep the activity queue busy indefinitely.
+ * Batches each sweep may process in one workflow run before it stops and leaves the rest to the
+ * next run, so a large backlog cannot keep the activity queue busy indefinitely.
  *
  * Declared here rather than in `config.ts`: workflow code is bundled by webpack without the
  * tsconfig path plugin in development, so it must not reach for an `@app/*` module — directly or
- * through one, as `config.ts` does for `EnvironmentConfig`.
+ * through one, as `config.ts` does for `ONE_DAY_MS`.
  */
 const FRAME_FUNCTION_INVOCATION_MAX_BATCHES_PER_RUN = 500;
+const FRAME_PUBLICATION_MAX_BATCHES_PER_RUN = 100;
 
-const { purgeExpiredFrameFunctionInvocationsActivity } = proxyActivities<
-  typeof activities
->({
+const {
+  purgeExpiredFrameFunctionInvocationsActivity,
+  purgeStaleFramePublicationsActivity,
+} = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
+
+/**
+ * Delete Frame function invocations past the retention window, then the superseded publications
+ * the first sweep has just unblocked.
+ */
+export async function framesRetentionWorkflow(): Promise<void> {
+  await purgeExpiredInvocations();
+  await purgeStalePublications();
+}
 
 /**
  * Delete Frame function invocations past the retention window, oldest first, until the sweep
  * runs out of expired rows or hits its per-run batch limit.
  */
-export async function framesRetentionWorkflow(): Promise<void> {
+async function purgeExpiredInvocations(): Promise<void> {
   let afterModelId: ModelId | null = null;
   let deletedInvocationCount = 0;
   let deletedMCPActionCount = 0;
@@ -107,4 +118,57 @@ export async function framesRetentionWorkflow(): Promise<void> {
     processedBatches: FRAME_FUNCTION_INVOCATION_MAX_BATCHES_PER_RUN,
     scannedCount,
   });
+}
+
+/**
+ * Delete every Frame's superseded publications: their function rows and their GCS prefix. Runs
+ * after the invocation sweep, which is what frees publications whose functions still had runs on
+ * record.
+ */
+async function purgeStalePublications(): Promise<void> {
+  let afterModelId: ModelId | null = null;
+  let deletedFunctionCount = 0;
+  let deletedPublicationCount = 0;
+  let scannedFrameCount = 0;
+  let unreadablePublicationCount = 0;
+
+  for (
+    let processedBatches = 0;
+    processedBatches < FRAME_PUBLICATION_MAX_BATCHES_PER_RUN;
+    processedBatches += 1
+  ) {
+    const result: activities.PurgeStaleFramePublicationsActivityResult =
+      await purgeStaleFramePublicationsActivity({ afterModelId });
+    deletedFunctionCount += result.deletedFunctionCount;
+    deletedPublicationCount += result.deletedPublicationCount;
+    scannedFrameCount += result.scannedFrameCount;
+    unreadablePublicationCount += result.unreadablePublicationCount;
+
+    if (result.nextAfterModelId === null) {
+      log.info("[Frames Retention] Publication sweep complete.", {
+        deletedFunctionCount,
+        deletedPublicationCount,
+        processedBatches: processedBatches + 1,
+        scannedFrameCount,
+        unreadablePublicationCount,
+      });
+
+      return;
+    }
+
+    afterModelId = result.nextAfterModelId;
+  }
+
+  // Not an error: the next scheduled run resumes from the Frames this one did not reach.
+  log.warn(
+    "[Frames Retention] Publication sweep hit its per-run batch limit.",
+    {
+      afterModelId,
+      deletedFunctionCount,
+      deletedPublicationCount,
+      processedBatches: FRAME_PUBLICATION_MAX_BATCHES_PER_RUN,
+      scannedFrameCount,
+      unreadablePublicationCount,
+    }
+  );
 }

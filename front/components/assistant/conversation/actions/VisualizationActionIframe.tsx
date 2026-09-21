@@ -7,6 +7,11 @@ import type {
   SandboxFunctionMCPApproveExecutionEvent,
   SandboxFunctionToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
+import {
+  isFramePackageRelativePath,
+  parseFramePackageRelativePath,
+  resolvePackageRelativeToScopedPath,
+} from "@app/lib/api/frames/package_file_ref_paths";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -29,7 +34,10 @@ import type {
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
-import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
+import {
+  isVisualizationRPCRequest,
+  TailwindMissingClassesMessageSchema,
+} from "@app/types/assistant/visualization";
 import { isAPIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -348,7 +356,7 @@ function SandboxFunctionInvocation({
     buildEventSourceURL,
     onEventCallback,
     `sandbox-function-invocation-${invocationId}`,
-    { onTerminalError }
+    { onTerminalError, workspaceId }
   );
 
   return null;
@@ -434,6 +442,12 @@ function nextBlockedActionGroup(
 }
 
 // Custom hook to encapsulate the logic for handling visualization messages.
+/**
+ * @cc [owner:flvndvd,label:security] frame-style-diagnostics-source
+ * Missing-style diagnostics MUST be schema-validated and originate from this
+ * Frame's iframe window with its matching identifier before they are logged.
+ * They MUST NOT set the Frame's error state or block rendering.
+ */
 function useVisualizationDataHandler({
   conversationId,
   createSandboxFunctionInvocation,
@@ -499,6 +513,22 @@ function useVisualizationDataHandler({
 
       const isOriginatingFromViz =
         event.source && event.source === vizIframeRef.current?.contentWindow;
+
+      const missingStyles = TailwindMissingClassesMessageSchema.safeParse(data);
+      if (
+        missingStyles.success &&
+        isOriginatingFromViz &&
+        missingStyles.data.identifier === visualization.identifier
+      ) {
+        datadogLogger.info("Frame uses unavailable Tailwind classes", {
+          fileId: visualization.identifier,
+          workspaceId,
+          conversationId,
+          buildId: missingStyles.data.buildId,
+          classNames: missingStyles.data.classNames,
+        });
+        return;
+      }
 
       // Handle EXPORT_ERROR messages
       if (
@@ -697,14 +727,38 @@ function CodeDrawer({
   );
 }
 
+/**
+ * Derive the Frame package root from a host-provided path. Hosts may pass either:
+ * - a package directory (`conversation-…/MyFrame` from permissions.packageRoot), or
+ * - an entry/manifest file under that directory (`…/manifest.json`, `…/App.tsx`).
+ */
+function resolveFramePackageRoot(
+  framePath: string | null | undefined
+): string | null {
+  if (!framePath) {
+    return null;
+  }
+  const normalized = framePath.replace(/\/+$/, "");
+  if (!normalized.includes("/")) {
+    return null;
+  }
+  const base = normalized.slice(normalized.lastIndexOf("/") + 1);
+  const looksLikeEntryFile =
+    base === "manifest.json" || /\.[A-Za-z0-9]+$/.test(base);
+  if (looksLikeEntryFile) {
+    return normalized.slice(0, normalized.lastIndexOf("/")) || null;
+  }
+  return normalized;
+}
+
 export interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
   canInvokeFunctions: boolean;
   conversationId: string | null;
   /**
-   * Canonical scoped path of the Frame being rendered (`pod-{podId}/MyApp/MyApp.tsx`), when the host
-   * knows it. Only Pod hosts do, and it is what lets a Frame in an app folder call its functions by
-   * bare name; without it, relative references are refused.
+   * Canonical scoped path of the Frame being rendered (`pod-{podId}/MyApp/MyApp.tsx` or a Frames
+   * v2 `…/manifest.json`), when the host knows it. Used to resolve package-relative `useFile`
+   * paths and (for legacy Pod Frames) bare function names.
    */
   framePath?: string | null;
   /** Stable identity of a Frames v2 resource. Omit for legacy Frames and raw visualizations. */
@@ -900,6 +954,25 @@ export const VisualizationActionIframe = forwardRef<
           ? fileId.slice("pod/".length)
           : fileId.slice("project/".length);
         url = `/api/w/${workspaceId}/files/path/pod-${spaceId}/${rel}`;
+      } else if (isFramePackageRelativePath(fileId)) {
+        // Frames v2 package-relative useFile("./data.csv") — resolve against the Frame folder.
+        const packageRoot = resolveFramePackageRoot(props.framePath);
+        const relativePath = parseFramePackageRelativePath(fileId);
+        if (!packageRoot || !relativePath) {
+          return null;
+        }
+        const canonicalPath = resolvePackageRelativeToScopedPath({
+          relativePath,
+          frameRoot: packageRoot,
+        });
+        if (!canonicalPath) {
+          return null;
+        }
+        const encodedPath = canonicalPath
+          .split("/")
+          .map(encodeURIComponent)
+          .join("/");
+        url = `/api/w/${workspaceId}/files/path/${encodedPath}`;
       } else {
         url = `/api/w/${workspaceId}/files/${fileId}?action=view`;
       }
@@ -915,7 +988,7 @@ export const VisualizationActionIframe = forwardRef<
         type: response.headers.get("Content-Type") ?? undefined,
       });
     },
-    [workspaceId, conversationId, spaceId]
+    [workspaceId, conversationId, spaceId, props.framePath]
   );
 
   const createSandboxFunctionInvocation = useCallback(
