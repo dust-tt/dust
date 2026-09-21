@@ -8,6 +8,7 @@ import type {
   SkillWithoutInstructionsAndToolsWithRelationsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import type { UserType } from "@app/types/user";
 
 export type GetSkillsResponseBody = {
   skills: (SkillWithoutInstructionsAndToolsType & {
@@ -35,6 +36,7 @@ export type SkillSearchSort = "relevance" | "usage";
 
 export type SearchSkillsResponseBody = {
   skills: SkillListItemType[];
+  editors: Pick<UserType, "sId" | "fullName" | "image">[];
   hasMore: boolean;
   nextCursor: string | null;
 };

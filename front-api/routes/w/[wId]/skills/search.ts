@@ -1,4 +1,6 @@
 import { searchSkills } from "@app/lib/api/skills/search";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { SearchSkillsQuerySchema } from "@app/lib/skill_search/query_schema";
 import logger from "@app/logger/logger";
 import type { SearchSkillsResponseBody } from "@app/types/api/skills";
@@ -80,7 +82,29 @@ app.post(
       });
     }
 
-    return ctx.json(result.value);
+    const editorIds = [
+      ...new Set(result.value.skills.flatMap((skill) => skill.editorIds)),
+    ];
+    if (editorIds.length === 0) {
+      return ctx.json({ ...result.value, editors: [] });
+    }
+
+    const users = await UserResource.fetchByIds(editorIds);
+    const { memberships } = await MembershipResource.getLatestMemberships({
+      users,
+      workspace: auth.getNonNullableWorkspace(),
+    });
+    const memberIds = new Set(
+      memberships.map((membership) => membership.userId)
+    );
+    const editors = users
+      .filter((user) => memberIds.has(user.id))
+      .map((user) => {
+        const { sId, fullName, image } = user.toJSON();
+        return { sId, fullName, image };
+      });
+
+    return ctx.json({ ...result.value, editors });
   }
 );
 

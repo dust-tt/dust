@@ -1,6 +1,7 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -53,7 +54,8 @@ describe("POST /api/w/:wId/skills/search", () => {
     0,
     null,
   ])("routes search results with updatedAt=%s", async (updatedAt) => {
-    const { workspace } = await setup();
+    const { workspace, user } = await setup();
+    const nonMember = await UserFactory.basic();
     searchSkills.mockResolvedValue(
       new Ok({
         skills: [
@@ -61,7 +63,7 @@ describe("POST /api/w/:wId/skills/search", () => {
             status: "active",
             availability: "workspace_users",
             mcpServerViewIds: [],
-            editorIds: [],
+            editorIds: [user.sId, nonMember.sId, user.sId, "missing-user"],
             activeUsersCount: null,
             updatedAt,
             icon: null,
@@ -96,12 +98,19 @@ describe("POST /api/w/:wId/skills/search", () => {
     expect(await response.json()).toEqual({
       hasMore: false,
       nextCursor: null,
+      editors: [
+        {
+          sId: user.sId,
+          fullName: user.toJSON().fullName,
+          image: user.toJSON().image,
+        },
+      ],
       skills: [
         {
           status: "active",
           availability: "workspace_users",
           mcpServerViewIds: [],
-          editorIds: [],
+          editorIds: [user.sId, nonMember.sId, user.sId, "missing-user"],
           activeUsersCount: null,
           updatedAt,
           icon: null,
@@ -141,7 +150,12 @@ describe("POST /api/w/:wId/skills/search", () => {
       },
     });
     const body = await response.json();
-    expect(body).toEqual({ skills: [], hasMore: true, nextCursor: cursor });
+    expect(body).toEqual({
+      skills: [],
+      editors: [],
+      hasMore: true,
+      nextCursor: cursor,
+    });
   });
 
   it.each([
