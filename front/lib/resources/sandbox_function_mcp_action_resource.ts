@@ -7,6 +7,8 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
   deleteContentsFromGcs,
   MCP_OUTPUT_ITEMS_PREFIX,
+  readStagedSandboxFunctionActionOutput,
+  stageSandboxFunctionActionOutput,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -311,9 +313,11 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
     return `w/${auth.getNonNullableWorkspace().sId}/${MCP_OUTPUT_ITEMS_PREFIX}/${this.sId}/output.json`;
   }
 
-  // Writes the full content array to a single GCS object and records its path on the row. Written
-  // exactly once, at tool completion. Returns the stored contents in the generic tool output item
-  // shape shared with AgentMCPActionResource.createOutputItems.
+  // Writes the full content array to a single GCS object and records its path on the row.
+  // Stages the output in Redis first so poll can return before GCS finishes when
+  // `deferDurablePersist` is set — await {@link awaitDeferredOutputPersist} before the
+  // activity ends. Returns the stored contents in the generic tool output item shape shared
+  // with AgentMCPActionResource.createOutputItems.
   // When the tool result carries a structuredContent payload, the object is a versioned envelope
   // instead of a bare array; see `parseOutputObject`.
   async createOutputItems(
@@ -322,20 +326,73 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       content: CallToolResult["content"][number];
       fileId?: ModelId;
     }>,
-    options?: { structuredContent?: CallToolResult["structuredContent"] }
+    options?: {
+      structuredContent?: CallToolResult["structuredContent"];
+      deferDurablePersist?: boolean;
+    }
   ): Promise<Result<ToolOutputItemType[], Error>> {
-    const gcsPath = this.outputGcsPathFor(auth);
-    const file = getPrivateUploadBucket().file(gcsPath);
     const content = contents.map((c) => c.content);
-    const json = JSON.stringify(
+    const outputObject =
       options?.structuredContent !== undefined
         ? {
             version: OUTPUT_ENVELOPE_VERSION,
             content,
             structuredContent: options.structuredContent,
           }
-        : content
+        : content;
+
+    let staged = false;
+    try {
+      await stageSandboxFunctionActionOutput(auth, this.sId, outputObject);
+      staged = true;
+    } catch (err) {
+      logger.warn(
+        { err: normalizeError(err), actionId: this.sId },
+        "Failed to stage sandbox function MCP action output in Redis"
+      );
+    }
+
+    const durablePersist = this.persistOutputToGcs(auth, outputObject);
+
+    if (options?.deferDurablePersist && staged) {
+      // Poll can read the stage; GCS finishes after markAsSucceeded.
+      this.deferredOutputPersist = durablePersist;
+    } else {
+      // No reliable stage (or caller wants sync durability): await GCS before return.
+      const persistResult = await durablePersist;
+      if (persistResult.isErr()) {
+        return new Err(persistResult.error);
+      }
+    }
+
+    return new Ok(
+      contents.map((c) => ({
+        content: c.content,
+        fileId: c.fileId ?? null,
+        file: null,
+        workspaceId: this.workspaceId,
+      }))
     );
+  }
+
+  private deferredOutputPersist: Promise<Result<void, Error>> | undefined;
+
+  async awaitDeferredOutputPersist(): Promise<Result<void, Error>> {
+    const pending = this.deferredOutputPersist;
+    this.deferredOutputPersist = undefined;
+    if (!pending) {
+      return new Ok(undefined);
+    }
+    return pending;
+  }
+
+  private async persistOutputToGcs(
+    auth: Authenticator,
+    outputObject: unknown
+  ): Promise<Result<void, Error>> {
+    const gcsPath = this.outputGcsPathFor(auth);
+    const file = getPrivateUploadBucket().file(gcsPath);
+    const json = JSON.stringify(outputObject);
 
     const writeResult = await withRetry(() =>
       file.save(Buffer.from(json, "utf-8"), {
@@ -376,20 +433,25 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       return new Err(normalizeError(err));
     }
 
-    return new Ok(
-      contents.map((c) => ({
-        content: c.content,
-        fileId: c.fileId ?? null,
-        file: null,
-        workspaceId: this.workspaceId,
-      }))
-    );
+    return new Ok(undefined);
   }
 
   async readOutput(): Promise<
     Result<SandboxFunctionMCPActionOutput | null, Error>
   > {
+    // Before the GCS path is recorded, serve the Redis stage (write-behind window).
     if (!this.outputGcsPath) {
+      try {
+        const staged = await readStagedSandboxFunctionActionOutput(this.sId);
+        if (staged !== null) {
+          return parseOutputObject(staged);
+        }
+      } catch (err) {
+        logger.warn(
+          { err: normalizeError(err), actionId: this.sId },
+          "Failed to read staged sandbox function MCP action output"
+        );
+      }
       return new Ok(null);
     }
 
