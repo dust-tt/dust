@@ -6,6 +6,7 @@ import React from "react";
 import { DocumentBlockMenu, useDocumentBlockMenu } from "./DocumentBlockMenu";
 import { DocumentSaveStatus } from "./DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "./DocumentSelectionToolbar";
+import { DocumentSourcePreview } from "./DocumentSourcePreview";
 import type { DocumentProps } from "./types";
 import { useDocumentEditor } from "./useDocumentEditor";
 
@@ -29,19 +30,29 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 export const Document = ({
   initialContent,
   contentType = "markdown",
+  saveFormat = "json",
   className,
   readOnly = false,
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
 }: DocumentProps) => {
-  const { editor, editable, valid, dirty, saving, error, save } =
-    useDocumentEditor({
-      initialContent,
-      contentType,
-      readOnly,
-      autosaveDebounceMs,
-      onSave,
-    });
+  const {
+    editor,
+    editable,
+    valid,
+    unsupportedMarkdown,
+    dirty,
+    saving,
+    error,
+    save,
+  } = useDocumentEditor({
+    initialContent,
+    contentType,
+    saveFormat,
+    readOnly,
+    autosaveDebounceMs,
+    onSave,
+  });
   const blockMenu = useDocumentBlockMenu(editor, editable);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
@@ -66,6 +77,15 @@ export const Document = ({
 
     blockMenu.onKeyDown(event);
   };
+
+  if (unsupportedMarkdown !== null) {
+    return (
+      <DocumentSourcePreview
+        source={unsupportedMarkdown}
+        className={className}
+      />
+    );
+  }
 
   if (!valid) {
     return (

@@ -7,15 +7,19 @@ import {
   useRef,
   useState,
 } from "react";
-import { documentExtensions, parseDocumentContent } from "./extensions";
+import { parseDocumentContent, serializeDocumentMarkdown } from "./content";
+import { documentExtensions } from "./extensions";
 import type { DocumentProps, DocumentSaveResult } from "./types";
 
 const SAVE_ERROR_MESSAGE =
   "Could not save. Your changes are still here. Try again.";
+const MARKDOWN_SAVE_ERROR_MESSAGE =
+  "This formatting cannot be saved as Markdown yet. Your changes are still here. Undo the last edit to try again.";
 
 interface UseDocumentEditorProps {
   initialContent: string;
   contentType: "markdown" | "json";
+  saveFormat?: DocumentProps["saveFormat"];
   readOnly: boolean;
   autosaveDebounceMs: number;
   onSave: DocumentProps["onSave"];
@@ -37,9 +41,15 @@ interface UseDocumentEditorProps {
  * Parent renders and callback identity changes MUST NOT restart the debounce. Saves MUST use
  * the latest committed callback.
  */
+/**
+ * @cc [owner:flvndvd,label:product] document-save-format
+ * Saves MUST default to JSON regardless of the input format. Markdown saves MUST use the
+ * committed saveFormat. Opening a document or changing its output format MUST NOT write it.
+ */
 export const useDocumentEditor = ({
   initialContent,
   contentType,
+  saveFormat = "json",
   readOnly,
   autosaveDebounceMs,
   onSave,
@@ -47,6 +57,7 @@ export const useDocumentEditor = ({
   const [initial] = useState(() => ({
     ...parseDocumentContent(initialContent, contentType),
     contentType,
+    source: initialContent,
   }));
   const [baseline, setBaseline] = useState<string | null>(null);
   const [draft, setDraft] = useState<string | null>(null);
@@ -54,16 +65,16 @@ export const useDocumentEditor = ({
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
   const editable = !readOnly && onSave !== undefined && initial.ok;
-  const persistenceRef = useRef({ onSave, editable, baseline });
+  const persistenceRef = useRef({ onSave, editable, baseline, saveFormat });
 
   useLayoutEffect(() => {
-    persistenceRef.current = { onSave, editable, baseline };
-  }, [onSave, editable, baseline]);
+    persistenceRef.current = { onSave, editable, baseline, saveFormat };
+  }, [onSave, editable, baseline, saveFormat]);
 
   const editor = useEditor({
     extensions: documentExtensions,
     content: initial.ok ? initial.content : "",
-    contentType: initial.contentType,
+    contentType: "json",
     immediatelyRender: false,
     editable,
     editorProps: {
@@ -110,6 +121,7 @@ export const useDocumentEditor = ({
       onSave: persist,
       editable: canSave,
       baseline: savedContent,
+      saveFormat: format,
     } = persistenceRef.current;
 
     if (
@@ -122,9 +134,18 @@ export const useDocumentEditor = ({
       return;
     }
 
-    const content = JSON.stringify(editor.getJSON());
+    const document = editor.getJSON();
+    const content = JSON.stringify(document);
 
     if (content === savedContent) {
+      return;
+    }
+
+    const serialized =
+      format === "markdown" ? serializeDocumentMarkdown(document) : content;
+
+    if (serialized === null) {
+      setError(MARKDOWN_SAVE_ERROR_MESSAGE);
       return;
     }
 
@@ -134,7 +155,7 @@ export const useDocumentEditor = ({
 
     let result: DocumentSaveResult;
     try {
-      result = await persist(content);
+      result = await persist(serialized);
     } catch {
       result = { ok: false, error: SAVE_ERROR_MESSAGE };
     }
@@ -161,5 +182,15 @@ export const useDocumentEditor = ({
     return () => clearTimeout(timeout);
   }, [draft, dirty, saving, error, editable, save, autosaveDebounceMs]);
 
-  return { editor, editable, valid: initial.ok, dirty, saving, error, save };
+  return {
+    editor,
+    editable,
+    valid: initial.ok,
+    unsupportedMarkdown:
+      !initial.ok && initial.contentType === "markdown" ? initial.source : null,
+    dirty,
+    saving,
+    error,
+    save,
+  };
 };
