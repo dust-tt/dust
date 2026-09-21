@@ -7,7 +7,7 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { compareForAutocompleteSort, subFilter } from "@app/lib/utils";
-import type { GetSkillsResponseBody } from "@app/types/api/skills";
+import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import React from "react";
 
 export const SELECT_SKILL_SLASH_COMMAND_ACTION = "select-skill";
@@ -135,15 +135,9 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
 }
 
 export type SlashCommandSkillSuggestion = Pick<
-  GetSkillsResponseBody["skills"][number],
-  | "editedBy"
-  | "icon"
-  | "isFavorite"
-  | "name"
-  | "requestedSpaceIds"
-  | "sId"
-  | "userFacingDescription"
->;
+  SkillListItemType,
+  "icon" | "name" | "requestedSpaceIds" | "sId" | "userFacingDescription"
+> & { isFavorite?: boolean };
 
 export type SlashCommandToolSuggestion<
   V extends MCPServerViewLightType = MCPServerViewLightType,
