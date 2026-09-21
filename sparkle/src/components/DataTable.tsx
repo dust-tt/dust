@@ -255,6 +255,10 @@ interface DataTableProps<TData extends TBaseData> {
   disableRowClickSelection?: boolean;
   /** Row height scale: 40px compact, 48px default, 64px relaxed. Cell helpers and the skeleton follow it. */
   density?: DataTableDensity;
+  /** Dims the current rows in place while new data loads, keeping header, filter and pagination usable. */
+  isLoading?: boolean;
+  /** Rendered as a single full-width row when there are no rows to show. */
+  emptyState?: ReactNode;
   /** Human-readable label per row, used to name the selection checkbox ("Select {label}"). */
   getRowLabel?: (row: TData) => string;
 }
@@ -381,6 +385,8 @@ export function DataTable<TData extends TBaseData>({
   hideRowDivider = false,
   disableRowClickSelection = false,
   density = "default",
+  isLoading = false,
+  emptyState,
   getRowLabel,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
@@ -472,6 +478,14 @@ export function DataTable<TData extends TBaseData>({
     !!onLoadMore && !pagination
   );
 
+  const isColumnVisible = (columnId: string) =>
+    !!windowSize.width &&
+    shouldRenderColumn(windowSize.width, columnsBreakpoints[columnId]);
+
+  const visibleColumnCount = table
+    .getVisibleLeafColumns()
+    .filter((column) => isColumnVisible(column.id)).length;
+
   return (
     <DataTableDensityContext.Provider value={density}>
       <div className={cn("flex flex-col gap-2", className, widthClassName)}>
@@ -483,11 +497,7 @@ export function DataTable<TData extends TBaseData>({
                 widthClassName={widthClassName}
               >
                 {headerGroup.headers.map((header) => {
-                  const breakpoint = columnsBreakpoints[header.id];
-                  if (
-                    !windowSize.width ||
-                    !shouldRenderColumn(windowSize.width, breakpoint)
-                  ) {
+                  if (!isColumnVisible(header.id)) {
                     return null;
                   }
                   const canSort =
@@ -510,7 +520,13 @@ export function DataTable<TData extends TBaseData>({
               </DataTable.Row>
             ))}
           </DataTable.Header>
-          <DataTable.Body>
+          <DataTable.Body
+            aria-busy={isLoading || undefined}
+            className={cn(
+              isLoading &&
+                "pointer-events-none opacity-50 transition-opacity duration-enter ease-enter motion-reduce:transition-none"
+            )}
+          >
             {rows.map((row) => {
               const handleRowClick = () => {
                 if (enableRowSelection && row.getCanSelect()) {
@@ -538,11 +554,7 @@ export function DataTable<TData extends TBaseData>({
                   })}
                 >
                   {row.getVisibleCells().map((cell) => {
-                    const breakpoint = columnsBreakpoints[cell.column.id];
-                    if (
-                      !windowSize.width ||
-                      !shouldRenderColumn(windowSize.width, breakpoint)
-                    ) {
+                    if (!isColumnVisible(cell.column.id)) {
                       return null;
                     }
                     return (
@@ -557,6 +569,16 @@ export function DataTable<TData extends TBaseData>({
                 </DataTable.Row>
               );
             })}
+            {rows.length === 0 && emptyState !== undefined && (
+              <tr>
+                <td
+                  colSpan={Math.max(visibleColumnCount, 1)}
+                  className="px-2 py-8 text-center text-sm text-muted-foreground"
+                >
+                  {emptyState}
+                </td>
+              </tr>
+            )}
           </DataTable.Body>
         </DataTable.Root>
         {pagination && (
@@ -615,7 +637,10 @@ function renderHeaderContent<TData>(
 }
 
 export interface ScrollableDataTableProps<TData extends TBaseData>
-  extends Omit<DataTableProps<TData>, "onLoadMore" | "isLoadingMore"> {
+  extends Omit<
+    DataTableProps<TData>,
+    "onLoadMore" | "isLoadingMore" | "isLoading" | "emptyState"
+  > {
   /** Height of the scroll container: a max-height class name, true to fill the parent (flex-1), or unset for the default max-h-100. */
   maxHeight?: string | boolean;
   /** Called when the user scrolls near the bottom — use it for infinite loading. */
