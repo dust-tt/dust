@@ -23,7 +23,7 @@ import { Err, Ok } from "@app/types/shared/result";
  */
 export async function suggestAgentCreation(
   auth: Authenticator,
-  { name, description, instructions }: SuggestAgentCreationArgs
+  { name, description, instructions, analysis }: SuggestAgentCreationArgs
 ): Promise<Result<AgentSuggestionResource, MCPError>> {
   const user = auth.user();
   if (!user) {
@@ -59,7 +59,7 @@ export async function suggestAgentCreation(
     {
       kind: "create",
       suggestion: { name, description, instructions },
-      analysis: null,
+      analysis: analysis ?? null,
       state: "pending",
       conversationId: null,
       source: "conversational",
