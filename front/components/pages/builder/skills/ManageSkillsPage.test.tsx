@@ -1,4 +1,5 @@
 import { ManageSkillsPage } from "@app/components/pages/builder/skills/ManageSkillsPage";
+import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
@@ -41,11 +42,13 @@ afterEach(() => {
 });
 
 async function setup({
+  entryPoint = "manage",
   deepLink = false,
   listed = true,
   isAdmin = true,
   skillOverrides = {},
 }: {
+  entryPoint?: "manage" | "reference";
   deepLink?: boolean;
   listed?: boolean;
   isAdmin?: boolean;
@@ -128,7 +131,18 @@ async function setup({
       >
         <FetcherProvider fetcher={fetcher} fetcherWithBody={vi.fn()}>
           <AuthContext.Provider value={context}>
-            <ManageSkillsPage />
+            {entryPoint === "manage" ? (
+              <ManageSkillsPage />
+            ) : (
+              <CapabilityDetailsSheets
+                owner={workspace}
+                user={context.user}
+                selectedSkillId={skill.sId}
+                selectedMCPServerView={null}
+                onCloseSkill={vi.fn()}
+                onCloseTool={vi.fn()}
+              />
+            )}
           </AuthContext.Provider>
         </FetcherProvider>
       </SWRConfig>
@@ -137,6 +151,25 @@ async function setup({
 }
 
 describe("Manage Skills detail loading", () => {
+  it("opens a readable editors-only skill from an existing reference for a non-editor", async () => {
+    const { details, mount } = await setup({
+      entryPoint: "reference",
+      isAdmin: false,
+      skillOverrides: {
+        availability: "editors",
+        canRead: true,
+        canWrite: false,
+        canAdministrate: false,
+      },
+    });
+    mount();
+    expect(
+      await screen.findByRole("heading", { name: "Fetched skill" })
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Skill not available")).not.toBeInTheDocument();
+    expect(details).toHaveBeenCalledTimes(1);
+  });
+
   it("fetches only the selected skill and uses its response for the whole sheet", async () => {
     const { skill, detailUrl, details, fetcher, mount } = await setup();
     const pending = Promise.withResolvers<{ skill: SkillWithRelationsType }>();

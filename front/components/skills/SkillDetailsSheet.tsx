@@ -28,6 +28,7 @@ interface SkillDetailsProps {
   skillId: string | null;
   onClose: () => void;
   showFavoriteButton?: boolean;
+  enforceDiscoveryVisibility?: boolean;
   owner: WorkspaceType;
   user: UserType;
   replaceOnEdit?: boolean;
@@ -53,6 +54,7 @@ export function SkillDetailsSheet({
   skillId,
   onClose,
   showFavoriteButton = false,
+  enforceDiscoveryVisibility = false,
   user,
   owner,
   replaceOnEdit,
@@ -69,8 +71,9 @@ export function SkillDetailsSheet({
   const { updateSkillFavorite } = useUpdateSkillFavorite({ owner });
   const isOpen = skillId !== null;
 
-  // Unpublished skills stay hidden from non-editors, except for suggestions they can manage.
+  // Discovery visibility does not restrict reading a skill through an existing reference.
   const isSkillHidden =
+    enforceDiscoveryVisibility &&
     skill !== null &&
     !isAdmin &&
     !(

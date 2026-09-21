@@ -334,6 +334,7 @@ export function ManageSkillsPage() {
         skillId={skillIdParam ?? null}
         onClose={() => handleSkillSelect(null)}
         showFavoriteButton
+        enforceDiscoveryVisibility
         user={user}
         owner={owner}
       />
