@@ -5,10 +5,9 @@ import type { SkillSuggestionKind } from "@app/types/suggestions/skill_suggestio
 type SkillSuggestionRequiredVerb = "write" | "admin";
 
 /**
- * @cc [owner:fabiencelier,label:security] skill-suggestion-kind-required-verb
- * Every `SkillSuggestionKind` MUST have an entry here, matching `skill-verbs` on `SkillResource`:
- * `editors` and `delete` are lifecycle operations and require `admin`, everything else edits
- * content and requires `write`.
+ * @cc [owner:avervaet,label:security] skill-suggestion-kind-required-verb
+ * Every `SkillSuggestionKind` MUST have an entry here: lifecycle operations (adding/removing
+ * editors, archiving) require `admin`, operations that only edit content require `write`.
  */
 const SKILL_SUGGESTION_KIND_REQUIRED_VERB: Record<
   SkillSuggestionKind,
