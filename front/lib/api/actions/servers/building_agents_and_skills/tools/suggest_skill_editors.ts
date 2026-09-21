@@ -3,6 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { formatSkillSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestSkillEditorsArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import type { Authenticator } from "@app/lib/auth";
@@ -95,9 +96,7 @@ export async function suggestSkillEditorsHandler(
   return new Ok([
     {
       type: "text" as const,
-      text:
-        `:skill_suggestion[]{sId=${created.sId} kind=${created.kind} ` +
-        `skillId=${created.skillConfigurationSId}}`,
+      text: formatSkillSuggestionDirective(created),
     },
   ]);
 }

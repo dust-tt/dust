@@ -3,6 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { formatSkillSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestSkillUserFacingDescriptionArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { pruneConflictingSkillUserFacingDescriptionSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -112,9 +113,7 @@ export async function suggestSkillUserFacingDescriptionHandler(
   return new Ok([
     {
       type: "text" as const,
-      text:
-        `:skill_suggestion[]{sId=${created.sId} kind=${created.kind} ` +
-        `skillId=${created.skillConfigurationSId}}`,
+      text: formatSkillSuggestionDirective(created),
     },
   ]);
 }
