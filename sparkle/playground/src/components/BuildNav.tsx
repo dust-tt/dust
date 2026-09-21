@@ -21,7 +21,7 @@ import {
   ShapesPlus,
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
 import {
   getCompanySpaceIcon,
@@ -31,11 +31,27 @@ import {
 import type { Space } from "../data/types";
 
 // What you build with, rather than what you work in: the pieces an agent is
-// made of, then the Spaces that hold the knowledge it reads. Everything here
-// only highlights — the sandbox has no builder pages behind it.
+// made of, then the Spaces that hold the knowledge it reads. Agents, Skills and
+// Tools open a screen; Connections and the Spaces only highlight, since the
+// sandbox has no pages behind them.
+
+/**
+ * The Build rows that have a screen, in the order the nav lists them.
+ * Everything else is highlight-only.
+ */
+export const BUILD_SECTIONS = ["agents", "skills", "tools"] as const;
+
+export type BuildSection = (typeof BUILD_SECTIONS)[number];
+
+export function isBuildSection(item: string): item is BuildSection {
+  return BUILD_SECTIONS.includes(item as BuildSection);
+}
 
 interface BuildNavProps {
-  /** Opens the templates view, the one Build entry with somewhere to go. */
+  /** The highlighted row, owned by the story so it can drive the panel. */
+  selectedItem: string;
+  onSelectItem: (item: string) => void;
+  /** Opens the templates view, reached from the "New agent" menu. */
   onNewAgentFromTemplate?: () => void;
 }
 
@@ -89,16 +105,18 @@ function NewSpaceButton() {
   );
 }
 
-export function BuildNav({ onNewAgentFromTemplate }: BuildNavProps) {
-  const [selectedItem, setSelectedItem] = useState("agents");
-
+export function BuildNav({
+  selectedItem,
+  onSelectItem,
+  onNewAgentFromTemplate,
+}: BuildNavProps) {
   const renderSpaceItem = (space: Space) => (
     <NavigationListItem
       key={space.id}
       label={space.name}
       icon={getCompanySpaceIcon(space)}
       selected={selectedItem === space.id}
-      onClick={() => setSelectedItem(space.id)}
+      onClick={() => onSelectItem(space.id)}
     />
   );
 
@@ -112,7 +130,7 @@ export function BuildNav({ onNewAgentFromTemplate }: BuildNavProps) {
             icon={Robot}
             label="Agents"
             selected={selectedItem === "agents"}
-            onClick={() => setSelectedItem("agents")}
+            onClick={() => onSelectItem("agents")}
             keepHoverOnMoreMenu
             moreMenu={
               <RowMenu>
@@ -140,7 +158,7 @@ export function BuildNav({ onNewAgentFromTemplate }: BuildNavProps) {
             icon={PuzzlePiece01}
             label="Skills"
             selected={selectedItem === "skills"}
-            onClick={() => setSelectedItem("skills")}
+            onClick={() => onSelectItem("skills")}
             keepHoverOnMoreMenu
             moreMenu={
               <RowMenu>
@@ -163,16 +181,16 @@ export function BuildNav({ onNewAgentFromTemplate }: BuildNavProps) {
             }
           />
           <NavigationListItem
-            icon={CloudArrowLeftRight}
-            label="Connections"
-            selected={selectedItem === "connections"}
-            onClick={() => setSelectedItem("connections")}
-          />
-          <NavigationListItem
             icon={ShapesPlus}
             label="Tools"
             selected={selectedItem === "tools"}
-            onClick={() => setSelectedItem("tools")}
+            onClick={() => onSelectItem("tools")}
+          />
+          <NavigationListItem
+            icon={CloudArrowLeftRight}
+            label="Connections"
+            selected={selectedItem === "connections"}
+            onClick={() => onSelectItem("connections")}
           />
         </NavigationList>
 
