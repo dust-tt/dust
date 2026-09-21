@@ -670,7 +670,18 @@ export class AgentResource
       return [];
     }
 
-    return this.fetchCurrentVersions(auth, { id: agentModelIds });
+    const agents = await AgentModel.findAll({
+      attributes: ["id", "sId"],
+      where: {
+        id: agentModelIds,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    const idsByModelId = new Map(agents.map((agent) => [agent.id, agent.sId]));
+    return this.fetchByIds(
+      auth,
+      removeNulls(agentModelIds.map((id) => idsByModelId.get(id)))
+    );
   }
 
   // Named `...WithAuth` because `BaseResource.fetchByModelId` already occupies the bare name with an
@@ -683,6 +694,12 @@ export class AgentResource
     return resource ?? null;
   }
 
+  /**
+   * @cc [owner:flvndvd,label:backend;security] agent-batch-reads
+   * Results MUST follow first-occurrence input order, omitting missing and unfetchable agents.
+   * All custom-agent cache misses in a call MUST load together, scoped to the caller's workspace.
+   * Both cache hits and misses MUST undergo caller-dependent materialization and permission checks.
+   */
   static async fetchByIds(
     auth: Authenticator,
     agentIds: string[]
@@ -691,17 +708,31 @@ export class AgentResource
       return [];
     }
 
-    const globalAgentIds = agentIds.filter(isGlobalAgentId);
-    const customAgentIds = agentIds.filter((id) => !isGlobalAgentId(id));
+    const uniqueAgentIds = uniq(agentIds);
+    const globalAgentIds = uniqueAgentIds.filter(isGlobalAgentId);
+    const customAgentIds = uniqueAgentIds.filter((id) => !isGlobalAgentId(id));
 
     const [customResources, globalResources] = await Promise.all([
-      customAgentIds.length > 0
-        ? this.fetchCurrentVersions(auth, { sId: customAgentIds })
-        : [],
+      this.cache.fetchMany(
+        customAgentIds.map((id) => ({
+          workspaceModelId: auth.getNonNullableWorkspace().id,
+          id,
+        }))
+      ),
       this.fetchGlobalAgents(auth, globalAgentIds),
     ]);
 
-    return [...customResources, ...globalResources];
+    const resourcesById = new Map(
+      [
+        ...customResources.map((resource) =>
+          this.materializeResource(auth, resource)
+        ),
+        ...globalResources,
+      ]
+        .filter((resource) => resource.canFetch(auth))
+        .map((resource) => [resource.sId, resource])
+    );
+    return removeNulls(uniqueAgentIds.map((id) => resourcesById.get(id)));
   }
 
   // Global agents are code-defined and have no `agent`/configuration rows, so they cannot be
@@ -725,31 +756,14 @@ export class AgentResource
     auth: Authenticator,
     agentId: string
   ): Promise<AgentResource | null> {
-    // Global agents have no configuration rows and are never cached; resolve them through the
-    // uncached global path (`fetchByIds` -> `fetchGlobalAgents`).
-    if (isGlobalAgentId(agentId)) {
-      const [resource] = await this.fetchByIds(auth, [agentId]);
-      return resource ?? null;
-    }
-
-    const cachedResource = await this.cache.fetch({
-      workspaceModelId: auth.getNonNullableWorkspace().id,
-      id: agentId,
-    });
-    if (!cachedResource) {
-      return null;
-    }
-
-    // `canFetch` and the read-access downgrade are caller-dependent, so they run here on a fresh
-    // instance, never cached. A caller holding no verb on the agent gets nothing.
-    const resource = this.materializeResource(auth, cachedResource);
-    return resource.canFetch(auth) ? resource : null;
+    const [resource] = await this.fetchByIds(auth, [agentId]);
+    return resource ?? null;
   }
 
   // Caller-independent query: the current `full` resource of each identified agent — the row whose
   // `version` equals the agent's `currentVersion` pointer, joined via the unique `(agentId, version)`
   // index — one per agent, scoped to the workspace. No read-access decision is folded in; that is the
-  // caller's job (see `fetchCurrentVersions`/`fetchById`). Takes a bare `workspaceId` so both the
+  // caller's job (see `fetchByIds`). Takes a bare `workspaceId` so both the
   // access-controlled resolvers and the cache seam can share it.
   private static async loadResource(
     workspaceId: ModelId,
@@ -783,22 +797,6 @@ export class AgentResource
     });
   }
 
-  // The access-controlled resolver: each current-version resource, downgraded to `light` when the
-  // caller cannot read it and dropped when the caller holds no verb on it (`canFetch`).
-  private static async fetchCurrentVersions(
-    auth: Authenticator,
-    identityWhere: { id: ModelId[] } | { sId: string[] }
-  ): Promise<AgentResource[]> {
-    const cachedResources = await this.loadResource(
-      auth.getNonNullableWorkspace().id,
-      identityWhere
-    );
-
-    return cachedResources
-      .map((cachedResource) => this.materializeResource(auth, cachedResource))
-      .filter((resource) => resource.canFetch(auth));
-  }
-
   /**
    * @cc [owner:tdraier,label:backend;performance] agent-resource-cache
    * The cache holds the caller-independent full resource; the caller-dependent `canFetch` and
@@ -817,14 +815,19 @@ export class AgentResource
     version: AGENT_RESOURCE_CACHE_VERSION,
     key: agentResourceCacheKey,
     dryRun: AGENT_RESOURCE_CACHE_DRY_RUN,
-    loadFromDatabase: async ({ workspaceModelId, id }) => {
-      const [cachedResource] = await AgentResource.loadResource(
-        workspaceModelId,
-        {
-          sId: [id],
-        }
+    loadManyFromDatabase: async (inputs) => {
+      const { workspaceModelId } = inputs[0];
+      assert(
+        inputs.every((input) => input.workspaceModelId === workspaceModelId),
+        "Agent cache batches must belong to one workspace"
       );
-      return cachedResource ?? null;
+      const resources = await AgentResource.loadResource(workspaceModelId, {
+        sId: inputs.map(({ id }) => id),
+      });
+      const resourcesById = new Map(
+        resources.map((resource) => [resource.sId, resource])
+      );
+      return inputs.map(({ id }) => resourcesById.get(id) ?? null);
     },
     toSnapshot: (cachedResource) => cachedResource.toSnapshot(),
     fromSnapshot: (snapshot) => AgentResource.fromSnapshot(snapshot),

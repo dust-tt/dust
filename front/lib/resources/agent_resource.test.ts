@@ -29,7 +29,7 @@ import type {
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import assert from "assert";
 import type { JSONSchema7 } from "json-schema";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const AGENT_MODEL_ID = 42;
 
@@ -501,12 +501,12 @@ describe("AgentResource", () => {
     expect(actualContentColumns).toEqual(expectedContentColumns);
   });
 
-  it("serves the same full content from the cache as from the database", async () => {
+  it("serves the same full content through single and batch reads", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
       testContext.authenticator
     );
 
-    // First read populates the cache; the second is served from it.
+    // Both forms round-trip the same snapshot while caching ships in dry-run.
     await AgentResource.fetchById(testContext.authenticator, agent.sId);
     const cached = await AgentResource.fetchById(
       testContext.authenticator,
@@ -520,6 +520,46 @@ describe("AgentResource", () => {
     assert(cached?.isFull());
     assert(fromDatabase?.isFull());
     expect(cached.toSnapshot()).toEqual(fromDatabase.toSnapshot());
+  });
+
+  it("loads custom agents together and preserves input order across globals and missing IDs", async () => {
+    const first = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { name: "First batch agent" }
+    );
+    const second = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { name: "Second batch agent" }
+    );
+    const findAll = vi.spyOn(AgentModel, "findAll");
+    try {
+      const resources = await AgentResource.fetchByIds(
+        testContext.authenticator,
+        [
+          second.sId,
+          GLOBAL_AGENTS_SID.HELPER,
+          "missing-agent",
+          first.sId,
+          second.sId,
+        ]
+      );
+      expect(resources.map((r) => r.sId)).toEqual([
+        second.sId,
+        GLOBAL_AGENTS_SID.HELPER,
+        first.sId,
+      ]);
+      expect(findAll).toHaveBeenCalledTimes(1);
+      expect(findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            sId: [second.sId, "missing-agent", first.sId],
+            workspaceId: testContext.workspace.id,
+          },
+        })
+      );
+    } finally {
+      findAll.mockRestore();
+    }
   });
 
   it("reflects a fresh archive on the next read", async () => {

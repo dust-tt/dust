@@ -20,6 +20,15 @@ vi.mock("@app/lib/api/redis", async () => {
 vi.mock("@app/lib/utils/cache", () => ({
   buildCacheWithRedisKey: (cacheId: string, resolverKey: string) =>
     `cacheWithRedis-${cacheId}-${resolverKey}`,
+  cacheManyWithRedis: vi
+    .fn()
+    .mockImplementation(
+      <T, Input>(
+        load: (
+          inputs: readonly Input[]
+        ) => Promise<(JsonSerializable<T> | null)[]>
+      ) => load
+    ),
   cacheWithRedis: vi
     .fn()
     .mockImplementation(
