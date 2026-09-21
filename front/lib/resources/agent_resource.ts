@@ -1315,8 +1315,10 @@ export class AgentResource
   /**
    * @cc [owner:philipperolet,label:security;product] draft-agent-owner
    * The current author of a draft custom agent owns that draft and holds `read`, `write`, and
-   * `admin` on it. Authorship alone MUST NOT grant any verb once the agent is active, archived,
-   * pending, or disabled; editorship on those agents comes only from explicit grants.
+   * `admin` on it. As with explicit editor grants, `read` and `write` remain subject to
+   * `agent-read-requires-space-read`. Authorship alone MUST NOT grant any verb once the agent is
+   * active, archived, pending, or disabled; editorship on those agents comes only from explicit
+   * grants.
    */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     if (this.scope === "global") {
