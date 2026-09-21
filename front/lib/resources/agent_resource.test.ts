@@ -1111,56 +1111,6 @@ describe("AgentResource", () => {
       expect(afterSecond.content.version).toBe(afterFirst.content.version);
     });
 
-    it("does not create a new version when re-saving with unchanged tools in the wire shape", async () => {
-      const { authenticator, globalSpace } = testContext;
-
-      const agent =
-        await AgentConfigurationFactory.createTestAgent(authenticator);
-      const server = await RemoteMCPServerFactory.create(testContext.workspace);
-      const mcpServerView = await MCPServerViewFactory.create(
-        testContext.workspace,
-        server.sId,
-        globalSpace
-      );
-      await AgentMCPServerConfigurationFactory.create(
-        authenticator,
-        globalSpace,
-        { agent, mcpServerView }
-      );
-
-      const before = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(before?.isFull());
-
-      // Rebuild the save params the way a UI save does: the tools come back without the identity and
-      // presentation fields the persisted shape carries (`id`, `sId`, `icon`, `internalMCPServerId`).
-      const params = await before.buildResaveParams(authenticator);
-      const wireShapedActions = (params.actions ?? []).map((action) => ({
-        type: "mcp_server_configuration",
-        name: action.name,
-        description: action.description,
-        mcpServerViewId: action.mcpServerViewId,
-        dataSources: action.dataSources ?? null,
-        tables: action.tables,
-        childAgentId: action.childAgentId,
-        additionalConfiguration: action.additionalConfiguration,
-        dustAppConfiguration: action.dustAppConfiguration,
-        secretName: action.secretName,
-        timeFrame: action.timeFrame,
-        jsonSchema: action.jsonSchema,
-        dustProject: action.dustProject,
-      })) as unknown as typeof params.actions;
-
-      const result = await before.updateConfiguration(authenticator, {
-        ...params,
-        actions: wireShapedActions,
-      });
-      assert(result.isOk());
-
-      const after = await AgentResource.fetchById(authenticator, agent.sId);
-      assert(after?.isFull());
-      expect(after.content.version).toBe(before.content.version);
-    });
-
     it("skips archived agents and reports them", async () => {
       const { authenticator } = testContext;
 

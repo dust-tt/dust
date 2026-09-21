@@ -283,6 +283,61 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - pending agent"
   });
 });
 
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - versionCreated", () => {
+  it("reports versionCreated false on a no-op save and true on a real change", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "PATCH",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    // Re-send the exact current configuration: nothing changes, so no new version is created.
+    const unchangedBody = {
+      assistant: {
+        name: agent.name,
+        description: agent.description,
+        instructions: agent.instructions,
+        pictureUrl: agent.pictureUrl,
+        status: "active",
+        scope: agent.scope,
+        model: {
+          providerId: agent.model.providerId,
+          modelId: agent.model.modelId,
+          temperature: agent.model.temperature,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+      },
+    };
+
+    const noopResponse = await patch(workspace, agent.sId, unchangedBody);
+    expect(noopResponse.status).toBe(200);
+    const noopData = await noopResponse.json();
+    expect(noopData.versionCreated).toBe(false);
+    expect(noopData.agentConfiguration.version).toBe(agent.version);
+
+    // Change the instructions: a new version is created.
+    const changedResponse = await patch(workspace, agent.sId, {
+      assistant: {
+        ...unchangedBody.assistant,
+        instructions: "A genuinely new set of instructions",
+      },
+    });
+    expect(changedResponse.status).toBe(200);
+    const changedData = await changedResponse.json();
+    expect(changedData.versionCreated).toBe(true);
+    expect(changedData.agentConfiguration.version).toBeGreaterThan(
+      agent.version
+    );
+  });
+});
+
 function get(workspace: { sId: string }, aId: string) {
   return honoApp.request(
     `/api/w/${workspace.sId}/assistant/agent_configurations/${aId}`,

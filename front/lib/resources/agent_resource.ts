@@ -228,43 +228,41 @@ export type AgentResourceSnapshot = {
   content: SerializedAgentResourceContent;
 };
 
-// Serializes a value with object keys sorted recursively, so two structurally-equal values (whatever
-// their key order) produce the same string.
-function stableStringifyForComparison(value: unknown): string {
-  return JSON.stringify(value, (_key, val) =>
-    val !== null && typeof val === "object" && !Array.isArray(val)
-      ? Object.keys(val as Record<string, unknown>)
-          .sort()
-          .reduce<Record<string, unknown>>((acc, key) => {
-            acc[key] = (val as Record<string, unknown>)[key];
-            return acc;
-          }, {})
-      : val
-  );
+// Reconstructed (DB-loaded) actions carry identity and presentation fields the wire save payload
+// never sends — at the top level (`id`, `sId`, `internalMCPServerId`, `icon`, `meta`) and nested in
+// data-source, table and Dust app entries (`id`, `sId`). Comparing them would make an unchanged tool
+// look edited on every save, so they are dropped at every depth.
+const ACTION_IDENTITY_KEYS_TO_DROP = new Set([
+  "id",
+  "sId",
+  "internalMCPServerId",
+  "icon",
+  "meta",
+]);
+
+function isRecordValue(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// Projects an MCP action onto the fields that define it for a caller saving a configuration. The
-// persisted/reconstructed shape carries identity and presentation fields the incoming save payload
-// never sends (`id`, `sId`, `icon`, `internalMCPServerId`, `meta`); comparing them would make every
-// re-save of an agent with tools look changed, so they are dropped here.
-function normalizeActionForComparison(
-  action: ServerSideMCPServerConfigurationType
-): Record<string, unknown> {
-  return {
-    type: action.type,
-    name: action.name,
-    description: action.description ?? null,
-    mcpServerViewId: action.mcpServerViewId,
-    dataSources: action.dataSources ?? null,
-    tables: action.tables ?? null,
-    childAgentId: action.childAgentId ?? null,
-    additionalConfiguration: action.additionalConfiguration ?? {},
-    dustAppConfiguration: action.dustAppConfiguration ?? null,
-    secretName: action.secretName ?? null,
-    timeFrame: action.timeFrame ?? null,
-    jsonSchema: action.jsonSchema ?? null,
-    dustProject: action.dustProject ?? null,
-  };
+// Projects an MCP action onto the fields that define it for comparison, recursively dropping the
+// reconstructed-only identity fields above. Rebuilds objects with a null prototype so an own
+// `__proto__` key (e.g. inside a tool's JSON schema) is preserved as data rather than silently
+// reparented — which would otherwise let a real schema edit compare equal and be dropped.
+function normalizeActionForComparison(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(normalizeActionForComparison);
+  }
+  if (isRecordValue(value)) {
+    const result: Record<string, unknown> = Object.create(null);
+    for (const key of Object.keys(value)) {
+      if (ACTION_IDENTITY_KEYS_TO_DROP.has(key)) {
+        continue;
+      }
+      result[key] = normalizeActionForComparison(value[key]);
+    }
+    return result;
+  }
+  return value;
 }
 
 // Reduces a save's params to the comparable essence of a configuration version: the fields a new
@@ -297,11 +295,15 @@ function canonicalizeSaveParamsForComparison(
     tags: params.tags.map((tag) => tag.sId).sort(),
     editors: params.editors.map((editor) => editor.id).sort((a, b) => a - b),
     skills: (params.skills ?? []).map((skill) => skill.sId).sort(),
-    actions: (params.actions ?? [])
-      .map((action) =>
-        stableStringifyForComparison(normalizeActionForComparison(action))
+    // Action names are unique within an agent, so (name, view) is a stable order; `isEqual` then
+    // compares the normalized objects regardless of their key order.
+    actions: [...(params.actions ?? [])]
+      .sort(
+        (a, b) =>
+          a.name.localeCompare(b.name) ||
+          a.mcpServerViewId.localeCompare(b.mcpServerViewId)
       )
-      .sort(),
+      .map((action) => normalizeActionForComparison(action)),
   };
 }
 
@@ -1849,7 +1851,10 @@ export class AgentResource
           tags,
           editors,
           authorId,
-          reinforcement,
+          // An omitted reinforcement mode preserves the current one on save (it is not reset to the
+          // default), so resolve it the same way here or an unchanged `on`/`off` agent would look
+          // edited on every save.
+          reinforcement: reinforcement ?? currentParams.reinforcement,
           actions,
           skills,
         });
