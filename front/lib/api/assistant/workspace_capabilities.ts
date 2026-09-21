@@ -11,7 +11,6 @@ import { config as regionConfig } from "@app/lib/api/regions/config";
 import { filterEnabledModels } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -28,6 +27,7 @@ import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { USED_MODEL_CONFIGS } from "@app/types/assistant/models/used_model_configs";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { KnowledgeDataSourceViewType } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -43,15 +43,10 @@ const KNOWLEDGE_CATEGORIES_SET = new Set<DataSourceViewCategory>(
   KNOWLEDGE_CATEGORIES
 );
 
-export interface SearchKnowledgeDataSourceView {
-  dataSourceViewId: string;
-  name: string;
-  connectorProvider: string | null;
-  category: DataSourceViewCategory;
-  spaceId: string;
+export type SearchKnowledgeDataSourceView = KnowledgeDataSourceViewType & {
   // Only set in search mode: how many of the returned nodes belong to this view.
   childrenCount?: number;
-}
+};
 
 export interface SearchKnowledgeNode {
   nodeId: string;
@@ -246,7 +241,7 @@ async function listKnowledgeDataSourceViews(
   const allViews = await DataSourceViewResource.listBySpaces(auth, spaces);
 
   return allViews.filter((dsv) => {
-    const dsvCategory = dsv.toJSON().category;
+    const dsvCategory = dsv.toKnowledgeJSON().category;
     if (category) {
       return dsvCategory === category;
     }
@@ -277,26 +272,16 @@ export async function searchKnowledge(
 ): Promise<Result<SearchKnowledgeResult, Error>> {
   const dataSourceViews = await listKnowledgeDataSourceViews(auth, category);
 
-  const dataSourceEntries = dataSourceViews.map((view) => {
-    const viewJson = view.toJSON();
-    const dataSource = viewJson.dataSource;
-    return {
-      apiId: dataSource.dustAPIDataSourceId,
-      dataSourceView: {
-        dataSourceViewId: view.sId,
-        name: getDisplayNameForDataSource(dataSource),
-        connectorProvider: dataSource.connectorProvider,
-        category: viewJson.category,
-        spaceId: viewJson.spaceId,
-      } satisfies SearchKnowledgeDataSourceView,
-      searchArg: {
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-        view_filter: view.toViewFilter(),
-      },
-      documentTitles: <string[]>[],
-    };
-  });
+  const dataSourceEntries = dataSourceViews.map((view) => ({
+    apiId: view.dataSource.dustAPIDataSourceId,
+    dataSourceView: view.toKnowledgeJSON(),
+    searchArg: {
+      projectId: view.dataSource.dustAPIProjectId,
+      dataSourceId: view.dataSource.dustAPIDataSourceId,
+      view_filter: view.toViewFilter(),
+    },
+    documentTitles: <string[]>[],
+  }));
 
   const totalDataSourceViews = dataSourceEntries.length;
 

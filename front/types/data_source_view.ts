@@ -4,6 +4,7 @@ import type { DataSourceViewCategory } from "./api/public/spaces";
 import type { ContentNodeWithParent } from "./connectors/connectors_api";
 import type {
   AgentsAndSkillsUsageType,
+  ConnectorProvider,
   ConnectorStatusDetails,
   DataSourceType,
 } from "./data_source";
@@ -24,6 +25,15 @@ export interface DataSourceViewType {
   sId: string;
   spaceId: string;
   updatedAt: number;
+}
+
+// The projection of a view offered as knowledge to agents and skills.
+export interface KnowledgeDataSourceViewType {
+  dataSourceViewId: string;
+  name: string;
+  connectorProvider: ConnectorProvider | null;
+  category: DataSourceViewCategory;
+  spaceId: string;
 }
 
 export type DataSourceViewsWithDetails = DataSourceViewType & {
