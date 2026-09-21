@@ -77,6 +77,7 @@ describe("/api/w/[wId]/credits/usage-configuration", () => {
     // The default mock workspace is on a non-credit-priced plan, so the
     // checkpoint gate defaults to enabled.
     expect(configuration.creditSpendCheckpointEnabled).toBe(true);
+    expect(configuration.creditSpendCheckpointThresholdAwuCredits).toBe(200);
   });
 
   it("GET defaults creditSpendCheckpointEnabled to false for a credit-priced plan", async () => {
@@ -145,6 +146,78 @@ describe("/api/w/[wId]/credits/usage-configuration", () => {
     );
     const getBody = await getResponse.json();
     expect(getBody.configuration.creditSpendCheckpointEnabled).toBe(true);
+  });
+
+  it("PATCH returns 403 for a manager writing creditSpendCheckpointThresholdAwuCredits", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "manager",
+    });
+
+    const response = await honoApp.request(
+      usageConfigurationUrl(workspace.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creditSpendCheckpointThresholdAwuCredits: 500 }),
+      }
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it("PATCH persists creditSpendCheckpointThresholdAwuCredits and GET reflects it", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+
+    const patchResponse = await honoApp.request(
+      usageConfigurationUrl(workspace.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creditSpendCheckpointThresholdAwuCredits: 500,
+        }),
+      }
+    );
+
+    expect(patchResponse.status).toBe(200);
+    const { configuration } = await patchResponse.json();
+    expect(configuration.creditSpendCheckpointThresholdAwuCredits).toBe(500);
+
+    await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+      workspace,
+    });
+
+    const getResponse = await honoApp.request(
+      usageConfigurationUrl(workspace.sId)
+    );
+    const getBody = await getResponse.json();
+    expect(getBody.configuration.creditSpendCheckpointThresholdAwuCredits).toBe(
+      500
+    );
+  });
+
+  it("PATCH rejects a non-positive creditSpendCheckpointThresholdAwuCredits", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+
+    const response = await honoApp.request(
+      usageConfigurationUrl(workspace.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creditSpendCheckpointThresholdAwuCredits: 0 }),
+      }
+    );
+
+    expect(response.status).toBe(400);
   });
 
   it("PATCH persists the upgrade-request toggles and GET reflects them", async () => {

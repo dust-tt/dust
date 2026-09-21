@@ -1,4 +1,7 @@
-import { parseDefaultLimitInput } from "@app/components/workspace/member_spend_limit_helpers";
+import {
+  parseCreditSpendCheckpointThresholdInput,
+  parseDefaultLimitInput,
+} from "@app/components/workspace/member_spend_limit_helpers";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import {
   useDefaultUserSpendLimit,
@@ -25,6 +28,11 @@ interface UsageSettingsCardProps {
 
 function validateDefaultLimit(value: string) {
   const parseResult = parseDefaultLimitInput(value);
+  return parseResult.ok ? null : parseResult.message;
+}
+
+function validateCreditSpendCheckpointThreshold(value: string) {
+  const parseResult = parseCreditSpendCheckpointThresholdInput(value);
   return parseResult.ok ? null : parseResult.message;
 }
 
@@ -78,6 +86,20 @@ export function UsageSettingsCard({
       return;
     }
     await doUpdateDefaultUserSpendLimit(parseResult.awuCredits);
+  };
+
+  const handleSaveCreditSpendCheckpointThreshold = async (newValue: string) => {
+    const parseResult = parseCreditSpendCheckpointThresholdInput(newValue);
+    if (
+      !parseResult.ok ||
+      parseResult.awuCredits ===
+        usageSettings.creditSpendCheckpointThresholdAwuCredits
+    ) {
+      return;
+    }
+    await doUpdateUsageSettings({
+      creditSpendCheckpointThresholdAwuCredits: parseResult.awuCredits,
+    });
   };
 
   return (
@@ -202,6 +224,37 @@ export function UsageSettingsCard({
             />
           }
         />
+        <LockedSection
+          locked={!usageSettings.creditSpendCheckpointEnabled}
+          tooltipContent="Enable the credit spend checkpoint to edit its threshold"
+        >
+          <SettingsList.Row
+            title="Credit spend checkpoint threshold"
+            description="Cumulative credits a single message can spend before the agent pauses and asks the user to confirm continuing."
+            action={
+              <div className="w-60">
+                <InputWithSave
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="--"
+                  value={usageSettings.creditSpendCheckpointThresholdAwuCredits.toLocaleString()}
+                  unit="credits"
+                  normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                  formatValue={(value) =>
+                    value ? Number(value).toLocaleString() : value
+                  }
+                  validate={validateCreditSpendCheckpointThreshold}
+                  onSave={handleSaveCreditSpendCheckpointThreshold}
+                  disabled={
+                    isUpdatingUsageSettings ||
+                    isUsageSettingsLoading ||
+                    !usageSettings.creditSpendCheckpointEnabled
+                  }
+                />
+              </div>
+            }
+          />
+        </LockedSection>
       </SettingsList>
     </Page.Vertical>
   );

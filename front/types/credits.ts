@@ -83,6 +83,9 @@ export const CREDIT_EXPIRATION_DAYS = 365;
 export const MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS = 0;
 export const MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS = 2_000_000;
 
+export const MIN_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS = 1;
+export const MAX_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS = 100_000;
+
 export type CreditDisplayData = {
   sId: string;
   type: CreditType;

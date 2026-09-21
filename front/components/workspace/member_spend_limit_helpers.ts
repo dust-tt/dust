@@ -5,7 +5,9 @@ import {
   MIN_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/types/api/users/spend_limit";
 import {
+  MAX_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
+  MIN_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/types/credits";
 import type { GroupType } from "@app/types/groups";
@@ -76,6 +78,31 @@ export function parseDefaultLimitInput(raw: string): ParsedCredits<number> {
       message: outOfRangeMessage(
         MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
         MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS
+      ),
+    };
+  }
+  return { ok: true, awuCredits: result.awuCredits };
+}
+
+// The checkpoint threshold has no "disabled" state: it is always a concrete
+// number, so an empty input is rejected rather than coerced to 0.
+export function parseCreditSpendCheckpointThresholdInput(
+  raw: string
+): ParsedCredits<number> {
+  const result = parseBoundedCreditsInput(
+    raw,
+    MIN_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+    MAX_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS
+  );
+  if (!result.ok) {
+    return result;
+  }
+  if (result.awuCredits === null) {
+    return {
+      ok: false,
+      message: outOfRangeMessage(
+        MIN_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+        MAX_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS
       ),
     };
   }

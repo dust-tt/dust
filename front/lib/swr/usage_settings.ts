@@ -36,6 +36,7 @@ interface UsageSettings {
   autoSeatUpgradeAvailable: boolean;
   topUpEnabled: boolean;
   creditSpendCheckpointEnabled: boolean;
+  creditSpendCheckpointThresholdAwuCredits: number;
 }
 
 interface UsageNotifications {
@@ -51,6 +52,7 @@ const DEFAULT_USAGE_SETTINGS: UsageSettings = {
   autoSeatUpgradeAvailable: false,
   topUpEnabled: false,
   creditSpendCheckpointEnabled: true,
+  creditSpendCheckpointThresholdAwuCredits: 200,
 };
 
 const DEFAULT_USAGE_NOTIFICATIONS: UsageNotifications = {
@@ -117,6 +119,8 @@ export function useUsageSettings({
           topUpEnabled: data.configuration.topUpEnabled,
           creditSpendCheckpointEnabled:
             data.configuration.creditSpendCheckpointEnabled,
+          creditSpendCheckpointThresholdAwuCredits:
+            data.configuration.creditSpendCheckpointThresholdAwuCredits,
         }
       : {}),
   };
@@ -154,6 +158,10 @@ export function useUpdateUsageSettings({
       }
       if (patch.creditSpendCheckpointEnabled !== undefined) {
         body.creditSpendCheckpointEnabled = patch.creditSpendCheckpointEnabled;
+      }
+      if (patch.creditSpendCheckpointThresholdAwuCredits !== undefined) {
+        body.creditSpendCheckpointThresholdAwuCredits =
+          patch.creditSpendCheckpointThresholdAwuCredits;
       }
 
       if (Object.keys(body).length === 0) {

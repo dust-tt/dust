@@ -7,6 +7,7 @@ import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usag
 import {
   DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
   DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+  DEFAULT_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
   DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
   DEFAULT_TOP_UP_ENABLED,
   DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
@@ -49,6 +50,9 @@ export async function getUsageConfiguration(
     creditSpendCheckpointEnabled:
       config?.creditSpendCheckpointEnabled ??
       resolveDefaultCreditSpendCheckpointEnabled(auth.plan()),
+    creditSpendCheckpointThresholdAwuCredits:
+      config?.creditSpendCheckpointThresholdAwuCredits ??
+      DEFAULT_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
     autoSeatUpgradeAvailable: subscription
       ? passesBillingGate(subscription)
       : false,
@@ -71,6 +75,7 @@ async function setConfigurationToggles(
     requireUpgradeRequestReason?: boolean;
     autoSeatUpgradeEnabled?: boolean;
     creditSpendCheckpointEnabled?: boolean;
+    creditSpendCheckpointThresholdAwuCredits?: number;
   }
 ): Promise<Result<undefined, Error>> {
   const config =
@@ -96,6 +101,9 @@ async function setConfigurationToggles(
     autoSeatUpgradeEnabled:
       toggles.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
     creditSpendCheckpointEnabled: toggles.creditSpendCheckpointEnabled ?? null,
+    creditSpendCheckpointThresholdAwuCredits:
+      toggles.creditSpendCheckpointThresholdAwuCredits ??
+      DEFAULT_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
   });
   if (createResult.isErr()) {
     return new Err(createResult.error);
@@ -143,7 +151,8 @@ export async function updateUsageConfiguration(
     patch.upgradeRequestEmailEnabled !== undefined ||
     patch.requireUpgradeRequestReason !== undefined ||
     patch.autoSeatUpgradeEnabled !== undefined ||
-    patch.creditSpendCheckpointEnabled !== undefined
+    patch.creditSpendCheckpointEnabled !== undefined ||
+    patch.creditSpendCheckpointThresholdAwuCredits !== undefined
   ) {
     const toggleResult = await setConfigurationToggles(auth, {
       allowMemberUpgradeRequests: patch.allowMemberUpgradeRequests,
@@ -151,6 +160,8 @@ export async function updateUsageConfiguration(
       requireUpgradeRequestReason: patch.requireUpgradeRequestReason,
       autoSeatUpgradeEnabled: patch.autoSeatUpgradeEnabled,
       creditSpendCheckpointEnabled: patch.creditSpendCheckpointEnabled,
+      creditSpendCheckpointThresholdAwuCredits:
+        patch.creditSpendCheckpointThresholdAwuCredits,
     });
     if (toggleResult.isErr()) {
       return new Err(toggleResult.error);

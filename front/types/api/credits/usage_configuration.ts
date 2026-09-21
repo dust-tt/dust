@@ -1,3 +1,7 @@
+import {
+  MAX_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+  MIN_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+} from "@app/types/credits";
 import { z } from "zod";
 
 export type CreditUsageConfigurationBody = {
@@ -20,6 +24,9 @@ export type CreditUsageConfigurationBody = {
   topUpEnabled: boolean;
   // Whether the credit spend checkpoint gate is active for the workspace.
   creditSpendCheckpointEnabled: boolean;
+  // Cumulative message spend, in AWU credits, above which the agent loop
+  // pauses for the user to confirm continuing (when the gate above is on).
+  creditSpendCheckpointThresholdAwuCredits: number;
 };
 
 export type GetCreditUsageConfigurationResponseBody = {
@@ -38,6 +45,12 @@ export const PatchCreditUsageConfigurationRequestBody = z.object({
   requireUpgradeRequestReason: z.boolean().optional(),
   autoSeatUpgradeEnabled: z.boolean().optional(),
   creditSpendCheckpointEnabled: z.boolean().optional(),
+  creditSpendCheckpointThresholdAwuCredits: z
+    .number()
+    .int()
+    .min(MIN_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS)
+    .max(MAX_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS)
+    .optional(),
 });
 
 export type PatchCreditUsageConfigurationBody = z.infer<
