@@ -22,13 +22,13 @@ vi.mock("@app/lib/lock", async (importActual) => ({
   },
 }));
 
-import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
 import {
   getFramePublishLockName,
   getFrameSourceLockName,
 } from "@app/lib/api/frames/operation_lock";
 import {
   frameManifest,
+  moveFrameSourceForTest,
   setupFrameSourceStorageTest,
 } from "@app/lib/api/frames/source_storage.test_utils";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -62,8 +62,7 @@ describe("moveFrameV2Source", () => {
       "/Archive/Renamed"
     );
 
-    const moved = await moveFrameV2Source(c.auth, {
-      conversation: c.conversation,
+    const moved = await moveFrameSourceForTest(c, {
       destinationDirectoryPath,
       sourceDirectoryPath: c.sourceDirectoryPath,
     });

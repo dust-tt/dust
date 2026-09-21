@@ -1,7 +1,7 @@
 import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import type { MoveFrameV2SourceError } from "@app/lib/api/frames/move_source";
-import { moveFrameV2SourceUsingFileSystem } from "@app/lib/api/frames/move_source";
+import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
 import { moveError } from "@app/lib/api/frames/move_source_paths";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -53,7 +53,7 @@ export async function renameFrameV2(
 
   // The move owns everything else: the locks, and repointing the Pod's pinned Frame and tabs at
   // the new path. The Frame's name needs no update — it is derived from the path the move sets.
-  const moved = await moveFrameV2SourceUsingFileSystem(auth, {
+  const moved = await moveFrameV2Source(auth, {
     dustFs: fsResult.value,
     destinationDirectoryPath,
     sourceDirectoryPath,

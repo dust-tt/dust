@@ -1,4 +1,4 @@
-import { DustFileSystem } from "@app/lib/api/file_system";
+import type { DustFileSystem } from "@app/lib/api/file_system";
 import { emitGCSMountFileMovedAuditLog } from "@app/lib/api/files/gcs_mount/files";
 import type { FrameSourceMoveError } from "@app/lib/api/frames/move_source_paths";
 import {
@@ -20,7 +20,6 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import logger from "@app/logger/logger";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { DustFileSystemError } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -75,12 +74,14 @@ async function repointPodFrameReferences(
 }
 
 /**
- * Move a registered Frames v2 source folder within one GCS mount.
+ * Move a registered Frames v2 source folder within one GCS mount. The caller resolves the
+ * filesystem, as it does for `moveCanonicalFile` and `renameCanonicalFile`: a Pod rename has no
+ * conversation to build one from.
  *
  * This intentionally uses a non-transactional copy, DB update, then source delete sequence.
  * Until the DB update succeeds, the source FileResource path remains authoritative.
  */
-export async function moveFrameV2SourceUsingFileSystem(
+export async function moveFrameV2Source(
   auth: Authenticator,
   {
     dustFs,
@@ -248,43 +249,4 @@ export async function moveFrameV2SourceUsingFileSystem(
       : new Err(locked.error);
   }
   return locked;
-}
-
-/** Move a Frame's source folder within the invoking conversation's mounted filesystem. */
-export async function moveFrameV2Source(
-  auth: Authenticator,
-  {
-    conversation,
-    destinationDirectoryPath,
-    sourceDirectoryPath,
-  }: {
-    conversation: ConversationWithoutContentType;
-    destinationDirectoryPath: string;
-    sourceDirectoryPath: string;
-  }
-): Promise<Result<FrameSourceMove, MoveFrameV2SourceError>> {
-  const pathsResult = resolveFrameSourceMovePaths({
-    destinationDirectoryPath,
-    sourceDirectoryPath,
-  });
-  if (pathsResult.isErr()) {
-    return pathsResult;
-  }
-
-  const fsResult = await DustFileSystem.forAgentLoop(auth, {
-    conversation,
-    scopedPaths: [
-      pathsResult.value.sourceDirectoryPath,
-      pathsResult.value.destinationDirectoryPath,
-    ],
-  });
-  if (fsResult.isErr()) {
-    return fsResult;
-  }
-
-  return moveFrameV2SourceUsingFileSystem(auth, {
-    dustFs: fsResult.value,
-    destinationDirectoryPath,
-    sourceDirectoryPath,
-  });
 }
