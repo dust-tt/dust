@@ -1,6 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { awuFromMicroUsd } from "@app/lib/metronome/constants";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED } from "@app/lib/resources/storage/models/credit_usage_configurations";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
 const CREDIT_SPEND_CHECKPOINT_RESUMABLE_ORIGINS: UserMessageOrigin[] = [
@@ -31,6 +33,23 @@ export function hasReachedCreditSpendCheckpoint({
   return (
     awuFromMicroUsd(totalCostMicroUsd) >=
     CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS
+  );
+}
+
+/**
+ * @cc [owner:avervaet,label:product] checkpoint-gate-workspace-override
+ * The returned value MUST be the workspace's configured `creditSpendCheckpointEnabled`. Callers
+ * MUST treat a `false` result as an unconditional exemption: the checkpoint MUST NOT pause for
+ * that workspace regardless of spend, root-message status, or any other condition.
+ */
+export async function getCreditSpendCheckpointEnabled(
+  auth: Authenticator
+): Promise<boolean> {
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  return (
+    config?.creditSpendCheckpointEnabled ??
+    DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED
   );
 }
 
