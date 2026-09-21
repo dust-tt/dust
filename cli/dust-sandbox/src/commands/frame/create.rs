@@ -13,22 +13,19 @@ const DEFAULT_FRAME_SOURCE: &str = r#"export default function Frame() {
 }
 "#;
 
-pub async fn run(directory: &Path, name: Option<&str>, description: &str) -> anyhow::Result<()> {
+pub async fn run(directory: &Path, description: &str) -> anyhow::Result<()> {
     let manifest_path = directory.join(FRAME_MANIFEST_FILE);
     validate_scoped_path(&manifest_path)?;
-    let frame_name = match name {
-        Some(name) => name.to_owned(),
-        None => directory
-            .file_name()
-            .and_then(|value| value.to_str())
-            .context("Frame folder must have a valid UTF-8 name")?
-            .to_owned(),
-    };
+    // The folder holding the manifest names the Frame, so the manifest carries no name of its own.
+    let frame_name = directory
+        .file_name()
+        .and_then(|value| value.to_str())
+        .context("Frame folder must have a valid UTF-8 name")?;
     if frame_name.is_empty() {
         bail!("Frame name cannot be empty");
     }
 
-    scaffold(directory, &frame_name, description)?;
+    scaffold(directory, description)?;
     // Scaffold first so canonicalization can follow `/files/conversation` and `/files/pod`
     // symlinks even when the new Frame directory did not exist before this command.
     let scoped_manifest_path = scoped_manifest_path(&manifest_path)?;
@@ -38,7 +35,7 @@ pub async fn run(directory: &Path, name: Option<&str>, description: &str) -> any
     print_response(&response)
 }
 
-fn scaffold(directory: &Path, name: &str, description: &str) -> anyhow::Result<()> {
+fn scaffold(directory: &Path, description: &str) -> anyhow::Result<()> {
     let manifest_path = directory.join(FRAME_MANIFEST_FILE);
     let ui_path = directory.join(FRAME_UI_ENTRY_POINT);
     if manifest_path.exists() || ui_path.exists() {
@@ -49,7 +46,6 @@ fn scaffold(directory: &Path, name: &str, description: &str) -> anyhow::Result<(
         .with_context(|| format!("failed to create {}", directory.display()))?;
     let manifest = serde_json::to_string_pretty(&serde_json::json!({
         "version": 1,
-        "name": name,
         "description": description,
     }))?;
     fs::write(&manifest_path, format!("{manifest}\n"))
@@ -68,13 +64,15 @@ mod tests {
         let temp = tempfile::tempdir().expect("tempdir");
         let directory = temp.path().join("Status");
 
-        scaffold(&directory, "Status", "Current status").expect("scaffold");
+        scaffold(&directory, "Current status").expect("scaffold");
 
         let manifest =
             fs::read_to_string(directory.join(FRAME_MANIFEST_FILE)).expect("read manifest");
         let parsed: serde_json::Value = serde_json::from_str(&manifest).expect("parse manifest");
-        assert_eq!(parsed["name"], "Status");
+        // The folder names the Frame; the manifest carries no name.
+        assert_eq!(parsed["name"], serde_json::Value::Null);
+        assert_eq!(parsed["description"], "Current status");
         assert!(directory.join(FRAME_UI_ENTRY_POINT).exists());
-        assert!(scaffold(&directory, "Other", "").is_err());
+        assert!(scaffold(&directory, "").is_err());
     }
 }

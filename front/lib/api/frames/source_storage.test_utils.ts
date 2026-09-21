@@ -1,10 +1,15 @@
+import { DustFileSystem } from "@app/lib/api/file_system";
+import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
+import type { Authenticator } from "@app/lib/auth";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
+import assert from "assert";
 
 export const frameManifest = JSON.stringify({ version: 1, name: "Status" });
 
@@ -72,4 +77,36 @@ export async function setupFrameSourceStorageTest() {
     sourceObjects,
     workspace,
   };
+}
+
+/**
+ * Build the conversation-scoped filesystem a move needs. Production callers resolve their own:
+ * the Pod rename builds one from the Frame's scoped path, and an agent-loop caller would build
+ * one here. Scoping to the source is enough — a move stays within one mount, and
+ * `moveFrameV2Source` rejects a cross-mount destination before it touches the filesystem.
+ */
+export async function moveFrameSourceForTest(
+  {
+    auth,
+    conversation,
+  }: {
+    auth: Authenticator;
+    conversation: ConversationWithoutContentType;
+  },
+  {
+    destinationDirectoryPath,
+    sourceDirectoryPath,
+  }: { destinationDirectoryPath: string; sourceDirectoryPath: string }
+) {
+  const fsResult = await DustFileSystem.forAgentLoop(auth, {
+    conversation,
+    scopedPaths: [sourceDirectoryPath],
+  });
+  assert(fsResult.isOk(), "Test file system should be available");
+
+  return moveFrameV2Source(auth, {
+    dustFs: fsResult.value,
+    destinationDirectoryPath,
+    sourceDirectoryPath,
+  });
 }

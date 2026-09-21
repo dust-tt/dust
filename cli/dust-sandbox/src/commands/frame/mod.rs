@@ -34,11 +34,9 @@ pub enum FrameCommand {
     },
     /// Create and register a new Frame folder
     Create {
-        /// Frame folder under /files/conversation-... or /files/pod-...
+        /// Frame folder under /files/conversation-... or /files/pod-... The folder name is the
+        /// Frame's name.
         directory: PathBuf,
-        /// Display name (defaults to the folder name)
-        #[arg(long)]
-        name: Option<String>,
         /// Frame description
         #[arg(long, default_value = "")]
         description: String,

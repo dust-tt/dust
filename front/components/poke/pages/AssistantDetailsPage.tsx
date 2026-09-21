@@ -10,7 +10,7 @@ import { useRequiredPathParam } from "@app/lib/platform";
 import { decodeSqids } from "@app/lib/utils";
 import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
-import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import { getModelDisplayNameFromId } from "@app/types/assistant/models/models";
 import {
   Button,
   ContextItem,
@@ -192,10 +192,7 @@ export function AssistantDetailsPage() {
                         <div className="ml-4 text-sm text-muted-foreground">
                           <div className="font-bold">Model:</div>
                           <div>
-                            {SUPPORTED_MODEL_CONFIGS.find(
-                              (m) => m.modelId === a.model.modelId
-                            )?.displayName ??
-                              `Unknown Model (${a.model.modelId})`}
+                            {getModelDisplayNameFromId(a.model.modelId)}
                           </div>
                           <JsonViewer
                             theme={isDark ? "dark" : "light"}

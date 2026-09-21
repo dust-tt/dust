@@ -15,7 +15,9 @@ const app = publicApiApp();
  * /api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events:
  *   get:
  *     summary: Get events for a message
- *     description: Get events for a message in the workspace identified by {wId}.
+ *     description: |
+ *       Stream events for a message in the workspace identified by {wId} using Server-Sent Events (SSE).
+ *       The stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed message frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.
  *     tags:
  *       - Conversations
  *     parameters:
@@ -39,32 +41,27 @@ const app = publicApiApp();
  *           type: string
  *       - in: query
  *         name: lastEventId
- *         description: ID of the last event received
+ *         required: false
+ *         description: Redis stream ID of the last received message event. Omit or pass an empty value to start from the available history.
  *         schema:
  *           type: string
  *     security:
  *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: The events
+ *         description: SSE event stream with a named handshake followed by unnamed message frames. The JSON `data` field in each message frame contains the event, discriminated by `type`.
  *         content:
- *           application/json:
+ *           text/event-stream:
  *             schema:
  *               type: object
+ *               required: [eventId, data]
  *               properties:
- *                 events:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                         description: ID of the event
- *                       type:
- *                         type: string
- *                         description: Type of the event
- *                       data:
- *                         $ref: '#/components/schemas/Message'
+ *                 eventId:
+ *                   type: string
+ *                   description: Redis stream ID used as the resume cursor.
+ *                 data:
+ *                   type: object
+ *                   description: Agent message event discriminated by its type field.
  *       400:
  *         description: Bad Request
  *       401:

@@ -1,13 +1,8 @@
 import { redirectToSse } from "@front-api/lib/api/sse/redirect";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 
-// Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/events.
-//
-// This endpoint is SSE: the actual handler lives in Hono at
-// `front-api/routes/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events.ts`,
-// served under the `/api/sse/` prefix that the ingress routes to dedicated
-// front-sse pods. Hono only registers a 307 redirect here so the routing
-// contract matches the Next middleware redirect at the same path.
+import poll from "./poll";
+
 const app = workspaceApp();
 
 /**
@@ -15,7 +10,9 @@ const app = workspaceApp();
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events:
  *   get:
  *     summary: Stream message events
- *     description: Stream real-time events for a specific agent message using Server-Sent Events (SSE). Only available for agent messages. This endpoint is redirected to /api/sse/ for SSE traffic routing.
+ *     description: |
+ *       Stream real-time events for an agent message. The request redirects to /api/sse/ for SSE traffic routing.
+ *       The stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed message frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.
  *     tags:
  *       - Private Events
  *     parameters:
@@ -37,21 +34,27 @@ const app = workspaceApp();
  *         description: ID of the message
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: lastEventId
+ *         required: false
+ *         description: Redis stream ID of the last received message event. Omit or pass an empty value to start from the available history.
+ *         schema:
+ *           type: string
  *     security:
  *       - BearerAuth: []
  *     responses:
  *       200:
  *         description: |
- *           SSE event stream. Each event is sent as `data: {json}\n\n`.
- *           Events are discriminated by the `type` field. Each event payload also includes a `step` integer.
+ *           SSE event stream with a named handshake followed by unnamed message frames. Each message frame is sent as `data: {json}\n\n`. The `data` field inside the JSON wrapper is discriminated by `type` and includes a `step` integer.
  *         content:
  *           text/event-stream:
  *             schema:
- *               $ref: '#/components/schemas/PrivateAgentMessageEvent'
+ *               $ref: '#/components/schemas/PrivateAgentMessageStreamEnvelope'
  *       401:
  *         description: Unauthorized
  */
 
 app.get("/", redirectToSse);
+app.route("/poll", poll);
 
 export default app;

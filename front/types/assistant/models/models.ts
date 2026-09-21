@@ -338,4 +338,12 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   // Custom models (generated at build time from GCS).
   ...CUSTOM_MODEL_CONFIGS,
 ];
+
+// `modelId` alone can collide across providers; this is only for display contexts.
+export function getModelDisplayNameFromId(modelId: string): string {
+  return (
+    SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === modelId)?.displayName ??
+    modelId
+  );
+}
 export default SUPPORTED_MODEL_CONFIGS;

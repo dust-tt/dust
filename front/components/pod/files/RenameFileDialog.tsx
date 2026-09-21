@@ -18,6 +18,12 @@ import React, {
   useState,
 } from "react";
 
+const RENAME_DIALOG_TITLES: Record<RenameMountItem["kind"], string> = {
+  file: "Rename file",
+  folder: "Rename folder",
+  frame: "Rename Frame",
+};
+
 function splitFileName(fileName: string): {
   baseName: string;
   extension: string;
@@ -32,9 +38,11 @@ function splitFileName(fileName: string): {
   };
 }
 
-type RenameMountItem =
+export type RenameMountItem =
   | { kind: "file"; path: string; name: string }
-  | { kind: "folder"; path: string; name: string };
+  | { kind: "folder"; path: string; name: string }
+  // A Frame is named by the folder holding its manifest, so it renames as that folder.
+  | { kind: "frame"; path: string; name: string };
 
 interface RenameFileDialogProps {
   isOpen: boolean;
@@ -119,14 +127,14 @@ export function RenameFileDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {item?.kind === "folder" ? "Rename folder" : "Rename file"}
+            {RENAME_DIALOG_TITLES[item?.kind ?? "file"]}
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          {item?.kind === "folder" ? (
+          {item?.kind !== "file" ? (
             <Input
               ref={inputRef}
-              placeholder="Enter new folder name..."
+              placeholder="Enter new name..."
               value={name}
               disabled={isRenaming}
               onChange={(e) => setName(e.target.value)}

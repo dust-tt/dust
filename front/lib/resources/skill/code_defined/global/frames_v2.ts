@@ -33,7 +33,7 @@ publish a new Frame in one Computer command:
 
 \`\`\`bash
 FRAME=/files/conversation-<conversationId>/<frame-folder>
-dsbx frame create "$FRAME" --name "<name>" &&
+dsbx frame create "$FRAME" &&
 cat > "$FRAME/index.tsx" <<'EOF'
 export default function Frame() {
   return <main>...</main>;
@@ -44,7 +44,8 @@ dsbx frame publish "$FRAME/manifest.json"
 \`\`\`
 
 In a Pod, create it under \`/files/pod-<podId>/...\` instead. \`dsbx frame create\` scaffolds a
-placeholder \`manifest.json\` and \`index.tsx\` and assigns the Frame's stable identity. Do not
+placeholder \`manifest.json\` and \`index.tsx\`, names the Frame after the folder, and assigns its
+stable identity. Do not
 read the scaffolded files back: overwrite \`index.tsx\` with the real component and, when the
 Frame declares any, write the manifest, function, and database files in the same command. Only use
 separate commands when a step needs the previous one's output.
@@ -99,7 +100,6 @@ The manifest declares the UI entry point, every server function, and every datab
 \`\`\`json
 {
   "version": 1,
-  "name": "Comments",
   "description": "Read and add comments.",
   "uiEntryPoint": "index.tsx",
   "databases": [
@@ -127,6 +127,9 @@ The manifest declares the UI entry point, every server function, and every datab
 }
 \`\`\`
 
+- A Frame is named by its folder, and \`manifest.json\` carries no name. Choose the folder name
+  carefully at creation: it is the name users see. The user can rename a Frame later, which moves
+  the folder; refer to the Frame by its stable ID when you need an identifier that survives that.
 - \`uiEntryPoint\` defaults to \`index.tsx\` when omitted.
 - Function names are lower-case alphanumeric segments separated by single hyphens.
 - \`entryPoint\` paths are relative to the Frame folder. Keep shared helpers under that folder and

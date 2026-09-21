@@ -4,6 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { MANAGED_SSE_HANDSHAKE_EVENT } from "@app/types/sse";
 import { honoApp } from "@front-api/app";
 import {
   asyncIteratorFrom,
@@ -104,7 +105,11 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     );
 
     expect(response.status).toBe(200);
-    const payloads = parseSseDataPayloads(await response.text());
+    const body = await response.text();
+    expect(body.startsWith(`event: ${MANAGED_SSE_HANDSHAKE_EVENT}\n`)).toBe(
+      true
+    );
+    const payloads = parseSseDataPayloads(body);
     expect(payloads.map((p) => JSON.parse(p).data.text)).toEqual(["hello"]);
   });
 });

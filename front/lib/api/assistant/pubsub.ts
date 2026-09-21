@@ -206,6 +206,74 @@ export type MessageStreamEvent = {
   };
 };
 
+type MessageStreamEndEvent = {
+  eventId: string;
+  data: { type: "end-of-stream" };
+};
+
+export type MessageStreamBatchEvent =
+  | MessageStreamEvent
+  | MessageStreamEndEvent;
+
+const MESSAGE_EVENTS_BATCH_WINDOW_MS = 50;
+
+/**
+ * @cc [owner:id13,label:architecture;concurrency] message-events-batch-lifecycle
+ * A message-event batch request MUST unsubscribe from Redis when it returns, times out, or its
+ * abort signal fires. Events MUST retain their Redis stream IDs and order.
+ */
+export async function getMessagesEventsBatch({
+  messageId,
+  lastEventId,
+  signal,
+}: {
+  messageId: string;
+  lastEventId: string | null;
+  signal: AbortSignal;
+}): Promise<MessageStreamBatchEvent[]> {
+  const pubsubChannel = getMessageChannelId(messageId);
+  const liveEvents: EventPayload[] = [];
+  const batchReady = Promise.withResolvers<void>();
+
+  const { history, unsubscribe } = await getRedisHybridManager().subscribe(
+    pubsubChannel,
+    (event) => {
+      if (event !== "close") {
+        liveEvents.push(event);
+      }
+      batchReady.resolve();
+    },
+    "message_events_long_poll",
+    { lastEventId }
+  );
+
+  const onAbort = () => batchReady.resolve();
+  signal.addEventListener("abort", onAbort, { once: true });
+
+  try {
+    if (history.length === 0 && liveEvents.length === 0 && !signal.aborted) {
+      await batchReady.promise;
+    }
+
+    if (liveEvents.length > 0 && !signal.aborted) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, MESSAGE_EVENTS_BATCH_WINDOW_MS)
+      );
+    }
+
+    const events: MessageStreamBatchEvent[] = [...history, ...liveEvents].map(
+      (event) => ({
+        eventId: event.id,
+        data: JSON.parse(event.message.payload),
+      })
+    );
+    return events;
+  } finally {
+    signal.removeEventListener("abort", onAbort);
+    unsubscribe();
+  }
+}
+
 export async function* getMessagesEvents(
   auth: Authenticator,
   {

@@ -1522,6 +1522,16 @@
  *               fullName:
  *                 type: string
  *                 nullable: true
+ *     PrivateConversationStreamEnvelope:
+ *       type: object
+ *       description: JSON payload of an unnamed conversation SSE data frame. The named dust-handshake frame and plain-text done sentinel use different formats.
+ *       required: [eventId, data]
+ *       properties:
+ *         eventId:
+ *           type: string
+ *           description: Redis stream ID used as the resume cursor.
+ *         data:
+ *           $ref: '#/components/schemas/PrivateConversationEvent'
  *     PrivateConversationEvent:
  *       type: object
  *       description: Server-Sent Event for conversation-level streaming. Discriminated on the `type` field.
@@ -1661,6 +1671,16 @@
  *         userId:
  *           type: string
  *           description: sId of the user who owns the wake-up.
+ *     PrivateSandboxFunctionInvocationStreamEnvelope:
+ *       type: object
+ *       description: JSON payload of an unnamed sandbox invocation SSE data frame. The named dust-handshake frame and plain-text done sentinel use different formats.
+ *       required: [eventId, data]
+ *       properties:
+ *         eventId:
+ *           type: string
+ *           description: Redis stream ID used as the resume cursor.
+ *         data:
+ *           $ref: '#/components/schemas/PrivateSandboxFunctionInvocationEvent'
  *     PrivateSandboxFunctionInvocationEvent:
  *       type: object
  *       description: Server-Sent Event for sandbox function invocation streaming. Discriminated on the `type` field.
@@ -1733,6 +1753,27 @@
  *             status:
  *               type: integer
  *           description: A structured error describing why the invocation failed.
+ *     PrivateAgentMessageEventsPollResponse:
+ *       type: object
+ *       required: [events]
+ *       properties:
+ *         events:
+ *           type: array
+ *           description: Empty when a non-terminal message has no newer events. If the message has ended with no newer events, contains one serialized end-of-stream event.
+ *           items:
+ *             type: string
+ *             description: JSON-encoded event with eventId and data fields, in the same format as an unnamed SSE data frame.
+ *             example: '{"eventId":"end-of-stream","data":{"type":"end-of-stream"}}'
+ *     PrivateAgentMessageStreamEnvelope:
+ *       type: object
+ *       description: JSON payload of an unnamed agent-message SSE data frame. The named dust-handshake frame and plain-text done sentinel use different formats.
+ *       required: [eventId, data]
+ *       properties:
+ *         eventId:
+ *           type: string
+ *           description: Redis stream ID used as the resume cursor.
+ *         data:
+ *           $ref: '#/components/schemas/PrivateAgentMessageEvent'
  *     PrivateAgentMessageEvent:
  *       type: object
  *       description: Server-Sent Event for agent message streaming. Discriminated on the `type` field. Each event also includes a `step` integer.

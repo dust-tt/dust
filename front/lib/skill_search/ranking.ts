@@ -26,6 +26,7 @@ export function buildSkillDefaultSort(
 
 /**
  * @cc [owner:aubin-tchoi,label:product] indexed-skill-name-matching
+ * Whole-name prefix matches on name.keyword contribute additional relevance.
  * Name matching uses both autocomplete fields and Elasticsearch relevance, without
  * description matching or usage boosts. Usage breaks relevance ties, then skill ID.
  */
@@ -42,6 +43,7 @@ export function buildSkillNameAutocompleteQuery(
       type: "bool_prefix",
       operator: "and",
       fields: [
+        "name.keyword",
         "name.autocomplete",
         "name.autocomplete._2gram",
         "name.autocomplete_preserved",

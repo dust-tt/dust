@@ -91,7 +91,7 @@ describe("custom skill search", () => {
       globalSpace,
       conversationsSpace,
     } = await createResourceTest({ role: "user" });
-    const query = buildSkillSearchQuery(auth, { searchTerm: "report b" });
+    const query = buildSkillSearchQuery(auth, { searchTerm: "  report b  " });
     expect(query).toEqual({
       bool: {
         must: [
@@ -101,6 +101,7 @@ describe("custom skill search", () => {
               type: "bool_prefix",
               operator: "and",
               fields: [
+                "name.keyword",
                 "name.autocomplete",
                 "name.autocomplete._2gram",
                 "name.autocomplete_preserved",
@@ -411,7 +412,7 @@ describe("custom skill search", () => {
     expect(page.value).toEqual({
       skills: [expected[0]],
       hasMore: true,
-      nextCursor: Buffer.from(JSON.stringify([1, "missing-skill"])).toString(
+      nextCursor: Buffer.from(JSON.stringify([1, 0, "missing-skill"])).toString(
         "base64url"
       ),
     });

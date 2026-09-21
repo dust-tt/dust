@@ -18,7 +18,8 @@ app.use("*", streamingTag);
  *       [Documentation](https://docs.dust.tt/docs/client-side-mcp-server)
  *       Server-Sent Events (SSE) endpoint that streams MCP tool requests for a workspace.
  *       This endpoint is used by client-side MCP servers to listen for tool requests in real-time.
- *       The connection will remain open and events will be sent as new tool requests are made.
+ *       Events arrive as new tool requests are made. Reconnect with `lastEventId` after the stream closes to continue receiving events.
+ *       The stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed request frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.
  *     tags:
  *       - MCP
  *     security:
@@ -39,22 +40,22 @@ app.use("*", streamingTag);
  *       - in: query
  *         name: lastEventId
  *         required: false
- *         description: ID of the last event to filter events for
+ *         description: Redis stream ID of the last received request event. Omit to start from the available history.
  *         schema:
  *           type: string
  *     responses:
  *       200:
  *         description: |
- *           Connection established successfully. Events will be streamed in Server-Sent Events format.
- *           Each event will contain a tool request that needs to be processed by the MCP server.
+ *           SSE event stream with a named handshake followed by unnamed request frames. The JSON `data` field in each request frame contains the tool request.
  *         content:
  *           text/event-stream:
  *             schema:
  *               type: object
+ *               required: [eventId, data]
  *               properties:
- *                 type:
+ *                 eventId:
  *                   type: string
- *                   description: Type of the event (e.g. "tool_request")
+ *                   description: Redis stream ID used as the resume cursor.
  *                 data:
  *                   type: object
  *                   description: The tool request data

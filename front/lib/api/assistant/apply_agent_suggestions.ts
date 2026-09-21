@@ -1,6 +1,7 @@
 import { DROID_AVATAR_URLS } from "@app/lib/agent_builder/avatars";
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
+import { updateAgentConfigurationsModel } from "@app/lib/api/assistant/configuration/model_update";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -14,7 +15,10 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { CreateSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type {
+  CreateSuggestionType,
+  ModelSuggestionType,
+} from "@app/types/suggestions/agent_suggestion";
 import {
   INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
   parseAgentSuggestionData,
@@ -144,10 +148,48 @@ async function applyDeleteSuggestion(
   return new Ok(undefined);
 }
 
+async function applyModelSuggestion(
+  auth: Authenticator,
+  agent: LightAgentConfigurationType,
+  { modelId, reasoningEffort }: ModelSuggestionType
+): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
+  if (agent.status !== "active") {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Only an active agent can have its model changed."
+      )
+    );
+  }
+
+  // Editor access is enforced by the route, matching the manual model-update
+  // route. Model availability and reasoning effort support are re-validated against live state.
+  const result = await updateAgentConfigurationsModel(auth, {
+    agentIds: [agent.sId],
+    modelId,
+    reasoningEffort,
+  });
+  if (result.isErr()) {
+    return new Err(
+      new DustError("invalid_request_error", result.error.message)
+    );
+  }
+  if (result.value.updatedAgentIds.length === 0) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The agent this suggestion targets could not be updated."
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
+
 /**
- * Applies approved conversational suggestions to the agent they target. Only `create` and `delete`
- * are applied today; every other kind is rejected so the caller does not mark as approved a change
- * that was never made.
+ * Applies approved conversational suggestions to the agent they target. Only `create`, `delete`
+ * and `model` are applied today; every other kind is rejected so the caller does not mark as
+ * approved a change that was never made.
  */
 export async function applyAgentSuggestions(
   auth: Authenticator,
@@ -159,12 +201,30 @@ export async function applyAgentSuggestions(
     suggestions: AgentSuggestionResource[];
   }
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
-  for (const suggestion of suggestions) {
-    const data = parseAgentSuggestionData({
+  const parsedSuggestions = suggestions.map((suggestion) =>
+    parseAgentSuggestionData({
       kind: suggestion.kind,
       suggestion: suggestion.suggestion,
-    });
+    })
+  );
 
+  // If several model change suggestions applies keep only the most recent one
+  const modelSuggestions = parsedSuggestions.filter(
+    (data): data is Extract<typeof data, { kind: "model" }> =>
+      data.kind === "model"
+  );
+  if (modelSuggestions.length > 0) {
+    const res = await applyModelSuggestion(
+      auth,
+      agent,
+      modelSuggestions[modelSuggestions.length - 1].suggestion
+    );
+    if (res.isErr()) {
+      return res;
+    }
+  }
+
+  for (const data of parsedSuggestions) {
     switch (data.kind) {
       case "create": {
         const res = await applyCreateSuggestion(auth, agent, data.suggestion);
@@ -182,12 +242,15 @@ export async function applyAgentSuggestions(
         break;
       }
 
-      case "instructions":
-      case "knowledge":
       case "model":
-      case "skills":
-      case "sub_agent":
+        // Already applied above, consolidated across all `model` suggestions in this batch.
+        break;
+
+      case "instructions":
       case "tools":
+      case "sub_agent":
+      case "skills":
+      case "knowledge":
         return new Err(
           new DustError(
             "invalid_request_error",
