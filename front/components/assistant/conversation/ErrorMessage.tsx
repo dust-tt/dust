@@ -28,6 +28,7 @@ import {
 interface ErrorMessageProps {
   error: GenericErrorContent;
   retryHandler: (modelSelection?: ModelSelectionType) => Promise<void>;
+  retryLabel?: string;
   failedModel?: ResolvedRequestedModel;
   modelResolutionMethod?: ModelResolutionMethodType | null;
 }
@@ -35,6 +36,7 @@ interface ErrorMessageProps {
 export function ErrorMessage({
   error,
   retryHandler,
+  retryLabel,
   failedModel,
   modelResolutionMethod,
 }: ErrorMessageProps) {
@@ -108,7 +110,9 @@ export function ErrorMessage({
           size="xs"
           icon={RefreshCw02}
           label={
-            retryTierName ? `Retry with ${retryTierName} model tier` : "Retry"
+            retryTierName
+              ? `Retry with ${retryTierName} model tier`
+              : (retryLabel ?? "Retry")
           }
           onClick={() => void retry()}
           isLoading={isRetrying}

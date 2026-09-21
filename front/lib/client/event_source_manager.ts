@@ -22,6 +22,8 @@ import { EventSourcePolyfill } from "event-source-polyfill";
 const RECONNECT_DELAY_BASE_MS = 3000;
 const RECONNECT_DELAY_JITTER_MS = 5000;
 const MAX_RECONNECT_ATTEMPTS = 10;
+const RESUME_COOLDOWN_MS = 90_000;
+const MAX_UNSUCCESSFUL_RESUMES = 3;
 const HEARTBEAT_TIMEOUT_MS = 5 * 60 * 1000;
 const MIN_HEALTHY_SSE_LIFETIME_MS = 30_000;
 
@@ -149,12 +151,57 @@ export class EventSourceManager {
     }
   }
 
+  stopKeepingAlive(streamId: string, workspaceId: string): void {
+    const entry = this.connections.get(streamId);
+    if (!entry || entry.config.workspaceId !== workspaceId) {
+      return;
+    }
+    entry.keepAliveWithoutSubscribers = false;
+    entry.lastResumeAtMs = null;
+    entry.unsuccessfulResumes = 0;
+    if (entry.subscribers.size === 0) {
+      this.destroy(streamId);
+    }
+  }
+
+  /**
+   * @cc [owner:id13,label:performance;concurrency] bounded-registry-resume
+   * Refreshes of a continuously listed stream MAY resume it at most once per 90 seconds and at
+   * most three times without an accepted event. Removal and re-registration, or a user-requested
+   * reconnect, MAY reset these limits.
+   */
   resume(streamId: string): void {
+    const entry = this.connections.get(streamId);
+    if (
+      !entry ||
+      entry.state.kind !== "failed" ||
+      entry.unsuccessfulResumes >= MAX_UNSUCCESSFUL_RESUMES ||
+      (entry.lastResumeAtMs !== null &&
+        Date.now() - entry.lastResumeAtMs < RESUME_COOLDOWN_MS)
+    ) {
+      return;
+    }
+    entry.lastResumeAtMs = Date.now();
+    entry.unsuccessfulResumes++;
+    entry.keepAliveWithoutSubscribers = true;
+    this.restartFailedConnection(streamId);
+  }
+
+  reconnect(streamId: string): void {
     const entry = this.connections.get(streamId);
     if (!entry || entry.state.kind !== "failed") {
       return;
     }
-    entry.keepAliveWithoutSubscribers = true;
+    entry.lastResumeAtMs = null;
+    entry.unsuccessfulResumes = 0;
+    this.restartFailedConnection(streamId);
+  }
+
+  private restartFailedConnection(streamId: string): void {
+    const entry = this.connections.get(streamId);
+    if (!entry) {
+      return;
+    }
     entry.reconnectAttempts = 0;
     this.logVerbose(streamId, "resume");
     this.transition(streamId, { kind: "idle" });
@@ -171,9 +218,11 @@ export class EventSourceManager {
       generation: 0,
       lastEvent: null,
       lastEventAt: null,
+      lastResumeAtMs: null,
       lastURL: null,
       keepAliveWithoutSubscribers,
       reconnectAttempts: 0,
+      unsuccessfulResumes: 0,
       reconnectTimeout: null,
       source: null,
       state: { kind: "idle" },
@@ -312,6 +361,7 @@ export class EventSourceManager {
       }
 
       active.reconnectAttempts = 0;
+      active.unsuccessfulResumes = 0;
       active.lastEvent = event.data;
       active.lastEventAt = Date.now();
       this.logVerbose(streamId, "event_received", {
