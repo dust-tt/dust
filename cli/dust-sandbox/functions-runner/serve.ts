@@ -30,8 +30,10 @@
 // The worker is disposable. It exits on idle, drains at the lifetime cap,
 // when its RSS crosses the recycle threshold, or when an invocation
 // outlives its deadline (whose client was killed by front's much shorter
-// exec timeout long ago). Publications are immutable, so there is no
-// mid-life bundle-rewrite / stale-stamp recycle path.
+// exec timeout long ago). Idle, lifetime, and those deadlines are awake
+// time: a sandbox pause must not expire them (see awake_clock.ts).
+// Publications are immutable, so there is no mid-life bundle-rewrite /
+// stale-stamp recycle path.
 
 import { readdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { unlink } from "node:fs/promises";
@@ -39,6 +41,7 @@ import { join } from "node:path";
 
 import { z } from "zod";
 
+import { AwakeClock } from "./awake_clock.ts";
 import { applyResultSpillPolicy } from "./emit.ts";
 import { invoke } from "./invoke.ts";
 import type { RequestInput } from "./protocol.ts";
@@ -56,23 +59,24 @@ export const MAX_CONCURRENT_INVOCATIONS = 32;
 export const MAX_QUEUED_INVOCATIONS = 128;
 export const QUEUE_WAIT_DEADLINE_MS = 2_000;
 
-// Idle: how long the worker waits with nothing running and nothing queued
-// before exiting; scale-down to zero is each worker's own idle exit.
-// Lifetime: hard cap bounding imported working-set growth. Deadline: an
-// invocation that runs this long lost its client to front's much shorter
+// Idle: awake time with nothing running and nothing queued before exiting;
+// scale-down to zero is each worker's own idle exit. Lifetime: awake-time
+// cap bounding imported working-set growth. Both are measured by AwakeClock,
+// so a pause/resume clock jump does not consume them. Deadline: an invocation
+// that runs this long of awake time lost its client to front's much shorter
 // exec timeout ages ago, and its slot is wedged for good (a promise cannot
 // be killed), so the worker recycles. Rss: recycles a worker whose imported
 // working set outgrew its share of the sandbox's memory. Drain flush: how
 // long a drained worker waits for its last reply bytes before force-exiting
 // on a client that stopped reading.
-const IDLE_TIMEOUT_MS = 120_000;
+const IDLE_TIMEOUT_MS = 60 * 60 * 1_000;
+const MAX_LIFETIME_MS = 2 * 60 * 60 * 1_000;
 // A request older than this must not be acked: the client abandons the wait
 // at 4s (see warm.rs) and falls back cold, and acking into that window is
 // the one race that could double-execute. Refusing pre-ack is always safe,
 // so past this age the server sends `stale` instead of starting work, and
 // the ack-vs-abandon race shrinks to clock slop.
 const PRE_ACK_DEADLINE_MS = 3_000;
-const MAX_LIFETIME_MS = 600_000;
 const INVOCATION_DEADLINE_MS = 120_000;
 const MAX_RSS_BYTES = 300 * 1024 * 1024;
 const DRAIN_FLUSH_TIMEOUT_MS = 5_000;
@@ -186,12 +190,13 @@ interface WarmSocket {
 interface QueueEntry {
   socket: WarmSocket;
   request: WarmRequest;
+  // Awake-clock timestamp from when the line was accepted.
   receivedAtMs: number;
   // Settled entries (reply already sent, or client gone) stay in the array
   // and are skipped at dequeue time: O(1) removal without scanning the queue
   // on every socket close.
   settled: boolean;
-  expireTimer: ReturnType<typeof setTimeout>;
+  cancelExpire: () => void;
 }
 
 function overloadedFrame(): Record<string, unknown> {
@@ -294,22 +299,24 @@ export async function serve(
   let queuedLive = 0;
   const queuedBySocket = new Map<object, QueueEntry>();
 
-  let idleTimer: ReturnType<typeof setTimeout> | null = null;
+  const clock = new AwakeClock();
+  let cancelIdle: (() => void) | null = null;
   const clearIdle = () => {
-    if (idleTimer !== null) {
-      clearTimeout(idleTimer);
-      idleTimer = null;
+    if (cancelIdle !== null) {
+      cancelIdle();
+      cancelIdle = null;
     }
   };
   const armIdle = () => {
     clearIdle();
-    idleTimer = setTimeout(() => {
-      // Guarded: the timer is cleared on every start, but never trust a
-      // timer alone with killing a process that might be serving.
+    cancelIdle = clock.delay(IDLE_TIMEOUT_MS, () => {
+      cancelIdle = null;
+      // Guarded: idle is cancelled on every start, but never trust a timer
+      // alone with killing a process that might be serving.
       if (running === 0 && queuedLive === 0 && !draining) {
         exit(0);
       }
-    }, IDLE_TIMEOUT_MS);
+    });
   };
 
   function settleQueueEntry(entry: QueueEntry): boolean {
@@ -318,7 +325,7 @@ export async function serve(
     }
     entry.settled = true;
     queuedLive -= 1;
-    clearTimeout(entry.expireTimer);
+    entry.cancelExpire();
     queuedBySocket.delete(entry.socket);
     // pump() only reclaims settled entries as they reach the front, which
     // never happens while every slot stays busy with long invocations; the
@@ -384,7 +391,7 @@ export async function serve(
     exitIfDrained();
   }
 
-  setTimeout(() => startDrain(0), MAX_LIFETIME_MS);
+  clock.delay(MAX_LIFETIME_MS, () => startDrain(0));
 
   const socketBuffers = new Map<object, string>();
 
@@ -449,7 +456,7 @@ export async function serve(
     // a retried one. The write is synchronous into the kernel buffer: its
     // failure proves the client is gone, so nothing executes for a client
     // that already gave up (e.g. one that timed out while queued).
-    if (Date.now() - receivedAtMs > PRE_ACK_DEADLINE_MS) {
+    if (clock.now() - receivedAtMs > PRE_ACK_DEADLINE_MS) {
       // The pre-ack work (queue wait) outlived the client's patience budget.
       reply(socket, { v: WARM_PROTOCOL_VERSION, stale: true });
       return;
@@ -471,12 +478,12 @@ export async function serve(
     // cannot be killed. Recycle: drain and let the next ensure spawn a
     // fresh worker. Other in-flight invocations finish normally.
     let deadlineFired = false;
-    const deadlineTimer = setTimeout(() => {
+    const cancelDeadline = clock.delay(INVOCATION_DEADLINE_MS, () => {
       deadlineFired = true;
       hung += 1;
       startDrain(1);
       exitIfDrained();
-    }, INVOCATION_DEADLINE_MS);
+    });
 
     try {
       const { output, timingsMs } = await invoke(
@@ -500,7 +507,7 @@ export async function serve(
         });
       }
     } finally {
-      clearTimeout(deadlineTimer);
+      cancelDeadline();
       if (deadlineFired) {
         hung -= 1;
       }
@@ -564,7 +571,7 @@ export async function serve(
       reply(socket, { v: WARM_PROTOCOL_VERSION, stale: true });
       return;
     }
-    const receivedAtMs = Date.now();
+    const receivedAtMs = clock.now();
     if (running < MAX_CONCURRENT_INVOCATIONS) {
       start(socket, request, receivedAtMs);
       return;
@@ -578,13 +585,13 @@ export async function serve(
       request,
       receivedAtMs,
       settled: false,
-      expireTimer: setTimeout(() => {
+      cancelExpire: clock.delay(QUEUE_WAIT_DEADLINE_MS, () => {
         // Waited too long: refuse rather than executing for a caller whose
         // own timeout budget is nearly spent. Pre-ack, so nothing ran.
         if (settleQueueEntry(entry)) {
           reply(socket, overloadedFrame());
         }
-      }, QUEUE_WAIT_DEADLINE_MS),
+      }),
     };
     queue.push(entry);
     queuedLive += 1;
