@@ -108,33 +108,51 @@ export const parseDocumentContent = (
   content: string,
   contentType: "markdown" | "json"
 ): { ok: true; content: JSONContent } | { ok: false } => {
-  try {
-    if (contentType === "markdown") {
-      if (!hasSupportedMarkdown(content)) {
-        return { ok: false };
-      }
-
-      const parsed = documentMarkdown.parse(content);
-      const serialized = documentMarkdown.serialize(parsed);
-
-      if (!canRoundTripMarkdown(parsed, serialized)) {
-        return { ok: false };
-      }
-
-      return { ok: true, content: parsed };
-    }
-
-    const parsed = documentEnvelope.safeParse(JSON.parse(content));
-    if (!parsed.success) {
+  if (contentType === "markdown") {
+    if (!hasSupportedMarkdown(content)) {
       return { ok: false };
     }
 
-    const node = documentSchema.nodeFromJSON(parsed.data);
-    node.check();
-    return { ok: true, content: node.toJSON() };
+    let parsed: JSONContent;
+    let serialized: string;
+
+    try {
+      parsed = documentMarkdown.parse(content);
+      serialized = documentMarkdown.serialize(parsed);
+    } catch {
+      return { ok: false };
+    }
+
+    if (!canRoundTripMarkdown(parsed, serialized)) {
+      return { ok: false };
+    }
+
+    return { ok: true, content: parsed };
+  }
+
+  let json: unknown;
+
+  try {
+    json = JSON.parse(content);
   } catch {
     return { ok: false };
   }
+
+  const parsed = documentEnvelope.safeParse(json);
+  if (!parsed.success) {
+    return { ok: false };
+  }
+
+  let node: Node;
+
+  try {
+    node = documentSchema.nodeFromJSON(parsed.data);
+    node.check();
+  } catch {
+    return { ok: false };
+  }
+
+  return { ok: true, content: node.toJSON() };
 };
 
 /**
