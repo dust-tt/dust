@@ -1,6 +1,33 @@
 // Enter side of the tool-timings collector (see pod/tool_timings.ts).
+//
+// Duplicated on purpose: the runner is a pre-bundled artifact and @dust/pod
+// resolves through NODE_PATH, so the two are distinct module graphs. Sharing
+// only works through `Symbol.for` (same pattern as functions-runner/context.ts
+// vs pod/context.ts). Do not import pod/tool_timings.ts from here.
 
 import { AsyncLocalStorage } from "node:async_hooks";
+
+export type ToolCallServerTimingsMs = {
+  fetchView: number;
+  resolveTool: number;
+  fetchFunction: number;
+  fetchInvocation: number;
+  stakeStatus: number;
+  createAction: number;
+  runOrLaunch: number;
+  run?: {
+    auth: number;
+    fetchAction: number;
+    fetchInvocation: number;
+    resolvePod: number;
+    streaming: number;
+    mcpConnect?: number;
+    mcpCall?: number;
+    total: number;
+  };
+  earlyWait?: number;
+  total: number;
+};
 
 export type ToolCallTimingMs = {
   server: string;
@@ -8,6 +35,8 @@ export type ToolCallTimingMs = {
   post: number;
   poll: number;
   offload?: number;
+  /** Front create/run breakdown when present on the POST. */
+  dust?: ToolCallServerTimingsMs;
   total: number;
 };
 
@@ -27,7 +56,7 @@ export const TOOL_TIMINGS_CONTEXT_KEY = "dust.pod.tool-timings.v1";
 /** Must match pod/tool_timings.ts. */
 export const TOOL_TIMINGS_STACK_KEY = "dust.pod.tool-timings.stack.v1";
 
-function isToolTimingsAls(
+function isAsyncLocalStorageToolTimingsStore(
   value: unknown
 ): value is AsyncLocalStorage<ToolTimingsStore> {
   return (
@@ -42,7 +71,7 @@ function isToolTimingsAls(
 function toolTimingsStorage(): AsyncLocalStorage<ToolTimingsStore> {
   const key = Symbol.for(TOOL_TIMINGS_CONTEXT_KEY);
   const existing: unknown = Reflect.get(globalThis, key);
-  if (isToolTimingsAls(existing)) {
+  if (isAsyncLocalStorageToolTimingsStore(existing)) {
     return existing;
   }
   const storage = new AsyncLocalStorage<ToolTimingsStore>();
@@ -65,7 +94,8 @@ function activeStore(): ToolTimingsStore | undefined {
   return toolTimingsStorage().getStore() ?? syncStack().at(-1);
 }
 
-function isThenable(value: unknown): value is Promise<unknown> {
+/** True when `fn()` returned a Promise (thenable) so we can `finally` pop the stack. */
+function isPromiseLike(value: unknown): value is Promise<unknown> {
   return (
     typeof value === "object" &&
     value !== null &&
@@ -85,7 +115,8 @@ export function runWithToolTimingsCollector<T>(fn: () => T): T {
   return toolTimingsStorage().run(store, () => {
     try {
       const result = fn();
-      if (isThenable(result)) {
+      if (isPromiseLike(result)) {
+        // Keep the collector alive across the async work; pop when it settles.
         return result.finally(pop) as T;
       }
       pop();
