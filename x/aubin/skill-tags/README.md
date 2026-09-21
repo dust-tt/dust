@@ -86,11 +86,18 @@ an explicit marker; the snapshot keeps the full text.
 The report has five tabs. **Explore** is the search: pick tags on the left and the list narrows,
 with every remaining tag showing how many of the current matches carry it; the detail panel shows
 the selected skill's tags, its narrowing path, its top-10 tag neighbors next to its top-10
-embedding neighbors, and a `vs` button on every neighbor. **Map** lays all skills out by classical
-multidimensional scaling of tag distance (1 − similarity, method selectable) so distance on screen
-reflects tag similarity; colour up to three tags of a facet at a time, hover a legend entry to
-isolate its members, or switch to one panel per tag to see where each tag's members sit. Points
-outside the current Explore selection are dimmed. **Segments** is a facet × facet heatmap of
+embedding neighbors, and a `vs` button on every neighbor. **Map** projects all skills to 2D. The
+default is a PCA of the tag space, one dimension per tag of the weighted facets (0/1, or facet
+weight × idf), drawn as a biplot: the twelve strongest tag loadings are arrows from the origin and
+the legend lists the tags that pull each axis in either direction, so the axes can be read. The
+alternative is classical multidimensional scaling of tag distance (1 − similarity), which has no
+axis meaning but places skills by pairwise similarity. Both projections preserve aspect ratio.
+Colour up to three tags of a facet at a time, hover a legend entry to isolate its members, or
+switch to one panel per tag to see where each tag's members sit. Points outside the current
+Explore selection are dimmed. On the v1 tags the first two binary components explain 9% and 8% of
+the variance: axis 1 opposes customer-facing visual builders (build-visual, frame-dashboard) to
+personal text helpers (self-personal, document-text), axis 2 opposes GTM account work
+(customer-account, sales, hubspot) to standing knowledge (reference-knowledge, brand-identity). **Segments** is a facet × facet heatmap of
 bucket sizes; hovering a cell gives its mean tag similarity and mean embedding cosine, clicking it
 opens the bucket in Explore. **Compare** takes two skills and shows their Jaccard, IDF cosine, and
 embedding cosine with B's rank among A's neighbors, then a facet-by-facet alignment of shared and

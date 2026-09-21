@@ -147,7 +147,7 @@
     query: "",
     skill: null,
     method: "jaccard",
-    map: { facet: "function", method: "jaccard", coloured: [], multiples: false },
+    map: { layout: "pca", space: "binary", facet: "function", method: "jaccard", coloured: [], multiples: false },
     segments: { a: "function", b: "subject", primaryOnly: false },
     compare: { a: null, b: null, source: "selection", method: "jaccard", queryA: "", queryB: "" },
   };
@@ -653,7 +653,7 @@
     );
   }
 
-  // ---- Map tab: classical MDS of tag distance ------------------------------------------------
+  // ---- Map tab: PCA of the tag space, or classical MDS of tag distance ---------------------
 
   const layoutCache = new Map();
   function seededRandom(seed) {
@@ -664,9 +664,109 @@
     };
   }
 
-  function layout(method) {
-    if (layoutCache.has(method)) {
-      return layoutCache.get(method);
+  function extent(values) {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const value of values) {
+      min = Math.min(min, value);
+      max = Math.max(max, value);
+    }
+    return { min, max, span: max - min || 1 };
+  }
+
+  // Skills with identical coordinates (identical tag sets) are spread on a small spiral.
+  function jitterDuplicates(xs, ys) {
+    const unit = 0.012 * Math.max(extent(xs).span, extent(ys).span);
+    const seen = new Map();
+    for (let i = 0; i < xs.length; i++) {
+      const key = `${xs[i].toPrecision(8)},${ys[i].toPrecision(8)}`;
+      const k = seen.get(key) || 0;
+      seen.set(key, k + 1);
+      if (k > 0) {
+        const radius = unit * Math.sqrt(k);
+        xs[i] += radius * Math.cos(k * 2.399963);
+        ys[i] += radius * Math.sin(k * 2.399963);
+      }
+    }
+  }
+
+  // Aspect-preserving projection of raw coordinates into a width × height box.
+  function fitter(xs, ys, width, height, pad) {
+    const x = extent(xs);
+    const y = extent(ys);
+    const scale = Math.min((width - 2 * pad) / x.span, (height - 2 * pad) / y.span);
+    const midX = (x.min + x.max) / 2;
+    const midY = (y.min + y.max) / 2;
+    return (px, py) => [width / 2 + (px - midX) * scale, height / 2 - (py - midY) * scale];
+  }
+
+  // Top eigenvectors of a symmetric matrix by power iteration with orthogonalization.
+  function topEigenvectors(matrix, size, count, seed) {
+    const random = seededRandom(seed);
+    const components = [];
+    for (let component = 0; component < count; component++) {
+      let vector = Float64Array.from({ length: size }, () => random() - 0.5);
+      let lambda = 0;
+      for (let iteration = 0; iteration < 500; iteration++) {
+        const next = new Float64Array(size);
+        for (let i = 0; i < size; i++) {
+          let sum = 0;
+          const row = i * size;
+          for (let j = 0; j < size; j++) {
+            sum += matrix[row + j] * vector[j];
+          }
+          next[i] = sum;
+        }
+        for (const previous of components) {
+          let dot = 0;
+          for (let i = 0; i < size; i++) {
+            dot += next[i] * previous.vector[i];
+          }
+          for (let i = 0; i < size; i++) {
+            next[i] -= dot * previous.vector[i];
+          }
+        }
+        let norm = 0;
+        for (let i = 0; i < size; i++) {
+          norm += next[i] * next[i];
+        }
+        norm = Math.sqrt(norm);
+        if (norm < 1e-12) {
+          break;
+        }
+        let delta = 0;
+        for (let i = 0; i < size; i++) {
+          next[i] /= norm;
+          delta += Math.abs(next[i] - vector[i]);
+        }
+        vector = next;
+        lambda = norm;
+        if (delta < 1e-8) {
+          break;
+        }
+      }
+      // Deterministic sign: the largest-magnitude entry points in the positive direction.
+      let largest = 0;
+      for (let i = 1; i < size; i++) {
+        if (Math.abs(vector[i]) > Math.abs(vector[largest])) {
+          largest = i;
+        }
+      }
+      if (vector[largest] < 0) {
+        for (let i = 0; i < size; i++) {
+          vector[i] = -vector[i];
+        }
+      }
+      components.push({ vector, lambda });
+    }
+    return components;
+  }
+
+  // Classical MDS (Torgerson) of the tag distance 1 − similarity.
+  function mdsLayout(method) {
+    const cacheKey = `mds:${method}`;
+    if (layoutCache.has(cacheKey)) {
+      return layoutCache.get(cacheKey);
     }
     const n = N;
     const squared = new Float64Array(n * n);
@@ -693,77 +793,97 @@
         gram[i * n + j] = -0.5 * (squared[i * n + j] - rowMean[i] - rowMean[j] + grand);
       }
     }
-    const random = seededRandom(7);
-    const components = [];
-    for (let component = 0; component < 2; component++) {
-      let vector = Float64Array.from({ length: n }, () => random() - 0.5);
-      let lambda = 0;
-      for (let iteration = 0; iteration < 400; iteration++) {
-        const next = new Float64Array(n);
-        for (let i = 0; i < n; i++) {
-          let sum = 0;
-          const row = i * n;
-          for (let j = 0; j < n; j++) {
-            sum += gram[row + j] * vector[j];
-          }
-          next[i] = sum;
-        }
-        for (const previous of components) {
-          let dot = 0;
-          for (let i = 0; i < n; i++) {
-            dot += next[i] * previous.vector[i];
-          }
-          for (let i = 0; i < n; i++) {
-            next[i] -= dot * previous.vector[i];
-          }
-        }
-        let norm = 0;
-        for (let i = 0; i < n; i++) {
-          norm += next[i] * next[i];
-        }
-        norm = Math.sqrt(norm);
-        if (norm < 1e-12) {
-          break;
-        }
-        let delta = 0;
-        for (let i = 0; i < n; i++) {
-          next[i] /= norm;
-          delta += Math.abs(next[i] - vector[i]);
-        }
-        vector = next;
-        lambda = norm;
-        if (delta < 1e-7) {
-          break;
-        }
-      }
-      components.push({ vector, lambda });
-    }
-    const scale = components.map((component) => Math.sqrt(Math.max(component.lambda, 0)));
-    let xs = Array.from({ length: n }, (_, i) => components[0].vector[i] * scale[0]);
-    let ys = Array.from({ length: n }, (_, i) => components[1].vector[i] * scale[1]);
-    const normalize = (values) => {
-      const min = Math.min(...values);
-      const max = Math.max(...values);
-      const span = max - min || 1;
-      return values.map((value) => 0.05 + (0.9 * (value - min)) / span);
-    };
-    xs = normalize(xs);
-    ys = normalize(ys);
-    // Skills with identical tag sets land on the same point; spread duplicates on a small spiral.
-    const seen = new Map();
-    for (let i = 0; i < n; i++) {
-      const key = `${xs[i].toFixed(5)},${ys[i].toFixed(5)}`;
-      const k = seen.get(key) || 0;
-      seen.set(key, k + 1);
-      if (k > 0) {
-        const radius = 0.012 * Math.sqrt(k);
-        xs[i] += radius * Math.cos(k * 2.399963);
-        ys[i] += radius * Math.sin(k * 2.399963);
-      }
-    }
-    const result = { xs, ys, explained: components.map((component) => component.lambda) };
-    layoutCache.set(method, result);
+    const components = topEigenvectors(gram, n, 2, 7);
+    const xs = Array.from({ length: n }, (_, i) => components[0].vector[i] * Math.sqrt(Math.max(components[0].lambda, 0)));
+    const ys = Array.from({ length: n }, (_, i) => components[1].vector[i] * Math.sqrt(Math.max(components[1].lambda, 0)));
+    jitterDuplicates(xs, ys);
+    const result = { xs, ys, loadings: null, explained: null, origin: null };
+    layoutCache.set(cacheKey, result);
     return result;
+  }
+
+  // PCA of the tag space: one dimension per tag of the weighted facets, entries 0/1 (binary)
+  // or facet weight × idf (weighted). Loadings say which tags drive each axis.
+  const TAG_KEYS = [...df.keys()].sort();
+  function pcaLayout(space) {
+    const cacheKey = `pca:${space}`;
+    if (layoutCache.has(cacheKey)) {
+      return layoutCache.get(cacheKey);
+    }
+    const n = N;
+    const dims = TAG_KEYS.length;
+    const keyIndex = new Map(TAG_KEYS.map((key, index) => [key, index]));
+    const matrix = new Float64Array(n * dims);
+    skills.forEach((skill, i) => {
+      for (const facet of weighted) {
+        for (const tag of skill.tags[facet.id] || []) {
+          const key = `${facet.id}:${tag}`;
+          matrix[i * dims + keyIndex.get(key)] = space === "binary" ? 1 : vectors[i].get(key);
+        }
+      }
+    });
+    const means = new Float64Array(dims);
+    for (let i = 0; i < n; i++) {
+      for (let d = 0; d < dims; d++) {
+        means[d] += matrix[i * dims + d];
+      }
+    }
+    for (let d = 0; d < dims; d++) {
+      means[d] /= n;
+    }
+    for (let i = 0; i < n; i++) {
+      for (let d = 0; d < dims; d++) {
+        matrix[i * dims + d] -= means[d];
+      }
+    }
+    const covariance = new Float64Array(dims * dims);
+    for (let i = 0; i < n; i++) {
+      const row = i * dims;
+      for (let a = 0; a < dims; a++) {
+        const value = matrix[row + a];
+        if (value === 0) {
+          continue;
+        }
+        for (let b = a; b < dims; b++) {
+          covariance[a * dims + b] += value * matrix[row + b];
+        }
+      }
+    }
+    let trace = 0;
+    for (let a = 0; a < dims; a++) {
+      for (let b = a; b < dims; b++) {
+        covariance[a * dims + b] /= n - 1;
+        covariance[b * dims + a] = covariance[a * dims + b];
+      }
+      trace += covariance[a * dims + a];
+    }
+    const components = topEigenvectors(covariance, dims, 2, 11);
+    const project = (component) =>
+      Array.from({ length: n }, (_, i) => {
+        let sum = 0;
+        const row = i * dims;
+        for (let d = 0; d < dims; d++) {
+          sum += matrix[row + d] * component.vector[d];
+        }
+        return sum;
+      });
+    const xs = project(components[0]);
+    const ys = project(components[1]);
+    jitterDuplicates(xs, ys);
+    const result = {
+      xs,
+      ys,
+      loadings: TAG_KEYS.map((key, d) => ({ key, dx: components[0].vector[d], dy: components[1].vector[d] })),
+      explained: components.map((component) => component.lambda / trace),
+      origin: [0, 0],
+    };
+    layoutCache.set(cacheKey, result);
+    return result;
+  }
+
+  function currentLayout() {
+    const m = state.map;
+    return m.layout === "pca" ? pcaLayout(m.space) : mdsLayout(m.method);
   }
 
   function colourOf(index) {
@@ -792,12 +912,20 @@
     render();
   }
 
+  function axisSummary(loadings, axis, sign) {
+    return loadings
+      .filter((loading) => sign * loading[axis] > 0)
+      .sort((a, b) => Math.abs(b[axis]) - Math.abs(a[axis]))
+      .slice(0, 5)
+      .map((loading) => loading.key.split(":")[1]);
+  }
+
   function renderMap() {
     const container = document.getElementById("map");
     container.replaceChildren();
     const m = state.map;
     const facet = facetsById.get(m.facet);
-    const { xs, ys } = layout(m.method);
+    const { xs, ys, loadings, explained, origin } = currentLayout();
     const matches = state.selected.size || state.query ? new Set(matching(state.selected, state.query)) : null;
     const counts = new Map();
     for (const skill of skills) {
@@ -810,16 +938,29 @@
       .filter((row) => row.count > 0)
       .sort((a, b) => b.count - a.count || a.id.localeCompare(b.id));
 
+    const explanation =
+      m.layout === "pca"
+        ? `PCA of the ${TAG_KEYS.length}-dimensional tag space (${m.space === "binary" ? "0/1 per tag" : "facet weight × idf per tag"}); axes 1 and 2 explain ${pct(explained[0])} and ${pct(explained[1])} of the variance. Arrows are the strongest tag loadings.`
+        : "Classical MDS of tag distance, 1 − similarity. Position has no axis meaning; distance does.";
     const controls = el(
       "div",
       { class: "controls" },
+      el("label", {}, "Layout", toggle(["pca", "mds"], m.layout, (value) => {
+        m.layout = value;
+        render();
+      }, { pca: "PCA of tags", mds: "MDS of distance" })),
+      m.layout === "pca"
+        ? el("label", {}, "Tag space", toggle(["binary", "weighted"], m.space, (value) => {
+            m.space = value;
+            render();
+          }, { binary: "binary", weighted: "idf-weighted" }))
+        : el("label", {}, "Distance", toggle(METHODS, m.method, (method) => {
+            m.method = method;
+            render();
+          })),
       el("label", {}, "Colour by", facetSelect(m.facet, (value) => {
         m.facet = value;
         m.coloured = [];
-        render();
-      })),
-      el("label", {}, "Distance", toggle(METHODS, m.method, (method) => {
-        m.method = method;
         render();
       })),
       toggle([false, true], m.multiples, (value) => {
@@ -828,14 +969,15 @@
       }, { false: "One map", true: "One panel per tag" }),
       matches
         ? el("span", { class: "muted" }, `Highlighting ${matches.size} skills from Explore (${selectionLabel() || state.query}) · `, el("button", { type: "button", class: "link", text: "clear", onclick: () => setSelection([]) }))
-        : el("span", { class: "muted", text: "Layout: classical MDS of tag distance, 1 − similarity. Position has no axis meaning; distance does." }),
+        : null,
     );
-    container.append(controls);
+    container.append(controls, el("p", { class: "muted", style: "margin: -6px 0 12px", text: explanation }));
 
     const dimmed = (index) => matches !== null && !matches.has(index);
 
     if (m.multiples) {
       const grid = el("div", { class: "multiples" });
+      const place = fitter(xs, ys, 200, 140, 8);
       for (const row of legendTags) {
         const members = new Set();
         skills.forEach((skill, index) => {
@@ -846,11 +988,13 @@
         const panel = svg("svg", { viewBox: "0 0 200 140", role: "img", "aria-label": `${row.id}: ${row.count} skills` });
         for (let index = 0; index < N; index++) {
           if (!members.has(index)) {
-            panel.append(svg("circle", { cx: 6 + xs[index] * 188, cy: 6 + ys[index] * 128, r: 2, fill: "var(--neutral-mark)", opacity: 0.55 }));
+            const [cx, cy] = place(xs[index], ys[index]);
+            panel.append(svg("circle", { cx, cy, r: 2, fill: "var(--neutral-mark)", opacity: 0.55 }));
           }
         }
         for (const index of members) {
-          panel.append(svg("circle", { cx: 6 + xs[index] * 188, cy: 6 + ys[index] * 128, r: 3.2, fill: "var(--series-1)", stroke: "var(--paper)", "stroke-width": 1, opacity: dimmed(index) ? 0.35 : 1 }));
+          const [cx, cy] = place(xs[index], ys[index]);
+          panel.append(svg("circle", { cx, cy, r: 3.2, fill: "var(--series-1)", stroke: "var(--paper)", "stroke-width": 1, opacity: dimmed(index) ? 0.35 : 1 }));
         }
         grid.append(
           el(
@@ -884,7 +1028,57 @@
 
     const width = 1000;
     const height = 680;
-    const plot = svg("svg", { class: "map-svg", viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": "Skills laid out by tag distance" });
+    const place = fitter(xs, ys, width, height, 36);
+    const plot = svg("svg", { class: "map-svg", viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": "Skills laid out by tag similarity" });
+
+    if (m.layout === "pca") {
+      const [ox, oy] = place(origin[0], origin[1]);
+      plot.append(
+        svg("line", { x1: 0, x2: width, y1: oy, y2: oy, stroke: "var(--line)", "stroke-width": 1 }),
+        svg("line", { x1: ox, x2: ox, y1: 0, y2: height, stroke: "var(--line)", "stroke-width": 1 }),
+        svg("text", { x: width - 8, y: oy - 6, "text-anchor": "end", fill: "var(--muted)", "font-size": 11, text: `axis 1 · ${pct(explained[0])}` }),
+        svg("text", { x: ox + 6, y: 14, fill: "var(--muted)", "font-size": 11, text: `axis 2 · ${pct(explained[1])}` }),
+      );
+      const ranked = loadings
+        .map((loading) => ({ ...loading, norm: Math.hypot(loading.dx, loading.dy) }))
+        .sort((a, b) => b.norm - a.norm)
+        .slice(0, 12);
+      const reach = 0.42 * Math.max(extent(xs).span, extent(ys).span);
+      const scale = reach / ranked[0].norm;
+      const labels = ranked.map((loading) => {
+        const [tx, ty] = place(origin[0] + loading.dx * scale, origin[1] + loading.dy * scale);
+        return { loading, tx, ty, lx: tx + (tx >= ox ? 6 : -6), ly: ty + (ty >= oy ? 12 : -5), anchor: tx >= ox ? "start" : "end" };
+      });
+      // Labels on the same side whose baselines are within 14px are pushed apart vertically.
+      for (const side of ["start", "end"]) {
+        const group = labels.filter((label) => label.anchor === side).sort((a, b) => a.ly - b.ly);
+        for (let i = 1; i < group.length; i++) {
+          if (group[i].ly - group[i - 1].ly < 14) {
+            group[i].ly = group[i - 1].ly + 14;
+          }
+        }
+      }
+      for (const { loading, tx, ty, lx, ly, anchor } of labels) {
+        const tag = loading.key.split(":")[1];
+        plot.append(
+          svg("line", { x1: ox, y1: oy, x2: tx, y2: ty, stroke: "var(--ink-2)", "stroke-width": 1.2, "stroke-dasharray": "4 3", opacity: 0.8 }),
+          svg("text", {
+            x: lx,
+            y: ly,
+            "text-anchor": anchor,
+            fill: "var(--ink-2)",
+            stroke: "var(--paper)",
+            "stroke-width": 4,
+            "paint-order": "stroke",
+            "stroke-linejoin": "round",
+            "font-size": 12,
+            "font-weight": 600,
+            text: tag,
+          }, svg("title", { text: `${loading.key}: loading ${num(loading.dx, 2)} on axis 1, ${num(loading.dy, 2)} on axis 2` })),
+        );
+      }
+    }
+
     const circles = [];
     const order = Array.from({ length: N }, (_, i) => i).sort((a, b) => {
       const ca = colourOf(a) === "var(--neutral-mark)" ? 0 : 1;
@@ -892,8 +1086,7 @@
       return ca - cb;
     });
     for (const index of order) {
-      const cx = 24 + xs[index] * (width - 48);
-      const cy = 24 + ys[index] * (height - 48);
+      const [cx, cy] = place(xs[index], ys[index]);
       const circle = svg("circle", {
         class: `hit${dimmed(index) ? " dim" : ""}`,
         cx,
@@ -947,6 +1140,22 @@
           el("span", { text: row.id }),
           el("span", { class: "count", text: String(row.count) }),
         ),
+      );
+    }
+    if (m.layout === "pca") {
+      legend.append(
+        el("h3", { text: "What the axes mean" }),
+        ...[0, 1].map((axis) => {
+          const key = axis === 0 ? "dx" : "dy";
+          return el(
+            "p",
+            { class: "muted", style: "margin-bottom:8px" },
+            el("strong", { text: `Axis ${axis + 1} (${pct(explained[axis])}) ` }),
+            `→ ${axisSummary(loadings, key, 1).join(", ")}`,
+            el("br"),
+            `← ${axisSummary(loadings, key, -1).join(", ")}`,
+          );
+        }),
       );
     }
     if (state.skill !== null) {
