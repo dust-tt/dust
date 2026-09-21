@@ -6,14 +6,13 @@ import type {
 import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentModelChangeArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
 import type { Authenticator } from "@app/lib/auth";
 import {
   executeWithLockResult,
   isLockAcquisitionTimeoutError,
 } from "@app/lib/lock";
+import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
-import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -64,29 +63,31 @@ export async function suggestAgentModelChange(
     );
   }
 
-  const availableModels = await getAvailableModelsForWorkspace(auth);
-  const modelConfiguration = availableModels.find((m) => m.modelId === modelId);
-  if (!modelConfiguration) {
+  // Match the validation `updateAgentConfigurationsModel` applies when the suggestion is
+  // approved, so a suggestion that is created as pending can always be applied later.
+  const { models } = await getModelsForAuth(auth);
+  const modelConfiguration = models.find((m) => m.modelId === modelId);
+  if (!modelConfiguration || !modelConfiguration.isSelectable) {
     return new Err(
       new MCPError(
         `Invalid model ID: ${modelId}. Available models: ` +
-          `${availableModels.map((m) => m.modelId).join(", ")}.`
+          `${models
+            .filter((m) => m.isSelectable)
+            .map((m) => m.modelId)
+            .join(", ")}.`
       )
     );
   }
 
-  if (reasoningEffort) {
-    const supportedReasoningEfforts = getAvailableReasoningEfforts(
-      modelConfiguration.supportedReasoningEfforts
+  if (
+    reasoningEffort &&
+    !modelConfiguration.supportedReasoningEfforts[reasoningEffort]
+  ) {
+    return new Err(
+      new MCPError(
+        `Model "${modelId}" does not support the "${reasoningEffort}" reasoning effort.`
+      )
     );
-    if (!supportedReasoningEfforts.includes(reasoningEffort)) {
-      return new Err(
-        new MCPError(
-          `Invalid reasoning effort "${reasoningEffort}" for model ${modelId}. ` +
-            `Supported reasoning efforts for this model: ${supportedReasoningEfforts.join(", ")}.`
-        )
-      );
-    }
   }
 
   const result = await executeWithLockResult(

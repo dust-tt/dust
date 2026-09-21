@@ -3,7 +3,7 @@ import {
   AGENT_FACING_DESCRIPTION_MAX_LENGTH,
   USER_FACING_DESCRIPTION_MAX_LENGTH,
 } from "@app/lib/skills/labels";
-import { MODEL_IDS } from "@app/types/assistant/models/models";
+import { ModelIdSchema } from "@app/types/assistant/models/models";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import {
   SKILL_AVAILABILITIES,
@@ -172,7 +172,7 @@ export const SUGGEST_AGENT_MODEL_CHANGE_DESCRIPTION =
 
 export const SUGGEST_AGENT_MODEL_CHANGE_INPUT_SCHEMA = z.object({
   agentId: z.string().describe("The id of the agent whose model to change."),
-  modelId: z.enum(MODEL_IDS).describe("The id of the new model for the agent."),
+  modelId: ModelIdSchema.describe("The id of the new model for the agent."),
   reasoningEffort: z
     .enum(ORDERED_REASONING_EFFORTS)
     .optional()
