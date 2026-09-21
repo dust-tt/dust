@@ -274,7 +274,6 @@ async function loadedPoke(
   if (!invocation) {
     throw new Error("Expected a sandbox function invocation.");
   }
-  await invocation.ensureData();
   return invocation.toPokeJSON(null, []);
 }
 
