@@ -11,8 +11,9 @@ describe("skill listing avatars", () => {
     sId,
     editedBy,
   }) => {
+    const fullSkill = { sId, editedBy, icon: null };
     const listingIcon = getSkillAvatarIcon({ sId, icon: null });
-    const fullSkillIcon = getSkillAvatarIcon({ editedBy, icon: null });
+    const fullSkillIcon = getSkillAvatarIcon(fullSkill);
     expect(renderToStaticMarkup(createElement(listingIcon))).toBe(
       renderToStaticMarkup(createElement(fullSkillIcon))
     );

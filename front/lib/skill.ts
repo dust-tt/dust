@@ -32,7 +32,6 @@ interface SkillAvatarIconProps {
 type SkillAvatarIconInput =
   | string
   | null
-  | Pick<SkillWithoutInstructionsAndToolsType, "editedBy" | "icon">
   | Pick<SkillListItemType, "sId" | "icon">;
 
 export function isDustProvidedSkill(
@@ -43,7 +42,7 @@ export function isDustProvidedSkill(
 
 function isSkillAvatarIconSkill(
   input: SkillAvatarIconInput
-): input is Exclude<SkillAvatarIconInput, string | null> {
+): input is Pick<SkillListItemType, "sId" | "icon"> {
   return input !== null && typeof input === "object";
 }
 
@@ -55,10 +54,7 @@ export function getSkillAvatarIcon(
 
   if (isSkillAvatarIconSkill(input)) {
     iconString = input.icon;
-    isDustProvided =
-      "editedBy" in input
-        ? isDustProvidedSkill(input)
-        : !isResourceSId("skill", input.sId);
+    isDustProvided = !isResourceSId("skill", input.sId);
   } else {
     iconString = input;
   }
