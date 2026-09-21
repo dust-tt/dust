@@ -2,7 +2,7 @@ import {
   ConversationSidePanelProvider,
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { useBeforeViewChange } from "@app/hooks/useViewChangeGuard";
+import { useViewChangeLock } from "@app/hooks/useViewChangeGuard";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -286,37 +286,48 @@ describe("ConversationSidePanelProvider hash encoding", () => {
 });
 
 describe("ConversationSidePanelProvider pending edits", () => {
-  it("waits for a save before replacing the file panel", async () => {
+  it("blocks replacement while changes are pending without queuing navigation", () => {
     hash.set({ spt: "file_preview", spid: "conversation-abc/plan.md" });
-    const save = Promise.withResolvers<boolean>();
-    const { result } = renderHook(
-      () => {
-        useBeforeViewChange(() => save.promise);
+    const { result, rerender } = renderHook(
+      ({ hasPendingChanges }) => {
+        useViewChangeLock(hasPendingChanges);
         return useConversationSidePanelContext();
       },
-      { wrapper: ConversationSidePanelProvider }
+      {
+        initialProps: { hasPendingChanges: true },
+        wrapper: ConversationSidePanelProvider,
+      }
     );
 
     act(() => result.current.openPanel({ type: "files" }));
     expect(result.current.currentPanel).toBe("file_preview");
-    await act(async () => {
-      save.resolve(true);
-    });
+    rerender({ hasPendingChanges: false });
+    expect(result.current.currentPanel).toBe("file_preview");
+
+    act(() => result.current.openPanel({ type: "files" }));
     expect(result.current.currentPanel).toBe("files");
   });
 
-  it("keeps the file open when saving fails", async () => {
+  it("blocks closing until the document has no pending changes", () => {
     hash.set({ spt: "file_preview", spid: "conversation-abc/plan.md" });
-    const { result } = renderHook(
-      () => {
-        useBeforeViewChange(async () => false);
+    const { result, rerender } = renderHook(
+      ({ hasPendingChanges }) => {
+        useViewChangeLock(hasPendingChanges);
         return useConversationSidePanelContext();
       },
-      { wrapper: ConversationSidePanelProvider }
+      {
+        initialProps: { hasPendingChanges: true },
+        wrapper: ConversationSidePanelProvider,
+      }
     );
 
-    await act(async () => result.current.closePanel());
+    act(() => result.current.closePanel());
     expect(result.current.currentPanel).toBe("file_preview");
     expect(result.current.data).toBe("conversation-abc/plan.md");
+
+    rerender({ hasPendingChanges: false });
+    expect(result.current.currentPanel).toBe("file_preview");
+    act(() => result.current.closePanel());
+    expect(result.current.currentPanel).toBeUndefined();
   });
 });

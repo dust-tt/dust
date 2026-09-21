@@ -61,11 +61,6 @@ interface UseDocumentEditorProps {
  * committed saveFormat. Opening a document or changing its output format MUST NOT write it.
  */
 /**
- * @cc [owner:flvndvd,label:product] document-save-before-leaving
- * The host save handle MUST wait for any in-flight save and persist newer edits before succeeding.
- * A failed save MUST keep the draft available to the host.
- */
-/**
  * @cc [owner:flvndvd,label:react] document-dirty-notifications
  * Hosts MUST receive dirty-state transitions from editor and persistence events.
  * Unchanged dirty state and callback identity changes MUST NOT trigger notifications.
@@ -232,21 +227,6 @@ export const useDocumentEditor = ({
     return pendingSave;
   }, [editor, reportDirty]);
 
-  const flush = useCallback(async (): Promise<DocumentSaveResult> => {
-    let result: DocumentSaveResult;
-
-    do {
-      result = await save();
-    } while (
-      result.ok &&
-      editor &&
-      !editor.isDestroyed &&
-      JSON.stringify(editor.getJSON()) !== persistenceRef.current.baseline
-    );
-
-    return result;
-  }, [editor, save]);
-
   useEffect(() => {
     if (draft === null || !dirty || saving || error || !editable) {
       return;
@@ -267,6 +247,5 @@ export const useDocumentEditor = ({
     saving,
     error,
     save,
-    flush,
   };
 };

@@ -6,7 +6,7 @@ import { FilePreviewFallback } from "@app/components/file_explorer/FilePreviewFa
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { MissingPodFileTabCallout } from "@app/components/pod/MissingPodFileTabCallout";
-import { useBeforeViewChange } from "@app/hooks/useViewChangeGuard";
+import { useViewChangeLock } from "@app/hooks/useViewChangeGuard";
 import {
   getFilePathDownloadUrl,
   getFilePathViewUrl,
@@ -99,7 +99,7 @@ export function PodFileTabPreview({
     canEdit,
   });
 
-  useBeforeViewChange(markdown.save);
+  useViewChangeLock(markdown.isDirty || markdown.isSaving);
 
   if (isFileMetadataLoading) {
     return (

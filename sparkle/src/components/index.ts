@@ -127,7 +127,6 @@ export type { DiscoveryGlintProps } from "./DiscoveryGlint";
 export { DiscoveryGlint } from "./DiscoveryGlint";
 export {
   Document,
-  type DocumentHandle,
   type DocumentProps,
   type DocumentSaveResult,
 } from "./Document";

@@ -356,7 +356,6 @@ export function FilePreviewContent({
             key={entry.path || entry.fileId}
             content={markdown?.content ?? processedContent.text}
             canEdit={markdown?.canEdit}
-            documentRef={markdown?.documentRef}
             documentKey={markdown?.documentKey}
             onDirtyChange={markdown?.setDocumentDirty}
             onSave={markdown?.saveContent}

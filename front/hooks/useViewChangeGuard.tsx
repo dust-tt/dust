@@ -6,62 +6,40 @@ import {
   useRef,
 } from "react";
 
-type BeforeViewChange = () => Promise<boolean>;
-
-export const BeforeViewChangeContext = createContext<
-  ((callback: BeforeViewChange) => () => void) | undefined
+export const ViewChangeLockContext = createContext<
+  (() => () => void) | undefined
 >(undefined);
 
-export const useBeforeViewChange = (callback: BeforeViewChange) => {
-  const register = useContext(BeforeViewChangeContext);
-  const callbackRef = useRef(callback);
+export const useViewChangeLock = (isLocked: boolean) => {
+  const lockViewChange = useContext(ViewChangeLockContext);
 
   useLayoutEffect(() => {
-    callbackRef.current = callback;
-  }, [callback]);
-
-  useLayoutEffect(() => register?.(() => callbackRef.current()), [register]);
+    if (isLocked) {
+      return lockViewChange?.();
+    }
+  }, [isLocked, lockViewChange]);
 };
 
 /**
  * @cc [owner:flvndvd,label:product] save-before-view-change
- * Registered views MUST finish saving before they can be replaced or closed.
- * Failed saves MUST leave the view open. A stale save MUST NOT navigate a replacement view.
+ * Locked views MUST NOT be replaced or closed. Blocked navigation MUST NOT trigger a save
+ * or run later when the lock is released.
  */
 export const useViewChangeGuard = () => {
-  const beforeChangeRef = useRef<BeforeViewChange | null>(null);
-  const changingRef = useRef(false);
+  const lockCountRef = useRef(0);
 
-  const registerBeforeChange = useCallback((callback: BeforeViewChange) => {
-    beforeChangeRef.current = callback;
+  const lockViewChange = useCallback(() => {
+    lockCountRef.current += 1;
     return () => {
-      if (beforeChangeRef.current === callback) {
-        beforeChangeRef.current = null;
-      }
+      lockCountRef.current -= 1;
     };
   }, []);
 
   const changeView = useCallback((change: () => void) => {
-    const beforeChange = beforeChangeRef.current;
-    if (!beforeChange) {
+    if (lockCountRef.current === 0) {
       change();
-      return;
     }
-    if (changingRef.current) {
-      return;
-    }
-
-    changingRef.current = true;
-    void beforeChange()
-      .then((canLeave) => {
-        if (canLeave && beforeChangeRef.current === beforeChange) {
-          change();
-        }
-      })
-      .finally(() => {
-        changingRef.current = false;
-      });
   }, []);
 
-  return { registerBeforeChange, changeView };
+  return { lockViewChange, changeView };
 };

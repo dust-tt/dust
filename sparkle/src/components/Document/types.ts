@@ -1,11 +1,6 @@
 // Shared by Document and its hook to avoid circular type imports.
 export type DocumentSaveResult = { ok: true } | { ok: false; error: string };
 
-export interface DocumentHandle {
-  /** Persist pending edits before the host switches views or closes the document. */
-  save: () => Promise<DocumentSaveResult>;
-}
-
 export interface DocumentProps {
   /** Starting content. Remount with a new key to open another document. */
   initialContent: string;

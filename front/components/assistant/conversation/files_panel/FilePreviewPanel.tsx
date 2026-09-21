@@ -15,7 +15,7 @@ import {
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
-import { useBeforeViewChange } from "@app/hooks/useViewChangeGuard";
+import { useViewChangeLock } from "@app/hooks/useViewChangeGuard";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   getFileDownloadUrl,
@@ -134,7 +134,7 @@ export function FilePreviewPanel({
     processedContent: preview.processedContent,
   });
 
-  useBeforeViewChange(markdown.save);
+  useViewChangeLock(markdown.isDirty || markdown.isSaving);
 
   if (!entry || !urls) {
     return (

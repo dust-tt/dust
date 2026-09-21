@@ -2,16 +2,15 @@
 
 import { cn } from "@sparkle/lib/utils";
 import { EditorContent } from "@tiptap/react";
-import React, { forwardRef, useImperativeHandle } from "react";
+import React from "react";
 import { DocumentBlockMenu, useDocumentBlockMenu } from "./DocumentBlockMenu";
 import { DocumentSaveStatus } from "./DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "./DocumentSelectionToolbar";
 import { DocumentSourcePreview } from "./DocumentSourcePreview";
-import type { DocumentHandle, DocumentProps } from "./types";
+import type { DocumentProps } from "./types";
 import { useDocumentEditor } from "./useDocumentEditor";
 
 export type {
-  DocumentHandle,
   DocumentProps,
   DocumentSaveResult,
 } from "./types";
@@ -31,121 +30,111 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * controls, and save callbacks, including when these props change after mount. Hosts MUST
  * apply their permissions through readOnly.
  */
-export const Document = forwardRef<DocumentHandle, DocumentProps>(
-  (
-    {
-      initialContent,
-      contentType = "markdown",
-      saveFormat = "json",
-      className,
-      fullWidth = false,
-      readOnly = false,
-      autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
-      onSave,
-      onDirtyChange,
-    },
-    ref
-  ) => {
-    const {
-      editor,
-      editable,
-      valid,
-      unsupportedMarkdown,
-      unsupportedFeatures,
-      dirty,
-      saving,
-      error,
-      save,
-      flush,
-    } = useDocumentEditor({
-      initialContent,
-      contentType,
-      saveFormat,
-      readOnly,
-      autosaveDebounceMs,
-      onSave,
-      onDirtyChange,
-    });
-    const blockMenu = useDocumentBlockMenu(editor, editable);
+export const Document = ({
+  initialContent,
+  contentType = "markdown",
+  saveFormat = "json",
+  className,
+  fullWidth = false,
+  readOnly = false,
+  autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
+  onSave,
+  onDirtyChange,
+}: DocumentProps) => {
+  const {
+    editor,
+    editable,
+    valid,
+    unsupportedMarkdown,
+    unsupportedFeatures,
+    dirty,
+    saving,
+    error,
+    save,
+  } = useDocumentEditor({
+    initialContent,
+    contentType,
+    saveFormat,
+    readOnly,
+    autosaveDebounceMs,
+    onSave,
+    onDirtyChange,
+  });
+  const blockMenu = useDocumentBlockMenu(editor, editable);
 
-    useImperativeHandle(ref, () => ({ save: flush }), [flush]);
-
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
-      if (
-        event.nativeEvent.isComposing ||
-        !(event.target instanceof Node) ||
-        !editor?.view.dom.contains(event.target)
-      ) {
-        return;
-      }
-
-      if (
-        (event.metaKey || event.ctrlKey) &&
-        !event.shiftKey &&
-        !event.altKey &&
-        event.key.toLowerCase() === "s"
-      ) {
-        event.preventDefault();
-        void save();
-        return;
-      }
-
-      blockMenu.onKeyDown(event);
-    };
-
-    if (unsupportedMarkdown !== null) {
-      return (
-        <DocumentSourcePreview
-          source={unsupportedMarkdown}
-          unsupportedFeatures={unsupportedFeatures}
-          className={className}
-        />
-      );
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (
+      event.nativeEvent.isComposing ||
+      !(event.target instanceof Node) ||
+      !editor?.view.dom.contains(event.target)
+    ) {
+      return;
     }
 
-    if (!valid) {
-      return (
-        <article className={className}>
-          <p role="alert">
-            This document could not be opened. Its saved content has not been
-            changed.
-          </p>
-        </article>
-      );
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      !event.shiftKey &&
+      !event.altKey &&
+      event.key.toLowerCase() === "s"
+    ) {
+      event.preventDefault();
+      void save();
+      return;
     }
 
+    blockMenu.onKeyDown(event);
+  };
+
+  if (unsupportedMarkdown !== null) {
     return (
-      <article
-        className={cn("@container", className)}
-        onKeyDownCapture={handleKeyDown}
-      >
-        <div
-          className={cn(
-            "mx-auto px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
-            fullWidth ? "w-full" : "max-w-[50rem]",
-            editable ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
-          )}
-        >
-          {editable && (
-            <DocumentSaveStatus
-              dirty={dirty}
-              saving={saving}
-              error={error}
-              onRetry={save}
-              autosaveDebounceMs={autosaveDebounceMs}
-            />
-          )}
-          {editor && editable && (
-            <>
-              <DocumentSelectionToolbar editor={editor} />
-              <DocumentBlockMenu editor={editor} menu={blockMenu} />
-            </>
-          )}
-          <EditorContent editor={editor} />
-        </div>
+      <DocumentSourcePreview
+        source={unsupportedMarkdown}
+        unsupportedFeatures={unsupportedFeatures}
+        className={className}
+      />
+    );
+  }
+
+  if (!valid) {
+    return (
+      <article className={className}>
+        <p role="alert">
+          This document could not be opened. Its saved content has not been
+          changed.
+        </p>
       </article>
     );
   }
-);
 
-Document.displayName = "Document";
+  return (
+    <article
+      className={cn("@container", className)}
+      onKeyDownCapture={handleKeyDown}
+    >
+      <div
+        className={cn(
+          "mx-auto px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
+          fullWidth ? "w-full" : "max-w-[50rem]",
+          editable ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
+        )}
+      >
+        {editable && (
+          <DocumentSaveStatus
+            dirty={dirty}
+            saving={saving}
+            error={error}
+            onRetry={save}
+            autosaveDebounceMs={autosaveDebounceMs}
+          />
+        )}
+        {editor && editable && (
+          <>
+            <DocumentSelectionToolbar editor={editor} />
+            <DocumentBlockMenu editor={editor} menu={blockMenu} />
+          </>
+        )}
+        <EditorContent editor={editor} />
+      </div>
+    </article>
+  );
+};

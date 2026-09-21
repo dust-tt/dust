@@ -4,8 +4,7 @@ import { useWriteFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { DocumentHandle, DocumentSaveResult } from "@dust-tt/sparkle";
-import type { RefObject } from "react";
+import type { DocumentSaveResult } from "@dust-tt/sparkle";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -24,11 +23,9 @@ interface UseMarkdownFileEditorParams {
 export interface MarkdownFileEditor {
   canEdit: boolean;
   content: string | undefined;
-  documentRef: RefObject<DocumentHandle>;
   documentKey: number;
   isDirty: boolean;
   isSaving: boolean;
-  save: () => Promise<boolean>;
   saveContent: (content: string) => Promise<DocumentSaveResult>;
   setDocumentDirty: (dirty: boolean) => void;
 }
@@ -70,7 +67,6 @@ const getDocumentSession = (
 /**
  * @cc [owner:flvndvd,label:product] markdown-file-persistence
  * Rich edits MUST save plain Markdown to the canonical file through the Files API.
- * The save handle MUST await Document persistence and report failures to navigation guards.
  * Refreshes MUST preserve unsaved drafts and successful autosaves MUST NOT remount the editor.
  */
 export const useMarkdownFileEditor = ({
@@ -100,7 +96,6 @@ export const useMarkdownFileEditor = ({
   const [isDirty, setDocumentDirty] = useState(false);
   const isSaving = savingDocumentKey === document.key;
   const sessionRef = useRef(document.key);
-  const documentRef = useRef<DocumentHandle>(null);
   const writeContent = useWriteFileContentByPath({ owner });
   const { mutate } = useSWRConfig();
 
@@ -171,23 +166,12 @@ export const useMarkdownFileEditor = ({
     }
   };
 
-  const save = async (): Promise<boolean> => {
-    if (!isDirty && !isSaving) {
-      return true;
-    }
-
-    const result = await documentRef.current?.save();
-    return result?.ok ?? false;
-  };
-
   return {
     canEdit,
     content: document.content,
-    documentRef,
     documentKey: document.key,
     isDirty,
     isSaving,
-    save,
     saveContent,
     setDocumentDirty,
   };

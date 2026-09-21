@@ -1,11 +1,9 @@
-import type { DocumentHandle, DocumentSaveResult } from "@dust-tt/sparkle";
+import type { DocumentSaveResult } from "@dust-tt/sparkle";
 import { Document } from "@dust-tt/sparkle";
-import type { RefObject } from "react";
 
 interface MarkdownFilePreviewProps {
   content: string;
   canEdit?: boolean;
-  documentRef?: RefObject<DocumentHandle>;
   documentKey?: number;
   onDirtyChange?: (dirty: boolean) => void;
   onSave?: (content: string) => Promise<DocumentSaveResult>;
@@ -19,7 +17,6 @@ interface MarkdownFilePreviewProps {
 export const MarkdownFilePreview = ({
   content,
   canEdit = false,
-  documentRef,
   documentKey,
   onDirtyChange,
   onSave,
@@ -27,7 +24,6 @@ export const MarkdownFilePreview = ({
   <div className="h-full min-h-0 flex-1 overflow-y-auto overflow-x-hidden rounded-lg bg-background">
     <Document
       key={documentKey ?? content}
-      ref={documentRef}
       initialContent={content}
       saveFormat="markdown"
       fullWidth

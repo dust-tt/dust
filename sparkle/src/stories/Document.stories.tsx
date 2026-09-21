@@ -4,7 +4,6 @@ import { expect, fn, mocked, userEvent, waitFor, within } from "storybook/test";
 import {
   Document,
   type DocumentProps,
-  type DocumentHandle,
   type DocumentSaveResult,
 } from "@sparkle/components/Document";
 import { useDocumentEditor } from "@sparkle/components/Document/useDocumentEditor";
@@ -602,9 +601,13 @@ const SlowSave = (props: DocumentProps) => {
 
 /** @summary Preserve new edits while a save is in flight. */
 export const EditWhileSaving: Story = {
-  args: { initialContent: "Starting text", onSave: undefined },
+  args: {
+    initialContent: "Starting text",
+    onSave: undefined,
+    onDirtyChange: fn(),
+  },
   render: (args) => <SlowSave {...args} />,
-  play: async ({ canvas }) => {
+  play: async ({ canvas, args }) => {
     const editor = await canvas.findByRole("textbox", {
       name: "Document content",
     });
@@ -622,6 +625,8 @@ export const EditWhileSaving: Story = {
     await expect(canvas.getByRole("status")).toHaveTextContent(
       "Changes pending"
     );
+    await expect(args.onDirtyChange).toHaveBeenCalledTimes(2);
+    await expect(args.onDirtyChange).toHaveBeenLastCalledWith(true);
     await waitFor(
       () => expect(canvas.getByText("Saves started: 2")).toBeVisible(),
       { timeout: 4_000 }
@@ -630,6 +635,8 @@ export const EditWhileSaving: Story = {
       canvas.getByRole("button", { name: "Complete pending save" })
     );
     await expect(canvas.getByRole("status")).toHaveTextContent(/^Saved$/);
+    await expect(args.onDirtyChange).toHaveBeenCalledTimes(3);
+    await expect(args.onDirtyChange).toHaveBeenLastCalledWith(false);
   },
 };
 
@@ -778,97 +785,6 @@ export const CustomContainer: Story = {
       borderTopWidth: "1px",
     });
     await expect(canvas.queryByRole("status")).not.toBeInTheDocument();
-  },
-};
-
-const LeavingDocument = ({ onSave, ...props }: DocumentProps) => {
-  const documentRef = useRef<DocumentHandle>(null);
-  const resolveRef = useRef<((result: DocumentSaveResult) => void) | null>(
-    null
-  );
-  const requestsRef = useRef(0);
-  const [waiting, setWaiting] = useState(false);
-  const [closed, setClosed] = useState(false);
-  const [leaving, setLeaving] = useState(false);
-
-  const persist = async (content: string): Promise<DocumentSaveResult> => {
-    await onSave?.(content);
-    requestsRef.current += 1;
-    if (requestsRef.current > 1) {
-      return { ok: true };
-    }
-    setWaiting(true);
-    return new Promise((resolve) => {
-      resolveRef.current = resolve;
-    });
-  };
-
-  const close = async () => {
-    setLeaving(true);
-    const result = await documentRef.current?.save();
-    if (result?.ok) {
-      setClosed(true);
-    }
-    setLeaving(false);
-  };
-
-  return (
-    <>
-      <div className="flex gap-2 p-4">
-        <button type="button" onClick={close} disabled={leaving}>
-          Close document
-        </button>
-        {waiting && (
-          <button
-            type="button"
-            onClick={() => {
-              resolveRef.current?.({ ok: true });
-              setWaiting(false);
-            }}
-          >
-            Finish saving
-          </button>
-        )}
-      </div>
-      {closed ? (
-        <p>Document closed</p>
-      ) : (
-        <Document {...props} ref={documentRef} onSave={persist} />
-      )}
-    </>
-  );
-};
-
-/** @summary Closing waits for an in-flight write and saves edits made while it was pending. */
-export const SaveBeforeClosing: Story = {
-  args: { initialContent: "A saved draft.", onDirtyChange: fn() },
-  render: (args) => <LeavingDocument {...args} />,
-  play: async ({ canvas, args }) => {
-    const editor = await canvas.findByRole("textbox", {
-      name: "Document content",
-    });
-    await userEvent.clear(editor);
-    await userEvent.type(editor, "First edit.");
-    await userEvent.keyboard("{Control>}s{/Control}");
-    await waitFor(() => expect(args.onSave).toHaveBeenCalledTimes(1));
-    await userEvent.keyboard(" Later edit.");
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Close document" })
-    );
-    await expect(canvas.queryByText("Document closed")).not.toBeInTheDocument();
-    await expect(args.onSave).toHaveBeenCalledTimes(1);
-    await expect(args.onDirtyChange).toHaveBeenCalledTimes(2);
-    await expect(args.onDirtyChange).toHaveBeenLastCalledWith(true);
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Finish saving" })
-    );
-    await expect(await canvas.findByText("Document closed")).toBeVisible();
-    await expect(args.onSave).toHaveBeenCalledTimes(2);
-    await expect(args.onSave).toHaveBeenLastCalledWith(
-      expect.stringContaining("First edit. Later edit.")
-    );
-    await expect(args.onDirtyChange).toHaveBeenCalledTimes(3);
-    await expect(args.onDirtyChange).toHaveBeenLastCalledWith(false);
   },
 };
 

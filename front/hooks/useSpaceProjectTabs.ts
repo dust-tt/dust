@@ -86,7 +86,7 @@ interface UsePodTabsParams {
  *
  * System tabs use `#conversations` etc. Frame tabs use `#frame/<encoded-path>`.
  *
- * Tab clicks wait for the active document to save before updating URL and state.
+ * Tab clicks are blocked while the active document has pending changes.
  *
  * Leaving Connected Data also drops its navigation query params (`dsvId`,
  * `parentId`, `q`). Non-admin-controlled Pods cannot stay on that tab.
@@ -98,11 +98,9 @@ export function usePodTabs({
 }: UsePodTabsParams): {
   currentTab: PodTab;
   handleTabChange: (tab: PodTab) => void;
-  registerBeforeChange: ReturnType<
-    typeof useViewChangeGuard
-  >["registerBeforeChange"];
+  lockViewChange: ReturnType<typeof useViewChangeGuard>["lockViewChange"];
 } {
-  const { registerBeforeChange, changeView } = useViewChangeGuard();
+  const { lockViewChange, changeView } = useViewChangeGuard();
   const onHashChangeRef = useRef<() => void>(() => {});
 
   onHashChangeRef.current = () => {
@@ -152,7 +150,7 @@ export function usePodTabs({
   return {
     currentTab: podUiPreferences.tab,
     handleTabChange,
-    registerBeforeChange,
+    lockViewChange,
   };
 }
 

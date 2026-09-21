@@ -3,8 +3,8 @@ import type { AgentMessageWithStreaming } from "@app/components/assistant/conver
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useHashParam } from "@app/hooks/useHashParams";
 import {
-  BeforeViewChangeContext,
   useViewChangeGuard,
+  ViewChangeLockContext,
 } from "@app/hooks/useViewChangeGuard";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
@@ -287,8 +287,7 @@ export function ConversationSidePanelProvider({
   // ref is enough.
   const panelHistoryRef = React.useRef<OpenPanelParams[]>([]);
   const currentParamsRef = React.useRef<OpenPanelParams | null>(null);
-  const { registerBeforeChange, changeView: changePanel } =
-    useViewChangeGuard();
+  const { lockViewChange, changeView: changePanel } = useViewChangeGuard();
 
   // This should be called once the closing animation is done (onTransitionEnd)
   // so you won't have content flickering. The whole side panel is gone at this point (X with
@@ -503,11 +502,11 @@ export function ConversationSidePanelProvider({
     <SidePanelConversationRegistrationContext.Provider
       value={setHasConversation}
     >
-      <BeforeViewChangeContext.Provider value={registerBeforeChange}>
+      <ViewChangeLockContext.Provider value={lockViewChange}>
         <ConversationSidePanelContext.Provider value={value}>
           {children}
         </ConversationSidePanelContext.Provider>
-      </BeforeViewChangeContext.Provider>
+      </ViewChangeLockContext.Provider>
     </SidePanelConversationRegistrationContext.Provider>
   );
 }

@@ -23,7 +23,7 @@ import {
   Download01,
   Icon,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface FilePreviewDialogProps {
   entry: FileEntry | null;
@@ -78,26 +78,16 @@ export function FilePreviewDialog({
     processedContent: preview.processedContent,
   });
 
-  const navigatePrevious = useCallback(async () => {
-    if (await markdown.save()) {
-      onPrev?.();
-    }
-  }, [markdown.save, onPrev]);
+  const hasPendingChanges = markdown.isDirty || markdown.isSaving;
 
-  const navigateNext = useCallback(async () => {
-    if (await markdown.save()) {
-      onNext?.();
-    }
-  }, [markdown.save, onNext]);
-
-  const handleOpenChange = async (open: boolean) => {
-    if (open || (await markdown.save())) {
+  const handleOpenChange = (open: boolean) => {
+    if (open || !hasPendingChanges) {
       onOpenChange(open);
     }
   };
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen || hasPendingChanges) {
       return;
     }
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -111,15 +101,15 @@ export function FilePreviewDialog({
       }
       if (e.key === "ArrowLeft" && onPrev) {
         e.preventDefault();
-        void navigatePrevious();
+        onPrev();
       } else if (e.key === "ArrowRight" && onNext) {
         e.preventDefault();
-        void navigateNext();
+        onNext();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onPrev, onNext, navigatePrevious, navigateNext]);
+  }, [isOpen, hasPendingChanges, onPrev, onNext]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -177,16 +167,16 @@ export function FilePreviewDialog({
                 variant="outline"
                 size="sm"
                 icon={ChevronLeft}
-                onClick={navigatePrevious}
-                disabled={!onPrev || markdown.isSaving}
+                onClick={onPrev}
+                disabled={!onPrev || hasPendingChanges}
                 tooltip="Previous"
               />
               <Button
                 variant="outline"
                 size="sm"
                 icon={ChevronRight}
-                onClick={navigateNext}
-                disabled={!onNext || markdown.isSaving}
+                onClick={onNext}
+                disabled={!onNext || hasPendingChanges}
                 tooltip="Next"
               />
             </div>
@@ -196,9 +186,7 @@ export function FilePreviewDialog({
               icon={Download01}
               label={isDownloading ? "Downloading…" : "Download"}
               onClick={handleDownload}
-              disabled={
-                !entry || isDownloading || markdown.isDirty || markdown.isSaving
-              }
+              disabled={!entry || isDownloading || hasPendingChanges}
             />
           </div>
         </DialogFooter>

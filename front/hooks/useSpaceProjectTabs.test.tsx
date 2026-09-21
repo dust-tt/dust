@@ -8,8 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 beforeEach(() => window.history.replaceState(null, "", "/#conversations"));
 
 describe("Pod tab persistence", () => {
-  it("waits for the document save before changing tabs or the URL", async () => {
-    const save = Promise.withResolvers<boolean>();
+  it("blocks tab changes while locked without queuing navigation", () => {
     const setPodUiPreferences = vi.fn();
     const { result } = renderHook(() =>
       usePodTabs({
@@ -18,13 +17,17 @@ describe("Pod tab persistence", () => {
         setPodUiPreferences,
       })
     );
-    result.current.registerBeforeChange(() => save.promise);
+    const unlock = result.current.lockViewChange();
 
     act(() => result.current.handleTabChange("files"));
     expect(setPodUiPreferences).not.toHaveBeenCalled();
     expect(window.location.hash).toBe("#conversations");
 
-    await act(async () => save.resolve(true));
+    unlock();
+    expect(setPodUiPreferences).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe("#conversations");
+
+    act(() => result.current.handleTabChange("files"));
     expect(setPodUiPreferences).toHaveBeenCalledWith({
       ...DEFAULT_POD_UI_PREFERENCES,
       tab: "files",
@@ -32,8 +35,7 @@ describe("Pod tab persistence", () => {
     expect(window.location.hash).toBe("#files");
   });
 
-  it("keeps the current tab after a failed save and allows a later retry", async () => {
-    const save = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
+  it("changes a clean tab immediately", () => {
     const setPodUiPreferences = vi.fn();
     const { result } = renderHook(() =>
       usePodTabs({
@@ -42,14 +44,7 @@ describe("Pod tab persistence", () => {
         setPodUiPreferences,
       })
     );
-    result.current.registerBeforeChange(save);
-
-    await act(async () => result.current.handleTabChange("files"));
-    expect(setPodUiPreferences).not.toHaveBeenCalled();
-    expect(window.location.hash).toBe("#conversations");
-
-    save.mockResolvedValue(true);
-    await act(async () => result.current.handleTabChange("files"));
+    act(() => result.current.handleTabChange("files"));
     expect(setPodUiPreferences).toHaveBeenCalledWith({
       ...DEFAULT_POD_UI_PREFERENCES,
       tab: "files",

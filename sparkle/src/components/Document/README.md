@@ -60,7 +60,7 @@ Stories and interaction tests live in `src/stories/Document.stories.tsx` and
 autosave, errors, concurrent edits, read-only content, themes, layout, Markdown
 output, and source preservation.
 
-Hosts can use a `DocumentHandle` ref to await `save()` before closing or switching views.
-It returns `DocumentSaveResult` and waits for in-flight saves, including edits made while saving.
-Keep the document mounted when the result is unsuccessful. `onDirtyChange` reports unsaved edits
-for navigation guards. Toggle `readOnly` to switch between viewing and editing the same draft.
+`onDirtyChange` reports unsaved edits. Hosts can block closing or switching views while
+the document is dirty or their `onSave` callback is pending. A failed save keeps the draft
+dirty until Retry succeeds or the user returns to the saved content.
+Toggle `readOnly` to switch between viewing and editing the same draft.
