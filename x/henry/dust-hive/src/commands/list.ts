@@ -22,7 +22,7 @@ export async function listCommand(): Promise<Result<void>> {
   console.log(
     `${"NAME".padEnd(20)} ${"STATE".padEnd(12)} ${"PORTS".padEnd(12)} ${"BRANCH".padEnd(30)} LAST USED`
   );
-  console.log("-".repeat(87));
+  console.log("-".repeat(90));
 
   for (const name of envNames) {
     const env = await getEnvironment(name);
@@ -33,13 +33,20 @@ export async function listCommand(): Promise<Result<void>> {
     const stateInfo = await getStateInfo(env);
     const stateStr = formatState(stateInfo);
     const portRange = `${env.ports.base}-${env.ports.base + 999}`;
-    const lastUsed = sessionActivity.get(getSessionName(name))?.toLocaleString(undefined, {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
+    const lastUsedAt = sessionActivity.get(getSessionName(name));
+    const lastUsed = lastUsedAt
+      ? lastUsedAt
+          .toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+          })
+          .replace(" at ", ", ")
+          .replace(/ (AM|PM)$/, "$1")
+      : "-";
 
     console.log(
-      `${name.padEnd(20)} ${stateStr.padEnd(12)} ${portRange.padEnd(12)} ${env.metadata.workspaceBranch.padEnd(30)} ${lastUsed ?? "-"}`
+      `${name.padEnd(20)} ${stateStr.padEnd(12)} ${portRange.padEnd(12)} ${env.metadata.workspaceBranch.padEnd(30)} ${lastUsed}`
     );
 
     // Print warnings on next line if any
