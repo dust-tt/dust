@@ -41,6 +41,7 @@ import useSWRMutation from "swr/mutation";
 
 const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
 const SEARCH_SKILLS_DEBOUNCE_MS = 250;
+const SEARCH_SKILLS_QUERY_MAX_LENGTH = 200;
 
 export function useSkill(options: {
   workspaceId: string;
@@ -200,7 +201,7 @@ export function useSearchSkills({
   disabled?: boolean;
 }) {
   const { fetcherWithBody } = useFetcher();
-  const query = searchTerm.slice(0, 200);
+  const query = searchTerm.slice(0, SEARCH_SKILLS_QUERY_MAX_LENGTH);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(query);
   const isDebouncing = query !== debouncedSearchTerm;
 
