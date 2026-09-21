@@ -87,10 +87,10 @@ describe("buildInputBarSlashCommandItems", () => {
     });
 
     expect(result.map(getInputBarSlashCommandItemId)).toEqual([
-      "compact",
-      "upload-file",
       "attach-knowledge",
+      "upload-file",
       "pick-model",
+      "compact",
     ]);
   });
 
@@ -102,7 +102,7 @@ describe("buildInputBarSlashCommandItems", () => {
         includePickModel: false,
         query: "",
       }).map(getInputBarSlashCommandItemId)
-    ).toEqual(["compact", "upload-file"]);
+    ).toEqual(["upload-file", "compact"]);
 
     expect(
       buildInputBarSlashCommandItems({
