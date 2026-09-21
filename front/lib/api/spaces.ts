@@ -11,7 +11,6 @@ import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/ag
 import { isDatabaseFileSystemPodName } from "@app/lib/api/file_system/storage_mode";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
 import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
-import { getReferencedSkillSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -361,10 +360,6 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
         skillMap.set(skill.id, skill);
       }
       const skillsToUpdate = Array.from(skillMap.values());
-      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
-        auth,
-        t
-      );
 
       // Create sets for quick lookup.
       const mcpServerViewIdSet = new Set(mcpServerViewIds);
@@ -391,45 +386,22 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
             (spaceId) => spaceId !== space.id
           );
 
-        // Compute the new requestedSpaceIds from the filtered tools and knowledge.
-        const computedRequestedSpaceIds =
+        // Rebuilt the same way a save does it, from inputs the deleted space has been stripped
+        // from.
+        const rebuiltRequestedSpaceIds =
           await SkillResource.computeRequestedSpaceIds(auth, {
-            mcpServerViews: filteredMCPServerViews,
             attachedKnowledge: filteredAttachedKnowledge,
+            excludedSkillId: skill.sId,
+            instructions: skill.instructions,
+            manuallyRequestedSpaceIds,
+            mcpServerViews: filteredMCPServerViews,
           });
 
-        // The skills this one references keep requesting their own spaces: deleting an unrelated
-        // space must not drop them. A child may still request the space being deleted and the
-        // cleanup order across skills is not guaranteed, so drop it here rather than let it come
-        // back through a reference.
-        const referencedSkillSpaceIds = (
-          await getReferencedSkillSpaceModelIds(
-            auth,
-            skill.instructions,
-            skill.sId
-          )
-        ).filter((spaceId) => spaceId !== space.id);
-
-        // Rebuilt from the same four reasons a skill requests a space as when it is saved, with
-        // the deleted space stripped from each of them.
-        const requestedSpaceIds = uniq([
-          ...computedRequestedSpaceIds, // Tools and attached knowledge.
-          ...referencedSkillSpaceIds, // Nested skills.
-          ...manuallyRequestedSpaceIds, // Picked by hand.
-          globalSpace.id,
-        ]);
-
-        // Log an error if the deleted space is still in requestedSpaceIds.
-        if (requestedSpaceIds.includes(space.id)) {
-          logger.error(
-            {
-              skillId: skill.sId,
-              spaceId: space.sId,
-              workspaceId: auth.getNonNullableWorkspace().sId,
-            },
-            "Deleted space still present in skill requestedSpaceIds after filtering"
-          );
-        }
+        // A nested skill may still request the space — cleanup order across skills is not
+        // guaranteed — so drop it rather than let it come back through a reference.
+        const requestedSpaceIds = rebuiltRequestedSpaceIds.filter(
+          (spaceId) => spaceId !== space.id
+        );
 
         await skill.updateSkill(auth, {
           name: skill.name,

@@ -1,4 +1,3 @@
-import { getReferencedSkillSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { Authenticator } from "@app/lib/auth";
 import {
   SkillConfigurationModel,
@@ -37,15 +36,19 @@ async function computeDerivedSpaceIds(
 ): Promise<Set<ModelId>> {
   const attachedKnowledge = await skill.getAttachedKnowledge(auth);
 
-  const computedSpaceIds = await SkillResource.computeRequestedSpaceIds(auth, {
-    mcpServerViews: skill.mcpServerViews,
-    attachedKnowledge,
-  });
-  const referencedSkillSpaceIds = await getReferencedSkillSpaceModelIds(
+  const computedSpaceIds = await SkillResource.computeToolAndKnowledgeSpaceIds(
     auth,
-    skill.instructions,
-    skill.sId
+    {
+      mcpServerViews: skill.mcpServerViews,
+      attachedKnowledge,
+    }
   );
+  const referencedSkillSpaceIds =
+    await SkillResource.listReferencedSkillSpaceIds(
+      auth,
+      skill.instructions,
+      skill.sId
+    );
 
   return new Set([...computedSpaceIds, ...referencedSkillSpaceIds]);
 }
