@@ -4,7 +4,6 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentEditors } from "@app/lib/api/assistant/editors";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentEditorsLightResponseBody,
@@ -128,49 +127,16 @@ app.patch(
       });
     }
 
-    // Existence guard only: 404s before authorization for a global agent or one whose legacy
-    // editor group is missing. Removed with the legacy editor writes in PR 14.
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-      auth,
-      agent
-    );
-    if (editorGroupRes.isErr()) {
-      switch (editorGroupRes.error.code) {
-        case "unauthorized":
-          return apiError(ctx, {
-            status_code: 401,
-            api_error: {
-              type: "workspace_auth_error",
-              message: "You are not authorized to update the agent editors.",
-            },
-          });
-        case "invalid_id":
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Some of the passed ids are invalid.",
-            },
-          });
-        case "group_not_found":
-          return apiError(ctx, {
-            status_code: 404,
-            api_error: {
-              type: "group_not_found",
-              message: "Unable to find the editor group for the agent.",
-            },
-          });
-        case "internal_error":
-          return apiError(ctx, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: editorGroupRes.error.message,
-            },
-          });
-        default:
-          assertNever(editorGroupRes.error.code);
-      }
+    // Global agents have no editor grant. Preserve the existing 404 response without consulting
+    // the legacy editor-group association.
+    if (agent.scope === "global") {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "group_not_found",
+          message: "Unable to find the editor group for the agent.",
+        },
+      });
     }
 
     const canAdministrate = auth.can(
@@ -236,28 +202,12 @@ app.patch(
               message: "You are not authorized to update the agent editors.",
             },
           });
-        case "invalid_id":
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Some of the passed ids are invalid.",
-            },
-          });
         case "invalid_request_error":
           return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
               message: updateRes.error.message,
-            },
-          });
-        case "group_not_found":
-          return apiError(ctx, {
-            status_code: 404,
-            api_error: {
-              type: "group_not_found",
-              message: "Unable to find the editor group for the agent.",
             },
           });
         case "user_not_found":
@@ -274,23 +224,6 @@ app.patch(
             api_error: {
               type: "invalid_request_error",
               message: "The user is not a member of the agent editors group.",
-            },
-          });
-        case "group_requirements_not_met":
-          return apiError(ctx, {
-            status_code: 403,
-            api_error: {
-              type: "workspace_auth_error",
-              message:
-                "Some users have insufficient role privilege to be added to agent editors.",
-            },
-          });
-        case "system_or_global_group":
-          return apiError(ctx, {
-            status_code: 403,
-            api_error: {
-              type: "workspace_auth_error",
-              message: "Users cannot be removed from system or global groups.",
             },
           });
         case "user_already_member":
