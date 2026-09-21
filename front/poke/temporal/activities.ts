@@ -637,7 +637,10 @@ export async function deleteSkillsActivity({
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
-  await SkillResource.deleteAllForWorkspace(auth);
+  const deleteSkillsResult = await SkillResource.deleteAllForWorkspace(auth);
+  if (deleteSkillsResult.isErr()) {
+    throw deleteSkillsResult.error;
+  }
 
   hardDeleteLogger.info({ workspaceId }, "Deleted all skills");
 }

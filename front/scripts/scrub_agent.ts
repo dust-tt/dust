@@ -114,10 +114,13 @@ makeScript(
     );
 
     for (const version of versions) {
-      await unsafeHardDeleteAgentConfiguration(
+      const deleteResult = await unsafeHardDeleteAgentConfiguration(
         auth,
         AgentResource.fromAgentConfiguration(auth, version)
       );
+      if (deleteResult.isErr()) {
+        throw deleteResult.error;
+      }
       logger.info(
         { workspaceId, agentId, version: version.version },
         "Agent version hard-deleted."

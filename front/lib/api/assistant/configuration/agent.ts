@@ -926,7 +926,7 @@ export async function syncAgentSearchAfterRowDestroyed(
 export async function unsafeHardDeleteAgentConfiguration(
   auth: Authenticator,
   agentResource: AgentResource
-): Promise<void> {
+): Promise<Result<undefined, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().id;
   const configurationModelId = agentResource.agentConfigurationModelId;
 
@@ -999,13 +999,10 @@ export async function unsafeHardDeleteAgentConfiguration(
     );
   });
 
-  const searchResult = await syncAgentSearchAfterRowDestroyed(auth, {
+  return syncAgentSearchAfterRowDestroyed(auth, {
     agent: agentResource,
     agentDeleted,
   });
-  if (searchResult.isErr()) {
-    throw searchResult.error;
-  }
 }
 
 /**
