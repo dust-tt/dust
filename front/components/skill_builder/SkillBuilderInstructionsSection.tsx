@@ -3,10 +3,10 @@ import { SkillBuilderInstructionsEditor } from "@app/components/skill_builder/Sk
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { SKILL_INSTRUCTIONS_LABEL } from "@app/lib/skills/labels";
 import {
-  BookOpen01,
   Button,
   ContentMessage,
   InfoCircle,
+  Plus,
   ReverseLeft,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -21,7 +21,9 @@ export function SkillBuilderInstructionsSection() {
   const { setValue, watch } = useFormContext<SkillBuilderFormData>();
   const { disabled: isReadOnly } = useFormState<SkillBuilderFormData>();
   const { compareVersion, exitDiffMode } = useSkillVersionComparisonContext();
-  const [addKnowledge, setAddKnowledge] = useState<(() => void) | null>(null);
+  const [openInsertMenu, setOpenInsertMenu] = useState<(() => void) | null>(
+    null
+  );
 
   const currentInstructions = watch(INSTRUCTIONS_FIELD_NAME);
   const instructionsDiffer =
@@ -70,10 +72,10 @@ export function SkillBuilderInstructionsSection() {
           {!compareVersion && (
             <Button
               variant="outline"
-              label="Attach knowledge"
-              icon={BookOpen01}
-              onClick={addKnowledge ?? undefined}
-              disabled={isReadOnly || !addKnowledge}
+              label="Insert"
+              icon={Plus}
+              onClick={openInsertMenu ?? undefined}
+              disabled={isReadOnly || !openInsertMenu}
             />
           )}
         </div>
@@ -91,7 +93,7 @@ export function SkillBuilderInstructionsSection() {
         </ContentMessage>
       )}
       <SkillBuilderInstructionsEditor
-        onAddKnowledge={(fn) => setAddKnowledge(() => fn)}
+        onOpenInsertMenu={(fn) => setOpenInsertMenu(() => fn)}
       />
     </section>
   );
