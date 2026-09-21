@@ -1,0 +1,40 @@
+{
+  "baseline": "v3.css",
+  "missing": 133,
+  "restored": 133,
+  "unmatched": [],
+  "families": {
+    "bg": {
+      "rules": 9932,
+      "declarations": 10380,
+      "guards": 18
+    },
+    "text": {
+      "rules": 9933,
+      "declarations": 10383,
+      "guards": 20
+    },
+    "border": {
+      "rules": 49242,
+      "declarations": 62393,
+      "guards": 7
+    },
+    "divide": {
+      "rules": 5489,
+      "declarations": 5735,
+      "guards": 1
+    },
+    "placeholder": {
+      "rules": 5489,
+      "declarations": 5735,
+      "guards": 1
+    },
+    "ring": {
+      "rules": 5494,
+      "declarations": 5741,
+      "guards": 6
+    }
+  },
+  "sourceBytes": 6984904,
+  "sourceGzipBytes": 569952
+}

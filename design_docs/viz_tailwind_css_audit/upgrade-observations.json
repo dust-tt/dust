@@ -1,0 +1,50 @@
+{
+  "v3": {
+    "navigationLeft": 150,
+    "navigationTransform": "matrix(1, 0, 0, 1, -50, 0)",
+    "navigationTranslate": "none",
+    "gradient": "linear-gradient(rgb(255, 255, 255), rgb(250, 250, 249))",
+    "headingSize": "30px",
+    "headingWeight": "600",
+    "radius": "7.2px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 1px 3px 0px, rgba(0, 0, 0, 0) 0px 2px 4px -1px",
+    "borderColor": "oklch(0.9494 0.0013 286.375)",
+    "cursor": "pointer"
+  },
+  "sparkleOnly": {
+    "navigationLeft": 150,
+    "navigationTransform": "none",
+    "navigationTranslate": "-50%",
+    "gradient": "linear-gradient(in oklab, rgb(255, 255, 255) 0%, rgba(0, 0, 0, 0) 100%)",
+    "headingSize": "32px",
+    "headingWeight": "550",
+    "radius": "6px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, oklch(0.1898 0.0094 255.63 / 0.1216) 0px 4px 12px 0px",
+    "borderColor": "oklch(0.97 0.001 106.424)",
+    "cursor": "pointer"
+  },
+  "mixed": {
+    "navigationLeft": 100,
+    "navigationTransform": "matrix(1, 0, 0, 1, -50, 0)",
+    "navigationTranslate": "-50%",
+    "gradient": "linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0))",
+    "headingSize": "30px",
+    "headingWeight": "600",
+    "radius": "7.2px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 1px 3px 0px, rgba(0, 0, 0, 0) 0px 2px 4px -1px",
+    "borderColor": "oklch(0.9494 0.0013 286.375)",
+    "cursor": "pointer"
+  },
+  "mixedPrivateTwProperties": {
+    "navigationLeft": 100,
+    "navigationTransform": "matrix(1, 0, 0, 1, -50, 0)",
+    "navigationTranslate": "-50%",
+    "gradient": "linear-gradient(rgb(255, 255, 255), rgb(250, 250, 249))",
+    "headingSize": "30px",
+    "headingWeight": "600",
+    "radius": "7.2px",
+    "shadow": "rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 1px 3px 0px, rgba(0, 0, 0, 0) 0px 2px 4px -1px",
+    "borderColor": "oklch(0.9494 0.0013 286.375)",
+    "cursor": "pointer"
+  }
+}

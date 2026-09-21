@@ -1,0 +1,21 @@
+{
+  "classes": 151820,
+  "counts": {
+    "changed-rule-text": 149609,
+    "matching-rule-text": 2077,
+    "missing": 133,
+    "baseline-invalid-css": 1
+  },
+  "families": 182,
+  "extraClasses": [
+    "[--cell-size:--spacing(8)]"
+  ],
+  "globalRules": {
+    "v3": 48,
+    "v4": 59
+  },
+  "globalAtRules": {
+    "v3": 86,
+    "v4": 107
+  }
+}

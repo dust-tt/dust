@@ -1,0 +1,10 @@
+/* Seven standalone aliases for a future Viz Tailwind V4 migration.
+ * The six legacy opacity families require the separate generated bridge.
+ */
+@utility blur-0 { @apply blur-[0px]; }
+@utility backdrop-blur-0 { @apply backdrop-blur-[0px]; }
+@utility columns-2xs { columns: 18rem; }
+@utility columns-3xs { columns: 16rem; }
+@utility -order-first { order: 9999; }
+@utility -order-last { order: -9999; }
+@utility -order-none { order: 0; }

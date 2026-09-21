@@ -1,0 +1,9 @@
+@cc [owner:flvndvd,label:product] legacy-opacity-overrides-are-opt-in
+Generated opacity color overrides MUST target an element carrying an inventoried legacy opacity
+class. For dividers, that class belongs to the parent; for placeholders, to the pseudo-element owner.
+They MUST NOT replace ordinary V4 color utility declarations globally.
+
+@cc [owner:flvndvd,label:testing] css-audit-is-not-visual-equivalence
+Audit outputs MUST distinguish textual rule differences from browser behavior, and MUST state the
+compiled vocabulary and tested browser/fixture scope. Matching text MUST NOT be described as proof
+of unchanged Frames.

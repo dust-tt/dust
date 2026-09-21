@@ -1,0 +1,561 @@
+[
+  {
+    "message": "Unknown at rule: @theme",
+    "type": "AtRuleInvalid",
+    "value": "theme",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 1236
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 5547
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 5837
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 6096
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 6277
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 6441
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 6605
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 6653
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 6699
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 6767
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 6807
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 6910
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 6950
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 7052
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 7092
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 7207
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 7247
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 7361
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 7399
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 7549
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 7704
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 7742
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 7890
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 8043
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 8086
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 8244
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 8289
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 8450
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 8493
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 8649
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 8694
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 8853
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 8911
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 9223
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 9283
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 9584
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 9643
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 9956
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 10015
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 10315
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 10432
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 11108
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 11223
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 11897
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 11953
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 12260
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 12318
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 12614
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 12671
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 12979
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 13036
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 13331
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 13445
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 14112
+    }
+  },
+  {
+    "message": "Unknown at rule: @utility",
+    "type": "AtRuleInvalid",
+    "value": "utility",
+    "loc": {
+      "filename": "v3.css",
+      "line": 1,
+      "column": 14224
+    }
+  },
+  {
+    "message": "Unexpected token Function(\"--spacing\")",
+    "type": "UnexpectedToken",
+    "loc": {
+      "filename": "v3.css",
+      "line": 466178,
+      "column": 20
+    }
+  }
+]

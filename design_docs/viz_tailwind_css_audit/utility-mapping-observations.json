@@ -1,0 +1,504 @@
+{
+  "configTheme": [
+    {
+      "selector": ".rounded",
+      "css": ".rounded {\n    border-radius: 0.25rem;\n  }",
+      "declarations": [
+        "border-radius: 0.25rem"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".rounded-lg",
+      "css": ".rounded-lg {\n    border-radius: var(--radius);\n  }",
+      "declarations": [
+        "border-radius: var(--radius)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".rounded-md",
+      "css": ".rounded-md {\n    border-radius: calc(var(--radius) - 2px);\n  }",
+      "declarations": [
+        "border-radius: calc(var(--radius) - 2px)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".rounded-sm",
+      "css": ".rounded-sm {\n    border-radius: calc(var(--radius) - 4px);\n  }",
+      "declarations": [
+        "border-radius: calc(var(--radius) - 4px)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".rounded-xl",
+      "css": ".rounded-xl {\n    border-radius: calc(var(--radius) + 4px);\n  }",
+      "declarations": [
+        "border-radius: calc(var(--radius) + 4px)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".bg-background",
+      "css": ".bg-background {\n    background-color: var(--background);\n  }",
+      "declarations": [
+        "background-color: var(--background)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".font-mono",
+      "css": ".font-mono {\n    font-family: var(--font-geist-mono), monospace;\n  }",
+      "declarations": [
+        "font-family: var(--font-geist-mono), monospace"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".font-sans",
+      "css": ".font-sans {\n    font-family: var(--font-geist), sans-serif;\n  }",
+      "declarations": [
+        "font-family: var(--font-geist), sans-serif"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".shadow",
+      "css": ".shadow {\n    --tw-shadow: var(--shadow);\n    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);\n  }",
+      "declarations": [
+        "--tw-shadow: var(--shadow)",
+        "box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".shadow-md",
+      "css": ".shadow-md {\n    --tw-shadow: var(--shadow-md);\n    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);\n  }",
+      "declarations": [
+        "--tw-shadow: var(--shadow-md)",
+        "box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".shadow-sm",
+      "css": ".shadow-sm {\n    --tw-shadow: var(--shadow-sm);\n    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);\n  }",
+      "declarations": [
+        "--tw-shadow: var(--shadow-sm)",
+        "box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".dark\\:bg-background",
+      "css": ".dark\\:bg-background {\n    &:is(.dark *) {\n      background-color: var(--background);\n    }\n  }",
+      "declarations": [],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": "&:is(.dark *)",
+      "css": "&:is(.dark *) {\n      background-color: var(--background);\n    }",
+      "declarations": [
+        "background-color: var(--background)"
+      ],
+      "parent": ".dark\\:bg-background"
+    }
+  ],
+  "themeShadowOverride": [
+    {
+      "selector": ".shadow-lg",
+      "css": ".shadow-lg {\n    --tw-shadow: 0 10px 15px -3px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 4px 6px -4px var(--tw-shadow-color, rgb(0 0 0 / 0.1));\n    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);\n  }",
+      "declarations": [
+        "--tw-shadow: 0 10px 15px -3px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 4px 6px -4px var(--tw-shadow-color, rgb(0 0 0 / 0.1))",
+        "box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".shadow-sm",
+      "css": ".shadow-sm {\n    --tw-shadow: 0 1px 2px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.05));\n    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);\n  }",
+      "declarations": [
+        "--tw-shadow: 0 1px 2px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.05))",
+        "box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".hover\\:shadow-sm",
+      "css": ".hover\\:shadow-sm {\n    &:hover {\n      @media (hover: hover) {\n        --tw-shadow: 0 1px 2px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.05));\n        box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);\n      }\n    }\n  }",
+      "declarations": [],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": "&:hover",
+      "css": "&:hover {\n      @media (hover: hover) {\n        --tw-shadow: 0 1px 2px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.05));\n        box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);\n      }\n    }",
+      "declarations": [],
+      "parent": ".hover\\:shadow-sm"
+    }
+  ],
+  "nativeLegacyCandidates": [
+    {
+      "selector": ".flex-shrink",
+      "css": ".flex-shrink {\n    flex-shrink: 1;\n  }",
+      "declarations": [
+        "flex-shrink: 1"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".flex-shrink-0",
+      "css": ".flex-shrink-0 {\n    flex-shrink: 0;\n  }",
+      "declarations": [
+        "flex-shrink: 0"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".flex-grow",
+      "css": ".flex-grow {\n    flex-grow: 1;\n  }",
+      "declarations": [
+        "flex-grow: 1"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".flex-grow-0",
+      "css": ".flex-grow-0 {\n    flex-grow: 0;\n  }",
+      "declarations": [
+        "flex-grow: 0"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".transform",
+      "css": ".transform {\n    transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,);\n  }",
+      "declarations": [
+        "transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".bg-gradient-to-r",
+      "css": ".bg-gradient-to-r {\n    --tw-gradient-position: to right in oklab;\n    background-image: linear-gradient(var(--tw-gradient-stops));\n  }",
+      "declarations": [
+        "--tw-gradient-position: to right in oklab",
+        "background-image: linear-gradient(var(--tw-gradient-stops))"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".decoration-clone",
+      "css": ".decoration-clone {\n    -webkit-box-decoration-break: clone;\n    box-decoration-break: clone;\n  }",
+      "declarations": [
+        "-webkit-box-decoration-break: clone",
+        "box-decoration-break: clone"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".decoration-slice",
+      "css": ".decoration-slice {\n    -webkit-box-decoration-break: slice;\n    box-decoration-break: slice;\n  }",
+      "declarations": [
+        "-webkit-box-decoration-break: slice",
+        "box-decoration-break: slice"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".overflow-ellipsis",
+      "css": ".overflow-ellipsis {\n    text-overflow: ellipsis;\n  }",
+      "declarations": [
+        "text-overflow: ellipsis"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".blur",
+      "css": ".blur {\n    --tw-blur: blur(8px);\n    filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);\n  }",
+      "declarations": [
+        "--tw-blur: blur(8px)",
+        "filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".filter",
+      "css": ".filter {\n    filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);\n  }",
+      "declarations": [
+        "filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".backdrop-blur",
+      "css": ".backdrop-blur {\n    --tw-backdrop-blur: blur(8px);\n    -webkit-backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);\n    backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,);\n  }",
+      "declarations": [
+        "--tw-backdrop-blur: blur(8px)",
+        "-webkit-backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,)",
+        "backdrop-filter: var(--tw-backdrop-blur,) var(--tw-backdrop-brightness,) var(--tw-backdrop-contrast,) var(--tw-backdrop-grayscale,) var(--tw-backdrop-hue-rotate,) var(--tw-backdrop-invert,) var(--tw-backdrop-opacity,) var(--tw-backdrop-saturate,) var(--tw-backdrop-sepia,)"
+      ],
+      "parent": "@layer utilities"
+    }
+  ],
+  "alias": [
+    {
+      "selector": ".flex-shrink-0",
+      "css": ".flex-shrink-0 {\n    flex-shrink: 0;\n  }",
+      "declarations": [
+        "flex-shrink: 0"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".flex-shrink-0",
+      "css": ".flex-shrink-0 {\n    flex-shrink: 0;\n  }",
+      "declarations": [
+        "flex-shrink: 0"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".hover\\:flex-shrink-0",
+      "css": ".hover\\:flex-shrink-0 {\n    &:hover {\n      @media (hover: hover) {\n        flex-shrink: 0;\n      }\n    }\n  }",
+      "declarations": [],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": "&:hover",
+      "css": "&:hover {\n      @media (hover: hover) {\n        flex-shrink: 0;\n      }\n    }",
+      "declarations": [],
+      "parent": ".hover\\:flex-shrink-0"
+    },
+    {
+      "selector": ".hover\\:flex-shrink-0",
+      "css": ".hover\\:flex-shrink-0 {\n    &:hover {\n      @media (hover: hover) {\n        flex-shrink: 0;\n      }\n    }\n  }",
+      "declarations": [],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": "&:hover",
+      "css": "&:hover {\n      @media (hover: hover) {\n        flex-shrink: 0;\n      }\n    }",
+      "declarations": [],
+      "parent": ".hover\\:flex-shrink-0"
+    },
+    {
+      "selector": ".md\\:flex-shrink-0",
+      "css": ".md\\:flex-shrink-0 {\n    @media (width >= 48rem) {\n      flex-shrink: 0;\n    }\n  }",
+      "declarations": [],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".md\\:flex-shrink-0",
+      "css": ".md\\:flex-shrink-0 {\n    @media (width >= 48rem) {\n      flex-shrink: 0;\n    }\n  }",
+      "declarations": [],
+      "parent": "@layer utilities"
+    }
+  ],
+  "overrideOutline": [
+    {
+      "selector": ".outline-none",
+      "css": ".outline-none {\n    --tw-outline-style: none;\n    outline-style: none;\n    @media (forced-colors: active) {\n      outline: 2px solid transparent;\n      outline-offset: 2px;\n    }\n  }",
+      "declarations": [
+        "--tw-outline-style: none",
+        "outline-style: none"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".outline-none",
+      "css": ".outline-none {\n    --tw-outline-style: none;\n    outline-style: none;\n  }",
+      "declarations": [
+        "--tw-outline-style: none",
+        "outline-style: none"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".focus\\:outline-none",
+      "css": ".focus\\:outline-none {\n    &:focus {\n      --tw-outline-style: none;\n      outline-style: none;\n      @media (forced-colors: active) {\n        outline: 2px solid transparent;\n        outline-offset: 2px;\n      }\n    }\n  }",
+      "declarations": [],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": "&:focus",
+      "css": "&:focus {\n      --tw-outline-style: none;\n      outline-style: none;\n      @media (forced-colors: active) {\n        outline: 2px solid transparent;\n        outline-offset: 2px;\n      }\n    }",
+      "declarations": [
+        "--tw-outline-style: none",
+        "outline-style: none"
+      ],
+      "parent": ".focus\\:outline-none"
+    },
+    {
+      "selector": ".focus\\:outline-none",
+      "css": ".focus\\:outline-none {\n    &:focus {\n      --tw-outline-style: none;\n      outline-style: none;\n    }\n  }",
+      "declarations": [],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": "&:focus",
+      "css": "&:focus {\n      --tw-outline-style: none;\n      outline-style: none;\n    }",
+      "declarations": [
+        "--tw-outline-style: none",
+        "outline-style: none"
+      ],
+      "parent": ".focus\\:outline-none"
+    }
+  ],
+  "overrideShadow": [
+    {
+      "selector": ".shadow-sm",
+      "css": ".shadow-sm {\n    --tw-shadow: 0 1px 2px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.05));\n    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);\n  }",
+      "declarations": [
+        "--tw-shadow: 0 1px 2px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.05))",
+        "box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".shadow-sm",
+      "css": ".shadow-sm {\n    --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));\n    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);\n  }",
+      "declarations": [
+        "--tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1))",
+        "box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".hover\\:shadow-sm",
+      "css": ".hover\\:shadow-sm {\n    &:hover {\n      @media (hover: hover) {\n        --tw-shadow: 0 1px 2px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.05));\n        box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);\n      }\n    }\n  }",
+      "declarations": [],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": "&:hover",
+      "css": "&:hover {\n      @media (hover: hover) {\n        --tw-shadow: 0 1px 2px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.05));\n        box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);\n      }\n    }",
+      "declarations": [],
+      "parent": ".hover\\:shadow-sm"
+    },
+    {
+      "selector": ".hover\\:shadow-sm",
+      "css": ".hover\\:shadow-sm {\n    &:hover {\n      @media (hover: hover) {\n        --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));\n        box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);\n      }\n    }\n  }",
+      "declarations": [],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": "&:hover",
+      "css": "&:hover {\n      @media (hover: hover) {\n        --tw-shadow: 0 1px 3px 0 var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 1px 2px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1));\n        box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);\n      }\n    }",
+      "declarations": [],
+      "parent": ".hover\\:shadow-sm"
+    }
+  ],
+  "opacityVariableOnly": [
+    {
+      "selector": ".bg-red-500",
+      "css": ".bg-red-500 {\n    background-color: var(--color-red-500);\n  }",
+      "declarations": [
+        "background-color: var(--color-red-500)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".bg-opacity-50",
+      "css": ".bg-opacity-50 {\n    --legacy-bg-opacity: calc(50 / 100);\n  }",
+      "declarations": [
+        "--legacy-bg-opacity: calc(50 / 100)"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".hover\\:bg-opacity-75",
+      "css": ".hover\\:bg-opacity-75 {\n    &:hover {\n      @media (hover: hover) {\n        --legacy-bg-opacity: calc(75 / 100);\n      }\n    }\n  }",
+      "declarations": [],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": "&:hover",
+      "css": "&:hover {\n      @media (hover: hover) {\n        --legacy-bg-opacity: calc(75 / 100);\n      }\n    }",
+      "declarations": [],
+      "parent": ".hover\\:bg-opacity-75"
+    }
+  ],
+  "restoredLegacyLineHeight": [
+    {
+      "selector": ".leading-96p",
+      "css": ".leading-96p {\n    line-height: 0.96;\n  }",
+      "declarations": [
+        "line-height: 0.96"
+      ],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".md\\:leading-96p",
+      "css": ".md\\:leading-96p {\n    @media (width >= 48rem) {\n      line-height: 0.96;\n    }\n  }",
+      "declarations": [],
+      "parent": "@layer utilities"
+    },
+    {
+      "selector": ".probe",
+      "css": ".probe {\n  line-height: 0.96;\n}",
+      "declarations": [
+        "line-height: 0.96"
+      ]
+    }
+  ],
+  "v3ConfigTheme": [
+    {
+      "selector": ".rounded",
+      "css": ".rounded {\n    border-radius: 0.25rem\n}"
+    },
+    {
+      "selector": ".rounded-lg",
+      "css": ".rounded-lg {\n    border-radius: var(--radius)\n}"
+    },
+    {
+      "selector": ".rounded-md",
+      "css": ".rounded-md {\n    border-radius: calc(var(--radius) - 2px)\n}"
+    },
+    {
+      "selector": ".rounded-sm",
+      "css": ".rounded-sm {\n    border-radius: calc(var(--radius) - 4px)\n}"
+    },
+    {
+      "selector": ".rounded-xl",
+      "css": ".rounded-xl {\n    border-radius: calc(var(--radius) + 4px)\n}"
+    },
+    {
+      "selector": ".bg-background",
+      "css": ".bg-background {\n    background-color: var(--background)\n}"
+    },
+    {
+      "selector": ".font-mono",
+      "css": ".font-mono {\n    font-family: var(--font-geist-mono), monospace\n}"
+    },
+    {
+      "selector": ".font-sans",
+      "css": ".font-sans {\n    font-family: var(--font-geist), sans-serif\n}"
+    },
+    {
+      "selector": ".shadow",
+      "css": ".shadow {\n    --tw-shadow: var(--shadow);\n    --tw-shadow-colored: var(--shadow);\n    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)\n}"
+    },
+    {
+      "selector": ".shadow-md",
+      "css": ".shadow-md {\n    --tw-shadow: var(--shadow-md);\n    --tw-shadow-colored: var(--shadow-md);\n    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)\n}"
+    },
+    {
+      "selector": ".shadow-sm",
+      "css": ".shadow-sm {\n    --tw-shadow: var(--shadow-sm);\n    --tw-shadow-colored: var(--shadow-sm);\n    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)\n}"
+    },
+    {
+      "selector": "from",
+      "css": "from {\n        opacity: var(--tw-enter-opacity, 1);\n        transform: translate3d(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0), 0) scale3d(var(--tw-enter-scale, 1), var(--tw-enter-scale, 1), var(--tw-enter-scale, 1)) rotate(var(--tw-enter-rotate, 0))\n    }"
+    },
+    {
+      "selector": "to",
+      "css": "to {\n        opacity: var(--tw-exit-opacity, 1);\n        transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1)) rotate(var(--tw-exit-rotate, 0))\n    }"
+    },
+    {
+      "selector": ".dark\\:bg-background:is(.dark *)",
+      "css": ".dark\\:bg-background:is(.dark *) {\n    background-color: var(--background)\n}"
+    }
+  ]
+}

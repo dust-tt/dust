@@ -1,0 +1,25 @@
+{
+  "timestamp": "2026-09-21T10:17:24.395Z",
+  "sourceRevision": "4eacad437e26555152b7c892f3b4cdf0060e7401",
+  "vocabularySha256": "a80f678f8f4642036fb190024ff2bda9f3197ed5f568de10e3a6d9c4ac362fca",
+  "versions": {
+    "v3": "3.4.19",
+    "v4": "4.3.0"
+  },
+  "inputHashes": {
+    "globals": "75ea9e0986a0bb945b677b6070e6f1e558013c057dba136e4006f4cda3af76d4",
+    "config": "ea6d8c5e4af02f33078ecd2224fce15631620e1afa6c0ff9ef4a06641e62b4ac"
+  },
+  "classes": 151820,
+  "metadataCandidates": 151563,
+  "customUtilities": [
+    "leading-96p",
+    "leading-103p",
+    "leading-123p",
+    "leading-140p"
+  ],
+  "bytes": {
+    "v3": 13416825,
+    "v4": 40566552
+  }
+}
