@@ -3,16 +3,12 @@ import {
   AttachedKnowledgeSchema,
   SkillNameSchema,
 } from "@app/lib/api/skills/schemas";
-import {
-  getReferencedSkillSpaceModelIds,
-  resolveAdditionalRequestedSpaceModelIds,
-} from "@app/lib/api/skills/space_requirements";
+import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { fetchSkillUsageCounts } from "@app/lib/api/skills/usage";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type {
@@ -485,16 +481,6 @@ app.post(
       })
     );
 
-    const computedRequestedSpaceIds =
-      await SkillResource.computeRequestedSpaceIds(auth, {
-        mcpServerViews,
-        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
-      });
-    const referencedSkillSpaceIds = await getReferencedSkillSpaceModelIds(
-      auth,
-      body.instructions
-    );
-
     const additionalRequestedSpaceIdsRes =
       await resolveAdditionalRequestedSpaceModelIds(
         auth,
@@ -511,13 +497,15 @@ app.post(
       });
     }
 
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    const requestedSpaceIds = uniq([
-      ...computedRequestedSpaceIds,
-      globalSpace.id,
-      ...referencedSkillSpaceIds,
-      ...additionalRequestedSpaceIdsRes.value,
-    ]);
+    const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
+      auth,
+      {
+        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        instructions: body.instructions,
+        manuallyRequestedSpaceIds: additionalRequestedSpaceIdsRes.value,
+        mcpServerViews,
+      }
+    );
 
     // Validate file attachments if provided.
     let files: FileResource[] | undefined;

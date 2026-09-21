@@ -461,10 +461,77 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Compute the requestedSpaceIds from MCP server views and attached knowledge.
-   * This is the source of truth for which spaces a skill needs access to.
+   * @cc [owner:matteotrab,label:security;product] requested-spaces-cover-every-requirement
+   * The result MUST hold every space the skill needs to function: the spaces of its tools and
+   * attached knowledge, the spaces requested by the skills its instructions reference, the
+   * hand-picked ones, and the global space.
    */
   static async computeRequestedSpaceIds(
+    auth: Authenticator,
+    {
+      attachedKnowledge,
+      excludedSkillId,
+      instructions,
+      manuallyRequestedSpaceIds,
+      mcpServerViews,
+    }: {
+      attachedKnowledge: SkillAttachedKnowledge[];
+      excludedSkillId?: string;
+      instructions: string;
+      manuallyRequestedSpaceIds: ModelId[];
+      mcpServerViews: MCPServerViewResource[];
+    }
+  ): Promise<ModelId[]> {
+    const toolAndKnowledgeSpaceIds = await this.computeToolAndKnowledgeSpaceIds(
+      auth,
+      { mcpServerViews, attachedKnowledge }
+    );
+    const referencedSkillSpaceIds = await this.listReferencedSkillSpaceIds(
+      auth,
+      instructions,
+      excludedSkillId
+    );
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+    return uniq([
+      ...toolAndKnowledgeSpaceIds, // Tools and attached knowledge.
+      ...referencedSkillSpaceIds, // Nested skills.
+      ...manuallyRequestedSpaceIds, // Picked by hand.
+      globalSpace.id, // Always required.
+    ]);
+  }
+
+  /**
+   * The spaces requested by the active skills `instructions` reference. `excludedSkillId` is the
+   * skill those instructions belong to: a reference back to it is skipped, since its own
+   * requirements are what the caller is recomputing.
+   */
+  static async listReferencedSkillSpaceIds(
+    auth: Authenticator,
+    instructions: string,
+    excludedSkillId?: string
+  ): Promise<ModelId[]> {
+    const referencedSkillIds = extractUniqueSkillReferenceIds(
+      instructions
+    ).filter((skillId) => skillId !== excludedSkillId);
+
+    if (referencedSkillIds.length === 0) {
+      return [];
+    }
+
+    const referencedSkills = await this.fetchByIds(auth, referencedSkillIds);
+
+    return uniq(
+      referencedSkills
+        .filter((skill) => skill.status === "active")
+        .flatMap((skill) => skill.requestedSpaceIds)
+    );
+  }
+
+  /**
+   * The spaces `mcpServerViews` and `attachedKnowledge` live in.
+   */
+  static async computeToolAndKnowledgeSpaceIds(
     auth: Authenticator,
     {
       mcpServerViews,
