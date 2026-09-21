@@ -6,8 +6,17 @@ export const FRAME_PUBLICATION_FILE = "publication.json";
 /** Uncompressed tar of every published function bundle (`<name>.ts`). */
 export const FRAME_PUBLICATION_FUNCTIONS_ARCHIVE_FILE = "functions.tar";
 
+/**
+ * Whether `value` may be used as a Frame storage path segment. Callers that discover segments
+ * rather than construct them — listing publication directories, say — filter with this instead of
+ * letting the path builders throw on a name the bucket happens to hold.
+ */
+export function isSafeFrameStorageSegment(value: string): boolean {
+  return SAFE_FRAME_STORAGE_SEGMENT.test(value);
+}
+
 function safeSegment(value: string, label: string): string {
-  if (!SAFE_FRAME_STORAGE_SEGMENT.test(value)) {
+  if (!isSafeFrameStorageSegment(value)) {
     throw new Error(`Invalid ${label} for Frame storage.`);
   }
 
@@ -37,6 +46,25 @@ export function getFrameDatabaseReplicasBasePath(args: {
   frameId: string;
 }): string {
   return `${getFrameBasePath(args)}state/databases/`;
+}
+
+/**
+ * Persistent folder holding files a Frame's functions create at run time (uploads and anything
+ * else they persist). Frame-owned state, so it sits beside the SQLite replicas under `state/` and is
+ * keyed on the stable Frame identity: it survives re-publishing, and the Frame source never seeds
+ * it. Deleted with the Frame by the wholesale `getFrameBasePath` prefix delete, so it needs no
+ * cleanup of its own.
+ *
+ * Its `state/databases/` sibling is mounted as its own gcsfuse target, and the two must never be
+ * collapsed into one `state/` mount: a mount carries a single uid and mode for its whole tree,
+ * and these two need opposite ones. The replica is mounted as `dust-state` with no `allow_other`
+ * so no other uid can see it, while this folder must be workload-readable and writable.
+ */
+export function getFramePersistentFilesBasePath(args: {
+  workspaceId: string;
+  frameId: string;
+}): string {
+  return `${getFrameBasePath(args)}state/files/`;
 }
 
 export function getFramePublicationsBasePath(args: {

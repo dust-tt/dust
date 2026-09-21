@@ -14,6 +14,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
+import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import logger from "@app/logger/logger";
 import type {
   DeleteSkillResponseBody,
@@ -25,6 +26,7 @@ import type { SkillWithRelationsType } from "@app/types/assistant/skill_configur
 import {
   availabilityFromIsDefault,
   SKILL_AVAILABILITIES,
+  SKILL_REINFORCEMENT_MODES,
 } from "@app/types/assistant/skill_configuration";
 import type { APIErrorResponse } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -53,7 +55,7 @@ const ParamsSchema = z.object({
 const PatchSkillRequestBodySchema = z.object({
   name: SkillNameSchema,
   agentFacingDescription: z.string(),
-  userFacingDescription: z.string(),
+  userFacingDescription: z.string().max(USER_FACING_DESCRIPTION_MAX_LENGTH),
   instructions: z.string(),
   icon: z.string().nullable(),
   tools: z.array(
@@ -68,7 +70,7 @@ const PatchSkillRequestBodySchema = z.object({
   // @deprecated Use availability instead. Kept while old clients still send it.
   isDefault: z.boolean().optional(),
   availability: z.enum(SKILL_AVAILABILITIES).optional(),
-  reinforcement: z.enum(["auto", "on", "off"]).optional(),
+  reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
 });
 
 // Shared per-request prelude: resolve :sId to a SkillResource or return a
@@ -404,11 +406,13 @@ app.patch(
     // A skill requests a space for one of four reasons: one of its tools lives there, some of its
     // attached knowledge does, a skill it references requests it, or a person picked it by hand.
     // Only the last one is stored; the other three are derived, and disappear with what pulled
-    // them in.
+    // them in. The global space is always required.
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const requestedSpaceIds = uniq([
       ...computedRequestedSpaceIds, // Tools and attached knowledge.
       ...referencedSkillSpaceIds, // Nested skills.
       ...additionalRequestedSpaceIds, // Picked by hand.
+      globalSpace.id,
     ]);
 
     // Adding a restricted space can lock out editors that are already on the skill. `updateSkill`

@@ -12,6 +12,7 @@ import {
 } from "@app/scripts/seed/conversational_building/seedConversationalBuilding";
 import type { SeedContext } from "@app/scripts/seed/factories";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { isEditSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -55,7 +56,7 @@ describe("conversational building seed script integration test", () => {
       logger,
     };
 
-    const { users, skills, skillSuggestions } =
+    const { users, skills, skillSuggestions, toolView, knowledgeView } =
       await seedConversationalBuilding(ctx);
 
     // Users carry their asset sId so the editors suggestion references them directly.
@@ -71,8 +72,8 @@ describe("conversational building seed script integration test", () => {
       [user.sId, LUKE_USER_SID].toSorted()
     );
 
-    // Three pending conversational suggestions.
-    expect(skillSuggestions.size).toBe(3);
+    // Six pending conversational suggestions.
+    expect(skillSuggestions.size).toBe(6);
     const listed = await SkillSuggestionResource.listBySkillConfigurationId(
       authenticator,
       skill!.sId,
@@ -81,9 +82,32 @@ describe("conversational building seed script integration test", () => {
     expect(listed.map((s) => s.toJSON().kind).toSorted()).toEqual([
       "edit",
       "edit",
+      "edit",
+      "edit",
       "editors",
+      "user_facing_description",
     ]);
     expect(listed.every((s) => s.toJSON().state === "pending")).toBe(true);
+
+    // The tool edit references the seeded Team Calendar tool's global-space view.
+    expect(toolView).not.toBeNull();
+    const toolSuggestion = skillSuggestions.get("skillEditTool")!;
+    expect(isEditSkillSuggestion(toolSuggestion)).toBe(true);
+    if (isEditSkillSuggestion(toolSuggestion)) {
+      expect(toolSuggestion.suggestion.instructionEdits![0].content).toContain(
+        `<tool id="${toolView!.sId}" name="Team Calendar" />`
+      );
+    }
+
+    // The knowledge edit references the seeded data source view when CoreAPI created it.
+    const knowledgeSuggestion = skillSuggestions.get("skillEditKnowledge")!;
+    expect(isEditSkillSuggestion(knowledgeSuggestion)).toBe(true);
+    if (isEditSkillSuggestion(knowledgeSuggestion) && knowledgeView) {
+      const content =
+        knowledgeSuggestion.suggestion.instructionEdits![0].content;
+      expect(content).toContain(`dsv="${knowledgeView.sId}"`);
+      expect(content).toContain(`space="${knowledgeView.space.sId}"`);
+    }
 
     const editorsSuggestion = skillSuggestions.get("skillEditors")!.toJSON();
     expect(editorsSuggestion.kind).toBe("editors");
@@ -96,6 +120,16 @@ describe("conversational building seed script integration test", () => {
       ]);
     }
 
+    const descriptionSuggestion = skillSuggestions
+      .get("skillUserFacingDescription")!
+      .toJSON();
+    expect(descriptionSuggestion.kind).toBe("user_facing_description");
+    if (descriptionSuggestion.kind === "user_facing_description") {
+      expect(descriptionSuggestion.suggestion.userFacingDescription).toContain(
+        "Paste raw meeting notes"
+      );
+    }
+
     // The conversation embeds each suggestion as a directive, with no leftover placeholder.
     const conversation = await ConversationResource.fetchById(
       authenticator,
@@ -106,7 +140,7 @@ describe("conversational building seed script integration test", () => {
       authenticator,
       conversation!
     );
-    expect(agentMessageIds).toHaveLength(2);
+    expect(agentMessageIds).toHaveLength(4);
     expect(text).not.toContain("__");
     for (const suggestion of skillSuggestions.values()) {
       expect(text).toContain(
@@ -114,10 +148,11 @@ describe("conversational building seed script integration test", () => {
       );
     }
 
-    // Re-run: users and skill are kept, suggestions and conversation are recreated.
+    // Re-run: users, skill and tool are kept, suggestions and conversation are recreated.
     const rerun = await seedConversationalBuilding(ctx);
     expect(rerun.skills.get(SKILL_NAME)!.sId).toBe(skill!.sId);
-    expect(rerun.skillSuggestions.size).toBe(3);
+    expect(rerun.toolView!.sId).toBe(toolView!.sId);
+    expect(rerun.skillSuggestions.size).toBe(6);
     for (const [id, suggestion] of skillSuggestions) {
       expect(rerun.skillSuggestions.get(id)!.sId).not.toBe(suggestion.sId);
     }
@@ -129,7 +164,7 @@ describe("conversational building seed script integration test", () => {
           { sources: ["conversational"] }
         )
       ).length
-    ).toBe(3);
+    ).toBe(6);
 
     const rerunConversation = await ConversationResource.fetchById(
       authenticator,

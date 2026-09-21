@@ -7,11 +7,13 @@ import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types"
 import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -941,5 +943,88 @@ export async function finalizeCreditStop(
       conversationId: conversation.sId,
     },
     "[CreditCheck] agent loop stopped: workspace credit pool exhausted"
+  );
+}
+
+/**
+ * Credit spend checkpoint pause: persists the pause on the message, flags the conversation as
+ * needing the user's attention and notifies the client. Runs in the non-cancellable finalize so
+ * the persisted status can never say "paused" while the loop is still running.
+ */
+export async function finalizeCreditSpendCheckpointPause(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
+  const runAgentDataRes = await getAgentLoopRuntimeData(
+    authType,
+    agentLoopArgs
+  );
+  if (runAgentDataRes.isErr()) {
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      await finalizeUnavailableAgentLoop(authType, agentLoopArgs);
+      logger.info(
+        {
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+        },
+        "Message or conversation was deleted, exiting"
+      );
+      return;
+    }
+    throw new Error(
+      `Failed to get run agent data: ${runAgentDataRes.error.message}`
+    );
+  }
+  const { auth, agentConfiguration, agentMessage, conversation } =
+    runAgentDataRes.value;
+
+  const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
+
+  // A stop or cancellation can land around the pause. The terminal status wins: a cancelled
+  // message must not be flagged paused and waiting for the user.
+  if (agentMessage.status !== "created") {
+    logger.info(
+      {
+        agentMessageId: agentMessage.sId,
+        conversationId: conversation.sId,
+        messageStatus: agentMessage.status,
+      },
+      "[CreditSpendCheckpoint] message already finalized, skipping pause"
+    );
+    return;
+  }
+
+  const { applied } =
+    await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(
+      auth,
+      { agentMessage }
+    );
+  if (!applied) {
+    return;
+  }
+
+  if (!conversation.actionRequired) {
+    notifyManualActionRequired(auth, { conversationId: conversation.sId });
+  }
+  await ConversationResource.markAsActionRequired(auth, { conversation });
+
+  await publishConversationRelatedEvent({
+    conversationId: conversation.sId,
+    step,
+    event: {
+      type: "agent_credit_spend_checkpoint_updated",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      status: "paused",
+    },
+  });
+  logger.info(
+    {
+      agentMessageId: agentMessage.sId,
+      conversationId: conversation.sId,
+      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+    },
+    "[CreditSpendCheckpoint] agent loop paused at credit spend checkpoint"
   );
 }

@@ -13,6 +13,11 @@ const config: Config = {
     },
     extend: {
       colors: {
+        // Intermediate Stone shades from the slideshow design.
+        stone: {
+          150: "#eeeeec",
+          725: "#3c3934",
+        },
         background: "var(--background)",
         foreground: "var(--foreground)",
         card: {

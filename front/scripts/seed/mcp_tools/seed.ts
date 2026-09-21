@@ -4,11 +4,9 @@ import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/m
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { SEARCH_SERVER_NAME } from "@app/lib/api/actions/servers/search/metadata";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
-import {
-  createAgentConfiguration,
-  searchAgentConfigurationsByName,
-} from "@app/lib/api/assistant/configuration/agent";
+import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -19,6 +17,7 @@ import {
   createSeedContext,
   seedDataSources,
 } from "@app/scripts/seed/factories";
+import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -163,7 +162,7 @@ async function createAgentWithTool({
     return { agentId: existingAgent.sId, actionId: null };
   }
 
-  const agentResult = await createAgentConfiguration(auth, {
+  const agentResult = await saveAgentConfiguration(auth, {
     name: agent.agentName,
     description: agent.agentDescription,
     instructions: agent.instructions,
@@ -209,7 +208,7 @@ async function createAgentWithTool({
       dustProject: null,
       jsonSchema: agent.jsonSchema,
     } satisfies UnsavedServerSideMCPServerConfigurationType,
-    agentResult.value
+    AgentResource.fromAgentConfiguration(auth, agentResult.value)
   );
   if (actionResult.isErr()) {
     throw actionResult.error;

@@ -12,6 +12,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type {
@@ -41,6 +42,7 @@ import detect from "./detect";
 import importRoute from "./import";
 import reinforcementDailySpend from "./reinforcement_daily_spend";
 import reinforcementSpend from "./reinforcement_spend";
+import search from "./search";
 import similar from "./similar";
 
 const SkillStatusSchema = z
@@ -120,6 +122,7 @@ app.route("/detect", detect);
 app.route("/import", importRoute);
 app.route("/reinforcement_daily_spend", reinforcementDailySpend);
 app.route("/reinforcement_spend", reinforcementSpend);
+app.route("/search", search);
 app.route("/similar", similar);
 
 /** @ignoreswagger */
@@ -508,8 +511,10 @@ app.post(
       });
     }
 
+    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const requestedSpaceIds = uniq([
       ...computedRequestedSpaceIds,
+      globalSpace.id,
       ...referencedSkillSpaceIds,
       ...additionalRequestedSpaceIdsRes.value,
     ]);

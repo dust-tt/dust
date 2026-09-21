@@ -46,5 +46,56 @@
       "addUserIds": ["SeedUserLeila"],
       "removeUserIds": ["SeedUserLuke"]
     }
+  },
+  {
+    "id": "skillEditTool",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "edit",
+    "title": "Schedule follow-ups with the Team Calendar tool",
+    "analysis": "Meeting notes often end with a follow-up meeting to organize. The skill should offer to create the event with the Team Calendar tool instead of leaving it to the user.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "instructionEdits": [
+        {
+          "targetBlockId": "mn04outr",
+          "content": "<p>Keep the original wording where possible and do not invent information that is not in the notes. When the notes mention a follow-up meeting, offer to schedule it with <tool id=\"__TEAM_CALENDAR_TOOL_ID__\" name=\"Team Calendar\" /> using the attendees and date from the notes.</p>",
+          "type": "replace"
+        }
+      ]
+    }
+  },
+  {
+    "id": "skillEditKnowledge",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "edit",
+    "title": "Expand acronyms using the Team Glossary",
+    "analysis": "Summaries reuse acronyms from the notes verbatim, which readers outside the team do not understand. The skill should look them up in the Team Glossary and expand them on first use.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "instructionEdits": [
+        {
+          "targetBlockId": "mn02intr",
+          "content": "<p>When given raw meeting notes, produce a structured summary. Expand acronyms on first use by looking them up in <knowledge id=\"meeting_notes_team_glossary\" title=\"Team Glossary\" space=\"__MEETING_NOTES_ARCHIVE_SPACE_ID__\" dsv=\"__MEETING_NOTES_ARCHIVE_DSV_ID__\" hasChildren=\"false\" />.</p>",
+          "type": "replace"
+        }
+      ]
+    }
+  },
+  {
+    "id": "skillUserFacingDescription",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "user_facing_description",
+    "title": "Describe the skill for members",
+    "analysis": "Members browsing skills only see the user-facing description. It should say what to paste in and what comes back, not just what the skill does internally.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "userFacingDescription": "Paste raw meeting notes, a call transcript or a Slack thread and get back a clean summary with the decisions and the action items, each with an owner and a due date."
+    }
   }
 ]

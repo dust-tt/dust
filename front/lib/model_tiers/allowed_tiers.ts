@@ -615,6 +615,13 @@ async function loadGroupOverrideTierGrants({
   return expandedTiersByGroupId;
 }
 
+/**
+ * @cc [owner:Fraggle,label:security;product] models-tier-use-capability
+ * A `use` grant on a `models_tier` instance means the holder may use the models of that tier and
+ * of every cheaper one (`expandTiersUpTo`). The caller's cap MUST be resolved as their own user
+ * override when one exists, else the highest of their groups' overrides, else the workspace-wide
+ * grant held by the global group (every tier when none is stored).
+ */
 export async function resolveAllowedTierNames(auth: Authenticator) {
   const user = auth.user();
 

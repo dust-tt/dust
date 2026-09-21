@@ -88,8 +88,14 @@ export async function* runToolWithStreaming(
 
   // Sandbox function actions and auto-allowed agent-loop actions are created in running
   // status; only approved or resumed actions still carry a pre-run status to transition.
+  // Conditioned on the status we read: a sandbox child blocking against this action between that
+  // read and here (possible on a resume, where parent and children are dispatched in parallel)
+  // must not be overwritten — the post-exec parent refetch then still observes the pause.
   if (isAgentLoopRunContext(runContext) && status !== "running") {
-    await runContext.action.updateStatus("running");
+    await runContext.action.updateStatusFromExpected(auth, {
+      status: "running",
+      expectedStatus: status,
+    });
   }
   const startDate = performance.now();
 

@@ -1,12 +1,10 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -31,11 +29,6 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-// TODO(agent-governance): Remove AgentAccess and use AgentResource directly on cleanup.
-type AgentAccess =
-  | { kind: "legacy"; groupId: ModelId }
-  | { kind: "grants"; resource: AgentResource };
-
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentSuggestionResource
   extends ReadonlyAttributesType<AgentSuggestionModel> {}
@@ -51,14 +44,14 @@ export interface AgentSuggestionResource
 export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> {
   static model: ModelStatic<AgentSuggestionModel> = AgentSuggestionModel;
 
-  private readonly agentAccess: AgentAccess | null;
+  private readonly agentAccess: AgentResource | null;
   readonly _agentConfigurationId: string;
   readonly _conversationId: string | null;
 
   constructor(
     model: ModelStatic<AgentSuggestionModel>,
     blob: Attributes<AgentSuggestionModel>,
-    agentAccess: AgentAccess | null,
+    agentAccess: AgentResource | null,
     agentConfigurationId: string,
     conversationId: string | null
   ) {
@@ -81,7 +74,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   private static async getAgentAccessById(
     auth: Authenticator,
     agentIds: string[]
-  ): Promise<Map<string, AgentAccess>> {
+  ): Promise<Map<string, AgentResource>> {
     if (agentIds.length === 0) {
       return new Map();
     }
@@ -96,37 +89,9 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       return new Map();
     }
 
-    if (!isLegacyAclsEnabled()) {
-      const resources = AgentResource.fromAgentConfigurations(
-        auth,
-        agentConfigs
-      );
-      return new Map(
-        resources.map((resource) => [
-          resource.sId,
-          { kind: "grants", resource },
-        ])
-      );
-    }
+    const resources = AgentResource.fromAgentConfigurations(auth, agentConfigs);
 
-    // Fetch editor groups for these agents.
-    const groupsResult = await GroupResource.findEditorGroupsForAgents(
-      auth,
-      agentConfigs
-    );
-
-    // Build a map from agent sId to editors group ID.
-    const result = new Map<string, AgentAccess>();
-    if (groupsResult.isOk()) {
-      for (const sId of agentIds) {
-        const group = groupsResult.value[sId];
-        if (group !== undefined) {
-          result.set(sId, { kind: "legacy", groupId: group.id });
-        }
-      }
-    }
-
-    return result;
+    return new Map(resources.map((resource) => [resource.sId, resource]));
   }
 
   /**
@@ -233,17 +198,13 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
   private static canEditAgent(
     auth: Authenticator,
-    access: AgentAccess | null
+    access: AgentResource | null
   ): boolean {
     if (auth.isAdmin()) {
       return true;
     }
-    if (!access) {
-      return false;
-    }
-    return access.kind === "grants"
-      ? auth.can("write", access.resource)
-      : auth.hasGroupByModelId(access.groupId);
+
+    return access !== null && auth.can("write", access);
   }
 
   static async fetchByIds(

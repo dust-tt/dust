@@ -1,4 +1,8 @@
+import type { SkillPermissionFilteringMode } from "@app/lib/resources/skill/skill_resource";
 import type {
+  SkillAvailability,
+  SkillListItemType,
+  SkillStatus,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
   SkillWithoutInstructionsAndToolsWithRelationsType,
@@ -9,6 +13,27 @@ export type GetSkillsResponseBody = {
   skills: (SkillWithoutInstructionsAndToolsType & {
     isFavorite?: boolean;
   })[];
+};
+
+export type SkillSearchPermissionFiltering = Exclude<
+  SkillPermissionFilteringMode,
+  "dangerously_skip"
+>;
+
+// OR within a dimension, AND across dimensions. Selection never replaces ACLs.
+export interface SkillSearchFilters {
+  // Omitted means active only. Suggested skills are never searchable.
+  status?: Extract<SkillStatus, "active" | "archived">[];
+  mcpServerViewIds?: string[];
+  // Supports "edited by me", but not "not edited by me".
+  editedByMe?: true;
+  availability?: SkillAvailability[];
+}
+
+export type SearchSkillsResponseBody = {
+  skills: SkillListItemType[];
+  hasMore: boolean;
+  nextCursor: string | null;
 };
 
 /**

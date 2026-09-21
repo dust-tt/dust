@@ -209,7 +209,8 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
       </div>
     );
     return href ? (
-      <LinkWrapper href={href} {...linkProps}>
+      // we need make the anchor inline but not inline layout to avoid having descender reserve
+      <LinkWrapper href={href} className="inline-flex" {...linkProps}>
         {chipContent}
       </LinkWrapper>
     ) : (

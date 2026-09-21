@@ -5,6 +5,7 @@ import {
 } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -514,6 +515,33 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     }
   });
 
+  it("returns 400 for a user-facing description over the column length", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest();
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: skill.name,
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "a".repeat(USER_FACING_DESCRIPTION_MAX_LENGTH + 1),
+      instructions: "Instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      `${USER_FACING_DESCRIPTION_MAX_LENGTH}`
+    );
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.userFacingDescription).toBe(
+      skill.userFacingDescription
+    );
+  });
+
   it("should return 400 for invalid MCP server view ID", async () => {
     const { workspace, skill } = await setupTest({ requestUserRole: "admin" });
 
@@ -568,7 +596,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
   });
 
   it("should successfully update the description", async () => {
-    const { workspace, skill, requestUserAuth } = await setupTest({
+    const { workspace, skill, requestUserAuth, globalSpace } = await setupTest({
       requestUserRole: "admin",
     });
 
@@ -598,6 +626,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     );
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.agentFacingDescription).toBe(newDescription);
+    expect(updatedSkill?.requestedSpaceIds).toEqual([globalSpace.id]);
   });
 
   it("updates availability, giving it priority over the deprecated isDefault", async () => {
@@ -878,9 +907,10 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
   });
 
   it("should update requestedSpaceIds when adding a tool from a new space", async () => {
-    const { workspace, skill, requestUser, requestUserAuth } = await setupTest({
-      requestUserRole: "admin",
-    });
+    const { workspace, skill, requestUser, requestUserAuth, globalSpace } =
+      await setupTest({
+        requestUserRole: "admin",
+      });
 
     const space1 = await SpaceFactory.regular(workspace);
     await space1.addMembers(requestUserAuth, { userIds: [requestUser.sId] });
@@ -924,16 +954,21 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     expect(data).not.toHaveProperty("error");
     expect(response.status).toBe(200);
     expect(data.skill.tools).toHaveLength(2);
-    expect(data.skill.requestedSpaceIds).toHaveLength(2);
+    expect(data.skill.requestedSpaceIds).toHaveLength(3);
     expect(data.skill.requestedSpaceIds).toContain(space1.sId);
     expect(data.skill.requestedSpaceIds).toContain(space2.sId);
+    expect(data.skill.requestedSpaceIds).toContain(globalSpace.sId);
 
     const updatedSkill = await SkillResource.fetchById(
       requestUserAuth,
       skill.sId
     );
     expect(updatedSkill).not.toBeNull();
-    expect(updatedSkill?.requestedSpaceIds).toHaveLength(2);
+    expect(updatedSkill?.requestedSpaceIds).toEqual([
+      space1.id,
+      space2.id,
+      globalSpace.id,
+    ]);
   });
 
   it("should include additionalRequestedSpaceIds when updating a skill", async () => {

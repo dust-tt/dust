@@ -104,6 +104,15 @@ type CachedGroup = {
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+/**
+ * @cc [owner:philipperolet,label:security;product] group-verbs
+ * The verbs a caller holds on a group mean:
+ * - `read`: seeing the group and its membership.
+ * - `write`: renaming a `regular_manual` group and adding or removing its members.
+ * - `admin`: deleting a `regular_manual` group.
+ * `global` and `provisioned` groups are read-only. `regular_auto`, `agent_editors` and `system`
+ * groups hold no verbs and MUST only be used by paths with a separate authorization context.
+ */
 export class GroupResource extends BaseResource<GroupModel> {
   static model: ModelStatic<GroupModel> = GroupModel;
 
@@ -529,31 +538,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     return new Ok({ group, addedUsers: memberUsers });
-  }
-
-  /**
-   * TODO(governance): to be removed, replaced by permissions checks
-   */
-  static async findAgentIdsForGroups(
-    auth: Authenticator,
-    groupIds: ModelId[]
-  ): Promise<{ agentConfigurationId: ModelId; groupId: ModelId }[]> {
-    const owner = auth.getNonNullableWorkspace();
-
-    const groupAgents = await GroupAgentModel.findAll({
-      where: {
-        groupId: {
-          [Op.in]: groupIds,
-        },
-        workspaceId: owner.id,
-      },
-      attributes: ["agentConfigurationId", "groupId"],
-    });
-
-    return groupAgents.map((ga) => ({
-      agentConfigurationId: ga.agentConfigurationId,
-      groupId: ga.groupId,
-    }));
   }
 
   /**
@@ -2495,9 +2479,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     const activeWorkspaceUserIds = new Set(
       workspaceMemberships.map((m) => m.userId)
     );
-    const userModelIdBySId = new Map(users.map((u) => [u.sId, u.id]));
+    const userModelIdByUserId = new Map(users.map((u) => [u.sId, u.id]));
     const isActiveWorkspaceMember = (userId: string) => {
-      const modelId = userModelIdBySId.get(userId);
+      const modelId = userModelIdByUserId.get(userId);
       return modelId !== undefined && activeWorkspaceUserIds.has(modelId);
     };
     if (!uniqueAddUserIds.every(isActiveWorkspaceMember)) {
@@ -3686,12 +3670,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       await GroupResource.getActiveMembershipsForGroups(auth, groups);
     const userModelIds = [...new Set(Object.values(membershipsByGroup).flat())];
     const users = await UserResource.fetchByModelIds(userModelIds);
-    const sIdByModelId = new Map(users.map((user) => [user.id, user.sId]));
+    const userIdByModelId = new Map(users.map((user) => [user.id, user.sId]));
 
     return groups.map((group) => {
       const memberIds = removeNulls(
         (membershipsByGroup[group.id] ?? []).map((userModelId) =>
-          sIdByModelId.get(userModelId)
+          userIdByModelId.get(userModelId)
         )
       );
       return {

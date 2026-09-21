@@ -39,6 +39,7 @@ export default function Frame() {
   return <main>...</main>;
 }
 EOF
+bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME" &&
 dsbx frame publish "$FRAME/manifest.json"
 \`\`\`
 
@@ -152,7 +153,19 @@ the Frame: task lists, trackers, backlogs, inventories, logs, notes, comments, f
 anything else users can add, edit, reorder, assign, or delete. Keep only throwaway UI state such as
 the selected tab, filter, or sort order in the React component.
 
+Use the Frame's persistent files folder for unstructured data: uploaded images, generated
+documents, Markdown notes, anything that is a file rather than a row. Never store file bytes in a
+database column, base64 included. They count against the database's 1 GiB cap, and every read of
+that table then carries the payload even when the caller only wanted the metadata. Most Frames
+need nothing but the folder to hold their files. A Frame database holds rows, files or no files;
+add a table about files only when the Frame must query them by something a path does not carry —
+owner, upload date, a label — and store the path in it, never the contents.
+
 ## Authoring a function
+
+When adding a function, write its source file and add its name, description and entryPoint to
+\`manifest.functions\` before running the linter. Use that same name in the UI hook. The linter
+reads the local manifest, so the function does not need to be published yet.
 
 Each function is a TypeScript module that:
 
@@ -194,9 +207,9 @@ not guaranteed at build time.
 ## Persisting state in a Frame database
 
 A Frame owns its SQLite databases independently of its source folder and publications. Publishing
-reconciles the declared schemas but does not replace existing data. The runtime mounts neither the
-Frame source nor a writable data folder; functions access state only through the declared database
-handles.
+reconciles the declared schemas but does not replace existing data. The runtime never mounts the
+Frame source: functions reach structured state only through the declared database handles, and
+bytes only through the files folder below.
 
 Keep one complete Drizzle schema file per database under \`databases/\`. Every function that uses a
 database imports the same table objects from that file and opens the database by its manifest name:
@@ -241,7 +254,9 @@ existing objects. In particular:
 - give each table an \`id\` and \`createdAt\`;
 - avoid foreign keys, CHECK constraints, and UNIQUE constraints; enforce integrity in code and use
   \`uniqueIndex()\` only when existing rows are known to satisfy it;
-- change a shape by adding a new column or table and reading with a fallback.
+- change a shape by adding a new column or table and reading with a fallback;
+- store a path into the Frame's files folder for an image or a document, never the bytes
+  themselves: a column holding base64 makes the table unreadable without its payload.
 
 For per-user state, require a caller, store \`currentUser().sId\`, index that column, and filter by it
 on every read and write. Fetching a row by primary key does not prove ownership.
@@ -297,6 +312,33 @@ can forge it. The frontend's \`useUserIdentity\` hook also returns \`isFrameAuth
 show author-only UI, but enforce every author-only operation with \`frame_author_required\` because
 client-side conditions are not access control.
 
+## Storing files in a Frame
+
+A Frame owns one persistent folder in its sandbox, kept for the lifetime of the Frame.
+\`persistentFilesDir()\` from \`@dust/pod\` returns its absolute path; use it with \`node:fs\` like
+any other directory, for whatever the Frame needs to keep: uploads, generated artifacts, cached
+tool results. It is not part of the Frame source, so its contents exist only at run time and you
+cannot read them while authoring.
+
+It is remote object storage, not local disk:
+
+- Every read and write crosses the wire and nothing caches it, so a \`fast\` function's ten-second
+  ceiling will not survive anything but a tiny file. Declaring the function \`durable\` raises the
+  ceiling to two minutes.
+- Nothing validates what gets written, so a name says nothing about the bytes behind it. Stick to
+  \`.png\`, \`.jpeg\`, \`.json\`, \`.txt\`, and \`.csv\`.
+- A path segment from a viewer can contain \`..\` and resolve above the folder, where the write
+  succeeds onto disk the Frame loses when its sandbox recycles. Check the resolved path is still
+  under \`persistentFilesDir()\`, and derive per-user paths from \`currentUser().sId\` rather than
+  from input.
+
+Moving a stored file through a function is bounded separately from the folder itself. A function
+result is capped at 5 MB, which limits both the upload a function can accept and the file it can
+return in one call. Never write a file and read it back in the same call: the payload crosses the
+wire twice. Store it in one function, return an identifier, and let the UI fetch it from another.
+When a function returns a stored file, pick the content type from a fixed list in code — never
+from the name, and never \`image/svg+xml\` or \`text/html\`, which execute script inside the Frame.
+
 ## Calling a function from the Frame UI
 
 Use the \`useFrameFunction\` and \`useFrameFunctionMutation\` hooks from
@@ -338,6 +380,34 @@ loading, empty, and error states for every call. Function failures are
 \`SandboxFunctionCallError\` instances with \`message\`, optional HTTP \`status\`, and an open-string
 \`code\`; handle known codes and provide a generic fallback.
 
+A Frame cannot make the browser download a file. Its UI runs in a sandboxed iframe that does not
+allow downloads, so building an anchor with a \`download\` attribute and clicking it silently does
+nothing — no error to catch. Do not offer a download button. Render the contents in the UI
+instead: an \`<img>\` for an image, formatted text for data, a table for rows.
+
+## Check the Frame UI
+
+For a v2 Frame, run the attached linter on its folder before publishing:
+
+\`\`\`bash
+bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME"
+\`\`\`
+
+The skill files stay in the conversation even when the Frame lives in a Pod. The script fetches
+the Viz types and reports type and lint errors with file, line and column. Fix those errors before
+publishing. A failed check returns a nonzero exit code.
+
+It keeps generated configs on local sandbox disk and leaves the Frame source and existing
+configs untouched. Keep server functions in
+\`functions/\` and database schemas in \`databases/\`, which are excluded from UI linting.
+The linter also checks UI and backend source for absolute scoped paths to files inside the Frame.
+Use the suggested \`./…\` path so those references still work when the Frame moves.
+
+A literal function name passed to \`useFrameFunction\` or \`useFrameFunctionMutation\` must be
+declared in \`manifest.functions\`. The linter also checks their legacy Pod aliases and reports
+the call's file, line, column and the declared names. Fix a typo in the call or add the new
+function to the manifest. Names computed at run time are not checked.
+
 ## Publish a Frame
 
 There is no separate v2 function publish. Publish the manifest once; the UI source, all declared
@@ -348,11 +418,12 @@ atomically:
 dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
 
-Publishing runs the manifest, UI, function-build, database-contract, Tailwind, and
-function-reference checks. If any fails, no partial publication becomes active: fix the reported
-error and rerun. Tailwind arbitrary values such as \`h-[600px]\` are errors, not warnings: use
-predefined classes or the \`style\` prop. Do not run a separate validation pass first: it repeats
-the same build and only adds latency.
+Publishing runs the manifest, UI, function-build, database-contract and Tailwind checks.
+If any fails, no partial publication
+becomes active: fix the reported error and rerun. Tailwind arbitrary values such as \`h-[600px]\`
+are errors, not warnings: use predefined classes or the \`style\` prop. Run the attached linter
+before publishing to check in-package file paths and function names. Do not run \`dsbx frame validate\`
+immediately before publishing: it repeats the same server build.
 
 To run the same checks without storing or activating a publication or reconciling Frame-owned
 databases, for example while the active publication must keep working, use:
@@ -360,11 +431,6 @@ databases, for example while the active publication must keep working, use:
 \`\`\`bash
 dsbx frame validate /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
-
-A function name passed to \`useFrameFunction\` or \`useFrameFunctionMutation\` as a literal must be a
-bare name declared in this manifest; otherwise \`publish\` and \`validate\` fail, listing the
-declared names, instead of the call failing once a viewer triggers it. A name computed at run time
-is not checked.
 
 Use these commands instead of \`bun build\` or an ad hoc regex scan: those do not use the Frame
 build context and report unrelated or noisy failures.
@@ -400,8 +466,8 @@ initial scope.
 ## Editing
 
 Use the Computer to edit Frame source. Never run concurrent file mutations against the same path:
-read the current file, apply one edit, then start the next edit to that file. Apply the edit and
-run \`dsbx frame publish\` in the same Computer command.
+read the current file, apply one edit, then start the next edit to that file. Apply the edit, run
+the UI linter for v2 Frames, and run \`dsbx frame publish\` in the same Computer command.
 
 When fixing a validation or runtime problem, preserve working structure and make the smallest
 targeted edit. Do not replace an entire UI or function for a localized state, schema, or styling bug.

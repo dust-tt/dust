@@ -323,7 +323,7 @@ export function createTriggersManagementTools(
         podIds.length > 0 ? await SpaceResource.fetchByIds(auth, podIds) : [];
       const podNameById = new Map(pods.map((p) => [p.sId, p.name]));
 
-      const viewSIds = [
+      const viewIds = [
         ...new Set(
           webhookTriggers
             .map((t) => t.webhookSourceViewId)
@@ -331,10 +331,10 @@ export function createTriggersManagementTools(
         ),
       ];
       const views =
-        viewSIds.length > 0
-          ? await WebhookSourcesViewResource.fetchByIds(auth, viewSIds)
+        viewIds.length > 0
+          ? await WebhookSourcesViewResource.fetchByIds(auth, viewIds)
           : [];
-      const sourceNameByViewSId = new Map(
+      const sourceNameByViewId = new Map(
         views.map((v) => [v.sId, v.toJSON().customName])
       );
 
@@ -358,7 +358,7 @@ export function createTriggersManagementTools(
               renderWebhookTrigger(
                 t,
                 t.webhookSourceViewId
-                  ? (sourceNameByViewSId.get(t.webhookSourceViewId) ?? null)
+                  ? (sourceNameByViewId.get(t.webhookSourceViewId) ?? null)
                   : null
               )
             )

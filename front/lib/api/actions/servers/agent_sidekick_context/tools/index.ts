@@ -641,7 +641,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: formatSkillContext(skill.toJSON(auth)),
+        text: formatSkillContext(skill.toJSON(auth), "full"),
       },
     ]);
   },

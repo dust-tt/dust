@@ -11,11 +11,10 @@ export const QUEUE_NAME = `model-health-queue-v${QUEUE_VERSION}`;
 export const MAX_PROBE_ROUNDS = 100;
 
 /**
- * The workflow id *is* the state in this phase: while a recovery workflow with
- * this id is running, the endpoint is degraded. Temporal's workflow-id
- * uniqueness therefore doubles as the cross-pod dedup, and the default
- * `ALLOW_DUPLICATE` reuse policy frees the id once recovery completes so a later
- * breach can open a fresh one.
+ * The workflow id owns recovery: Temporal's workflow-id uniqueness doubles as
+ * cross-pod dedup, and the default `ALLOW_DUPLICATE` reuse policy frees the id
+ * once recovery completes so a later breach can open a fresh one. Postgres is
+ * the source of truth for whether the endpoint is currently degraded.
  */
 export function recoveryWorkflowId({
   modelId,

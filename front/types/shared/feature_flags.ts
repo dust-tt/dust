@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  skills_search: {
+    description: "Enable Elasticsearch-backed skill search",
+    stage: "dust_only",
+    owner: "aubin-tchoi",
+  },
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
@@ -195,6 +200,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "davidebbo",
   },
+  simulated_failure_model_feature: {
+    description: "Access to the simulated failure model",
+    stage: "dust_only",
+    owner: "frankaloia",
+  },
+  automatic_model_health_routing: {
+    description:
+      "Let a model-health breach seen on this workspace's traffic degrade the endpoint",
+    stage: "dust_only",
+    owner: "frankaloia",
+  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
@@ -359,12 +375,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the Dust Pod Goal skill for persistent job loops in Pods",
     stage: "dust_only",
     owner: "frankaloia",
-  },
-  group_permissions_shadow: {
-    description:
-      "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
-    stage: "dust_only",
-    owner: "philipperolet",
   },
   user_memory: {
     description:

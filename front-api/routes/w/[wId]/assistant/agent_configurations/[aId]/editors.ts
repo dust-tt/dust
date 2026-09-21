@@ -1,9 +1,9 @@
-import { shadowCanAdminAgent } from "@app/lib/api/assistant/agent_permissions";
 import {
   getAgentConfiguration,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentEditors } from "@app/lib/api/assistant/editors";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -74,48 +74,15 @@ app.get(
       });
     }
 
-    const editorsResult = await getAgentEditors(
-      auth,
-      agent,
-      "getAgentEditorsRoute"
-    );
+    const editorsResult = await getAgentEditors(auth, agent);
     if (editorsResult.isErr()) {
-      switch (editorsResult.error.code) {
-        case "unauthorized":
-          return apiError(ctx, {
-            status_code: 401,
-            api_error: {
-              type: "workspace_auth_error",
-              message: "You are not authorized to update the agent editors.",
-            },
-          });
-        case "invalid_id":
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Some of the passed ids are invalid.",
-            },
-          });
-        case "group_not_found":
-          return apiError(ctx, {
-            status_code: 404,
-            api_error: {
-              type: "group_not_found",
-              message: "Unable to find the editor group for the agent.",
-            },
-          });
-        case "internal_error":
-          return apiError(ctx, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: editorsResult.error.message,
-            },
-          });
-        default:
-          assertNever(editorsResult.error.code);
-      }
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "group_not_found",
+          message: "Unable to find the editor group for the agent.",
+        },
+      });
     }
 
     // Any workspace member can read the editors of an agent.
@@ -161,6 +128,8 @@ app.patch(
       });
     }
 
+    // Existence guard only: 404s before authorization for a global agent or one whose legacy
+    // editor group is missing. Removed with the legacy editor writes in PR 14.
     const editorGroupRes = await GroupResource.findEditorGroupForAgent(
       auth,
       agent
@@ -204,15 +173,9 @@ app.patch(
       }
     }
 
-    const editorGroup = editorGroupRes.value;
-    // The rollout switch selects the permission source for both editor writes.
-    const canAdministrate = await shadowCanAdminAgent(
-      auth,
-      agent,
-      async () =>
-        auth.isAdmin() ||
-        (await editorGroup.isMember(auth.getNonNullableUser())),
-      "patchAgentEditorsRoute"
+    const canAdministrate = auth.can(
+      "admin",
+      AgentResource.fromAgentConfiguration(auth, agent)
     );
     if (!canAdministrate) {
       return apiError(ctx, {
@@ -352,11 +315,7 @@ app.patch(
       }
     }
 
-    const updatedMembers = await getAgentEditors(
-      auth,
-      agent,
-      "patchAgentEditorsResponse"
-    );
+    const updatedMembers = await getAgentEditors(auth, agent);
     if (updatedMembers.isErr()) {
       throw updatedMembers.error;
     }

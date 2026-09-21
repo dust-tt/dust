@@ -11,9 +11,9 @@
  */
 
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { postProcessMarkdown } from "@app/lib/editor/skill_instructions_preprocessing";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
-import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";

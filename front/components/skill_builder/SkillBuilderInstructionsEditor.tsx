@@ -587,10 +587,10 @@ export function SkillBuilderInstructionsEditor({
     }
 
     // Wrap in arrow to avoid React treating the function as a state updater.
-    setAcceptInstructionEdits(() => (suggestionSId: string) => {
+    setAcceptInstructionEdits(() => (suggestionId: string) => {
       // Accept each edit of this suggestion via the PM command.
       for (let i = 0; ; i++) {
-        const editId = `${suggestionSId}:${i}`;
+        const editId = `${suggestionId}:${i}`;
         const accepted = editor.commands.acceptSuggestion(editId);
         if (!accepted) {
           break;
@@ -669,6 +669,7 @@ export function SkillBuilderInstructionsEditor({
         case "edit":
           break;
         case "editors":
+        case "user_facing_description":
           continue;
         default:
           assertNeverAndIgnore(suggestion);

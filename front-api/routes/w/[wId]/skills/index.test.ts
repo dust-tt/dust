@@ -539,11 +539,11 @@ describe("GET /api/w/:wId/skills", () => {
 
     const response2 = await getSkills(workspace, { onlyCustom: "true" });
     expect(response2.status).toBe(200);
-    const customOnlySIds = (await response2.json()).skills.map(
+    const customOnlyIds = (await response2.json()).skills.map(
       (s: SkillWithoutInstructionsAndToolsType) => s.sId
     );
-    expect(customOnlySIds).not.toContain("frames");
-    expect(customOnlySIds).toContain(customSkill.sId);
+    expect(customOnlyIds).not.toContain("frames");
+    expect(customOnlyIds).toContain(customSkill.sId);
   });
 
   it("should return suggested skills when status=suggested", async () => {
@@ -669,7 +669,7 @@ describe("GET /api/w/:wId/skills", () => {
   });
 
   it("should not return instructions or tools in skill list", async () => {
-    const { workspace, auth, user } = await setupTest();
+    const { workspace, auth, user, globalSpace } = await setupTest();
 
     const skill = await SkillFactory.create(auth, {
       name: "Picker Skill",
@@ -696,7 +696,7 @@ describe("GET /api/w/:wId/skills", () => {
       agentFacingDescription: "Test skill agent facing description",
       editedBy: user.id,
       status: "active",
-      requestedSpaceIds: [],
+      requestedSpaceIds: [globalSpace.sId],
       fileAttachments: [],
       isDefault: false,
     });
@@ -1545,7 +1545,8 @@ describe("POST /api/w/:wId/skills", () => {
   });
 
   it("creates a skill configuration with additional requested spaces", async () => {
-    const { auth, workspace, globalGroup } = await setupTest("admin");
+    const { auth, workspace, globalGroup, globalSpace } =
+      await setupTest("admin");
 
     const openSpace = await SpaceFactory.regular(workspace);
     await SpaceFactory.attachGroup(openSpace, globalGroup);
@@ -1571,7 +1572,7 @@ describe("POST /api/w/:wId/skills", () => {
     const responseData = await response.json();
     expect(responseData.skill).toMatchObject({
       name: "Skill With Additional Space",
-      requestedSpaceIds: [openSpace.sId],
+      requestedSpaceIds: [globalSpace.sId, openSpace.sId],
     });
 
     const createdSkill = await SkillResource.fetchById(
@@ -1707,7 +1708,7 @@ describe("POST /api/w/:wId/skills", () => {
   });
 
   it("creates a skill configuration with requestedSpaceIds derived from tool's space", async () => {
-    const { auth, workspace, user } = await setupTest("admin");
+    const { auth, workspace, user, globalSpace } = await setupTest("admin");
 
     const regularSpace = await SpaceFactory.regular(workspace);
     // Membership on a manually-managed space comes from its own auto-created member group.
@@ -1743,7 +1744,7 @@ describe("POST /api/w/:wId/skills", () => {
     const responseData = await response.json();
     expect(responseData.skill).toMatchObject({
       name: "Skill With Space Restrictions",
-      requestedSpaceIds: [regularSpace.sId],
+      requestedSpaceIds: [regularSpace.sId, globalSpace.sId],
     });
 
     const createdSkill = await SkillResource.fetchById(
@@ -1751,7 +1752,10 @@ describe("POST /api/w/:wId/skills", () => {
       responseData.skill.sId
     );
     expect(createdSkill).not.toBeNull();
-    expect(createdSkill!.requestedSpaceIds).toEqual([regularSpace.id]);
+    expect(createdSkill!.requestedSpaceIds).toEqual([
+      regularSpace.id,
+      globalSpace.id,
+    ]);
   });
 
   it("creates a skill with attached knowledge", async () => {
@@ -1805,7 +1809,7 @@ describe("POST /api/w/:wId/skills", () => {
   });
 
   it("creates a skill with requestedSpaceIds derived from attached knowledge's space", async () => {
-    const { auth, workspace, user } = await setupTest("admin");
+    const { auth, workspace, user, globalSpace } = await setupTest("admin");
 
     const regularSpace = await SpaceFactory.regular(workspace);
     // Membership on a manually-managed space comes from its own auto-created member group.
@@ -1849,7 +1853,7 @@ describe("POST /api/w/:wId/skills", () => {
     const responseData = await response.json();
     expect(responseData.skill).toMatchObject({
       name: "Skill With Knowledge From Restricted Space",
-      requestedSpaceIds: [regularSpace.sId],
+      requestedSpaceIds: [regularSpace.sId, globalSpace.sId],
     });
 
     const createdSkill = await SkillResource.fetchById(
@@ -1857,7 +1861,10 @@ describe("POST /api/w/:wId/skills", () => {
       responseData.skill.sId
     );
     expect(createdSkill).not.toBeNull();
-    expect(createdSkill!.requestedSpaceIds).toEqual([regularSpace.id]);
+    expect(createdSkill!.requestedSpaceIds).toEqual([
+      regularSpace.id,
+      globalSpace.id,
+    ]);
   });
 });
 

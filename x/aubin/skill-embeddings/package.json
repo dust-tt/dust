@@ -1,0 +1,17 @@
+{
+  "name": "@dust-experiments/skill-embeddings",
+  "private": true,
+  "scripts": {
+    "start": "node --import tsx cli.ts",
+    "demo": "node --import tsx demo.ts"
+  },
+  "dependencies": {
+    "gpt-tokenizer": "2.9.0",
+    "ml-matrix": "6.12.1",
+    "openai": "4.77.4",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "tsx": "4.21.0"
+  }
+}

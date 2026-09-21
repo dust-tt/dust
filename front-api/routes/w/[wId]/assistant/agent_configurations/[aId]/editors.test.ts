@@ -4,7 +4,6 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import type * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
-import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -577,7 +576,6 @@ it("uses grants for editor responses and editor administration", async () => {
       })
     ).isOk()
   );
-  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(false);
   const response = await getEditors(workspace, agent.sId);
   expect(response.status).toBe(200);
   expect((await response.json()).editors).toEqual(

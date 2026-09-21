@@ -1,9 +1,10 @@
-import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ModelIdType,
@@ -48,7 +49,7 @@ export class AgentConfigurationFactory {
       workspace.sId
     );
 
-    const result = await createAgentConfiguration(internalAuth, {
+    const result = await AgentResource.makeNew(internalAuth, {
       name,
       description,
       instructions: "Test Instructions",
@@ -79,7 +80,19 @@ export class AgentConfigurationFactory {
     // working as if `auth` itself had been used.
     await auth.refresh();
 
-    return { ...result.value, instructionsHtml: null, actions: [] };
+    // Re-read the full config: as the caller when they are a workspace member (so the returned
+    // verbs reflect the author), otherwise as the internal admin — legacy tests build agents with a
+    // non-member auth, which `getAgentConfigurations` rejects. `dangerouslySkipPermissionFiltering`
+    // lets tests build agents on spaces the caller cannot read.
+    const readAuth = auth.isUser() ? auth : internalAuth;
+    const config = await getAgentConfiguration(readAuth, {
+      agentId: result.value.sId,
+      variant: "full",
+      dangerouslySkipPermissionFiltering: true,
+    });
+    assert(config, "The saved agent must be resolvable");
+
+    return config;
   }
 
   /**
@@ -100,7 +113,13 @@ export class AgentConfigurationFactory {
     const user = auth.user();
     assert(user, "User is required");
 
-    const result = await createAgentConfiguration(auth, {
+    const agentResource = await AgentResource.fetchById(auth, agentId);
+    assert(
+      agentResource && auth.can("read", agentResource),
+      "Agent configuration not found"
+    );
+
+    const result = await agentResource.updateConfiguration(auth, {
       name: overrides.name ?? "Test Agent",
       description: overrides.description ?? "Test Agent Description",
       instructions: overrides.instructions ?? "Updated Test Instructions",
@@ -117,7 +136,6 @@ export class AgentConfigurationFactory {
       tags: [],
       editors: [user.toJSON()],
       authorId: user.id,
-      agentConfigurationId: agentId,
       requestedSpaceIds: overrides.requestedSpaceIds ?? [],
     });
 
@@ -126,7 +144,9 @@ export class AgentConfigurationFactory {
     }
 
     return {
-      ...result.value,
+      ...result.value.toJSON(),
+      tags: [],
+      userFavorite: false,
       instructionsHtml: overrides.instructionsHtml ?? null,
       actions: [],
     };

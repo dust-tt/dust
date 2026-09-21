@@ -89,7 +89,7 @@ export async function enumerateEligiblePodsForNudgeActivity({
 
   const uniqueSpaceIds = [...new Set(eligible.map((c) => c.spaceId))];
   const pods = await SpaceResource.fetchByIds(auth, uniqueSpaceIds);
-  const podBySId = new Map(pods.map((pod) => [pod.sId, pod]));
+  const podById = new Map(pods.map((pod) => [pod.sId, pod]));
 
   const activationPods = await ActivationPodResource.fetchBySpaceModelIds(
     auth,
@@ -105,14 +105,14 @@ export async function enumerateEligiblePodsForNudgeActivity({
   const users = await UserResource.fetchByIds([
     ...new Set(eligible.map((c) => c.targetUserId)),
   ]);
-  const userBySId = new Map(users.map((user) => [user.sId, user]));
+  const userById = new Map(users.map((user) => [user.sId, user]));
 
   const eligiblePods: RankedEligiblePodNudge[] = [];
 
   await concurrentExecutor(
     eligible,
     async (candidate) => {
-      const pod = podBySId.get(candidate.spaceId);
+      const pod = podById.get(candidate.spaceId);
       if (!pod) {
         logger.error(
           { workspaceId, spaceId: candidate.spaceId },
@@ -130,7 +130,7 @@ export async function enumerateEligiblePodsForNudgeActivity({
         return;
       }
 
-      const user = userBySId.get(candidate.targetUserId) ?? null;
+      const user = userById.get(candidate.targetUserId) ?? null;
       if (
         !(await isEligibleForNudge(auth, {
           pod,

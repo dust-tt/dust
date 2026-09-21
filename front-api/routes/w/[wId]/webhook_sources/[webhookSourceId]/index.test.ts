@@ -55,12 +55,12 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
   it("should return 404 when webhook source does not exist", async () => {
     const { workspace } = await setupTest();
-    const fakeSId = makeSId("webhook_source", {
+    const fakeId = makeSId("webhook_source", {
       id: 999999,
       workspaceId: workspace.id,
     });
 
-    const response = await deleteSource(workspace.sId, fakeSId);
+    const response = await deleteSource(workspace.sId, fakeId);
 
     expect(response.status).toBe(404);
     const responseData = await response.json();
@@ -256,12 +256,12 @@ describe("PATCH /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
 
   it("should return 404 when webhook source does not exist", async () => {
     const { workspace } = await setupTest();
-    const fakeSId = makeSId("webhook_source", {
+    const fakeId = makeSId("webhook_source", {
       id: 999999,
       workspaceId: workspace.id,
     });
 
-    const response = await patchSource(workspace.sId, fakeSId, {
+    const response = await patchSource(workspace.sId, fakeId, {
       remoteMetadata: { id: "remote-webhook-123" },
     });
 

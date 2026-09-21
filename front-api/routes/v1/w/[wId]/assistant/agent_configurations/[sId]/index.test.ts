@@ -1,42 +1,14 @@
-import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
-beforeEach(() => {
-  vi.spyOn(logger, "warn");
-});
-
-afterEach(() => {
-  try {
-    expect(logger.warn).not.toHaveBeenCalledWith(
-      expect.objectContaining({
-        check: "agent_permissions",
-        authMethod: "api_key",
-      }),
-      "group_permissions_shadow_mismatch"
-    );
-  } finally {
-    vi.mocked(logger.warn).mockRestore();
-  }
-});
-
-async function setupTest(
-  role: "admin" | "user" = "admin",
-  grants = false
-) {
+async function setupTest(role: "admin" | "user" = "admin") {
   const { workspace, key } = await createPublicApiMockRequest({ role });
 
   await SpaceFactory.defaults(
@@ -51,8 +23,6 @@ async function setupTest(
   );
 
   const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
-  await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
-  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
 
   return { workspace, key, agentConfig, auth, user };
 }
@@ -92,12 +62,9 @@ function patchAgentConfiguration(
   );
 }
 
-describe.each([
-  false,
-  true,
-])("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId] (grants: %s)", (grants) => {
+describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
   it("keeps an agent created and edited with an admin key editable on subsequent reads", async () => {
-    const { workspace, key, user } = await setupTest("admin", grants);
+    const { workspace, key, user } = await setupTest("admin");
     const imported = await honoApp.request(
       `/api/v1/w/${workspace.sId}/assistant/agent_configurations/import`,
       {
@@ -145,10 +112,7 @@ describe.each([
   });
 
   it("returns the skills attached to the agent", async () => {
-    const { workspace, key, agentConfig, auth } = await setupTest(
-      "admin",
-      grants
-    );
+    const { workspace, key, agentConfig, auth } = await setupTest("admin");
     const skill = await SkillFactory.create(auth, {
       name: "Support Playbook",
     });
@@ -171,7 +135,7 @@ describe.each([
   });
 
   it("returns an empty skills array for an agent without skills", async () => {
-    const { workspace, key, agentConfig } = await setupTest("admin", grants);
+    const { workspace, key, agentConfig } = await setupTest("admin");
 
     const response = await getAgentConfiguration(
       workspace,
@@ -188,7 +152,7 @@ describe.each([
     "admin",
     "user",
   ] as const)("reports edit permissions for a %s key on a published agent", async (role) => {
-    const { workspace, key, agentConfig } = await setupTest(role, grants);
+    const { workspace, key, agentConfig } = await setupTest(role);
     const response = await getAgentConfiguration(
       workspace,
       key,
@@ -212,7 +176,7 @@ describe.each([
     "admin",
     "user",
   ] as const)("only allows an admin key to access an unpublished agent (%s)", async (role) => {
-    const { workspace, key, auth } = await setupTest(role, grants);
+    const { workspace, key, auth } = await setupTest(role);
     const agent = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Unpublished Agent",
       scope: "hidden",
@@ -241,7 +205,7 @@ describe.each([
   });
 
   it("does not report global or archived agents as editable with an admin key", async () => {
-    const { workspace, key, agentConfig } = await setupTest("admin", grants);
+    const { workspace, key, agentConfig } = await setupTest("admin");
     const archiveResponse = await honoApp.request(
       `/api/v1/w/${workspace.sId}/assistant/agent_configurations/${agentConfig.sId}`,
       { method: "DELETE", headers: { authorization: `Bearer ${key.secret}` } }
@@ -267,7 +231,7 @@ describe.each([
   });
 
   it("returns 404 for a retired global agent (e.g. gpt-4)", async () => {
-    const { workspace, key } = await setupTest("user", grants);
+    const { workspace, key } = await setupTest("user");
 
     const response = await getAgentConfiguration(workspace, key, "gpt-4");
 

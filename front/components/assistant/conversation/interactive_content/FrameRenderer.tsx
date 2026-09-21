@@ -180,11 +180,17 @@ export function FrameRenderer({
     disabled: renderMode !== "v2" || !showCode,
   });
 
-  const { isFrameAuthor } = useFramePermissions({
-    owner,
-    frameId: fileId,
-    disabled: renderMode !== "v2" || !conversation,
-  });
+  const { isFrameAuthor, packageRoot, isFramePermissionsLoading } =
+    useFramePermissions({
+      owner,
+      frameId: fileId,
+      disabled: renderMode !== "v2" || !conversation,
+    });
+  const resolvedFramePath = framePath ?? packageRoot;
+  // useFile("./…") resolves against framePath on first fetch and never retries. Wait until
+  // permissions (packageRoot) have loaded so the iframe does not mount with a null root.
+  const isFramePathPending =
+    renderMode === "v2" && Boolean(conversation) && isFramePermissionsLoading;
   const editFrameText = useEditFrameText({
     owner,
     fileId,
@@ -454,7 +460,7 @@ export function FrameRenderer({
       </ConversationSidePanelHeader>
 
       <div className="flex-1 overflow-hidden">
-        {isLoading ? (
+        {isLoading || isFramePathPending ? (
           <Spinner />
         ) : showCode ? (
           <FrameCodeView
@@ -481,10 +487,10 @@ export function FrameRenderer({
                 complete: true,
                 identifier: `viz-${fileId}`,
               }}
-              key={`viz-${fileId}`}
+              key={`viz-${fileId}-${resolvedFramePath ?? ""}`}
               conversationId={conversation?.sId ?? null}
               spaceId={frameSpaceId ?? undefined}
-              framePath={framePath}
+              framePath={resolvedFramePath}
               frameId={renderMode === "v2" ? fileId : undefined}
               isInDrawer={true}
               isEditable={isEditable}

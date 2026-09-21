@@ -113,8 +113,9 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     });
     assert(updatedAgent);
     expect(updatedAgent.model.modelId).toBe(targetModel.modelId);
+    // A new version is created: the model change re-saves the whole configuration.
     expect(updatedAgent.version).toBe(agent.version + 1);
-    // The new version stays restricted to the space and keeps the skill.
+    // The agent stays restricted to the space and keeps the skill.
     expect(updatedAgent.requestedSpaceIds).toEqual([restrictedSpace.sId]);
     const updatedSkills = await SkillResource.listByAgentConfiguration(
       auth,
@@ -160,7 +161,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     const { workspace, auth, agent } = await setupTest("admin");
     const target = await findTargetModel(auth);
 
-    // An archived agent cannot be re-saved: a new version would make it active again.
+    // An archived agent cannot be edited, so it is reported as skipped and left untouched.
     const archivedAgent = await AgentConfigurationFactory.createTestAgent(
       auth,
       {
@@ -257,7 +258,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     ]);
   });
 
-  it("rejects non-admin members", async () => {
+  it("lets a non-admin editor update the model of their own agent", async () => {
     const { workspace, auth, agent } = await setupTest("user");
     const target = await findTargetModel(auth);
 
@@ -266,12 +267,45 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
       modelId: target.modelId,
     });
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.updatedAgentIds).toEqual([agent.sId]);
+    expect(body.skippedAgentIds).toEqual([]);
 
     const updated = await getAgentConfiguration(auth, {
       agentId: agent.sId,
       variant: "light",
     });
-    expect(updated?.model.modelId).toBe(INITIAL_MODEL.modelId);
+    expect(updated?.model.modelId).toBe(target.modelId);
+  });
+
+  it("skips agents a non-admin caller cannot edit", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+
+    // Authored by, and only editable by, someone else — the non-admin caller is not an editor.
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { model: { ...INITIAL_MODEL } }
+    );
+    const target = await findTargetModel(auth);
+
+    const res = await postBatchUpdateModel(workspace, {
+      agentIds: [agent.sId],
+      modelId: target.modelId,
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.updatedAgentIds).toEqual([]);
+    expect(body.skippedAgentIds).toEqual([agent.sId]);
+
+    const untouched = await getAgentConfiguration(agentOwnerAuth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(untouched?.model.modelId).toBe(INITIAL_MODEL.modelId);
   });
 });

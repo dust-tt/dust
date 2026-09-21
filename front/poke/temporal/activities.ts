@@ -31,6 +31,7 @@ import { ActivationPodResource } from "@app/lib/resources/activation_pod_resourc
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import { invalidateAgentResourceCaches } from "@app/lib/resources/agent_resource_cache";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -438,6 +439,12 @@ export async function deleteAgentsActivity({
   await AgentModel.destroy({
     where: { workspaceId: workspace.id },
   });
+
+  // Cache entries have no TTL, so workspace deletion must drop every agent's cached snapshot.
+  await invalidateAgentResourceCaches(
+    workspace.id,
+    agents.map((agent) => agent.sId)
+  );
 }
 
 export async function deleteAppsActivity({

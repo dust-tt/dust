@@ -117,6 +117,7 @@ export type KnownModelLLMId =
   | "grok-4-fast-reasoning-latest"
   | "grok-4-1-fast-non-reasoning-latest"
   | "grok-4-1-fast-reasoning-latest"
+  | "simulated-failure-model" // Internal synthetic failure model
   | "noop" // Noop
   | "auto" // Auto
   | "auto_fast" // Fast stream tier
@@ -836,6 +837,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "anthropic_vertex_fallback"
   | "archive_inactive_agents"
   | "audit_logs"
+  | "automatic_model_health_routing"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "group_seat_provisioning"
@@ -858,7 +860,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "frames_v2"
   | "google_sheets_tool"
   | "gpt_5_6_terra_long_context"
-  | "group_permissions_shadow"
   | "http_client_tool"
   | "index_private_slack_channel"
   | "inline_tool_knowledge_reference"
@@ -890,6 +891,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "servicenow_tool"
   | "shopify_tool"
   | "show_debug_tools"
+  | "simulated_failure_model_feature"
   | "slack_message_splitting"
   | "stateful_conversation_window"
   | "run_tools_from_prompt"
@@ -907,6 +909,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "whitelabel_frames"
   | "user_memory"
   | "similar_agents_check"
+  | "skills_search"
   | "enforce_premium_model_message_limit"
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"
@@ -3639,6 +3642,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "PuzzleIcon"
   | "SalesforceLogo"
   | "SemrushLogo"
+  | "SiitLogo"
   | "SalesloftLogo"
   | "ShopifyLogo"
   | "SlabLogo"

@@ -132,6 +132,27 @@ export function getFramePublicationDescriptorMountPoint({
 }
 
 /**
+ * Read-write mount of the Frame's persistent files folder
+ * (`getFramePersistentFilesBasePath`), which functions read and write directly. Frame-scoped
+ * like the publications root, so the mount stays unchanged when a new publication activates and
+ * a file one publication's function wrote is still there for the next. See the
+ * `frame-persistent-files-content-is-untrusted` contract on `frameSandboxOnlyMounts` before
+ * serving anything read from it.
+ */
+export function getFramePersistentFilesMountPoint(frameId: string): string {
+  return `/frames/${frameId}/files`;
+}
+
+/**
+ * @cc [owner:pmilliotte,label:architecture] frame-persistent-files-dir-single-source
+ * The Frame persistent files folder's in-sandbox path MUST be hardcoded only by
+ * `getFramePersistentFilesMountPoint` and reach the workload only through this env var, set per
+ * exec. No layer below front (dsbx, `@dust/pod`, function source) may carry a default or fallback
+ * path: a stale copy would silently resolve to a directory that is not this Frame's mount.
+ */
+export const FRAME_PERSISTENT_FILES_DIR_ENV = "DUST_FRAME_PERSISTENT_FILES_DIR";
+
+/**
  * Frame-owned SQLite uses the same isolated local runtime directories as Pod SQLite. A Frame has
  * its own sandbox, so the live files cannot overlap another Frame or a Pod; only its Litestream
  * replica is durable, under the stable Frame identity in GCS.

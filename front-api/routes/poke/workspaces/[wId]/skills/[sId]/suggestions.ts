@@ -41,11 +41,11 @@ app.delete(
   validate("query", DeleteSuggestionQuerySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
-    const { suggestionSId } = ctx.req.valid("query");
+    const { suggestionSId: suggestionId } = ctx.req.valid("query");
 
     const suggestion = await SkillSuggestionResource.fetchById(
       auth,
-      suggestionSId
+      suggestionId
     );
     if (!suggestion) {
       return apiError(ctx, {

@@ -6,10 +6,11 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
-import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -276,6 +277,7 @@ async function fetchActiveProductboardSkill(
 async function createProductboardSkill(
   auth: Authenticator
 ): Promise<SkillResource> {
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   return SkillResource.makeNew(
     auth,
     {
@@ -290,7 +292,7 @@ async function createProductboardSkill(
       name: PRODUCTBOARD_SKILL_NAME,
       reinforcement: "on",
       // The MCP server views are all on the global space in practice.
-      requestedSpaceIds: [],
+      requestedSpaceIds: [globalSpace.id],
       source: null,
       sourceMetadata: null,
       status: "active",

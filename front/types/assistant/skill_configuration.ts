@@ -2,6 +2,7 @@ import { MCPServerViewSchema } from "@app/lib/api/mcp_schemas";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import {
   SKILL_AVAILABILITIES,
+  SKILL_REINFORCEMENT_MODES,
   SKILL_STATUSES,
 } from "@app/types/assistant/skill_configuration_constants";
 import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
@@ -9,11 +10,9 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
 import { z } from "zod";
 
-export const SKILL_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
-export type SkillReinforcementMode = (typeof SKILL_REINFORCEMENT_MODES)[number];
-
 export type {
   SkillAvailability,
+  SkillReinforcementMode,
   SkillStatus,
 } from "@app/types/assistant/skill_configuration_constants";
 // Re-exported from the leaf module so importers do not have to care which file they live in.
@@ -21,6 +20,7 @@ export {
   DEFAULT_SKILL_AVAILABILITY,
   isSkillVisibleToViewer,
   SKILL_AVAILABILITIES,
+  SKILL_REINFORCEMENT_MODES,
   SKILL_STATUSES,
 } from "@app/types/assistant/skill_configuration_constants";
 
@@ -100,6 +100,27 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   isDefault: z.boolean(),
   availability: z.enum(SKILL_AVAILABILITIES),
 });
+
+/**
+ * @cc [owner:aubin-tchoi,label:security] skill-list-item
+ * Search listings contain indexed metadata and relationship IDs, never full resources,
+ * instructions, tool configurations, attachments, source or reinforcement data.
+ */
+export const SkillListItemSchema = z.object({
+  sId: z.string(),
+  status: z.enum(SKILL_STATUSES),
+  name: z.string(),
+  userFacingDescription: z.string(),
+  icon: z.string().nullable(),
+  requestedSpaceIds: z.array(z.string()),
+  mcpServerViewIds: z.array(z.string()),
+  editorIds: z.array(z.string()),
+  availability: z.enum(SKILL_AVAILABILITIES),
+  activeUsersCount: z.number().nullable(),
+  updatedAt: z.number().nullable(),
+});
+
+export type SkillListItemType = z.infer<typeof SkillListItemSchema>;
 
 export type SkillWithoutInstructionsAndToolsType = z.infer<
   typeof SkillWithoutInstructionsAndToolsSchema

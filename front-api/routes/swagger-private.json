@@ -8270,6 +8270,37 @@
             "BearerAuth": []
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "modelSelection": {
+                    "type": "object",
+                    "description": "Optional model tier or concrete model selection for the retry.",
+                    "required": [
+                      "providerId",
+                      "modelId"
+                    ],
+                    "properties": {
+                      "providerId": {
+                        "type": "string"
+                      },
+                      "modelId": {
+                        "type": "string"
+                      },
+                      "reasoningEffort": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successfully retried message",
@@ -9279,6 +9310,68 @@
                       "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/PrivateMentionSuggestion"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/api/w/{wId}/assistant/ongoing-agent-loops": {
+      "get": {
+        "summary": "List the authenticated user's ongoing agent loops",
+        "description": "Returns agent loops registered for the authenticated user in this workspace.",
+        "tags": [
+          "Private Assistant"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ongoing agent loops retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "agentLoops"
+                  ],
+                  "properties": {
+                    "agentLoops": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "conversationId",
+                          "messageId"
+                        ],
+                        "properties": {
+                          "conversationId": {
+                            "type": "string"
+                          },
+                          "messageId": {
+                            "type": "string"
+                          }
+                        }
                       }
                     }
                   }
@@ -11771,6 +11864,16 @@
               "$ref": "#/components/schemas/PrivateRichMentionWithStatus"
             }
           },
+          "creditSpendCheckpointStatus": {
+            "type": "string",
+            "enum": [
+              "paused",
+              "acknowledged",
+              "stopped"
+            ],
+            "nullable": true,
+            "description": "Where the message stands with the credit spend checkpoint. Null when never reached."
+          },
           "completionDurationMs": {
             "type": "integer",
             "nullable": true
@@ -11967,6 +12070,16 @@
             "items": {
               "$ref": "#/components/schemas/PrivateRichMentionWithStatus"
             }
+          },
+          "creditSpendCheckpointStatus": {
+            "type": "string",
+            "enum": [
+              "paused",
+              "acknowledged",
+              "stopped"
+            ],
+            "nullable": true,
+            "description": "Where the message stands with the credit spend checkpoint. Null when never reached."
           },
           "completionDurationMs": {
             "type": "integer",

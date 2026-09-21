@@ -27,6 +27,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -59,6 +60,8 @@ import type {
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
 import {
+  FRAME_PERSISTENT_FILES_DIR_ENV,
+  getFramePersistentFilesMountPoint,
   getFramePublicationDescriptorMountPoint,
   getFramePublicationFunctionsMountPoint,
   sandboxDatabaseExecEnvVars,
@@ -826,6 +829,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             envVars: {
               DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
               DUST_FUNCTIONS_DIR: functionsDirectory,
+              [FRAME_PERSISTENT_FILES_DIR_ENV]:
+                getFramePersistentFilesMountPoint(frame.sId),
               // The app prefix comes from the slug, so `db("chat")` in the bundle resolves to this
               // app's own database without the source naming the app.
               ...databaseEnvVars,
@@ -1462,6 +1467,30 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     });
 
     return { deletedInvocationCount, deletedMCPActionCount };
+  }
+
+  /**
+   * How many invocations still reference a function of `publicationId`. Retention uses this to
+   * tell a superseded publication that can be dropped from one whose runs are still on record.
+   */
+  static async countForFramePublication(
+    auth: Authenticator,
+    { frame, publicationId }: { frame: FileResource; publicationId: string }
+  ): Promise<number> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    return this.model.count({
+      where: { workspaceId },
+      include: [
+        {
+          model: SandboxFunctionModel,
+          as: "sandboxFunction",
+          attributes: [],
+          required: true,
+          where: { workspaceId, fileId: frame.id, publicationId },
+        },
+      ],
+    });
   }
 
   /**

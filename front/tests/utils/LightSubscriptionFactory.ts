@@ -12,7 +12,6 @@ export class LightSubscriptionFactory {
     return {
       sId: `sub_test_${id}`,
       status: "active",
-      trialing: false,
       stripeSubscriptionId: `sub_stripe_test_${id}`,
       metronomeContractId: null,
       startDate: null,

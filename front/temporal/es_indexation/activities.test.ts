@@ -1,8 +1,8 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import * as searchUsage from "@app/lib/search_usage/usage";
 import * as skillIndex from "@app/lib/skill_search";
-import * as searchUsage from "@app/lib/skill_search/usage";
 import {
   deleteSkillSearchActivity,
   deleteWorkspaceSkillSearchActivity,
@@ -47,6 +47,7 @@ describe("skill search indexation", () => {
     ).rejects.toBe(error);
 
     expect(usage).toHaveBeenCalledExactlyOnceWith(expect.any(Authenticator), {
+      dimension: "skill",
       evaluatedAtMs: expect.any(Number),
     });
     expect(usage.mock.calls[0][0].getNonNullableWorkspace().sId).toBe(
@@ -83,6 +84,7 @@ describe("skill search indexation", () => {
       workspaceId: workspace.sId,
     });
     expect(usage).toHaveBeenCalledExactlyOnceWith(expect.any(Authenticator), {
+      dimension: "skill",
       evaluatedAtMs,
     });
     expect(usage.mock.calls[0][0].getNonNullableWorkspace().sId).toBe(

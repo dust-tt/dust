@@ -56,13 +56,13 @@ export async function enrichWithTags(
   auth: Authenticator,
   resources: AgentResource[]
 ): Promise<Map<ModelId, AgentTagsEnrichment>> {
-  const configurationIds = resources.map(
-    (resource) => resource.content.agentConfigurationModelId
+  const configurationModelIds = resources.map(
+    (resource) => resource.agentConfigurationModelId
   );
-  const tagsById = await TagResource.listForAgents(auth, configurationIds);
+  const tagsById = await TagResource.listForAgents(auth, configurationModelIds);
 
   return new Map(
-    configurationIds.map((id) => [
+    configurationModelIds.map((id) => [
       id,
       {
         tags: (tagsById[id] ?? []).map((tag) => tag.toJSON()).sort(tagsSorter),
@@ -80,16 +80,19 @@ export async function enrichWithActions(
   auth: Authenticator,
   resources: AgentResource[]
 ): Promise<Map<ModelId, AgentActionsEnrichment>> {
-  const configurationIds = resources.map(
-    (resource) => resource.content.agentConfigurationModelId
+  const configurationModelIds = resources.map(
+    (resource) => resource.agentConfigurationModelId
   );
   const actionsById = await fetchMCPServerActionConfigurations(auth, {
-    configurationIds,
+    configurationModelIds,
     variant: "full",
   });
 
   return new Map(
-    configurationIds.map((id) => [id, { actions: actionsById.get(id) ?? [] }])
+    configurationModelIds.map((id) => [
+      id,
+      { actions: actionsById.get(id) ?? [] },
+    ])
   );
 }
 

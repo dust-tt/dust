@@ -43,8 +43,8 @@ makeScript({}, async ({ execute }) => {
 
     logger.info(
       {
-        subscriptionId: subscription.id,
-        subscriptionSId: subscription.sId,
+        subscriptionModelId: subscription.id,
+        subscriptionId: subscription.sId,
         workspaceId: workspace.sId,
         execute,
       },

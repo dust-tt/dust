@@ -47,6 +47,16 @@ describe("parseReviewRequests", () => {
     ]);
   });
 
+  it("requests a contract review with no reviewers for bare cc alone", () => {
+    assert.deepEqual(parseReviewRequests("r? cc"), [
+      {
+        line: "r? cc",
+        reviewers: [],
+        contractReview: true,
+      },
+    ]);
+  });
+
   it("treats @cc as a GitHub mention, not contract review", () => {
     assert.deepEqual(parseReviewRequests("r? @cc please"), [
       {

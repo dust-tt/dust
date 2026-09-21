@@ -53,7 +53,7 @@ export async function copyConversationGCSMountActivity({
       await markForkPrepared(auth, dest);
     } else {
       await ConversationForkResource.markFileCopiedByDestSId(auth, {
-        childConversationSId: destConversationId,
+        childConversationId: destConversationId,
       });
     }
 

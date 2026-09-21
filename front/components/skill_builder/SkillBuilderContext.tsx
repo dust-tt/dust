@@ -18,9 +18,9 @@ type SkillBuilderContextType = {
    * Accept instruction suggestion edits by calling the editor's acceptSuggestion
    * command directly (bypasses HTML roundtrip). Set by the editor component.
    */
-  acceptInstructionEdits: ((suggestionSId: string) => void) | null;
+  acceptInstructionEdits: ((suggestionId: string) => void) | null;
   setAcceptInstructionEdits: (
-    fn: ((suggestionSId: string) => void) | null
+    fn: ((suggestionId: string) => void) | null
   ) => void;
 };
 
@@ -52,7 +52,7 @@ export function SkillBuilderProvider({
     string | null
   >(null);
   const [acceptInstructionEdits, setAcceptInstructionEdits] = useState<
-    ((suggestionSId: string) => void) | null
+    ((suggestionId: string) => void) | null
   >(null);
 
   const value = useMemo(

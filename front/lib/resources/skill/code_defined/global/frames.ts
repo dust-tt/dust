@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/actions/servers/interactive_content/instructions";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags, hasFeatureFlag } from "@app/lib/auth";
+import { FRAME_SKILL_FILES } from "@app/lib/resources/skill/code_defined/global/frames/files";
 import { FRAMES_V2_INSTRUCTIONS } from "@app/lib/resources/skill/code_defined/global/frames_v2";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -56,9 +57,10 @@ export const framesSkill = {
     { name: "interactive_content" },
     { name: "conversation_side_panel" },
   ],
+  files: FRAME_SKILL_FILES,
   // Frames v2 authoring runs entirely through the Computer.
   warmsConversationSandbox: (auth: Authenticator) =>
     hasFeatureFlag(auth, "frames_v2"),
-  version: 6,
+  version: 8,
   icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;

@@ -121,6 +121,38 @@ function getDefaultSelectedIndex(
   return hasSubMenuNavigation && items.length > 0 ? 1 : 0;
 }
 
+/**
+ * @cc [owner:smb2268,label:react] pointer-hover-keeps-editor-focus
+ * Hovering a row without a `tooltip` or `tooltipLabel` MUST NOT move focus out of the editor:
+ * neither the row nor the menu container receives focus from pointer events, and the hovered row
+ * becomes the highlighted one. Rows with a tooltip keep the Radix pointer behavior.
+ */
+function getPointerHighlightProps(
+  item: SlashCommand | null,
+  index: number,
+  setSelectedIndex: (index: number) => void
+) {
+  if (item?.tooltip || item?.tooltipLabel) {
+    return {};
+  }
+
+  // Radix focuses the row on mouse pointer move and the menu container on mouse pointer leave. The
+  // menu is modal, so once anything inside it is focused the editor can never take focus back.
+  // Preventing default skips both Radix handlers. Touch moves come from scrolling the list, so
+  // they leave the highlight alone.
+  return {
+    onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      if (event.pointerType !== "touch") {
+        setSelectedIndex(index);
+      }
+    },
+    onPointerLeave: (event: React.PointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+    },
+  };
+}
+
 export const SlashCommandDropdown = forwardRef<
   SlashCommandDropdownRef,
   SlashCommandDropdownProps
@@ -324,7 +356,10 @@ export const SlashCommandDropdown = forwardRef<
           side="bottom"
           sideOffset={4}
           onEscapeKeyDown={handleEscapeKeyDown}
-          onInteractOutside={onClose}
+          onPointerDownOutside={onClose}
+          // The editor takes focus back after every selection (tiptap focuses on the next frame),
+          // which Radix reports as focus leaving the layer; that must not dismiss the menu.
+          onFocusOutside={(event) => event.preventDefault()}
           onCloseAutoFocus={(e) => e.preventDefault()}
           onOpenAutoFocus={(e) => e.preventDefault()}
           scrollHighlightedItemIntoView
@@ -359,6 +394,7 @@ export const SlashCommandDropdown = forwardRef<
                   endComponent={<DropdownMenuShortcut shortcut="Esc" />}
                   onClick={() => selectEntry(0)}
                   onFocus={() => setSelectedIndex(0)}
+                  {...getPointerHighlightProps(null, 0, setSelectedIndex)}
                   className={cn(
                     "text-muted-foreground [&_span]:text-xs",
                     selectedIndex === 0 &&
@@ -398,6 +434,11 @@ export const SlashCommandDropdown = forwardRef<
                           ) : undefined
                         }
                         onClick={() => selectEntry(index)}
+                        {...getPointerHighlightProps(
+                          item,
+                          index,
+                          setSelectedIndex
+                        )}
                         onFocus={(event) => {
                           if (
                             item.tooltipLabel &&
@@ -505,6 +546,11 @@ export const SlashCommandDropdown = forwardRef<
                         ) : undefined
                       }
                       onClick={() => selectEntry(entryIndex)}
+                      {...getPointerHighlightProps(
+                        item,
+                        entryIndex,
+                        setSelectedIndex
+                      )}
                       onFocus={(event) => {
                         if (
                           item.tooltipLabel &&

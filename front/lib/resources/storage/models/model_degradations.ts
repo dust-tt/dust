@@ -15,6 +15,9 @@ export class ModelDegradationModel extends BaseModel<ModelDegradationModel> {
   declare modelId: ModelIdType;
   declare providerId: ModelProviderIdType;
   declare host: Host;
+  // Null means the row never expires on its own: it was placed by an operator
+  // and only an operator removes it. A set expiration is a breaker lease.
+  declare expiresAt: CreationOptional<Date | null>;
 }
 ModelDegradationModel.init(
   {
@@ -39,6 +42,10 @@ ModelDegradationModel.init(
     host: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    expiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {

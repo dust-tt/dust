@@ -8,6 +8,10 @@ import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import {
+  AgentSuggestionActionCard,
+  mapSuggestionStateToCardState,
+} from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -24,17 +28,17 @@ import type {
 import { defaultSelectionConfiguration } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
+  AgentCreateSuggestionType,
+  AgentDeleteSuggestionType,
   AgentInstructionsSuggestionType,
   AgentKnowledgeSuggestionWithRelationsType,
   AgentModelSuggestionWithRelationsType,
   AgentSkillsSuggestionWithRelationsType,
   AgentSubAgentSuggestionWithRelationsType,
   AgentSuggestionKind,
-  AgentSuggestionState,
   AgentSuggestionWithRelationsType,
   AgentToolsSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
-import type { ActionCardState } from "@dust-tt/sparkle";
 import {
   ActionCardBlock,
   Avatar,
@@ -47,24 +51,6 @@ import {
 import { EditorContent, useEditor } from "@tiptap/react";
 import { memo, useMemo } from "react";
 import { useController, useFormContext } from "react-hook-form";
-
-function mapSuggestionStateToCardState(
-  state: AgentSuggestionState
-): ActionCardState {
-  switch (state) {
-    case "pending":
-      return "active";
-    case "approved":
-      return "accepted";
-    case "rejected":
-      return "rejected";
-    case "outdated":
-      return "disabled";
-    default:
-      assertNeverAndIgnore(state);
-      return "disabled";
-  }
-}
 
 interface InstructionsSuggestionCardProps {
   agentSuggestion: AgentInstructionsSuggestionType;
@@ -531,13 +517,13 @@ function buildNewKnowledgeAction(
 
 function actionIncludesDataSourceView(
   action: AgentBuilderFormData["actions"][number],
-  dataSourceViewSId: string,
+  dataSourceViewId: string,
   isQueryTables: boolean
 ): boolean {
   const config = isQueryTables
     ? action.configuration.tablesConfigurations
     : action.configuration.dataSourceConfigurations;
-  return config != null && dataSourceViewSId in config;
+  return config != null && dataSourceViewId in config;
 }
 
 function removeFirstWhere<T>(arr: T[], predicate: (item: T) => boolean): T[] {
@@ -667,6 +653,33 @@ function KnowledgeSuggestionCard({
   );
 }
 
+interface ConnectedAgentSuggestionActionCardProps {
+  agentSuggestion: AgentCreateSuggestionType | AgentDeleteSuggestionType;
+}
+
+// Thin wiring so the shared card stays context-free: it pulls accept/reject from the sidekick's
+// own data source and passes them down as props, rather than the shared card reading them itself.
+function ConnectedAgentSuggestionActionCard({
+  agentSuggestion,
+}: ConnectedAgentSuggestionActionCardProps) {
+  const { acceptSuggestion, rejectSuggestion } = useSidekickSuggestions();
+  const { getValues } = useFormContext<AgentBuilderFormData>();
+
+  const pictureUrl =
+    agentSuggestion.kind === "delete"
+      ? getValues("agentSettings.pictureUrl")
+      : undefined;
+
+  return (
+    <AgentSuggestionActionCard
+      agentSuggestion={agentSuggestion}
+      pictureUrl={pictureUrl}
+      onAccept={() => void acceptSuggestion(agentSuggestion)}
+      onReject={() => void rejectSuggestion(agentSuggestion)}
+    />
+  );
+}
+
 interface SuggestionCardProps {
   agentSuggestion: AgentSuggestionWithRelationsType;
 }
@@ -696,6 +709,11 @@ export function SidekickSuggestionCard({
       return <ModelSuggestionCard agentSuggestion={agentSuggestion} />;
     case "knowledge":
       return <KnowledgeSuggestionCard agentSuggestion={agentSuggestion} />;
+    case "create":
+    case "delete":
+      return (
+        <ConnectedAgentSuggestionActionCard agentSuggestion={agentSuggestion} />
+      );
     default:
       assertNeverAndIgnore(agentSuggestion);
       return null;

@@ -15,13 +15,13 @@ import {
 } from "@app/lib/models/agent/actions/mcp";
 import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -34,7 +34,8 @@ import type { Transaction } from "sequelize";
 export async function createAgentActionConfiguration(
   auth: Authenticator,
   action: UnsavedMCPServerConfigurationType,
-  agentConfiguration: LightAgentConfigurationType
+  agentResource: AgentResource,
+  { transaction }: { transaction?: Transaction } = {}
 ): Promise<Result<MCPServerConfigurationType, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
@@ -54,7 +55,7 @@ export async function createAgentActionConfiguration(
     const mcpConfig = await AgentMCPServerConfigurationModel.create(
       {
         sId: generateRandomModelSId(),
-        agentConfigurationId: agentConfiguration.id,
+        agentConfigurationId: agentResource.agentConfigurationModelId,
         workspaceId: owner.id,
         mcpServerViewId: mcpServerView.id,
         internalMCPServerId: mcpServerView.internalMCPServerId,
@@ -123,7 +124,7 @@ export async function createAgentActionConfiguration(
       dustProject: action.dustProject,
       jsonSchema: action.jsonSchema,
     });
-  });
+  }, transaction);
 }
 
 /**
