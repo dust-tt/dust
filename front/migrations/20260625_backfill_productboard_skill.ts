@@ -18,6 +18,7 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Op } from "sequelize";
 
@@ -367,9 +368,23 @@ async function addAgentEditorsToSkill(
     users,
     workspace: auth.getNonNullableWorkspace(),
   });
-  const builderUserModelIds = new Set(
+  const eligibleUserModelIds = new Set(
     memberships
-      .filter((membership) => membership.isBuilder)
+      .filter((membership) => {
+        switch (membership.role) {
+          case "admin":
+          case "manager":
+            return true;
+          case "user":
+            return false;
+          case "builder":
+            throw new Error(
+              `Productboard skill backfill cannot run with deprecated builder membership for user ${membership.userId}`
+            );
+          default:
+            assertNever(membership.role);
+        }
+      })
       .map((membership) => membership.userId)
   );
 
@@ -379,15 +394,15 @@ async function addAgentEditorsToSkill(
   );
   const usersToAdd = users.filter(
     (user) =>
-      builderUserModelIds.has(user.id) &&
+      eligibleUserModelIds.has(user.id) &&
       !existingSkillEditorModelIds.has(user.id)
   );
 
   if (usersToAdd.length === 0) {
     logger.info(
       {
-        skippedNonBuilderEditorCount:
-          agentEditorUserModelIds.length - builderUserModelIds.size,
+        skippedIneligibleEditorCount:
+          agentEditorUserModelIds.length - eligibleUserModelIds.size,
         skillId: skill.sId,
         workspaceId: owner.sId,
       },
@@ -405,8 +420,8 @@ async function addAgentEditorsToSkill(
   logger.info(
     {
       addedEditorCount: usersToAdd.length,
-      skippedNonBuilderEditorCount:
-        agentEditorUserModelIds.length - builderUserModelIds.size,
+      skippedIneligibleEditorCount:
+        agentEditorUserModelIds.length - eligibleUserModelIds.size,
       skillId: skill.sId,
       workspaceId: owner.sId,
     },

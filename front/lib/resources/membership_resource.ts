@@ -95,19 +95,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     this.user = user;
   }
 
-  get isBuilder(): boolean {
-    switch (this.role) {
-      case "admin":
-      case "manager":
-      case "builder":
-        return true;
-      case "user":
-        return false;
-      default:
-        assertNever(this.role);
-    }
-  }
-
   static async getMembershipsForWorkspace({
     workspace,
     transaction,
@@ -1154,9 +1141,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
   }
 
-  // Use `revokeAndTrackMembership` from `@app/lib/api/membership` instead which
-  // handles tracking, usage updates and the builders group sync (builder
-  // role deprecation).
+  // Use `revokeAndTrackMembership` from `@app/lib/api/membership` instead, which handles tracking
+  // and usage updates.
   static async revokeMembership({
     user,
     workspace,

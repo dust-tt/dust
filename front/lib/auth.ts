@@ -82,7 +82,6 @@ import type {
 } from "@app/types/user";
 import {
   isAdmin,
-  isBuilder,
   isManager,
   isUser,
   lowestRole,
@@ -1278,10 +1277,6 @@ export class Authenticator {
 
   isUser(): boolean {
     return isUser(this.workspace());
-  }
-
-  isBuilder(): boolean {
-    return isBuilder(this.workspace());
   }
 
   isManager(): boolean {
