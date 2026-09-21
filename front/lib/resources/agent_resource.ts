@@ -819,6 +819,7 @@ export class AgentResource
           reasoningEffort: modelConfiguration.reasoningEffort ?? undefined,
           responseFormat: modelConfiguration.responseFormat ?? undefined,
         },
+        codeDefinedSkillIds: [],
         content: {
           ...content,
           lastReinforcementAnalysisAt:
