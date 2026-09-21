@@ -1,4 +1,5 @@
 import {
+  getCreditSpendCheckpointEnabled,
   hasCrossedCreditSpendCheckpoint,
   hasReachedCreditSpendCheckpoint,
   isExemptFromCreditSpendCheckpoint,
@@ -8,7 +9,9 @@ import { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import { CREDIT_PRICED_BUSINESS_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { PlanType } from "@app/types/plan";
 import { describe, expect, it } from "vitest";
 
@@ -94,6 +97,36 @@ describe("resolveDefaultCreditSpendCheckpointEnabled", () => {
   it("is true for a non-credit-priced plan", () => {
     const plan = { code: "PRO_PLAN_SEAT_29" } as PlanType;
     expect(resolveDefaultCreditSpendCheckpointEnabled(plan)).toBe(true);
+  });
+});
+
+describe("getCreditSpendCheckpointEnabled", () => {
+  it("defaults to enabled for a non-credit-priced workspace with no override", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    expect(await getCreditSpendCheckpointEnabled(auth)).toBe(true);
+  });
+
+  it("defaults to disabled for a credit-priced workspace with no override", async () => {
+    const workspace = await WorkspaceFactory.creditPriced();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    expect(await getCreditSpendCheckpointEnabled(auth)).toBe(false);
+  });
+
+  it("uses the workspace's explicit override over the plan default", async () => {
+    const workspace = await WorkspaceFactory.creditPriced();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const createResult = await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      creditSpendCheckpointEnabled: true,
+    });
+    expect(createResult.isOk()).toBe(true);
+
+    expect(await getCreditSpendCheckpointEnabled(auth)).toBe(true);
   });
 });
 

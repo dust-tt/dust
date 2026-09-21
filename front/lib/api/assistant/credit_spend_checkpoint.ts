@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { awuFromMicroUsd } from "@app/lib/metronome/constants";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { PlanType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
@@ -46,6 +47,25 @@ export function resolveDefaultCreditSpendCheckpointEnabled(
   plan: PlanType | null
 ): boolean {
   return !plan || !isCreditPricedPlan(plan);
+}
+
+/**
+ * @cc [owner:avervaet,label:product] checkpoint-gate-workspace-override
+ * The returned value MUST be the workspace's configured `creditSpendCheckpointEnabled` when a
+ * usage-configuration row exists for it and that value is non-NULL, and MUST fall back to
+ * `resolveDefaultCreditSpendCheckpointEnabled` otherwise. Callers MUST treat a `false` result as
+ * an unconditional exemption: the checkpoint MUST NOT pause for that workspace regardless of
+ * spend, root-message status, or any other condition.
+ */
+export async function getCreditSpendCheckpointEnabled(
+  auth: Authenticator
+): Promise<boolean> {
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  return (
+    config?.creditSpendCheckpointEnabled ??
+    resolveDefaultCreditSpendCheckpointEnabled(auth.plan())
+  );
 }
 
 /**
