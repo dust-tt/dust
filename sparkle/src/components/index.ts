@@ -102,6 +102,7 @@ export {
   createRadioSelectionColumn,
   createSelectionColumn,
   DataTable,
+  getDataTableColumnPresets,
   ScrollableDataTable,
 } from "./DataTable";
 export type {

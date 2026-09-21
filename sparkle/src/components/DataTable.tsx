@@ -63,14 +63,74 @@ import { breakpoints, useWindowSize } from "./WindowUtility";
 
 const cellHeight = "h-12";
 
+type ColumnAlign = "left" | "right" | "center";
+type ColumnType = "text" | "numeric" | "row-actions" | "status";
+
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     className?: string;
     tooltip?: string;
     sizeRatio?: number;
-    headerAlign?: "left" | "right" | "center";
+    /** Header text alignment. Overrides the alignment derived from `type` for the header only. */
+    headerAlign?: ColumnAlign;
+    /**
+     * Column preset. `numeric`: right-aligned tabular figures, no wrapping.
+     * `row-actions`: fixed 48px, centered, never sortable (the "..." menu column).
+     * `status`: no wrapping.
+     */
+    type?: ColumnType;
   }
+}
+
+interface ColumnPresets {
+  align: ColumnAlign;
+  headerAlign: ColumnAlign;
+  cellClassName?: string;
+  headerClassName?: string;
+  sortable: boolean;
+}
+
+export const ALIGN_TEXT_CLASS: Record<ColumnAlign, string> = {
+  left: "text-left",
+  right: "text-right",
+  center: "text-center",
+};
+
+export const ALIGN_JUSTIFY_CLASS: Record<ColumnAlign, string> = {
+  left: "justify-start",
+  right: "justify-end",
+  center: "justify-center",
+};
+
+/** Resolves alignment, sizing and sortability from a column's `meta.type`. */
+export function getDataTableColumnPresets(
+  column: Column<any> // eslint-disable-line @typescript-eslint/no-explicit-any
+): ColumnPresets {
+  const meta = column.columnDef.meta;
+  const align: ColumnAlign =
+    meta?.type === "numeric"
+      ? "right"
+      : meta?.type === "row-actions"
+        ? "center"
+        : "left";
+
+  return {
+    align,
+    headerAlign: meta?.headerAlign ?? align,
+    cellClassName:
+      cn(
+        meta?.type === "numeric" && "tabular-nums whitespace-nowrap",
+        meta?.type === "status" && "whitespace-nowrap",
+        meta?.type === "row-actions" && "w-12"
+      ) || undefined,
+    headerClassName:
+      cn(
+        meta?.type === "numeric" && "tabular-nums",
+        meta?.type === "row-actions" && "w-12"
+      ) || undefined,
+    sortable: meta?.type !== "row-actions",
+  };
 }
 
 interface TBaseData {
@@ -374,35 +434,33 @@ export function DataTable<TData extends TBaseData>({
                 ) {
                   return null;
                 }
+                const { headerAlign, sortable } = getDataTableColumnPresets(
+                  header.column
+                );
+                const canSort = header.column.getCanSort() && sortable;
                 return (
                   <DataTable.Head
                     column={header.column}
                     key={header.id}
                     onClick={
-                      header.column.getCanSort()
+                      canSort
                         ? header.column.getToggleSortingHandler()
                         : undefined
                     }
-                    className={cn(
-                      header.column.getCanSort() && "cursor-pointer"
-                    )}
+                    className={cn(canSort && "cursor-pointer")}
                   >
                     <div
                       className={cn(
-                        "flex items-center space-x-1 whitespace-nowrap",
-                        header.column.columnDef.meta?.headerAlign === "right"
-                          ? "justify-end"
-                          : header.column.columnDef.meta?.headerAlign ===
-                              "center"
-                            ? "justify-center"
-                            : undefined
+                        "flex items-center gap-1 whitespace-nowrap",
+                        headerAlign !== "left" &&
+                          ALIGN_JUSTIFY_CLASS[headerAlign]
                       )}
                     >
                       {flexRender(
                         header.column.columnDef.header,
                         header.getContext()
                       )}
-                      {header.column.getCanSort() && (
+                      {canSort && (
                         <Icon
                           visual={
                             header.column.getIsSorted() === "asc"
@@ -412,7 +470,6 @@ export function DataTable<TData extends TBaseData>({
                                 : ChevronSelectorVertical
                           }
                           size="xs"
-                          className="ml-1"
                         />
                       )}
                     </div>
@@ -750,34 +807,33 @@ export function ScrollableDataTable<TData extends TBaseData>({
                     return null;
                   }
 
+                  const canSort =
+                    isSorting &&
+                    header.column.getCanSort() &&
+                    getDataTableColumnPresets(header.column).sortable;
                   return (
                     <DataTable.Head
                       column={header.column}
                       key={header.id}
                       onClick={
-                        isSorting && header.column.getCanSort()
+                        canSort
                           ? header.column.getToggleSortingHandler()
                           : undefined
                       }
-                      className={cn(
-                        "max-w-0",
-                        header.column.getCanSort() &&
-                          isSorting &&
-                          "cursor-pointer"
-                      )}
+                      className={cn("max-w-0", canSort && "cursor-pointer")}
                       style={{
                         width: columnSizing[header.id],
                         minWidth: columnSizing[header.id],
                       }}
                     >
-                      <div className="flex w-full items-center space-x-1 whitespace-nowrap">
+                      <div className="flex w-full items-center gap-1 whitespace-nowrap">
                         <span className="truncate">
                           {flexRender(
                             header.column.columnDef.header,
                             header.getContext()
                           )}
                         </span>
-                        {isSorting && header.column.getCanSort() && (
+                        {canSort && (
                           <Icon
                             visual={
                               header.column.getIsSorted() === "asc"
@@ -787,7 +843,6 @@ export function ScrollableDataTable<TData extends TBaseData>({
                                   : ChevronSelectorVertical
                             }
                             size="xs"
-                            className="ml-1"
                           />
                         )}
                       </div>
@@ -958,16 +1013,15 @@ DataTable.Head = function Head({
   column,
   ...props
 }: HeadProps) {
+  const presets = getDataTableColumnPresets(column);
+
   return (
     <th
       className={cn(
-        "heading-xs py-2 px-2 capitalize",
-        column.columnDef.meta?.headerAlign === "right"
-          ? "text-right"
-          : column.columnDef.meta?.headerAlign === "center"
-            ? "text-center"
-            : "text-left",
+        "heading-xs p-2 capitalize",
+        ALIGN_TEXT_CLASS[presets.headerAlign],
         "text-foreground",
+        presets.headerClassName,
         column.columnDef.meta?.className,
         className
       )}
@@ -1290,17 +1344,34 @@ DataTable.Cell = function Cell({
   column,
   ...props
 }: CellProps) {
+  const presets = getDataTableColumnPresets(column);
+
   return (
     <td
       className={cn(
         cellHeight,
         "truncate px-2",
+        presets.cellClassName,
+        presets.align !== "left" && ALIGN_TEXT_CLASS[presets.align],
         column.columnDef.meta?.className,
         className
       )}
       {...props}
     >
-      {children}
+      {presets.align === "left" ? (
+        children
+      ) : (
+        // Cell helpers render flex rows, which ignore text-align; a flex
+        // wrapper pushes them along the main axis instead.
+        <div
+          className={cn(
+            "flex items-center",
+            ALIGN_JUSTIFY_CLASS[presets.align]
+          )}
+        >
+          {children}
+        </div>
+      )}
     </td>
   );
 };
