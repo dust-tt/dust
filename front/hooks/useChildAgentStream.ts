@@ -232,6 +232,7 @@ export function useChildAgentStream({
     onEventCallback,
     `child-agent-${childStreamIds?.agentMessageId}`,
     {
+      workspaceId: owner.sId,
       isReadyToConsumeStream:
         childStreamIds !== null && !isStreamDone && !disabled,
     }

@@ -1,282 +1,99 @@
-import { COMMIT_HASH } from "@app/lib/commit-hash";
-import { clientEventSource } from "@app/lib/egress/client";
-import logger from "@app/logger/logger";
-import type {
-  Event as PolyfillEvent,
-  MessageEvent as PolyfillMessageEvent,
-} from "event-source-polyfill";
-import { EventSourcePolyfill } from "event-source-polyfill";
-import { useCallback, useEffect, useRef, useState } from "react";
-
-const RECONNECT_DELAY_BASE_MS = 3000; // 3 seconds base delay
-const RECONNECT_DELAY_JITTER_MS = 5000; // +0-5 seconds random jitter
-const MAX_RECONNECT_ATTEMPTS = 10;
-// Server-side SSE endpoints can be idle up to 3 minutes (conversation events)
-// before sending "done". The polyfill's default heartbeat timeout is 45s which
-// would cause spurious reconnects during normal idle periods.
-const HEARTBEAT_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
-
-/**
- * Stable EventSource Manager
- *
- * This singleton object manages EventSource instances across the entire application.
- * It provides methods to create, retrieve, and remove EventSource connections,
- * ensuring that each unique connection is properly managed and can be accessed
- * or closed as needed.
- *
- * Key features:
- * - Maintains a single source of truth for all EventSource instances.
- * - Prevents duplicate EventSource creations for the same unique identifier.
- * - Allows for centralized management of EventSource lifecycle.
- * - Improves performance by reusing existing connections when possible.
- *
- * Usage:
- * - Create a new EventSource: stableEventSourceManager.create(url, uniqueId)
- * - Retrieve an existing EventSource: stableEventSourceManager.get(uniqueId)
- * - Close and remove an EventSource: stableEventSourceManager.remove(uniqueId)
- *
- * This manager is designed to be used in conjunction with the useEventSource hook
- * to provide stable and efficient EventSource handling across React component lifecycles.
- */
-const stableEventSourceManager = {
-  // Map to store active EventSource instances, keyed by unique identifiers
-  sources: new Map<string, EventSourcePolyfill>(),
-
-  /**
-   * Creates a new EventSource instance and stores it in the sources map.
-   * @param url The URL to connect the EventSource to
-   * @param uniqueId A unique identifier for this EventSource instance
-   * @returns The newly created EventSource instance
-   */
-  async create(
-    url: string,
-    uniqueId: string,
-    headers?: Record<string, string>
-  ) {
-    const urlWithCommitHash = new URL(url, document.baseURI);
-    urlWithCommitHash.searchParams.append("commitHash", COMMIT_HASH);
-
-    // Build a relative path so clientEventSource can rewrite and authenticate it.
-    const pathWithQueryAndHash =
-      urlWithCommitHash.pathname +
-      urlWithCommitHash.search +
-      urlWithCommitHash.hash;
-
-    const newSource = await clientEventSource(pathWithQueryAndHash, {
-      heartbeatTimeout: HEARTBEAT_TIMEOUT_MS,
-      ...(headers ? { headers } : {}),
-    });
-    this.sources.set(uniqueId, newSource);
-
-    return newSource;
-  },
-
-  /**
-   * Retrieves an existing EventSource instance by its unique identifier.
-   * @param uniqueId The unique identifier of the EventSource to retrieve
-   * @returns The EventSource instance if found, undefined otherwise
-   */
-  get(uniqueId: string) {
-    return this.sources.get(uniqueId);
-  },
-
-  /**
-   * Closes and removes an EventSource instance from the sources map.
-   * @param uniqueId The unique identifier of the EventSource to remove
-   */
-  remove(uniqueId: string) {
-    const source = this.sources.get(uniqueId);
-    if (source) {
-      source.close();
-      this.sources.delete(uniqueId);
-    }
-  },
-};
+import { eventSourceManager } from "@app/lib/client/event_source_manager";
+import type { DatadogLogContext } from "@app/logger/logger";
+import type { EventSourceConnectionState } from "@app/types/event_source";
+import { useEffect, useRef, useState } from "react";
 
 interface UseEventSourceOptions {
+  workspaceId: string;
   isReadyToConsumeStream?: boolean;
+  isTerminalEvent?: (event: string) => boolean;
   onTerminalError?: (error: Error) => void;
-  /** Extra request headers (e.g. a frame share token presented as a capability). */
   headers?: Record<string, string>;
+  keepAliveOnUnmount?: boolean;
+  replayBufferedEventsOnMount?: boolean;
+  restartKey?: string;
+  telemetryContext?: DatadogLogContext;
 }
 
 export function useEventSource(
   buildURL: (lastEvent: string | null) => string | null,
   onEventCallback: (event: string) => void,
-  uniqueId: string,
+  streamId: string,
   {
+    workspaceId,
     isReadyToConsumeStream = true,
+    isTerminalEvent,
     onTerminalError,
     headers,
-  }: UseEventSourceOptions = {}
+    keepAliveOnUnmount = false,
+    replayBufferedEventsOnMount = false,
+    restartKey = streamId,
+    telemetryContext,
+  }: UseEventSourceOptions
 ) {
+  const [connectionState, setConnectionState] =
+    useState<EventSourceConnectionState>({ kind: "idle" });
   const [isError, setIsError] = useState<Error | null>(null);
-  const lastEvent = useRef<string | null>(null);
-  const reconnectAttempts = useRef(0);
+  const buildURLRef = useRef(buildURL);
+  const onEventCallbackRef = useRef(onEventCallback);
+  const isTerminalEventRef = useRef(isTerminalEvent);
+  const onTerminalErrorRef = useRef(onTerminalError);
+  const headersRef = useRef(headers);
+  const telemetryContextRef = useRef(telemetryContext);
 
-  // We use a counter to trigger reconnects when the counter changes.
-  const [reconnectCounter, setReconnectCounter] = useState(0);
-
-  // Store the reconnect timeout reference to clear it when needed.
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Use the stable event source manager to ensure consistent EventSource management
-  // across renders and component lifecycles.
-  const sourceManager = stableEventSourceManager;
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const connect = useCallback(
-    async (signal: AbortSignal) => {
-      const url = buildURL(lastEvent.current);
-      if (!url) {
-        // If the url is empty, it means streaming is done.
-        // Close any previous connections for this uniqueId and remove it from the manager.
-        sourceManager.remove(uniqueId);
-
-        return null;
-      }
-
-      let source = sourceManager.get(uniqueId);
-      // If the source is closed or doesn't exist, create a new one.
-      if (!source || source.readyState === EventSourcePolyfill.CLOSED) {
-        source = await sourceManager.create(url, uniqueId, headers);
-      }
-
-      // If the effect was cleaned up while we were awaiting, discard the connection.
-      // Only close our local source — don't call sourceManager.remove() because a
-      // newer connect() call may have already stored its own source in the manager.
-      if (signal.aborted) {
-        source.close();
-        return null;
-      }
-
-      source.onopen = () => {
-        // If connected, reset the reconnect attempts and clear the reconnect timeout.
-        reconnectAttempts.current = 0;
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-        }
-      };
-
-      source.onmessage = (event: PolyfillMessageEvent) => {
-        if (event.data === "done") {
-          source.close();
-
-          // Reconnect to the stream right away. The server sends "done" after
-          // each paginated history batch and on idle timeout so clients resume
-          // with lastEventId without waiting on the error backoff.
-          setReconnectCounter((c) => c + 1);
-          return;
-        }
-
-        onEventCallback(event.data);
-        lastEvent.current = event.data;
-      };
-
-      source.onerror = (event: PolyfillEvent) => {
-        source.close();
-
-        reconnectAttempts.current++;
-
-        if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
-          logger.error("EventSource: too many errors, not reconnecting.");
-          const error = new Error("Too many errors, closing connection.");
-          setIsError(error);
-          onTerminalError?.(error);
-
-          return;
-        }
-
-        // Add jitter to prevent synchronized reconnection bursts during deployment.
-        const reconnectDelayMs =
-          RECONNECT_DELAY_BASE_MS + Math.random() * RECONNECT_DELAY_JITTER_MS;
-
-        logger.warn(
-          { event, reconnectDelayMs: Math.round(reconnectDelayMs) },
-          "EventSource connection error, reconnecting."
-        );
-
-        // Set timeout to reconnect after a jittered delay.
-        reconnectTimeoutRef.current = setTimeout(() => {
-          setReconnectCounter((c) => c + 1);
-        }, reconnectDelayMs);
-      };
-
-      return source;
-    },
-    [buildURL, onEventCallback, uniqueId, sourceManager, onTerminalError]
-  );
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `connect` is intentionally excluded — its identity may change every render if callers don't memoize buildURL/onEventCallback, which would abort in-flight connections.
   useEffect(() => {
-    if (!isReadyToConsumeStream || isError) {
+    buildURLRef.current = buildURL;
+    onEventCallbackRef.current = onEventCallback;
+    isTerminalEventRef.current = isTerminalEvent;
+    onTerminalErrorRef.current = onTerminalError;
+    headersRef.current = headers;
+    telemetryContextRef.current = telemetryContext;
+  }, [
+    buildURL,
+    headers,
+    isTerminalEvent,
+    onEventCallback,
+    onTerminalError,
+    telemetryContext,
+  ]);
+
+  useEffect(() => {
+    if (!isReadyToConsumeStream || !streamId) {
+      setConnectionState({ kind: "idle" });
+      setIsError(null);
       return;
     }
 
-    // AbortController lets us detect when React strict mode (or any unmount)
-    // cleans up the effect while the async connect() is still in flight.
-    // Without this, both mounts would resolve and register duplicate EventSources.
-    const abortController = new AbortController();
-    connect(abortController.signal);
-
-    // iOS Safari puts pages in bfcache (Back/Forward Cache) when switching apps
-    // or closing the browser. While frozen, JS cannot react to the OS killing
-    // the underlying SSE/XHR connection, so onerror never fires and the stream
-    // appears permanently stuck when the user returns.
-    //
-    // We listen for two complementary events:
-    //  - "pageshow" with event.persisted === true  → bfcache restoration
-    //  - "visibilitychange" to visible             → app switch / tab return
-    //
-    // If the EventSource is found CLOSED in either case, we reset the reconnect
-    // attempt counter (the drop was caused by the OS, not a real error storm)
-    // and trigger a reconnect via setReconnectCounter. The existing lastEventId
-    // mechanism in buildEventSourceURL guarantees the reconnect picks up exactly
-    // where the stream left off.
-    const triggerReconnectIfClosed = () => {
-      const source = sourceManager.get(uniqueId);
-      if (!source || source.readyState === EventSourcePolyfill.CLOSED) {
-        // Reset attempt counter: the connection was dropped by the OS/bfcache,
-        // not by consecutive network errors. We don't want the user to hit the
-        // MAX_RECONNECT_ATTEMPTS wall just because they switched apps.
-        reconnectAttempts.current = 0;
-        setReconnectCounter((c) => c + 1);
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        triggerReconnectIfClosed();
-      }
-    };
-
-    const handlePageShow = (event: PageTransitionEvent) => {
-      // event.persisted === true means the page was restored from bfcache.
-      if (event.persisted) {
-        triggerReconnectIfClosed();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("pageshow", handlePageShow);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("pageshow", handlePageShow);
-      abortController.abort();
-      sourceManager.remove(uniqueId);
-
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-    };
+    return eventSourceManager.subscribe({
+      streamId,
+      config: {
+        workspaceId,
+        buildURL: (lastEvent) => buildURLRef.current(lastEvent),
+        headers: headersRef.current,
+        isTerminalEvent: (event) =>
+          isTerminalEventRef.current?.(event) ?? false,
+        replayBufferedEventsOnSubscribe: replayBufferedEventsOnMount,
+        restartKey,
+        telemetryContext: telemetryContextRef.current,
+      },
+      subscriber: {
+        onEvent: (event) => onEventCallbackRef.current(event),
+        onStateChange: (state) => {
+          setConnectionState(state);
+          setIsError(state.kind === "failed" ? state.error : null);
+        },
+        onTerminalError: (error) => onTerminalErrorRef.current?.(error),
+      },
+      keepAliveWithoutSubscribers: keepAliveOnUnmount,
+    });
   }, [
     isReadyToConsumeStream,
-    reconnectCounter,
-    sourceManager,
-    uniqueId,
-    isError,
+    keepAliveOnUnmount,
+    replayBufferedEventsOnMount,
+    restartKey,
+    streamId,
+    workspaceId,
   ]);
 
-  return { isError };
+  return { connectionState, isError };
 }
