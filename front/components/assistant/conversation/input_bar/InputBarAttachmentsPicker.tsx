@@ -35,7 +35,7 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
 import {
-  Attachment01,
+  BookOpen01,
   Button,
   DoubleIcon,
   DropdownMenu,
@@ -581,7 +581,7 @@ export const InputBarAttachmentsPicker = ({
           icon={
             <Icon
               size="xs"
-              visual={Attachment01}
+              visual={BookOpen01}
               className="text-muted-foreground"
             />
           }
