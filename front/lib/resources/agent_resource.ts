@@ -2002,9 +2002,9 @@ export class AgentResource
             transaction: t,
           });
           assert(currentEditors !== null);
-          const editorIds = new Set(editors.map((editor) => editor.id));
+          const editorModelIds = new Set(editors.map((editor) => editor.id));
           removedEditors = currentEditors
-            .filter((editor) => !editorIds.has(editor.id))
+            .filter((editor) => !editorModelIds.has(editor.id))
             .map((editor) => editor.toJSON());
           await agentResource.revokeEditors(auth, {
             editors: removedEditors,

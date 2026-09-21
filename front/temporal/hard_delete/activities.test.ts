@@ -1,6 +1,7 @@
 import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -16,6 +17,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
+import type { ModelId } from "@app/types/shared/model_id";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@temporalio/activity", () => ({
@@ -49,19 +51,16 @@ async function createPendingAgent(
   return res.value;
 }
 
-async function getEditorGrantGroupId(
+async function getEditorGrantGroupModelId(
   authenticator: Authenticator,
-  agent: AgentConfigurationModel
-): Promise<number> {
-  if (agent.agentId === null) {
-    throw new Error("Agent identity was not created");
-  }
+  agent: AgentResource
+): Promise<ModelId> {
   const group = await GroupPermissionResource.findRegularAutoGroupForGrant(
     authenticator,
     {
       grantType: "editor",
       resourceType: "agent",
-      resourceId: agent.agentId,
+      resourceId: agent.id,
     }
   );
   if (!group) {
@@ -83,7 +82,10 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     if (!agent) {
       throw new Error("Pending agent was not created");
     }
-    const grantGroupId = await getEditorGrantGroupId(authenticator, agent);
+    const grantGroupModelId = await getEditorGrantGroupModelId(
+      authenticator,
+      AgentResource.fromAgentConfigurationModel(authenticator, agent)
+    );
 
     // Advance time past the retention threshold.
     vi.advanceTimersByTime(PAST_THRESHOLD_MS);
@@ -99,7 +101,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     // Editor grant group should be deleted too.
     const groupsAfter = await GroupResource.dangerouslyFetchByModelIds(
       authenticator,
-      [grantGroupId]
+      [grantGroupModelId]
     );
     expect(groupsAfter).toHaveLength(0);
   });
@@ -116,7 +118,10 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     if (!agent) {
       throw new Error("Pending agent was not created");
     }
-    const grantGroupId = await getEditorGrantGroupId(authenticator, agent);
+    const grantGroupModelId = await getEditorGrantGroupModelId(
+      authenticator,
+      AgentResource.fromAgentConfigurationModel(authenticator, agent)
+    );
 
     await purgeExpiredPendingAgentsActivity();
 
@@ -130,7 +135,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     // Editor grant group should survive too.
     const groupsAfter = await GroupResource.dangerouslyFetchByModelIds(
       authenticator,
-      [grantGroupId]
+      [grantGroupModelId]
     );
     expect(groupsAfter).toHaveLength(1);
   });
@@ -167,13 +172,10 @@ describe("purgeExpiredPendingAgentsActivity", () => {
       authenticator,
       { name: "Active Agent" }
     );
-    const agent = await AgentConfigurationModel.findOne({
-      where: { id: agentConfig.id, workspaceId: workspace.id },
-    });
-    if (!agent) {
-      throw new Error("Active agent was not created");
-    }
-    const grantGroupId = await getEditorGrantGroupId(authenticator, agent);
+    const grantGroupModelId = await getEditorGrantGroupModelId(
+      authenticator,
+      AgentResource.fromAgentConfiguration(authenticator, agentConfig)
+    );
 
     // Advance time past the retention threshold.
     vi.advanceTimersByTime(PAST_THRESHOLD_MS);
@@ -190,7 +192,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     // Its editor grant group should survive too.
     const groupsAfter = await GroupResource.dangerouslyFetchByModelIds(
       authenticator,
-      [grantGroupId]
+      [grantGroupModelId]
     );
     expect(groupsAfter).toHaveLength(1);
   });
@@ -208,9 +210,9 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     if (!expiredAgent) {
       throw new Error("Expired pending agent was not created");
     }
-    const expiredGroupId = await getEditorGrantGroupId(
+    const expiredGroupModelId = await getEditorGrantGroupModelId(
       authenticator,
-      expiredAgent
+      AgentResource.fromAgentConfigurationModel(authenticator, expiredAgent)
     );
 
     // Advance time past the threshold.
@@ -224,22 +226,19 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     if (!freshAgent) {
       throw new Error("Fresh pending agent was not created");
     }
-    const freshGroupId = await getEditorGrantGroupId(authenticator, freshAgent);
+    const freshGroupModelId = await getEditorGrantGroupModelId(
+      authenticator,
+      AgentResource.fromAgentConfigurationModel(authenticator, freshAgent)
+    );
 
     // Create an active agent.
     const activeAgent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       { name: "Survivor" }
     );
-    const activeAgentModel = await AgentConfigurationModel.findOne({
-      where: { id: activeAgent.id, workspaceId: workspace.id },
-    });
-    if (!activeAgentModel) {
-      throw new Error("Active agent was not created");
-    }
-    const activeGroupId = await getEditorGrantGroupId(
+    const activeGroupModelId = await getEditorGrantGroupModelId(
       authenticator,
-      activeAgentModel
+      AgentResource.fromAgentConfiguration(authenticator, activeAgent)
     );
 
     await purgeExpiredPendingAgentsActivity();
@@ -252,7 +251,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     ).toBeNull();
     expect(
       await GroupResource.dangerouslyFetchByModelIds(authenticator, [
-        expiredGroupId,
+        expiredGroupModelId,
       ])
     ).toHaveLength(0);
 
@@ -264,7 +263,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     expect(freshAfter!.status).toBe("pending");
     expect(
       await GroupResource.dangerouslyFetchByModelIds(authenticator, [
-        freshGroupId,
+        freshGroupModelId,
       ])
     ).toHaveLength(1);
 
@@ -276,7 +275,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     ).toHaveLength(1);
     expect(
       await GroupResource.dangerouslyFetchByModelIds(authenticator, [
-        activeGroupId,
+        activeGroupModelId,
       ])
     ).toHaveLength(1);
   });
