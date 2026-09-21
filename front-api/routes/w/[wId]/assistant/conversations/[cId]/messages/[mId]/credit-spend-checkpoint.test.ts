@@ -15,7 +15,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 
-async function setupPausedMessage() {
+async function setupPausedMessage({ paused = true } = {}) {
   const { auth, workspace } = await createPrivateApiMockRequest({
     method: "POST",
   });
@@ -45,9 +45,12 @@ async function setupPausedMessage() {
       parentMessageModelId: userMessageRow.id,
       rank: 1,
     });
-  await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(auth, {
-    agentMessage,
-  });
+  if (paused) {
+    await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(
+      auth,
+      { agentMessage }
+    );
+  }
 
   return { workspace, conversation, agentMessageRow };
 }
@@ -121,7 +124,7 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages/:mId/credit-spe
     expect(mockLaunchAgentLoopWorkflow).not.toHaveBeenCalled();
   });
 
-  it("returns 400 when the message is not paused", async () => {
+  it("returns 200 without relaunching the loop for a duplicate decision on an already-resolved pause", async () => {
     const { workspace, conversation, agentMessageRow } =
       await setupPausedMessage();
 
@@ -133,6 +136,8 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages/:mId/credit-spe
     );
     expect(first.status).toBe(200);
 
+    mockLaunchAgentLoopWorkflow.mockClear();
+
     const second = await postDecision(
       workspace,
       conversation.sId,
@@ -140,8 +145,24 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages/:mId/credit-spe
       { decision: "continue" }
     );
 
-    expect(second.status).toBe(400);
-    const body = await second.json();
+    expect(second.status).toBe(200);
+    expect(await second.json()).toEqual({ success: true });
+    expect(mockLaunchAgentLoopWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when the message is not paused", async () => {
+    const { workspace, conversation, agentMessageRow } =
+      await setupPausedMessage({ paused: false });
+
+    const response = await postDecision(
+      workspace,
+      conversation.sId,
+      agentMessageRow.sId,
+      { decision: "continue" }
+    );
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
     expect(body.error.type).toBe("invalid_request_error");
   });
 

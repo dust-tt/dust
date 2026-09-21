@@ -164,7 +164,22 @@ describe("credit spend checkpoint pause resolution", () => {
       messageId: agentMessageId,
     });
 
-    expect(second.isErr()).toBe(true);
+    expect(second.isOk()).toBe(true);
+    expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+    expect(await getStatus()).toBe("acknowledged");
+  });
+
+  it("a duplicate request for an already-acknowledged pause is a no-op, not an error", async () => {
+    await continueCreditSpendCheckpointPause(auth, conversation, {
+      messageId: agentMessageId,
+    });
+    const duplicate = await continueCreditSpendCheckpointPause(
+      auth,
+      conversation,
+      { messageId: agentMessageId }
+    );
+
+    expect(duplicate.isOk()).toBe(true);
     expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
     expect(await getStatus()).toBe("acknowledged");
   });
