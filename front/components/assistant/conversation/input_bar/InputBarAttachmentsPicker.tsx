@@ -43,6 +43,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuFilters,
+  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -90,8 +91,6 @@ interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
-  onNodeUnselect: (node: DataSourceViewContentNode) => void;
-  attachedNodes: DataSourceViewContentNode[];
   type: "dropdown" | "subdropdown";
   isLoading?: boolean;
   buttonLabel?: string;
@@ -118,26 +117,22 @@ const PROJECT_FILTER_KEY = getKeyForConnectorProvider({
   dataSourceId: "project",
 });
 
-interface KnowledgeNodeCheckboxItemProps {
+interface KnowledgeNodeItemProps {
   item: DataSourceViewContentNode;
   owner: LightWorkspaceType;
-  attachedNodes: DataSourceViewContentNode[];
   onNodeSelect: (node: DataSourceViewContentNode) => void;
-  onNodeUnselect: (node: DataSourceViewContentNode) => void;
   spacesMap?: Record<string, SpaceType>;
 }
 
-const KnowledgeNodeCheckboxItem = ({
+const KnowledgeNodeItem = ({
   item,
   owner,
-  attachedNodes,
   onNodeSelect,
-  onNodeUnselect,
   spacesMap,
-}: KnowledgeNodeCheckboxItemProps) => {
+}: KnowledgeNodeItemProps) => {
   return (
     <NodePathTooltip node={item} owner={owner}>
-      <DropdownMenuCheckboxItem
+      <DropdownMenuItem
         label={item.title}
         icon={
           isWebsite(item.dataSourceView.dataSource) ||
@@ -160,19 +155,8 @@ const KnowledgeNodeCheckboxItem = ({
           item,
           spacesMap
         )}
-        checked={attachedNodes.some(
-          (attachedNode) =>
-            attachedNode.internalId === item.internalId &&
-            attachedNode.dataSourceView.dataSource.sId ===
-              item.dataSourceView.dataSource.sId
-        )}
-        onCheckedChange={(checked) => {
-          if (checked) {
-            onNodeSelect(item);
-          } else {
-            onNodeUnselect(item);
-          }
-        }}
+        inset
+        onClick={() => onNodeSelect(item)}
         truncateText
       />
     </NodePathTooltip>
@@ -265,8 +249,6 @@ export const InputBarAttachmentsPicker = ({
   owner,
   fileUploaderService,
   onNodeSelect,
-  onNodeUnselect,
-  attachedNodes,
   isLoading = false,
   disabled = false,
   buttonSize = "xs",
@@ -728,13 +710,11 @@ export const InputBarAttachmentsPicker = ({
                         ]
                     )
                     .map((item) => (
-                      <KnowledgeNodeCheckboxItem
+                      <KnowledgeNodeItem
                         key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
                         item={item}
                         owner={owner}
-                        attachedNodes={attachedNodes}
                         onNodeSelect={onNodeSelect}
-                        onNodeUnselect={onNodeUnselect}
                         spacesMap={spacesMap}
                       />
                     ))
@@ -746,13 +726,11 @@ export const InputBarAttachmentsPicker = ({
                         allUnselected || selectedDataSourcesAndTools[key];
                       return isSelected
                         ? r.results.map((item) => (
-                            <KnowledgeNodeCheckboxItem
+                            <KnowledgeNodeItem
                               key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
                               item={item}
                               owner={owner}
-                              attachedNodes={attachedNodes}
                               onNodeSelect={onNodeSelect}
-                              onNodeUnselect={onNodeUnselect}
                               spacesMap={spacesMap}
                             />
                           ))

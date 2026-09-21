@@ -13,7 +13,6 @@ import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/s
 import type { SlashMenuStackFrame } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import type { AttachContextSlashMenuItem } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems";
 import { useAttachContextSlashMenuItems } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
@@ -40,7 +39,6 @@ interface AttachContextSubMenuDropdownProps
   > {
   activeFrame: SlashMenuStackFrame;
   conversationId?: string | null;
-  isNodeAttached?: (node: DataSourceViewContentNode) => boolean;
   onBack: () => void;
   onClose: () => void;
   onSelect: (selection: ContextSlashSearchSelection) => void;
@@ -62,7 +60,6 @@ export const AttachContextSubMenuDropdown = forwardRef<
       activeFrame,
       clientRect,
       conversationId = null,
-      isNodeAttached,
       onBack,
       onClose,
       onSelect,
@@ -80,7 +77,6 @@ export const AttachContextSubMenuDropdown = forwardRef<
     const { emptyMessage, isLoading, items, loadingMessage } =
       useAttachContextSlashMenuItems({
         conversationId,
-        isNodeAttached,
         owner,
         query,
         spaceId,
