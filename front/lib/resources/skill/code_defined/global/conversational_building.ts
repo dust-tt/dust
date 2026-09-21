@@ -81,6 +81,7 @@ Tools operate on entity ids, not names. Use these tools to get up-to-date inform
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.get_agent_details\`: an agent's full configuration (instructions, model, skills, tools, knowledge).
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_tools\`: find the tools that can be equipped on agents and skills and resolve a name to an id.
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.get_tool_details\`: a tool's description and the functions it exposes with their parameters. Use it before referencing a tool in a suggestion.
+- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.search_knowledge\`: without a query, the knowledge sources (data source views) of the workspace; with a query, the sources and document nodes matching it. Use it before referencing knowledge in a suggestion (see <knowledge_guidance> and <knowledge_nodes>).
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_workspace_members\`: information about members (pass \`userIds\` to look up specific people, e.g. to change a skill's editors).
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.describe_skill\`: a custom skill's name, settings, and instructions as HTML whose blocks carry a \`data-block-id\`. Call it to get any info about a skill before acting on it; the block ids are required to target edits.
 
@@ -182,7 +183,6 @@ Agent suggestions:
 
 /**
  * TODO in tools section:
- * Research tools to search knowledge.
  * Agent feedback and usage insights
  */
 

@@ -1,4 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { KNOWLEDGE_CATEGORIES } from "@app/types/api/public/spaces";
 import type { AgentsGetViewType } from "@app/types/assistant/agent";
 import {
   SKILL_AVAILABILITIES,
@@ -16,6 +17,7 @@ export const LIST_SKILLS_TOOL_NAME = "list_skills" as const;
 export const GET_SKILL_DETAILS_TOOL_NAME = "get_skill_details" as const;
 export const LIST_TOOLS_TOOL_NAME = "list_tools" as const;
 export const GET_TOOL_DETAILS_TOOL_NAME = "get_tool_details" as const;
+export const SEARCH_KNOWLEDGE_TOOL_NAME = "search_knowledge" as const;
 export const LIST_WORKSPACE_MEMBERS_TOOL_NAME =
   "list_workspace_members" as const;
 export const LIST_GROUPS_TOOL_NAME = "list_groups" as const;
@@ -274,6 +276,30 @@ const getToolDetailsSchema = {
   toolId: z.string().describe("The tool's id, as returned by list_tools."),
 };
 
+const searchKnowledgeSchema = {
+  query: z
+    .string()
+    .optional()
+    .describe(
+      "Natural language query describing the knowledge needed. Omit to list all available sources."
+    ),
+  topK: z
+    .number()
+    .int()
+    .positive()
+    .max(10)
+    .default(5)
+    .describe(
+      "Maximum number of document hits to retrieve per data source (default: 5, only applies when query is provided)."
+    ),
+  category: z
+    .enum(KNOWLEDGE_CATEGORIES)
+    .optional()
+    .describe(
+      "Optional category to filter results: 'managed' (connected platforms), 'folder', or 'website'."
+    ),
+};
+
 export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
   {
     name: LIST_AGENTS_TOOL_NAME,
@@ -366,6 +392,23 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving tool details",
       done: "Retrieved tool details",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SEARCH_KNOWLEDGE_TOOL_NAME,
+    description:
+      "Browse or search the knowledge sources agents and skills can be given. " +
+      "Without a query: list all available data source views. With a query: " +
+      "semantically search them and return the matching data source views " +
+      "with individual document nodes.",
+    schema: searchKnowledgeSchema,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Searching knowledge sources",
+      done: "Searched knowledge sources",
     },
     toolCostCategory: "basic",
     freeUsage: true,
