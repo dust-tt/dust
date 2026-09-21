@@ -77,6 +77,7 @@ export function DataTableSkeleton<
               return (
                 <th
                   key={header.id}
+                  scope="col"
                   className={cn(
                     "heading-xs px-2 py-2 capitalize text-foreground",
                     presets.headerAlign === "right"
