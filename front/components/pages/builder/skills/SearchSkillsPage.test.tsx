@@ -101,24 +101,26 @@ async function setup({ enabled = true } = {}) {
     throw new Error(`Unexpected request: ${url}`);
   });
   const mount = () =>
-    render(
-      <SWRConfig
-        value={{ provider: () => new Map(), shouldRetryOnError: false }}
-      >
-        <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
-          <AuthContext.Provider value={context}>
-            <ManageSkillsPage />
-          </AuthContext.Provider>
-        </FetcherProvider>
-      </SWRConfig>
-    );
+    render(<ManageSkillsPage />, {
+      wrapper: ({ children }) => (
+        <SWRConfig
+          value={{ provider: () => new Map(), shouldRetryOnError: false }}
+        >
+          <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
+            <AuthContext.Provider value={context}>
+              {children}
+            </AuthContext.Provider>
+          </FetcherProvider>
+        </SWRConfig>
+      ),
+    });
   return { skill, context, search, fetcher, fetcherWithBody, mount };
 }
 
 describe("search-backed Manage Skills", () => {
   it("loads All by usage and fetches full details only when selected", async () => {
     const { skill, context, fetcherWithBody, fetcher, mount } = await setup();
-    mount();
+    const { rerender } = mount();
     await screen.findByRole("button", { name: /Weekly report/ });
     expect(screen.getByRole("tab", { name: "All" })).toHaveAttribute(
       "aria-selected",
@@ -138,9 +140,13 @@ describe("search-backed Manage Skills", () => {
     ]);
     expect(fetcher).not.toHaveBeenCalled();
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /Weekly report/ })
-    );
+    const skillButton = screen.getByRole("button", { name: /Weekly report/ });
+    const user = userEvent.setup();
+    await user.pointer({ target: skillButton, keys: "[MouseLeft>]" });
+    // A render between pointer down and up must not replace the clicked cell.
+    rerender(<ManageSkillsPage />);
+    expect(skillButton).toBeInTheDocument();
+    await user.pointer({ keys: "[/MouseLeft]" });
     await within(await screen.findByRole("dialog")).findByRole("heading", {
       name: "Full skill details",
     });

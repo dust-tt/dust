@@ -103,7 +103,7 @@ function SkillSearchResults({
           owner={owner}
           skills={skills}
           onSelect={onSelect}
-          onRefresh={() => void mutate()}
+          onRefresh={mutate}
           pagination={tablePagination}
           setPagination={(pagination) =>
             handlePaginationChange(pagination, nextCursor)
