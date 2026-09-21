@@ -215,7 +215,8 @@ export function getMcpServerViewDisplayName(
  * label servers that have no view in hand: catalog entries and freshly created servers, servers
  * sorted or listed as servers (including `MCPServerTypeWithViews`), internal-server analytics
  * facets keyed by server name, and the Poke row that shows the raw server name next to the
- * custom name.
+ * custom name. The one permitted `view.server` call is the fallback inside
+ * `getMcpServerViewDisplayName`, which runs only after `view.name` was found unset.
  */
 export function getMcpServerDisplayNameWithoutView(
   server: Pick<MCPServerType, "sId" | "name">,
