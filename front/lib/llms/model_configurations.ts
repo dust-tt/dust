@@ -2,6 +2,7 @@ import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type {
   ModelConfigurationType,
+  ReasoningEffort,
   SupportedModel,
 } from "@app/types/assistant/models/types";
 
@@ -45,6 +46,22 @@ export function getSupportedModelConfig(
   );
 
   return config ?? null;
+}
+
+/**
+ * Get the reasoning effort a model configuration actually runs at: its explicit effort, or the
+ * effort its model defaults to when it sets none. Falls back to "none" for a model that is no
+ * longer supported.
+ * Stays synchronous reads from cache.
+ */
+export function getEffectiveReasoningEffort(
+  model: AgentModelConfigurationType
+): ReasoningEffort {
+  return (
+    model.reasoningEffort ??
+    getSupportedModelConfig(model)?.defaultReasoningEffort ??
+    "none"
+  );
 }
 
 /**
