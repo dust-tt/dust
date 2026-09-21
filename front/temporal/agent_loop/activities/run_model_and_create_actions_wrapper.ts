@@ -393,15 +393,6 @@ async function _runModelAndCreateActionsActivity({
 }
 
 /**
- * @cc [owner:avervaet,label:backend;performance] checkpoint-gate-read-once-per-message
- * The workspace's checkpoint gate setting MUST be read at most once per agent message: only on
- * the step that finds the persisted checkpoint status still unset (`null`), and MUST NOT be
- * re-read on any later step for that message. A disabled gate found on that step MUST be
- * persisted as an `acknowledged` status immediately (without pausing), so later steps skip the
- * gate lookup entirely by reading the already-resolved status instead — the same one DB read per
- * step already paid for a crossed, unresolved checkpoint.
- */
-/**
  * Whether the agent loop must pause here for the user to confirm continuing. Reads the agent
  * message's checkpoint status only when the cheap, in-memory checks (exemption, root message,
  * pre-step spend) don't already rule it out; the workspace's checkpoint gate setting is

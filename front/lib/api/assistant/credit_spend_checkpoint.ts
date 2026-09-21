@@ -49,14 +49,6 @@ export function resolveDefaultCreditSpendCheckpointEnabled(
   return !plan || !isCreditPricedPlan(plan);
 }
 
-/**
- * @cc [owner:avervaet,label:product] checkpoint-gate-workspace-override
- * The returned value MUST be the workspace's configured `creditSpendCheckpointEnabled` when a
- * usage-configuration row exists for it and that value is non-NULL, and MUST fall back to
- * `resolveDefaultCreditSpendCheckpointEnabled` otherwise. Callers MUST treat a `false` result as
- * an unconditional exemption: the checkpoint MUST NOT pause for that workspace regardless of
- * spend, root-message status, or any other condition.
- */
 export async function getCreditSpendCheckpointEnabled(
   auth: Authenticator
 ): Promise<boolean> {
