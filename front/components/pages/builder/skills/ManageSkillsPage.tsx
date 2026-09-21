@@ -238,7 +238,7 @@ export function ManageSkillsPage() {
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
   const handleSkillSelect = useCallback(
-    (skill: { sId: string } | null) => {
+    (skill: GetSkillsWithRelationsResponseBody["skills"][number] | null) => {
       setSkillIdParam(skill?.sId);
     },
     [setSkillIdParam]
