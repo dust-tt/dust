@@ -72,6 +72,9 @@ export function isSystemKey<T extends { isSystem: boolean }>(
 export const DEFAULT_SYSTEM_KEY_NAME = "DustSystemKey";
 export const SECRET_KEY_PREFIX = "sk-";
 
+// Bypass no-TTL entries written before the deprecated role was migrated.
+const API_KEY_CACHE_ID = "api-key-by-secret-v2";
+
 // "Last used" is only shown coarsely in the UI; skip DB writes within this window
 // to avoid row-lock contention on hot API keys.
 export const MARK_AS_USED_MIN_INTERVAL_MS = 60 * 60 * 1000;
@@ -127,17 +130,19 @@ export class KeyResource extends BaseResource<KeyModel> {
   private static fetchBySecretCached = cacheWithRedis(
     KeyResource._fetchBySecretUncached,
     KeyResource.keyCacheKeyResolver,
-    {}
+    { cacheId: API_KEY_CACHE_ID }
   );
 
   private static invalidateKeyCache = invalidateCacheWithRedis(
     KeyResource._fetchBySecretUncached,
-    KeyResource.keyCacheKeyResolver
+    KeyResource.keyCacheKeyResolver,
+    { cacheId: API_KEY_CACHE_ID }
   );
 
   private static batchInvalidateKeyCache = batchInvalidateCacheWithRedis(
     KeyResource._fetchBySecretUncached,
-    KeyResource.keyCacheKeyResolver
+    KeyResource.keyCacheKeyResolver,
+    { cacheId: API_KEY_CACHE_ID }
   );
 
   private static fromCachedData(

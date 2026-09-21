@@ -111,6 +111,10 @@ function getCacheKeyForWorkspace(workspaceId: string): string {
   return `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspaceId}`;
 }
 
+function getActiveRoleCacheKey(userModelId: number, workspaceModelId: number) {
+  return `cacheWithRedis-active-membership-role-v2-role:user:${userModelId}:workspace:${workspaceModelId}`;
+}
+
 describe("MembershipResource", () => {
   describe("getActiveMemberships", () => {
     it("returns no memberships without querying for empty users, including pagination", async () => {
@@ -662,7 +666,7 @@ describe("MembershipResource", () => {
 
       it("rejects an unsupported role read from cache", async () => {
         const user = await UserFactory.withoutLastLogin();
-        const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
+        const roleCacheKey = getActiveRoleCacheKey(user.id, workspace.id);
         inMemoryCache.set(roleCacheKey, JSON.stringify("unsupported"));
 
         await expect(
@@ -708,7 +712,7 @@ describe("MembershipResource", () => {
           role: "user",
         });
 
-        const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
+        const roleCacheKey = getActiveRoleCacheKey(user.id, workspace.id);
         const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(deletedKeys).toContain(roleCacheKey);
@@ -730,7 +734,7 @@ describe("MembershipResource", () => {
           workspace: lightWorkspace,
         });
 
-        const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
+        const roleCacheKey = getActiveRoleCacheKey(user.id, workspace.id);
         const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(deletedKeys).toContain(roleCacheKey);
@@ -791,7 +795,7 @@ describe("MembershipResource", () => {
 
         await membership.delete(auth, {});
 
-        const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
+        const roleCacheKey = getActiveRoleCacheKey(user.id, workspace.id);
         const seatsCacheKey = getCacheKeyForWorkspace(workspace.sId);
 
         expect(deletedKeys).toContain(roleCacheKey);

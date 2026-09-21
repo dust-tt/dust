@@ -14,10 +14,11 @@ vi.mock("@app/lib/utils/cache", () => ({
     .mockImplementation(
       <T, Args extends unknown[]>(
         fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
+        resolver: (...args: Args) => string,
+        options?: { cacheId?: string }
       ) => {
         return async (...args: Args): Promise<JsonSerializable<T>> => {
-          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+          const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
           const cached = inMemoryCache.get(key);
           if (cached) {
             return JSON.parse(cached) as JsonSerializable<T>;
@@ -46,10 +47,11 @@ vi.mock("@app/lib/utils/cache", () => ({
     .mockImplementation(
       <T, Args extends unknown[]>(
         fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
+        resolver: (...args: Args) => string,
+        options?: { cacheId?: string }
       ) => {
         return async (...args: Args): Promise<void> => {
-          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+          const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
           inMemoryCache.delete(key);
         };
       }
@@ -72,11 +74,12 @@ vi.mock("@app/lib/utils/cache", () => ({
     .mockImplementation(
       <T, Args extends unknown[]>(
         fn: CacheableFunction<JsonSerializable<T>, Args>,
-        resolver: (...args: Args) => string
+        resolver: (...args: Args) => string,
+        options?: { cacheId?: string }
       ) => {
         return async (argsList: Args[]): Promise<void> => {
           for (const args of argsList) {
-            const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+            const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
             inMemoryCache.delete(key);
           }
         };
@@ -106,7 +109,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { LightWorkspaceType } from "@app/types/user";
 
 function toCacheKey(secret: string): string {
-  return `cacheWithRedis-_fetchBySecretUncached-${KeyResource.keyCacheKeyResolver(secret)}`;
+  return `cacheWithRedis-api-key-by-secret-v2-${KeyResource.keyCacheKeyResolver(secret)}`;
 }
 
 describe("KeyResource", () => {

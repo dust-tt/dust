@@ -75,6 +75,9 @@ type MembershipsWithTotal = {
   nextPageParams?: MembershipsPaginationParams;
 };
 
+// Bypass no-TTL entries written before the deprecated role was migrated.
+const ACTIVE_MEMBERSHIP_ROLE_CACHE_ID = "active-membership-role-v2";
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -603,13 +606,17 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     MembershipResource._getActiveRoleForUserInWorkspaceUncached,
     (params: { userModelId: ModelId; workspaceModelId: ModelId }) =>
       MembershipResource.roleCacheKeyResolver(params),
-    { cacheNullValues: false }
+    {
+      cacheId: ACTIVE_MEMBERSHIP_ROLE_CACHE_ID,
+      cacheNullValues: false,
+    }
   );
 
   private static _invalidateRoleCache = invalidateCacheWithRedis(
     MembershipResource._getActiveRoleForUserInWorkspaceUncached,
     (params: { userModelId: ModelId; workspaceModelId: ModelId }) =>
-      MembershipResource.roleCacheKeyResolver(params)
+      MembershipResource.roleCacheKeyResolver(params),
+    { cacheId: ACTIVE_MEMBERSHIP_ROLE_CACHE_ID }
   );
 
   private static invalidateRoleCache = async (params: {
