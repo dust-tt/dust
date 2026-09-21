@@ -27,7 +27,7 @@ interface LiveConversationButtonProps {
   onClick: () => void;
   disabled?: boolean;
   isLoading?: boolean;
-  active?: boolean;
+  agentName?: string;
   compact?: boolean;
   size?: "xs" | "sm" | "md";
 }
@@ -36,23 +36,23 @@ export function LiveConversationButton({
   onClick,
   disabled,
   isLoading,
-  active,
+  agentName,
   compact,
   size = "sm",
 }: LiveConversationButtonProps) {
   return (
     <Button
       icon={VoiceWaveform}
-      label={compact ? undefined : active ? "Voice on" : "Voice"}
+      label={compact ? undefined : "Voice"}
       tooltip={
-        active ? "Voice conversation in progress" : "Start a voice conversation"
+        agentName ? `Talk to @${agentName}` : "Start a voice conversation"
       }
-      aria-label={active ? "Voice conversation in progress" : "Start voice"}
-      variant={active ? "highlight-ghost" : "primary"}
+      aria-label="Start voice"
+      variant="outline"
       size={size}
       isRounded
       isLoading={isLoading}
-      disabled={disabled || active}
+      disabled={disabled}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();

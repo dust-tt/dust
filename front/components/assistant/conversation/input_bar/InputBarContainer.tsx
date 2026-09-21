@@ -1647,11 +1647,11 @@ const InputBarContainer = ({
     !!liveVoice &&
     ["connecting", "connected", "closing"].includes(liveVoice.live.status);
   const liveVoiceButton =
-    liveVoice && !isAgentBuilder ? (
+    liveVoice && !isAgentBuilder && !isLiveVoiceActive ? (
       <LiveConversationButton
         size={isCompact ? "sm" : buttonSize}
         compact={isCompact}
-        active={isLiveVoiceActive}
+        agentName={liveAgent?.name}
         isLoading={liveVoice.isCreating}
         disabled={
           disableInput || isSubmitting || isSubmitBlocked || !liveAgent?.canRead
@@ -1762,7 +1762,9 @@ const InputBarContainer = ({
                 )}
                 data-compact-voice
               >
-                {liveVoiceButton ?? (
+                {liveVoice && !isAgentBuilder ? (
+                  liveVoiceButton
+                ) : (
                   <VoicePicker
                     status={activeVoiceService.status}
                     level={activeVoiceService.level}
@@ -2088,7 +2090,9 @@ const InputBarContainer = ({
                     )}
                   </div>
                   {canShowVoicePicker &&
-                    (liveVoiceButton ?? (
+                    (liveVoice && !isAgentBuilder ? (
+                      liveVoiceButton
+                    ) : (
                       <VoicePicker
                         status={activeVoiceService.status}
                         level={activeVoiceService.level}

@@ -326,7 +326,7 @@ makeScript(
         );
       }
       await page.getByRole("button", { name: "Mute", exact: true }).click();
-      await page.getByText("Microphone muted", { exact: true }).waitFor();
+      await page.getByText("Mic off", { exact: true }).waitFor();
       await page.screenshot({ path: `${outputDir}.png`, timeout: 10_000 });
       await page.getByRole("button", { name: "End call", exact: true }).click();
       await page

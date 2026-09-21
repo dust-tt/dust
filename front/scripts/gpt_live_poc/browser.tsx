@@ -48,16 +48,18 @@ function FixtureComposer({ conversationId }: { conversationId: string }) {
         }
         rightActions={
           <>
-            <LiveConversationButton
-              size="xs"
-              active={active}
-              onClick={() => {
-                void voice?.start({
-                  conversationId,
-                  agent: { sId: "dust", name: "Dust" },
-                });
-              }}
-            />
+            {!active && (
+              <LiveConversationButton
+                size="xs"
+                agentName="Dust"
+                onClick={() => {
+                  void voice?.start({
+                    conversationId,
+                    agent: { sId: "dust", name: "Dust" },
+                  });
+                }}
+              />
+            )}
             <Button
               variant="highlight"
               size="xs"
