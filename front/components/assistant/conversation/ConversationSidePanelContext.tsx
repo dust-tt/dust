@@ -10,9 +10,12 @@ import {
   FILES_SIDE_PANEL_TYPE,
   FULL_SCREEN_HASH_PARAM,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
+  NEW_ENTITY_PANEL_KEY,
   PLAN_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
+  SIDE_PANEL_TYPES,
+  SKILL_BUILDER_SIDE_PANEL_TYPE,
   SKILL_SIDE_PANEL_TYPE,
   TOOL_SIDE_PANEL_TYPE,
 } from "@app/types/conversation_side_panel";
@@ -53,6 +56,10 @@ type OpenPanelParams =
   | {
       type: "tool";
       toolId: string;
+    }
+  | {
+      type: "skill_builder";
+      skillId: string | null;
     };
 
 const FILE_PREVIEW_FILE_ID_PREFIX = "id:";
@@ -106,6 +113,8 @@ function panelDataKey(params: OpenPanelParams): string {
       return params.skillId;
     case TOOL_SIDE_PANEL_TYPE:
       return params.toolId;
+    case SKILL_BUILDER_SIDE_PANEL_TYPE:
+      return params.skillId ?? NEW_ENTITY_PANEL_KEY;
     default:
       return assertNever(params);
   }
@@ -159,6 +168,11 @@ function panelParamsFromHash(
       return { type, skillId: data };
     case TOOL_SIDE_PANEL_TYPE:
       return { type, toolId: data };
+    case SKILL_BUILDER_SIDE_PANEL_TYPE:
+      return {
+        type,
+        skillId: data === NEW_ENTITY_PANEL_KEY ? null : data,
+      };
     default:
       assertNeverAndIgnore(type);
       return null;
@@ -168,14 +182,7 @@ function panelParamsFromHash(
 const isSupportedPanelType = (
   type: string | undefined
 ): type is ConversationSidePanelType =>
-  type === "actions" ||
-  type === "credits" ||
-  type === "interactive_content" ||
-  type === "file_preview" ||
-  type === "files" ||
-  type === "plan" ||
-  type === "skill" ||
-  type === "tool";
+  SIDE_PANEL_TYPES.some((supported) => supported === type);
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;

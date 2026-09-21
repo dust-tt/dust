@@ -345,6 +345,8 @@ interface SkillSuggestionCardProps {
   suggestion: SkillSuggestionType;
   onAccept?: (suggestion: SkillSuggestionType) => void;
   onDecline?: (suggestion: SkillSuggestionType) => void;
+  // Opt-in: only the surfaces that can host the builder side panel pass it.
+  onOpen?: () => void;
   getSkillInstructionsHtml: () => string;
   getCurrentAgentFacingDescription: () => string;
   isSelected?: boolean;
@@ -359,6 +361,7 @@ export function SkillSuggestionCard({
   suggestion,
   onAccept,
   onDecline,
+  onOpen,
   getSkillInstructionsHtml,
   getCurrentAgentFacingDescription,
   isSelected = false,
@@ -423,6 +426,18 @@ export function SkillSuggestionCard({
           sourceConversationsCount={suggestion.sourceConversationsCount}
           workspaceId={workspaceId}
         />
+
+        {onOpen && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="outline"
+              size="sm"
+              label="Open"
+              onClick={onOpen}
+              disabled={disabled}
+            />
+          </div>
+        )}
       </Card>
     </div>
   );

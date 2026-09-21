@@ -268,6 +268,8 @@ describe("ConversationSidePanelProvider hash encoding", () => {
     [{ type: "credits" }, "credits"],
     [{ type: "plan" }, "plan"],
     [{ type: "skill", skillId: "skl_1" }, "skl_1"],
+    [{ type: "skill_builder", skillId: "skl_1" }, "skl_1"],
+    [{ type: "skill_builder", skillId: null }, "new"],
   ] as const)("writes %j as %s and reads it back", (params, spid) => {
     const { result } = renderSidePanel();
     act(() => result.current.openPanel(params));

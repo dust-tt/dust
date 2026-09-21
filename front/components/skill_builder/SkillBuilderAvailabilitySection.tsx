@@ -41,10 +41,14 @@ const AVAILABILITY_OPTIONS: {
 
 interface SkillBuilderAvailabilitySectionProps {
   owner: WorkspaceType;
+  // Availability follows the publish permission rather than the form's disabled flag, so a
+  // surface that shows the skill without letting it be edited has to say so itself.
+  isReadOnly?: boolean;
 }
 
 export function SkillBuilderAvailabilitySection({
   owner,
+  isReadOnly = false,
 }: SkillBuilderAvailabilitySectionProps) {
   const {
     field: { value: availability, onChange },
@@ -99,7 +103,9 @@ export function SkillBuilderAvailabilitySection({
             label={currentOption?.label}
             variant="outline"
             isSelect
-            disabled={!canUpdateAvailability || isAvailabilityLocked}
+            disabled={
+              isReadOnly || !canUpdateAvailability || isAvailabilityLocked
+            }
             tooltip={availabilityTooltip}
           />
         </DropdownMenuTrigger>

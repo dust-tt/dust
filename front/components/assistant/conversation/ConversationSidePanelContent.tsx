@@ -1,4 +1,5 @@
 import { AgentActionsPanel } from "@app/components/assistant/conversation/actions/AgentActionsPanel";
+import { ConversationSkillBuilderPanel } from "@app/components/assistant/conversation/builder_panel/ConversationSkillBuilderPanel";
 import { ConversationCreditUsagePanel } from "@app/components/assistant/conversation/credits_panel/ConversationCreditUsagePanel";
 import { ConversationFilesPanel } from "@app/components/assistant/conversation/files_panel/ConversationFilesPanel";
 import { FilePreviewPanel } from "@app/components/assistant/conversation/files_panel/FilePreviewPanel";
@@ -15,6 +16,7 @@ import {
   FILES_SIDE_PANEL_TYPE,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
   PLAN_SIDE_PANEL_TYPE,
+  SKILL_BUILDER_SIDE_PANEL_TYPE,
   SKILL_SIDE_PANEL_TYPE,
   TOOL_SIDE_PANEL_TYPE,
 } from "@app/types/conversation_side_panel";
@@ -69,6 +71,9 @@ export default function ConversationSidePanelContent({
 
     case TOOL_SIDE_PANEL_TYPE:
       return <ConversationToolPanel owner={owner} />;
+
+    case SKILL_BUILDER_SIDE_PANEL_TYPE:
+      return <ConversationSkillBuilderPanel readOnly />;
 
     default:
       return null;

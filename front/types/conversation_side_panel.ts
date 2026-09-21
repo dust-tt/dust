@@ -10,8 +10,11 @@ export const CREDITS_SIDE_PANEL_TYPE = "credits";
 export const PLAN_SIDE_PANEL_TYPE = "plan";
 export const SKILL_SIDE_PANEL_TYPE = "skill";
 export const TOOL_SIDE_PANEL_TYPE = "tool";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const SIDE_PANEL_TYPES = [
+export const SKILL_BUILDER_SIDE_PANEL_TYPE = "skill_builder";
+
+// Hash payload for a builder panel opened on an entity that does not exist yet.
+export const NEW_ENTITY_PANEL_KEY = "new";
+export const SIDE_PANEL_TYPES = [
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
   FILE_PREVIEW_SIDE_PANEL_TYPE,
@@ -20,6 +23,7 @@ const SIDE_PANEL_TYPES = [
   PLAN_SIDE_PANEL_TYPE,
   SKILL_SIDE_PANEL_TYPE,
   TOOL_SIDE_PANEL_TYPE,
+  SKILL_BUILDER_SIDE_PANEL_TYPE,
 ] as const;
 
 export type ConversationSidePanelType =
