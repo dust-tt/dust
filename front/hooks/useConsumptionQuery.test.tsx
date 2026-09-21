@@ -3,8 +3,8 @@ import {
   useConsumptionQuery,
 } from "@app/hooks/useConsumptionQuery";
 import { PERSONAL_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
-import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
+import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import { act, render, waitFor } from "@testing-library/react";
 import { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
@@ -54,6 +54,9 @@ describe("useConsumptionQuery", () => {
           );
         })
     );
+    // Rendered through a probe component rather than renderHook so both
+    // mounts share one SWRConfig, as in the app. Separate renderHook calls
+    // get separate SWR caches and would never dedupe.
     const latest: {
       current: ReturnType<
         typeof useConsumptionQuery<{ days: number }, { ok: boolean }>
@@ -90,9 +93,7 @@ describe("useConsumptionQuery", () => {
       resolveRequest({ ok: true });
     });
 
-    await waitFor(() =>
-      expect(latest.current?.data).toEqual({ ok: true })
-    );
+    await waitFor(() => expect(latest.current?.data).toEqual({ ok: true }));
     expect(latest.current?.error).toBeUndefined();
   });
 });

@@ -55,7 +55,11 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
 // body instead of a query string, since it can select more values than fit
 // in a URL. The filter changes on every checkbox toggle, so requests are
 // debounced and a superseded request is aborted before it can race a fresher
-// one into the cache.
+// one into the cache. Requests are not aborted on unmount: a widget that
+// remounts with the same cache key (e.g. the page remounts when a resize
+// crosses the mobile breakpoint) is deduped by SWR onto the in-flight
+// request, so aborting it would store an error on the shared key. A late
+// response is harmless, SWR writes it under the key it was fetched for.
 export function useConsumptionQuery<TBody extends object, TResponse>({
   url,
   body,
@@ -107,12 +111,6 @@ export function useConsumptionQuery<TBody extends object, TResponse>({
     }
     previousCacheKeyRef.current = cacheKey;
   }, [cache, cacheKey]);
-
-  // No abort on unmount: a remounting widget with the same cache key is
-  // deduped by SWR onto the in-flight request, so aborting it would store an
-  // error on the shared key (e.g. when a resize across the mobile breakpoint
-  // remounts the page). A late response is harmless, SWR writes it under the
-  // key it was fetched for.
 
   const { data, error, isLoading, isValidating, mutate } = useSWRWithDefaults(
     cacheKey,
