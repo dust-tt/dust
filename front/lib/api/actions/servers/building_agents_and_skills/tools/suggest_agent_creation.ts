@@ -62,6 +62,7 @@ export async function suggestAgentCreation(
       analysis: null,
       state: "pending",
       conversationId: null,
+      source: "conversational",
     }
   );
   return new Ok(suggestion);

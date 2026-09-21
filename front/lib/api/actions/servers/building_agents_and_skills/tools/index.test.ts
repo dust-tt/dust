@@ -715,6 +715,7 @@ describe("building_agents_and_skills tools", () => {
       expect(suggestion).not.toBeNull();
       expect(suggestion?.state).toBe("pending");
       expect(suggestion?.kind).toBe("create");
+      expect(suggestion?.source).toBe("conversational");
       expect(suggestion?._agentConfigurationId).toBe(agentId);
       expect(suggestion?.toJSON()).toMatchObject({
         suggestion: {
