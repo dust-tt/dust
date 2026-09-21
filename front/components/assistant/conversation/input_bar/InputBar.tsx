@@ -15,7 +15,6 @@ import {
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
-import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -37,7 +36,6 @@ import type {
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { isEqualNode } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
@@ -143,10 +141,6 @@ export const InputBar = React.memo(function InputBar({
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const [isShaking, setIsShaking] = useState(false);
   const { featureFlags } = useFeatureFlags();
-
-  const [attachedNodes, setAttachedNodes] = useState<
-    DataSourceViewContentNode[]
-  >([]);
 
   // Latest model-picker selection. The picker writes into this ref so we can
   // read it at submit without re-rendering the input bar. `undefined` means
@@ -256,9 +250,6 @@ export const InputBar = React.memo(function InputBar({
     !!conversation &&
     getConversationGeneratingMessages(conversation.sId).length > 0;
 
-  const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
-    MCPServerViewLightType[]
-  >([]);
   const [selectedSpacesState, setSelectedSpacesState] =
     useState<SelectedSpacesState | null>(null);
 
@@ -386,31 +377,6 @@ export const InputBar = React.memo(function InputBar({
     ? isConversationSelectableSpacesLoading
     : isWorkspaceSpacesLoading;
 
-  const handleMCPServerViewSelect = useCallback(
-    (serverView: MCPServerViewLightType) => {
-      setSelectedMCPServerViews((prev) =>
-        prev.some((sv) => sv.sId === serverView.sId)
-          ? prev
-          : [...prev, serverView]
-      );
-    },
-    []
-  );
-
-  const handleMCPServerViewDeselect = useCallback(
-    (serverView: MCPServerViewLightType) => {
-      setSelectedMCPServerViews((prev) =>
-        prev.filter((sv) => sv.sId !== serverView.sId)
-      );
-    },
-    []
-  );
-
-  const clearSideChannelSelections = useCallback(() => {
-    setSelectedMCPServerViews([]);
-    setAttachedNodes([]);
-  }, []);
-
   const handleSelectedSpaceIdsChange = useCallback(
     async (spaceIds: string[]): Promise<string[] | null> => {
       if (!shouldShowSpacesAction) {
@@ -444,7 +410,6 @@ export const InputBar = React.memo(function InputBar({
         const persistedSpaceIds = response.selectedSpaces.map(
           (selectedSpace) => selectedSpace.sId
         );
-        clearSideChannelSelections();
         setSelectedSpacesState({
           key: spacesSelectionKey,
           spaceIds: persistedSpaceIds,
@@ -453,7 +418,6 @@ export const InputBar = React.memo(function InputBar({
         return persistedSpaceIds;
       }
 
-      clearSideChannelSelections();
       setSelectedSpacesState({
         key: spacesSelectionKey,
         spaceIds: nextSpaceIds,
@@ -462,7 +426,6 @@ export const InputBar = React.memo(function InputBar({
     },
     [
       addConversationSelectedSpaces,
-      clearSideChannelSelections,
       conversation?.sId,
       mutateSelectableSpaces,
       spacesSelectionKey,
@@ -572,7 +535,6 @@ export const InputBar = React.memo(function InputBar({
           clearDraft();
           resetEditorText();
           fileUploaderService.resetUpload();
-          setSelectedMCPServerViews([]);
           setSelectedSpacesState({
             key: spacesSelectionKey,
             spaceIds: [],
@@ -609,30 +571,12 @@ export const InputBar = React.memo(function InputBar({
         resetEditorText();
         clearDraft();
         fileUploaderService.resetUpload();
-        setAttachedNodes([]);
-        setSelectedMCPServerViews([]);
 
         await submitPromise;
       } finally {
         setIsLocalSubmitting(false);
       }
     }
-  };
-
-  const handleNodesAttachmentSelect = (node: DataSourceViewContentNode) => {
-    setAttachedNodes((prev) =>
-      prev.some((attachedNode) => isEqualNode(attachedNode, node))
-        ? prev
-        : [...prev, node]
-    );
-  };
-
-  const handleNodesAttachmentRemove = (node: DataSourceViewContentNode) => {
-    setAttachedNodes((prev) => prev.filter((n) => !isEqualNode(n, node)));
-  };
-
-  const handleResetMCPServerViews = () => {
-    setSelectedMCPServerViews([]);
   };
 
   const handleShake = useCallback(() => {
@@ -714,10 +658,6 @@ export const InputBar = React.memo(function InputBar({
             <InputBarAttachments
               owner={owner}
               files={{ service: fileUploaderService }}
-              nodes={{
-                items: attachedNodes,
-                onRemove: handleNodesAttachmentRemove,
-              }}
             />
           )}
           <InputBarContainer
@@ -744,20 +684,13 @@ export const InputBar = React.memo(function InputBar({
               fileUploaderService.isProcessingFiles ||
               isLoadingGoTemplate
             }
-            onNodeSelect={handleNodesAttachmentSelect}
-            onNodeUnselect={handleNodesAttachmentRemove}
-            selectedMCPServerViews={selectedMCPServerViews}
             selectedSpaceIds={selectedSpaceIds}
             selectableSpaces={selectableSpaces}
             shouldShowSpacesAction={shouldShowSpacesAction}
             isSelectableSpacesLoading={isSelectableSpacesLoading}
             onSelectedSpaceIdsChange={handleSelectedSpaceIdsChange}
-            onMCPServerViewSelect={handleMCPServerViewSelect}
             modelSelectionRef={modelSelectionRef}
-            onMCPServerViewDeselect={handleMCPServerViewDeselect}
-            onResetMCPServerViews={handleResetMCPServerViews}
             isAgentBuilder={isAgentBuilder}
-            attachedNodes={attachedNodes}
             saveDraft={saveDraft}
             getDraft={getDraft}
             user={user}

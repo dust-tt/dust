@@ -89,8 +89,6 @@ interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
-  onNodeUnselect: (node: DataSourceViewContentNode) => void;
-  attachedNodes: DataSourceViewContentNode[];
   type: "dropdown" | "subdropdown";
   isLoading?: boolean;
   buttonLabel?: string;
@@ -120,18 +118,14 @@ const PROJECT_FILTER_KEY = getKeyForConnectorProvider({
 interface KnowledgeNodeCheckboxItemProps {
   item: DataSourceViewContentNode;
   owner: LightWorkspaceType;
-  attachedNodes: DataSourceViewContentNode[];
   onNodeSelect: (node: DataSourceViewContentNode) => void;
-  onNodeUnselect: (node: DataSourceViewContentNode) => void;
   spacesMap?: Record<string, SpaceType>;
 }
 
 const KnowledgeNodeCheckboxItem = ({
   item,
   owner,
-  attachedNodes,
   onNodeSelect,
-  onNodeUnselect,
   spacesMap,
 }: KnowledgeNodeCheckboxItemProps) => {
   return (
@@ -159,19 +153,10 @@ const KnowledgeNodeCheckboxItem = ({
           item,
           spacesMap
         )}
-        checked={attachedNodes.some(
-          (attachedNode) =>
-            attachedNode.internalId === item.internalId &&
-            attachedNode.dataSourceView.dataSource.sId ===
-              item.dataSourceView.dataSource.sId
-        )}
-        onCheckedChange={(checked) => {
-          if (checked) {
-            onNodeSelect(item);
-          } else {
-            onNodeUnselect(item);
-          }
-        }}
+        // Selecting inserts a knowledge chip into the editor; the same node
+        // can be inserted several times, so the item never reads as checked.
+        checked={false}
+        onCheckedChange={() => onNodeSelect(item)}
         truncateText
       />
     </NodePathTooltip>
@@ -264,8 +249,6 @@ export const InputBarAttachmentsPicker = ({
   owner,
   fileUploaderService,
   onNodeSelect,
-  onNodeUnselect,
-  attachedNodes,
   isLoading = false,
   disabled = false,
   buttonSize = "xs",
@@ -731,9 +714,7 @@ export const InputBarAttachmentsPicker = ({
                         key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
                         item={item}
                         owner={owner}
-                        attachedNodes={attachedNodes}
                         onNodeSelect={onNodeSelect}
-                        onNodeUnselect={onNodeUnselect}
                         spacesMap={spacesMap}
                       />
                     ))
@@ -749,9 +730,7 @@ export const InputBarAttachmentsPicker = ({
                               key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
                               item={item}
                               owner={owner}
-                              attachedNodes={attachedNodes}
                               onNodeSelect={onNodeSelect}
-                              onNodeUnselect={onNodeUnselect}
                               spacesMap={spacesMap}
                             />
                           ))

@@ -25,7 +25,6 @@ interface InputBarSlashSuggestionStorage {
 }
 
 interface InputBarSlashSuggestionExtensionOptions {
-  attachedNodesRef: RefObject<DataSourceViewContentNode[]>;
   conversationIdRef?: RefObject<string | null>;
   enabledRef: RefObject<boolean>;
   includeAttachKnowledgeRef: RefObject<boolean>;
@@ -58,7 +57,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     ...createSlashMenuNavigationStorage(),
   }),
   defaultOptions: {
-    attachedNodesRef: { current: [] },
     owner: undefined,
     conversationIdRef: { current: null },
     enabledRef: { current: false },
@@ -101,7 +99,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
   shouldMountDropdown: ({ props, options }) =>
     Boolean(options.owner) && Boolean(props.clientRect),
   mapDropdownProps: ({ options }) => ({
-    attachedNodesRef: options.attachedNodesRef,
     conversationIdRef: options.conversationIdRef,
     includeAttachKnowledgeRef: options.includeAttachKnowledgeRef,
     includePickModelRef: options.includePickModelRef,

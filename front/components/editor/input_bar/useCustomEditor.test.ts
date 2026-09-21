@@ -42,7 +42,6 @@ describe("buildEditorExtensions", () => {
       extensions: [
         StarterKit,
         InputBarSlashSuggestionExtension.configure({
-          attachedNodesRef: { current: [] },
           owner,
           enabledRef: { current: true },
           onModelSelectRef: { current: undefined },

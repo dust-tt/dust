@@ -3,7 +3,6 @@ import type {
   FileBlob,
   FileUploaderService,
 } from "@app/hooks/useFileUploaderService";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -30,26 +29,6 @@ vi.mock(import("@app/components/sparkle/ThemeContext"), () => ({
 
 vi.mock(import("@app/hooks/useNotification"), () => ({
   useSendNotification: () => vi.fn(),
-}));
-
-vi.mock(import("@app/lib/swr/spaces"), () => ({
-  useSpaces: () => ({
-    spaces: [
-      {
-        sId: "space_1",
-        name: "Engineering",
-        kind: "regular",
-        managementMode: "manual",
-        createdAt: 0,
-        updatedAt: 0,
-        groupIds: [],
-        isRestricted: false,
-      },
-    ],
-    isSpacesLoading: false,
-    isSpacesError: null,
-    mutate: vi.fn(async () => undefined),
-  }),
 }));
 
 const owner: LightWorkspaceType = {
@@ -94,70 +73,18 @@ function makeService(fileBlobs: FileBlob[]): FileUploaderService {
   };
 }
 
-function makeNode(
-  overrides: Partial<DataSourceViewContentNode> = {}
-): DataSourceViewContentNode {
-  return {
-    childrenCount: 0,
-    expandable: false,
-    internalId: "notion-page-1",
-    lastUpdatedAt: null,
-    mimeType: "application/vnd.dust.notion.page",
-    parentInternalId: null,
-    parentInternalIds: null,
-    parentTitle: "Roadmaps",
-    permission: "read",
-    providerVisibility: null,
-    sourceUrl: "https://notion.so/page-1",
-    title: "Product Roadmap",
-    type: "document",
-    dataSourceView: {
-      category: "managed",
-      createdAt: 0,
-      id: 1,
-      kind: "default",
-      parentsIn: null,
-      sId: "dsv_1",
-      spaceId: "space_1",
-      updatedAt: 0,
-      dataSource: {
-        id: 1,
-        sId: "ds_1",
-        createdAt: 0,
-        name: "Notion",
-        description: null,
-        assistantDefaultSelected: false,
-        dustAPIProjectId: "p",
-        dustAPIDataSourceId: "d",
-        connectorId: "c_1",
-        connectorProvider: "notion",
-      },
-    },
-    ...overrides,
-  };
-}
-
 function renderAttachments({
   fileBlobs = [],
-  nodes = [],
-  onRemoveNode = vi.fn(),
   disable,
 }: {
   fileBlobs?: FileBlob[];
-  nodes?: DataSourceViewContentNode[];
-  onRemoveNode?: (node: DataSourceViewContentNode) => void;
   disable?: boolean;
 } = {}) {
   const service = makeService(fileBlobs);
   const result = render(
-    <InputBarAttachments
-      owner={owner}
-      files={{ service }}
-      nodes={{ items: nodes, onRemove: onRemoveNode }}
-      disable={disable}
-    />
+    <InputBarAttachments owner={owner} files={{ service }} disable={disable} />
   );
-  return { ...result, service, onRemoveNode };
+  return { ...result, service };
 }
 
 beforeAll(() => {
@@ -189,15 +116,6 @@ describe("InputBarAttachments", () => {
     // The chip is a single button labelled with the file name.
     const chip = screen.getByRole("button", { name: "report.pdf" });
     expect(chip).toHaveAttribute("tabindex", "0");
-    expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
-    expect(container.querySelector("img")).toBeNull();
-  });
-
-  it("renders a knowledge attachment as a chip linking to its source", () => {
-    const { container } = renderAttachments({ nodes: [makeNode()] });
-
-    const link = screen.getByRole("link", { name: /Product Roadmap/ });
-    expect(link).toHaveAttribute("href", "https://notion.so/page-1");
     expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument();
     expect(container.querySelector("img")).toBeNull();
   });
@@ -296,16 +214,12 @@ describe("InputBarAttachments", () => {
         makeFileBlob({ filename: "a.pdf" }),
         makeFileBlob({ filename: "b.csv", contentType: "text/csv" }),
       ],
-      nodes: [makeNode()],
     });
 
     expect(container.querySelector("img")).toBeNull();
     expect(screen.getByRole("button", { name: "a.pdf" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "b.csv" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /Product Roadmap/ })
-    ).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(3);
+    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(2);
   });
 
   it("renders every attachment as a card when an image is attached", () => {
@@ -318,17 +232,12 @@ describe("InputBarAttachments", () => {
           sourceUrl: "https://example.com/photo.png",
         }),
       ],
-      nodes: [makeNode()],
     });
 
     expect(container.querySelectorAll("img")).toHaveLength(1);
     // Cards show the title as text; chips would carry it as an aria-label.
     expect(screen.getByText("a.pdf")).toBeInTheDocument();
-    expect(screen.getByText("Product Roadmap")).toBeInTheDocument();
     expect(container.querySelector('[aria-label="a.pdf"]')).toBeNull();
-    expect(
-      container.querySelector('[aria-label="Product Roadmap"]')
-    ).toBeNull();
 
     // Attachment order is preserved: the PDF was attached before the image.
     const image = container.querySelector("img");
@@ -349,20 +258,9 @@ describe("InputBarAttachments", () => {
     expect(mockOpenFilePreview).not.toHaveBeenCalled();
   });
 
-  it("removes a knowledge attachment from the remove button", async () => {
-    const user = userEvent.setup();
-    const node = makeNode();
-    const { onRemoveNode } = renderAttachments({ nodes: [node] });
-
-    await user.click(screen.getByRole("button", { name: "Remove" }));
-
-    expect(onRemoveNode).toHaveBeenCalledWith(node);
-  });
-
   it("hides the remove buttons when disabled", () => {
     renderAttachments({
       fileBlobs: [makeFileBlob()],
-      nodes: [makeNode()],
       disable: true,
     });
 

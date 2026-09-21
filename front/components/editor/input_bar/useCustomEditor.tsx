@@ -350,7 +350,6 @@ export interface CustomEditorProps {
     slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
     includeAttachKnowledgeRef: React.RefObject<boolean>;
     includePickModelRef: React.RefObject<boolean>;
-    attachedNodesRef: React.RefObject<DataSourceViewContentNode[]>;
     onModelSelectRef: React.RefObject<
       ((selection: Selection) => void) | undefined
     >;
@@ -510,7 +509,6 @@ export const buildEditorExtensions = ({
   if (slashSuggestion) {
     extensions.push(
       InputBarSlashSuggestionExtension.configure({
-        attachedNodesRef: slashSuggestion.attachedNodesRef,
         owner,
         conversationIdRef: slashSuggestion.conversationIdRef,
         enabledRef: slashSuggestion.enabledRef,

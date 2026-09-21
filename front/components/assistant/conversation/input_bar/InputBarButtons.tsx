@@ -48,7 +48,6 @@ import React from "react";
 interface InputBarButtonsProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
-  attachedNodes: DataSourceViewContentNode[];
   buttonSize: "xs" | "sm";
   clientType: string;
   conversation?: ConversationWithoutContentType;
@@ -75,11 +74,9 @@ interface InputBarButtonsProps {
     ((selection: Selection) => void) | null
   >;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
-  onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
   owner: WorkspaceType;
   selectedAgent: RichAgentMention | null;
-  selectedMCPServerViews: MCPServerViewLightType[];
   selectedSpaceIds: string[];
   onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
   spaces?: SelectableConversationSpaceType[];
@@ -96,7 +93,6 @@ interface InputBarButtonsProps {
 export const InputBarButtons = React.memo(function InputBarButtons({
   actions,
   allAgents,
-  attachedNodes,
   buttonSize,
   clientType,
   conversation,
@@ -114,11 +110,9 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   modelSelectionRef,
   modelSelectionCommitRef,
   onNodeSelect,
-  onNodeUnselect,
   onSkillSelect,
   owner,
   selectedAgent,
-  selectedMCPServerViews,
   selectedSpaceIds,
   onSelectedSpaceIdsChange,
   spaces,
@@ -236,7 +230,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
     <CapabilitiesPicker
       owner={owner}
       user={user}
-      selectedMCPServerViews={selectedMCPServerViews}
       onSelect={onMCPServerViewSelect}
       onSkillSelect={onSkillSelect}
       onSetupServer={setServerToSetup}
@@ -305,14 +298,11 @@ export const InputBarButtons = React.memo(function InputBarButtons({
               hideCapabilities || !actions.includes("capabilities")
             }
             hideAttachments={!actions.includes("attachment")}
-            selectedMCPServerViews={selectedMCPServerViews}
             onMCPServerViewSelect={onMCPServerViewSelect}
             onSkillSelect={onSkillSelect}
             onSetupServer={setServerToSetup}
             fileUploaderService={fileUploaderService}
             onNodeSelect={onNodeSelect}
-            onNodeUnselect={onNodeUnselect}
-            attachedNodes={attachedNodes}
             conversation={conversation}
             spaceId={spaceId}
             selectedSpaceIds={selectedSpaceIds}
