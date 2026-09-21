@@ -1,3 +1,4 @@
+import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -7,9 +8,12 @@ import {
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -971,6 +975,103 @@ describe("AgentResource", () => {
       ).rejects.toThrow(
         "Unexpected: `listSkills` called on a global AgentResource"
       );
+    });
+  });
+
+  describe("bulkUpdateModel", () => {
+    it("saves a new version with the new model, keeping the agent's tools and author", async () => {
+      const { authenticator, globalSpace } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            temperature: 0.7,
+          },
+        }
+      );
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const mcpServerView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        globalSpace
+      );
+      await AgentMCPServerConfigurationFactory.create(
+        authenticator,
+        globalSpace,
+        {
+          agent,
+          mcpServerView,
+        }
+      );
+
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const toolsBefore = (
+        await fetchMCPServerActionConfigurations(authenticator, {
+          configurationModelIds: [before.agentConfigurationModelId],
+          variant: "full",
+        })
+      ).get(before.agentConfigurationModelId);
+      expect(toolsBefore).toHaveLength(1);
+
+      const result = await AgentResource.bulkUpdateModel(
+        authenticator,
+        [agent.sId],
+        { providerId: "openai", modelId: "gpt-5", reasoningEffort: "medium" }
+      );
+
+      expect(result).toEqual({
+        updatedAgentIds: [agent.sId],
+        skippedAgentIds: [],
+      });
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      // A new version, with the new model, keeping the agent's own temperature.
+      expect(after.content.version).toBe(agent.version + 1);
+      expect(after.modelConfiguration.modelId).toBe("gpt-5");
+      expect(after.modelConfiguration.reasoningEffort).toBe("medium");
+      expect(after.modelConfiguration.temperature).toBe(0.7);
+      // The version's author is preserved, not re-attributed to the caller.
+      expect(after.versionAuthorId).toBe(before.versionAuthorId);
+      // The tool is carried onto the new version instead of being dropped.
+      const toolsAfter = (
+        await fetchMCPServerActionConfigurations(authenticator, {
+          configurationModelIds: [after.agentConfigurationModelId],
+          variant: "full",
+        })
+      ).get(after.agentConfigurationModelId);
+      expect(toolsAfter).toHaveLength(1);
+    });
+
+    it("skips archived agents and reports them", async () => {
+      const { authenticator } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            temperature: 0.7,
+          },
+        }
+      );
+      await archiveAgentConfiguration(authenticator, agent.sId);
+
+      const result = await AgentResource.bulkUpdateModel(
+        authenticator,
+        [agent.sId],
+        { providerId: "openai", modelId: "gpt-5", reasoningEffort: "medium" }
+      );
+
+      expect(result).toEqual({
+        updatedAgentIds: [],
+        skippedAgentIds: [agent.sId],
+      });
     });
   });
 });
