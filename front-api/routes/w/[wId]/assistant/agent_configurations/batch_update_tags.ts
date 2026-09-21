@@ -1,13 +1,9 @@
-import { filterEditableAgents } from "@app/lib/api/assistant/agent_permissions";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import {
-  ARCHIVED_AGENT_API_ERROR,
-  isArchivedAgents,
-} from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 const BatchUpdateAgentTagsRequestBodySchema = z.object({
@@ -25,6 +21,20 @@ app.post(
   validate("json", BatchUpdateAgentTagsRequestBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
+
+    const isSaveAgentConfigurationsEnabled =
+      await KillSwitchResource.isKillSwitchEnabled("save_agent_configurations");
+    if (isSaveAgentConfigurationsEnabled) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "Saving agent configurations is temporarily disabled, try again later.",
+        },
+      });
+    }
+
     const {
       agentIds,
       addTagIds = [],
@@ -47,59 +57,21 @@ app.post(
       });
     }
 
-    // Admins may tag any agent of the workspace, including the ones built on spaces they cannot
-    // read (the manage agents page lists those behind "Show hidden agents"). Tagging touches
-    // nothing the spaces protect.
-    const agents = await getAgentConfigurations(auth, {
+    // Tagging is applied per agent as a new version through `bulkUpdate`: each agent keeps its other
+    // tags, an unchanged set is a no-op, and every agent is gated on `write`/`admin` (see the
+    // `tags-change-requires-edit` contract). Admins may thus tag any agent of the workspace,
+    // including the ones built on spaces they cannot read (the manage agents page lists those behind
+    // "Show hidden agents"); agents the caller cannot edit or that are archived are skipped.
+    const { updatedAgentIds, skippedAgentIds } = await AgentResource.bulkUpdate(
+      auth,
       agentIds,
-      variant: "light",
-      dangerouslySkipPermissionFiltering: auth.isAdmin(),
-    });
-    if (isArchivedAgents(agents)) {
-      return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
-    }
-
-    const editableAgents = filterEditableAgents(auth, agents);
-
-    const addTagsResult = await TagResource.addToAgents(
-      auth,
-      tagsToAdd,
-      editableAgents
+      {
+        addTags: tagsToAdd,
+        removeTags: tagsToRemove,
+      }
     );
-    if (addTagsResult.isErr()) {
-      return apiError(
-        ctx,
-        {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: addTagsResult.error.message,
-          },
-        },
-        addTagsResult.error
-      );
-    }
 
-    const removeTagsResult = await TagResource.removeFromAgents(
-      auth,
-      tagsToRemove,
-      editableAgents
-    );
-    if (removeTagsResult.isErr()) {
-      return apiError(
-        ctx,
-        {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: removeTagsResult.error.message,
-          },
-        },
-        removeTagsResult.error
-      );
-    }
-
-    return ctx.json({ success: true });
+    return ctx.json({ success: true, updatedAgentIds, skippedAgentIds });
   }
 );
 
