@@ -28,7 +28,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
-import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
+import {
+  getFrameV2NameFromManifestPath,
+  isSafeFrameRelativePath,
+} from "@app/types/api/frame_manifest";
 import type { FramePublicationDescriptor } from "@app/types/api/frame_publication";
 import {
   FRAME_PUBLICATION_SCHEMA_VERSION,
@@ -631,7 +634,6 @@ export async function activateFramePublication(
     await frame.setActiveFramePublication(
       {
         publicationId,
-        name: descriptor.value.manifest.name,
         description: descriptor.value.manifest.description,
         publishedByAgentConfigurationId,
       },
@@ -663,7 +665,10 @@ export async function activateFramePublication(
       buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
       buildAuditLogTarget("frame", {
         sId: frame.sId,
-        name: descriptor.value.manifest.name,
+        name:
+          (frame.mountFilePath
+            ? getFrameV2NameFromManifestPath(frame.mountFilePath)
+            : null) ?? frame.sId,
       }),
     ],
     context: getAuditLogContext(auth),

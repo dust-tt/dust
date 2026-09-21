@@ -15,6 +15,7 @@ import { fromError } from "zod-validation-error";
 export const FRAME_MANIFEST_FILE = "manifest.json";
 export const FRAME_MANIFEST_VERSION = 1;
 export const FRAME_DEFAULT_UI_ENTRY_POINT = "index.tsx";
+/** Upper bound on a Frame's name, which is the basename of its source folder. */
 export const MAX_FRAME_NAME_LENGTH = 128;
 export const MAX_FRAME_FUNCTION_NAME_LENGTH = 128;
 export const MAX_FRAME_FUNCTION_DESCRIPTION_LENGTH = 255;
@@ -117,7 +118,6 @@ export const FrameDatabaseManifestSchema = z.object({
 export const FrameSourceManifestSchema = z
   .object({
     version: z.literal(FRAME_MANIFEST_VERSION),
-    name: z.string().min(1).max(MAX_FRAME_NAME_LENGTH),
     description: z.string(),
     uiEntryPoint: FrameRelativePathSchema.optional(),
     functions: z.array(FrameFunctionManifestSchema).default([]),

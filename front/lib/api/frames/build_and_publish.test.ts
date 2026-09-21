@@ -192,7 +192,6 @@ describe("buildAndPublishFramePublication", () => {
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     await frame.setActiveFramePublication({
       publicationId: activePublicationId,
-      name: "Task List",
       description: "Track tasks.",
     });
 
@@ -519,7 +518,6 @@ describe("buildAndPublishFramePublication", () => {
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     await frame.setActiveFramePublication({
       publicationId: activePublicationId,
-      name: "Task List",
       description: "Track tasks.",
     });
 

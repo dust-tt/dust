@@ -86,13 +86,11 @@ async function setupFrame({
 
 const manifest = FrameManifestSchema.parse({
   version: 1,
-  name: "Task List",
   description: "Track tasks.",
 });
 
 const manifestWithFunction = FrameManifestSchema.parse({
   version: 1,
-  name: "Task List",
   description: "Track tasks.",
   functions: [
     {
@@ -105,7 +103,6 @@ const manifestWithFunction = FrameManifestSchema.parse({
 
 const manifestWithDatabase = FrameManifestSchema.parse({
   version: 1,
-  name: "Task List",
   description: "Track tasks.",
   databases: [{ name: "tasks", schema: "databases/tasks.db.ts" }],
 });
@@ -623,11 +620,11 @@ describe("activateFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
       stored.value.publicationId
     );
-    expect(reloaded?.useCaseMetadata?.frameName).toBe("Task List");
+    // Activation records the description; the source folder names the Frame.
     expect(reloaded?.useCaseMetadata?.frameDescription).toBe("Track tasks.");
   });
 
-  it("refreshes the stored name and description on republish", async () => {
+  it("refreshes the stored description on republish, leaving the name alone", async () => {
     const { auth, frame } = await setupFrame();
     const first = await storeFramePublication(auth, {
       frame,
@@ -647,7 +644,6 @@ describe("activateFramePublication", () => {
 
     const renamedManifest = FrameManifestSchema.parse({
       ...manifest,
-      name: "Renamed Tasks",
       description: "Renamed description.",
     });
     const second = await storeFramePublication(auth, {
@@ -668,7 +664,6 @@ describe("activateFramePublication", () => {
     expect(activated.isOk()).toBe(true);
 
     const reloaded = await FileResource.fetchById(auth, frame.sId);
-    expect(reloaded?.useCaseMetadata?.frameName).toBe("Renamed Tasks");
     expect(reloaded?.useCaseMetadata?.frameDescription).toBe(
       "Renamed description."
     );
@@ -1037,7 +1032,6 @@ describe("publishFramePublication", () => {
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     await frame.setActiveFramePublication({
       publicationId: activePublicationId,
-      name: "Task List",
       description: "Track tasks.",
     });
     vi.mocked(reconcileFramePublicationDatabases).mockResolvedValueOnce(
@@ -1076,7 +1070,6 @@ describe("publishFramePublication", () => {
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     await frame.setActiveFramePublication({
       publicationId: activePublicationId,
-      name: "Task List",
       description: "Track tasks.",
     });
     fileStorageMock.setFileSaveFails((filePath) =>

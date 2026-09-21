@@ -18,7 +18,6 @@ import { describe, expect, it } from "vitest";
 
 const MANIFEST = {
   version: 1,
-  name: "Task List",
   description: "Track tasks.",
 };
 
@@ -37,6 +36,18 @@ describe("FrameManifestSchema", () => {
       expect(parsed.data.uiEntryPoint).toBe(FRAME_DEFAULT_UI_ENTRY_POINT);
       expect(parsed.data.functions).toEqual([]);
       expect(parsed.data.databases).toEqual([]);
+    }
+  });
+
+  it("ignores a legacy name field", () => {
+    const parsed = FrameManifestSchema.safeParse({
+      ...MANIFEST,
+      name: "Task List",
+    });
+
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect("name" in parsed.data).toBe(false);
     }
   });
 

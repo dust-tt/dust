@@ -24,7 +24,6 @@ describe("conversation_side_panel.open_frame", () => {
       useCase: "project_context",
       useCaseMetadata: {
         spaceId: projectId,
-        frameName: "Hello Frame",
       },
       mountFilePath: `${getPodFilesBasePath({
         workspaceId: workspace.sId,

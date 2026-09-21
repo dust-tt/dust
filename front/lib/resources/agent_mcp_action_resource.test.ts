@@ -1340,7 +1340,6 @@ describe("listGeneratedFilesForConversation", () => {
       useCase: "conversation",
       useCaseMetadata: {
         conversationId: conversation.sId,
-        frameName: "Hello Frame",
       },
       mountFilePath: `w/${workspace.sId}/conversations/${conversation.sId}/files/Hello Frame/manifest.json`,
     });

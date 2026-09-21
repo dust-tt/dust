@@ -17,7 +17,6 @@ const TEST_PUBLICATION_FUNCTION_CODE = "export async function run() {}";
 
 const testPublicationManifest = FrameManifestSchema.parse({
   version: 1,
-  name: "Task List",
   description: "Track tasks.",
   functions: [
     {
