@@ -63,6 +63,7 @@ import React, {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -84,12 +85,30 @@ const DENSITY_ROW_HEIGHT_CLASS: Record<DataTableDensity, string> = {
   relaxed: "h-16",
 };
 
-// Lets the cell helpers (Cell, BasicCellContent, CellContent) follow the table's
-// density without every call site threading a prop through its column defs.
-const DataTableDensityContext = createContext<DataTableDensity>("default");
+// Column minimum (124px) when the table scrolls horizontally, so columns do
+// not collapse to unreadable widths.
+const SCROLL_COLUMN_MIN_WIDTH_CLASS = "min-w-31";
 
-function useDataTableDensity() {
-  return useContext(DataTableDensityContext);
+interface DataTableLayout {
+  density: DataTableDensity;
+  /** True when the table scrolls horizontally and columns need a minimum width. */
+  enforceColumnMinWidth: boolean;
+}
+
+const DEFAULT_DATA_TABLE_LAYOUT: DataTableLayout = {
+  density: "default",
+  enforceColumnMinWidth: false,
+};
+
+// Lets the cell helpers (Cell, BasicCellContent, CellContent) follow the table's
+// density and scroll layout without every call site threading props through
+// its column defs.
+const DataTableLayoutContext = createContext<DataTableLayout>(
+  DEFAULT_DATA_TABLE_LAYOUT
+);
+
+function useDataTableLayout() {
+  return useContext(DataTableLayoutContext);
 }
 
 type ColumnAlign = "left" | "right" | "center";
@@ -264,6 +283,12 @@ interface DataTableProps<TData extends TBaseData> {
   emptyState?: ReactNode;
   /** Human-readable label per row, used to name the selection checkbox ("Select {label}"). */
   getRowLabel?: (row: TData) => string;
+  /** Keeps the header visible while the body scrolls. Needs `maxHeight` to have an effect. */
+  stickyHeader?: boolean;
+  /** Max-height class for the scroll container (e.g. "max-h-96"); the body scrolls vertically past it. */
+  maxHeight?: string;
+  /** Lets wide tables scroll horizontally instead of squeezing columns; each column gets a 124px minimum. */
+  horizontalScroll?: boolean;
 }
 
 const ROW_REVEAL_DURATION_MS = 300;
@@ -391,6 +416,9 @@ export function DataTable<TData extends TBaseData>({
   isLoading = false,
   emptyState,
   getRowLabel,
+  stickyHeader = false,
+  maxHeight,
+  horizontalScroll = false,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -489,11 +517,32 @@ export function DataTable<TData extends TBaseData>({
     .getVisibleLeafColumns()
     .filter((column) => isColumnVisible(column.id)).length;
 
+  const layout = useMemo<DataTableLayout>(
+    () => ({ density, enforceColumnMinWidth: horizontalScroll }),
+    [density, horizontalScroll]
+  );
+
   return (
-    <DataTableDensityContext.Provider value={density}>
+    <DataTableLayoutContext.Provider value={layout}>
       <div className={cn("flex flex-col gap-2", className, widthClassName)}>
-        <DataTable.Root containerRef={rowRevealRef}>
-          <DataTable.Header>
+        <DataTable.Root
+          containerRef={rowRevealRef}
+          containerClassName={cn(
+            horizontalScroll && "overflow-x-auto",
+            maxHeight && "overflow-y-auto",
+            maxHeight
+          )}
+          // Auto layout lets the table outgrow its container; fixed layout
+          // would always share the width and never overflow.
+          className={cn(horizontalScroll && "w-max min-w-full table-auto")}
+        >
+          <DataTable.Header
+            className={cn(
+              // Borders do not stick with border-collapse, so the divider is a shadow.
+              stickyHeader &&
+                "sticky top-0 z-20 bg-background shadow-[inset_0_-1px_0_var(--color-separator)]"
+            )}
+          >
             {table.getHeaderGroups().map((headerGroup) => (
               <DataTable.Row
                 key={headerGroup.id}
@@ -609,7 +658,7 @@ export function DataTable<TData extends TBaseData>({
           </div>
         )}
       </div>
-    </DataTableDensityContext.Provider>
+    </DataTableLayoutContext.Provider>
   );
 }
 
@@ -642,7 +691,13 @@ function renderHeaderContent<TData>(
 export interface ScrollableDataTableProps<TData extends TBaseData>
   extends Omit<
     DataTableProps<TData>,
-    "onLoadMore" | "isLoadingMore" | "isLoading" | "emptyState"
+    | "onLoadMore"
+    | "isLoadingMore"
+    | "isLoading"
+    | "emptyState"
+    | "stickyHeader"
+    | "maxHeight"
+    | "horizontalScroll"
   > {
   /** Height of the scroll container: a max-height class name, true to fill the parent (flex-1), or unset for the default max-h-100. */
   maxHeight?: string | boolean;
@@ -865,8 +920,13 @@ export function ScrollableDataTable<TData extends TBaseData>({
     return () => observer.disconnect();
   }, []);
 
+  const layout = useMemo<DataTableLayout>(
+    () => ({ ...DEFAULT_DATA_TABLE_LAYOUT, density }),
+    [density]
+  );
+
   return (
-    <DataTableDensityContext.Provider value={density}>
+    <DataTableLayoutContext.Provider value={layout}>
       <div
         className={cn(
           "relative overflow-y-auto overflow-x-hidden",
@@ -1033,7 +1093,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
           </div>
         )}
       </div>
-    </DataTableDensityContext.Provider>
+    </DataTableLayoutContext.Provider>
   );
 }
 
@@ -1106,6 +1166,7 @@ DataTable.Head = function Head({
   onSort,
   ...props
 }: HeadProps) {
+  const layout = useDataTableLayout();
   const presets = getDataTableColumnPresets(column);
   const sorted = column.getIsSorted();
 
@@ -1143,6 +1204,9 @@ DataTable.Head = function Head({
         "heading-xs p-2 capitalize",
         ALIGN_TEXT_CLASS[presets.headerAlign],
         "text-foreground",
+        layout.enforceColumnMinWidth &&
+          presets.sortable &&
+          SCROLL_COLUMN_MIN_WIDTH_CLASS,
         presets.headerClassName,
         column.columnDef.meta?.className,
         className
@@ -1471,7 +1535,7 @@ DataTable.Cell = function Cell({
   column,
   ...props
 }: CellProps) {
-  const density = useDataTableDensity();
+  const layout = useDataTableLayout();
   const presets = getDataTableColumnPresets(column);
   const isRowHeader = column.columnDef.meta?.rowHeader === true;
   const Tag = isRowHeader ? "th" : "td";
@@ -1480,9 +1544,12 @@ DataTable.Cell = function Cell({
     <Tag
       scope={isRowHeader ? "row" : undefined}
       className={cn(
-        DENSITY_ROW_HEIGHT_CLASS[density],
+        DENSITY_ROW_HEIGHT_CLASS[layout.density],
         "truncate px-2",
         isRowHeader && "text-left font-normal",
+        layout.enforceColumnMinWidth &&
+          presets.sortable &&
+          SCROLL_COLUMN_MIN_WIDTH_CLASS,
         presets.cellClassName,
         presets.align !== "left" && ALIGN_TEXT_CLASS[presets.align],
         column.columnDef.meta?.className,
@@ -1545,7 +1612,7 @@ DataTable.CellContent = function CellContent({
   trailing,
   ...props
 }: CellContentProps) {
-  const density = useDataTableDensity();
+  const { density } = useDataTableLayout();
   const avatarSize = density === "relaxed" ? "sm" : "xs";
   const showSecondaryLine =
     secondaryLine !== undefined && density === "relaxed";
@@ -1663,7 +1730,7 @@ DataTable.BasicCellContent = function BasicCellContent({
   ...props
 }: BasicCellContentProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
-  const density = useDataTableDensity();
+  const { density } = useDataTableLayout();
   const cellHeight = DENSITY_ROW_HEIGHT_CLASS[density];
 
   const handleCopy = async () => {
@@ -1805,7 +1872,7 @@ DataTable.NumericCellContent = function NumericCellContent({
   className,
   ...props
 }: NumericCellContentProps) {
-  const density = useDataTableDensity();
+  const { density } = useDataTableLayout();
 
   const formatted =
     value === null || value === undefined
@@ -1885,7 +1952,7 @@ DataTable.StatusCellContent = function StatusCellContent({
   tooltip,
   className,
 }: StatusCellContentProps) {
-  const density = useDataTableDensity();
+  const { density } = useDataTableLayout();
 
   const content = (
     <div
@@ -2020,7 +2087,7 @@ export function createSelectionColumn<TData>({
       </div>
     ),
     meta: {
-      className: "w-10",
+      className: "w-10 min-w-10",
     },
   };
 }
@@ -2049,7 +2116,7 @@ export function createRadioSelectionColumn<TData>(): ColumnDef<TData> {
       </div>
     ),
     meta: {
-      className: "w-10",
+      className: "w-10 min-w-10",
     },
   };
 }
