@@ -19,9 +19,6 @@ import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  InfoCircle,
-  Lock01,
-  ShapesPlus,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -185,21 +182,9 @@ export function MCPServerDetailsSheet({
               onValueChange={(v) => setSelectedTab(v as TabType)}
             >
               <TabsList>
-                <TabsTrigger
-                  value="general"
-                  label="General"
-                  icon={InfoCircle}
-                />
-                <TabsTrigger
-                  value="tools"
-                  label="Tools & Stakes"
-                  icon={ShapesPlus}
-                />
-                <TabsTrigger
-                  value="availability"
-                  label="Availability"
-                  icon={Lock01}
-                />
+                <TabsTrigger value="general" label="General" />
+                <TabsTrigger value="tools" label="Tools & Stakes" />
+                <TabsTrigger value="availability" label="Availability" />
                 {mcpServerView?.server.availability === "manual" && (
                   <>
                     <div className="grow" />
@@ -208,7 +193,7 @@ export function MCPServerDetailsSheet({
                         icon={Trash01}
                         variant="warning"
                         label={isDeleting ? "Removing..." : "Remove"}
-                        size="xs"
+                        size="sm"
                         disabled={isDeleting}
                         onClick={() => void handleRemove()}
                       />
