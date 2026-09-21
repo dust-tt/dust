@@ -247,10 +247,13 @@ export async function applyAgentSuggestions(
         break;
 
       case "instructions":
-      case "tools":
-      case "sub_agent":
-      case "skills":
       case "knowledge":
+      case "name":
+      case "skills":
+      case "skills":
+      case "sub_agent":
+      case "sub_agent":
+      case "tools":
         return new Err(
           new DustError(
             "invalid_request_error",

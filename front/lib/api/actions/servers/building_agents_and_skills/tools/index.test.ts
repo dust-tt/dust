@@ -5,6 +5,7 @@ import {
   SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_AGENT_DELETION_TOOL_NAME,
   SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME,
+  SUGGEST_AGENT_NAME_TOOL_NAME,
   SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
   SUGGEST_SKILL_DELETION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
@@ -24,6 +25,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
@@ -48,6 +50,8 @@ const AGENT_DELETE_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=delete agentId=(\S+)\}$/;
 const AGENT_MODEL_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=model agentId=(\S+)\}$/;
+const AGENT_NAME_SUGGESTION_DIRECTIVE_REGEX =
+  /^:agent_suggestion\[\]\{sId=(\S+) kind=name agentId=(\S+)\}$/;
 
 function getTool(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -155,6 +159,16 @@ function extractAgentModelSuggestionDirective(text: string): {
   agentId: string;
 } {
   const match = AGENT_MODEL_SUGGESTION_DIRECTIVE_REGEX.exec(text);
+  if (!match) {
+    throw new Error(`Unexpected tool output: ${text}`);
+  }
+  return { suggestionId: match[1], agentId: match[2] };
+}
+function extractAgentNameSuggestionDirective(text: string): {
+  suggestionId: string;
+  agentId: string;
+} {
+  const match = AGENT_NAME_SUGGESTION_DIRECTIVE_REGEX.exec(text);
   if (!match) {
     throw new Error(`Unexpected tool output: ${text}`);
   }
@@ -1117,6 +1131,151 @@ describe("building_agents_and_skills tools", () => {
         makeExtra(authenticator)
       );
       expectMcpError(result, "Invalid model ID");
+    });
+  });
+
+  describe(SUGGEST_AGENT_NAME_TOOL_NAME, () => {
+    const suggestName = async (
+      auth: Authenticator,
+      args: { agentId: string; name: string; analysis?: string }
+    ) => getTool(SUGGEST_AGENT_NAME_TOOL_NAME).handler(args, makeExtra(auth));
+
+    it("records a pending suggestion with the name, without renaming", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "OldHelper" }
+      );
+
+      const result = await suggestName(authenticator, {
+        agentId: agent.sId,
+        name: "  IncidentHelper  ",
+        analysis: "The agent only handles incidents.",
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      const output = result.value[0];
+      if (output?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const { suggestionId, agentId } = extractAgentNameSuggestionDirective(
+        output.text
+      );
+      expect(agentId).toBe(agent.sId);
+
+      const suggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?.toJSON()).toMatchObject({
+        kind: "name",
+        suggestion: { name: "IncidentHelper" },
+        analysis: "The agent only handles incidents.",
+      });
+
+      // The agent itself is untouched.
+      const untouched = await getAgentConfiguration(authenticator, {
+        agentId: agent.sId,
+        variant: "light",
+      });
+      expect(untouched?.name).toBe("OldHelper");
+    });
+
+    it("outdates every other pending rename, leaving other kinds alone", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "RenamedTwice" }
+      );
+      const deletion = await AgentSuggestionFactory.createDelete(
+        authenticator,
+        agent
+      );
+      const idOf = async (name: string) => {
+        const result = await suggestName(authenticator, {
+          agentId: agent.sId,
+          name,
+        });
+        if (result.isErr() || result.value[0]?.type !== "text") {
+          throw new Error("Expected the suggestion to be created.");
+        }
+        return extractAgentNameSuggestionDirective(result.value[0].text)
+          .suggestionId;
+      };
+      const stateOf = async (suggestionId: string) =>
+        (await AgentSuggestionResource.fetchById(authenticator, suggestionId))
+          ?.state;
+
+      const firstId = await idOf("FirstName");
+      const secondId = await idOf("SecondName");
+
+      expect(await stateOf(firstId)).toBe("outdated");
+      expect(await stateOf(secondId)).toBe("pending");
+      expect(await stateOf(deletion.sId)).toBe("pending");
+    });
+
+    it("rejects a caller who is not an editor, creating no row", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const outsider = await addMember(workspace);
+      const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        outsider.sId,
+        workspace.sId
+      );
+
+      const result = await suggestName(outsiderAuth, {
+        agentId: agent.sId,
+        name: "Hijacked",
+      });
+
+      expectMcpError(result, "Only editors of this agent can rename it");
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agent.sId,
+          { kind: "name" }
+        );
+      expect(suggestions).toHaveLength(0);
+    });
+
+    it("rejects an archived agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      await archiveAgentConfiguration(authenticator, agent.sId);
+
+      const result = await suggestName(authenticator, {
+        agentId: agent.sId,
+        name: "Revived",
+      });
+
+      expectMcpError(result, "Only active agents can be renamed");
+    });
+
+    it("rejects the name of another active agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Mine" }
+      );
+      await AgentConfigurationFactory.createTestAgent(authenticator, {
+        name: "Taken",
+      });
+
+      const result = await suggestName(authenticator, {
+        agentId: agent.sId,
+        name: "Taken",
+      });
+
+      expectMcpError(result, "already exists");
     });
   });
 

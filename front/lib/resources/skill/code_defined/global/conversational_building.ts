@@ -5,6 +5,7 @@ import {
   SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_AGENT_DELETION_TOOL_NAME,
   SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME,
+  SUGGEST_AGENT_NAME_TOOL_NAME,
   SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
   SUGGEST_SKILL_DELETION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
@@ -208,6 +209,7 @@ Agent suggestions:
 - \`${buildingToolName(SUGGEST_AGENT_CREATION_TOOL_NAME)}\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`.
 - \`${buildingToolName(SUGGEST_AGENT_DELETION_TOOL_NAME)}\`: propose deleting an existing agent by \`agentId\`
 - \`${buildingToolName(SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME)}\`: propose changing an existing agent's model, by \`agentId\`, \`modelId\` and an optional \`reasoningEffort\`.
+- \`${buildingToolName(SUGGEST_AGENT_NAME_TOOL_NAME)}\`: rename an agent.
 </tools>`,
 
   responseStyle: responseStyleSection({ noun: NOUN, editTool: EDIT_TOOLS }),
