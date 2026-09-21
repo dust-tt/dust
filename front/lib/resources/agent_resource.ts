@@ -819,8 +819,6 @@ export class AgentResource
           reasoningEffort: modelConfiguration.reasoningEffort ?? undefined,
           responseFormat: modelConfiguration.responseFormat ?? undefined,
         },
-        // Only custom agents are cached (see `toSnapshot`'s assert); they never carry
-        // code-defined skills.
         codeDefinedSkillIds: [],
         content: {
           ...content,
