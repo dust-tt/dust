@@ -21,6 +21,7 @@ import type {
   AgentErrorContentType,
 } from "@app/types/assistant/agent_message_content";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 function buildInitialMessages(
   config: BuildingAgentConfig,
@@ -38,19 +39,24 @@ function buildInitialMessages(
 
   if (isTestCaseWithConversation(testCase)) {
     for (const msg of testCase.conversation) {
-      if (msg.role === "user") {
-        messages.push({
-          role: "user",
-          name: "User",
-          content: [{ type: "text", text: msg.content }],
-        });
-      } else {
-        messages.push({
-          role: "assistant",
-          name: "assistant",
-          content: msg.content,
-          contents: [{ type: "text_content", value: msg.content }],
-        });
+      switch (msg.role) {
+        case "user":
+          messages.push({
+            role: "user",
+            name: "User",
+            content: [{ type: "text", text: msg.content }],
+          });
+          break;
+        case "assistant":
+          messages.push({
+            role: "assistant",
+            name: "assistant",
+            content: msg.content,
+            contents: [{ type: "text_content", value: msg.content }],
+          });
+          break;
+        default:
+          assertNever(msg.role);
       }
     }
   } else {

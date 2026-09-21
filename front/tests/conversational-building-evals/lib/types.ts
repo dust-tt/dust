@@ -103,7 +103,7 @@ export interface SeededScenario {
 
 /** The agent under test: the Dust global agent with the conversational-building skill enabled. */
 export interface BuildingAgentConfig {
-  agentSId: string;
+  agentId: string;
   instructions: string;
   // The `<dust_system>` message injecting the enabled skill instructions, as rendered in production.
   skillInstructionsMessage: string;

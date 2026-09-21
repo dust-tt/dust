@@ -208,7 +208,7 @@ describe
       const lines = [
         "",
         "=".repeat(60),
-        `CONVERSATIONAL BUILDING EVAL SUMMARY (agent: ${first?.config.agentSId ?? "?"})`,
+        `CONVERSATIONAL BUILDING EVAL SUMMARY (agent: ${first?.config.agentId ?? "?"})`,
         "=".repeat(60),
         `Model: ${model?.modelId ?? "?"} (reasoning effort: ${model?.reasoningEffort ?? "default"})`,
         `Total scenarios: ${totalCount} (${erroredTestCases.length} errored)`,

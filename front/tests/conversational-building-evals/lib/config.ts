@@ -93,7 +93,7 @@ export async function getBuildingAgentConfig(
   )}\n</dust_system>`;
 
   return {
-    agentSId: agent.sId,
+    agentId: agent.sId,
     instructions: agent.instructions ?? "",
     skillInstructionsMessage,
     model: resolveModel({
