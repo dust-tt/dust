@@ -69,9 +69,6 @@ export function useConsumptionQuery<TBody extends object, TResponse>({
   const { cache } = useSWRConfig();
   const requestControllerRef = useRef<AbortController | null>(null);
   const previousCacheKeyRef = useRef<string | null>(null);
-  const unmountAbortTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
 
   const bodyKey = JSON.stringify(body);
   const { debouncedValue: debouncedBodyKey, isDebouncing } = useDebouncedValue(
@@ -111,29 +108,11 @@ export function useConsumptionQuery<TBody extends object, TResponse>({
     previousCacheKeyRef.current = cacheKey;
   }, [cache, cacheKey]);
 
-  // Cancels the in-flight request on a real unmount, e.g. when the user
-  // switches period/filter fast enough to tear this widget down mid-request:
-  // without this, a slow response could still land after the fact and
-  // overwrite the cache with data for a view the user already left.
-  // Deferred so StrictMode's dev-only mount -> cleanup -> mount replay can
-  // cancel the timeout first instead of aborting the request before it
-  // reaches the network. Without this, local dev (StrictMode) breaks every
-  // request; prod is unaffected. Recreating the controller per-effect (as a
-  // plain fetch-in-effect would) isn't an option: SWR treats this request as
-  // already cached for the replay's second mount, so it would never fire a
-  // second one to replace the one we just aborted.
-  useEffect(() => {
-    if (unmountAbortTimeoutRef.current !== null) {
-      clearTimeout(unmountAbortTimeoutRef.current);
-      unmountAbortTimeoutRef.current = null;
-    }
-
-    return () => {
-      unmountAbortTimeoutRef.current = setTimeout(() => {
-        requestControllerRef.current?.abort();
-      }, 0);
-    };
-  }, []);
+  // No abort on unmount: a remounting widget with the same cache key is
+  // deduped by SWR onto the in-flight request, so aborting it would store an
+  // error on the shared key (e.g. when a resize across the mobile breakpoint
+  // remounts the page). A late response is harmless, SWR writes it under the
+  // key it was fetched for.
 
   const { data, error, isLoading, isValidating, mutate } = useSWRWithDefaults(
     cacheKey,
