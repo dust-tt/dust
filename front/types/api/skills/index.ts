@@ -28,7 +28,10 @@ export interface SkillSearchFilters {
   // Supports "edited by me", but not "not edited by me".
   editedByMe?: true;
   availability?: SkillAvailability[];
+  codeDefinedOnly?: true;
 }
+
+export type SkillSearchSort = "relevance" | "usage";
 
 export type SearchSkillsResponseBody = {
   skills: SkillListItemType[];

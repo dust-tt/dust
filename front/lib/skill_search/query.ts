@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
 import { buildSkillNameAutocompleteQuery } from "@app/lib/skill_search/ranking";
 import type {
   SkillSearchFilters,
@@ -82,6 +83,9 @@ function buildSelectionFilters(
   }
   if (filters.editedByMe) {
     selected.push(buildEditorFilter(auth));
+  }
+  if (filters.codeDefinedOnly) {
+    selected.push({ term: { workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID } });
   }
   return selected;
 }

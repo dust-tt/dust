@@ -1,8 +1,13 @@
+import type { SkillSearchSort } from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
 
-export function buildSkillDefaultSort(): estypes.Sort {
+export function buildSkillDefaultSort(
+  sortBy: SkillSearchSort = "relevance"
+): estypes.Sort {
   return [
-    { _score: { order: "desc" } },
+    sortBy === "usage"
+      ? { active_users_count: { order: "desc", missing: "_last" } }
+      : { _score: { order: "desc" } },
     // Skill ID is the tie-breaker.
     { skill_id: { order: "asc" } },
   ];

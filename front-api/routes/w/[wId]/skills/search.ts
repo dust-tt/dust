@@ -27,6 +27,8 @@ app.post(
       mcpServerViewIds,
       availability,
       editedByMe,
+      codeDefinedOnly,
+      sortBy,
     } = ctx.req.valid("json");
     if (permissionFiltering === "redact_unreadable" && !auth.isAdmin()) {
       return apiError(ctx, {
@@ -41,12 +43,14 @@ app.post(
       searchTerm: query,
       limit,
       cursor,
+      sortBy,
       permissionFiltering,
       filters: {
         status,
         mcpServerViewIds,
         availability,
         editedByMe,
+        codeDefinedOnly,
       },
     });
 

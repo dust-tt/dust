@@ -9,6 +9,7 @@ import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import type {
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
+  SkillSearchSort,
 } from "@app/types/api/skills";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -44,6 +45,7 @@ export async function searchSkills(
   {
     limit = MAX_SKILL_SEARCH_RESULTS,
     cursor,
+    sortBy,
     ...options
   }: {
     searchTerm: string;
@@ -51,6 +53,7 @@ export async function searchSkills(
     permissionFiltering?: SkillSearchPermissionFiltering;
     limit?: number;
     cursor?: string | null;
+    sortBy?: SkillSearchSort;
   }
 ) {
   let searchAfter: estypes.SortResults | undefined;
@@ -75,7 +78,7 @@ export async function searchSkills(
       _source: true,
       query,
       size: limit + 1,
-      sort: buildSkillDefaultSort(),
+      sort: buildSkillDefaultSort(sortBy),
       ...(searchAfter ? { search_after: searchAfter } : {}),
     })
   );
