@@ -37,10 +37,6 @@ vi.mock("@app/lib/swr/mcp_servers", () => ({
   }),
 }));
 
-vi.mock("@app/lib/actions/mcp_helper", () => ({
-  getMcpServerDisplayName: (server: { name: string }) => server.name,
-}));
-
 vi.mock("@app/components/resources/resources_icons", () => ({
   getIcon: () => null,
 }));
@@ -85,7 +81,7 @@ function makeEvent(
       toolName: "get_worksheet",
       mcpServerName: "google_drive",
       agentName: "agent",
-      mcpServerDisplayName: "google_drive",
+      mcpServerDisplayName: "Google Drive",
       mcpServerId: "ims_1",
     },
     inputs: {},

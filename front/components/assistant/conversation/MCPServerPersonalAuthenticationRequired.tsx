@@ -4,25 +4,21 @@ import { useBlockedActionsContext } from "@app/components/assistant/conversation
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useResolveAuthentication } from "@app/lib/swr/tool_actions";
-import type { OAuthProvider } from "@app/types/oauth/lib";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 interface MCPServerPersonalAuthenticationRequiredProps {
-  blockedAction: AgentLoopBlockedToolExecution;
+  blockedAction: Extract<
+    AgentLoopBlockedToolExecution,
+    { status: "blocked_authentication_required" }
+  >;
   triggeringUser: UserType | null;
-  mcpServerId: string;
   owner: LightWorkspaceType;
-  provider: OAuthProvider;
-  scope?: string;
 }
 
 export function MCPServerPersonalAuthenticationRequired({
   blockedAction,
   triggeringUser,
-  mcpServerId,
   owner,
-  provider,
-  scope,
 }: MCPServerPersonalAuthenticationRequiredProps) {
   const { user } = useAuth();
   const { refreshBlockedActions, removeCompletedAction } =
@@ -57,10 +53,11 @@ export function MCPServerPersonalAuthenticationRequired({
     <PersonalAuthenticationCard
       triggeringUser={triggeringUser}
       currentUser={user}
-      mcpServerId={mcpServerId}
+      mcpServerId={blockedAction.metadata.mcpServerId}
+      mcpServerDisplayName={blockedAction.metadata.mcpServerDisplayName}
       owner={owner}
-      provider={provider}
-      scope={scope}
+      provider={blockedAction.authorizationInfo.provider}
+      scope={blockedAction.authorizationInfo.scope}
       isResolving={isResolving}
       onResolve={handleResolve}
     />

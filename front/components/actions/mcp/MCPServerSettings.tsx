@@ -5,6 +5,7 @@ import {
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { SensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -70,7 +71,7 @@ export function MCPServerSettings({
     setSelectedUseCase(null);
     void deleteMCPServerConnection({
       connection,
-      mcpServer: mcpServerView.server,
+      mcpServerDisplayName: getMcpServerViewDisplayName(mcpServerView),
     });
   };
 

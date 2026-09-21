@@ -119,7 +119,11 @@ export const SpaceActionsList = ({
   });
 
   const onAddServerView = async (serverView: MCPServerViewType) => {
-    await addToSpace(serverView.server, space);
+    await addToSpace(
+      serverView.server,
+      space,
+      getMcpServerViewDisplayName(serverView)
+    );
     await mutateMCPServerViews();
     await mutateActivableMCPServerViews();
   };

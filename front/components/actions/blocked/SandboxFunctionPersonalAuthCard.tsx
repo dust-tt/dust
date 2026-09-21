@@ -18,7 +18,7 @@ export function SandboxFunctionPersonalAuthCard({
   viewer,
   onResolved,
 }: SandboxFunctionPersonalAuthCardProps) {
-  const [{ authError }] = events;
+  const [{ authError, metadata }] = events;
 
   const { resolveAuthentication, isResolving } = useResolveAuthentication({
     owner: viewer.owner,
@@ -50,6 +50,7 @@ export function SandboxFunctionPersonalAuthCard({
       triggeringUser={viewer.user}
       currentUser={viewer.user}
       mcpServerId={authError.mcpServerId}
+      mcpServerDisplayName={metadata.mcpServerDisplayName}
       owner={viewer.owner}
       provider={authError.provider}
       scope={authError.scope}

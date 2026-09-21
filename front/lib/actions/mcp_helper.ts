@@ -166,10 +166,10 @@ export const mcpServersSortingFn = (
 ) => {
   const aDisplayName = a.mcpServerView
     ? getMcpServerViewDisplayName(a.mcpServerView)
-    : getMcpServerDisplayName(a.mcpServer);
+    : getMcpServerDisplayNameWithoutView(a.mcpServer);
   const bDisplayName = b.mcpServerView
     ? getMcpServerViewDisplayName(b.mcpServerView)
-    : getMcpServerDisplayName(b.mcpServer);
+    : getMcpServerDisplayNameWithoutView(b.mcpServer);
   return aDisplayName.localeCompare(bDisplayName);
 };
 
@@ -187,6 +187,11 @@ export function getMcpServerViewDescription(view: {
   return view.description ?? view.server.description;
 }
 
+/**
+ * @cc [owner:rfrenoy,label:product] custom-view-name-wins
+ * When `view.name` is non-empty, the returned display name MUST be `view.name` verbatim. The
+ * server name formatting and any `action` suffix apply only when `view.name` is null or empty.
+ */
 export function getMcpServerViewDisplayName(
   view: {
     name: string | null;
@@ -200,10 +205,19 @@ export function getMcpServerViewDisplayName(
   if (view.name) {
     return view.name;
   }
-  return getMcpServerDisplayName(view.server, action);
+  return getMcpServerDisplayNameWithoutView(view.server, action);
 }
 
-export function getMcpServerDisplayName(
+/**
+ * @cc [owner:rfrenoy,label:coding;product] not-for-existing-views
+ * `server` MUST NOT be taken from an existing view (`view.server`) to label that view: such callers
+ * MUST use `getMcpServerViewDisplayName` so the per-view custom name is shown. Intended callers
+ * label servers that have no view in hand: catalog entries and freshly created servers, servers
+ * sorted or listed as servers (including `MCPServerTypeWithViews`), internal-server analytics
+ * facets keyed by server name, and the Poke row that shows the raw server name next to the
+ * custom name.
+ */
+export function getMcpServerDisplayNameWithoutView(
   server: Pick<MCPServerType, "sId" | "name">,
   action?:
     | AgentBuilderMCPConfiguration

@@ -8,10 +8,6 @@ import type {
   StaticCredentialFormHandle,
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { MCPServerAuthConnection } from "@app/components/actions/mcp/MCPServerAuthConnection";
-import type {
-  CustomResourceIconType,
-  InternalAllowedIconType,
-} from "@app/components/resources/resources_icons";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -20,7 +16,6 @@ import {
   getServerTypeAndIdFromSId,
   isRemoteMCPServerType,
 } from "@app/lib/actions/mcp_helper";
-import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useCellContext } from "@app/lib/auth/CellContext";
@@ -105,20 +100,12 @@ export function ConnectMCPServerDialog({
     [mcpServerView]
   );
 
-  const toolName = useMemo(() => {
-    if (mcpServerView.server) {
-      return getMcpServerViewDisplayName(mcpServerView);
-    }
-    return "MCP Server";
-  }, [mcpServerView]);
+  const toolName = useMemo(
+    () => getMcpServerViewDisplayName(mcpServerView),
+    [mcpServerView]
+  );
 
-  const toolIcon: InternalAllowedIconType | CustomResourceIconType =
-    useMemo(() => {
-      if (mcpServerView.server) {
-        return mcpServerView.server.icon;
-      }
-      return DEFAULT_MCP_SERVER_ICON;
-    }, [mcpServerView]);
+  const toolIcon = mcpServerView.server.icon;
 
   // Discover OAuth metadata for remote MCP servers.
   useEffect(() => {

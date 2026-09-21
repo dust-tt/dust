@@ -3,7 +3,6 @@ import {
   PersonalAuthCredentialOverrides,
 } from "@app/components/oauth/PersonalAuthCredentialOverrides";
 import { getIcon } from "@app/components/resources/resources_icons";
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import {
@@ -24,6 +23,7 @@ interface PersonalAuthenticationCardProps {
   // frames render this card outside of any AuthProvider.
   currentUser: UserType;
   mcpServerId: string;
+  mcpServerDisplayName: string;
   owner: LightWorkspaceType;
   provider: OAuthProvider;
   scope?: string;
@@ -36,6 +36,7 @@ export function PersonalAuthenticationCard({
   triggeringUser,
   currentUser,
   mcpServerId,
+  mcpServerDisplayName,
   owner,
   provider,
   scope,
@@ -64,11 +65,6 @@ export function PersonalAuthenticationCard({
 
   const icon = mcpServer?.icon ? getIcon(mcpServer.icon) : Key01;
 
-  const serverDisplayName =
-    mcpServer && mcpServer.name
-      ? getMcpServerDisplayName(mcpServer)
-      : undefined;
-
   const canCurrentUserRespond = useMemo(
     () =>
       canCurrentUserRespondToParentUserMessage({
@@ -85,7 +81,7 @@ export function PersonalAuthenticationCard({
 
     const result = await createPersonalConnection({
       mcpServerId: mcpServer.sId,
-      mcpServerDisplayName: getMcpServerDisplayName(mcpServer),
+      mcpServerDisplayName,
       authorization: mcpServer.authorization,
       provider,
       useCase: "personal_actions",
@@ -136,10 +132,10 @@ export function PersonalAuthenticationCard({
       </div>
 
       <div className="text-base text-muted-foreground">
-        {`Dust needs access to ${serverDisplayName ?? "this service"} to complete this action.`}
+        {`Dust needs access to ${mcpServerDisplayName} to complete this action.`}
       </div>
       <div className="text-base text-muted-foreground">
-        {`Once connected, ${serverDisplayName ?? "this service"} will remain connected for future requests.`}
+        {`Once connected, ${mcpServerDisplayName} will remain connected for future requests.`}
       </div>
       {canCurrentUserRespond ? (
         <>
@@ -185,7 +181,7 @@ export function PersonalAuthenticationCard({
           />
           <Button
             variant="highlight"
-            label={`Connect ${serverDisplayName ?? "account"}`}
+            label={`Connect ${mcpServerDisplayName}`}
             icon={Check}
             disabled={
               isConnecting ||

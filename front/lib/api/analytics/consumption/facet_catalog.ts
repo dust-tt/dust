@@ -1,5 +1,5 @@
 import {
-  getMcpServerDisplayName,
+  getMcpServerDisplayNameWithoutView,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import type { ConsumptionScopeDimension } from "@app/lib/api/analytics/consumption/scope";
@@ -83,7 +83,7 @@ function toolFacetCatalogEntries(
         return [
           {
             value: view.serverName,
-            label: getMcpServerDisplayName({
+            label: getMcpServerDisplayNameWithoutView({
               sId: view.mcpServerId,
               name: view.serverName,
             }),

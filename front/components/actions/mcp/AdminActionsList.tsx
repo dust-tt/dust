@@ -9,7 +9,7 @@ import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHea
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import {
-  getMcpServerDisplayName,
+  getMcpServerDisplayNameWithoutView,
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
   mcpServersSortingFn,
@@ -114,7 +114,7 @@ const NameCell = ({ row }: { row: RowData }) => {
           <div className="truncate text-sm font-semibold text-foreground">
             {mcpServerView
               ? getMcpServerViewDisplayName(mcpServerView)
-              : getMcpServerDisplayName(mcpServer)}
+              : getMcpServerDisplayNameWithoutView(mcpServer)}
           </div>
           <div className="truncate text-sm text-muted-foreground">
             {mcpServerView
@@ -304,7 +304,7 @@ export const AdminActionsList = ({
           // Check display name (may differ from server name due to custom view name or formatting).
           const displayName = mcpServerView
             ? getMcpServerViewDisplayName(mcpServerView)
-            : getMcpServerDisplayName(mcpServer);
+            : getMcpServerDisplayNameWithoutView(mcpServer);
           return displayName.toLowerCase().includes(filterLower);
         },
         sortingFn: (rowA, rowB) => {

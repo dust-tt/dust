@@ -1,5 +1,5 @@
 import { getIcon } from "@app/components/resources/resources_icons";
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import { getMcpServerDisplayNameWithoutView } from "@app/lib/actions/mcp_helper";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType } from "@app/lib/api/mcp";
@@ -35,7 +35,7 @@ interface AddToolCardProps {
 const AddToolCard = ({ mcpServer, isPending, onClick }: AddToolCardProps) => (
   <ActionCard
     icon={getIcon(mcpServer.icon)}
-    label={getMcpServerDisplayName(mcpServer)}
+    label={getMcpServerDisplayNameWithoutView(mcpServer)}
     description={mcpServer.description}
     canAdd={false}
     disabled={isPending}
@@ -126,7 +126,9 @@ export const AddToolsDialog = ({
             filterMCPServer(mcpServer, searchText)
         )
         .sort((a, b) =>
-          getMcpServerDisplayName(a).localeCompare(getMcpServerDisplayName(b))
+          getMcpServerDisplayNameWithoutView(a).localeCompare(
+            getMcpServerDisplayNameWithoutView(b)
+          )
         ),
     [availableMCPServers, enabledServerNames, searchText]
   );

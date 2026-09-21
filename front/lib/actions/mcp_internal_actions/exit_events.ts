@@ -1,3 +1,5 @@
+import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import { getMcpServerDisplayNameWithoutView } from "@app/lib/actions/mcp_helper";
 import type {
   MCPApproveExecutionEvent,
   ToolAskUserQuestionEvent,
@@ -8,8 +10,10 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { assertNever, isAgentPauseOutputResourceType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
@@ -143,6 +147,11 @@ export async function getExitOrPauseEvents(
     }
     case "tool_personal_auth_required": {
       const { provider, scope } = exitOutputItem;
+      const mcpServerDisplayName =
+        await getMcpServerDisplayNameForToolConfiguration(
+          auth,
+          toolConfiguration
+        );
 
       const authErrorMessage =
         `The tool ${toolCallName} requires personal ` +
@@ -179,7 +188,7 @@ export async function getExitOrPauseEvents(
             toolName: toolConfiguration.originalName,
             mcpServerName: toolConfiguration.mcpServerName,
             agentName: "agent",
-            mcpServerDisplayName: toolConfiguration.mcpServerName,
+            mcpServerDisplayName,
             mcpServerId: toolConfiguration.toolServerId,
           },
           inputs,
@@ -197,6 +206,11 @@ export async function getExitOrPauseEvents(
     }
     case "tool_file_auth_required": {
       const { fileId, fileName, connectionId, mimeType_file } = exitOutputItem;
+      const mcpServerDisplayName =
+        await getMcpServerDisplayNameForToolConfiguration(
+          auth,
+          toolConfiguration
+        );
 
       const fileAuthErrorMessage =
         `The tool ${toolCallName} requires file authorization ` +
@@ -237,7 +251,7 @@ export async function getExitOrPauseEvents(
             toolName: toolConfiguration.originalName,
             mcpServerName: toolConfiguration.mcpServerName,
             agentName: "agent",
-            mcpServerDisplayName: toolConfiguration.mcpServerName,
+            mcpServerDisplayName,
             mcpServerId: toolConfiguration.toolServerId,
           },
           inputs,
@@ -292,4 +306,30 @@ export async function getExitOrPauseEvents(
       assertNever(exitOutputItem);
     }
   }
+}
+
+/**
+ * @cc [owner:rfrenoy,label:product] blocked-auth-metadata-uses-view-display-name
+ * When `toolConfiguration` references a server view that can be fetched, the returned name MUST be
+ * that view's display name (its custom name when set). The formatted server name is returned only
+ * when no view can be resolved, so blocked-action cards never show a stale name for a renamed tool.
+ */
+async function getMcpServerDisplayNameForToolConfiguration(
+  auth: Authenticator,
+  toolConfiguration: LightMCPToolConfigurationType
+): Promise<string> {
+  const view = isLightServerSideMCPToolConfiguration(toolConfiguration)
+    ? await MCPServerViewResource.fetchById(
+        auth,
+        toolConfiguration.mcpServerViewId
+      )
+    : null;
+
+  return (
+    view?.getDisplayName() ??
+    getMcpServerDisplayNameWithoutView({
+      sId: toolConfiguration.toolServerId,
+      name: toolConfiguration.mcpServerName,
+    })
+  );
 }

@@ -1,7 +1,6 @@
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
-  getMcpServerDisplayName,
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
   getServerTypeAndIdFromSId,
@@ -270,18 +269,14 @@ function renderOtherAction(
     const mcpServer = mcpServers.find((s) =>
       s.views.some((v) => v.sId === action.mcpServerViewId)
     );
-    if (!mcpServer) {
+    const view = mcpServer?.views.find((v) => v.sId === action.mcpServerViewId);
+    if (!mcpServer || !view) {
       return null;
     }
-    const view = mcpServer.views.find((v) => v.sId === action.mcpServerViewId);
     const { serverType } = getServerTypeAndIdFromSId(mcpServer.sId);
     const avatar = getAvatar(mcpServer, "xs");
-    const title = view
-      ? getMcpServerViewDisplayName(view, action)
-      : getMcpServerDisplayName(mcpServer, action);
-    const description = view
-      ? getMcpServerViewDescription(view)
-      : mcpServer.description;
+    const title = getMcpServerViewDisplayName(view, action);
+    const description = getMcpServerViewDescription(view);
 
     return {
       title,

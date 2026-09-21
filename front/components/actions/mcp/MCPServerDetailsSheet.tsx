@@ -191,7 +191,10 @@ export function MCPServerDetailsSheet({
                           if (!confirmed) {
                             return;
                           }
-                          const deleted = await deleteServer(server);
+                          const deleted = await deleteServer(
+                            server,
+                            getMcpServerViewDisplayName(mcpServerView)
+                          );
                           if (deleted) {
                             onClose();
                           }

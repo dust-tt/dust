@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
-  getMcpServerDisplayName,
+  getMcpServerDisplayNameWithoutView,
   getMcpServerViewDisplayName,
   mcpServersSortingFn,
   mcpServerViewSortingFn,
@@ -243,7 +243,10 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const deleteServer = useCallback(
-    async (server: MCPServerType): Promise<boolean> => {
+    async (
+      server: MCPServerType,
+      mcpServerDisplayName: string
+    ): Promise<boolean> => {
       setIsDeleting(true);
       try {
         const response = await clientFetch(
@@ -260,8 +263,7 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
             type: "error",
             description:
               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              body.error?.message ||
-              `Failed to delete ${getMcpServerDisplayName(server)}`,
+              body.error?.message || `Failed to delete ${mcpServerDisplayName}`,
           });
           return false;
         }
@@ -275,7 +277,7 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
             type: "error",
             description:
               result.error?.message ||
-              `Failed to delete ${getMcpServerDisplayName(server)}`,
+              `Failed to delete ${mcpServerDisplayName}`,
           });
           return false;
         }
@@ -284,7 +286,7 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
           sendNotification({
             title: `Failure`,
             type: "error",
-            description: `Failed to delete ${getMcpServerDisplayName(server)}`,
+            description: `Failed to delete ${mcpServerDisplayName}`,
           });
           return false;
         }
@@ -292,7 +294,7 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
         sendNotification({
           title: `Success`,
           type: "success",
-          description: `Successfully deleted ${getMcpServerDisplayName(server)}`,
+          description: `Successfully deleted ${mcpServerDisplayName}`,
         });
         await mutate();
         return result.deleted;
@@ -552,7 +554,7 @@ export function useSyncRemoteMCPServer(
     sendNotification({
       title: "Success",
       type: "success",
-      description: `${getMcpServerDisplayName(result.server)} synchronized successfully.`,
+      description: `${getMcpServerDisplayNameWithoutView(result.server)} synchronized successfully.`,
     });
 
     void mutateMCPServer();
@@ -755,10 +757,10 @@ export function useDeleteMCPServerConnection({
   const deleteMCPServerConnection = useCallback(
     async ({
       connection,
-      mcpServer,
+      mcpServerDisplayName,
     }: {
       connection: MCPServerConnectionType;
-      mcpServer: MCPServerType;
+      mcpServerDisplayName: string;
     }): Promise<{ success: boolean }> => {
       const response = await clientFetch(
         `/api/w/${owner.sId}/mcp/connections/${connection.connectionType}/${connection.sId}`,
@@ -772,8 +774,8 @@ export function useDeleteMCPServerConnection({
       if (response.ok) {
         sendNotification({
           type: "success",
-          title: `${getMcpServerDisplayName(mcpServer)} disconnected`,
-          description: `Successfully disconnected from ${getMcpServerDisplayName(mcpServer)}.`,
+          title: `${mcpServerDisplayName} disconnected`,
+          description: `Successfully disconnected from ${mcpServerDisplayName}.`,
         });
         if (connection.connectionType === "workspace") {
           void mutateWorkspaceConnections();
@@ -784,8 +786,8 @@ export function useDeleteMCPServerConnection({
       } else {
         sendNotification({
           type: "error",
-          title: `Failed to disconnect ${getMcpServerDisplayName(mcpServer)}`,
-          description: `Could not disconnect from ${getMcpServerDisplayName(mcpServer)}. Please try again.`,
+          title: `Failed to disconnect ${mcpServerDisplayName}`,
+          description: `Could not disconnect from ${mcpServerDisplayName}. Please try again.`,
         });
       }
 
@@ -1068,7 +1070,11 @@ export function useAddMCPServerToSpace(
   });
 
   const createView = useCallback(
-    async (server: MCPServerType, space: SpaceType): Promise<void> => {
+    async (
+      server: MCPServerType,
+      space: SpaceType,
+      mcpServerDisplayName = getMcpServerDisplayNameWithoutView(server)
+    ): Promise<void> => {
       await mutateMCPServers(
         async (data) => {
           const response = await clientFetch(
@@ -1091,13 +1097,13 @@ export function useAddMCPServerToSpace(
               sendNotification({
                 type: "success",
                 title: `Actions added to space ${space.name}`,
-                description: `${getMcpServerDisplayName(server)} has been added to the ${space.name} space successfully.`,
+                description: `${mcpServerDisplayName} has been added to the ${space.name} space successfully.`,
               });
             } else {
               sendNotification({
                 type: "error",
                 title: `Failed to add actions to space ${space.name}`,
-                description: `Could not add ${getMcpServerDisplayName(server)} to the ${space.name} space. Please try again.`,
+                description: `Could not add ${mcpServerDisplayName} to the ${space.name} space. Please try again.`,
               });
             }
           }

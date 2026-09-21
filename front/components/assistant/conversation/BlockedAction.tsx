@@ -45,9 +45,6 @@ export function BlockedAction({
           blockedAction={blockedAction}
           triggeringUser={triggeringUser}
           owner={owner}
-          mcpServerId={blockedAction.metadata.mcpServerId}
-          provider={blockedAction.authorizationInfo.provider}
-          scope={blockedAction.authorizationInfo.scope}
         />
       );
 

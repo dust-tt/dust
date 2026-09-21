@@ -50,10 +50,6 @@ vi.mock("@app/lib/swr/tool_actions", () => ({
   }),
 }));
 
-vi.mock("@app/lib/actions/mcp_helper", () => ({
-  getMcpServerDisplayName: (server: { name: string }) => server.name,
-}));
-
 vi.mock("@app/lib/api/assistant/conversation/can_current_user_respond", () => ({
   canCurrentUserRespondToParentUserMessage: () => true,
 }));
@@ -145,8 +141,6 @@ function renderCard() {
       blockedAction={makeBlockedAction()}
       triggeringUser={null}
       owner={owner}
-      mcpServerId="mcp_1"
-      provider="github"
     />
   );
 }

@@ -22,7 +22,7 @@ import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
-  getMcpServerDisplayName,
+  getMcpServerDisplayNameWithoutView,
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
@@ -392,7 +392,7 @@ export function CreateMCPServerDialog({
     sendNotification({
       title: "Success",
       type: "success",
-      description: `${getMcpServerDisplayName(submitRes.value.server)} added successfully.`,
+      description: `${getMcpServerDisplayNameWithoutView(submitRes.value.server)} added successfully.`,
     });
     setMCPServerToShow(submitRes.value.server);
     setExternalIsLoading(false);
@@ -403,7 +403,7 @@ export function CreateMCPServerDialog({
 
   const toolName = useMemo(() => {
     if (internalMCPServer) {
-      return getMcpServerDisplayName(internalMCPServer);
+      return getMcpServerDisplayNameWithoutView(internalMCPServer);
     }
     if (defaultServerConfig) {
       return defaultServerConfig.name;
@@ -541,7 +541,7 @@ export function CreateMCPServerDialog({
       const connectionCreationRes = await createMCPServerConnection({
         credentialId,
         mcpServerId: createdServer.sId,
-        mcpServerDisplayName: getMcpServerDisplayName(createdServer),
+        mcpServerDisplayName: getMcpServerDisplayNameWithoutView(createdServer),
         provider: authorization.provider,
       });
       if (!connectionCreationRes) {
@@ -559,7 +559,7 @@ export function CreateMCPServerDialog({
       sendNotification({
         title: "Success",
         type: "success",
-        description: `${getMcpServerDisplayName(createdServer)} added successfully.`,
+        description: `${getMcpServerDisplayNameWithoutView(createdServer)} added successfully.`,
       });
       setMCPServerToShow(createdServer);
       setIsOpen(false);
