@@ -1685,6 +1685,12 @@ export class AgentResource
       }
     }
 
+    // A new version already enqueues search indexation (see `_saveConfiguration`); an in-place-only
+    // scope/editor change must enqueue it here so the agent's search document reflects the update.
+    if (!versionParams) {
+      await AgentResource.launchSearchIndexation(auth, [this.sId]);
+    }
+
     const updated = await AgentResource.fetchById(auth, this.sId);
     return new Ok({ resource: updated ?? target, changed: true });
   }

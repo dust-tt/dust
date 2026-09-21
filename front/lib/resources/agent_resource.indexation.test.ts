@@ -50,11 +50,9 @@ describe("resource-owned agent search indexation", () => {
         expect(result.isOk()).toBe(true);
       },
       async () => {
-        const result = await AgentResource.bulkUpdateScope(
-          auth,
-          [agent.sId],
-          "hidden"
-        );
+        const result = await AgentResource.bulkUpdate(auth, [agent.sId], {
+          scope: "hidden",
+        });
         expect(result.updatedAgentIds).toEqual([agent.sId]);
       },
       async () => {
@@ -148,13 +146,15 @@ describe("resource-owned agent search indexation", () => {
     ];
     vi.mocked(launchIndexAgentSearchWorkflow).mockClear();
 
-    const result = await AgentResource.bulkUpdateModel(
+    const result = await AgentResource.bulkUpdate(
       auth,
       [first.sId, second.sId],
       {
-        providerId: "openai",
-        modelId: "gpt-5",
-        reasoningEffort: "medium",
+        model: {
+          providerId: "openai",
+          modelId: "gpt-5",
+          reasoningEffort: "medium",
+        },
       }
     );
 
