@@ -167,8 +167,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    needs: [prepare, notify-start, verify-sandbox-images]
-    if: ${{ !failure() && !cancelled() && contains(fromJSON('["front","front-edge","front-sse","connectors","core","oauth","viz","prodbox","dante","egress-proxy","sparkle-storybook"]'), inputs.component) && (needs.verify-sandbox-images.result == 'success' || needs.verify-sandbox-images.result == 'skipped') }}
+    needs: [prepare, notify-start]
+    if: ${{ !failure() && !cancelled() && contains(fromJSON('["front","front-edge","front-sse","connectors","core","oauth","viz","prodbox","dante","egress-proxy","sparkle-storybook"]'), inputs.component) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

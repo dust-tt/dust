@@ -24,7 +24,6 @@ export class PlanModel extends BaseModel<PlanModel> {
 
   declare code: string; // unique
   declare name: string;
-  declare trialPeriodDays: number;
   declare canUseProduct: boolean;
 
   // workspace limitations
@@ -82,11 +81,6 @@ PlanModel.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    trialPeriodDays: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
     },
     canUseProduct: {
       type: DataTypes.BOOLEAN,
@@ -233,7 +227,6 @@ export class SubscriptionModel extends WorkspaceAwareModel<SubscriptionModel> {
 
   declare sId: string; // unique
   declare status: SubscriptionStatusType;
-  declare trialing: boolean | null;
   declare paymentFailingSince: Date | null;
 
   declare startDate: Date;
@@ -272,11 +265,6 @@ SubscriptionModel.init(
       validate: {
         isIn: [SUBSCRIPTION_STATUSES],
       },
-    },
-    trialing: {
-      type: DataTypes.BOOLEAN,
-      allowNull: true,
-      defaultValue: false,
     },
     paymentFailingSince: {
       type: DataTypes.DATE,

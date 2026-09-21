@@ -1,4 +1,5 @@
 import {
+  AttachmentChip,
   Chip,
   Citation,
   CitationClose,
@@ -13,7 +14,13 @@ import type { ComponentType } from "react";
 import { isValidElement } from "react";
 
 export type FileCitationCardSize = "md" | "sm" | "xs";
-export type FileCitationCardIcon = ComponentType | React.ReactNode;
+// `card` is the Citation card shown under messages; `chip` is the compact
+// AttachmentChip of the composer's attachment row.
+export type FileCitationCardVariant = "card" | "chip";
+// Either an icon component or an already rendered visual (e.g. a DoubleIcon).
+export type FileCitationCardIcon =
+  | ComponentType<{ className?: string }>
+  | React.ReactElement;
 
 interface FileCitationCardPropsBase {
   description?: React.ReactNode;
@@ -24,12 +31,13 @@ interface FileCitationCardPropsBase {
   size?: FileCitationCardSize;
   title: string;
   tooltipLabel: React.ReactNode;
+  variant?: FileCitationCardVariant;
 }
 
 // Card is either interactive (onClick or href) or static, never both at once.
 type FileCitationCardProps = FileCitationCardPropsBase &
   (
-    | { onClick: (e: React.MouseEvent<HTMLDivElement>) => void; href?: never }
+    | { onClick: () => void; href?: never }
     | { href: string; onClick?: never }
     | { onClick?: never; href?: never }
   );
@@ -52,16 +60,15 @@ function getFileCitationCardLayout(size: Exclude<FileCitationCardSize, "xs">) {
   }
 }
 
-function getFileCitationCardTooltipLabel({
+// Chips have no body, so the description goes below the title in the tooltip.
+function getChipTooltipLabel({
   description,
-  size,
   tooltipLabel,
 }: {
   description?: React.ReactNode;
-  size: FileCitationCardSize;
   tooltipLabel: React.ReactNode;
 }) {
-  if (size !== "xs" || !description) {
+  if (!description) {
     return tooltipLabel;
   }
 
@@ -77,28 +84,73 @@ function getIconSizeForCitationCard(size: FileCitationCardSize): "xs" | "sm" {
   return size === "xs" ? "xs" : "sm";
 }
 
+function isIconComponent(
+  icon: FileCitationCardIcon
+): icon is ComponentType<{ className?: string }> {
+  return !isValidElement(icon);
+}
+
 function renderFileCitationIcon(
   icon: FileCitationCardIcon,
   size: FileCitationCardSize
 ): React.ReactNode {
-  if (isValidElement(icon)) {
-    return icon;
-  }
+  return isIconComponent(icon) ? (
+    <Icon visual={icon} size={getIconSizeForCitationCard(size)} />
+  ) : (
+    icon
+  );
+}
 
-  if (typeof icon === "function") {
-    return <Icon visual={icon} size={getIconSizeForCitationCard(size)} />;
-  }
+interface FileCitationChipProps
+  extends Omit<FileCitationCardPropsBase, "size" | "variant"> {
+  href?: string;
+  onClick?: () => void;
+}
 
-  if (typeof icon === "object" && icon !== null) {
-    return (
-      <Icon
-        visual={icon as unknown as ComponentType}
-        size={getIconSizeForCitationCard(size)}
-      />
-    );
-  }
+function FileCitationChip({
+  description,
+  href,
+  icon,
+  isLoading,
+  loadingLabel,
+  onClick,
+  onRemove,
+  title,
+  tooltipLabel,
+}: FileCitationChipProps) {
+  // AttachmentChip takes an icon component; rendered visuals are wrapped in
+  // one (as KnowledgeChip does) and keep their own size.
+  const iconVisual: ComponentType<{ className?: string }> = isIconComponent(
+    icon
+  )
+    ? icon
+    : () => <>{icon}</>;
 
-  return icon;
+  const chipProps = {
+    color: "primary" as const,
+    icon: { visual: iconVisual },
+    isBusy: isLoading,
+    label: title,
+    onRemove,
+    size: "xs" as const,
+  };
+
+  const chip = href ? (
+    <AttachmentChip {...chipProps} href={href} target="_blank" />
+  ) : (
+    <AttachmentChip {...chipProps} onClick={onClick} />
+  );
+
+  return (
+    <Tooltip
+      tooltipTriggerAsChild
+      trigger={<span className="inline-flex align-middle">{chip}</span>}
+      label={getChipTooltipLabel({
+        description: isLoading && loadingLabel ? loadingLabel : description,
+        tooltipLabel,
+      })}
+    />
+  );
 }
 
 export function FileCitationCard(props: FileCitationCardProps) {
@@ -111,7 +163,12 @@ export function FileCitationCard(props: FileCitationCardProps) {
     size = "md",
     title,
     tooltipLabel,
+    variant = "card",
   } = props;
+
+  if (variant === "chip") {
+    return <FileCitationChip {...props} />;
+  }
 
   const renderedIcon = renderFileCitationIcon(icon, size);
 
@@ -138,25 +195,14 @@ export function FileCitationCard(props: FileCitationCardProps) {
       ) : (
         <Chip
           {...chipProps}
-          onClick={
-            "onClick" in props && props.onClick
-              ? () =>
-                  props.onClick({
-                    stopPropagation: () => {},
-                  } as React.MouseEvent<HTMLDivElement>)
-              : undefined
-          }
+          onClick={"onClick" in props ? props.onClick : undefined}
         />
       );
 
     return (
       <Tooltip
         trigger={chip}
-        label={getFileCitationCardTooltipLabel({
-          description,
-          size: "xs",
-          tooltipLabel,
-        })}
+        label={getChipTooltipLabel({ description, tooltipLabel })}
       />
     );
   }
@@ -189,6 +235,7 @@ export function FileCitationCard(props: FileCitationCardProps) {
   const citation = href ? (
     <Citation
       className={layout.citationClassName}
+      containerClassName="h-full"
       compact={layout.citationCompact}
       isLoading={isLoading}
       loadingLabel={loadingLabel}
@@ -200,6 +247,7 @@ export function FileCitationCard(props: FileCitationCardProps) {
   ) : (
     <Citation
       className={layout.citationClassName}
+      containerClassName="h-full"
       compact={layout.citationCompact}
       isLoading={isLoading}
       loadingLabel={loadingLabel}
@@ -210,14 +258,5 @@ export function FileCitationCard(props: FileCitationCardProps) {
     </Citation>
   );
 
-  return (
-    <Tooltip
-      trigger={citation}
-      label={getFileCitationCardTooltipLabel({
-        description,
-        size,
-        tooltipLabel,
-      })}
-    />
-  );
+  return <Tooltip trigger={citation} label={tooltipLabel} />;
 }

@@ -107,20 +107,20 @@ const dateFromDaysAgo = (days: number) => {
 describe("ConversationResource", () => {
   describe("sumSubAgentCostCreditsByMessageId", () => {
     // Creates a sub-agent: a user message in `conversation` whose
-    // agenticOriginMessageId points at `originSid`, plus its agent reply with
+    // agenticOriginMessageId points at `originId`, plus its agent reply with
     // the given costCredits. Returns the reply's sId (the origin for any deeper
     // sub-agents).
     async function createSubAgent({
       auth,
       conversation,
       agentConfigurationId,
-      originSid,
+      originId,
       costCredits,
     }: {
       auth: Authenticator;
       conversation: ConversationWithoutContentType;
       agentConfigurationId: string;
-      originSid: string;
+      originId: string;
       costCredits: number;
     }): Promise<string> {
       const workspace = auth.getNonNullableWorkspace();
@@ -131,7 +131,7 @@ describe("ConversationResource", () => {
           conversation,
           content: "sub-agent trigger",
           agenticMessageType: "run_agent",
-          agenticOriginMessageId: originSid,
+          agenticOriginMessageId: originId,
         });
 
       const replyRow = await ConversationFactory.createAgentMessageWithRank({
@@ -180,11 +180,11 @@ describe("ConversationResource", () => {
         agentConfigurationId: agent.sId,
         messagesCreatedAt: [],
       });
-      const childReplySid = await createSubAgent({
+      const childReplyId = await createSubAgent({
         auth,
         conversation: childConversation,
         agentConfigurationId: agent.sId,
-        originSid: originMessage.sId,
+        originId: originMessage.sId,
         costCredits: 100,
       });
 
@@ -196,7 +196,7 @@ describe("ConversationResource", () => {
         auth,
         conversation: grandChildConversation,
         agentConfigurationId: agent.sId,
-        originSid: childReplySid,
+        originId: childReplyId,
         costCredits: 50,
       });
 
@@ -209,7 +209,7 @@ describe("ConversationResource", () => {
         auth,
         conversation: unrelatedConversation,
         agentConfigurationId: agent.sId,
-        originSid: "msg_unrelated_origin",
+        originId: "msg_unrelated_origin",
         costCredits: 999,
       });
 
@@ -2994,10 +2994,10 @@ describe("listPrivateConversationsForUser", () => {
     ]);
     expect(page2.hasMore).toBe(false);
 
-    const returnedSIds = [...page1.conversations, ...page2.conversations].map(
+    const returnedIds = [...page1.conversations, ...page2.conversations].map(
       (c) => c.sId
     );
-    expect(returnedSIds).not.toContain(poisoned.sId);
+    expect(returnedIds).not.toContain(poisoned.sId);
   });
 
   it("should return conversations with populated participation data", async () => {

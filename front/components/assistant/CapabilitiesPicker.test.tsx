@@ -150,7 +150,6 @@ function PlusMenuHarness() {
             type="subdropdown"
             owner={owner}
             user={null}
-            selectedMCPServerViews={[]}
             onSelect={vi.fn()}
             onSkillSelect={vi.fn()}
             onSetupServer={setServerToSetup}

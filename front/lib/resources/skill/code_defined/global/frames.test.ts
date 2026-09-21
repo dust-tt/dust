@@ -51,7 +51,7 @@ function agentLoopDataInPod(spaceId: string | null): AgentLoopExecutionData {
 }
 
 describe("framesSkill.fetchInstructions", () => {
-  it("uses the dsbx lifecycle and keeps the remaining MCP tools under Frames v2", async () => {
+  it("uses the dsbx lifecycle and keeps MCP export under Frames v2", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "frames_v2");
 
@@ -76,6 +76,14 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("does not test the Frame");
     expect(instructions).toContain("dsbx frame validate");
     expect(instructions).toContain(
+      'bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME"'
+    );
+    expect(instructions).toContain("Fix those errors before");
+    expect(instructions).toContain(
+      "keeps generated configs on local sandbox disk"
+    );
+    expect(instructions).toContain("configs untouched");
+    expect(instructions).toContain(
       "Frame sharing and use rights are configured by the user in the Dust UI"
     );
     expect(instructions).toContain("This command is read-only");
@@ -89,7 +97,14 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("## Authoring a function");
     expect(instructions).toContain('userIdentity: "workspace_user_required"');
     expect(instructions).toContain("### Fast and durable functions");
-    expect(instructions).toContain("dsbx tools --json");
+    expect(instructions).toContain("tools.call");
+    expect(instructions).toContain('import { tools } from "@dust/pod"');
+    expect(instructions).toContain(
+      "Computer vs Frame function — do not mix the two call styles"
+    );
+    expect(instructions).not.toContain(
+      "Inside a durable function, shell out to:"
+    );
     expect(instructions).toContain("useFrameFunctionMutation");
     expect(instructions).toContain("## Persisting state in a Frame database");
     expect(instructions).toContain('db("comments")');
@@ -120,7 +135,7 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("shared Zod domain");
     expect(instructions).toContain("instead of `bun build`");
     expect(instructions).toContain(
-      "Other interactive-content tools remain available"
+      "`export_interactive_content_file`: use it to export a Frame as a PNG screenshot or PDF document"
     );
     expect(framesSkill.mcpServers).toEqual([
       { name: "interactive_content" },

@@ -108,6 +108,8 @@ COPY --from=base-deps /app/front/dist/migrate.js ./dist/migrate.js
 # Copy front's package.json and local node_modules (non-hoisted deps)
 COPY --from=base-deps /app/front/package.json ./package.json
 COPY --from=base-deps /app/front/node_modules ./node_modules
+# Code-defined skill attachments are read when the skill definitions are loaded.
+COPY --from=base-deps /app/front/lib/resources/skill/code_defined/global/frames/assets ./lib/resources/skill/code_defined/global/frames/assets
 # Copy scripts directory
 COPY --from=base-deps /app/front/scripts ./scripts
 # Copy migration SQL files so the helm pre-deploy hook can run migration:check commands.

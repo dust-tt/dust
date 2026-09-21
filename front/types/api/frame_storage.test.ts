@@ -2,8 +2,9 @@ import {
   getFrameBasePath,
   getFrameDatabaseReplicaBasePath,
   getFrameDatabaseReplicasBasePath,
+  getFramePersistentFilesBasePath,
   getFramePublicationDescriptorPath,
-  getFramePublicationFunctionBundlePath,
+  getFramePublicationFunctionsArchivePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import { describe, expect, it } from "vitest";
@@ -23,13 +24,8 @@ describe("Frames v2 GCS paths", () => {
     expect(getFramePublicationUiBundlePath(IDS)).toBe(
       "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/ui/bundle.js"
     );
-    expect(
-      getFramePublicationFunctionBundlePath({
-        ...IDS,
-        functionName: "add-task",
-      })
-    ).toBe(
-      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task.ts"
+    expect(getFramePublicationFunctionsArchivePath(IDS)).toBe(
+      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions.tar"
     );
   });
 
@@ -46,16 +42,22 @@ describe("Frames v2 GCS paths", () => {
     ).toBe("w/w_123/frames/fil_456/state/databases/task_store.db/");
   });
 
+  it("keeps the persistent files folder beside the SQLite replicas", () => {
+    expect(getFramePersistentFilesBasePath(IDS)).toBe(
+      "w/w_123/frames/fil_456/state/files/"
+    );
+  });
+
   it("rejects path traversal and unsafe identity segments", () => {
     expect(() =>
       getFrameBasePath({ workspaceId: "../other", frameId: IDS.frameId })
     ).toThrow("Invalid workspaceId");
     expect(() =>
-      getFramePublicationFunctionBundlePath({
+      getFramePublicationFunctionsArchivePath({
         ...IDS,
-        functionName: "../other",
+        publicationId: "../other",
       })
-    ).toThrow("Invalid functionName");
+    ).toThrow("Invalid publicationId");
     expect(() =>
       getFrameDatabaseReplicaBasePath({
         workspaceId: IDS.workspaceId,
@@ -63,5 +65,11 @@ describe("Frames v2 GCS paths", () => {
         databaseName: "../other",
       })
     ).toThrow("Invalid databaseName");
+    expect(() =>
+      getFramePersistentFilesBasePath({
+        workspaceId: IDS.workspaceId,
+        frameId: "../other",
+      })
+    ).toThrow("Invalid frameId");
   });
 });

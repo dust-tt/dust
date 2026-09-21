@@ -56,12 +56,12 @@ function aggregateDatasourceBuckets({
   target,
   buckets,
   conversationDataSourceIds,
-  dataSourceBySId,
+  dataSourceById,
 }: {
   target: Map<string, DatasourceAggregation>;
   buckets: DatasourceBucket[];
   conversationDataSourceIds: Set<string>;
-  dataSourceBySId: Map<string, DataSourceResource>;
+  dataSourceById: Map<string, DataSourceResource>;
 }): void {
   for (const bucket of buckets) {
     const isConversationDs = conversationDataSourceIds.has(bucket.key);
@@ -73,7 +73,7 @@ function aggregateDatasourceBuckets({
     if (existing) {
       existing.count += bucket.doc_count;
     } else {
-      const dataSource = dataSourceBySId.get(bucket.key);
+      const dataSource = dataSourceById.get(bucket.key);
       target.set(key, {
         dataSourceId: key,
         displayName: resolveDatasourceDisplayName(
@@ -233,7 +233,7 @@ export async function fetchDatasourceRetrievalMetrics(
   const serverConfigByModelId = new Map(
     serverConfigs.map((cfg) => [cfg.id, cfg])
   );
-  const dataSourceBySId = new Map(dataSources.map((ds) => [ds.sId, ds]));
+  const dataSourceById = new Map(dataSources.map((ds) => [ds.sId, ds]));
 
   const conversationDataSourceIds = new Set(
     dataSources.filter((ds) => ds.conversationId !== null).map((ds) => ds.sId)
@@ -275,7 +275,7 @@ export async function fetchDatasourceRetrievalMetrics(
       target: group.datasources,
       buckets: datasourceBuckets,
       conversationDataSourceIds,
-      dataSourceBySId,
+      dataSourceById,
     });
   }
 

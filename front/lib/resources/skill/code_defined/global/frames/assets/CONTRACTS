@@ -1,0 +1,38 @@
+@cc [owner:flvndvd,label:product] frame-lint-diagnostics
+Lint MUST check the Frame folder with the Viz declarations and report source file, line and column
+diagnostics. The standard layout reserves functions/ and databases/ for backend code and excludes
+them from UI linting. Type errors, lint errors and missing tooling MUST fail the command.
+
+@cc [owner:flvndvd,label:product] frame-lint-tailwind-classes
+Quoted className attributes, literal branches of conditional or logical className expressions,
+and literal arguments or object keys in cn, clsx or classnames calls MUST fail linting when they
+contain forbidden Tailwind utilities such as h-[600px]. Interpolated values inside utility brackets
+in className template strings MUST also fail. Comments, display text and style props MUST NOT
+trigger this rule. Diagnostics MUST report file, line and column and identify the offending class.
+
+@cc [owner:flvndvd,label:product] frame-lint-project-files
+The script MUST NOT modify or execute Frame source or replace existing project configs. It MUST
+lint the current source with its standard configs, even when the project has its own configs.
+
+@cc [owner:flvndvd,label:product] frame-lint-package-file-refs
+String literals and templates without interpolation in UI and backend source MUST fail linting
+when they reference an existing file inside the Frame package via its absolute scoped path.
+Diagnostics MUST include file, line, column and the portable ./ path to use. Relative paths,
+file IDs and references outside the package MUST NOT trigger this rule. Package membership MUST
+be checked from the local source listing without stat calls through GCS Fuse for each reference.
+
+@cc [owner:flvndvd,label:performance] frame-lint-local-files
+The checker files MUST be cached on local sandbox disk after first use. Generated lint configs
+MUST stay on local disk and MUST be removed when the lint command exits.
+
+@cc [owner:flvndvd,label:product] frame-lint-function-refs
+When manifest.json exists, UI calls to useFrameFunction, useFrameFunctionMutation and their legacy
+usePodFunction counterparts imported from @dust/react-hooks MUST fail linting if a literal string
+or template without interpolation names a function absent from manifest.functions. Aliased and
+namespace imports MUST be checked. Diagnostics MUST include file, line, column and declared names.
+Computed names, shadowed bindings and imports from other modules MUST NOT trigger this rule.
+Frames without a manifest MUST skip this check.
+
+@cc [owner:flvndvd,label:security] frame-types-verified-cache
+Downloaded archives MUST match the manifest checksum and size before extraction. A cache entry
+MUST become visible only after extraction succeeds. A changed manifest id MUST select new types.

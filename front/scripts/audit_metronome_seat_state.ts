@@ -322,18 +322,18 @@ async function auditWorkspace(
   const desiredBySeatType = new Map<MembershipSeatType, Set<string>>();
   const provisionedUnusedBySeatType = new Map<MembershipSeatType, string[]>();
   for (const m of memberships) {
-    const userSId = m.user?.sId;
-    if (!userSId) {
+    const userId = m.user?.sId;
+    if (!userId) {
       continue;
     }
     if (m.firstUsedAt === null) {
       const bucket = provisionedUnusedBySeatType.get(m.seatType) ?? [];
-      bucket.push(userSId);
+      bucket.push(userId);
       provisionedUnusedBySeatType.set(m.seatType, bucket);
       continue;
     }
     const set = desiredBySeatType.get(m.seatType) ?? new Set<string>();
-    set.add(userSId);
+    set.add(userId);
     desiredBySeatType.set(m.seatType, set);
   }
 

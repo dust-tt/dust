@@ -1,8 +1,10 @@
 import type { RichMention } from "@app/types/assistant/mentions";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { describe, expect, it } from "vitest";
 
 import {
   AGENT_MENTION_REGEX,
+  extractFromEditorJSON,
   extractFromString,
   replaceMentionsWithAt,
   serializeMention,
@@ -331,6 +333,114 @@ describe("extractFromString", () => {
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({ configurationId: "a1" });
       expect(result[1]).toEqual({ type: "user", userId: "u1" });
+    });
+  });
+});
+
+function makeContentNode(internalId: string): DataSourceViewContentNode {
+  return {
+    childrenCount: 0,
+    expandable: false,
+    internalId,
+    lastUpdatedAt: null,
+    mimeType: "text/plain",
+    parentInternalId: null,
+    parentInternalIds: null,
+    parentTitle: null,
+    permission: "read",
+    providerVisibility: null,
+    sourceUrl: null,
+    title: "My doc",
+    type: "document",
+    dataSourceView: {
+      category: "managed",
+      createdAt: 0,
+      dataSource: {
+        id: 1,
+        sId: "ds1",
+        createdAt: 0,
+        name: "ds",
+        description: null,
+        assistantDefaultSelected: false,
+        dustAPIProjectId: "p1",
+        dustAPIDataSourceId: "d1",
+        connectorId: null,
+        connectorProvider: null,
+      },
+      id: 1,
+      kind: "default",
+      parentsIn: null,
+      sId: "dsv1",
+      spaceId: "space1",
+      updatedAt: 0,
+    },
+  };
+}
+
+function makeKnowledgeNodeJSON(node?: DataSourceViewContentNode) {
+  return {
+    type: "knowledgeNode",
+    attrs: {
+      selectedItems: [
+        {
+          dataSourceViewId: "dsv1",
+          hasChildren: false,
+          label: "My doc",
+          nodeId: "n1",
+          spaceId: "space1",
+          ...(node ? { node } : {}),
+        },
+      ],
+    },
+  };
+}
+
+describe("extractFromEditorJSON", () => {
+  describe("knowledge nodes", () => {
+    it("extracts the full content node and serializes the knowledge tag", () => {
+      const node = makeContentNode("n1");
+      const result = extractFromEditorJSON({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              { type: "text", text: "see " },
+              makeKnowledgeNodeJSON(node),
+            ],
+          },
+        ],
+      });
+
+      expect(result.knowledge).toEqual([node]);
+      expect(result.text).toContain(
+        '<knowledge id="n1" title="My doc" space="space1" dsv="dsv1" hasChildren="false" />'
+      );
+    });
+
+    it("omits non-hydrated items from knowledge but keeps their tag in text", () => {
+      const result = extractFromEditorJSON({
+        type: "doc",
+        content: [{ type: "paragraph", content: [makeKnowledgeNodeJSON()] }],
+      });
+
+      expect(result.knowledge).toEqual([]);
+      expect(result.text).toContain('<knowledge id="n1"');
+    });
+
+    it("ignores knowledge nodes without selected items", () => {
+      const result = extractFromEditorJSON({
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "knowledgeNode", attrs: { selectedItems: [] } }],
+          },
+        ],
+      });
+
+      expect(result.knowledge).toEqual([]);
+      expect(result.text).not.toContain("<knowledge");
     });
   });
 });

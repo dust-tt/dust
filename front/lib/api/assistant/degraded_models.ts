@@ -7,7 +7,35 @@ const REFRESH_INTERVAL_MS = 60 * 1000;
 
 let cachedDegradedModelIds: ReadonlySet<string> = new Set();
 let lastRefreshStartedAtMs = 0;
-let refreshing = false;
+let refreshPromise: Promise<void> | null = null;
+
+function startRefresh(): Promise<void> {
+  lastRefreshStartedAtMs = Date.now();
+  refreshPromise = ModelDegradationResource.listDegradedEndpoints()
+    .then((degradedEndpoints) => {
+      cachedDegradedModelIds = new Set(
+        degradedEndpoints.map((endpoint) => endpoint.modelId)
+      );
+    })
+    .catch((err) => {
+      // Keep the last known set: a database blip must not silently bring a
+      // degraded model back into the streams.
+      logger.error(
+        { err: normalizeError(err) },
+        "Failed to refresh the degraded models"
+      );
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+}
+
+export async function refreshDegradedModelIds(): Promise<ReadonlySet<string>> {
+  await (refreshPromise ?? startRefresh());
+  return cachedDegradedModelIds;
+}
 
 /**
  * The models an operator marked as degraded, i.e. having an ongoing incident on
@@ -25,29 +53,27 @@ let refreshing = false;
  * router filters degraded endpoints itself, a model served from another healthy
  * host should stay in the streams and only the degraded endpoint be skipped.
  */
+// The pod that just wrote a degradation row must skip (or unskip) that model
+// on the next AUTO resolve. Do not wait for the 60s background refresh, and
+// do not read Postgres on the resolve path.
+export function applyDegradedEndpointCacheUpdate(
+  updates: ReadonlyArray<{ modelId: string; degraded: boolean }>
+): void {
+  const next = new Set(cachedDegradedModelIds);
+  for (const update of updates) {
+    if (update.degraded) {
+      next.add(update.modelId);
+    } else {
+      next.delete(update.modelId);
+    }
+  }
+  cachedDegradedModelIds = next;
+}
+
 export function getDegradedModelIds(): ReadonlySet<string> {
   const now = Date.now();
-  if (!refreshing && now - lastRefreshStartedAtMs > REFRESH_INTERVAL_MS) {
-    refreshing = true;
-    lastRefreshStartedAtMs = now;
-
-    void ModelDegradationResource.listDegradedEndpoints()
-      .then((degradedEndpoints) => {
-        cachedDegradedModelIds = new Set(
-          degradedEndpoints.map((endpoint) => endpoint.modelId)
-        );
-      })
-      .catch((err) => {
-        // Keep the last known set: a database blip must not silently bring a
-        // degraded model back into the streams.
-        logger.error(
-          { err: normalizeError(err) },
-          "Failed to refresh the degraded models"
-        );
-      })
-      .finally(() => {
-        refreshing = false;
-      });
+  if (!refreshPromise && now - lastRefreshStartedAtMs > REFRESH_INTERVAL_MS) {
+    void startRefresh();
   }
 
   return cachedDegradedModelIds;

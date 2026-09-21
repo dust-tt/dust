@@ -41,7 +41,11 @@ function buildSandboxInstructionProse({
       "Pass `--json` (before the server and tool names, e.g. `dsbx tools --json [SERVER_NAME] [TOOL_NAME] [ARGS]...`) to get the tool result as structured JSON (`{ content, isError }`) instead of plain text, which is easier to parse programmatically. Placed after the positional arguments it is treated as a tool argument instead."
     );
 
-    if (!hasFramesV2) {
+    if (hasFramesV2) {
+      instructions.push(
+        "The `dsbx tools` CLI is for the Computer (this bash session) only. Inside Frame function source, call Dust tools with `tools.call` from `@dust/pod` — see the Create Frames skill. Do not shell out to `dsbx tools` from a Frame function's `fetch()`."
+      );
+    } else {
       instructions.push(
         "For any Frame task, enable the `Create Frames` skill and use its interactive-content tools; publish or republish with `publish_interactive_content_file`. Never use `dsbx frame`."
       );

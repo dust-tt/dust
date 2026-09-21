@@ -10,6 +10,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   clientFetch: vi.fn(),
+  logInfo: vi.fn(),
+}));
+
+vi.mock("@app/logger/datadogLogger", () => ({
+  default: { info: mocks.logInfo },
 }));
 
 vi.mock("@app/hooks/conversations", () => ({
@@ -162,6 +167,68 @@ describe("getSandboxFunctionInvocationAccessError", () => {
 });
 
 describe("VisualizationActionIframe", () => {
+  it("records missing styles only for the mounted Frame and accepts bounded messages", () => {
+    const { container } = render(
+      createElement(VisualizationActionIframe, {
+        agentConfigurationId: null,
+        canInvokeFunctions: true,
+        conversationId: null,
+        frameId: "fil_frame",
+        scopedUserIdentity,
+        viewer: null,
+        visualization: {
+          code: "export default function Frame() {}",
+          complete: true,
+          identifier: "viz-fil_frame",
+        },
+        vizUrl: "https://viz.dust.tt",
+        workspaceId: "w_current",
+      })
+    );
+    const iframe = container.querySelector("iframe");
+    if (!iframe?.contentWindow) {
+      throw new Error("Expected the visualization iframe to be mounted.");
+    }
+    const data = {
+      type: "TAILWIND_MISSING_CLASSES",
+      identifier: "viz-fil_frame",
+      buildId: "test-build",
+      classNames: ["bg-opacity-80"],
+    };
+    window.dispatchEvent(new MessageEvent("message", { source: window, data }));
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: { ...data, identifier: "another-frame" },
+      })
+    );
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: {
+          ...data,
+          classNames: Array.from({ length: 51 }, () => "bg-opacity-80"),
+        },
+      })
+    );
+    expect(mocks.logInfo).not.toHaveBeenCalled();
+
+    window.dispatchEvent(
+      new MessageEvent("message", { source: iframe.contentWindow, data })
+    );
+    expect(mocks.logInfo).toHaveBeenCalledExactlyOnceWith(
+      "Frame uses unavailable Tailwind classes",
+      {
+        fileId: "viz-fil_frame",
+        workspaceId: "w_current",
+        conversationId: null,
+        buildId: "test-build",
+        classNames: ["bg-opacity-80"],
+      }
+    );
+    expect(container.querySelector("iframe")).toBe(iframe);
+  });
+
   it("resolves Frame author status only when the iframe requests identity", async () => {
     mocks.clientFetch.mockResolvedValue(
       new Response(JSON.stringify({ isFrameAuthor: true }), {

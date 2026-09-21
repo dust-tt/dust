@@ -228,11 +228,16 @@ async function _getSlackUserInfo(
   }
 }
 
+/**
+ * @cc [owner:rfrenoy,label:product] nameless-bot-is-no-result
+ * When `bots.info` resolves `botId` but the returned bot has no `name`, the function MUST return
+ * `null` rather than throw, so callers can fall back to another source of the bot's name.
+ */
 export async function getSlackBotInfo(
   connectorId: ModelId,
   slackClient: WebClient,
   botId: string
-): Promise<SlackUserInfo> {
+): Promise<SlackUserInfo | null> {
   reportSlackUsage({
     connectorId,
     method: "bots.info",
@@ -241,23 +246,37 @@ export async function getSlackBotInfo(
   if (slackBot.error) {
     throw slackBot.error;
   }
-  if (!slackBot.bot?.name) {
-    throw new Error(`Slack bot with id ${botId} has no name`);
+  const username = slackBot.bot?.name?.trim();
+  if (!username) {
+    return null;
   }
 
+  return makeSlackBotUserInfo({
+    username,
+    imageUrl: slackBot.bot?.icons?.image_72 || null,
+  });
+}
+
+export function makeSlackBotUserInfo({
+  username,
+  imageUrl,
+}: {
+  username: string;
+  imageUrl: string | null;
+}): SlackUserInfo {
   return {
-    display_name: slackBot.bot?.name,
-    real_name: slackBot.bot.name,
+    display_name: username,
+    real_name: username,
     email: null,
     is_email_confirmed: false,
-    image_512: slackBot.bot?.icons?.image_72 || null,
+    image_512: imageUrl,
     tz: null,
     is_restricted: false,
     is_stranger: false,
     is_ultra_restricted: false,
     is_bot: true,
     teamId: null,
-    name: slackBot.bot?.name || null,
+    name: username,
   };
 }
 

@@ -91,6 +91,9 @@ interface CreateSlashSuggestionExtensionConfig<
     storage: Storage;
     triggerStart: number | null;
   }) => void;
+  // Runs whenever the suggestion session ends, including exits that bypass `onDropdownClose`
+  // (cursor moved away, trigger deleted, content replaced), so per-session state can reset.
+  onDropdownExit?: (ctx: { storage: Storage }) => void;
   pluginKey: PluginKey;
   preventEscapeDefault?: boolean;
   shouldMountDropdown?: (
@@ -133,6 +136,7 @@ export function createSlashSuggestionExtension<
   shouldAppendDropdown,
   notifyActiveChange,
   onDropdownClose,
+  onDropdownExit,
   preventEscapeDefault = false,
 }: CreateSlashSuggestionExtensionConfig<Options, Storage, Item>) {
   return Extension.create<Options, Storage>({
@@ -310,6 +314,7 @@ export function createSlashSuggestionExtension<
               },
 
               onExit() {
+                onDropdownExit?.({ storage: extensionStorage });
                 notifyActiveChange?.(false, extensionOptions);
                 activeEditorView = null;
                 activeTriggerStart = null;

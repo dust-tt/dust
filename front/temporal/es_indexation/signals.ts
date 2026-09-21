@@ -8,6 +8,10 @@ export const indexSkillSearchSignal = defineSignal<[void]>(
   "index_skill_search_signal"
 );
 
+export const indexAgentSearchSignal = defineSignal<[void]>(
+  "index_agent_search_signal"
+);
+
 export const indexConversationEsSignal = defineSignal<[void]>(
   "index_conversation_es_signal"
 );

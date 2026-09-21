@@ -1,4 +1,5 @@
 import {
+  classifyMetronomePackageBillingAnchorByName,
   classifyMetronomePackageByName,
   classifyMetronomePackageCurrencyByName,
 } from "@app/lib/metronome/types";
@@ -76,5 +77,30 @@ describe("classifyMetronomePackageCurrencyByName", () => {
       "usd"
     );
     expect(classifyMetronomePackageCurrencyByName("Heuristic Pro")).toBe("usd");
+  });
+});
+
+describe("classifyMetronomePackageBillingAnchorByName", () => {
+  it("detects first-of-month packages by name", () => {
+    expect(
+      classifyMetronomePackageBillingAnchorByName(
+        "Enterprise Pooled USD (1st of month)"
+      )
+    ).toBe("first_billing_period");
+    expect(
+      classifyMetronomePackageBillingAnchorByName("Enterprise first of month")
+    ).toBe("first_billing_period");
+  });
+
+  it("defaults to contract-start anchoring otherwise", () => {
+    expect(
+      classifyMetronomePackageBillingAnchorByName("Enterprise Pooled USD")
+    ).toBe("contract_start_date");
+    expect(
+      classifyMetronomePackageBillingAnchorByName("Enterprise Seat-based EUR")
+    ).toBe("contract_start_date");
+    expect(classifyMetronomePackageBillingAnchorByName("")).toBe(
+      "contract_start_date"
+    );
   });
 });

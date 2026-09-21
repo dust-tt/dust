@@ -168,7 +168,9 @@ export function normalizeTimezone(
   return null;
 }
 
-export function getUserTimezone(toolContext?: ToolContext): string | null {
+export async function getUserTimezone(
+  toolContext?: ToolContext
+): Promise<string | null> {
   if (isAgentLoopRunContext(toolContext?.runContext)) {
     const content = toolContext?.runContext?.conversation?.content;
     if (!content) {
@@ -198,9 +200,8 @@ export function getUserTimezone(toolContext?: ToolContext): string | null {
   }
 
   if (isSandboxFunctionRunContext(toolContext?.runContext)) {
-    return normalizeTimezone(
-      toolContext.runContext.invocation.context?.timezone
-    );
+    const context = await toolContext.runContext.invocation.getContext();
+    return normalizeTimezone(context?.timezone);
   }
 
   return null;

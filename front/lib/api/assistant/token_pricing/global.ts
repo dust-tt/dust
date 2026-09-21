@@ -123,6 +123,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 4.5,
     cache_read_input_tokens: 0.075,
   },
+  // Synthetic model delegates to GPT-5.4 Mini while healthy.
+  "simulated-failure-model": {
+    input: 0.75,
+    output: 4.5,
+    cache_read_input_tokens: 0.075,
+  },
   // https://openai.com/api/pricing/
   "gpt-5.4-nano": {
     input: 0.2,

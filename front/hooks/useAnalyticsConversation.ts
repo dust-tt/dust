@@ -80,9 +80,6 @@ export function useAnalyticsConversation({
       // `test` is the hidden state. Becomes visible (`unlisted`) once the user writes, see
       // `promoteAnalyticsPanelConversation`.
       visibility: "test",
-      // Without a title, `ensureConversationTitle` would name the conversation after the
-      // opening message.
-      title: `Ask ${GLOBAL_AGENTS_SID.ANALYST}`,
     });
 
     if (result.isErr()) {

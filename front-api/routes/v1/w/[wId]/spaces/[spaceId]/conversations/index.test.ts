@@ -13,7 +13,7 @@ import { describe, expect, it } from "vitest";
 
 function getConversations(
   workspace: { sId: string },
-  spaceSId: string,
+  spaceId: string,
   key: { secret: string },
   query?: Record<string, string>
 ) {
@@ -24,7 +24,7 @@ function getConversations(
         .join("&")
     : "";
   return honoApp.request(
-    `/api/v1/w/${workspace.sId}/spaces/${spaceSId}/conversations${qs}`,
+    `/api/v1/w/${workspace.sId}/spaces/${spaceId}/conversations${qs}`,
     {
       headers: { authorization: `Bearer ${key.secret}` },
     }

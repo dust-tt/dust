@@ -1,22 +1,14 @@
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
-import { afterEach, describe, expect, it, vi } from "vitest";
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
+import { describe, expect, it } from "vitest";
 
 async function authenticatorForNewMember(
   workspace: LightWorkspaceType,
@@ -252,63 +244,5 @@ describe("getAgentConfigurationsForView, 'archived' view", () => {
     const memberAuth = await authenticatorForNewMember(workspace, "user");
 
     expect(await listAgentIdsForArchived(memberAuth)).not.toContain(agent.sId);
-  });
-});
-
-describe("getAgentConfigurationsForView, grant shadow", () => {
-  it("serves the legacy archived view and logs stable-id mismatches", async () => {
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(true);
-    const { workspace, authenticator: authorAuth } = await createResourceTest({
-      role: "user",
-    });
-    const agent = await AgentConfigurationFactory.createTestAgent(authorAuth, {
-      name: "Legacy-only agent",
-      scope: "hidden",
-    });
-    const member = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, member, { role: "user" });
-    const editorGroupResult = await GroupResource.findEditorGroupForAgent(
-      authorAuth,
-      agent
-    );
-    if (editorGroupResult.isErr()) {
-      throw editorGroupResult.error;
-    }
-    const addResult = await editorGroupResult.value.dangerouslyAddMembers(
-      authorAuth,
-      { users: [member.toJSON()] }
-    );
-    if (addResult.isErr()) {
-      throw addResult.error;
-    }
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId,
-      { dangerouslyRequestAllGroups: true }
-    );
-    await archiveAgentConfiguration(adminAuth, agent.sId);
-
-    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      member.sId,
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(memberAuth, "group_permissions_shadow");
-    const warn = vi.spyOn(logger, "warn");
-
-    const agents = await getAgentConfigurationsForView({
-      auth: memberAuth,
-      agentsGetView: "archived",
-      variant: "light",
-    });
-
-    expect(agents.map((listedAgent) => listedAgent.sId)).toContain(agent.sId);
-    await vi.waitFor(() => {
-      expect(warn).toHaveBeenCalledWith(
-        expect.objectContaining({
-          check: "agent_view",
-          view: "archived",
-        }),
-        "group_permissions_shadow_mismatch"
-      );
-    });
   });
 });

@@ -1,7 +1,4 @@
-import {
-  createAgentConfiguration,
-  getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { ONE_DAY_MS } from "@app/lib/api/assistant/inactivity/policy";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import type {
@@ -17,6 +14,7 @@ import {
   seedMentions,
   seedTriggers,
 } from "@app/scripts/seed/factories";
+import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 
 /** Old enough to sit well before any cutoff the allowed thresholds can produce. */
 const LONG_AGO = new Date(Date.now() - 90 * ONE_DAY_MS);
@@ -103,7 +101,7 @@ async function editSeededAgent(
     return;
   }
 
-  const result = await createAgentConfiguration(auth, {
+  const result = await saveAgentConfiguration(auth, {
     name: asset.name,
     description: asset.description,
     instructions: "Edited today, still unused.",

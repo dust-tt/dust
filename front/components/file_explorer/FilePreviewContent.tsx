@@ -22,6 +22,7 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
+export const MAX_PREVIEW_BYTES = 10 * 1024 * 1024;
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
   py: "python",
@@ -196,6 +197,8 @@ export interface FilePreviewContentData {
   recordCounts: { displayed: number; total: number } | null;
   hasError: boolean;
   isContentLoading: boolean;
+  isTooLarge: boolean;
+  sizeBytes: number;
 }
 
 /**
@@ -204,6 +207,11 @@ export interface FilePreviewContentData {
  * It fetches text content when the file category requires it and derives the
  * processed/markdown/record-count views.
  */
+/**
+ * @cc [owner:adrsimon,label:react] no-fetch-above-max-preview-bytes
+ * When the entry is larger than `MAX_PREVIEW_BYTES`, the hook MUST NOT fetch the file content and
+ * MUST report `isTooLarge`, so callers offer a download instead of rendering the file.
+ */
 export function useFilePreviewContent({
   entry,
   fileUrl,
@@ -211,6 +219,9 @@ export function useFilePreviewContent({
 }: UseFilePreviewContentParams): FilePreviewContentData {
   const mimeType = stripMimeParameters(entry?.contentType ?? "");
   const { category } = getFilePreviewConfig(mimeType);
+
+  const sizeBytes = entry?.sizeBytes ?? 0;
+  const isTooLarge = sizeBytes > MAX_PREVIEW_BYTES;
 
   const needsTextContent =
     category === "code" ||
@@ -221,7 +232,7 @@ export function useFilePreviewContent({
   const { fileContent, isNotFound, isFileContentLoading, fileContentError } =
     useFileContentByUrl({
       url: fileUrl,
-      disabled: !enabled || !entry || !needsTextContent,
+      disabled: !enabled || !entry || !needsTextContent || isTooLarge,
     });
 
   const hasError = needsTextContent && (!!fileContentError || isNotFound);
@@ -248,6 +259,8 @@ export function useFilePreviewContent({
     recordCounts,
     hasError,
     isContentLoading,
+    isTooLarge,
+    sizeBytes,
   };
 }
 

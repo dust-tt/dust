@@ -304,6 +304,12 @@ export async function finalizeConnection(
   provider: OAuthProvider,
   query: ParsedUrlQuery
 ): Promise<Result<OAuthConnectionType, OAuthError>> {
+  const childLogger = logger.child({
+    workspaceId: auth?.getNonNullableWorkspace().sId,
+    userId: auth?.user()?.sId,
+    provider,
+  });
+
   const providerStrategy = getProviderStrategy(provider);
   const code = providerStrategy.codeFromQuery(query);
 
@@ -314,8 +320,12 @@ export async function finalizeConnection(
       ? errorDescription
       : undefined;
 
-    logger.error(
-      { provider, step: "code_extraction", oauthError, oauthErrorDescription },
+    childLogger.error(
+      {
+        step: "code_extraction",
+        oauthError,
+        oauthErrorDescription,
+      },
       "OAuth: Failed to finalize connection"
     );
     return new Err({
@@ -327,8 +337,8 @@ export async function finalizeConnection(
   const connectionId = providerStrategy.connectionIdFromQuery(query);
 
   if (!connectionId) {
-    logger.error(
-      { provider, step: "connection_extraction" },
+    childLogger.error(
+      { step: "connection_extraction" },
       "OAuth: Failed to finalize connection"
     );
     return new Err({
@@ -341,8 +351,8 @@ export async function finalizeConnection(
     providerStrategy.isCallbackQueryValid &&
     !providerStrategy.isCallbackQueryValid(query)
   ) {
-    logger.error(
-      { provider, connectionId, step: "callback_validation" },
+    childLogger.error(
+      { connectionId, step: "callback_validation" },
       "OAuth: Failed to finalize connection"
     );
     return new Err({
@@ -359,7 +369,7 @@ export async function finalizeConnection(
   });
 
   if (connectionRes.isErr()) {
-    logger.error(
+    childLogger.error(
       { connectionId, step: "connection_metadata_retrieval" },
       "OAuth: Failed to retrieve connection metadata"
     );
@@ -378,9 +388,8 @@ export async function finalizeConnection(
   });
 
   if (cRes.isErr()) {
-    logger.error(
+    childLogger.error(
       {
-        provider,
         connectionId,
         step: "connection_finalization",
       },
@@ -420,8 +429,8 @@ export async function finalizeConnection(
       },
     });
   } else {
-    logger.warn(
-      { provider, connectionId },
+    childLogger.warn(
+      { connectionId },
       "oauth.authorized: skipping audit log — no Authenticator available"
     );
   }

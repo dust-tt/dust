@@ -67,9 +67,9 @@ export function useCancelWakeUp({
   });
 
   const cancelWakeUp = useCallback(
-    async (wakeUpSId: string) => {
+    async (wakeUpId: string) => {
       const res = await clientFetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/wakeups/${wakeUpSId}`,
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/wakeups/${wakeUpId}`,
         { method: "DELETE" }
       );
 

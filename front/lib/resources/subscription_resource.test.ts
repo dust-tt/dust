@@ -251,41 +251,5 @@ describe("SubscriptionResource", () => {
         expect(inMemoryCache.has(cacheKey)).toBe(false);
       });
     });
-
-    describe("markAsActive", () => {
-      it("invalidates cache when subscription is marked active", async () => {
-        const workspaceModelId = workspace.id;
-        const cacheKey = getCacheKeyForWorkspace(workspaceModelId);
-
-        const subscription =
-          await SubscriptionResource.fetchActiveByWorkspaceModelId(
-            workspaceModelId
-          );
-        expect(inMemoryCache.has(cacheKey)).toBe(true);
-        deletedKeys.length = 0;
-
-        await subscription?.markAsActive({ trialing: false });
-
-        expect(deletedKeys).toContain(cacheKey);
-        expect(inMemoryCache.has(cacheKey)).toBe(false);
-      });
-
-      it("invalidates cache when subscription is marked as trialing", async () => {
-        const workspaceModelId = workspace.id;
-        const cacheKey = getCacheKeyForWorkspace(workspaceModelId);
-
-        const subscription =
-          await SubscriptionResource.fetchActiveByWorkspaceModelId(
-            workspaceModelId
-          );
-        expect(inMemoryCache.has(cacheKey)).toBe(true);
-        deletedKeys.length = 0;
-
-        await subscription?.markAsActive({ trialing: true });
-
-        expect(deletedKeys).toContain(cacheKey);
-        expect(inMemoryCache.has(cacheKey)).toBe(false);
-      });
-    });
   });
 });

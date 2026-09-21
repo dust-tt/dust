@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+// Best-effort event, intentionally outside the request/response RPC protocol so
+// older hosts can ignore it without leaving a pending request in Viz.
+export const TailwindMissingClassesMessageSchema = z.object({
+  type: z.literal("TAILWIND_MISSING_CLASSES"),
+  identifier: z.string(),
+  buildId: z.string().max(128),
+  classNames: z.array(z.string().min(1).max(200)).min(1).max(50),
+});
+
 // This defines the commands that the iframe can send to the host window.
 
 // Common base schema.

@@ -25,7 +25,6 @@ interface InputBarSlashSuggestionStorage {
 }
 
 interface InputBarSlashSuggestionExtensionOptions {
-  attachedNodesRef: RefObject<DataSourceViewContentNode[]>;
   conversationIdRef?: RefObject<string | null>;
   enabledRef: RefObject<boolean>;
   includeAttachKnowledgeRef: RefObject<boolean>;
@@ -38,7 +37,6 @@ interface InputBarSlashSuggestionExtensionOptions {
   >;
   onSelectRef: RefObject<((item: SlashCommand) => void) | undefined>;
   owner?: WorkspaceType;
-  selectedMCPServerViewIdsRef: RefObject<Set<string>>;
   slashCommandsRef: RefObject<InputBarSlashCommand[]>;
   spaceIdRef: RefObject<string | null | undefined>;
 }
@@ -59,7 +57,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     ...createSlashMenuNavigationStorage(),
   }),
   defaultOptions: {
-    attachedNodesRef: { current: [] },
     owner: undefined,
     conversationIdRef: { current: null },
     enabledRef: { current: false },
@@ -69,7 +66,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     onNodeSelectRef: { current: undefined },
     onSelectRef: { current: undefined },
     onDetailsRef: { current: undefined },
-    selectedMCPServerViewIdsRef: { current: new Set<string>() },
     slashCommandsRef: { current: [] },
     spaceIdRef: { current: null },
   },
@@ -103,7 +99,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
   shouldMountDropdown: ({ props, options }) =>
     Boolean(options.owner) && Boolean(props.clientRect),
   mapDropdownProps: ({ options }) => ({
-    attachedNodesRef: options.attachedNodesRef,
     conversationIdRef: options.conversationIdRef,
     includeAttachKnowledgeRef: options.includeAttachKnowledgeRef,
     includePickModelRef: options.includePickModelRef,
@@ -111,7 +106,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     onModelSelectRef: options.onModelSelectRef,
     onNodeSelectRef: options.onNodeSelectRef,
     owner: options.owner,
-    selectedMCPServerViewIdsRef: options.selectedMCPServerViewIdsRef,
     slashCommandsRef: options.slashCommandsRef,
     spaceIdRef: options.spaceIdRef,
   }),
@@ -123,6 +117,10 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     if (triggerStart !== null) {
       storage.dismissedTriggerStart = triggerStart;
     }
+  },
+  // A new "/" always starts at the root, however the previous session ended.
+  onDropdownExit: ({ storage }) => {
+    clearSlashSubMenuStack(storage);
   },
   preventEscapeDefault: true,
 });

@@ -1057,6 +1057,38 @@ describe("agent_sidekick_context tools", () => {
   });
 
   describe("suggest_tools", () => {
+    it("rejects a tool from a space the user cannot read", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        restrictedSpace
+      );
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_sidekick_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "agent_id"
+      );
+
+      const tool = getToolByName("suggest_tools");
+      const result = await tool.handler(
+        { suggestions: [{ action: "add", toolId: view.sId }] },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain(view.sId);
+        expect(result.error.message).toContain("invalid or not accessible");
+      }
+    });
+
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
@@ -1391,6 +1423,43 @@ describe("agent_sidekick_context tools", () => {
   });
 
   describe("suggest_knowledge", () => {
+    it("rejects a data source view from a space the user cannot read", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+      const dsv = await DataSourceViewFactory.folder(
+        workspace,
+        restrictedSpace
+      );
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_sidekick_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "agent_id"
+      );
+
+      const tool = getToolByName("suggest_knowledge");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            action: "add",
+            dataSourceViewId: dsv.sId,
+            method: "search",
+            description: "Search restricted documentation",
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain(dsv.sId);
+        expect(result.error.message).toContain("invalid or not accessible");
+      }
+    });
+
     it("creates knowledge suggestion with method search", async () => {
       const { authenticator, globalSpace, workspace } =
         await createResourceTest({ role: "admin" });

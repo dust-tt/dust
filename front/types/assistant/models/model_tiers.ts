@@ -129,6 +129,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "cost_efficient",
     high: "cost_efficient",
   },
+  "simulated-failure-model": {
+    none: "cost_efficient",
+    light: "cost_efficient",
+    medium: "cost_efficient",
+    high: "cost_efficient",
+  },
   "gpt-5.4": {
     none: "balanced",
     light: "balanced",

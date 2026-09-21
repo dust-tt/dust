@@ -14,6 +14,7 @@ export const USER_SEARCH_ALIAS_NAME = "front.user_search";
 export const AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME = "front.agent_document_outputs";
 export const CONVERSATION_SEARCH_ALIAS_NAME = "front.conversation_search";
 export const SKILL_SEARCH_ALIAS_NAME = "front.skills";
+export const AGENT_SEARCH_ALIAS_NAME = "front.agents";
 
 /**
  * Registry of front-owned indices: where the settings/mappings files live and
@@ -25,6 +26,7 @@ export const INDEX_REGISTRY: Record<
   { directory: string; version: number }
 > = {
   agent_document_outputs: { directory: "lib/analytics/indices", version: 1 },
+  agents: { directory: "lib/agent_search/indices", version: 1 },
   agent_message_analytics: { directory: "lib/analytics/indices", version: 2 },
   agent_message_consumption_analytics: {
     directory: "lib/analytics/indices",
@@ -267,6 +269,7 @@ export async function searchConsumptionAnalytics<
     from?: number;
     sort?: estypes.Sort;
     search_after?: estypes.SortResults;
+    allow_partial_search_results?: boolean;
   }
 ): Promise<
   Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
@@ -279,6 +282,7 @@ export async function searchConsumptionAnalytics<
     from: options?.from,
     sort: options?.sort,
     search_after: options?.search_after,
+    allow_partial_search_results: options?.allow_partial_search_results,
     // Never needed for aggregation-only queries (size: 0); excluded unconditionally
     // to keep the raw-lines export from pulling the large tokens payload.
     _source: { excludes: ["tokens"] },

@@ -18,6 +18,7 @@ import { getTabName, SESSION_PREFIX } from "./types";
  * Base directory for tmux layout scripts
  */
 const TMUX_LAYOUT_DIR = join(homedir(), ".dust-hive", "tmux");
+const MILLISECONDS_PER_SECOND = 1000;
 
 /**
  * Get the user's default shell
@@ -57,6 +58,29 @@ export class TmuxAdapter implements MultiplexerAdapter {
       .map((line) => line.trim())
       .filter((line) => line.length > 0)
       .filter((name) => name.startsWith(SESSION_PREFIX));
+  }
+
+  async getSessionActivityTimes(): Promise<Map<string, Date>> {
+    const proc = Bun.spawn(
+      ["tmux", "list-sessions", "-F", "#{session_name}\t#{session_activity}"],
+      { stdout: "pipe", stderr: "pipe" }
+    );
+    const output = await new Response(proc.stdout).text();
+    await proc.exited;
+
+    if (proc.exitCode !== 0) {
+      return new Map();
+    }
+
+    const activityTimes = new Map<string, Date>();
+    for (const line of output.trim().split("\n")) {
+      const [name, timestamp] = line.split("\t");
+      if (name?.startsWith(SESSION_PREFIX) && timestamp) {
+        activityTimes.set(name, new Date(Number(timestamp) * MILLISECONDS_PER_SECOND));
+      }
+    }
+
+    return activityTimes;
   }
 
   async sessionExists(sessionName: string): Promise<boolean> {

@@ -85,16 +85,17 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
 
   static async fetchByServerId(
     auth: Authenticator,
-    serverSId: string,
+    serverId: string,
     options?: ResourceFindOptions<RemoteMCPServerToolMetadataModel>
   ): Promise<RemoteMCPServerToolMetadataResource[]> {
-    const { serverType, id: serverId } = getServerTypeAndIdFromSId(serverSId);
+    const { serverType, id: serverModelId } =
+      getServerTypeAndIdFromSId(serverId);
     return this.baseFetch(auth, {
       ...options,
       where:
         serverType === "remote"
-          ? { remoteMCPServerId: serverId }
-          : { internalMCPServerId: serverSId },
+          ? { remoteMCPServerId: serverModelId }
+          : { internalMCPServerId: serverId },
     });
   }
 
@@ -103,12 +104,12 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
   static async updateOrCreateSettings(
     auth: Authenticator,
     {
-      serverSId,
+      serverId,
       toolName,
       permission,
       enabled,
     }: {
-      serverSId: string;
+      serverId: string;
       toolName: string;
       permission: MCPToolStakeLevelType;
       enabled: boolean;
@@ -124,11 +125,12 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
       );
     }
 
-    const { serverType, id: serverId } = getServerTypeAndIdFromSId(serverSId);
+    const { serverType, id: serverModelId } =
+      getServerTypeAndIdFromSId(serverId);
     const [toolMetadata] = await this.model.upsert({
       ...(serverType === "remote"
-        ? { remoteMCPServerId: serverId }
-        : { internalMCPServerId: serverSId }),
+        ? { remoteMCPServerId: serverModelId }
+        : { internalMCPServerId: serverId }),
       toolName,
       permission,
       enabled,
@@ -142,10 +144,10 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
   static async deleteStaleTools(
     auth: Authenticator,
     {
-      serverId,
+      serverModelId,
       toolsToKeep: tools,
     }: {
-      serverId: number;
+      serverModelId: number;
       toolsToKeep: string[];
     }
   ) {
@@ -160,7 +162,7 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     }
     await RemoteMCPServerToolMetadataModel.destroy({
       where: {
-        remoteMCPServerId: serverId,
+        remoteMCPServerId: serverModelId,
         workspaceId: auth.getNonNullableWorkspace().id,
         toolName: {
           [Op.notIn]: tools,

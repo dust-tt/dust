@@ -1,10 +1,10 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
 
-import task from "./[taskSId]";
+import task from "./[taskId]";
 
 // Mounted at /api/w/:wId/project_tasks.
 const app = workspaceApp();
 
-app.route("/:taskSId", task);
+app.route("/:taskId", task);
 
 export default app;

@@ -163,11 +163,11 @@ app.patch(
     if (body.defaultSkillIds !== undefined) {
       const requestedSkillIds = [...new Set(body.defaultSkillIds)];
       const skills = await SkillResource.fetchByIds(auth, requestedSkillIds);
-      const skillBySId = new Map(skills.map((skill) => [skill.sId, skill]));
+      const skillById = new Map(skills.map((skill) => [skill.sId, skill]));
 
       const validatedSkills: SkillResource[] = [];
       for (const skillId of requestedSkillIds) {
-        const skill = skillBySId.get(skillId);
+        const skill = skillById.get(skillId);
         if (!skill || skill.status !== "active") {
           return apiError(ctx, {
             status_code: 400,

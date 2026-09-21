@@ -232,11 +232,11 @@ async function updateConversationRequestedSpaceIds(
 
       // Convert sIds to modelIds for spaces
       const newRequestedSpaceIds: ModelId[] = uniqueSpaceRequirements.map(
-        (spaceSId) => {
-          const modelId = getResourceIdFromSId(spaceSId);
+        (spaceId) => {
+          const modelId = getResourceIdFromSId(spaceId);
           if (modelId === null) {
             throw new Error(
-              `Invalid space sId: ${spaceSId} for conversation ${conversation.sId}`
+              `Invalid space sId: ${spaceId} for conversation ${conversation.sId}`
             );
           }
           return modelId;

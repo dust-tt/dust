@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
+import type { CreditSpendCheckpointDecision } from "@app/lib/api/assistant/conversation/credit_spend_checkpoint_pause";
 import type {
   ResolveAuthenticationKind,
   ResolveAuthenticationOutcome,
@@ -213,4 +214,53 @@ export function useValidateAction({ owner, onError }: UseValidateActionParams) {
   );
 
   return { validateAction, isValidating };
+}
+
+interface UseResolveCreditSpendCheckpointParams {
+  owner: LightWorkspaceType;
+  onError: (errorMessage: string) => void;
+}
+
+// Not a tool action: the whole loop is paused on the message until the user decides.
+export function useResolveCreditSpendCheckpoint({
+  owner,
+  onError,
+}: UseResolveCreditSpendCheckpointParams) {
+  const { fetcher } = useFetcher();
+  const [isResolving, setIsResolving] = useState(false);
+
+  const resolveCreditSpendCheckpoint = useCallback(
+    async ({
+      conversationId,
+      messageId,
+      decision,
+    }: {
+      conversationId: string;
+      messageId: string;
+      decision: CreditSpendCheckpointDecision;
+    }) => {
+      setIsResolving(true);
+
+      try {
+        await fetcher(
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/credit-spend-checkpoint`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ decision }),
+          }
+        );
+
+        return { success: true };
+      } catch {
+        onError("Failed to record your decision. Please try again.");
+        return { success: false };
+      } finally {
+        setIsResolving(false);
+      }
+    },
+    [owner.sId, onError, fetcher]
+  );
+
+  return { resolveCreditSpendCheckpoint, isResolving };
 }

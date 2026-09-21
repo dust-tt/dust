@@ -1,3 +1,4 @@
+import { isAuthorizedForSkillSuggestionKind } from "@app/lib/api/skills/suggestion_authorization";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
@@ -96,7 +97,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   ): Promise<SkillSuggestionResource> {
     const owner = auth.getNonNullableWorkspace();
 
-    if (!skill.canWrite(auth)) {
+    if (!isAuthorizedForSkillSuggestionKind(auth, skill, blob.kind)) {
       throw new Error("User does not have permission to edit this skill");
     }
 
@@ -138,6 +139,9 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
           model: SkillConfigurationModel,
           as: "skillConfiguration",
           required: true,
+          // Only used for the required inner join's existence check: canAdministrateCustomSkillId
+          // and modelIdToSId resolve permissions and sId from the id alone, no column needed here.
+          attributes: [],
         },
         {
           model: UserModel,
@@ -159,28 +163,19 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       return [];
     }
 
-    // Get unique skill configuration IDs to check permissions.
-    const skillConfigIds = [
-      ...new Set(suggestions.map((s) => s.skillConfigurationId)),
-    ];
-
-    const skillResources = await SkillResource.fetchByModelIds(
-      auth,
-      skillConfigIds
-    );
-
-    const skillResourceByModelId = new Map(
-      skillResources.map((s) => [s.id, s])
-    );
-
-    // Filter suggestions to only include those for skills the user can
-    // administrate.
+    // Filter suggestions to only include those for skills the user can administrate. Resolved
+    // without fetching the skill row: `canAdministrateCustomSkillId` only needs the id and
+    // workspace id, and `sId` is a pure derivation from the same pair. This also means a
+    // suggestion whose skill was archived since (e.g. a `delete` suggestion archives its own
+    // target on accept) stays visible: the permission check never depends on skill status.
     const resources = removeNulls(
       suggestions.map((suggestion) => {
-        const skillResource = skillResourceByModelId.get(
-          suggestion.skillConfigurationId
-        );
-        if (!skillResource || !skillResource.canAdministrate(auth)) {
+        if (
+          !SkillResource.canAdministrateCustomSkillId(auth, {
+            id: suggestion.skillConfigurationId,
+            workspaceId: owner.id,
+          })
+        ) {
           return null;
         }
         const user = suggestion.updatedByUser;
@@ -196,7 +191,10 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
         return new this(
           SkillSuggestionModel,
           suggestion.get(),
-          skillResource.sId,
+          SkillResource.modelIdToSId({
+            id: suggestion.skillConfigurationId,
+            workspaceId: owner.id,
+          }),
           updatedBy,
           suggestion.notificationConversation?.sId ?? null
         );

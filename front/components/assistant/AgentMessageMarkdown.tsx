@@ -15,6 +15,10 @@ import {
 } from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
 import {
+  getConversationAgentSuggestionPlugin,
+  sidekickSuggestionDirective,
+} from "@app/components/markdown/suggestion/SidekickSuggestionDirective";
+import {
   getSkillSuggestionPlugin,
   skillSuggestionDirective,
 } from "@app/components/markdown/suggestion/SkillSuggestionDirective";
@@ -78,6 +82,7 @@ export const AgentMessageMarkdown = ({
       file_preview: getFilePreviewPlugin(),
       instruction_block: InstructionBlock,
       skill_suggestion: getSkillSuggestionPlugin(owner),
+      agent_suggestion: getConversationAgentSuggestionPlugin(owner),
       ...additionalMarkdownComponents,
     }),
     [owner, additionalMarkdownComponents]
@@ -96,6 +101,7 @@ export const AgentMessageMarkdown = ({
       quickReplyDirective,
       actionCardDirective,
       skillSuggestionDirective,
+      sidekickSuggestionDirective,
       ...additionalMarkdownPlugins,
     ];
 
@@ -116,6 +122,8 @@ export const AgentMessageMarkdown = ({
       compactSpacing={compactSpacing}
       forcedTextSize={forcedTextSize}
       canCopyQuotes={canCopyQuotes}
+      // Agent output is read-only, so task lists render as step badges rather than checkboxes.
+      taskListVariant="step"
     />
   );
 };

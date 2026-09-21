@@ -67,6 +67,7 @@ export interface SlackWebhookEvent<T = string> {
   hidden?: boolean; // added for message_deleted
   deleted_ts?: string; // added for message_deleted - timestamp of deleted message
   user?: string;
+  username?: string; // display name of a `bot_message`, the only name a workflow post carries
   ts?: string; // slack message id
   thread_ts?: string; // slack thread id
   type?: string; // event type (eg: message)
@@ -170,6 +171,7 @@ export async function handleChatBot(
   const slackChannel = event.channel;
   const slackUserId = event.user;
   const slackBotId = event.bot_id || null;
+  const slackBotUsername = event.username || undefined;
   const slackMessageTs = event.ts;
   const slackThreadTs = event.thread_ts || null;
 
@@ -256,6 +258,7 @@ export async function handleChatBot(
     slackChannel,
     slackUserId,
     slackBotId,
+    slackBotUsername,
     slackMessageTs,
     slackThreadTs,
   };
