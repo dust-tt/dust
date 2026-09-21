@@ -1,6 +1,11 @@
 // Shared by Document and its hook to avoid circular type imports.
 export type DocumentSaveResult = { ok: true } | { ok: false; error: string };
 
+export interface DocumentHandle {
+  /** Persist pending edits before the host switches views or closes the document. */
+  save: () => Promise<DocumentSaveResult>;
+}
+
 export interface DocumentProps {
   /** Starting content. Remount with a new key to open another document. */
   initialContent: string;
@@ -9,7 +14,11 @@ export interface DocumentProps {
   saveFormat?: "markdown" | "json";
   /** Classes for the outer container. */
   className?: string;
+  /** Use the available width instead of the default reading column. */
+  fullWidth?: boolean;
   readOnly?: boolean;
+  /** Reports whether the current draft has unpersisted changes. */
+  onDirtyChange?: (dirty: boolean) => void;
   /** Idle time before autosaving, in milliseconds. Defaults to 3,000. */
   autosaveDebounceMs?: number;
   /** Enables editing. Persist the selected save format before returning { ok: true }. */

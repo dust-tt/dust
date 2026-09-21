@@ -22,7 +22,7 @@ Cmd/Ctrl+S. Undoing back to saved content also clears the error without a reques
 Later edits are not acknowledged by an earlier save. Parent renders and changes
 to the save callback do not restart the debounce timer.
 
-`className` applies to the outer container. Typography and editor configuration
+`className` applies to the outer container. Set `fullWidth` to use the available width. Typography and editor configuration
 remain controlled by Document. Initial content is captured at mount. Remount with
 a new key to open a different document. Invalid stored JSON disables editing.
 Navigation protection and synchronization with external changes belong to the host.
@@ -59,3 +59,8 @@ Stories and interaction tests live in `src/stories/Document.stories.tsx` and
 `src/stories/DocumentMarkdown.stories.tsx`. They cover formatting, block commands,
 autosave, errors, concurrent edits, read-only content, themes, layout, Markdown
 output, and source preservation.
+
+Hosts can use a `DocumentHandle` ref to await `save()` before closing or switching views.
+It returns `DocumentSaveResult` and waits for in-flight saves, including edits made while saving.
+Keep the document mounted when the result is unsuccessful. `onDirtyChange` reports unsaved edits
+for navigation guards. Toggle `readOnly` to switch between viewing and editing the same draft.

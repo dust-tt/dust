@@ -2,7 +2,6 @@ import type { FilePreviewContentData } from "@app/components/file_explorer/FileP
 import { FilePreviewContent } from "@app/components/file_explorer/FilePreviewContent";
 import type { FilePreviewDownloadAction } from "@app/components/file_explorer/FilePreviewFallback";
 import { FilePreviewFallback } from "@app/components/file_explorer/FilePreviewFallback";
-import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import type { MarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import type { FilePreviewCategory } from "@app/types/file_preview";
@@ -28,7 +27,6 @@ interface FilePreviewBodyProps {
   fileUrl: string | null;
   isFullWidth?: boolean;
   markdown: MarkdownFileEditor;
-  onMarkdownViewModeChange?: (mode: MarkdownFilePreviewViewMode) => void;
   owner?: LightWorkspaceType;
   preview: FilePreviewContentData;
 }
@@ -39,7 +37,6 @@ export function FilePreviewBody({
   fileUrl,
   isFullWidth,
   markdown,
-  onMarkdownViewModeChange,
   owner,
   preview,
 }: FilePreviewBodyProps) {
@@ -83,11 +80,7 @@ export function FilePreviewBody({
       fileUrl={fileUrl}
       isContentLoading={isContentLoading}
       isFullWidth={isFullWidth}
-      markdownCanEdit={markdown.canEdit}
-      markdownContent={markdown.content}
-      markdownViewMode={markdown.viewMode}
-      onMarkdownContentChange={markdown.canEdit ? markdown.setDraft : undefined}
-      onMarkdownViewModeChange={onMarkdownViewModeChange}
+      markdown={markdown}
       owner={owner}
       processedContent={processedContent}
     />

@@ -12,10 +12,10 @@ import {
   formatRecordCounts,
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
-import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
+import { useBeforeViewChange } from "@app/hooks/useViewChangeGuard";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   getFileDownloadUrl,
@@ -134,6 +134,8 @@ export function FilePreviewPanel({
     processedContent: preview.processedContent,
   });
 
+  useBeforeViewChange(markdown.save);
+
   if (!entry || !urls) {
     return (
       <div className="flex h-panel flex-col">
@@ -164,33 +166,6 @@ export function FilePreviewPanel({
           <span className="line-clamp-1 text-sm font-medium">{fileName}</span>
         </div>
         <div className="ml-2 flex items-center gap-1">
-          {markdown.canEdit && (
-            <>
-              <MarkdownFilePreviewViewModeSwitch
-                viewMode={markdown.viewMode}
-                onViewModeChange={markdown.setViewMode}
-              />
-              {markdown.isDirty && (
-                <>
-                  <Button
-                    label="Save"
-                    variant="highlight"
-                    size="xs"
-                    isLoading={markdown.isSaving}
-                    disabled={markdown.isSaving}
-                    onClick={() => void markdown.save()}
-                  />
-                  <Button
-                    label="Revert"
-                    variant="outline"
-                    size="xs"
-                    disabled={markdown.isSaving}
-                    onClick={markdown.revert}
-                  />
-                </>
-              )}
-            </>
-          )}
           <Button
             variant="ghost"
             size="sm"

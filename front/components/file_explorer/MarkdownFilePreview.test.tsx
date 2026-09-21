@@ -17,17 +17,16 @@ describe("MarkdownFilePreview", () => {
     Element.prototype.scrollIntoView = originalScrollIntoView;
   });
 
-  it("renders heading ids from the markdown AST", () => {
+  it("renders heading ids from the document", async () => {
     render(
       <MarkdownFilePreview
         content={
           "# Overview\n\nKey Concepts\n============\n\n## Résumé Café\n\n## Overview"
         }
-        viewMode="preview"
       />
     );
 
-    const overviewHeadings = screen.getAllByRole("heading", {
+    const overviewHeadings = await screen.findAllByRole("heading", {
       name: "Overview",
     });
     expect(overviewHeadings[0]).toHaveAttribute("id", "overview");
@@ -35,95 +34,77 @@ describe("MarkdownFilePreview", () => {
       screen.getByRole("heading", { name: "Key Concepts" })
     ).toHaveAttribute("id", "key-concepts");
     expect(
-      screen.getByRole("heading", { name: "Résumé Café" })
+      await screen.findByRole("heading", { name: "Résumé Café" })
     ).toHaveAttribute("id", "résumé-café");
     expect(overviewHeadings[1]).toHaveAttribute("id", "overview-1");
   });
 
-  it("scrolls preview-local anchors", () => {
+  it("scrolls preview-local anchors", async () => {
     render(
       <MarkdownFilePreview
         content={"[Résumé Café](#r%C3%A9sum%C3%A9-caf%C3%A9)\n\n## Résumé Café"}
-        viewMode="preview"
       />
     );
 
     expect(
-      screen.getByRole("heading", { name: "Résumé Café" })
+      await screen.findByRole("heading", { name: "Résumé Café" })
     ).toHaveAttribute("id", "résumé-café");
-    const link = screen.getByRole("link", { name: "Résumé Café" });
-    expect(link).toHaveAttribute("target", "_self");
+    const link = await screen.findByRole("link", { name: "Résumé Café" });
 
     fireEvent.click(link);
 
     expect(scrollIntoView).toHaveBeenCalledWith({ block: "start" });
   });
 
-  it("keeps external links opening in a new tab", () => {
-    render(
-      <MarkdownFilePreview
-        content={"[Dust](https://www.dust.tt)"}
-        viewMode="preview"
-      />
-    );
+  it("keeps external links opening in a new tab", async () => {
+    render(<MarkdownFilePreview content={"[Dust](https://www.dust.tt)"} />);
 
-    const link = screen.getByRole("link", { name: "Dust" });
+    const link = await screen.findByRole("link", { name: "Dust" });
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  it("switches to edit mode when double-clicking preview content", () => {
-    const onViewModeChange = vi.fn();
-
+  it("opens writable Markdown directly in the editor without mode or save controls", async () => {
     render(
       <MarkdownFilePreview
         canEdit
-        content={"# Hello\n\nClick me"}
-        viewMode="preview"
-        onViewModeChange={onViewModeChange}
+        content="# Hello"
+        onSave={async () => ({ ok: true })}
       />
     );
 
-    fireEvent.doubleClick(screen.getByRole("heading", { name: "Hello" }));
-
-    expect(onViewModeChange).toHaveBeenCalledWith("edit");
+    expect(
+      await screen.findByRole("textbox", { name: "Document content" })
+    ).toHaveAttribute("contenteditable", "true");
+    expect(
+      screen.queryByRole("button", {
+        name: /Save|Revert|Editing|Viewing|Source/,
+      })
+    ).not.toBeInTheDocument();
   });
 
-  it("does not switch to edit mode when double-clicking a link", () => {
-    const onViewModeChange = vi.fn();
-
-    render(
-      <MarkdownFilePreview
-        canEdit
-        content={"[Dust](https://www.dust.tt)"}
-        viewMode="preview"
-        onViewModeChange={onViewModeChange}
-      />
+  it("keeps restricted content read-only when double-clicked", async () => {
+    render(<MarkdownFilePreview content="# Hello" />);
+    fireEvent.doubleClick(
+      await screen.findByRole("heading", { name: "Hello" })
     );
-
-    fireEvent.doubleClick(screen.getByRole("link", { name: "Dust" }));
-
-    expect(onViewModeChange).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("textbox", { name: "Document content" })
+    ).toHaveAttribute("contenteditable", "false");
   });
 
-  it("updates nested list content in preview without remounting", () => {
+  it("refreshes nested list content in read-only preview", async () => {
     const { rerender } = render(
-      <MarkdownFilePreview
-        content={"- item one\n- item two"}
-        viewMode="preview"
-      />
+      <MarkdownFilePreview content={"- item one\n- item two"} />
     );
 
-    expect(screen.getByText("item two")).toBeInTheDocument();
+    expect(await screen.findByText("item two")).toBeInTheDocument();
 
     rerender(
-      <MarkdownFilePreview
-        content={"- item one\n- updated item two"}
-        viewMode="preview"
-      />
+      <MarkdownFilePreview content={"- item one\n- updated item two"} />
     );
 
-    expect(screen.getByText("updated item two")).toBeInTheDocument();
+    expect(await screen.findByText("updated item two")).toBeInTheDocument();
     expect(screen.queryByText("item two")).not.toBeInTheDocument();
   });
 });

@@ -53,17 +53,40 @@ const isSupportedMarkdownToken = (token: MarkdownToken) =>
     token.raw?.startsWith("```") ||
     token.codeBlockStyle === "indented");
 
-const hasSupportedMarkdown = (content: string) => {
+const unsupportedFeatureLabel = (token: MarkdownToken): string => {
+  if (token.type === "list_item" && token.task) {
+    return "task lists";
+  }
+
+  switch (token.type) {
+    case "image":
+      return "images";
+    case "table":
+      return "tables";
+    case "html":
+      return "HTML";
+    case "def":
+      return "reference links";
+    case "escape":
+      return "escaped characters";
+    case "code":
+      return "code blocks with tilde fences";
+    default:
+      return "other Markdown formatting";
+  }
+};
+
+const getUnsupportedMarkdownFeatures = (content: string) => {
   const tokens = documentMarkdown.instance.lexer(content);
-  let supported = true;
+  const unsupported = new Set<string>();
 
   documentMarkdown.instance.walkTokens(tokens, (token) => {
     if (!isSupportedMarkdownToken(token)) {
-      supported = false;
+      unsupported.add(unsupportedFeatureLabel(token));
     }
   });
 
-  return supported;
+  return [...unsupported];
 };
 
 const withoutTrailingParagraphs = (document: JSONContent): JSONContent => {
@@ -107,10 +130,13 @@ const normalizeTextNodes = (node: Node): Node => {
 export const parseDocumentContent = (
   content: string,
   contentType: "markdown" | "json"
-): { ok: true; content: JSONContent } | { ok: false } => {
+):
+  | { ok: true; content: JSONContent }
+  | { ok: false; unsupportedFeatures?: string[] } => {
   if (contentType === "markdown") {
-    if (!hasSupportedMarkdown(content)) {
-      return { ok: false };
+    const unsupportedFeatures = getUnsupportedMarkdownFeatures(content);
+    if (unsupportedFeatures.length > 0) {
+      return { ok: false, unsupportedFeatures };
     }
 
     let parsed: JSONContent;
@@ -172,7 +198,7 @@ export const serializeDocumentMarkdown = (
     return null;
   }
 
-  return hasSupportedMarkdown(markdown) &&
+  return getUnsupportedMarkdownFeatures(markdown).length === 0 &&
     canRoundTripMarkdown(content, markdown)
     ? markdown
     : null;

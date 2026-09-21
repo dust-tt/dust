@@ -11,6 +11,19 @@ import { parseDocumentContent, serializeDocumentMarkdown } from "./content";
 import { documentExtensions } from "./extensions";
 import type { DocumentProps, DocumentSaveResult } from "./types";
 
+const READ_ONLY_ERROR_MESSAGE = "This document is read-only.";
+
+const persistDocument = async (
+  persist: NonNullable<DocumentProps["onSave"]>,
+  content: string
+): Promise<DocumentSaveResult> => {
+  try {
+    return await persist(content);
+  } catch {
+    return { ok: false, error: SAVE_ERROR_MESSAGE };
+  }
+};
+
 const SAVE_ERROR_MESSAGE =
   "Could not save. Your changes are still here. Try again.";
 const MARKDOWN_SAVE_ERROR_MESSAGE =
@@ -46,6 +59,11 @@ interface UseDocumentEditorProps {
  * Saves MUST default to JSON regardless of the input format. Markdown saves MUST use the
  * committed saveFormat. Opening a document or changing its output format MUST NOT write it.
  */
+/**
+ * @cc [owner:flvndvd,label:product] document-save-before-leaving
+ * The host save handle MUST wait for any in-flight save and persist newer edits before succeeding.
+ * A failed save MUST keep the draft available to the host.
+ */
 export const useDocumentEditor = ({
   initialContent,
   contentType,
@@ -63,7 +81,7 @@ export const useDocumentEditor = ({
   const [draft, setDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const savingRef = useRef(false);
+  const pendingSaveRef = useRef<Promise<DocumentSaveResult> | null>(null);
   const editable = !readOnly && onSave !== undefined && initial.ok;
   const persistenceRef = useRef({ onSave, editable, baseline, saveFormat });
 
@@ -116,7 +134,11 @@ export const useDocumentEditor = ({
 
   const dirty = baseline !== null && draft !== baseline;
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (): Promise<DocumentSaveResult> => {
+    if (pendingSaveRef.current) {
+      return pendingSaveRef.current;
+    }
+
     const {
       onSave: persist,
       editable: canSave,
@@ -124,21 +146,19 @@ export const useDocumentEditor = ({
       saveFormat: format,
     } = persistenceRef.current;
 
-    if (
-      !editor ||
-      !persist ||
-      !canSave ||
-      savedContent === null ||
-      savingRef.current
-    ) {
-      return;
+    if (!editor || editor.isDestroyed || savedContent === null) {
+      return { ok: false, error: "This document is not ready yet." };
     }
 
     const document = editor.getJSON();
     const content = JSON.stringify(document);
 
     if (content === savedContent) {
-      return;
+      return { ok: true };
+    }
+
+    if (!persist || !canSave) {
+      return { ok: false, error: READ_ONLY_ERROR_MESSAGE };
     }
 
     const serialized =
@@ -146,32 +166,49 @@ export const useDocumentEditor = ({
 
     if (serialized === null) {
       setError(MARKDOWN_SAVE_ERROR_MESSAGE);
-      return;
+      return { ok: false, error: MARKDOWN_SAVE_ERROR_MESSAGE };
     }
 
-    savingRef.current = true;
     setSaving(true);
     setError(null);
 
-    let result: DocumentSaveResult;
-    try {
-      result = await persist(serialized);
-    } catch {
-      result = { ok: false, error: SAVE_ERROR_MESSAGE };
-    }
+    const pendingSave = persistDocument(persist, serialized).then((result) => {
+      pendingSaveRef.current = null;
+      setSaving(false);
 
-    savingRef.current = false;
-    setSaving(false);
+      if (result.ok) {
+        persistenceRef.current = {
+          ...persistenceRef.current,
+          baseline: content,
+        };
+        setBaseline(content);
+      } else if (
+        !editor.isDestroyed &&
+        JSON.stringify(editor.getJSON()) !== savedContent
+      ) {
+        setError(result.error || SAVE_ERROR_MESSAGE);
+      }
 
-    if (result.ok) {
-      setBaseline(content);
-      return;
-    }
-
-    if (JSON.stringify(editor.getJSON()) !== savedContent) {
-      setError(result.error || SAVE_ERROR_MESSAGE);
-    }
+      return result;
+    });
+    pendingSaveRef.current = pendingSave;
+    return pendingSave;
   }, [editor]);
+
+  const flush = useCallback(async (): Promise<DocumentSaveResult> => {
+    let result: DocumentSaveResult;
+
+    do {
+      result = await save();
+    } while (
+      result.ok &&
+      editor &&
+      !editor.isDestroyed &&
+      JSON.stringify(editor.getJSON()) !== persistenceRef.current.baseline
+    );
+
+    return result;
+  }, [editor, save]);
 
   useEffect(() => {
     if (draft === null || !dirty || saving || error || !editable) {
@@ -188,9 +225,11 @@ export const useDocumentEditor = ({
     valid: initial.ok,
     unsupportedMarkdown:
       !initial.ok && initial.contentType === "markdown" ? initial.source : null,
+    unsupportedFeatures: initial.ok ? [] : (initial.unsupportedFeatures ?? []),
     dirty,
     saving,
     error,
     save,
+    flush,
   };
 };

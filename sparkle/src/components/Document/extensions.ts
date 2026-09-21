@@ -3,7 +3,10 @@ import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
 
+import { DocumentAnchors } from "./DocumentAnchors";
+
 export const documentExtensions = [
+  DocumentAnchors,
   StarterKit.configure({
     heading: {
       HTMLAttributes: {
@@ -45,6 +48,7 @@ export const documentExtensions = [
     },
     link: {
       HTMLAttributes: {
+        rel: "noopener noreferrer",
         class:
           "underline decoration-foreground/35 underline-offset-4 transition-colors hover:decoration-current motion-reduce:transition-none",
       },

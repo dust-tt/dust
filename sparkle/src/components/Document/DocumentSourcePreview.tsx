@@ -3,18 +3,23 @@ import React from "react";
 
 interface DocumentSourcePreviewProps {
   source: string;
+  unsupportedFeatures: string[];
   className?: string;
 }
 
 export const DocumentSourcePreview = ({
   source,
+  unsupportedFeatures,
   className,
 }: DocumentSourcePreviewProps) => (
   <article className={className}>
     <div className="mx-auto max-w-[50rem] px-5 py-8 text-foreground">
       <p role="alert" className="mb-6 text-muted-foreground copy-sm">
-        This document includes formatting that isn't supported yet. The original
-        Markdown is shown below and editing is disabled to preserve it.
+        {unsupportedFeatures.length > 0
+          ? `This editor doesn't support ${new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(unsupportedFeatures)} yet.`
+          : "This document includes formatting that isn't supported yet."}{" "}
+        The original Markdown is shown below and editing is disabled to preserve
+        it.
       </p>
       <pre
         className={cn(

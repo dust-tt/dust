@@ -2,6 +2,10 @@ import { getDefaultRightPanelSize } from "@app/components/assistant/conversation
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useHashParam } from "@app/hooks/useHashParams";
+import {
+  BeforeViewChangeContext,
+  useViewChangeGuard,
+} from "@app/hooks/useViewChangeGuard";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
@@ -283,6 +287,8 @@ export function ConversationSidePanelProvider({
   // ref is enough.
   const panelHistoryRef = React.useRef<OpenPanelParams[]>([]);
   const currentParamsRef = React.useRef<OpenPanelParams | null>(null);
+  const { registerBeforeChange, changeView: changePanel } =
+    useViewChangeGuard();
 
   // This should be called once the closing animation is done (onTransitionEnd)
   // so you won't have content flickering. The whole side panel is gone at this point (X with
@@ -333,7 +339,7 @@ export function ConversationSidePanelProvider({
     [setCurrentPanel, setData, setFullScreenHash]
   );
 
-  const closePanel = useCallback(() => {
+  const closePanelImmediately = useCallback(() => {
     const history = panelHistoryRef.current;
     const previous = history[history.length - 1];
     if (previous) {
@@ -343,6 +349,11 @@ export function ConversationSidePanelProvider({
     }
     collapsePanel();
   }, [showPanel, collapsePanel]);
+
+  const closePanel = useCallback(
+    () => changePanel(closePanelImmediately),
+    [changePanel, closePanelImmediately]
+  );
 
   const removeFromPanelHistory = useCallback(
     (type: ConversationSidePanelType) => {
@@ -367,7 +378,7 @@ export function ConversationSidePanelProvider({
 
       if (isShown) {
         if (toggle) {
-          closePanel();
+          closePanelImmediately();
         } else {
           showPanel(params);
         }
@@ -391,20 +402,22 @@ export function ConversationSidePanelProvider({
       panelHistoryRef.current = history;
       showPanel(params);
     },
-    [isPanelClosing, closePanel, showPanel]
+    [isPanelClosing, closePanelImmediately, showPanel]
   );
 
   // Idempotent open for programmatic callers: a toggle could mis-close during a close→reopen
   // transition where `currentPanel` still reads the old value.
   const openPanel = useCallback(
-    (params: OpenPanelParams) => applyPanel(params, { toggle: false }),
-    [applyPanel]
+    (params: OpenPanelParams) =>
+      changePanel(() => applyPanel(params, { toggle: false })),
+    [applyPanel, changePanel]
   );
 
   // Toggle for user-controlled buttons: re-selecting the shown panel closes it.
   const togglePanel = useCallback(
-    (params: OpenPanelParams) => applyPanel(params, { toggle: true }),
-    [applyPanel]
+    (params: OpenPanelParams) =>
+      changePanel(() => applyPanel(params, { toggle: true })),
+    [applyPanel, changePanel]
   );
 
   // Close the panel when switching conversations: the provider stays mounted
@@ -490,9 +503,11 @@ export function ConversationSidePanelProvider({
     <SidePanelConversationRegistrationContext.Provider
       value={setHasConversation}
     >
-      <ConversationSidePanelContext.Provider value={value}>
-        {children}
-      </ConversationSidePanelContext.Provider>
+      <BeforeViewChangeContext.Provider value={registerBeforeChange}>
+        <ConversationSidePanelContext.Provider value={value}>
+          {children}
+        </ConversationSidePanelContext.Provider>
+      </BeforeViewChangeContext.Provider>
     </SidePanelConversationRegistrationContext.Provider>
   );
 }

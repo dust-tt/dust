@@ -3,13 +3,14 @@ import { Spinner } from "@sparkle/components/Spinner";
 import { AlertCircle, Check } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
+import type { DocumentSaveResult } from "./types";
 
 interface DocumentSaveStatusProps {
   dirty: boolean;
   saving: boolean;
   error: string | null;
   autosaveDebounceMs: number;
-  onRetry: () => Promise<void>;
+  onRetry: () => Promise<DocumentSaveResult>;
 }
 
 export const DocumentSaveStatus = ({

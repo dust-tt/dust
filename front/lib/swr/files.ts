@@ -282,18 +282,25 @@ export async function writeFileContentByPath({
   canonicalPath: string;
   content: string;
   contentType?: string;
-}): Promise<void> {
+}): Promise<Result<void, Error>> {
   const url = getFilePathContentApiPath(owner, canonicalPath);
-  const response = await clientFetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
-    body: content,
-  });
+  let response: Response;
+  try {
+    response = await clientFetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": contentType },
+      body: content,
+    });
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 
   if (!response.ok) {
     const errorData = await getErrorFromResponse(response);
-    throw new Error(errorData.message);
+    return new Err(new Error(errorData.message));
   }
+
+  return new Ok(undefined);
 }
 
 /** Delete the file or folder at `canonicalPath`; Frame manifests run the package-aware deletion. */
@@ -342,7 +349,7 @@ export function useDeleteFileByPath({ owner }: { owner: LightWorkspaceType }) {
 export function useWriteFileContentByPath({
   owner,
 }: {
-  owner: LightWorkspaceType;
+  owner: LightWorkspaceType | undefined;
 }) {
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
@@ -358,39 +365,36 @@ export function useWriteFileContentByPath({
     contentType?: string;
     showSuccessNotification?: boolean;
   }): Promise<Result<void, Error>> => {
-    const url = getFilePathContentApiPath(owner, canonicalPath);
+    if (!owner) {
+      return new Err(new Error("A workspace is required to save this file."));
+    }
 
-    try {
-      await writeFileContentByPath({
-        owner,
-        canonicalPath,
-        content,
-        contentType,
-      });
-
-      await mutate<FileContentByUrlData>(
-        url,
-        { kind: "loaded", content },
-        { revalidate: false }
-      );
-
-      if (showSuccessNotification) {
-        sendNotification({
-          type: "success",
-          title: "File saved",
-        });
-      }
-
-      return new Ok(undefined);
-    } catch (e) {
-      const errorMessage = normalizeError(e).message;
+    const result = await writeFileContentByPath({
+      owner,
+      canonicalPath,
+      content,
+      contentType,
+    });
+    if (result.isErr()) {
       sendNotification({
         type: "error",
         title: "Failed to save file",
-        description: errorMessage,
+        description: result.error.message,
       });
-      return new Err(new Error(errorMessage));
+      return result;
     }
+
+    await mutate<FileContentByUrlData>(
+      getFilePathContentApiPath(owner, canonicalPath),
+      { kind: "loaded", content },
+      { revalidate: false }
+    );
+
+    if (showSuccessNotification) {
+      sendNotification({ type: "success", title: "File saved" });
+    }
+
+    return new Ok(undefined);
   };
 }
 

@@ -1,7 +1,7 @@
-import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
+import type { MarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
@@ -273,11 +273,7 @@ interface FilePreviewContentProps {
   // Render PDF/viewer previews at container width (used by the narrow side
   // panel so slides/PDFs fill the available space).
   isFullWidth?: boolean;
-  markdownCanEdit?: boolean;
-  markdownContent?: string;
-  markdownViewMode?: MarkdownFilePreviewViewMode;
-  onMarkdownContentChange?: (content: string) => void;
-  onMarkdownViewModeChange?: (mode: MarkdownFilePreviewViewMode) => void;
+  markdown?: MarkdownFileEditor;
   owner?: LightWorkspaceType;
   processedContent: ProcessedContent | null;
 }
@@ -289,11 +285,7 @@ export function FilePreviewContent({
   fileUrl,
   isContentLoading,
   isFullWidth = false,
-  markdownCanEdit,
-  markdownContent,
-  markdownViewMode,
-  onMarkdownContentChange,
-  onMarkdownViewModeChange,
+  markdown,
   owner,
   processedContent,
 }: FilePreviewContentProps) {
@@ -358,19 +350,16 @@ export function FilePreviewContent({
       return null;
 
     case "markdown":
-      if (
-        processedContent &&
-        markdownContent !== undefined &&
-        markdownViewMode
-      ) {
+      if (processedContent) {
         return (
           <MarkdownFilePreview
-            content={markdownContent}
-            canEdit={markdownCanEdit}
-            showToolbar={false}
-            viewMode={markdownViewMode}
-            onContentChange={onMarkdownContentChange}
-            onViewModeChange={onMarkdownViewModeChange}
+            key={entry.path || entry.fileId}
+            content={markdown?.content ?? processedContent.text}
+            canEdit={markdown?.canEdit}
+            documentRef={markdown?.documentRef}
+            documentKey={markdown?.documentKey}
+            onDirtyChange={markdown?.setDocumentDirty}
+            onSave={markdown?.saveContent}
           />
         );
       }

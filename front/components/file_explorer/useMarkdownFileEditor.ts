@@ -1,12 +1,12 @@
-import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
-import { writeFileContentByPath } from "@app/lib/swr/files";
+import { useWriteFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useEffect, useRef, useState } from "react";
+import type { DocumentHandle, DocumentSaveResult } from "@dust-tt/sparkle";
+import type { RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 interface UseMarkdownFileEditorParams {
@@ -18,21 +18,28 @@ interface UseMarkdownFileEditorParams {
   isTooLarge: boolean;
   owner: LightWorkspaceType | undefined;
   processedContent: ProcessedContent | null;
+  canEdit?: boolean;
 }
 
 export interface MarkdownFileEditor {
   canEdit: boolean;
   content: string | undefined;
+  documentRef: RefObject<DocumentHandle>;
+  documentKey: number;
   isDirty: boolean;
   isSaving: boolean;
-  revert: () => void;
-  save: () => Promise<void>;
-  setDraft: (content: string) => void;
-  setViewMode: (mode: MarkdownFilePreviewViewMode) => void;
-  viewMode: MarkdownFilePreviewViewMode;
+  save: () => Promise<boolean>;
+  saveContent: (content: string) => Promise<DocumentSaveResult>;
+  setDocumentDirty: (dirty: boolean) => void;
 }
 
-export function useMarkdownFileEditor({
+/**
+ * @cc [owner:flvndvd,label:product] markdown-file-persistence
+ * Rich edits MUST save plain Markdown to the canonical file through the Files API.
+ * The save handle MUST await Document persistence and report failures to navigation guards.
+ * Refreshes MUST preserve unsaved drafts and successful autosaves MUST NOT remount the editor.
+ */
+export const useMarkdownFileEditor = ({
   category,
   entryPath,
   fileUrl,
@@ -41,116 +48,130 @@ export function useMarkdownFileEditor({
   isTooLarge,
   owner,
   processedContent,
-}: UseMarkdownFileEditorParams): MarkdownFileEditor {
-  const [viewMode, setViewMode] =
-    useState<MarkdownFilePreviewViewMode>("preview");
-  const [draft, setDraft] = useState("");
-  const [savedContent, setSavedContent] = useState("");
+  canEdit: allowEditing = true,
+}: UseMarkdownFileEditorParams): MarkdownFileEditor => {
+  const [content, setContent] = useState("");
   const [sourcePath, setSourcePath] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [resetKey, setResetKey] = useState({ isActive, path: entryPath });
+  const [isDirty, setDocumentDirty] = useState(false);
+  const [documentKey, setDocumentKey] = useState(0);
+  const [session, setSession] = useState({ isActive, path: entryPath });
+  const sessionRef = useRef(session);
   const initKeyRef = useRef<string | null>(null);
-
-  const sendNotification = useSendNotification();
+  const documentRef = useRef<DocumentHandle>(null);
+  const writeContent = useWriteFileContentByPath({ owner });
   const { mutate } = useSWRConfig();
 
   const editablePath =
     entryPath && owner && parseCanonicalScopedPath(entryPath)
       ? entryPath
       : null;
-  const canEdit = category === "markdown" && !!editablePath && !isTooLarge;
+  const canEdit =
+    allowEditing && category === "markdown" && !!editablePath && !isTooLarge;
+  const canEditRef = useRef(canEdit);
 
-  if (isActive !== resetKey.isActive || entryPath !== resetKey.path) {
-    setResetKey({ isActive, path: entryPath });
-    setViewMode("preview");
+  useNavigationLock(isActive && (isDirty || isSaving));
+
+  useLayoutEffect(() => {
+    sessionRef.current = session;
+    canEditRef.current = canEdit;
+  }, [session, canEdit]);
+
+  if (isActive !== session.isActive || entryPath !== session.path) {
+    setSession({ isActive, path: entryPath });
     setSourcePath(null);
-    setDraft("");
-    setSavedContent("");
+    setContent("");
+    setDocumentDirty(false);
+    setDocumentKey(documentKey + 1);
+    setIsSaving(false);
     initKeyRef.current = null;
   }
 
-  const isDirty = draft !== savedContent;
-
   useEffect(() => {
-    if (
-      !isActive ||
-      !canEdit ||
-      !entryPath ||
-      isContentLoading ||
-      !processedContent
-    ) {
+    if (!isActive || !entryPath || isContentLoading || !processedContent) {
       return;
     }
 
     const initKey = `${entryPath}:${processedContent.text}`;
-    if (initKeyRef.current === initKey) {
+    if (initKeyRef.current === initKey || isDirty || isSaving) {
       return;
     }
 
-    const hadInitializedForPath = initKeyRef.current?.startsWith(
-      `${entryPath}:`
-    );
-    if (hadInitializedForPath && isDirty) {
+    initKeyRef.current = initKey;
+    if (sourcePath === entryPath && processedContent.text === content) {
       return;
     }
 
     setSourcePath(entryPath);
-    setDraft(processedContent.text);
-    setSavedContent(processedContent.text);
-    initKeyRef.current = initKey;
+    setContent(processedContent.text);
+    setDocumentKey((key) => key + 1);
   }, [
-    canEdit,
+    content,
     entryPath,
     isActive,
     isContentLoading,
     isDirty,
+    isSaving,
     processedContent,
+    sourcePath,
   ]);
 
-  const save = async () => {
-    if (!owner || !editablePath || !isDirty || isSaving) {
-      return;
+  const saveContent = async (markdown: string): Promise<DocumentSaveResult> => {
+    if (
+      !canEditRef.current ||
+      !editablePath ||
+      !isActive ||
+      sessionRef.current !== session
+    ) {
+      return { ok: false, error: "This file is read-only." };
     }
 
     setIsSaving(true);
-    try {
-      await writeFileContentByPath({
-        owner,
-        canonicalPath: editablePath,
-        content: draft,
-        contentType: "text/markdown",
-      });
-      await mutate(
-        fileUrl,
-        { kind: "loaded", content: draft },
-        {
-          revalidate: false,
-        }
-      );
-      setSavedContent(draft);
-      initKeyRef.current = `${entryPath}:${draft}`;
-      sendNotification({ type: "success", title: "File saved" });
-    } catch (e) {
-      sendNotification({
-        type: "error",
-        title: "Failed to save file",
-        description: normalizeError(e).message,
-      });
-    } finally {
+    const result = await writeContent({
+      canonicalPath: editablePath,
+      content: markdown,
+      contentType: "text/markdown",
+    });
+
+    if (result.isErr()) {
+      if (sessionRef.current === session) {
+        setIsSaving(false);
+      }
+      return { ok: false, error: result.error.message };
+    }
+
+    await mutate(
+      fileUrl,
+      { kind: "loaded", content: markdown },
+      { revalidate: false }
+    );
+
+    if (sessionRef.current === session) {
+      setContent(markdown);
       setIsSaving(false);
     }
+
+    return { ok: true };
+  };
+
+  const save = async (): Promise<boolean> => {
+    if (!isDirty && !isSaving) {
+      return true;
+    }
+
+    const result = await documentRef.current?.save();
+    return result?.ok ?? false;
   };
 
   return {
     canEdit,
-    content:
-      canEdit && sourcePath === entryPath ? draft : processedContent?.text,
+    content: sourcePath === entryPath ? content : processedContent?.text,
+    documentRef,
+    documentKey,
     isDirty,
     isSaving,
-    revert: () => setDraft(savedContent),
     save,
-    setDraft,
-    setViewMode,
-    viewMode: canEdit ? viewMode : "preview",
+    saveContent,
+    setDocumentDirty,
   };
-}
+};

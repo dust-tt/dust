@@ -6,7 +6,6 @@ import {
   formatRecordCounts,
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
-import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
@@ -24,7 +23,7 @@ import {
   Download01,
   Icon,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface FilePreviewDialogProps {
   entry: FileEntry | null;
@@ -61,31 +60,6 @@ export function FilePreviewDialog({
     }
   };
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (
-        target?.tagName === "INPUT" ||
-        target?.tagName === "TEXTAREA" ||
-        target?.isContentEditable
-      ) {
-        return;
-      }
-      if (e.key === "ArrowLeft" && onPrev) {
-        e.preventDefault();
-        onPrev();
-      } else if (e.key === "ArrowRight" && onNext) {
-        e.preventDefault();
-        onNext();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onPrev, onNext]);
-
   const preview = useFilePreviewContent({ entry, fileUrl, enabled: isOpen });
   const { category, recordCounts } = preview;
 
@@ -104,8 +78,51 @@ export function FilePreviewDialog({
     processedContent: preview.processedContent,
   });
 
+  const navigatePrevious = useCallback(async () => {
+    if (await markdown.save()) {
+      onPrev?.();
+    }
+  }, [markdown.save, onPrev]);
+
+  const navigateNext = useCallback(async () => {
+    if (await markdown.save()) {
+      onNext?.();
+    }
+  }, [markdown.save, onNext]);
+
+  const handleOpenChange = async (open: boolean) => {
+    if (open || (await markdown.save())) {
+      onOpenChange(open);
+    }
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      if (
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      if (e.key === "ArrowLeft" && onPrev) {
+        e.preventDefault();
+        void navigatePrevious();
+      } else if (e.key === "ArrowRight" && onNext) {
+        e.preventDefault();
+        void navigateNext();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onPrev, onNext, navigatePrevious, navigateNext]);
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent size="2xl" height="2xl" className="gap-4 px-4">
         <DialogHeader className="flex gap-4">
           <DialogTitle>
@@ -135,15 +152,6 @@ export function FilePreviewDialog({
             )}
           </div>
         </DialogHeader>
-        {markdown.canEdit && (
-          <div className="flex shrink-0 justify-end px-4">
-            <MarkdownFilePreviewViewModeSwitch
-              key={`${entry?.path ?? "none"}:${isOpen}`}
-              viewMode={markdown.viewMode}
-              onViewModeChange={markdown.setViewMode}
-            />
-          </div>
-        )}
         <div
           className={cn(
             "min-h-0 flex-1 px-4",
@@ -158,9 +166,6 @@ export function FilePreviewDialog({
             entry={entry}
             fileUrl={fileUrl}
             markdown={markdown}
-            onMarkdownViewModeChange={
-              markdown.canEdit ? markdown.setViewMode : undefined
-            }
             owner={owner}
             preview={preview}
           />
@@ -172,55 +177,29 @@ export function FilePreviewDialog({
                 variant="outline"
                 size="sm"
                 icon={ChevronLeft}
-                onClick={onPrev}
-                disabled={!onPrev}
+                onClick={navigatePrevious}
+                disabled={!onPrev || markdown.isSaving}
                 tooltip="Previous"
               />
               <Button
                 variant="outline"
                 size="sm"
                 icon={ChevronRight}
-                onClick={onNext}
-                disabled={!onNext}
+                onClick={navigateNext}
+                disabled={!onNext || markdown.isSaving}
                 tooltip="Next"
               />
             </div>
-            {markdown.canEdit ? (
-              <div className="flex items-center gap-2">
-                <Button
-                  label="Save"
-                  variant="highlight"
-                  size="sm"
-                  isLoading={markdown.isSaving}
-                  disabled={!markdown.isDirty || markdown.isSaving}
-                  onClick={() => void markdown.save()}
-                />
-                <Button
-                  label="Revert"
-                  variant="outline"
-                  size="sm"
-                  disabled={!markdown.isDirty || markdown.isSaving}
-                  onClick={markdown.revert}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={Download01}
-                  label={isDownloading ? "Downloading…" : "Download"}
-                  onClick={handleDownload}
-                  disabled={!entry || isDownloading || markdown.isDirty}
-                />
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                icon={Download01}
-                label={isDownloading ? "Downloading…" : "Download"}
-                onClick={handleDownload}
-                disabled={!entry || isDownloading}
-              />
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Download01}
+              label={isDownloading ? "Downloading…" : "Download"}
+              onClick={handleDownload}
+              disabled={
+                !entry || isDownloading || markdown.isDirty || markdown.isSaving
+              }
+            />
           </div>
         </DialogFooter>
       </DialogContent>

@@ -2,6 +2,7 @@ import {
   ConversationSidePanelProvider,
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useBeforeViewChange } from "@app/hooks/useViewChangeGuard";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -281,5 +282,41 @@ describe("ConversationSidePanelProvider hash encoding", () => {
     restored.rerender();
     act(() => restored.result.current.togglePanel(params));
     expect(restored.result.current.currentPanel).toBeUndefined();
+  });
+});
+
+describe("ConversationSidePanelProvider pending edits", () => {
+  it("waits for a save before replacing the file panel", async () => {
+    hash.set({ spt: "file_preview", spid: "conversation-abc/plan.md" });
+    const save = Promise.withResolvers<boolean>();
+    const { result } = renderHook(
+      () => {
+        useBeforeViewChange(() => save.promise);
+        return useConversationSidePanelContext();
+      },
+      { wrapper: ConversationSidePanelProvider }
+    );
+
+    act(() => result.current.openPanel({ type: "files" }));
+    expect(result.current.currentPanel).toBe("file_preview");
+    await act(async () => {
+      save.resolve(true);
+    });
+    expect(result.current.currentPanel).toBe("files");
+  });
+
+  it("keeps the file open when saving fails", async () => {
+    hash.set({ spt: "file_preview", spid: "conversation-abc/plan.md" });
+    const { result } = renderHook(
+      () => {
+        useBeforeViewChange(async () => false);
+        return useConversationSidePanelContext();
+      },
+      { wrapper: ConversationSidePanelProvider }
+    );
+
+    await act(async () => result.current.closePanel());
+    expect(result.current.currentPanel).toBe("file_preview");
+    expect(result.current.data).toBe("conversation-abc/plan.md");
   });
 });
