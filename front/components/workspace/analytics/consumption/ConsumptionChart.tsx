@@ -263,6 +263,10 @@ interface ConsumptionDailyChartProps {
   additionalControls?: ReactNode;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] active-users-legend-remains-toggleable
+ * Hiding active users must keep its legend available, including when credits are zero.
+ */
 export function ConsumptionDailyChart({
   timeseries,
   isTimeseriesLoading,
@@ -271,6 +275,8 @@ export function ConsumptionDailyChart({
   showActiveUsers,
   additionalControls,
 }: ConsumptionDailyChartProps) {
+  const [isActiveUsersVisible, setIsActiveUsersVisible] = useState(true);
+  const displayActiveUsers = showActiveUsers && isActiveUsersVisible;
   const groups = useMemo(() => timeseries?.groups ?? [], [timeseries]);
   const totalUsers = timeseries?.workspaceMemberCount ?? null;
   const chartData = useMemo(() => timeseries?.points ?? [], [timeseries]);
@@ -321,7 +327,7 @@ export function ConsumptionDailyChart({
         colorByGroupKey={colorByGroupKey}
         partialTimestamp={partialTimestamp}
         currentBucketLabel={currentBucketLabel}
-        showActiveUsers={showActiveUsers}
+        showActiveUsers={displayActiveUsers}
         totalUsers={totalUsers}
       />
     ),
@@ -330,7 +336,7 @@ export function ConsumptionDailyChart({
       colorByGroupKey,
       partialTimestamp,
       currentBucketLabel,
-      showActiveUsers,
+      displayActiveUsers,
       totalUsers,
     ]
   );
@@ -350,6 +356,8 @@ export function ConsumptionDailyChart({
             label: "Active users",
             colorClassName: ACTIVE_USERS_COLOR,
             isTrailing: true,
+            isActive: isActiveUsersVisible,
+            onClick: () => setIsActiveUsersVisible((visible) => !visible),
           },
         ]
       : []),
@@ -401,7 +409,7 @@ export function ConsumptionDailyChart({
             className: "fill-muted-foreground text-xs",
           }}
         />
-        {hasActiveUsers && (
+        {hasActiveUsers && isActiveUsersVisible && (
           <YAxis
             yAxisId="activeUsers"
             orientation="right"
@@ -456,7 +464,7 @@ export function ConsumptionDailyChart({
             </Bar>
           );
         })}
-        {hasActiveUsers && (
+        {hasActiveUsers && isActiveUsersVisible && (
           <Line
             yAxisId="activeUsers"
             type="linear"

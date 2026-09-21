@@ -51,13 +51,25 @@ interface ChartLegendProps {
   alignment?: ChartLegendAlignment;
 }
 
-function ChartLegendItem({ item }: { item: LegendItem }) {
+interface ChartLegendItemProps {
+  item: LegendItem;
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:react] accessible-legend-toggle
+ * Clickable entries must support keyboard activation and expose their active state.
+ */
+function ChartLegendItem({ item }: ChartLegendItemProps) {
+  const Component = item.onClick ? "button" : "div";
+
   return (
-    <div
+    <Component
+      type={item.onClick ? "button" : undefined}
+      aria-pressed={item.onClick ? item.isActive !== false : undefined}
       className={cn(
         "flex items-center gap-2",
-        item.onClick && "cursor-pointer transition-opacity hover:opacity-80",
-        item.isActive === false && "opacity-20"
+        item.onClick &&
+          "-m-1 cursor-pointer rounded-sm border border-transparent p-1 hover:border-border focus-visible:outline-highlight"
       )}
       onClick={item.onClick}
     >
@@ -65,8 +77,15 @@ function ChartLegendItem({ item }: { item: LegendItem }) {
         className={item.colorClassName}
         rounded={item.key === "versionMarkers" ? "full" : "sm"}
       />
-      <span className="text-sm text-muted-foreground">{item.label}</span>
-    </div>
+      <span
+        className={cn(
+          "text-sm text-muted-foreground",
+          item.isActive === false && "line-through"
+        )}
+      >
+        {item.label}
+      </span>
+    </Component>
   );
 }
 
