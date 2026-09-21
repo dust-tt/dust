@@ -5,6 +5,7 @@ import { SuggestedSkillName } from "@app/components/skill_builder/SuggestedSkill
 import { SuggestedSkillUserFacingDescription } from "@app/components/skill_builder/SuggestedSkillUserFacingDescription";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
+import { useSkill } from "@app/lib/swr/skill_configurations";
 import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
@@ -20,6 +21,7 @@ import {
   Clock,
   DiffBlock,
   Hoverable,
+  LoadingBlock,
   Tooltip,
   XCircle,
 } from "@dust-tt/sparkle";
@@ -218,6 +220,28 @@ function ConversationFooter({
   );
 }
 
+interface DeleteSuggestionSectionProps {
+  skillId: string;
+  workspaceId: string;
+}
+
+function DeleteSuggestionSection({
+  skillId,
+  workspaceId,
+}: DeleteSuggestionSectionProps) {
+  const { skill, isSkillLoading } = useSkill({ workspaceId, skillId });
+
+  if (isSkillLoading) {
+    return <LoadingBlock className="h-6 w-full" />;
+  }
+
+  return (
+    <p className="text-sm text-foreground">
+      Delete the <span className="font-medium">{skill?.name}</span> skill.
+    </p>
+  );
+}
+
 interface SuggestionDetailsProps {
   suggestion: SkillSuggestionType;
   getSkillInstructionsHtml: () => string;
@@ -288,6 +312,14 @@ function SuggestionDetails({
       return (
         <SuggestedSkillName
           suggestion={suggestion.suggestion}
+          skillId={suggestion.skillConfigurationId}
+          workspaceId={workspaceId}
+        />
+      );
+
+    case "delete":
+      return (
+        <DeleteSuggestionSection
           skillId={suggestion.skillConfigurationId}
           workspaceId={workspaceId}
         />

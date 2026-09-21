@@ -672,6 +672,7 @@ export function SkillBuilderInstructionsEditor({
         case "user_facing_description":
         case "create":
         case "name":
+        case "delete":
           continue;
         default:
           assertNeverAndIgnore(suggestion);

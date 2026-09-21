@@ -63,6 +63,7 @@ export function SkillBuilderSuggestionsPanel({
         case "user_facing_description":
         case "create":
         case "name":
+        case "delete":
           return;
         default:
           assertNeverAndIgnore(suggestion);

@@ -170,6 +170,7 @@ Skill suggestions:
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_editors\`: add or remove editors of a skill by user id. A change that would leave the skill without any editor is refused.
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_user_facing_description\`: replace the user-facing description of a skill, the short text members read when browsing skills.
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_name\`: rename a skill. A name already carried by another active skill of the workspace is refused.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_deletion\`: propose deleting an existing custom skill by \`skillId\`.
 
 Agent suggestions:
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_creation\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`.
