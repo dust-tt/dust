@@ -110,6 +110,7 @@ export interface ConversationListItemProps {
   creator?: {
     fullName: string;
     portrait?: string;
+    isRounded?: boolean;
   };
   /** Formatted timestamp displayed on the right of the title. */
   time: string;
@@ -185,7 +186,7 @@ export function ConversationListItem({
           name={creator.fullName}
           visual={creator.portrait}
           size="sm"
-          isRounded={true}
+          isRounded={creator.isRounded ?? true}
         />
       ) : avatar ? (
         <Avatar

@@ -1477,6 +1477,47 @@ describe("toPodConversationListItem", () => {
     expect(item.updated).toBe(conversationResource.updatedAt.getTime());
   });
 
+  it("keeps agent creators non-rounded when the first visible message is agent-authored", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Trigger Agent",
+    });
+
+    const conversationType = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+
+    await ConversationFactory.createAgentMessageWithRank({
+      workspace,
+      conversationId: conversationType.id,
+      rank: 0,
+      agentConfigurationId: agentConfig.sId,
+      agentConfigurationVersion: agentConfig.version,
+    });
+    await markConversationAgentMessagesAsSucceeded(
+      workspace,
+      conversationType.id
+    );
+
+    const [conversationResource] =
+      await ConversationResource.fetchByIdsWithReadState(auth, [
+        conversationType.sId,
+      ]);
+    if (!conversationResource) {
+      throw new Error("Conversation not found");
+    }
+
+    const [item] = await toPodConversationListItem(auth, {
+      conversations: [conversationResource],
+    });
+
+    expect(item.creator).toMatchObject({
+      name: "Trigger Agent",
+      visual: agentConfig.pictureUrl,
+      isRounded: false,
+    });
+  });
+
   it("excludes agent messages that have not succeeded", async () => {
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
 
