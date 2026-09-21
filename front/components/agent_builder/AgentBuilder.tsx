@@ -609,12 +609,10 @@ function AgentBuilderForm({
           formData.generationSettings.modelSettings?.providerId ?? "",
       });
 
-      // A save can leave nothing to persist: the configuration matched the current version and no
-      // scope/editor change (nothing was updated), and no Slack channels or triggers changed either.
-      // Tell the user rather than claiming a save happened. `triggersToUpdate` is seeded (via
-      // `form.reset`) with every existing trigger, so its length is not a change signal. Compare it
-      // against the seeded baseline (the form's default values) by value: `useFieldArray.update()`
-      // does not reliably flip the field's dirty state, so `getFieldState(...).isDirty` misses edits.
+      // A save can leave nothing to persist (config matched the current version, no scope/editor,
+      // Slack or trigger change): tell the user instead of claiming a save. `triggersToUpdate` is
+      // seeded with every existing trigger, so its length isn't a change signal; compare it by value
+      // against its baseline since `useFieldArray.update()` doesn't reliably flip `isDirty`.
       const editedTriggers = !isEqual(
         form.getValues("triggersToUpdate"),
         form.formState.defaultValues?.triggersToUpdate ?? []
