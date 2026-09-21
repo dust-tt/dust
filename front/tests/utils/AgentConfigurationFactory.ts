@@ -136,6 +136,10 @@ export class AgentConfigurationFactory {
       editors: [user.toJSON()],
       authorId: user.id,
       requestedSpaceIds: overrides.requestedSpaceIds ?? [],
+      // Explicitly clear tools/skills: `updateConfiguration` is a partial merge (an omitted field
+      // keeps its current value), and this helper's contract is to produce a bare updated version.
+      actions: [],
+      skills: [],
     });
 
     if (result.isErr()) {
