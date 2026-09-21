@@ -1,9 +1,9 @@
 import { getActiveWorkspaceAgentConfiguration } from "@app/lib/api/assistant/configuration/context";
 import { getAgentConfigurationAsYAMLConfig } from "@app/lib/api/assistant/configuration/yaml_export";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
+import { getEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
 import type { GroupResource as GroupResourceType } from "@app/lib/resources/group_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -111,18 +111,7 @@ async function getEditorIds(
   auth: Authenticator,
   agent: AgentConfigurationType
 ) {
-  const editorGroupResult = await GroupResource.findEditorGroupForAgent(
-    auth,
-    agent
-  );
-  expect(editorGroupResult.isOk()).toBe(true);
-  if (editorGroupResult.isErr()) {
-    throw editorGroupResult.error;
-  }
-
-  const editors = await editorGroupResult.value.getActiveMembers(auth);
-
-  return editors.map((editor) => editor.sId);
+  return (await getEditors(auth, agent)).map((editor) => editor.sId);
 }
 
 describe("patchAgentConfigurationFromJSON", () => {
@@ -366,6 +355,7 @@ describe("patchAgentConfigurationFromJSON", () => {
 
     const space = await SpaceFactory.regular(workspace);
     await SpaceFactory.attachGroup(space, globalGroup);
+    await authenticator.refresh();
 
     const createResult = await saveAgentConfiguration(authenticator, {
       name: "YAML export test agent",

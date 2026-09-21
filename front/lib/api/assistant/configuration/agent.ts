@@ -32,7 +32,7 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { invalidateAgentResourceCaches } from "@app/lib/resources/agent_resource_cache";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -125,10 +125,6 @@ export async function createPendingAgentConfiguration(
       { transaction: t }
     );
 
-    await GroupResource.makeNewAgentEditorsGroup(auth, agent, {
-      transaction: t,
-      authorId: user.id,
-    });
     await AgentResource.fromAgentConfigurationModel(auth, agent).grantEditors(
       auth,
       {
@@ -136,7 +132,6 @@ export async function createPendingAgentConfiguration(
         transaction: t,
       }
     );
-    await auth.refresh({ transaction: t });
   });
 
   return new Ok({ sId });
@@ -1087,6 +1082,11 @@ export async function batchHardDeletePendingAgentConfigurations(
  * Removing an editor MUST validate membership against the grant-backed editor set and revoke that
  * grant. A user without an editor grant MUST return `user_not_member`.
  */
+/**
+ * @cc [owner:philipperolet,label:security;product] editor-add-requires-membership
+ * Adding an editor requires active workspace membership. Otherwise the operation MUST return
+ * `user_not_found` before changing any editor grants.
+ */
 export async function updateAgentPermissions(
   auth: Authenticator,
   {
@@ -1102,15 +1102,11 @@ export async function updateAgentPermissions(
   Result<
     undefined,
     DustError<
-      | "group_not_found"
       | "internal_error"
       | "unauthorized"
-      | "invalid_id"
-      | "system_or_global_group"
       | "user_not_found"
       | "user_not_member"
       | "user_already_member"
-      | "group_requirements_not_met"
       | "invalid_request_error"
     >
   >
@@ -1124,12 +1120,13 @@ export async function updateAgentPermissions(
     );
   }
 
-  const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-    auth,
-    agent
-  );
-  if (editorGroupRes.isErr()) {
-    return editorGroupRes;
+  if (agent.scope === "global") {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Global agent editors cannot be updated."
+      )
+    );
   }
 
   const canAdministrate = auth.can(
@@ -1141,21 +1138,70 @@ export async function updateAgentPermissions(
     const transactionResult = await withTransaction(async (t) => {
       const agentResource = AgentResource.fromAgentConfiguration(auth, agent);
 
-      if (usersToAdd.length > 0) {
-        if (!canAdministrate) {
+      if (usersToAdd.length > 0 && !canAdministrate) {
+        return new Err(
+          new DustError(
+            "unauthorized",
+            "Only admins or agent editors can add editors"
+          )
+        );
+      }
+
+      if (usersToRemove.length > 0 && !canAdministrate) {
+        return new Err(
+          new DustError(
+            "unauthorized",
+            "Only admins or agent editors can remove editors"
+          )
+        );
+      }
+
+      if (usersToAdd.length > 0 || usersToRemove.length > 0) {
+        const editors = await agentResource.listEditors(auth, {
+          transaction: t,
+        });
+        assert(editors !== null);
+        const editorModelIds = new Set(editors.map((editor) => editor.id));
+
+        if (usersToAdd.some((user) => editorModelIds.has(user.id))) {
           return new Err(
             new DustError(
-              "unauthorized",
-              "Only admins or group editors can add group members"
+              "user_already_member",
+              "Cannot add: user is already an agent editor"
             )
           );
         }
-        const addRes = await editorGroupRes.value.dangerouslyAddMembers(auth, {
-          users: usersToAdd,
-          transaction: t,
-        });
-        if (addRes.isErr()) {
-          return addRes;
+
+        if (usersToRemove.some((user) => !editorModelIds.has(user.id))) {
+          return new Err(
+            new DustError(
+              "user_not_member",
+              "Cannot remove: user is not an agent editor"
+            )
+          );
+        }
+      }
+
+      if (usersToAdd.length > 0) {
+        const userResources = await UserResource.fetchByModelIds(
+          usersToAdd.map((user) => user.id),
+          { transaction: t }
+        );
+        const { total: activeMembershipCount } =
+          await MembershipResource.getActiveMemberships({
+            users: userResources,
+            workspace: auth.getNonNullableWorkspace(),
+            transaction: t,
+          });
+        if (activeMembershipCount !== usersToAdd.length) {
+          return new Err(
+            new DustError(
+              "user_not_found",
+              usersToAdd.length === 1
+                ? "Cannot add: user is not a member of the workspace"
+                : "Cannot add: users are not members of the workspace"
+            )
+          );
         }
 
         await agentResource.grantEditors(auth, {
@@ -1165,48 +1211,6 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
-        if (!canAdministrate) {
-          return new Err(
-            new DustError(
-              "unauthorized",
-              "Only admins or group editors can remove group members"
-            )
-          );
-        }
-        const editors = await agentResource.listEditors(auth, {
-          transaction: t,
-        });
-        assert(editors !== null);
-        const editorIds = new Set(editors.map((editor) => editor.id));
-        if (usersToRemove.some((user) => !editorIds.has(user.id))) {
-          return new Err(
-            new DustError(
-              "user_not_member",
-              "Cannot remove: user is not an agent editor"
-            )
-          );
-        }
-        const legacyEditors = await editorGroupRes.value.getActiveMembers(
-          auth,
-          { transaction: t }
-        );
-        const legacyEditorIds = new Set(
-          legacyEditors.map((editor) => editor.id)
-        );
-        const legacyUsersToRemove = usersToRemove.filter((user) =>
-          legacyEditorIds.has(user.id)
-        );
-        const removeRes = await editorGroupRes.value.dangerouslyRemoveMembers(
-          auth,
-          {
-            users: legacyUsersToRemove,
-            transaction: t,
-          }
-        );
-        if (removeRes.isErr()) {
-          return removeRes;
-        }
-
         await agentResource.revokeEditors(auth, {
           editors: usersToRemove,
           transaction: t,

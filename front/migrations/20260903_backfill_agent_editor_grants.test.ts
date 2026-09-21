@@ -16,11 +16,18 @@ const logger = baseLogger.child({}, { level: "silent" });
 
 describe("backfillAgentEditorGrants", () => {
   it("treats a missing legacy editor group as empty through execute and rerun", async () => {
-    const { authenticator, workspace } = await createResourceTest({
+    const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",
     });
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
+    const agentModel = await AgentConfigurationModel.findOne({
+      where: { id: agent.id, workspaceId: workspace.id },
+    });
+    assert(agentModel);
+    await GroupResource.makeNewAgentEditorsGroup(authenticator, agentModel, {
+      authorId: user.id,
+    });
     const legacyGroup = await GroupResource.findEditorGroupForAgent(
       authenticator,
       agent
@@ -83,6 +90,24 @@ describe("backfillAgentEditorGrants", () => {
       authenticator,
       firstVersion.sId
     );
+    const firstVersionModel = await AgentConfigurationModel.findOne({
+      where: { id: firstVersion.id, workspaceId: workspace.id },
+    });
+    assert(firstVersionModel);
+    const agentModel = await AgentConfigurationModel.findOne({
+      where: { id: agent.id, workspaceId: workspace.id },
+    });
+    assert(agentModel);
+    const seededLegacyGroup = await GroupResource.makeNewAgentEditorsGroup(
+      authenticator,
+      firstVersionModel,
+      { authorId: author.id }
+    );
+    const latestLink = await seededLegacyGroup.addGroupToAgentConfiguration({
+      auth: authenticator,
+      agentConfiguration: agentModel,
+    });
+    assert(latestLink.isOk());
     const legacyGroupResult = await GroupResource.findEditorGroupForAgent(
       authenticator,
       agent
@@ -98,10 +123,6 @@ describe("backfillAgentEditorGrants", () => {
     if (addLegacyEditor.isErr()) {
       throw addLegacyEditor.error;
     }
-    const firstVersionModel = await AgentConfigurationModel.findOne({
-      where: { id: firstVersion.id, workspaceId: workspace.id },
-    });
-    assert(firstVersionModel);
     // A stale group linked only to an obsolete version must not contribute grants.
     const staleGroup = await GroupResource.makeNew(
       {

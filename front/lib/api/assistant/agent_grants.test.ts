@@ -6,6 +6,7 @@ import {
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -17,9 +18,11 @@ import assert from "assert";
 import { expect, it } from "vitest";
 
 it("uses agent grants for list, manage and archived views", async () => {
-  const { authenticator: authorAuth, workspace } = await createResourceTest({
-    role: "user",
-  });
+  const {
+    authenticator: authorAuth,
+    workspace,
+    user: author,
+  } = await createResourceTest({ role: "user" });
   const legacyAgent = await AgentConfigurationFactory.createTestAgent(
     authorAuth,
     { name: "Legacy", scope: "hidden" }
@@ -30,14 +33,19 @@ it("uses agent grants for list, manage and archived views", async () => {
   );
   const member = await UserFactory.basic();
   await MembershipFactory.associate(workspace, member, { role: "user" });
-  const legacyGroup = await GroupResource.findEditorGroupForAgent(
+  const legacyAgentModel = await AgentConfigurationModel.findOne({
+    where: { id: legacyAgent.id, workspaceId: workspace.id },
+  });
+  assert(legacyAgentModel);
+  // Simulate a pre-migration agent: new agents no longer create this group or association.
+  const legacyGroup = await GroupResource.makeNewAgentEditorsGroup(
     authorAuth,
-    legacyAgent
+    legacyAgentModel,
+    { authorId: author.id }
   );
-  assert(legacyGroup.isOk());
   assert(
     (
-      await legacyGroup.value.dangerouslyAddMembers(authorAuth, {
+      await legacyGroup.dangerouslyAddMembers(authorAuth, {
         users: [member.toJSON()],
       })
     ).isOk()
@@ -99,12 +107,6 @@ it("keeps author access and admin redaction when grants are enabled", async () =
       })
     ).isOk()
   );
-  const legacyGroup = await GroupResource.findEditorGroupForAgent(
-    authorAuth,
-    agent
-  );
-  assert(legacyGroup.isOk());
-  assert((await legacyGroup.value.delete(authorAuth)).isOk());
   expect(await getEditors(authorAuth, agent)).toEqual([]);
   await authorAuth.refresh();
   const authorAgent = await getAgentConfiguration(authorAuth, {

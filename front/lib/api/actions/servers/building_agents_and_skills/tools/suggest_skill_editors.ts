@@ -3,6 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { formatSkillSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestSkillEditorsArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import type { Authenticator } from "@app/lib/auth";
@@ -32,14 +33,6 @@ export async function suggestSkillEditors(
     );
   }
 
-  if (addUserIds.length === 0 && removeUserIds.length === 0) {
-    return new Err(
-      new MCPError(
-        "Provide at least one user in `addUserIds` or `removeUserIds`."
-      )
-    );
-  }
-
   if (!isResourceSId("skill", skillId)) {
     return new Err(
       new MCPError("Only custom workspace skills can receive suggestions.")
@@ -57,6 +50,14 @@ export async function suggestSkillEditors(
   });
   if (validation.isErr()) {
     return new Err(new MCPError(validation.error.message));
+  }
+
+  if (addUserIds.length === 0 && removeUserIds.length === 0) {
+    return new Err(
+      new MCPError(
+        "Provide at least one user in `addUserIds` or `removeUserIds`."
+      )
+    );
   }
 
   // `createSuggestionForSkill` only requires `canWrite`, which `canAdministrate` implies.
@@ -95,9 +96,7 @@ export async function suggestSkillEditorsHandler(
   return new Ok([
     {
       type: "text" as const,
-      text:
-        `:skill_suggestion[]{sId=${created.sId} kind=${created.kind} ` +
-        `skillId=${created.skillConfigurationSId}}`,
+      text: formatSkillSuggestionDirective(created),
     },
   ]);
 }

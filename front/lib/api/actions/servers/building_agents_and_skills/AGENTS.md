@@ -44,8 +44,9 @@ and the parsed payload, and call `toJSON()`.
   guarantee a single open pending suggestion per target (`no-direct-deletion`-style contracts),
   serialize it with `executeWithLockResult` (`front/lib/lock.ts`) keyed by the target id — the
   read/outdate/insert steps are not otherwise atomic.
-- Output a directive: `:skill_suggestion[]{sId=... kind=<kind> skillId=...}` or
-  `:agent_suggestion[]{sId=... kind=<kind> agentId=...}`.
+- Output a directive with `formatSkillSuggestionDirective`/`formatAgentSuggestionDirective`
+  (`directives.ts`) rather than hand-building the `:skill_suggestion[]{...}` /
+  `:agent_suggestion[]{...}` string: it is the one place that knows the syntax.
 - `tools/index.ts`: register the handler. Add `@cc` contracts for security-relevant invariants
   (see `requires-skill-write`).
 

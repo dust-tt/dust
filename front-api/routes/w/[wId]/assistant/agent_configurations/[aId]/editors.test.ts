@@ -473,6 +473,22 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
     });
   });
 
+  it("should return 404 when adding a user outside the workspace", async () => {
+    const { workspace, agent } = await setupTest({ requestUserRole: "admin" });
+    const outsider = await UserFactory.basic();
+
+    const response = await patchEditors(workspace, agent.sId, {
+      addEditorIds: [outsider.sId],
+    });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "user_not_found",
+        message: "The user was not found in the workspace.",
+      },
+    });
+  });
+
   it("should return 404 when removing non-existent user", async () => {
     const { workspace, agent } = await setupTest({ requestUserRole: "admin" });
 

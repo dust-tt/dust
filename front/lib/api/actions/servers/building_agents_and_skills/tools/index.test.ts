@@ -450,6 +450,24 @@ describe("building_agents_and_skills tools", () => {
 
       expect(result.isErr()).toBe(true);
     });
+
+    it("rejects an archived skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Archived",
+        status: "archived",
+      });
+
+      const result = await getTool(SUGGEST_SKILL_UPDATE_TOOL_NAME).handler(
+        {
+          skillId: skill.sId,
+          agentFacingDescriptionEdit: { content: "Whatever." },
+        },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "archived");
+    });
   });
 
   describe(SUGGEST_SKILL_EDITORS_TOOL_NAME, () => {
@@ -599,6 +617,18 @@ describe("building_agents_and_skills tools", () => {
       expectMcpError(result, "not found");
     });
 
+    it("rejects an empty addUserIds and removeUserIds", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Empty Lists" });
+
+      const result = await getTool(SUGGEST_SKILL_EDITORS_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "Provide at least one user");
+    });
+
     it("rejects a user present in both addUserIds and removeUserIds", async () => {
       const { authenticator, workspace } = await createResourceTest({
         role: "user",
@@ -690,6 +720,7 @@ describe("building_agents_and_skills tools", () => {
           name: "Incident Helper",
           description: "Helps triage incidents.",
           instructions: "Collect impact and timeline.",
+          analysis: "Incident response had no dedicated helper.",
         },
         makeExtra(authenticator)
       );
@@ -723,6 +754,7 @@ describe("building_agents_and_skills tools", () => {
           description: "Helps triage incidents.",
           instructions: "Collect impact and timeline.",
         },
+        analysis: "Incident response had no dedicated helper.",
       });
 
       // The suggestion targets a hidden, pending, instructions-less placeholder

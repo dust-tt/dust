@@ -2396,6 +2396,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
+   * @cc [owner:achilleburah,label:security] canAdministrateCustomSkillId-matches-canAdministrate
+   * For a custom (never code-defined) skill, MUST return the same verdict as `canAdministrate`
+   * would for the fetched `SkillResource` with this id, without fetching or hydrating the row.
+   */
+  static canAdministrateCustomSkillId(
+    auth: Authenticator,
+    { id, workspaceId }: { id: ModelId; workspaceId: ModelId }
+  ): boolean {
+    if (auth.isKey()) {
+      return true;
+    }
+
+    return this.customSkillAllowedVerbs(auth, { id, workspaceId }).has("admin");
+  }
+
+  /**
    * The verbs the caller holds on this skill: the code role rules unioned with the caller's own
    * verbs resolved from its `group_permissions` grants — for skills, the per-user `editor` grants
    * held by the regular_auto group (see `grantToUser`).
