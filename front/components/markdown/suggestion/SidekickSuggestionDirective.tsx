@@ -148,6 +148,7 @@ const CONVERSATION_AGENT_SUGGESTION_KINDS = [
   "description",
   "model",
   "name",
+  "instructions",
 ] as const;
 
 type ConversationAgentSuggestionKind =

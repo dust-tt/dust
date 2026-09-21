@@ -3,6 +3,7 @@ import {
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
@@ -665,6 +666,112 @@ describe("PATCH with applyToAgent", () => {
     expect(fetched?.state).toBe("pending");
   });
 
+  it("updates the agent's instructions for an instructions suggestion", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const instructionsHtml = convertMarkdownToBlockHtml("Be helpful.");
+    const [, targetBlockId] =
+      /data-block-id="((?!instructions-root)[^"]+)"/.exec(instructionsHtml) ??
+      [];
+    expect(targetBlockId).toBeTruthy();
+    const updatedAgent = await AgentConfigurationFactory.updateTestAgent(
+      auth,
+      agent.sId,
+      { instructionsHtml }
+    );
+
+    const suggestion = await AgentSuggestionFactory.createInstructions(
+      auth,
+      updatedAgent,
+      {
+        suggestion: {
+          targetBlockId: targetBlockId as string,
+          type: "replace",
+          content: "<p>Be extremely helpful.</p>",
+        },
+        source: "conversational",
+      }
+    );
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "full",
+    });
+    expect(updated?.instructionsHtml).toContain("Be extremely helpful.");
+  });
+
+  it("returns 400 and leaves the suggestion pending when changing the instructions of a non-active agent", async () => {
+    const { workspace, auth, agent } = await setupPendingAgent();
+    const suggestion = await AgentSuggestionFactory.createInstructions(
+      auth,
+      agent,
+      { source: "conversational" }
+    );
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "Only an active agent"
+    );
+    const fetched = await AgentSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(fetched?.state).toBe("pending");
+  });
+
+  it("returns 400 and leaves the suggestion pending when the targeted block no longer exists", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const instructionsHtml = convertMarkdownToBlockHtml("Be helpful.");
+    const updatedAgent = await AgentConfigurationFactory.updateTestAgent(
+      auth,
+      agent.sId,
+      { instructionsHtml }
+    );
+
+    const suggestion = await AgentSuggestionFactory.createInstructions(
+      auth,
+      updatedAgent,
+      {
+        suggestion: {
+          targetBlockId: "does-not-exist",
+          type: "replace",
+          content: "<p>Be extremely helpful.</p>",
+        },
+        source: "conversational",
+      }
+    );
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "no longer contain the block"
+    );
+    const fetched = await AgentSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(fetched?.state).toBe("pending");
+  });
+
   it("returns 400 and leaves the suggestion pending when deleting a non-active agent", async () => {
     const { workspace, auth, agent } = await setupPendingAgent();
     const suggestion = await AgentSuggestionFactory.createDelete(auth, agent);
@@ -793,10 +900,7 @@ describe("PATCH with applyToAgent", () => {
 
   it("returns 400 for kinds that cannot be applied server-side", async () => {
     const { workspace, auth, agent } = await setupTest();
-    const suggestion = await AgentSuggestionFactory.createInstructions(
-      auth,
-      agent
-    );
+    const suggestion = await AgentSuggestionFactory.createTools(auth, agent);
 
     const response = await patchSuggestions(workspace, agent.sId, {
       suggestionIds: [suggestion.sId],

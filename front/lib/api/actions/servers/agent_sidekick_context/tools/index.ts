@@ -18,7 +18,7 @@ import type {
 import { AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
 import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
-import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
+import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -78,13 +78,11 @@ import type {
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import {
-  INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
   isKnowledgeSuggestion,
   isSkillsSuggestion,
   isSubAgentSuggestion,
   isToolsSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
-import { JSDOM } from "jsdom";
 import type { z } from "zod";
 
 type LimitedSuggestionKind =
@@ -168,14 +166,6 @@ async function markDuplicateSuggestionsAsOutdated(
 type InstructionSuggestionInput = z.infer<typeof InstructionsSuggestionSchema>;
 
 /**
- * Returns the number of top-level HTML elements in the given HTML string
- */
-function countTopLevelBlocks(html: string): number {
-  const dom = new JSDOM(`<body>${html}</body>`);
-  return dom.window.document.body.children.length;
-}
-
-/**
  * Shared logic for creating instruction suggestions. Used by both the
  * suggest_prompt_edits MCP handler and reinforced agent analysis.
  */
@@ -192,16 +182,6 @@ async function createInstructionSuggestions({
 }): Promise<
   Result<{ sId: string; kind: string; targetBlockId: string }[], string>
 > {
-  // Reject batches where multiple suggestions target the same block.
-  const targetBlockIds = suggestions.map((s) => s.targetBlockId);
-  const uniqueTargetBlockIds = new Set(targetBlockIds);
-  if (uniqueTargetBlockIds.size !== targetBlockIds.length) {
-    return new Err(
-      "Multiple suggestions target the same block ID. Use a single suggestion per block." +
-        `For full rewrites, target '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' instead.`
-    );
-  }
-
   // Check pending suggestion limit before proceeding.
   const pendingInstructions =
     await AgentSuggestionResource.listByAgentConfigurationId(
@@ -230,54 +210,12 @@ async function createInstructionSuggestions({
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
-  // Reject non-root suggestions that contain multiple top-level blocks.
-  for (const suggestion of suggestions) {
-    if (suggestion.targetBlockId !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
-      const blockCount = countTopLevelBlocks(suggestion.content);
-      if (blockCount > 1) {
-        return new Err(
-          `Suggestion for block "${suggestion.targetBlockId}" contains ${blockCount} top-level elements but replace only supports 1. ` +
-            `Keep it within a single tag, or use targetBlockId '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' if the change requires multiple blocks.`
-        );
-      }
-    }
-  }
-
-  const createdSuggestions: {
-    sId: string;
-    kind: string;
-    targetBlockId: string;
-  }[] = [];
-
-  for (const suggestion of suggestions) {
-    const { analysis, ...suggestionData } = suggestion;
-    const created = await AgentSuggestionResource.createSuggestionForAgent(
-      auth,
-      agentConfiguration,
-      {
-        kind: "instructions",
-        suggestion: suggestionData,
-        analysis: analysis ?? null,
-        state: "pending",
-        source: "sidekick",
-        conversationId: conversation?.id ?? null,
-      }
-    );
-
-    createdSuggestions.push({
-      sId: created.sId,
-      kind: created.kind,
-      targetBlockId: suggestionData.targetBlockId,
-    });
-  }
-
-  await pruneConflictingInstructionSuggestions(
-    auth,
+  return createAgentInstructionSuggestions(auth, {
     agentConfiguration,
-    createdSuggestions
-  );
-
-  return new Ok(createdSuggestions);
+    edits: suggestions,
+    source: "sidekick",
+    conversationId: conversation?.id ?? null,
+  });
 }
 
 type ToolsSuggestionInput = z.infer<typeof ToolsSuggestionSchema> & {

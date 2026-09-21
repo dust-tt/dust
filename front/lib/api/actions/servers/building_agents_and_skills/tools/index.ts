@@ -6,6 +6,7 @@ import {
   SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_AGENT_DELETION_TOOL_NAME,
   SUGGEST_AGENT_DESCRIPTION_TOOL_NAME,
+  SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME,
   SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME,
   SUGGEST_AGENT_NAME_TOOL_NAME,
   SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
@@ -19,6 +20,7 @@ import { describeSkillHandler } from "@app/lib/api/actions/servers/building_agen
 import { suggestAgentCreationHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/suggest_agent_creation";
 import { suggestAgentDeletionHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/suggest_agent_deletion";
 import { suggestAgentDescriptionHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/suggest_agent_description";
+import { suggestAgentInstructionsChangeHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/suggest_agent_instructions_change";
 import { suggestAgentModelChangeHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/suggest_agent_model_change";
 import { suggestAgentNameHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/suggest_agent_name";
 import { suggestSkillAvailabilityHandler } from "@app/lib/api/actions/servers/building_agents_and_skills/tools/suggest_skill_availability";
@@ -34,6 +36,8 @@ const handlers: ToolHandlers<typeof BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA> =
     [SUGGEST_AGENT_CREATION_TOOL_NAME]: suggestAgentCreationHandler,
     [SUGGEST_AGENT_DELETION_TOOL_NAME]: suggestAgentDeletionHandler,
     [SUGGEST_AGENT_DESCRIPTION_TOOL_NAME]: suggestAgentDescriptionHandler,
+    [SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME]:
+      suggestAgentInstructionsChangeHandler,
     [SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME]: suggestAgentModelChangeHandler,
     [SUGGEST_AGENT_NAME_TOOL_NAME]: suggestAgentNameHandler,
     [SUGGEST_SKILL_AVAILABILITY_TOOL_NAME]: suggestSkillAvailabilityHandler,

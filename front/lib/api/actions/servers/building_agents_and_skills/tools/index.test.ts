@@ -1,10 +1,12 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { MAX_PENDING_INSTRUCTIONS_SUGGESTIONS } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
 import {
   DESCRIBE_SKILL_TOOL_NAME,
   SUGGEST_AGENT_CREATION_INPUT_SCHEMA,
   SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_AGENT_DELETION_TOOL_NAME,
   SUGGEST_AGENT_DESCRIPTION_TOOL_NAME,
+  SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME,
   SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME,
   SUGGEST_AGENT_NAME_TOOL_NAME,
   SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
@@ -55,6 +57,8 @@ const AGENT_MODEL_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=model agentId=(\S+)\}$/;
 const AGENT_NAME_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=name agentId=(\S+)\}$/;
+const AGENT_INSTRUCTIONS_SUGGESTION_DIRECTIVE_REGEX =
+  /^:agent_suggestion\[\]\{sId=(\S+) kind=instructions agentId=(\S+)\}$/;
 
 function getTool(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -187,6 +191,22 @@ function extractAgentNameSuggestionDirective(text: string): {
     throw new Error(`Unexpected tool output: ${text}`);
   }
   return { suggestionId: match[1], agentId: match[2] };
+}
+
+function extractAgentInstructionsSuggestionDirectives(text: string): {
+  suggestionId: string;
+  agentId: string;
+}[] {
+  return text
+    .split("\n\n")
+    .filter((line) => line.length > 0)
+    .map((line) => {
+      const match = AGENT_INSTRUCTIONS_SUGGESTION_DIRECTIVE_REGEX.exec(line);
+      if (!match) {
+        throw new Error(`Unexpected tool output: ${line}`);
+      }
+      return { suggestionId: match[1], agentId: match[2] };
+    });
 }
 
 // A non-admin role membership does not grant create/agent by itself — it requires a group grant.
@@ -1424,6 +1444,249 @@ describe("building_agents_and_skills tools", () => {
       });
 
       expectMcpError(result, "already exists");
+    });
+  });
+
+  describe(SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME, () => {
+    const BLOCK_STRUCTURED_INSTRUCTIONS_HTML =
+      '<div data-block-id="instructions-root">' +
+      '<p data-block-id="block1">You are a helpful assistant.</p>' +
+      "</div>";
+
+    async function createBlockStructuredAgent(authenticator: Authenticator) {
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      return AgentConfigurationFactory.updateTestAgent(
+        authenticator,
+        agent.sId,
+        { instructionsHtml: BLOCK_STRUCTURED_INSTRUCTIONS_HTML }
+      );
+    }
+
+    it("records pending instructions suggestions and prunes conflicting ones", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await createBlockStructuredAgent(authenticator);
+
+      const first = await getTool(
+        SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
+      ).handler(
+        {
+          agentId: agent.sId,
+          instructionEdits: [
+            {
+              targetBlockId: "block1",
+              type: "replace",
+              content: "<p>You are a concise, helpful assistant.</p>",
+            },
+          ],
+          analysis: "Makes the assistant more concise.",
+        },
+        makeExtra(authenticator)
+      );
+      expect(first.isOk()).toBe(true);
+      if (first.isErr()) {
+        throw first.error;
+      }
+      const firstOutput = first.value[0];
+      if (firstOutput?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const [firstDirective] = extractAgentInstructionsSuggestionDirectives(
+        firstOutput.text
+      );
+      expect(firstDirective.agentId).toBe(agent.sId);
+
+      const suggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        firstDirective.suggestionId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.kind).toBe("instructions");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?.toJSON()).toMatchObject({
+        suggestion: {
+          targetBlockId: "block1",
+          type: "replace",
+          content: "<p>You are a concise, helpful assistant.</p>",
+        },
+        analysis: "Makes the assistant more concise.",
+      });
+
+      // A second suggestion targeting the same block outdates the first one.
+      const second = await getTool(
+        SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
+      ).handler(
+        {
+          agentId: agent.sId,
+          instructionEdits: [
+            {
+              targetBlockId: "block1",
+              type: "replace",
+              content: "<p>You are a friendly assistant.</p>",
+            },
+          ],
+        },
+        makeExtra(authenticator)
+      );
+      expect(second.isOk()).toBe(true);
+
+      const previous = await AgentSuggestionResource.fetchById(
+        authenticator,
+        firstDirective.suggestionId
+      );
+      expect(previous?.state).toBe("outdated");
+    });
+
+    it("returns an MCPError without an interactive user", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const agent = await createBlockStructuredAgent(authenticator);
+      const nonInteractiveAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const result = await getTool(
+        SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
+      ).handler(
+        {
+          agentId: agent.sId,
+          instructionEdits: [
+            { targetBlockId: "block1", type: "replace", content: "<p>Hi.</p>" },
+          ],
+        },
+        makeExtra(nonInteractiveAuth)
+      );
+      expectMcpError(result, "interactive user");
+    });
+
+    it("returns an MCPError for an unknown agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await getTool(
+        SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
+      ).handler(
+        {
+          agentId: "unknown_agent",
+          instructionEdits: [
+            { targetBlockId: "block1", type: "replace", content: "<p>Hi.</p>" },
+          ],
+        },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "not found");
+    });
+
+    it("returns an MCPError when the caller is not an editor", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const agent = await createBlockStructuredAgent(authenticator);
+      const other = await addMember(workspace);
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        other.sId,
+        workspace.sId
+      );
+
+      const result = await getTool(
+        SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
+      ).handler(
+        {
+          agentId: agent.sId,
+          instructionEdits: [
+            { targetBlockId: "block1", type: "replace", content: "<p>Hi.</p>" },
+          ],
+        },
+        makeExtra(otherAuth)
+      );
+      expectMcpError(result, "Only editors");
+    });
+
+    it("returns an MCPError for an archived agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await createBlockStructuredAgent(authenticator);
+      await archiveAgentConfiguration(authenticator, agent.sId);
+
+      const result = await getTool(
+        SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
+      ).handler(
+        {
+          agentId: agent.sId,
+          instructionEdits: [
+            { targetBlockId: "block1", type: "replace", content: "<p>Hi.</p>" },
+          ],
+        },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "active agents");
+    });
+
+    it("returns an MCPError when the agent has no block-structured instructions", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const result = await getTool(
+        SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
+      ).handler(
+        {
+          agentId: agent.sId,
+          instructionEdits: [
+            { targetBlockId: "block1", type: "replace", content: "<p>Hi.</p>" },
+          ],
+        },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "no block-structured instructions");
+    });
+
+    it("returns an MCPError when multiple edits target the same block", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await createBlockStructuredAgent(authenticator);
+
+      const result = await getTool(
+        SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
+      ).handler(
+        {
+          agentId: agent.sId,
+          instructionEdits: [
+            { targetBlockId: "block1", type: "replace", content: "<p>A.</p>" },
+            { targetBlockId: "block1", type: "replace", content: "<p>B.</p>" },
+          ],
+        },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "same block ID");
+    });
+
+    it("returns an MCPError when exceeding the pending suggestions limit", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await createBlockStructuredAgent(authenticator);
+
+      for (let i = 0; i < MAX_PENDING_INSTRUCTIONS_SUGGESTIONS; i++) {
+        await AgentSuggestionFactory.createInstructions(authenticator, agent, {
+          suggestion: {
+            content: `<p>Edit ${i}.</p>`,
+            targetBlockId: `block${i}`,
+            type: "replace",
+          },
+          state: "pending",
+          source: "conversational",
+        });
+      }
+
+      const result = await getTool(
+        SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
+      ).handler(
+        {
+          agentId: agent.sId,
+          instructionEdits: [
+            { targetBlockId: "block1", type: "replace", content: "<p>A.</p>" },
+          ],
+        },
+        makeExtra(authenticator)
+      );
+      expectMcpError(result, "exceed the limit");
     });
   });
 
