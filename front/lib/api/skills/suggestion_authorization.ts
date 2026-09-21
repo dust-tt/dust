@@ -16,6 +16,7 @@ const SKILL_SUGGESTION_KIND_REQUIRED_VERB: Record<
   edit: "write",
   user_facing_description: "write",
   create: "write",
+  name: "write",
   editors: "admin",
   delete: "admin",
 };
