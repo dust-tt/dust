@@ -162,7 +162,7 @@ async function applyModelSuggestion(
     );
   }
 
-  // Editor access is enforced by the route (`agent.canEdit`), matching the manual model-update
+  // Editor access is enforced by the route, matching the manual model-update
   // route. Model availability and reasoning effort support are re-validated against live state.
   const result = await updateAgentConfigurationsModel(auth, {
     agentIds: [agent.sId],

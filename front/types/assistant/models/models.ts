@@ -339,8 +339,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   ...CUSTOM_MODEL_CONFIGS,
 ];
 
-// `modelId` alone can collide across providers; this is only for display contexts (e.g. a
-// suggestion or log entry) that don't carry a `providerId` to disambiguate.
+// `modelId` alone can collide across providers; this is only for display contexts.
 export function getModelDisplayNameFromId(modelId: string): string {
   return (
     SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === modelId)?.displayName ??
