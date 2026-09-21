@@ -177,6 +177,7 @@ Skill suggestions:
 Agent suggestions:
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_creation\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`.
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_deletion\`: propose deleting an existing agent by \`agentId\`
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_model_change\`: propose changing an existing agent's model, by \`agentId\`, \`modelId\` and an optional \`reasoningEffort\`.
 </tools>`,
 
   responseStyle: responseStyleSection({ noun: NOUN, editTool: EDIT_TOOLS }),

@@ -618,6 +618,53 @@ describe("PATCH with applyToAgent", () => {
     expect(archived?.status).toBe("archived");
   });
 
+  it("updates the agent's model for a model suggestion", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const suggestion = await AgentSuggestionFactory.createModel(auth, agent, {
+      suggestion: {
+        modelId: "claude-haiku-4-5-20251001",
+        reasoningEffort: "medium",
+      },
+    });
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(updated?.model.modelId).toBe("claude-haiku-4-5-20251001");
+    expect(updated?.model.reasoningEffort).toBe("medium");
+  });
+
+  it("returns 400 and leaves the suggestion pending when changing the model of a non-active agent", async () => {
+    const { workspace, auth, agent } = await setupPendingAgent();
+    const suggestion = await AgentSuggestionFactory.createModel(auth, agent);
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "Only an active agent"
+    );
+    const fetched = await AgentSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(fetched?.state).toBe("pending");
+  });
+
   it("returns 400 and leaves the suggestion pending when deleting a non-active agent", async () => {
     const { workspace, auth, agent } = await setupPendingAgent();
     const suggestion = await AgentSuggestionFactory.createDelete(auth, agent);
