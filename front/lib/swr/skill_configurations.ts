@@ -23,6 +23,7 @@ import type { ImportSkillsResponseBody } from "@app/types/api/skills/detection/g
 import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
 import type {
   SkillAvailability,
+  SkillListItemType,
   SkillReinforcementMode,
   SkillStatus,
   SkillType,
@@ -189,16 +190,14 @@ export function useSearchSkills({
   permissionFiltering,
   filters,
   disabled,
-  swrOptions,
 }: {
   owner: LightWorkspaceType;
   searchTerm: string;
-  cursor?: SearchSkillsResponseBody["nextCursor"];
+  cursor?: string | null;
   limit?: number;
   permissionFiltering?: SkillSearchPermissionFiltering;
   filters?: SkillSearchFilters;
   disabled?: boolean;
-  swrOptions?: SWRConfiguration;
 }) {
   const { fetcherWithBody } = useFetcher();
   const query = searchTerm.slice(0, 200);
@@ -214,6 +213,7 @@ export function useSearchSkills({
     return () => clearTimeout(timeout);
   }, [query]);
 
+  const url = `/api/w/${owner.sId}/skills/search`;
   const body = {
     query: debouncedSearchTerm,
     cursor,
@@ -221,29 +221,23 @@ export function useSearchSkills({
     permissionFiltering,
     ...filters,
   };
-  const skillsFetcher: Fetcher<
-    SearchSkillsResponseBody,
-    [string, typeof body, string]
-  > = fetcherWithBody;
+  const skillsFetcher: Fetcher<SearchSkillsResponseBody> = () =>
+    fetcherWithBody([url, body, "POST"]);
+
   const { data, error, isLoading } = useSWRWithDefaults(
-    [`/api/w/${owner.sId}/skills/search`, body, "POST"],
+    [url, body],
     skillsFetcher,
     {
-      ...swrOptions,
       disabled: disabled || isDebouncing,
       keepPreviousData: false,
     }
   );
-  const canUseResults = !disabled && !isDebouncing && !error;
 
   return {
-    skills: canUseResults
-      ? (data?.skills ??
-        emptyArray<SearchSkillsResponseBody["skills"][number]>())
-      : emptyArray<SearchSkillsResponseBody["skills"][number]>(),
-    hasMore: canUseResults && (data?.hasMore ?? false),
-    nextCursor: canUseResults ? (data?.nextCursor ?? null) : null,
-    isSkillsError: !disabled && !isDebouncing && !!error,
+    skills: data?.skills ?? emptyArray<SkillListItemType>(),
+    hasMore: data?.hasMore ?? false,
+    nextCursor: data?.nextCursor ?? null,
+    isSkillsError: !!error,
     isSkillsLoading: !disabled && (isDebouncing || isLoading),
   };
 }
