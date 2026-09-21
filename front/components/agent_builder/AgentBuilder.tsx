@@ -75,6 +75,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import isEqual from "lodash/isEqual";
 import set from "lodash/set";
 import {
   useCallback,
@@ -610,13 +611,18 @@ function AgentBuilderForm({
 
       // A save can leave nothing to persist: the configuration matched the current version and no
       // scope/editor change (nothing was updated), and no Slack channels or triggers changed either.
-      // Tell the user rather than claiming a save happened. `triggersToUpdate` is seeded with every
-      // existing trigger, so its length is not a change signal — only its dirtiness (and real
-      // add/remove diffs) is.
+      // Tell the user rather than claiming a save happened. `triggersToUpdate` is seeded (via
+      // `form.reset`) with every existing trigger, so its length is not a change signal. Compare it
+      // against the seeded baseline (the form's default values) by value: `useFieldArray.update()`
+      // does not reliably flip the field's dirty state, so `getFieldState(...).isDirty` misses edits.
+      const editedTriggers = !isEqual(
+        form.getValues("triggersToUpdate"),
+        form.formState.defaultValues?.triggersToUpdate ?? []
+      );
       const hasTriggerChanges =
         formData.triggersToCreate.length > 0 ||
         formData.triggersToDelete.length > 0 ||
-        form.getFieldState("triggersToUpdate").isDirty;
+        editedTriggers;
       const nothingChanged =
         !isCreatingNew &&
         createdAgent._updated === false &&
