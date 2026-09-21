@@ -272,10 +272,20 @@ describe("getAgentConfigurations", () => {
       dangerouslySkipPermissionFiltering: true,
     });
 
-    expect(agents.map(({ sId, version }) => ({ sId, version }))).toEqual([
-      { sId: latestFirstAgent.sId, version: latestFirstAgent.version },
-      { sId: latestSecondAgent.sId, version: latestSecondAgent.version },
-    ]);
+    // `getAgentConfigurations` deduplicates the requested ids, drops the unknown one, and returns
+    // the latest version of each agent. It orders by version across agents, which is not a
+    // meaningful order between distinct agents (both are at the same version here), so compare
+    // order-independently by sorting on sId.
+    const bySId = (a: { sId: string }, b: { sId: string }) =>
+      a.sId.localeCompare(b.sId);
+    expect(
+      agents.map(({ sId, version }) => ({ sId, version })).sort(bySId)
+    ).toEqual(
+      [
+        { sId: latestFirstAgent.sId, version: latestFirstAgent.version },
+        { sId: latestSecondAgent.sId, version: latestSecondAgent.version },
+      ].sort(bySId)
+    );
   });
 });
 
@@ -633,7 +643,9 @@ describe("saveAgentConfiguration with pending agent", () => {
       instructionsHtml: null,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
       status: "active",
-      scope: "hidden",
+      // Keep the agent's current scope: this test is about a definition change bumping the version,
+      // not about (un)publishing (which would need the `publish` capability the caller lacks).
+      scope: "visible",
       model: {
         providerId: "anthropic",
         modelId: "claude-sonnet-4-5-20250929",

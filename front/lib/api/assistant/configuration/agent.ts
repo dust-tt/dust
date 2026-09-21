@@ -1320,12 +1320,15 @@ export async function updateAgentConfigurationsScope(
   }
 
   // Authorization for the scope write — the `publish` capability plus `write`/`admin` on each agent
-  // — is enforced inside `AgentResource.bulkUpdateScope` (see the `scope-change-requires-edit-and-
-  // publish` contract), which skips any agent the caller is not allowed to (un)publish.
-  await AgentResource.bulkUpdateScope(
+  // — is enforced inside `AgentResource.bulkUpdate` -> `updateScopeInPlace` (see the
+  // `scope-change-requires-edit-and-publish` contract), which skips any agent the caller is not
+  // allowed to (un)publish.
+  await AgentResource.bulkUpdate(
     auth,
     editableAgents.map((a) => a.sId),
-    scope
+    {
+      scope,
+    }
   );
 
   return new Ok(undefined);

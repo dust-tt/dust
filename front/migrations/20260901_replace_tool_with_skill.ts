@@ -144,7 +144,7 @@ async function createReplacementVersion(
     );
   }
 
-  return result.value.version;
+  return result.value.agentConfiguration.version;
 }
 
 makeScript(
