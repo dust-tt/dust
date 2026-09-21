@@ -1,4 +1,4 @@
-import { SkillDetailsSheetById } from "@app/components/command_palette/SkillDetailsSheetById";
+import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillSearchTable } from "@app/components/skills/SkillSearchTable";
 import {
   useSetContentWidth,
@@ -175,7 +175,7 @@ export function SearchSkillsPage() {
           ))}
         </Tabs>
       </div>
-      <SkillDetailsSheetById
+      <SkillDetailsSheet
         owner={owner}
         user={user}
         skillId={skillId ?? null}
