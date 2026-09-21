@@ -70,6 +70,7 @@ describe("agent loop deletion cleanup", () => {
       expect(
         await runModelAndCreateActionsActivity({
           authType: auth.toJSON(),
+          canInitializeConsumption: true,
           runAgentArgs: { ...agentLoopArgs, initialStartTime: Date.now() },
           runIds: [],
           step: 0,
