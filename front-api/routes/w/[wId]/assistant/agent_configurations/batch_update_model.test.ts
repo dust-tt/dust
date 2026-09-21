@@ -4,7 +4,7 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -245,14 +245,20 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     assert(updated, "Expected the updated agent to be found.");
     expect(updated.model.modelId).toBe(target.modelId);
 
-    // The editors were carried over untouched: the admin did not silently join the editor group
+    // The editors were carried over untouched: the admin did not silently gain an editor grant
     // on the way.
-    const editorGroup = await GroupResource.findEditorGroupForAgent(
-      agentOwnerAuth,
-      updated
-    );
-    assert(editorGroup.isOk(), "Expected the agent to have an editor group.");
-    const editors = await editorGroup.value.getActiveMembers(agentOwnerAuth);
+    assert(updated.agentModelId, "Expected the agent identity to be present.");
+    const editorGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(
+        agentOwnerAuth,
+        {
+          grantType: "editor",
+          resourceType: "agent",
+          resourceId: updated.agentModelId,
+        }
+      );
+    assert(editorGroup, "Expected the agent to have an editor grant.");
+    const editors = await editorGroup.getActiveMembers(agentOwnerAuth);
     expect(editors.map((e) => e.sId)).toEqual([
       agentOwnerAuth.getNonNullableUser().sId,
     ]);
