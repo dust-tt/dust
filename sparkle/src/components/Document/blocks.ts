@@ -18,7 +18,6 @@ export const getBlockQuery = (state: EditorState) => {
     return null;
   }
   const { $from } = selection;
-  // Only a slash at the beginning of a top-level paragraph opens the block menu.
   if ($from.depth !== 1 || $from.parent.type.name !== "paragraph") {
     return null;
   }

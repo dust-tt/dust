@@ -56,7 +56,7 @@ export const SlashCommands: Story = {
     });
     const page = within(canvasElement.ownerDocument.body);
     await userEvent.type(editor, "/");
-    // Check a single slash after layout settles, under React StrictMode.
+    // Wait for StrictMode cleanup before checking popup visibility.
     await new Promise<void>((resolve) =>
       requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
     );
@@ -95,7 +95,6 @@ export const SlashCommands: Story = {
       expect.stringContaining('"level":2')
     );
     await expect(canvas.getByRole("status")).toHaveTextContent(/^Saved$/);
-    // Escape dismisses the menu without consuming or formatting the typed slash.
     await userEvent.keyboard("{Enter}{Enter}/");
     await waitFor(() =>
       expect(page.getByRole("menu", { name: "Add a block" })).toBeVisible()
@@ -147,7 +146,7 @@ export const FormatSelection: Story = {
       page.queryByRole("toolbar", { name: "Format selection" })
     ).not.toBeInTheDocument();
     await userEvent.click(editor);
-    // Selecting DOM text exercises the editor's real selection observer and bubble positioning.
+    // Use a DOM selection to exercise TipTap's selection observer.
     const paragraph = editor.querySelector("p");
     if (!paragraph) {
       throw new Error("Expected a document paragraph");
@@ -249,7 +248,7 @@ const UpdatingParent = ({ onSave, ...props }: DocumentProps) => {
 
   return (
     <>
-      {/* Recreating this callback intentionally exercises a normal host rerender. */}
+      {/* Keep this callback inline to cover parent rerenders. */}
       <Document
         {...props}
         onSave={

@@ -17,11 +17,10 @@ interface UseDocumentEditorProps {
 
 /**
  * @cc [owner:flvndvd,label:product] document-draft-preservation
- * Failed saves MUST preserve the draft. A successful save MUST acknowledge only the submitted
- * content; edits made during the request MUST remain unsaved. Prop changes MUST NOT replace an
- * open draft. Invalid stored content MUST disable editing and saving rather than discard it.
+ * Failed saves, including host callback rejections, MUST preserve the draft. Successful saves
+ * MUST acknowledge only the submitted content, leaving later edits unsaved. Prop changes MUST
+ * NOT replace an open draft. Invalid stored content MUST disable editing and saving.
  * Returning to the saved content MUST clear save errors without making another save request.
- * Rejections from the host persistence callback MUST be treated as failed saves.
  */
 /**
  * @cc [owner:flvndvd,label:product] document-autosave
@@ -51,7 +50,6 @@ export const useDocumentEditor = ({
   const onSaveRef = useRef(onSave);
   const editable = !readOnly && onSave !== undefined && initial.ok;
 
-  // The timer needs the latest committed callback without restarting when its identity changes.
   useEffect(() => {
     onSaveRef.current = onSave;
   }, [onSave]);
@@ -76,7 +74,7 @@ export const useDocumentEditor = ({
       },
     },
     onCreate: ({ editor }) => {
-      // Normalize extension-added content (e.g. the trailing paragraph) before the saved baseline.
+      // Normalize TipTap's trailing paragraph before capturing saved content.
       editor.view.dispatch(editor.state.tr);
       const content = JSON.stringify(editor.getJSON());
       setBaseline(content);
@@ -92,7 +90,7 @@ export const useDocumentEditor = ({
     },
   });
 
-  // TipTap's React hook preserves its current editability when applying updated options.
+  // TipTap ignores editable changes passed to useEditor after mount.
   useEffect(() => {
     if (editor && editor.isEditable !== editable) {
       editor.setEditable(editable, false);
@@ -113,7 +111,6 @@ export const useDocumentEditor = ({
     setSaving(true);
     setError(null);
 
-    // Only the host callback crosses a boundary where thrown failures are expected.
     let result: DocumentSaveResult;
     try {
       result = await persist(content);
@@ -129,7 +126,6 @@ export const useDocumentEditor = ({
       return;
     }
 
-    // The user may have undone their changes while persistence was still in flight.
     if (JSON.stringify(editor.getJSON()) !== baseline) {
       setError(result.error || SAVE_ERROR_MESSAGE);
     }
@@ -140,7 +136,6 @@ export const useDocumentEditor = ({
       return;
     }
 
-    // Debounce document changes, including edits made during an earlier save. Never retry errors in a loop.
     const timeout = setTimeout(() => void save(), autosaveDebounceMs);
     return () => clearTimeout(timeout);
   }, [draft, dirty, saving, error, editable, save, autosaveDebounceMs]);

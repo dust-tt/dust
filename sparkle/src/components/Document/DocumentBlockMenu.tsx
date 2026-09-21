@@ -98,8 +98,7 @@ interface DocumentBlockMenuProps {
 }
 
 export const DocumentBlockMenu = ({ editor, menu }: DocumentBlockMenuProps) => (
-  // Keep the plugin mounted while editing. Mounting an already-open BubbleMenu under
-  // StrictMode lets its deferred cleanup detach the visible popup.
+  // Keep this plugin mounted while editing. StrictMode cleanup can detach a newly opened popup.
   <BubbleMenu
     editor={editor}
     pluginKey="document-block-menu"

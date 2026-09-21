@@ -15,11 +15,10 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 
 /**
  * @cc [owner:flvndvd,label:product] document-ui-owned-by-sparkle
- * Document MUST own its typography and formatting controls. Inline controls MUST appear only
- * for a nonempty text selection; block commands MUST appear only after typing `/` in an
- * editable document. Callers supply content and a persistence callback, not an editor
- * instance, extensions, or toolbar configuration. className MUST apply to the outer container;
- * the inner reading surface and formatting controls remain owned by Document.
+ * Typography and formatting controls MUST remain fixed. Callers MUST NOT supply editor
+ * instances, extensions, or toolbar configuration. Inline controls MUST require a nonempty
+ * text selection. Block commands MUST require an editable document and a typed `/`.
+ * className MUST apply only to the outer container.
  */
 /**
  * @cc [owner:flvndvd,label:product] document-read-only
