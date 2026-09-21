@@ -1,5 +1,5 @@
 import type { ImportFormValues } from "@app/components/skills/import/formSchema";
-import { useDebounceWithAbort } from "@app/hooks/useDebounce";
+import { useDebounce, useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAppRouter } from "@app/lib/platform";
 import type {
@@ -202,19 +202,13 @@ export function useSearchSkills({
 }) {
   const { fetcherWithBody } = useFetcher();
   const query = searchTerm.slice(0, SEARCH_SKILLS_QUERY_MAX_LENGTH);
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(query);
+  const { debouncedValue: debouncedSearchTerm, setValue: setSearchTerm } =
+    useDebounce(query, { delay: SEARCH_SKILLS_DEBOUNCE_MS });
   const isDebouncing = query !== debouncedSearchTerm;
 
-  const debounceSearchTerm = useDebounceWithAbort(
-    useCallback(async (value: string) => {
-      setDebouncedSearchTerm(value);
-    }, []),
-    { delayMs: SEARCH_SKILLS_DEBOUNCE_MS }
-  );
-
   useEffect(() => {
-    debounceSearchTerm(query);
-  }, [query, debounceSearchTerm]);
+    setSearchTerm(query);
+  }, [query, setSearchTerm]);
 
   const url = `/api/w/${owner.sId}/skills/search`;
   const body = {
