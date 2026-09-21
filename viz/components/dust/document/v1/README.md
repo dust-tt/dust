@@ -39,3 +39,8 @@ an error and disables editing. Closing before “Saved” can discard pending ed
 navigation protection and coordination with external updates belong to the host
 integration. Shared views and exports render the content supplied to this Frame;
 this component does not publish a snapshot of a live database automatically.
+
+Browser regression tests live alongside this component and run in Chromium as part
+of Viz's `npm test`. Install the browser once with `npm exec -- playwright install
+chromium` from `viz/`. Run just these tests with `npm test -- --project=browser`.
+They use the real editor, viewer context, and Viz stylesheet under React StrictMode.

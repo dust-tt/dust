@@ -30,7 +30,6 @@ const config: StorybookConfig = {
       alias: {
         ...(config.resolve?.alias || {}),
         "@sparkle": path.resolve(__dirname, "../src/"),
-        "@viz": path.resolve(__dirname, "../../viz/"),
       },
     };
 
