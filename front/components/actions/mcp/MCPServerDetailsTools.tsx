@@ -460,7 +460,9 @@ export function MCPServerDetailsToolsBulkBar({
         <DropdownMenuTrigger asChild>
           <Button size="sm" variant="primary" isSelect label="Set stake" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        {/* The bar is pinned to the bottom of the sheet, so these menus open
+            upwards; dropping down would run them off the viewport. */}
+        <DropdownMenuContent align="end" side="top">
           <DropdownMenuLabel label="Set stake" />
           {selectionStakeLevels.map((stakeLevel) => (
             <DropdownMenuItem
@@ -475,7 +477,7 @@ export function MCPServerDetailsToolsBulkBar({
         <DropdownMenuTrigger asChild>
           <Button size="sm" variant="primary" isSelect label="State" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" side="top">
           <DropdownMenuLabel label="State" />
           <DropdownMenuItem
             icon={Check}
