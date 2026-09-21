@@ -4547,7 +4547,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
+  static async deleteAllForWorkspace(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     await AgentSkillModel.destroy({
@@ -4631,7 +4633,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.model.destroy({
       where: { workspaceId },
     });
-    await launchDeleteWorkspaceSkillSearchWorkflow({
+    return launchDeleteWorkspaceSkillSearchWorkflow({
       workspaceId: auth.getNonNullableWorkspace().sId,
     });
   }

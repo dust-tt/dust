@@ -34,6 +34,7 @@ import {
   invalidateAgentResourceCache,
   invalidateAgentResourceCaches,
 } from "@app/lib/resources/agent_resource_cache";
+import { launchAgentSearchIndexation } from "@app/lib/resources/agent_resource_indexation";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { defineCachedResourceValue } from "@app/lib/resources/cached_resource_store";
@@ -51,7 +52,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import { launchIndexAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
 import type {
   AgentConfigurationBaseType,
@@ -89,11 +89,16 @@ import uniq from "lodash/uniq";
 import type { Attributes, Transaction } from "sequelize";
 import { Op, UniqueConstraintError, ValidationError } from "sequelize";
 
-const AGENT_SEARCH_INDEXATION_CONCURRENCY = 8;
-
 // Legacy `canEdit` also allows changing the editor set, so the author fallback mirrors the full
 // editor role rather than granting write alone.
 const AGENT_EDITOR_VERBS: GrantVerb[] = ["read", "write", "admin"];
+
+// Agents in these statuses only exist inside the builder — behind its "try" button or before the
+// first save — and are never indexed.
+const NON_INDEXABLE_AGENT_STATUSES: AgentConfigurationStatus[] = [
+  "draft",
+  "pending",
+];
 
 // Each agent in a bulk model update goes through a full save (new version + tools/skills recreated),
 // so keep the parallelism low: enough to keep a large selection responsive, not enough to flood the
@@ -1006,35 +1011,23 @@ export class AgentResource
       favorite,
     });
 
+    await AgentResource.launchSearchIndexation(auth, [this.sId]);
+
     return new Ok(undefined);
   }
 
-  /**
-   * @cc [owner:sfriquet,label:backend;concurrency] agent-search-after-commit
-   * Agent mutations enqueue workspace-scoped agent sIds after their existing writes.
-   * Failed workflow launch results are logged without failing the mutation.
-   */
+  // Delegates to the standalone launcher shared with the write paths that cannot import this
+  // resource (see the `agent-search-after-commit` contract).
   static async launchSearchIndexation(
     auth: Authenticator,
-    agentIds: string[]
+    agentIds: string[],
+    transaction?: Transaction
   ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-    if (agentIds.length === 0) {
-      return;
-    }
-    const results = await concurrentExecutor(
-      uniq(agentIds),
-      (agentId) =>
-        launchIndexAgentSearchWorkflow({ workspaceId: workspace.sId, agentId }),
-      { concurrency: AGENT_SEARCH_INDEXATION_CONCURRENCY }
+    await launchAgentSearchIndexation(
+      auth.getNonNullableWorkspace().sId,
+      agentIds,
+      transaction
     );
-    const failedResult = results.find((result) => result.isErr());
-    if (failedResult?.isErr()) {
-      logger.error(
-        { error: failedResult.error, workspaceId: workspace.sId, agentIds },
-        "Failed to launch agent search indexation"
-      );
-    }
   }
 
   // The agent's favorite relations are keyed by `sId`, so the count spans every version.
@@ -1150,6 +1143,8 @@ export class AgentResource
           await this.disableTriggersForNonEditors(auth, transitioningAgents);
         }
       }
+
+      await this.launchSearchIndexation(auth, updatedAgentIds);
     };
 
     if (transaction) {
@@ -1923,6 +1918,10 @@ export class AgentResource
             model: `${model.providerId}/${model.modelId}`,
           },
         });
+      }
+
+      if (!NON_INDEXABLE_AGENT_STATUSES.includes(resource.status)) {
+        await AgentResource.launchSearchIndexation(auth, [resource.sId]);
       }
 
       return new Ok(resource);
