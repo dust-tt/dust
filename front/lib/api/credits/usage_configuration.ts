@@ -1,3 +1,4 @@
+import { resolveDefaultCreditSpendCheckpointEnabled } from "@app/lib/api/assistant/credit_spend_checkpoint";
 import { passesBillingGate } from "@app/lib/api/credits/auto_seat_upgrade";
 import { syncMetronomeBalanceThresholdAlert } from "@app/lib/api/credits/balance_threshold_alert";
 import type { Authenticator } from "@app/lib/auth";
@@ -45,6 +46,9 @@ export async function getUsageConfiguration(
       DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
     autoSeatUpgradeEnabled:
       config?.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+    creditSpendCheckpointEnabled:
+      config?.creditSpendCheckpointEnabled ??
+      resolveDefaultCreditSpendCheckpointEnabled(auth.plan()),
     autoSeatUpgradeAvailable: subscription
       ? passesBillingGate(subscription)
       : false,
@@ -66,6 +70,7 @@ async function setConfigurationToggles(
     upgradeRequestEmailEnabled?: boolean;
     requireUpgradeRequestReason?: boolean;
     autoSeatUpgradeEnabled?: boolean;
+    creditSpendCheckpointEnabled?: boolean;
   }
 ): Promise<Result<undefined, Error>> {
   const config =
@@ -90,6 +95,7 @@ async function setConfigurationToggles(
       DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
     autoSeatUpgradeEnabled:
       toggles.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+    creditSpendCheckpointEnabled: toggles.creditSpendCheckpointEnabled ?? null,
   });
   if (createResult.isErr()) {
     return new Err(createResult.error);
@@ -136,13 +142,15 @@ export async function updateUsageConfiguration(
     patch.allowMemberUpgradeRequests !== undefined ||
     patch.upgradeRequestEmailEnabled !== undefined ||
     patch.requireUpgradeRequestReason !== undefined ||
-    patch.autoSeatUpgradeEnabled !== undefined
+    patch.autoSeatUpgradeEnabled !== undefined ||
+    patch.creditSpendCheckpointEnabled !== undefined
   ) {
     const toggleResult = await setConfigurationToggles(auth, {
       allowMemberUpgradeRequests: patch.allowMemberUpgradeRequests,
       upgradeRequestEmailEnabled: patch.upgradeRequestEmailEnabled,
       requireUpgradeRequestReason: patch.requireUpgradeRequestReason,
       autoSeatUpgradeEnabled: patch.autoSeatUpgradeEnabled,
+      creditSpendCheckpointEnabled: patch.creditSpendCheckpointEnabled,
     });
     if (toggleResult.isErr()) {
       return new Err(toggleResult.error);

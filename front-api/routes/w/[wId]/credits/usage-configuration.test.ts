@@ -74,6 +74,77 @@ describe("/api/w/[wId]/credits/usage-configuration", () => {
     // The default mock workspace is on a free (non-Metronome) plan, so
     // auto-upgrade is not available — the UI disables the toggle.
     expect(configuration.autoSeatUpgradeAvailable).toBe(false);
+    // The default mock workspace is on a non-credit-priced plan, so the
+    // checkpoint gate defaults to enabled.
+    expect(configuration.creditSpendCheckpointEnabled).toBe(true);
+  });
+
+  it("GET defaults creditSpendCheckpointEnabled to false for a credit-priced plan", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+      plan: "creditPriced",
+    });
+
+    const response = await honoApp.request(
+      usageConfigurationUrl(workspace.sId)
+    );
+
+    expect(response.status).toBe(200);
+    const { configuration } = await response.json();
+    expect(configuration.creditSpendCheckpointEnabled).toBe(false);
+  });
+
+  it("PATCH returns 403 for a manager writing creditSpendCheckpointEnabled", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "manager",
+      plan: "creditPriced",
+    });
+
+    const response = await honoApp.request(
+      usageConfigurationUrl(workspace.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creditSpendCheckpointEnabled: true }),
+      }
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it("PATCH persists creditSpendCheckpointEnabled and GET reflects it", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+      plan: "creditPriced",
+    });
+
+    const patchResponse = await honoApp.request(
+      usageConfigurationUrl(workspace.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creditSpendCheckpointEnabled: true }),
+      }
+    );
+
+    expect(patchResponse.status).toBe(200);
+    const { configuration } = await patchResponse.json();
+    expect(configuration.creditSpendCheckpointEnabled).toBe(true);
+
+    await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+      workspace,
+    });
+
+    const getResponse = await honoApp.request(
+      usageConfigurationUrl(workspace.sId)
+    );
+    const getBody = await getResponse.json();
+    expect(getBody.configuration.creditSpendCheckpointEnabled).toBe(true);
   });
 
   it("PATCH persists the upgrade-request toggles and GET reflects them", async () => {

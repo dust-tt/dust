@@ -131,6 +131,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       balanceThresholdAwuCredits: number | null;
       topUpEnabled: boolean;
       autoInvoiceFinalizationEnabled: boolean;
+      creditSpendCheckpointEnabled: boolean | null;
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
@@ -197,6 +198,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       programmaticMonthlyCapAwuCredits: this.programmaticMonthlyCapAwuCredits,
       balanceThresholdAwuCredits: this.balanceThresholdAwuCredits,
       topUpEnabled: this.topUpEnabled,
+      creditSpendCheckpointEnabled: this.creditSpendCheckpointEnabled,
     };
   }
 
@@ -217,6 +219,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       autoInvoiceFinalizationEnabled: String(
         this.autoInvoiceFinalizationEnabled
       ),
+      creditSpendCheckpointEnabled: String(this.creditSpendCheckpointEnabled),
     };
   }
 }
