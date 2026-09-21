@@ -69,6 +69,7 @@ async function setup({ enabled = true } = {}) {
     .fn<() => Promise<SearchSkillsResponseBody>>()
     .mockResolvedValue({
       skills: [skill],
+      editors: [user.toJSON()],
       hasMore: false,
       nextCursor: null,
     });
@@ -148,7 +149,12 @@ describe("search-backed Manage Skills", () => {
     const { search, fetcherWithBody, mount } = await setup();
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
-    search.mockResolvedValue({ skills: [], hasMore: false, nextCursor: null });
+    search.mockResolvedValue({
+      skills: [],
+      editors: [],
+      hasMore: false,
+      nextCursor: null,
+    });
     await userEvent.click(screen.getByRole("tab", { name: "Default" }));
     await screen.findByText("No skills to show.");
     expect(fetcherWithBody).toHaveBeenLastCalledWith([
@@ -182,6 +188,7 @@ describe("search-backed Manage Skills", () => {
     const cursor = "opaque-search-after";
     search.mockResolvedValueOnce({
       skills: [{ ...skill, name: "Zebra" }],
+      editors: [],
       hasMore: true,
       nextCursor: cursor,
     });
@@ -189,6 +196,7 @@ describe("search-backed Manage Skills", () => {
     await screen.findByRole("button", { name: /Zebra/ });
     search.mockResolvedValue({
       skills: [{ ...skill, sId: "next", name: "Alpha" }],
+      editors: [],
       hasMore: false,
       nextCursor: "last",
     });
@@ -236,7 +244,12 @@ describe("search-backed Manage Skills", () => {
     ).toBeInTheDocument();
     await act(async () => pending.reject(new Error("Unavailable")));
     await screen.findByRole("alert");
-    search.mockResolvedValue({ skills: [], hasMore: false, nextCursor: null });
+    search.mockResolvedValue({
+      skills: [],
+      editors: [],
+      hasMore: false,
+      nextCursor: null,
+    });
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
     await screen.findByText("No skills to show.");
     expect(fetcher).not.toHaveBeenCalled();

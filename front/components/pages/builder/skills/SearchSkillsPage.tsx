@@ -50,6 +50,7 @@ function SkillSearchResults({
   const owner = useWorkspace();
   const {
     skills,
+    editors,
     hasMore,
     isLoading,
     isLoadingMore,
@@ -92,8 +93,11 @@ function SkillSearchResults({
       )}
       {skills.length > 0 ? (
         <SkillSearchTable
+          owner={owner}
           skills={skills}
+          editors={editors}
           onSelect={onSelect}
+          onRefresh={() => void mutate()}
           onLoadMore={hasMore && !isError ? () => void loadMore() : undefined}
           isLoadingMore={isLoadingMore}
         />
