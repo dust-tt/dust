@@ -339,7 +339,7 @@ export type CachedResourceStore<
     input: Attributes<M>[K],
     transaction?: Transaction
   ) => Promise<Resource | null>;
-  fetchManyCached: (
+  fetchMany: (
     inputs: readonly Attributes<M>[K][],
     transaction?: Transaction
   ) => Promise<Resource[]>;
@@ -383,7 +383,7 @@ export type CachedResourceStore<
 /**
  * @cc [owner:flvndvd,label:backend] resource-store-list-keys
  * baseFetch MUST select keys using the supplied filters, order and pagination, then load them
- * through the same cache and materialization path as fetchManyCached, preserving selected order.
+ * through the same cache and materialization path as fetchMany, preserving selected order.
  */
 export function defineCachedResourceStore<
   M extends Model,
@@ -451,7 +451,7 @@ export function defineCachedResourceStore<
     transaction?: Transaction
   ) => blobLookup.invalidate(blob[cache.keyAttribute], transaction);
 
-  const fetchManyCached = async (
+  const fetchMany = async (
     inputs: readonly Attributes<M>[K][],
     transaction?: Transaction
   ) => materialize(await blobLookup.fetchMany(inputs, transaction));
@@ -462,16 +462,16 @@ export function defineCachedResourceStore<
         ...options,
         attributes: [cache.keyAttribute],
       });
-      return fetchManyCached(
+      return fetchMany(
         rows.map((row) => row.get()[cache.keyAttribute]),
         options?.transaction ?? undefined
       );
     },
     fetchCached: async (input, transaction) => {
-      const [resource] = await fetchManyCached([input], transaction);
+      const [resource] = await fetchMany([input], transaction);
       return resource ?? null;
     },
-    fetchManyCached,
+    fetchMany,
     create: async (blob, transaction) => {
       const row = await model.create(blob, { transaction });
       await invalidateBlob(row.get(), transaction);

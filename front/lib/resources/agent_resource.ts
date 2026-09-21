@@ -713,12 +713,7 @@ export class AgentResource
     const customAgentIds = uniqueAgentIds.filter((id) => !isGlobalAgentId(id));
 
     const [customResources, globalResources] = await Promise.all([
-      this.cache.fetchMany(
-        customAgentIds.map((id) => ({
-          workspaceModelId: auth.getNonNullableWorkspace().id,
-          id,
-        }))
-      ),
+      this.store.fetchMany(auth, customAgentIds),
       this.fetchGlobalAgents(auth, globalAgentIds),
     ]);
 
@@ -806,32 +801,50 @@ export class AgentResource
    * `invalidateAgentResourceCaches` helpers that lower-level write and deletion paths can import
    * without forming a cycle back to this resource.
    */
-  private static readonly cache = defineCachedResourceValue<
-    AgentResourceCacheKey,
-    AgentResourceSnapshot,
-    FullAgentResource
-  >({
-    id: AGENT_RESOURCE_CACHE_ID,
-    version: AGENT_RESOURCE_CACHE_VERSION,
-    key: agentResourceCacheKey,
-    dryRun: AGENT_RESOURCE_CACHE_DRY_RUN,
-    loadManyFromDatabase: async (inputs) => {
-      const { workspaceModelId } = inputs[0];
-      assert(
-        inputs.every((input) => input.workspaceModelId === workspaceModelId),
-        "Agent cache batches must belong to one workspace"
-      );
-      const resources = await AgentResource.loadResource(workspaceModelId, {
-        sId: inputs.map(({ id }) => id),
-      });
-      const resourcesById = new Map(
-        resources.map((resource) => [resource.sId, resource])
-      );
-      return inputs.map(({ id }) => resourcesById.get(id) ?? null);
-    },
-    toSnapshot: (cachedResource) => cachedResource.toSnapshot(),
-    fromSnapshot: (snapshot) => AgentResource.fromSnapshot(snapshot),
-  });
+  private static readonly store = (() => {
+    const lookup = defineCachedResourceValue<
+      AgentResourceCacheKey,
+      AgentResourceSnapshot,
+      FullAgentResource
+    >({
+      id: AGENT_RESOURCE_CACHE_ID,
+      version: AGENT_RESOURCE_CACHE_VERSION,
+      key: agentResourceCacheKey,
+      dryRun: AGENT_RESOURCE_CACHE_DRY_RUN,
+      loadManyFromDatabase: async (inputs) => {
+        const { workspaceModelId } = inputs[0];
+        assert(
+          inputs.every((input) => input.workspaceModelId === workspaceModelId),
+          "Agent cache batches must belong to one workspace"
+        );
+        const resources = await AgentResource.loadResource(workspaceModelId, {
+          sId: inputs.map(({ id }) => id),
+        });
+        const resourcesById = new Map(
+          resources.map((resource) => [resource.sId, resource])
+        );
+        return inputs.map(({ id }) => resourcesById.get(id) ?? null);
+      },
+      toSnapshot: (cachedResource) => cachedResource.toSnapshot(),
+      fromSnapshot: (snapshot) => AgentResource.fromSnapshot(snapshot),
+    });
+
+    return {
+      /**
+       * @cc [owner:flvndvd,label:backend;security] agent-store-workspace
+       * Batch reads MUST derive the workspace for every lookup key from the supplied Authenticator.
+       */
+      fetchMany(
+        auth: Authenticator,
+        agentIds: readonly string[]
+      ): Promise<FullAgentResource[]> {
+        const workspaceModelId = auth.getNonNullableWorkspace().id;
+        return lookup.fetchMany(
+          agentIds.map((id) => ({ workspaceModelId, id }))
+        );
+      },
+    };
+  })();
 
   static async invalidateCache(
     workspaceId: ModelId,

@@ -179,6 +179,15 @@ describe("WorkspaceResource", () => {
           "openai",
           "anthropic",
         ]);
+
+        listEnabledKillSwitches.mockResolvedValue([
+          "global_blacklist_anthropic",
+        ]);
+
+        const [cachedBatchFetch] = await WorkspaceResource.fetchByIds([
+          workspace.sId,
+        ]);
+        expect(cachedBatchFetch.whiteListedProviders).toEqual(["openai"]);
       });
 
       // A v3 snapshot exactly as the previous deploy wrote it. Guards two things: entries written

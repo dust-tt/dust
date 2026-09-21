@@ -666,10 +666,18 @@ describe("AgentResource", () => {
     await AgentResource.fetchById(testContext.authenticator, agent.sId);
 
     const otherContext = await createResourceTest({ role: "admin" });
+    const otherAgent = await AgentConfigurationFactory.createTestAgent(
+      otherContext.authenticator
+    );
 
     expect(
       await AgentResource.fetchById(otherContext.authenticator, agent.sId)
     ).toBeNull();
+    const resources = await AgentResource.fetchByIds(
+      otherContext.authenticator,
+      [agent.sId, otherAgent.sId]
+    );
+    expect(resources.map((resource) => resource.sId)).toEqual([otherAgent.sId]);
   });
 
   it("lists agent editors from grants individually and in batches", async () => {

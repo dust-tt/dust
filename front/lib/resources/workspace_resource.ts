@@ -331,7 +331,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     wIds: string[],
     transaction?: Transaction
   ): Promise<WorkspaceResource[]> {
-    return this.store.fetchManyCached(wIds, transaction);
+    return this.store.fetchMany(wIds, transaction);
   }
 
   static async fetchModelIdsByIds(wIds: string[]): Promise<ModelId[]> {
