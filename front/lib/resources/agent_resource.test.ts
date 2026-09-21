@@ -587,7 +587,7 @@ describe("AgentResource", () => {
     ).toEqual([testContext.user.id]);
   });
 
-  it("applies author, admin, and editor permissions to custom agents", async () => {
+  it("applies admin and editor permissions to active custom agents", async () => {
     const resource = AgentResource.fromAgentConfiguration(
       testContext.authenticator,
       makeAgentConfiguration({ versionAuthorId: testContext.user.id })
@@ -616,7 +616,7 @@ describe("AgentResource", () => {
       testContext.authenticator.hasPermission("read", resource),
       testContext.authenticator.hasPermission("write", resource),
       testContext.authenticator.hasPermission("admin", resource),
-    ]).toEqual([true, true, true]);
+    ]).toEqual([false, false, false]);
     expect([
       otherAuth.hasPermission("read", resource),
       otherAuth.hasPermission("write", resource),
@@ -644,6 +644,22 @@ describe("AgentResource", () => {
       otherAuth.hasPermission("read", resource),
       otherAuth.hasPermission("write", resource),
       otherAuth.hasPermission("admin", resource),
+    ]).toEqual([true, true, true]);
+  });
+
+  it("grants draft ownership to the current author", () => {
+    const resource = AgentResource.fromAgentConfiguration(
+      testContext.authenticator,
+      makeAgentConfiguration({
+        status: "draft",
+        versionAuthorId: testContext.user.id,
+      })
+    );
+
+    expect([
+      testContext.authenticator.hasPermission("read", resource),
+      testContext.authenticator.hasPermission("write", resource),
+      testContext.authenticator.hasPermission("admin", resource),
     ]).toEqual([true, true, true]);
   });
 
