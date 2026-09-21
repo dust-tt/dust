@@ -1,3 +1,4 @@
+// @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";

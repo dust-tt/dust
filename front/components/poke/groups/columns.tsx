@@ -12,8 +12,6 @@ export const getPokeGroupKindChipColor = (kind: GroupKind) => {
       return "success";
     case "system":
       return "warning";
-    case "agent_editors":
-      return "warning";
     default:
       return "primary";
   }

@@ -26,7 +26,6 @@ import {
 } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
-import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { invalidateAgentResourceCaches } from "@app/lib/resources/agent_resource_cache";
@@ -960,14 +959,6 @@ export async function unsafeHardDeleteAgentConfiguration(
       transaction: t,
     });
 
-    await GroupAgentModel.destroy({
-      where: {
-        agentConfigurationId: configurationModelId,
-        workspaceId,
-      },
-      transaction: t,
-    });
-
     await AgentSkillModel.destroy({
       where: {
         agentConfigurationId: configurationModelId,
@@ -985,7 +976,7 @@ export async function unsafeHardDeleteAgentConfiguration(
 }
 
 /**
- * Batch-deletes pending agent configurations and their editor groups.
+ * Batch-deletes pending agent configurations and their grant groups.
  */
 export async function batchHardDeletePendingAgentConfigurations(
   auth: Authenticator,
@@ -994,17 +985,6 @@ export async function batchHardDeletePendingAgentConfigurations(
   const workspaceId = auth.getNonNullableWorkspace().id;
   const agentConfigurationModelIds = agents.map((agent) => agent.id);
   const agentModelIds = [...new Set(agents.map((agent) => agent.agentId))];
-
-  // Find all editor group IDs for this batch.
-  const groupAgents = await GroupAgentModel.findAll({
-    where: {
-      agentConfigurationId: agentConfigurationModelIds,
-      workspaceId,
-    },
-  });
-  const editorGroupModelIds = groupAgents.map(
-    (groupAgent) => groupAgent.groupId
-  );
 
   await withTransaction(async (t) => {
     const grantGroups =
@@ -1019,19 +999,9 @@ export async function batchHardDeletePendingAgentConfigurations(
       transaction: t,
     });
 
-    const groupModelIds = [
-      ...new Set([
-        ...editorGroupModelIds,
-        ...grantGroups.map((group) => group.id),
-      ]),
-    ];
+    const groupModelIds = grantGroups.map((group) => group.id);
     if (groupModelIds.length > 0) {
       await GroupMembershipModel.destroy({
-        where: { groupId: groupModelIds, workspaceId },
-        transaction: t,
-      });
-
-      await GroupAgentModel.destroy({
         where: { groupId: groupModelIds, workspaceId },
         transaction: t,
       });

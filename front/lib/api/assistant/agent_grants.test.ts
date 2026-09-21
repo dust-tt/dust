@@ -6,10 +6,8 @@ import {
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -18,38 +16,15 @@ import assert from "assert";
 import { expect, it } from "vitest";
 
 it("uses agent grants for list, manage and archived views", async () => {
-  const {
-    authenticator: authorAuth,
-    workspace,
-    user: author,
-  } = await createResourceTest({ role: "user" });
-  const legacyAgent = await AgentConfigurationFactory.createTestAgent(
-    authorAuth,
-    { name: "Legacy", scope: "hidden" }
-  );
+  const { authenticator: authorAuth, workspace } = await createResourceTest({
+    role: "user",
+  });
   const grantAgent = await AgentConfigurationFactory.createTestAgent(
     authorAuth,
     { name: "Grants", scope: "hidden" }
   );
   const member = await UserFactory.basic();
   await MembershipFactory.associate(workspace, member, { role: "user" });
-  const legacyAgentModel = await AgentConfigurationModel.findOne({
-    where: { id: legacyAgent.id, workspaceId: workspace.id },
-  });
-  assert(legacyAgentModel);
-  // Simulate a pre-migration agent: new agents no longer create this group or association.
-  const legacyGroup = await GroupResource.makeNewAgentEditorsGroup(
-    authorAuth,
-    legacyAgentModel,
-    { authorId: author.id }
-  );
-  assert(
-    (
-      await legacyGroup.dangerouslyAddMembers(authorAuth, {
-        users: [member.toJSON()],
-      })
-    ).isOk()
-  );
   const resource = AgentResource.fromAgentConfiguration(authorAuth, grantAgent);
   assert(resource.id !== null);
   assert(
@@ -74,9 +49,7 @@ it("uses agent grants for list, manage and archived views", async () => {
       variant: "light",
     });
     expect(agents.map((agent) => agent.sId)).toContain(grantAgent.sId);
-    expect(agents.map((agent) => agent.sId)).not.toContain(legacyAgent.sId);
   }
-  await archiveAgentConfiguration(authorAuth, legacyAgent.sId);
   await archiveAgentConfiguration(authorAuth, grantAgent.sId);
   const archived = await getAgentConfigurationsForView({
     auth,

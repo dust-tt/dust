@@ -1,3 +1,4 @@
+// @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
 import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
