@@ -84,11 +84,13 @@ describe("POST /api/w/:wId/skills/search", () => {
       limit: undefined,
       cursor: undefined,
       permissionFiltering: undefined,
+      sortBy: undefined,
       filters: {
         status: undefined,
         mcpServerViewIds: undefined,
         availability: undefined,
         editedByMe: undefined,
+        codeDefinedOnly: undefined,
       },
     });
     expect(await response.json()).toEqual({
@@ -129,11 +131,13 @@ describe("POST /api/w/:wId/skills/search", () => {
       limit: 100,
       cursor,
       permissionFiltering: undefined,
+      sortBy: undefined,
       filters: {
         status: undefined,
         mcpServerViewIds: undefined,
         availability: undefined,
         editedByMe: undefined,
+        codeDefinedOnly: undefined,
       },
     });
     const body = await response.json();
@@ -149,6 +153,8 @@ describe("POST /api/w/:wId/skills/search", () => {
     { permissionFiltering: "dangerously_skip" },
     { editedByMe: false },
     { editedByMe: 1 },
+    { codeDefinedOnly: false },
+    { sortBy: "name" },
     { availability: ["unknown"] },
     { status: ["suggested"] },
     { status: ["active", "suggested"] },
@@ -198,11 +204,13 @@ describe("POST /api/w/:wId/skills/search", () => {
       limit: undefined,
       cursor: undefined,
       permissionFiltering: "redact_unreadable",
+      sortBy: undefined,
       filters: {
         status: undefined,
         mcpServerViewIds: undefined,
         availability: undefined,
         editedByMe: undefined,
+        codeDefinedOnly: undefined,
       },
     });
   });
@@ -217,16 +225,20 @@ describe("POST /api/w/:wId/skills/search", () => {
       mcpServerViewIds: ["tool"],
       availability: ["editors", "workspace_users"],
       editedByMe: true,
+      codeDefinedOnly: true,
+      sortBy: "usage",
     });
     expect(response.status).toBe(200);
     expect(searchSkills).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
+        sortBy: "usage",
         filters: {
           status: ["active", "archived"],
           mcpServerViewIds: ["tool"],
           availability: ["editors", "workspace_users"],
           editedByMe: true,
+          codeDefinedOnly: true,
         },
       })
     );

@@ -43,6 +43,41 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     mockSearch.mockReset();
   });
 
+  it.each([
+    "usage",
+    "relevance",
+  ] as const)("sorts by %s and preserves the sort tuple across pages", async (sortBy) => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    await FeatureFlagFactory.basic(auth, "skills_search");
+    const skill = await SkillFactory.create(auth);
+    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
+    const sort = [42, skill.sId];
+    mockSearch.mockResolvedValue({
+      hits: { hits: [{ _source: document, sort }] },
+    });
+
+    const first = await searchRequest(workspace.sId, { sortBy, limit: 1 });
+    expect(first.status).toBe(200);
+    const { nextCursor } = await first.json();
+    const second = await searchRequest(workspace.sId, {
+      sortBy,
+      limit: 1,
+      cursor: nextCursor,
+    });
+    expect(second.status).toBe(200);
+    expect(mockSearch.mock.calls[1][0]).toMatchObject({
+      search_after: sort,
+      sort: [
+        sortBy === "usage"
+          ? { active_users_count: { order: "desc", missing: "_last" } }
+          : { _score: { order: "desc" } },
+        { skill_id: { order: "asc" } },
+      ],
+    });
+  });
+
   it("uses the encoded cursor from the last returned hit for the next page", async () => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "user",

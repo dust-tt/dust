@@ -1,11 +1,26 @@
+import type { SkillSearchSort } from "@app/types/api/skills";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
-export function buildSkillDefaultSort(): estypes.Sort {
-  return [
-    { _score: { order: "desc" } },
-    // Skill ID is the tie-breaker.
-    { skill_id: { order: "asc" } },
-  ];
+export function buildSkillDefaultSort(
+  sortBy: SkillSearchSort = "relevance"
+): estypes.Sort {
+  switch (sortBy) {
+    case "relevance":
+      return [
+        { _score: { order: "desc" } },
+        // Skill ID is the tie-breaker.
+        { skill_id: { order: "asc" } },
+      ];
+    case "usage":
+      return [
+        { active_users_count: { order: "desc", missing: "_last" } },
+        // Skill ID is the tie-breaker.
+        { skill_id: { order: "asc" } },
+      ];
+    default:
+      assertNever(sortBy);
+  }
 }
 
 /**

@@ -18,4 +18,6 @@ export const SearchSkillsQuerySchema = z.object({
     .max(SKILL_AVAILABILITIES.length)
     .optional(),
   editedByMe: z.literal(true).optional(),
+  codeDefinedOnly: z.literal(true).optional(),
+  sortBy: z.enum(["relevance", "usage"]).optional(),
 });
