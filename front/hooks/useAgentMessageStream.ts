@@ -13,7 +13,6 @@ import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import {
   getAgentLoopEventId,
-  isLastBlockingAgentLoopEvent,
   isTerminalAgentLoopEvent,
 } from "@app/lib/client/agent_loop_stream";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -834,8 +833,6 @@ export function useAgentMessageStream({
     {
       workspaceId: owner.sId,
       buildLongPollURL,
-      getEventId: getAgentLoopEventId,
-      isPauseEvent: isLastBlockingAgentLoopEvent,
       isReadyToConsumeStream: shouldStream,
       isTerminalEvent: isTerminalAgentLoopEvent,
       keepAliveOnUnmount: true,

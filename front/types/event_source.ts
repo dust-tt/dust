@@ -51,9 +51,7 @@ export type EventSourceConnectionState =
 export type ConnectionConfig = {
   buildLongPollURL?: (lastEvent: string | null) => string | null;
   buildURL: (lastEvent: string | null) => string | null;
-  getEventId?: (event: string) => string;
   headers?: Record<string, string>;
-  isPauseEvent?: (event: string) => boolean;
   isTerminalEvent?: (event: string) => boolean;
   replayBufferedEventsOnSubscribe: boolean;
   restartKey: string;
@@ -67,45 +65,47 @@ export type Subscriber = {
   onTerminalError?: (error: Error) => void;
 };
 
-export type SseTransportState =
+export type ManagedConnectionState =
   | { kind: "idle" }
-  | { kind: "creating"; attemptId: number }
+  | {
+      kind: "connecting";
+      attempt: number;
+      restartKey: string;
+      startedAt: number;
+    }
   | {
       kind: "awaiting_handshake";
-      attemptId: number;
+      attempt: number;
+      startedAt: number;
       source: EventSourceLike;
       timeout: ReturnType<typeof setTimeout>;
     }
   | { kind: "open"; source: EventSourceLike; openedAt: number }
-  | { kind: "retrying"; timeout: ReturnType<typeof setTimeout> };
-
-export type LongPollTransportState =
-  | { kind: "idle" }
-  | { kind: "requesting"; controller: AbortController }
-  | { kind: "retrying"; timeout: ReturnType<typeof setTimeout> };
-
-export type BrowserSseHealth = "unknown" | "healthy" | "degraded";
-
-export type KeepAliveState = "inactive" | "active" | "paused";
+  | {
+      kind: "long_polling";
+      startedAt: number;
+      controller: AbortController;
+    }
+  | {
+      kind: "reconnecting";
+      attempt: number;
+      reconnectAt: number;
+      timeout: ReturnType<typeof setTimeout>;
+      transport: "sse" | "long_polling";
+    }
+  | { kind: "failed"; attempt: number; error: Error }
+  | { kind: "terminal" };
 
 export type ConnectionEntry = {
   config: ConnectionConfig;
   events: string[];
-  generation: number;
   lastEvent: string | null;
   lastEventAt: number | null;
-  lastLongPollURL: string | null;
-  lastProbeAtMs: number | null;
   lastResumeAtMs: number | null;
   lastURL: string | null;
-  longPollAttempts: number;
-  longPollState: LongPollTransportState;
-  keepAliveState: KeepAliveState;
-  reconnectAttempts: number;
+  keepAliveWithoutSubscribers: boolean;
+  retryAttempts: number;
+  state: ManagedConnectionState;
   unsuccessfulResumes: number;
-  seenEventIds: Set<string>;
-  sseAttemptId: number;
-  sseState: SseTransportState;
-  state: EventSourceConnectionState;
   subscribers: Set<Subscriber>;
 };

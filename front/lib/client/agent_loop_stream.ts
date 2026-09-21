@@ -45,27 +45,3 @@ export function isTerminalAgentLoopEvent(event: string): boolean {
     return false;
   }
 }
-
-/**
- * @cc [owner:id13,label:concurrency;reliability] final-agent-blocking-event
- * The predicate MUST match only approval, authentication, or question events whose
- * isLastBlockingEventForStep flag is true. Invalid JSON MUST return false.
- */
-export function isLastBlockingAgentLoopEvent(event: string): boolean {
-  try {
-    const parsed: unknown = JSON.parse(event);
-    if (!isJsonRecord(parsed) || !isJsonRecord(parsed.data)) {
-      return false;
-    }
-    const data = parsed.data;
-    return (
-      (data.type === "tool_approve_execution" ||
-        data.type === "tool_personal_auth_required" ||
-        data.type === "tool_file_auth_required" ||
-        data.type === "tool_ask_user_question") &&
-      data.isLastBlockingEventForStep === true
-    );
-  } catch {
-    return false;
-  }
-}

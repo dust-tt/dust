@@ -1,7 +1,6 @@
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
   getAgentLoopEventId,
-  isLastBlockingAgentLoopEvent,
   isTerminalAgentLoopEvent,
 } from "@app/lib/client/agent_loop_stream";
 import { eventSourceManager } from "@app/lib/client/event_source_manager";
@@ -46,8 +45,6 @@ function OngoingAgentLoopConnection({
   useEventSource(buildURL, onEvent, streamId, {
     workspaceId: owner.sId,
     buildLongPollURL,
-    getEventId: getAgentLoopEventId,
-    isPauseEvent: isLastBlockingAgentLoopEvent,
     isTerminalEvent: isTerminalAgentLoopEvent,
     keepAliveOnUnmount: true,
     replayBufferedEventsOnMount: true,

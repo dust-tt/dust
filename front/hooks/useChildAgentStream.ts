@@ -246,7 +246,6 @@ export function useChildAgentStream({
     {
       workspaceId: owner.sId,
       buildLongPollURL,
-      getEventId: getAgentLoopEventId,
       isReadyToConsumeStream:
         childStreamIds !== null && !isStreamDone && !disabled,
     }

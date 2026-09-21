@@ -1,12 +1,6 @@
-import {
-  getAgentLoopEventId,
-  isLastBlockingAgentLoopEvent,
-} from "@app/lib/client/agent_loop_stream";
+import { getAgentLoopEventId } from "@app/lib/client/agent_loop_stream";
 import { setSseVerbose } from "@app/lib/client/sse_verbose";
-import type {
-  EventSourceConnectionState,
-  EventSourceManagerOptions,
-} from "@app/types/event_source";
+import type { EventSourceConnectionState } from "@app/types/event_source";
 import { MANAGED_SSE_HANDSHAKE_EVENT } from "@app/types/sse";
 import type {
   Event as PolyfillEvent,
@@ -60,47 +54,6 @@ class FakeEventSource {
   });
 }
 
-const blockingEvent = JSON.stringify({
-  eventId: "blocking-event",
-  data: {
-    type: "tool_approve_execution",
-    isLastBlockingEventForStep: true,
-  },
-});
-const resumedEvent = JSON.stringify({
-  eventId: "resumed-event",
-  data: { type: "generation_tokens" },
-});
-
-function createBlockedStreamManager(options: EventSourceManagerOptions = {}) {
-  const sources: FakeEventSource[] = [];
-  const manager = new EventSourceManager(
-    async (url) => {
-      const source = new FakeEventSource(url);
-      sources.push(source);
-      return source;
-    },
-    () => 0,
-    options
-  );
-  const config = {
-    buildURL: () => "/events",
-    isPauseEvent: isLastBlockingAgentLoopEvent,
-    replayBufferedEventsOnSubscribe: false,
-    restartKey: "message-msg_blocked",
-    workspaceId: "w_1",
-  };
-  const subscribe = (onEvent: (event: string) => void = vi.fn()) =>
-    manager.subscribe({
-      streamId: "message-msg_blocked",
-      config,
-      subscriber: { onEvent, onStateChange: vi.fn() },
-      keepAliveWithoutSubscribers: true,
-    });
-
-  return { manager, sources, subscribe };
-}
-
 describe("EventSourceManager", () => {
   beforeEach(() => {
     datadogLogger.error.mockReset();
@@ -143,6 +96,14 @@ describe("EventSourceManager", () => {
 
     await vi.waitFor(() => expect(sources).toHaveLength(1));
     sources[0].emitHandshake();
+    expect(verboseLogs).toHaveBeenCalledWith(
+      "[Dust SSE]",
+      expect.objectContaining({
+        event: "sse_handshake",
+        handshakeLatencyMs: expect.any(Number),
+        streamId: "message-msg_debug",
+      })
+    );
     sources[0].emitMessage("secret-payload");
     expect(verboseLogs).toHaveBeenCalledWith(
       "[Dust SSE]",
@@ -439,59 +400,6 @@ describe("EventSourceManager", () => {
     manager.releaseWorkspace("w_1");
   });
 
-  it("falls back to polling after repeated post-handshake SSE failures", async () => {
-    const sources: FakeEventSource[] = [];
-    const polls: Array<(events: string[]) => void> = [];
-    const received: string[] = [];
-    const manager = new EventSourceManager(
-      async (url) => {
-        const source = new FakeEventSource(url);
-        sources.push(source);
-        return source;
-      },
-      () => 0,
-      {
-        reconnectDelayBaseMs: 0,
-        reconnectDelayJitterMs: 0,
-        longPollFactory: (_url, { signal }) =>
-          new Promise<string[]>((resolve) => {
-            polls.push(resolve);
-            signal.addEventListener("abort", () => resolve([]), { once: true });
-          }),
-      }
-    );
-    manager.subscribe({
-      streamId: "message-msg_fallback",
-      config: {
-        buildURL: () => "/events",
-        buildLongPollURL: () => "/events/poll",
-        getEventId: getAgentLoopEventId,
-        replayBufferedEventsOnSubscribe: false,
-        restartKey: "message-msg_fallback",
-        workspaceId: "w_1",
-      },
-      subscriber: {
-        onEvent: (event) => received.push(event),
-        onStateChange: vi.fn(),
-      },
-      keepAliveWithoutSubscribers: true,
-    });
-
-    await vi.waitFor(() => expect(sources).toHaveLength(1));
-    sources[0].emitHandshake();
-    sources[0].onerror?.({ type: "error", target: sources[0] });
-    await vi.waitFor(() => expect(sources).toHaveLength(2));
-    sources[1].emitHandshake();
-    sources[1].onerror?.({ type: "error", target: sources[1] });
-
-    expect(polls).toHaveLength(1);
-    polls[0]([
-      JSON.stringify({ eventId: "evt_1", data: { type: "generation_tokens" } }),
-    ]);
-    await vi.waitFor(() => expect(received).toHaveLength(1));
-    manager.releaseWorkspace("w_1");
-  });
-
   it("reports terminal failures with context and resumes an ongoing stream", async () => {
     const sources: FakeEventSource[] = [];
     const states: EventSourceConnectionState[] = [];
@@ -550,72 +458,7 @@ describe("EventSourceManager", () => {
     manager.releaseWorkspace("w_1");
   });
 
-  it("switches to long polling after two SSE handshake timeouts", async () => {
-    const sources: FakeEventSource[] = [];
-    const pollSignals: AbortSignal[] = [];
-    const states: EventSourceConnectionState[] = [];
-    const manager = new EventSourceManager(
-      async (url) => {
-        const source = new FakeEventSource(url);
-        sources.push(source);
-        return source;
-      },
-      () => 0,
-      {
-        handshakeTimeoutMs: 1,
-        reconnectDelayBaseMs: 1,
-        reconnectDelayJitterMs: 0,
-        longPollFactory: async (_url, { signal }) => {
-          pollSignals.push(signal);
-          return new Promise((resolve) => {
-            signal.addEventListener("abort", () => resolve([]), {
-              once: true,
-            });
-          });
-        },
-      }
-    );
-
-    const unsubscribe = manager.subscribe({
-      streamId: "message-msg_3",
-      config: {
-        buildURL: () => "/api/sse/events",
-        buildLongPollURL: () => "/api/events/poll",
-        getEventId: getAgentLoopEventId,
-        replayBufferedEventsOnSubscribe: true,
-        restartKey: "message-msg_3",
-        workspaceId: "w_1",
-      },
-      subscriber: {
-        onEvent: vi.fn(),
-        onStateChange: (state) => states.push(state),
-      },
-      keepAliveWithoutSubscribers: true,
-    });
-
-    await vi.waitFor(() => expect(pollSignals).toHaveLength(1));
-
-    expect(sources[0].close).toHaveBeenCalledOnce();
-    expect(sources).toHaveLength(2);
-    expect(states.at(-1)?.kind).toBe("long_polling");
-    expect(datadogLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        fallbackAvailable: true,
-        handshakeTimeoutMs: 1,
-        sseHealth: "degraded",
-        streamId: "message-msg_3",
-        transport: "sse",
-      }),
-      "SSE handshake failed, switching to long polling."
-    );
-
-    unsubscribe();
-    expect(pollSignals[0].aborted).toBe(false);
-    manager.releaseWorkspace("w_1");
-    expect(pollSignals[0].aborted).toBe(true);
-  });
-
-  it("polls immediately while probing SSE for new streams in a degraded session", async () => {
+  it("uses only long polling after the browser session degrades", async () => {
     const sources: FakeEventSource[] = [];
     const polls: Array<{
       signal: AbortSignal;
@@ -646,7 +489,6 @@ describe("EventSourceManager", () => {
       buildURL: () => `/api/sse/events/${messageId}`,
       buildLongPollURL: (lastEvent: string | null) =>
         `/api/events/${messageId}/poll?lastEventId=${getAgentLoopEventId(lastEvent)}`,
-      getEventId: getAgentLoopEventId,
       isTerminalEvent: () => false,
       replayBufferedEventsOnSubscribe: true,
       restartKey: messageId,
@@ -678,7 +520,7 @@ describe("EventSourceManager", () => {
     });
 
     await vi.waitFor(() => {
-      expect(sources).toHaveLength(3);
+      expect(sources).toHaveLength(2);
       expect(polls).toHaveLength(2);
     });
     expect(polls[1].url).toBe("/api/events/msg_5/poll?lastEventId=");
@@ -689,19 +531,16 @@ describe("EventSourceManager", () => {
     await vi.waitFor(() => expect(events).toEqual([event]));
     await vi.waitFor(() => expect(polls).toHaveLength(3));
     expect(polls[2].url).toBe("/api/events/msg_5/poll?lastEventId=evt_1");
-    sources[2].emitHandshake();
-    sources[2].emitMessage(event);
-
     expect(events).toEqual([event]);
-    expect(states.at(-1)?.kind).toBe("open");
-    expect(polls.at(-1)?.signal.aborted).toBe(true);
+    expect(states.at(-1)?.kind).toBe("long_polling");
+    expect(sources).toHaveLength(2);
 
     manager.releaseWorkspace("w_1");
   });
 
-  it("reports terminal long-poll failures with transport context", async () => {
+  it("falls back after two post-handshake SSE failures", async () => {
     const sources: FakeEventSource[] = [];
-    const states: EventSourceConnectionState[] = [];
+    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
     const manager = new EventSourceManager(
       async (url) => {
         const source = new FakeEventSource(url);
@@ -710,51 +549,33 @@ describe("EventSourceManager", () => {
       },
       () => 0,
       {
-        handshakeTimeoutMs: 5_000,
-        longPollFactory: async () => {
-          throw new Error("poll failed");
-        },
-        maxReconnectAttempts: 2,
-        reconnectDelayBaseMs: 1,
+        longPollFactory,
+        reconnectDelayBaseMs: 0,
         reconnectDelayJitterMs: 0,
       }
     );
-
     manager.subscribe({
-      streamId: "message-msg_6",
+      streamId: "message-msg_post_handshake",
       config: {
-        buildURL: () => "/api/sse/events/msg_6",
-        buildLongPollURL: () => "/api/events/msg_6/poll",
-        getEventId: getAgentLoopEventId,
-        replayBufferedEventsOnSubscribe: true,
-        restartKey: "message-msg_6",
+        buildURL: () => "/events",
+        buildLongPollURL: () => "/events/poll",
+        replayBufferedEventsOnSubscribe: false,
+        restartKey: "message-msg_post_handshake",
         workspaceId: "w_1",
       },
-      subscriber: {
-        onEvent: vi.fn(),
-        onStateChange: (state) => states.push(state),
-      },
+      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
       keepAliveWithoutSubscribers: true,
     });
+
     await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].emitHandshake();
     sources[0].onerror?.({ type: "error", target: sources[0] });
     await vi.waitFor(() => expect(sources).toHaveLength(2));
+    sources[1].emitHandshake();
     sources[1].onerror?.({ type: "error", target: sources[1] });
-    await vi.waitFor(() => expect(states.at(-1)?.kind).toBe("failed"));
 
-    expect(datadogLogger.error).toHaveBeenCalledWith(
-      expect.objectContaining({
-        error: { name: "Error", message: "poll failed" },
-        longPollAttempt: 2,
-        longPollPath: "/api/events/msg_6/poll",
-        sseHealth: "degraded",
-        streamId: "message-msg_6",
-        retryBudgetExhausted: true,
-        transport: "long_polling",
-      }),
-      "Long-poll retry budget exhausted."
-    );
-
+    expect(longPollFactory).toHaveBeenCalledOnce();
+    expect(sources).toHaveLength(2);
     manager.releaseWorkspace("w_1");
   });
 
@@ -835,7 +656,6 @@ describe("EventSourceManager", () => {
       config: {
         buildURL: () => "/events",
         buildLongPollURL: () => "/events/poll",
-        getEventId: getAgentLoopEventId,
         replayBufferedEventsOnSubscribe: false,
         restartKey: "message-msg_8",
         workspaceId: "w_1",
@@ -1008,59 +828,6 @@ describe("EventSourceManager", () => {
     manager.releaseWorkspace("w_1");
   });
 
-  it("probes SSE again when the browser comes online during long polling", async () => {
-    vi.useFakeTimers();
-    const sources: FakeEventSource[] = [];
-    const pollSignals: AbortSignal[] = [];
-    const manager = new EventSourceManager(
-      async (url) => {
-        const source = new FakeEventSource(url);
-        sources.push(source);
-        return source;
-      },
-      () => 0,
-      {
-        reconnectDelayBaseMs: 1,
-        reconnectDelayJitterMs: 0,
-        longPollFactory: (_url, { signal }) => {
-          pollSignals.push(signal);
-          return new Promise((resolve) => {
-            signal.addEventListener("abort", () => resolve([]), { once: true });
-          });
-        },
-      }
-    );
-    manager.subscribe({
-      streamId: "message-msg_12",
-      config: {
-        buildURL: () => "/events",
-        buildLongPollURL: () => "/events/poll",
-        getEventId: getAgentLoopEventId,
-        replayBufferedEventsOnSubscribe: false,
-        restartKey: "message-msg_12",
-        workspaceId: "w_1",
-      },
-      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
-      keepAliveWithoutSubscribers: true,
-    });
-    await vi.advanceTimersByTimeAsync(0);
-    sources[0].onerror?.({ type: "error", target: sources[0] });
-    await vi.advanceTimersByTimeAsync(1);
-    sources[1].onerror?.({ type: "error", target: sources[1] });
-    expect(pollSignals).toHaveLength(1);
-
-    window.dispatchEvent(new Event("online"));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(sources).toHaveLength(2);
-    await vi.advanceTimersByTimeAsync(90_000);
-    window.dispatchEvent(new Event("online"));
-    await vi.advanceTimersByTimeAsync(0);
-    expect(sources).toHaveLength(3);
-    sources[2].emitHandshake();
-    expect(pollSignals[0].aborted).toBe(true);
-    manager.releaseWorkspace("w_1");
-  });
-
   it("preserves registry resume limits across subscriber config restarts", async () => {
     let nowMs = 0;
     vi.spyOn(Date, "now").mockImplementation(() => nowMs);
@@ -1179,95 +946,5 @@ describe("EventSourceManager", () => {
     expect(sources[0].close).not.toHaveBeenCalled();
     unsubscribe();
     expect(sources[0].close).toHaveBeenCalledOnce();
-  });
-
-  it("evicts a blocked stream when its subscriber left before the blocking event", async () => {
-    const { manager, sources, subscribe } = createBlockedStreamManager();
-
-    const unsubscribe = subscribe();
-    await vi.waitFor(() => expect(sources).toHaveLength(1));
-    sources[0].emitHandshake();
-    unsubscribe();
-    expect(sources[0].close).not.toHaveBeenCalled();
-
-    sources[0].emitMessage(blockingEvent);
-    expect(sources[0].close).toHaveBeenCalledOnce();
-
-    subscribe();
-    await vi.waitFor(() => expect(sources).toHaveLength(2));
-    manager.releaseWorkspace("w_1");
-  });
-
-  it("does not rearm a blocked stream when another subscriber mounts", async () => {
-    const { sources, subscribe } = createBlockedStreamManager();
-    const onEvent = vi.fn();
-
-    const unsubscribe = subscribe(onEvent);
-    await vi.waitFor(() => expect(sources).toHaveLength(1));
-    sources[0].emitHandshake();
-    sources[0].emitMessage(blockingEvent);
-    expect(onEvent).toHaveBeenCalledWith(blockingEvent);
-    expect(sources[0].close).not.toHaveBeenCalled();
-
-    const unsubscribeRemount = subscribe(onEvent);
-    unsubscribe();
-    expect(sources[0].close).not.toHaveBeenCalled();
-    unsubscribeRemount();
-    expect(sources[0].close).toHaveBeenCalledOnce();
-  });
-
-  it("rearms keepalive when a blocked stream resumes while the conversation is open", async () => {
-    const { manager, sources, subscribe } = createBlockedStreamManager();
-    const onEvent = vi.fn();
-    const unsubscribe = subscribe(onEvent);
-
-    await vi.waitFor(() => expect(sources).toHaveLength(1));
-    sources[0].emitHandshake();
-    sources[0].emitMessage(blockingEvent);
-    manager.stopKeepingAlive("message-msg_blocked", "w_1");
-    sources[0].emitMessage(resumedEvent);
-    expect(onEvent).toHaveBeenCalledWith(resumedEvent);
-
-    unsubscribe();
-    expect(sources[0].close).not.toHaveBeenCalled();
-    manager.releaseWorkspace("w_1");
-    expect(sources[0].close).toHaveBeenCalledOnce();
-  });
-
-  it("keeps a failed blocked stream paused until a resumed event arrives", async () => {
-    const { manager, sources, subscribe } = createBlockedStreamManager({
-      maxReconnectAttempts: 1,
-    });
-    const unsubscribe = subscribe();
-
-    await vi.waitFor(() => expect(sources).toHaveLength(1));
-    sources[0].emitHandshake();
-    sources[0].emitMessage(blockingEvent);
-    sources[0].onerror?.({ type: "error", target: sources[0] });
-
-    manager.resume("message-msg_blocked");
-    await vi.waitFor(() => expect(sources).toHaveLength(2));
-    sources[1].emitHandshake();
-    unsubscribe();
-    expect(sources[1].close).toHaveBeenCalledOnce();
-
-    manager.releaseWorkspace("w_1");
-  });
-
-  it("evicts a failed stream after a new subscriber also leaves", async () => {
-    const { manager, sources, subscribe } = createBlockedStreamManager({
-      maxReconnectAttempts: 1,
-    });
-    const unsubscribe = subscribe();
-    await vi.waitFor(() => expect(sources).toHaveLength(1));
-    sources[0].onerror?.({ type: "error", target: sources[0] });
-
-    const unsubscribeRemount = subscribe();
-    unsubscribe();
-    unsubscribeRemount();
-
-    subscribe();
-    await vi.waitFor(() => expect(sources).toHaveLength(2));
-    manager.releaseWorkspace("w_1");
   });
 });
