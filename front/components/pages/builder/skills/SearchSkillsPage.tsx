@@ -155,16 +155,8 @@ export function SearchSkillsPage() {
               <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
             ))}
           </TabsList>
-          <div className="py-3 text-sm text-muted-foreground">
-            {inputValue.trim() ? "Sorted by relevance" : "Sorted by usage"}
-          </div>
           {SEARCH_TABS.map((tab) => (
             <TabsContent key={tab.id} value={tab.id}>
-              {tab.id === "default" && (
-                <p className="pb-4 text-sm text-muted-foreground">
-                  Skills provided by Dust.
-                </p>
-              )}
               <SkillSearchResults
                 searchTerm={debouncedValue}
                 filters={tab.filters}

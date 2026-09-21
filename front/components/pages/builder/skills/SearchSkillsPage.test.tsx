@@ -219,10 +219,8 @@ describe("search-backed Manage Skills", () => {
     expect(
       screen.queryByRole("button", { name: /Zebra/ })
     ).not.toBeInTheDocument();
-    expect(screen.getByText("Sorted by relevance")).toBeInTheDocument();
     await userEvent.clear(input);
     await screen.findByRole("button", { name: /Zebra/ });
-    expect(screen.getByText("Sorted by usage")).toBeInTheDocument();
     // Returning to the same query restores its already-loaded pages from SWR.
     expect(screen.getAllByRole("row")[1]).toHaveTextContent("Zebra");
     expect(screen.getAllByRole("row")[2]).toHaveTextContent("Alpha");
