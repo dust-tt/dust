@@ -40,7 +40,7 @@ import { labsTranscriptsProviders } from "@app/types/labs";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { isAssignableRoleType } from "@app/types/user";
+import { isActiveRoleType } from "@app/types/user";
 import fs from "fs/promises";
 import parseArgs from "minimist";
 import path from "path";
@@ -818,7 +818,7 @@ async function apikeys(command: string, args: parseArgs.ParsedArgs) {
         throw new Error("Missing --name argument");
       }
 
-      if (!args.role || !isAssignableRoleType(args.role)) {
+      if (!args.role || !isActiveRoleType(args.role)) {
         throw new Error(
           "Missing or Incorrect --role argument. Must be admin | manager | user."
         );

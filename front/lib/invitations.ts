@@ -10,7 +10,6 @@ import type { MembershipInvitationType } from "@app/types/membership_invitation"
 import type { MembershipSeatType } from "@app/types/memberships";
 import { isString } from "@app/types/shared/utils/general";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
-import { toAssignableRole } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import { mutate } from "swr";
 
@@ -47,7 +46,7 @@ export async function updateInvitation({
 
   const body = {
     status: newRole ? invitation.status : "revoked",
-    initialRole: toAssignableRole(newRole ?? invitation.initialRole),
+    initialRole: newRole ?? invitation.initialRole,
   };
 
   const res = await clientFetch(
@@ -102,8 +101,7 @@ export async function sendInvitations({
 }) {
   const body: PostInvitationRequestBody = emails.map((email) => ({
     email,
-    // A pending invitation may still carry the deprecated `builder` role; resend it as `user`.
-    role: toAssignableRole(invitationRole),
+    role: invitationRole,
     seatType: seatType ?? null,
   }));
 

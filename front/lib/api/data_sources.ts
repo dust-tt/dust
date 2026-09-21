@@ -223,7 +223,7 @@ export async function softDeleteDataSourceAndLaunchScrubWorkflow(
   if (!isAuthorized) {
     return new Err({
       code: "unauthorized_deletion",
-      message: "Only builders can delete data sources.",
+      message: "You are not authorized to delete this data source.",
     });
   }
 

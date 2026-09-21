@@ -46,7 +46,14 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     blob: Attributes<MembershipInvitationModel>,
     { workspace }: { workspace: WorkspaceModel }
   ) {
-    super(MembershipInvitationModel, blob);
+    super(MembershipInvitationModel, {
+      ...blob,
+      // Legacy rows may still hold the removed `builder` role until the
+      // 20260915_migrate_invitation_builder_role_to_user backfill has run;
+      // read them as `user`. TODO(2026-10): drop once the backfill has run.
+      initialRole:
+        (blob.initialRole as string) === "builder" ? "user" : blob.initialRole,
+    });
     this.workspace = workspace;
   }
 

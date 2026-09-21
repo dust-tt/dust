@@ -17,7 +17,7 @@ import type {
   PostMemberResponseBody,
 } from "@app/types/api/user";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { AssignableRoleSchema } from "@app/types/user";
+import { ActiveRoleSchema } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -201,7 +201,7 @@ app.post(
     } else {
       // The deprecated `builder` role can no longer be assigned; it is granted only through the
       // `dust-builders` provisioning group.
-      const roleParse = AssignableRoleSchema.safeParse(body.role);
+      const roleParse = ActiveRoleSchema.safeParse(body.role);
       if (!roleParse.success) {
         return apiError(ctx, {
           status_code: 400,

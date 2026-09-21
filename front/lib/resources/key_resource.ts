@@ -25,7 +25,7 @@ import type { Result } from "@app/types/shared/result";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type {
-  AssignableRoleType,
+  ActiveRoleType,
   LightWorkspaceType,
   RoleType,
 } from "@app/types/user";
@@ -520,7 +520,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     return this.status === "active";
   }
 
-  async updateRole({ newRole }: { newRole: AssignableRoleType }) {
+  async updateRole({ newRole }: { newRole: ActiveRoleType }) {
     await this.update({ role: newRole });
   }
 

@@ -47,7 +47,6 @@ function capabilitiesForRole(auth: Authenticator): CapabilitySpec[] {
       return ADMIN_CAPABILITIES;
     case "manager":
       return MANAGER_CAPABILITIES;
-    case "builder":
     case "user":
     case "none":
       return [];

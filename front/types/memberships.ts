@@ -1,11 +1,6 @@
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-export const MEMBERSHIP_ROLE_TYPES = [
-  "admin",
-  "manager",
-  "builder",
-  "user",
-] as const;
+export const MEMBERSHIP_ROLE_TYPES = ["admin", "manager", "user"] as const;
 
 export type MembershipRoleType = (typeof MEMBERSHIP_ROLE_TYPES)[number];
 
