@@ -1,4 +1,7 @@
-import { InlineKnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
+import {
+  InlineKnowledgeChip,
+  KnowledgeErrorChip,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeNodeAttributes } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
@@ -78,8 +81,6 @@ function KnowledgeDisplayComponent({
     }
   }, [fetchedNodes, needsFetch, isFetchingNode, item, updateAttributes]);
 
-  // When hydration fails (data source or content missing, or the viewer lacks
-  // access to the space), fall back to a title-only chip.
   if (
     isDataSourceViewError ||
     (needsFetch &&
@@ -89,7 +90,13 @@ function KnowledgeDisplayComponent({
       !isFetchingNode)
   ) {
     return (
-      <Chip label={item.label} color="primary" onRemove={onRemove} size="xs" />
+      <KnowledgeErrorChip
+        title={item.label}
+        onRemove={onRemove}
+        errorMessage={
+          isDataSourceViewError ? "Data source not found" : "Content not found"
+        }
+      />
     );
   }
 

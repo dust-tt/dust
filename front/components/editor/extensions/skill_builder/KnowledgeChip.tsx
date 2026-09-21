@@ -2,7 +2,13 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/lib/swr/search";
-import { AttachmentChip, Chip, DoubleIcon, Icon } from "@dust-tt/sparkle";
+import {
+  AlertCircle,
+  AttachmentChip,
+  Chip,
+  DoubleIcon,
+  Icon,
+} from "@dust-tt/sparkle";
 import type React from "react";
 
 type KnowledgeNode = Omit<
@@ -111,5 +117,26 @@ export function InlineKnowledgeChip({
     <Chip label={title} color={color} onRemove={onRemove} size="xs">
       {children}
     </Chip>
+  );
+}
+
+interface KnowledgeErrorChipProps {
+  errorMessage?: string;
+  onRemove?: () => void;
+  title: string;
+}
+
+export function KnowledgeErrorChip({
+  onRemove,
+  title,
+}: KnowledgeErrorChipProps) {
+  return (
+    <Chip
+      label={title}
+      icon={AlertCircle}
+      color="primary"
+      onRemove={onRemove}
+      size="xs"
+    />
   );
 }
