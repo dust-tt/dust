@@ -1,15 +1,15 @@
 import {
-  getCreditSpendCheckpointEnabled,
+  getCreditSpendCheckpointConfig,
   hasCrossedCreditSpendCheckpoint,
   hasReachedCreditSpendCheckpoint,
   isExemptFromCreditSpendCheckpoint,
   resolveDefaultCreditSpendCheckpointEnabled,
 } from "@app/lib/api/assistant/credit_spend_checkpoint";
 import { Authenticator } from "@app/lib/auth";
-import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import { CREDIT_PRICED_BUSINESS_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { DEFAULT_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/resources/storage/models/credit_usage_configurations";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { PlanType } from "@app/types/plan";
@@ -64,22 +64,26 @@ describe("isExemptFromCreditSpendCheckpoint", () => {
 });
 
 describe("hasReachedCreditSpendCheckpoint", () => {
+  const thresholdAwuCredits = 200;
   const thresholdMicroUsd =
-    CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS *
-    MODEL_COST_MICRO_USD_PER_AWU_CREDIT;
+    thresholdAwuCredits * MODEL_COST_MICRO_USD_PER_AWU_CREDIT;
 
   it("is false while the spend is below the threshold", () => {
     expect(
       hasReachedCreditSpendCheckpoint({
         totalCostMicroUsd:
           thresholdMicroUsd - MODEL_COST_MICRO_USD_PER_AWU_CREDIT,
+        thresholdAwuCredits,
       })
     ).toBe(false);
   });
 
   it("is true once the spend reaches the threshold", () => {
     expect(
-      hasReachedCreditSpendCheckpoint({ totalCostMicroUsd: thresholdMicroUsd })
+      hasReachedCreditSpendCheckpoint({
+        totalCostMicroUsd: thresholdMicroUsd,
+        thresholdAwuCredits,
+      })
     ).toBe(true);
   });
 });
@@ -100,22 +104,30 @@ describe("resolveDefaultCreditSpendCheckpointEnabled", () => {
   });
 });
 
-describe("getCreditSpendCheckpointEnabled", () => {
-  it("defaults to enabled for a non-credit-priced workspace with no override", async () => {
+describe("getCreditSpendCheckpointConfig", () => {
+  it("falls back to the plan default and the global default threshold when no override exists", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    expect(await getCreditSpendCheckpointEnabled(auth)).toBe(true);
+    expect(await getCreditSpendCheckpointConfig(auth)).toEqual({
+      enabled: true,
+      thresholdAwuCredits:
+        DEFAULT_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+    });
   });
 
   it("defaults to disabled for a credit-priced workspace with no override", async () => {
     const workspace = await WorkspaceFactory.creditPriced();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    expect(await getCreditSpendCheckpointEnabled(auth)).toBe(false);
+    expect(await getCreditSpendCheckpointConfig(auth)).toEqual({
+      enabled: false,
+      thresholdAwuCredits:
+        DEFAULT_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+    });
   });
 
-  it("uses the workspace's explicit override over the plan default", async () => {
+  it("uses the workspace's explicit overrides over the plan and global defaults", async () => {
     const workspace = await WorkspaceFactory.creditPriced();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
@@ -123,10 +135,14 @@ describe("getCreditSpendCheckpointEnabled", () => {
       defaultDiscountPercent: 0,
       usageCapCredits: null,
       creditSpendCheckpointEnabled: true,
+      creditSpendCheckpointThresholdAwuCredits: 500,
     });
     expect(createResult.isOk()).toBe(true);
 
-    expect(await getCreditSpendCheckpointEnabled(auth)).toBe(true);
+    expect(await getCreditSpendCheckpointConfig(auth)).toEqual({
+      enabled: true,
+      thresholdAwuCredits: 500,
+    });
   });
 });
 

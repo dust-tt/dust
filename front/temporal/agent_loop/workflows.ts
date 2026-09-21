@@ -312,6 +312,13 @@ export async function agentLoopWorkflow({
         typeof agentLoopConversationTitleWorkflow
       > | null = null;
 
+      // Captured from whichever step first resolves it (inside the activity, only while the
+      // checkpoint status is still unset) and reused for the rest of the run: a change to the
+      // workspace's checkpoint threshold or gate mid-run only takes effect on the next run.
+      let creditSpendCheckpointConfig:
+        | { enabled: boolean; thresholdAwuCredits: number }
+        | undefined;
+
       metrics.logPhaseStart(
         authType.workspaceId,
         agentMessageId,
@@ -329,6 +336,7 @@ export async function agentLoopWorkflow({
           shouldContinue,
           retryWithoutTools,
           creditSpendCheckpointCrossed,
+          creditSpendCheckpointConfig: resolvedCreditSpendCheckpointConfig,
         } = await executeStepIteration({
           authType,
           agentLoopArgs: {
@@ -340,9 +348,15 @@ export async function agentLoopWorkflow({
           canInitializeConsumption: canInitializeConsumption === true,
           startStep,
           forceDisableToolUse,
+          creditSpendCheckpointConfig,
         });
 
         forceDisableToolUse = retryWithoutTools ?? false;
+        // Only ever set on the step that first resolved it (see getCreditSpendCheckpointCrossed);
+        // every step after that already has it and doesn't return it again.
+        if (resolvedCreditSpendCheckpointConfig) {
+          creditSpendCheckpointConfig = resolvedCreditSpendCheckpointConfig;
+        }
 
         // Update state with results.
         if (runId) {
@@ -514,6 +528,7 @@ async function executeStepIteration({
   canInitializeConsumption,
   startStep,
   forceDisableToolUse,
+  creditSpendCheckpointConfig,
 }: {
   authType: AuthenticatorType;
   currentStep: number;
@@ -523,12 +538,21 @@ async function executeStepIteration({
   canInitializeConsumption: boolean;
   startStep: number;
   forceDisableToolUse: boolean;
+  creditSpendCheckpointConfig?: {
+    enabled: boolean;
+    thresholdAwuCredits: number;
+  };
 }): Promise<{
   runId: string | null;
   shouldContinue: boolean;
   retryWithoutTools?: boolean;
   // Passed through so the caller knows whether to pause and finalize as checkpointed.
   creditSpendCheckpointCrossed?: boolean;
+  // Only set on the step that first resolved it; see getCreditSpendCheckpointCrossed.
+  creditSpendCheckpointConfig?: {
+    enabled: boolean;
+    thresholdAwuCredits: number;
+  };
 }> {
   const result = await runModelAndCreateActionsActivity({
     authType,
@@ -538,6 +562,7 @@ async function executeStepIteration({
     runIds,
     step: currentStep,
     forceDisableToolUse,
+    creditSpendCheckpointConfig,
   });
 
   if (!result) {
@@ -548,12 +573,12 @@ async function executeStepIteration({
     };
   }
 
-  const {
-    runId,
-    actionBlobs,
-    retryWithoutTools = false,
-    creditSpendCheckpointCrossed,
-  } = result;
+  const { runId, actionBlobs, retryWithoutTools = false } = result;
+  // Spread into every return below instead of repeating both fields at each exit point.
+  const checkpointFields = {
+    creditSpendCheckpointCrossed: result.creditSpendCheckpointCrossed,
+    creditSpendCheckpointConfig: result.creditSpendCheckpointConfig,
+  };
 
   // Generation completed or the loop unpaused and no new tools were generated.
   if (actionBlobs.length === 0) {
@@ -565,7 +590,7 @@ async function executeStepIteration({
       // disabled to force a final answer.
       shouldContinue: runId === null || retryWithoutTools,
       retryWithoutTools,
-      creditSpendCheckpointCrossed,
+      ...checkpointFields,
     };
   }
 
@@ -576,7 +601,7 @@ async function executeStepIteration({
     return {
       runId,
       shouldContinue: false,
-      creditSpendCheckpointCrossed,
+      ...checkpointFields,
     };
   }
 
@@ -615,7 +640,7 @@ async function executeStepIteration({
       return {
         runId,
         shouldContinue: false,
-        creditSpendCheckpointCrossed,
+        ...checkpointFields,
       };
     }
   }
@@ -623,7 +648,7 @@ async function executeStepIteration({
   return {
     runId,
     shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
-    creditSpendCheckpointCrossed,
+    ...checkpointFields,
   };
 }
 

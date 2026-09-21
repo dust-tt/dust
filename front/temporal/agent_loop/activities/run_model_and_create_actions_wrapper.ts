@@ -1,6 +1,6 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import {
-  getCreditSpendCheckpointEnabled,
+  getCreditSpendCheckpointConfig,
   hasCrossedCreditSpendCheckpoint,
   hasReachedCreditSpendCheckpoint,
   isExemptFromCreditSpendCheckpoint,
@@ -55,6 +55,11 @@ export type RunModelAndCreateActionsResult = {
   // tool use disabled to force a final answer.
   retryWithoutTools?: boolean;
   creditSpendCheckpointCrossed?: boolean;
+  // Only set on the step that first resolved it; see getCreditSpendCheckpointCrossed.
+  creditSpendCheckpointConfig?: {
+    enabled: boolean;
+    thresholdAwuCredits: number;
+  };
 };
 
 const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
@@ -88,6 +93,7 @@ export async function runModelAndCreateActionsActivity({
   runIds,
   step,
   forceDisableToolUse = false,
+  creditSpendCheckpointConfig,
 }: {
   authType: AuthenticatorType;
   checkForResume?: boolean;
@@ -97,6 +103,11 @@ export async function runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
   forceDisableToolUse?: boolean;
+  // Fetched once by the workflow before the step loop, when available (see workflows.ts).
+  creditSpendCheckpointConfig?: {
+    enabled: boolean;
+    thresholdAwuCredits: number;
+  };
 }): Promise<RunModelAndCreateActionsResult | null> {
   // The pre-stream setup (agent data loading, MCP tools listing, conversation rendering) can
   // stall past the heartbeat timeout, e.g. on a hung MCP server's tools/list call: heartbeat
@@ -114,6 +125,7 @@ export async function runModelAndCreateActionsActivity({
           runIds,
           step,
           forceDisableToolUse,
+          creditSpendCheckpointConfig,
         })
       ),
     {
@@ -135,6 +147,7 @@ async function _runModelAndCreateActionsActivity({
   runIds,
   step,
   forceDisableToolUse,
+  creditSpendCheckpointConfig,
 }: {
   authType: AuthenticatorType;
   checkForResume: boolean;
@@ -144,6 +157,10 @@ async function _runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
   forceDisableToolUse: boolean;
+  creditSpendCheckpointConfig?: {
+    enabled: boolean;
+    thresholdAwuCredits: number;
+  };
 }): Promise<Result<RunModelAndCreateActionsResult | null, Error>> {
   const activityTimeoutDeadlineMs = getActivityTimeoutDeadlineMs();
   const durationRecorder = DurationRecorder.create([]);
@@ -275,16 +292,19 @@ async function _runModelAndCreateActionsActivity({
     return new Ok(null);
   }
 
-  const creditSpendCheckpointCrossed = await getCreditSpendCheckpointCrossed(
-    auth,
-    {
-      isRootAgentMessage,
-      userMessageOrigin: runAgentArgs.userMessageOrigin ?? null,
-      agentMessageId: runAgentArgs.agentMessageId,
-      agentMessageModelId: runAgentData.agentMessage.agentMessageId,
-      totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
-    }
-  );
+  const checkpointResult = await getCreditSpendCheckpointCrossed(auth, {
+    isRootAgentMessage,
+    userMessageOrigin: runAgentArgs.userMessageOrigin ?? null,
+    agentMessageId: runAgentArgs.agentMessageId,
+    agentMessageModelId: runAgentData.agentMessage.agentMessageId,
+    totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
+    creditSpendCheckpointConfig,
+  });
+  // Spread into every return below instead of repeating both fields at each exit point.
+  const checkpointFields = {
+    creditSpendCheckpointCrossed: checkpointResult.crossed,
+    creditSpendCheckpointConfig: checkpointResult.resolvedConfig,
+  };
 
   // Tool test run: bypass LLM and directly execute tool commands. The command result does not
   // carry the checkpoint flag: a test run never pauses.
@@ -307,7 +327,7 @@ async function _runModelAndCreateActionsActivity({
       return new Ok({
         actionBlobs: existingData.actionBlobs,
         runId: null,
-        creditSpendCheckpointCrossed,
+        ...checkpointFields,
       });
     }
   }
@@ -347,7 +367,7 @@ async function _runModelAndCreateActionsActivity({
       runId,
       actionBlobs: [],
       retryWithoutTools,
-      creditSpendCheckpointCrossed,
+      ...checkpointFields,
     });
   }
 
@@ -388,15 +408,25 @@ async function _runModelAndCreateActionsActivity({
   return new Ok({
     runId,
     actionBlobs: createResult.actionBlobs,
-    creditSpendCheckpointCrossed,
+    ...checkpointFields,
   });
 }
 
 /**
- * Whether the agent loop must pause here for the user to confirm continuing. Reads the agent
- * message's checkpoint status only when the cheap, in-memory checks (exemption, root message,
- * pre-step spend) don't already rule it out; the workspace's checkpoint gate setting is
- * consulted only the first time that status is found unset (see the contract above).
+ * @cc [owner:avervaet,label:backend;performance] checkpoint-status-short-circuits-config
+ * Once the agent message's persisted checkpoint status is non-NULL (`paused`, `acknowledged`, or
+ * `stopped`), this MUST decide from that status alone and MUST NOT read the workspace's
+ * checkpoint configuration (threshold or gate) again for that message. The configuration is only
+ * ever read while the status is still unset, since the threshold itself is needed to know
+ * whether the message has reached it in the first place.
+ */
+/**
+ * Whether the agent loop must pause here for the user to confirm continuing. The agent message's
+ * checkpoint status is read first and, once resolved, decides the answer on its own. While that
+ * status is still unset, the passed-in `creditSpendCheckpointConfig` is used when the caller
+ * already has one (captured from an earlier step in the same run); otherwise it's read here and
+ * returned as `resolvedConfig` so the caller (the workflow, via the activity's result) can cache
+ * it and skip this read on every later step of the run.
  */
 export async function getCreditSpendCheckpointCrossed(
   auth: Authenticator,
@@ -406,24 +436,31 @@ export async function getCreditSpendCheckpointCrossed(
     agentMessageId,
     agentMessageModelId,
     totalCostMicroUsd,
+    creditSpendCheckpointConfig,
   }: {
     isRootAgentMessage: boolean;
     userMessageOrigin: UserMessageOrigin | null;
     agentMessageId: string;
     agentMessageModelId: ModelId;
     totalCostMicroUsd: number;
+    // Captured by the workflow from an earlier step in the same run, when available.
+    creditSpendCheckpointConfig?: {
+      enabled: boolean;
+      thresholdAwuCredits: number;
+    };
   }
-): Promise<boolean> {
+): Promise<{
+  crossed: boolean;
+  // Only set when this call read the config itself (none was passed in) — i.e. the first time
+  // any step in the run needed it. The caller threads it forward for later steps to reuse.
+  resolvedConfig?: { enabled: boolean; thresholdAwuCredits: number };
+}> {
   const isExempt = isExemptFromCreditSpendCheckpoint(auth, {
     userMessageOrigin,
   });
 
-  if (
-    isExempt ||
-    !isRootAgentMessage ||
-    !hasReachedCreditSpendCheckpoint({ totalCostMicroUsd })
-  ) {
-    return false;
+  if (isExempt || !isRootAgentMessage) {
+    return { crossed: false };
   }
 
   const status =
@@ -432,22 +469,48 @@ export async function getCreditSpendCheckpointCrossed(
       { agentMessageId }
     );
 
-  // First step crossing the threshold for this message: the workspace's gate hasn't been
-  // consulted yet. A disabled gate is persisted as acknowledged right away so every later step
-  // sees a resolved status and never re-reads the workspace setting.
-  if (status === null && !(await getCreditSpendCheckpointEnabled(auth))) {
+  if (status !== null) {
+    return {
+      crossed: hasCrossedCreditSpendCheckpoint({
+        isExempt,
+        isRootAgentMessage,
+        status,
+      }),
+    };
+  }
+
+  // Status still unset: this message hasn't crossed the checkpoint yet, as far as we know. Use
+  // the caller's cached config when we have it; otherwise read it and report it back so the
+  // workflow can cache it. Once resolved below, later steps never take this path again.
+  const config =
+    creditSpendCheckpointConfig ?? (await getCreditSpendCheckpointConfig(auth));
+  const resolvedConfig = creditSpendCheckpointConfig ? undefined : config;
+
+  if (
+    !hasReachedCreditSpendCheckpoint({
+      totalCostMicroUsd,
+      thresholdAwuCredits: config.thresholdAwuCredits,
+    })
+  ) {
+    return { crossed: false, resolvedConfig };
+  }
+
+  if (!config.enabled) {
     await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
       auth,
       { agentMessageModelId, from: null, to: "acknowledged" }
     );
-    return false;
+    return { crossed: false, resolvedConfig };
   }
 
-  return hasCrossedCreditSpendCheckpoint({
-    isExempt,
-    isRootAgentMessage,
-    status,
-  });
+  return {
+    crossed: hasCrossedCreditSpendCheckpoint({
+      isExempt,
+      isRootAgentMessage,
+      status,
+    }),
+    resolvedConfig,
+  };
 }
 
 async function publishAgentLoopGuardrailExceededError(

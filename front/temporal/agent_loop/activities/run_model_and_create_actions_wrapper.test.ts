@@ -6,14 +6,14 @@ const {
   mockIsExemptFromCreditSpendCheckpoint,
   mockHasReachedCreditSpendCheckpoint,
   mockHasCrossedCreditSpendCheckpoint,
-  mockGetCreditSpendCheckpointEnabled,
+  mockGetCreditSpendCheckpointConfig,
   mockFetchStatus,
   mockTransitionStatus,
 } = vi.hoisted(() => ({
   mockIsExemptFromCreditSpendCheckpoint: vi.fn(),
   mockHasReachedCreditSpendCheckpoint: vi.fn(),
   mockHasCrossedCreditSpendCheckpoint: vi.fn(),
-  mockGetCreditSpendCheckpointEnabled: vi.fn(),
+  mockGetCreditSpendCheckpointConfig: vi.fn(),
   mockFetchStatus: vi.fn(),
   mockTransitionStatus: vi.fn(),
 }));
@@ -22,7 +22,7 @@ vi.mock("@app/lib/api/assistant/credit_spend_checkpoint", () => ({
   isExemptFromCreditSpendCheckpoint: mockIsExemptFromCreditSpendCheckpoint,
   hasReachedCreditSpendCheckpoint: mockHasReachedCreditSpendCheckpoint,
   hasCrossedCreditSpendCheckpoint: mockHasCrossedCreditSpendCheckpoint,
-  getCreditSpendCheckpointEnabled: mockGetCreditSpendCheckpointEnabled,
+  getCreditSpendCheckpointConfig: mockGetCreditSpendCheckpointConfig,
 }));
 
 vi.mock("@app/lib/resources/conversation_resource", () => ({
@@ -50,103 +50,156 @@ describe("getCreditSpendCheckpointCrossed", () => {
     mockIsExemptFromCreditSpendCheckpoint.mockReturnValue(false);
     mockHasReachedCreditSpendCheckpoint.mockReturnValue(true);
     mockHasCrossedCreditSpendCheckpoint.mockReturnValue(true);
-    mockGetCreditSpendCheckpointEnabled.mockResolvedValue(true);
+    mockGetCreditSpendCheckpointConfig.mockResolvedValue({
+      enabled: true,
+      thresholdAwuCredits: 200,
+    });
     mockFetchStatus.mockResolvedValue(null);
     mockTransitionStatus.mockResolvedValue({ applied: true });
   });
 
-  it("is false when exempt, without reading the message or the gate", async () => {
+  it("is false when exempt, without reading the message or the config", async () => {
     mockIsExemptFromCreditSpendCheckpoint.mockReturnValue(true);
 
     const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, BASE_ARGS);
 
     expect(mockFetchStatus).not.toHaveBeenCalled();
-    expect(mockGetCreditSpendCheckpointEnabled).not.toHaveBeenCalled();
-    expect(result).toBe(false);
+    expect(mockGetCreditSpendCheckpointConfig).not.toHaveBeenCalled();
+    expect(result).toEqual({ crossed: false });
   });
 
-  it("is false for a sub-agent message, without reading the message or the gate", async () => {
+  it("is false for a sub-agent message, without reading the message or the config", async () => {
     const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, {
       ...BASE_ARGS,
       isRootAgentMessage: false,
     });
 
     expect(mockFetchStatus).not.toHaveBeenCalled();
-    expect(mockGetCreditSpendCheckpointEnabled).not.toHaveBeenCalled();
-    expect(result).toBe(false);
+    expect(mockGetCreditSpendCheckpointConfig).not.toHaveBeenCalled();
+    expect(result).toEqual({ crossed: false });
   });
 
-  it("is false while the pre-step spend hasn't reached the threshold, without reading the message or the gate", async () => {
+  it("once the status is already resolved, decides from it alone without reading the config", async () => {
+    mockFetchStatus.mockResolvedValue("paused");
+    mockHasCrossedCreditSpendCheckpoint.mockReturnValue(true);
+
+    const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, BASE_ARGS);
+
+    expect(mockFetchStatus).toHaveBeenCalledWith(FAKE_AUTH, {
+      agentMessageId: "agent_msg_id",
+    });
+    expect(mockGetCreditSpendCheckpointConfig).not.toHaveBeenCalled();
+    expect(mockHasReachedCreditSpendCheckpoint).not.toHaveBeenCalled();
+    expect(mockTransitionStatus).not.toHaveBeenCalled();
+    expect(mockHasCrossedCreditSpendCheckpoint).toHaveBeenCalledWith({
+      isExempt: false,
+      isRootAgentMessage: true,
+      status: "paused",
+    });
+    expect(result).toEqual({ crossed: true });
+  });
+
+  it("once acknowledged, decides from status alone and stays unpaused", async () => {
+    mockFetchStatus.mockResolvedValue("acknowledged");
+    mockHasCrossedCreditSpendCheckpoint.mockReturnValue(false);
+
+    const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, BASE_ARGS);
+
+    expect(mockGetCreditSpendCheckpointConfig).not.toHaveBeenCalled();
+    expect(mockTransitionStatus).not.toHaveBeenCalled();
+    expect(result).toEqual({ crossed: false });
+  });
+
+  it("while status is unset, reads the config and returns false when the threshold isn't reached", async () => {
+    mockFetchStatus.mockResolvedValue(null);
     mockHasReachedCreditSpendCheckpoint.mockReturnValue(false);
 
     const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, BASE_ARGS);
 
-    expect(mockFetchStatus).not.toHaveBeenCalled();
-    expect(mockGetCreditSpendCheckpointEnabled).not.toHaveBeenCalled();
-    expect(result).toBe(false);
+    expect(mockGetCreditSpendCheckpointConfig).toHaveBeenCalledWith(FAKE_AUTH);
+    expect(mockHasReachedCreditSpendCheckpoint).toHaveBeenCalledWith({
+      totalCostMicroUsd: BASE_ARGS.totalCostMicroUsd,
+      thresholdAwuCredits: 200,
+    });
+    expect(mockTransitionStatus).not.toHaveBeenCalled();
+    expect(mockHasCrossedCreditSpendCheckpoint).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      crossed: false,
+      resolvedConfig: { enabled: true, thresholdAwuCredits: 200 },
+    });
   });
 
-  it("on the first crossing step, reads the gate once and auto-acknowledges when disabled", async () => {
+  it("while status is unset and the threshold is reached, auto-acknowledges when the gate is disabled", async () => {
     mockFetchStatus.mockResolvedValue(null);
-    mockGetCreditSpendCheckpointEnabled.mockResolvedValue(false);
+    mockGetCreditSpendCheckpointConfig.mockResolvedValue({
+      enabled: false,
+      thresholdAwuCredits: 200,
+    });
 
     const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, BASE_ARGS);
 
-    expect(mockGetCreditSpendCheckpointEnabled).toHaveBeenCalledTimes(1);
-    expect(mockGetCreditSpendCheckpointEnabled).toHaveBeenCalledWith(FAKE_AUTH);
     expect(mockTransitionStatus).toHaveBeenCalledWith(FAKE_AUTH, {
       agentMessageModelId: 42,
       from: null,
       to: "acknowledged",
     });
     expect(mockHasCrossedCreditSpendCheckpoint).not.toHaveBeenCalled();
-    expect(result).toBe(false);
+    expect(result).toEqual({
+      crossed: false,
+      resolvedConfig: { enabled: false, thresholdAwuCredits: 200 },
+    });
   });
 
-  it("on the first crossing step, reads the gate once and delegates to the status check when enabled", async () => {
+  it("while status is unset and the threshold is reached, delegates to the status check when the gate is enabled", async () => {
     mockFetchStatus.mockResolvedValue(null);
-    mockGetCreditSpendCheckpointEnabled.mockResolvedValue(true);
+    mockGetCreditSpendCheckpointConfig.mockResolvedValue({
+      enabled: true,
+      thresholdAwuCredits: 200,
+    });
     mockHasCrossedCreditSpendCheckpoint.mockReturnValue(true);
 
     const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, BASE_ARGS);
 
-    expect(mockGetCreditSpendCheckpointEnabled).toHaveBeenCalledTimes(1);
     expect(mockTransitionStatus).not.toHaveBeenCalled();
     expect(mockHasCrossedCreditSpendCheckpoint).toHaveBeenCalledWith({
       isExempt: false,
       isRootAgentMessage: true,
       status: null,
     });
-    expect(result).toBe(true);
+    expect(result).toEqual({
+      crossed: true,
+      resolvedConfig: { enabled: true, thresholdAwuCredits: 200 },
+    });
   });
 
-  it("once the status is already resolved, never re-reads the gate", async () => {
-    mockFetchStatus.mockResolvedValue("paused");
-    mockHasCrossedCreditSpendCheckpoint.mockReturnValue(true);
-
-    const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, BASE_ARGS);
-
-    expect(mockGetCreditSpendCheckpointEnabled).not.toHaveBeenCalled();
-    expect(mockTransitionStatus).not.toHaveBeenCalled();
-    expect(mockFetchStatus).toHaveBeenCalledWith(FAKE_AUTH, {
-      agentMessageId: "agent_msg_id",
+  it("uses the workspace's configured threshold, not a hardcoded one", async () => {
+    mockFetchStatus.mockResolvedValue(null);
+    mockGetCreditSpendCheckpointConfig.mockResolvedValue({
+      enabled: true,
+      thresholdAwuCredits: 500,
     });
-    expect(mockHasCrossedCreditSpendCheckpoint).toHaveBeenCalledWith({
-      isExempt: false,
-      isRootAgentMessage: true,
-      status: "paused",
+
+    await getCreditSpendCheckpointCrossed(FAKE_AUTH, BASE_ARGS);
+
+    expect(mockHasReachedCreditSpendCheckpoint).toHaveBeenCalledWith({
+      totalCostMicroUsd: BASE_ARGS.totalCostMicroUsd,
+      thresholdAwuCredits: 500,
     });
-    expect(result).toBe(true);
   });
 
-  it("once acknowledged, never re-reads the gate and stays unpaused", async () => {
-    mockFetchStatus.mockResolvedValue("acknowledged");
-    mockHasCrossedCreditSpendCheckpoint.mockReturnValue(false);
+  it("does not report a resolvedConfig when the caller already passed one in", async () => {
+    mockFetchStatus.mockResolvedValue(null);
 
-    const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, BASE_ARGS);
+    const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, {
+      ...BASE_ARGS,
+      creditSpendCheckpointConfig: { enabled: true, thresholdAwuCredits: 300 },
+    });
 
-    expect(mockGetCreditSpendCheckpointEnabled).not.toHaveBeenCalled();
-    expect(mockTransitionStatus).not.toHaveBeenCalled();
-    expect(result).toBe(false);
+    expect(mockGetCreditSpendCheckpointConfig).not.toHaveBeenCalled();
+    expect(mockHasReachedCreditSpendCheckpoint).toHaveBeenCalledWith({
+      totalCostMicroUsd: BASE_ARGS.totalCostMicroUsd,
+      thresholdAwuCredits: 300,
+    });
+    expect(result.resolvedConfig).toBeUndefined();
   });
 });

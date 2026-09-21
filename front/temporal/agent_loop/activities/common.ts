@@ -1,12 +1,12 @@
 import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
+import { getCreditSpendCheckpointConfig } from "@app/lib/api/assistant/credit_spend_checkpoint";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
-import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -1023,7 +1023,8 @@ export async function finalizeCreditSpendCheckpointPause(
     {
       agentMessageId: agentMessage.sId,
       conversationId: conversation.sId,
-      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+      thresholdAwuCredits: (await getCreditSpendCheckpointConfig(auth))
+        .thresholdAwuCredits,
     },
     "[CreditSpendCheckpoint] agent loop paused at credit spend checkpoint"
   );
