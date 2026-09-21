@@ -14,6 +14,8 @@ export const LIST_AGENTS_TOOL_NAME = "list_agents" as const;
 export const GET_AGENT_DETAILS_TOOL_NAME = "get_agent_details" as const;
 export const LIST_SKILLS_TOOL_NAME = "list_skills" as const;
 export const GET_SKILL_DETAILS_TOOL_NAME = "get_skill_details" as const;
+export const LIST_TOOLS_TOOL_NAME = "list_tools" as const;
+export const GET_TOOL_DETAILS_TOOL_NAME = "get_tool_details" as const;
 export const LIST_WORKSPACE_MEMBERS_TOOL_NAME =
   "list_workspace_members" as const;
 export const LIST_GROUPS_TOOL_NAME = "list_groups" as const;
@@ -258,6 +260,20 @@ const getSkillSchema = {
   skillId: z.string().describe("The skill's id, as returned by list_skills."),
 };
 
+const listToolsSchema = {
+  namePrefix: z
+    .string()
+    .optional()
+    .describe(
+      "Only return tools whose name starts with this prefix (case-insensitive)."
+    ),
+  ...paginationSchemaShape,
+};
+
+const getToolDetailsSchema = {
+  toolId: z.string().describe("The tool's id, as returned by list_tools."),
+};
+
 export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
   {
     name: LIST_AGENTS_TOOL_NAME,
@@ -319,6 +335,37 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving skill",
       done: "Retrieved skill",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: LIST_TOOLS_TOOL_NAME,
+    description:
+      "List the tools (MCP servers) that can be equipped on agents and skills, " +
+      "with their id, name and description. Knowledge tools (search, tables, " +
+      "include data) are configured as knowledge instead and are not listed.",
+    schema: listToolsSchema,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Listing tools",
+      done: "Listed tools",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: GET_TOOL_DETAILS_TOOL_NAME,
+    description:
+      "Return a tool's (MCP server's) details: its description and, for each " +
+      "function it exposes, the name, description and input parameters.",
+    schema: getToolDetailsSchema,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Retrieving tool details",
+      done: "Retrieved tool details",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -407,8 +454,7 @@ export const WORKSPACE_MANAGEMENT_SERVER = {
   serverInfo: {
     name: WORKSPACE_MANAGEMENT_SERVER_NAME,
     version: "1.0.0",
-    description:
-      "Inventory the workspace's agents and skills for admins and managers.",
+    description: "Inventory the workspace's agents, skills, tools and groups.",
     icon: "ActionListCheckIcon",
     authorization: null,
     documentationUrl: null,

@@ -177,5 +177,10 @@ export async function describeMcpServer(
       "sharedSecret",
     ],
   });
-  return view?.toJSON()?.server ?? null;
+  // A view the caller cannot read or admin is reported like an unknown id, so that the tool names and
+  // schemas of restricted spaces are not disclosed.
+  if (!view || !view.canReadOrAdministrate(auth)) {
+    return null;
+  }
+  return view.toJSON()?.server ?? null;
 }
