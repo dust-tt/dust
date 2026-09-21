@@ -1950,18 +1950,21 @@ export class AgentResource
     return new Ok(undefined);
   }
 
-  // Writes a brand-new agent configuration version and everything that belongs to it (editors, tags,
-  // MCP actions, and skill associations) in a single self-owned managed transaction, so a failure
-  // anywhere rolls the whole save back before it is returned as `Err`. This is the low-level version
-  // writer and ALWAYS creates a version: the version-or-not decision lives in `saveConfiguration`;
-  // `makeNew` uses this to create an agent's first version. (In `NODE_ENV=test` the ambient CLS
-  // transaction is reused with no savepoint, so this rollback is not exercised by the suite — the
-  // test's own transaction rolls back at teardown.)
+  // Writes a configuration version and the versioned data that belongs to it — tags, MCP actions and
+  // skill associations (plus the initial editor grants of a brand-new agent) — in a single self-owned
+  // managed transaction, so a failure anywhere rolls the whole save back before it is returned as
+  // `Err`. This is the low-level version writer and ALWAYS creates a version; it does NOT change
+  // scope or an existing agent's editor set (those are applied in place, see `agent-edit-in-place`).
+  // The version-or-not decision lives in `saveConfiguration`; `makeNew` uses this to create an
+  // agent's first version. (In `NODE_ENV=test` the ambient CLS transaction is reused with no
+  // savepoint, so this rollback is not exercised by the suite — the test's own transaction rolls back
+  // at teardown.)
   /**
    * @cc [owner:tdraier,label:backend] agent-save-atomic
-   * The configuration row and everything created with it — editors, tags, MCP actions, and skill
-   * associations — MUST be committed in one transaction owned by this method, so a failure in any
-   * part leaves no partial agent version behind and needs no external rollback.
+   * The configuration row and the versioned data created with it — tags, MCP actions, skill
+   * associations, and a brand-new agent's initial editor grants — MUST be committed in one
+   * transaction owned by this method, so a failure in any part leaves no partial agent version behind
+   * and needs no external rollback.
    */
   private static async _writeVersion(
     auth: Authenticator,
@@ -2026,9 +2029,6 @@ export class AgentResource
       return new Err(publishCheck.error);
     }
 
-    // Track removed editors so their triggers can be disabled if this save leaves the agent hidden.
-    let removedEditors: UserType[] = [];
-
     try {
       let template: TemplateResource | null = null;
       if (templateId) {
@@ -2089,28 +2089,18 @@ export class AgentResource
           transaction: t,
         });
 
-        if (status === "active") {
+        // Editors are agent-level grants managed in place by `updateEditorsInPlace`, not a versioned
+        // field: an existing agent's editors are already granted and carry across versions untouched,
+        // so a new version re-grants nothing. Only a brand-new agent needs its initial editor grants.
+        if (status === "active" && !existingAgent) {
           assert(
             editors.some((e) => e.id === authorId) || isAdmin(owner),
             "Unexpected: author must be an editor or admin"
           );
-          const agentResource = AgentResource.fromAgentConfigurationModel(
+          await AgentResource.fromAgentConfigurationModel(
             auth,
             agentConfigurationInstance
-          );
-          await agentResource.grantEditors(auth, { editors, transaction: t });
-          const currentEditors = await agentResource.listEditors(auth, {
-            transaction: t,
-          });
-          assert(currentEditors !== null);
-          const editorModelIds = new Set(editors.map((editor) => editor.id));
-          removedEditors = currentEditors
-            .filter((editor) => !editorModelIds.has(editor.id))
-            .map((editor) => editor.toJSON());
-          await agentResource.revokeEditors(auth, {
-            editors: removedEditors,
-            transaction: t,
-          });
+          ).grantEditors(auth, { editors, transaction: t });
         }
 
         // Create the MCP actions and skill associations in the same transaction as the
@@ -2163,31 +2153,6 @@ export class AgentResource
       // Recording the recent author reads the current version, so it needs the full resource.
       if (resource.isFull()) {
         await agentConfigurationWasUpdatedBy({ agent: resource, auth });
-      }
-
-      // Disable triggers for editors who were removed from a hidden agent.
-      if (removedEditors.length > 0 && scope === "hidden") {
-        const triggersToDisableRes =
-          await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
-            agentConfigurationId: resource.sId,
-            editorIds: removedEditors.map((editor) => editor.id),
-          });
-        if (triggersToDisableRes.isOk()) {
-          for (const trigger of triggersToDisableRes.value) {
-            const disableResult = await trigger.disable(auth);
-            if (disableResult.isErr()) {
-              logger.error(
-                {
-                  workspaceId: owner.sId,
-                  agentConfigurationId: resource.sId,
-                  triggerId: trigger.sId,
-                  error: disableResult.error,
-                },
-                `Failed to disable trigger ${trigger.sId} when removing editor from agent ${resource.sId}`
-              );
-            }
-          }
-        }
       }
 
       if (resource.status === "active") {
