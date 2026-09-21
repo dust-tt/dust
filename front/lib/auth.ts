@@ -80,12 +80,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import {
-  isAdmin,
-  isManager,
-  isUser,
-  lowestRole,
-} from "@app/types/user";
+import { isAdmin, isManager, isUser, lowestRole } from "@app/types/user";
 import assert from "assert";
 import { TokenExpiredError } from "jsonwebtoken";
 import type { Transaction } from "sequelize";

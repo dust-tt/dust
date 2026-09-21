@@ -39,7 +39,7 @@ function requireInteractiveUser(
   if (!user) {
     return new Err(
       new MCPError(
-        "Skill authoring requires an interactive builder user context."
+        "Skill authoring requires an interactive user context."
       )
     );
   }

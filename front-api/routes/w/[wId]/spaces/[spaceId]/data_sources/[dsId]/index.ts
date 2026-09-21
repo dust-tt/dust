@@ -51,8 +51,7 @@ app.patch(
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
-          message:
-            "Only the users that are `builders` for the current workspace can update a data source.",
+          message: "You need write access to this space to update a data source.",
         },
       });
     }
@@ -113,8 +112,7 @@ app.delete(
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
-          message:
-            "Only the users that are `builders` for the current workspace can update a data source.",
+          message: "You need write access to this space to delete a data source.",
         },
       });
     }

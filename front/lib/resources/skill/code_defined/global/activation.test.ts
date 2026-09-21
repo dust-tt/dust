@@ -7,10 +7,8 @@ import { describe, expect, it } from "vitest";
 describe("activationSkill", () => {
   it("includes skill creation in the context when the user has the capability", async () => {
     const { authenticator, user, workspace } = await createResourceTest({});
-    const instructionsWithoutCapability = await activationSkill.fetchInstructions(
-      authenticator,
-      { spaceIds: [] }
-    );
+    const instructionsWithoutCapability =
+      await activationSkill.fetchInstructions(authenticator, { spaceIds: [] });
     expect(instructionsWithoutCapability.split("# Overview")[0]).not.toContain(
       "The user can create Skills in this workspace."
     );

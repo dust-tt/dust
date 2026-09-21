@@ -447,6 +447,18 @@ async function backfillWorkspace(
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
+  const { memberships: builderMemberships } =
+    await MembershipResource.getActiveMemberships({
+      workspace: auth.getNonNullableWorkspace(),
+      roles: ["builder"],
+    });
+  const [builderMembership] = builderMemberships;
+  if (builderMembership) {
+    throw new Error(
+      `Productboard skill backfill cannot run with deprecated builder membership for user ${builderMembership.userId}`
+    );
+  }
+
   const existingSkill = await fetchActiveProductboardSkill(auth);
 
   const productboardAgentModelIds = productboardAgents.map((agent) => agent.id);
