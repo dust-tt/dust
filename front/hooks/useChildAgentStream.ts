@@ -207,12 +207,8 @@ export function useChildAgentStream({
       }
       const { conversationId, agentMessageId } = childStreamIds;
       const baseUrl = `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessageId}/events`;
-      let lastEventId = "";
-      if (lastEvent) {
-        const eventPayload: { eventId: string } = JSON.parse(lastEvent);
-        lastEventId = eventPayload.eventId;
-      }
-      return baseUrl + "?lastEventId=" + lastEventId;
+      const lastEventId = getAgentLoopEventId(lastEvent);
+      return baseUrl + "?lastEventId=" + encodeURIComponent(lastEventId);
     },
     [childStreamIds, owner.sId, disabled]
   );
@@ -232,7 +228,7 @@ export function useChildAgentStream({
         return null;
       }
       const { conversationId, agentMessageId } = childStreamIds;
-      return `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessageId}/events/poll?lastEventId=${getAgentLoopEventId(lastEvent)}`;
+      return `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessageId}/events/poll?lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`;
     },
     [childStreamIds, disabled, owner.sId]
   );

@@ -13,6 +13,7 @@ import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import {
   getAgentLoopEventId,
+  isLastBlockingAgentLoopEvent,
   isTerminalAgentLoopEvent,
 } from "@app/lib/client/agent_loop_stream";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -346,17 +347,13 @@ export function useAgentMessageStream({
         return null;
       }
       const esURL = `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events`;
-      let lastEventId = "";
-      if (lastEvent) {
-        const eventPayload: {
-          eventId: string;
-        } = JSON.parse(lastEvent);
-        lastEventId = eventPayload.eventId;
+      const lastEventId = getAgentLoopEventId(lastEvent);
+      if (lastEventId) {
         // We have a lastEventId, so this is not a fresh mount
         isFreshMountWithContent.current = false;
       }
 
-      return esURL + "?lastEventId=" + lastEventId;
+      return esURL + "?lastEventId=" + encodeURIComponent(lastEventId);
     },
     [conversationId, sId, owner.sId]
   );
@@ -366,7 +363,7 @@ export function useAgentMessageStream({
       if (isStreamTerminated.current) {
         return null;
       }
-      return `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events/poll?lastEventId=${getAgentLoopEventId(lastEvent)}`;
+      return `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events/poll?lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`;
     },
     [conversationId, sId, owner.sId]
   );
@@ -834,6 +831,7 @@ export function useAgentMessageStream({
       workspaceId: owner.sId,
       buildLongPollURL,
       isReadyToConsumeStream: shouldStream,
+      isPauseEvent: isLastBlockingAgentLoopEvent,
       isTerminalEvent: isTerminalAgentLoopEvent,
       keepAliveOnUnmount: true,
       replayBufferedEventsOnMount: true,

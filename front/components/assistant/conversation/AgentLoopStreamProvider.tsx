@@ -1,6 +1,7 @@
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
   getAgentLoopEventId,
+  isLastBlockingAgentLoopEvent,
   isTerminalAgentLoopEvent,
 } from "@app/lib/client/agent_loop_stream";
 import { eventSourceManager } from "@app/lib/client/event_source_manager";
@@ -25,12 +26,12 @@ function OngoingAgentLoopConnection({
   const streamId = `message-${messageId}`;
   const buildURL = useCallback(
     (lastEvent: string | null) =>
-      `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/events?lastEventId=${getAgentLoopEventId(lastEvent)}`,
+      `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/events?lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`,
     [conversationId, messageId, owner.sId]
   );
   const buildLongPollURL = useCallback(
     (lastEvent: string | null) =>
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/events/poll?lastEventId=${getAgentLoopEventId(lastEvent)}`,
+      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/events/poll?lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`,
     [conversationId, messageId, owner.sId]
   );
   const onEvent = useCallback(
@@ -45,6 +46,7 @@ function OngoingAgentLoopConnection({
   useEventSource(buildURL, onEvent, streamId, {
     workspaceId: owner.sId,
     buildLongPollURL,
+    isPauseEvent: isLastBlockingAgentLoopEvent,
     isTerminalEvent: isTerminalAgentLoopEvent,
     keepAliveOnUnmount: true,
     replayBufferedEventsOnMount: true,

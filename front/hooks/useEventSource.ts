@@ -7,6 +7,7 @@ interface UseEventSourceOptions {
   workspaceId: string;
   buildLongPollURL?: (lastEvent: string | null) => string | null;
   isReadyToConsumeStream?: boolean;
+  isPauseEvent?: (event: string) => boolean;
   isTerminalEvent?: (event: string) => boolean;
   onTerminalError?: (error: Error) => void;
   headers?: Record<string, string>;
@@ -24,6 +25,7 @@ export function useEventSource(
     workspaceId,
     buildLongPollURL,
     isReadyToConsumeStream = true,
+    isPauseEvent,
     isTerminalEvent,
     onTerminalError,
     headers,
@@ -40,6 +42,7 @@ export function useEventSource(
   const buildURLRef = useRef(buildURL);
   const buildLongPollURLRef = useRef(buildLongPollURL);
   const onEventCallbackRef = useRef(onEventCallback);
+  const isPauseEventRef = useRef(isPauseEvent);
   const isTerminalEventRef = useRef(isTerminalEvent);
   const onTerminalErrorRef = useRef(onTerminalError);
   const headersRef = useRef(headers);
@@ -49,6 +52,7 @@ export function useEventSource(
     buildURLRef.current = buildURL;
     buildLongPollURLRef.current = buildLongPollURL;
     onEventCallbackRef.current = onEventCallback;
+    isPauseEventRef.current = isPauseEvent;
     isTerminalEventRef.current = isTerminalEvent;
     onTerminalErrorRef.current = onTerminalError;
     headersRef.current = headers;
@@ -57,6 +61,7 @@ export function useEventSource(
     buildURL,
     buildLongPollURL,
     headers,
+    isPauseEvent,
     isTerminalEvent,
     onEventCallback,
     onTerminalError,
@@ -79,6 +84,7 @@ export function useEventSource(
           : undefined,
         buildURL: (lastEvent) => buildURLRef.current(lastEvent),
         headers: headersRef.current,
+        isPauseEvent: (event) => isPauseEventRef.current?.(event) ?? false,
         isTerminalEvent: (event) =>
           isTerminalEventRef.current?.(event) ?? false,
         replayBufferedEventsOnSubscribe: replayBufferedEventsOnMount,
