@@ -182,6 +182,25 @@ export type SaveAgentConfigurationParams = {
   skills?: SkillResource[];
 };
 
+// The `SaveAgentConfigurationParams` fields that define a configuration version (everything except
+// `scope`/`editors`, which are applied in place, and `authorId`, which is version metadata). A save
+// that changes any of these creates a new version; see `saveConfiguration`/`agent-edit-in-place`.
+const AGENT_DEFINITION_KEYS = [
+  "name",
+  "description",
+  "instructions",
+  "instructionsHtml",
+  "pictureUrl",
+  "status",
+  "model",
+  "templateId",
+  "requestedSpaceIds",
+  "reinforcement",
+  "tags",
+  "actions",
+  "skills",
+] as const satisfies readonly (keyof SaveAgentConfigurationParams)[];
+
 // A `full` resource always exposes its `content`.
 export interface FullAgentResource extends AgentResource {
   readonly variant: "full";
@@ -295,19 +314,16 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  */
 /**
  * @cc [owner:tdraier,label:security] agent-edit-requires-write
- * Creating a new configuration version of an existing agent (through `updateConfiguration` when a
- * definition field changes, see `agent-edit-in-place`) MUST require `write` on that agent
- * (`auth.can("write", this)`), enforced inside the resource — callers may double-check, but MUST NOT
- * be the sole gate. `read` alone (any member can read a visible agent) MUST NOT allow editing the
- * definition. For human and system-key callers the workspace `admin` role alone (which grants
- * `admin`, not `write`, on agents they do not edit) MUST NOT allow editing the definition either
- * (though `admin` alone does allow changing that agent's editor set in place). Regular
- * API keys are the sole exception: the admin role grants them `write` (see `admin-key-agent-write`),
- * so an admin key may edit an agent it holds no editor grant on. This requirement is scoped to
- * `updateConfiguration`: the self-gated governance path `bulkUpdateModel` saves a new version through
- * `_saveConfiguration` directly, admitting `write` OR `admin` (see `model-change-requires-edit`), so a
- * workspace admin MAY re-model an agent they do not edit; that path MUST remain a model-only re-save
- * of the agent as-is and MUST NOT change any other part of its definition.
+ * Creating a new configuration version of an existing agent by changing a definition field other
+ * than the model (see `agent-edit-in-place`) MUST require `write` on that agent
+ * (`auth.can("write", this)`), enforced inside the resource (`saveConfiguration`) — callers may
+ * double-check, but MUST NOT be the sole gate. `read` alone (any member can read a visible agent)
+ * MUST NOT allow editing the definition. For human and system-key callers the workspace `admin` role
+ * alone (which grants `admin`, not `write`, on agents they do not edit) MUST NOT allow editing a
+ * non-model definition field (though `admin` alone does allow changing that agent's model — see
+ * `model-change-requires-edit` — or its editor set in place). Regular API keys are the sole
+ * exception: the admin role grants them `write` (see `admin-key-agent-write`), so an admin key may
+ * edit an agent it holds no editor grant on.
  */
 export class AgentResource
   extends BaseResource<AgentModel>
@@ -1054,23 +1070,10 @@ export class AgentResource
   // Rescopes the agents the caller is allowed to (un)publish, emits the `agent.scope_changed` audit
   // event, and on hide disables the triggers of non-editors. `loadResource` resolves rows
   // caller-independently so an editor/admin is not blocked on agents backed by spaces they cannot
-  // read ("Show hidden agents").
-  /**
-   * @cc [owner:tdraier,label:security;product] scope-change-requires-edit-and-publish
-   * (Un)publishing an agent — changing its scope — requires BOTH the `publish` agent capability AND
-   * `write` or `admin` on the agent. Both MUST be enforced here, on the resource, and are the sole
-   * authorization for a scope write: the loaded rows MUST be filtered by
-   * `auth.can("publish", r) && (auth.can("write", r) || auth.can("admin", r))`, and the scope of an
-   * agent the caller does not fully satisfy MUST NOT be written. `publish` is a workspace-wide
-   * capability that `getGovernanceGrantVerbs` folds into every instance's verbs, so it resolves
-   * per-resource via `auth.can("publish", r)` (it is grant-backed, never role-derived).
-   */
-  /**
-   * @cc [owner:tdraier,label:security] hide-disables-non-editor-triggers
-   * When an agent transitions `visible` -> `hidden`, every trigger whose editor is no longer an
-   * editor of that agent MUST be disabled (non-editors lose access to a hidden agent); triggers of
-   * current editors MUST remain untouched.
-   */
+  // read ("Show hidden agents"). Enforces the same scope-write rules as `updateScopeInPlace` — it
+  // MUST filter by `auth.can("publish", r) && (auth.can("write", r) || auth.can("admin", r))` (see
+  // `scope-change-requires-edit-and-publish`) and disable non-editor triggers on hide (see
+  // `hide-disables-non-editor-triggers`).
   static async bulkUpdateScope(
     auth: Authenticator,
     agentIds: string[],
@@ -1218,13 +1221,14 @@ export class AgentResource
   }
 
   // Saves a new version of each editable agent with the model swapped and everything else carried
-  // over unchanged. Self-gated (`write || admin`) then saved via the ungated `_saveConfiguration`,
-  // so an admin can re-model agents they do not edit (see `agent-edit-requires-write`).
+  // over unchanged. Self-gated (`write || admin`) then saved via `saveConfiguration`, which re-gates
+  // a model-only change on `write || admin`, so an admin can re-model agents they do not edit.
   /**
    * @cc [owner:tdraier,label:security] model-change-requires-edit
    * Only callers who hold `write` or `admin` on an agent (per `getAllowedVerbs`) may change its
-   * model: the loaded rows MUST be filtered by `auth.can("write", r) || auth.can("admin", r)` and
-   * the model of any agent the caller cannot edit MUST NOT be written.
+   * model: `saveConfiguration` MUST gate a model change on `auth.can("write", r) || auth.can("admin",
+   * r)` and `bulkUpdateModel` MUST additionally filter its loaded rows by the same predicate, so the
+   * model of any agent the caller cannot edit MUST NOT be written.
    */
   static async bulkUpdateModel(
     auth: Authenticator,
@@ -1257,10 +1261,11 @@ export class AgentResource
     const saveResults = await concurrentExecutor(
       resources,
       async (r): Promise<{ sId: string; isUpdated: boolean }> => {
+        // Only the model changes; `saveConfiguration` reads the current version to fill the rest of
+        // the new version, skips a no-op, and gates a model-only change on `write`/`admin`. The merge
+        // preserves the current model's other fields (temperature, etc.).
         const params = await r.buildResaveParams(auth);
-        const res = await AgentResource._saveConfiguration(auth, {
-          ...params,
-          agentConfigurationId: r.sId,
+        const res = await r.saveConfiguration(auth, {
           model: {
             ...params.model,
             providerId: model.providerId,
@@ -1634,132 +1639,157 @@ export class AgentResource
       return new Err(new Error("Creating agents is restricted."));
     }
 
-    return this._saveConfiguration(auth, {
+    return AgentResource._writeVersion(auth, {
       ...params,
       agentConfigurationId: undefined,
     });
   }
 
-  // Applies a save to `this` existing agent, routing each kind of change to its own path and
-  // permission (see `agent-edit-in-place`): a change to any definition field creates a new version
-  // (`write`), while a scope or editor change is applied in place with no new version. `scope`/
-  // `editors` differences are detectable without the agent's full configuration, so a caller who
-  // cannot read it (a `light` resource) can still (un)publish or manage editors it is authorized for,
-  // but can never create a version.
+  // Applies a partial update to `this` existing agent: only properties present in `update` are
+  // considered, an omitted property is left untouched, and a provided property equal to the current
+  // value is a no-op. Each changed property is routed to its own path and permission (see
+  // `agent-edit-in-place`): definition fields create a new version, `scope`/`editors` are applied in
+  // place. When only `scope`/`editors` are provided the private configuration is never read.
   /**
    * @cc [owner:tdraier,label:security;product] agent-edit-in-place
-   * Saving an existing agent MUST route each change by kind: a change to any definition field (name,
-   * description, instructions, picture, model, template, requested spaces, reinforcement, tags, tools
-   * or skills) creates a new version and MUST require `write`; a `scope` change is applied in place
-   * (no new version) through the same path as `bulkUpdateScope` and MUST satisfy
+   * Saving an existing agent MUST route each changed property by kind and gate it on its own
+   * permission: a definition field other than the model (name, description, instructions, picture,
+   * status, template, requested spaces, reinforcement, tags, tools or skills) creates a new version
+   * and MUST require `write`; the `model` creates a new version but MUST require `write` OR `admin`
+   * (see `model-change-requires-edit`); `scope` is applied in place (no new version) and MUST satisfy
    * `scope-change-requires-edit-and-publish`; an editor-set change is applied in place and MUST
-   * require `admin` (see `agent-verbs`). A new version created alongside a scope/editor change MUST
-   * carry the current scope/editors, so those changes take effect only through their own gated path
-   * and a `write`-only caller cannot change them via a version. All required permissions MUST be
-   * checked before any change is applied so a save never partially succeeds.
+   * require `admin` (see `agent-verbs`). A property whose provided value equals the current one MUST
+   * be a no-op (no version, no permission check). A new version created alongside a scope/editor
+   * change MUST carry the current scope/editors, so those take effect only through their own gated
+   * path. All required permissions MUST be checked before any change is applied so a save never
+   * partially succeeds. A caller that cannot read the agent (a `light` resource) cannot create a
+   * version, so provided definition fields are ignored; it may still change scope/editors it is
+   * authorized for.
+   */
+  /**
+   * @cc [owner:tdraier,label:backend] save-skips-noop-version
+   * A save whose provided properties all equal the agent's current configuration MUST NOT create a
+   * new version and MUST NOT change anything: it returns the current resource unchanged. Definition
+   * equality is compared conservatively over the persisted fields (author excluded); any uncertainty
+   * MUST fall through to a real save so an edit is never silently dropped.
    */
   /**
    * @cc [owner:philipperolet,label:security;product] complete-editor-set-replaces-grants
    * Saving an existing agent with its complete editor set MUST revoke every current editor grant
    * omitted from that set.
    */
-  async updateConfiguration(
+  async saveConfiguration(
     auth: Authenticator,
-    params: SaveAgentConfigurationParams
+    update: Partial<SaveAgentConfigurationParams>
   ): Promise<Result<AgentResource, Error>> {
-    const scopeChanged = this.scope !== params.scope;
+    // A scope change needs no private content — `scope` is a core field carried by every resource.
+    const scopeChange =
+      update.scope !== undefined && update.scope !== this.scope
+        ? update.scope
+        : null;
 
-    const currentEditors = (await this.listEditors(auth)) ?? [];
-    const currentEditorIds = new Set(currentEditors.map((e) => e.id));
-    const incomingEditorIds = new Set(params.editors.map((e) => e.id));
-    const editorsChanged =
-      currentEditorIds.size !== incomingEditorIds.size ||
-      [...incomingEditorIds].some((id) => !currentEditorIds.has(id));
+    // An editor-set change needs no private content either — editors are a separate grant list.
+    let editorsChange: UserType[] | null = null;
+    if (update.editors !== undefined) {
+      const currentEditors = (await this.listEditors(auth)) ?? [];
+      const currentIds = new Set(currentEditors.map((e) => e.id));
+      const nextIds = new Set(update.editors.map((e) => e.id));
+      const changed =
+        currentIds.size !== nextIds.size ||
+        [...nextIds].some((id) => !currentIds.has(id));
+      editorsChange = changed ? update.editors : null;
+    }
 
-    // Only a readable (full) agent can be diffed against its current configuration; an unreadable
-    // (light) one cannot create a version, so its definition fields are ignored (see (B) of
-    // `agent-edit-in-place`).
-    let currentParams: SaveAgentConfigurationParams | null = null;
-    let versionedChanged = false;
-    if (this.isFull()) {
-      currentParams = await this.buildResaveParams(auth);
+    // A new version is needed only when a definition field actually changes. The current
+    // configuration is read (to diff and to fill the new version's unchanged columns) ONLY when a
+    // definition field is provided AND the agent is readable — an unreadable (`light`) caller cannot
+    // create a version, so its definition fields are ignored (it may still change scope/editors).
+    const providedDefinitionKeys = AGENT_DEFINITION_KEYS.filter(
+      (key) => update[key] !== undefined
+    );
+    let versionParams: SaveAgentConfigurationParams | null = null;
+    let versionChangedModelOnly = false;
+    if (providedDefinitionKeys.length > 0 && this.isFull()) {
+      const currentParams = await this.buildResaveParams(auth);
+      const mergedParams: SaveAgentConfigurationParams = { ...currentParams };
+      for (const key of providedDefinitionKeys) {
+        // Overriding a provided definition field; scope/editors stay current (applied in place
+        // below) and the author defaults to the current version's unless the caller sets it.
+        (mergedParams as Record<string, unknown>)[key] = update[key];
+      }
+      mergedParams.authorId = update.authorId ?? currentParams.authorId;
+
       const currentCanonical =
         canonicalizeSaveParamsForComparison(currentParams);
-      const incomingCanonical = canonicalizeSaveParamsForComparison({
-        ...params,
-        // An omitted reinforcement mode preserves the current one on save, so resolve it the same
-        // way here or an unchanged agent would look edited.
-        reinforcement: params.reinforcement ?? currentParams.reinforcement,
-      });
-      versionedChanged = Object.keys(currentCanonical).some(
+      const mergedCanonical = canonicalizeSaveParamsForComparison(mergedParams);
+      const changedDefinitionKeys = Object.keys(currentCanonical).filter(
         (key) =>
           key !== "scope" &&
           key !== "editors" &&
-          !isEqual(currentCanonical[key], incomingCanonical[key])
+          !isEqual(currentCanonical[key], mergedCanonical[key])
       );
+      if (changedDefinitionKeys.length > 0) {
+        versionParams = mergedParams;
+        versionChangedModelOnly = changedDefinitionKeys.every(
+          (key) => key === "model"
+        );
+      }
     }
 
-    if (!versionedChanged && !scopeChanged && !editorsChanged) {
-      // Nothing changed: no version, no in-place write.
+    if (!versionParams && !scopeChange && !editorsChange) {
+      // Nothing changed: no version, no in-place write, no permission check (see
+      // `save-skips-noop-version`).
       return new Ok(this);
     }
 
     // Check every required permission up front so a save never partially succeeds.
-    if (versionedChanged && !auth.can("write", this)) {
-      return new Err(
-        new Error("You don't have permission to edit this agent.")
-      );
+    if (versionParams) {
+      // The model alone may be changed by an editor or an admin; every other definition field
+      // requires `write` (see `agent-edit-in-place` / `model-change-requires-edit`).
+      const canEditDefinition = versionChangedModelOnly
+        ? auth.can("write", this) || auth.can("admin", this)
+        : auth.can("write", this);
+      if (!canEditDefinition) {
+        return new Err(
+          new Error("You don't have permission to edit this agent.")
+        );
+      }
     }
     if (
-      scopeChanged &&
+      scopeChange &&
       !(
-        auth.can("publish", this) &&
+        (await auth.hasWorkspacePermission("publish", "agent")) &&
         (auth.can("write", this) || auth.can("admin", this))
       )
     ) {
-      return new Err(
-        new Error("You don't have permission to change this agent's scope.")
-      );
+      return new Err(new Error("You don't have permission to publish agents."));
     }
-    if (editorsChanged && !auth.can("admin", this)) {
+    if (editorsChange && !auth.can("admin", this)) {
       return new Err(
         new Error("You don't have permission to change this agent's editors.")
       );
     }
 
-    // A new version carries only the definition change; it preserves the current scope/editors, which
-    // are (re)applied in place below under their own permissions.
-    if (versionedChanged) {
-      assert(currentParams !== null);
-      const versionRes = await AgentResource._saveConfiguration(auth, {
-        ...params,
-        scope: currentParams.scope,
-        editors: currentParams.editors,
+    // A new version carries only the definition change; scope/editors stay current on it and are
+    // (re)applied in place below through their own gated paths.
+    if (versionParams) {
+      const versionRes = await AgentResource._writeVersion(auth, {
+        ...versionParams,
         agentConfigurationId: this.sId,
       });
       if (versionRes.isErr()) {
         return versionRes;
       }
     }
-
-    if (scopeChanged) {
-      // Reuse the bulk scope path so `scope-change-requires-edit-and-publish` and
-      // `hide-disables-non-editor-triggers` are enforced in one place.
-      const { updatedAgentIds } = await AgentResource.bulkUpdateScope(
-        auth,
-        [this.sId],
-        params.scope
-      );
-      if (!updatedAgentIds.includes(this.sId)) {
-        return new Err(
-          new Error("You don't have permission to change this agent's scope.")
-        );
+    if (scopeChange) {
+      const scopeRes = await this.updateScopeInPlace(auth, scopeChange);
+      if (scopeRes.isErr()) {
+        return scopeRes;
       }
     }
-
-    if (editorsChanged) {
+    if (editorsChange) {
       const editorsRes = await this.updateEditorsInPlace(auth, {
-        editors: params.editors,
+        editors: editorsChange,
       });
       if (editorsRes.isErr()) {
         return editorsRes;
@@ -1770,14 +1800,112 @@ export class AgentResource
     return new Ok(updated ?? this);
   }
 
-  // Applies an editor-set change to this agent in place — no new version: grants the incoming editors
-  // and revokes every current editor omitted from the set (see `complete-editor-set-replaces-grants`),
+  // Thin wrapper over `saveConfiguration` kept for existing callers.
+  async updateConfiguration(
+    auth: Authenticator,
+    params: Partial<SaveAgentConfigurationParams>
+  ): Promise<Result<AgentResource, Error>> {
+    return this.saveConfiguration(auth, params);
+  }
+
+  // Changes this agent's scope in place — no new version. A no-op when the scope is unchanged, so it
+  // is safe to call unconditionally and does not require permission for an unchanged value. A real
+  // change requires `publish` AND (`write` or `admin`) and, on `visible` -> `hidden`, disables the
+  // triggers of non-editors.
+  /**
+   * @cc [owner:tdraier,label:security;product] scope-change-requires-edit-and-publish
+   * (Un)publishing an agent — changing its scope — requires BOTH the `publish` agent capability AND
+   * `write` or `admin` on the agent. Both MUST be enforced wherever a scope is written
+   * (`updateScopeInPlace`, `bulkUpdateScope`): the scope of an agent the caller does not fully
+   * satisfy MUST NOT be written. `write`/`admin` are the per-agent verbs (`auth.can`); `publish` is
+   * the workspace-wide agent capability, resolved either directly
+   * (`auth.hasWorkspacePermission("publish", "agent")`) or as the per-resource verb `auth.can`
+   * folds it into.
+   */
+  /**
+   * @cc [owner:tdraier,label:security] hide-disables-non-editor-triggers
+   * When an agent transitions `visible` -> `hidden`, every trigger whose editor is no longer an
+   * editor of that agent MUST be disabled (non-editors lose access to a hidden agent); triggers of
+   * current editors MUST remain untouched.
+   */
+  async updateScopeInPlace(
+    auth: Authenticator,
+    scope: Exclude<AgentConfigurationScope, "global">
+  ): Promise<Result<undefined, Error>> {
+    if (this.scope === scope) {
+      return new Ok(undefined);
+    }
+    if (
+      !(
+        (await auth.hasWorkspacePermission("publish", "agent")) &&
+        (auth.can("write", this) || auth.can("admin", this))
+      )
+    ) {
+      return new Err(new Error("You don't have permission to publish agents."));
+    }
+
+    const previousScope = this.scope;
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    await AgentConfigurationModel.update(
+      { scope },
+      {
+        where: {
+          id: this.agentConfigurationModelId,
+          workspaceId: workspaceModelId,
+        },
+      }
+    );
+    // `scope` is a snapshot field, so the cached current version is now stale.
+    await AgentResource.invalidateCache(workspaceModelId, this.sId);
+
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.scope_changed",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("agent", this),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        agent_name: this.name,
+        previous_scope: previousScope,
+        new_scope: scope,
+      },
+    });
+
+    // Hiding an agent removes non-editors' access to it, so their triggers must be disabled.
+    if (scope === "hidden" && previousScope === "visible") {
+      await AgentResource.disableTriggersForNonEditors(auth, [this]);
+    }
+
+    return new Ok(undefined);
+  }
+
+  // Replaces this agent's editor set in place — no new version: grants the incoming editors and
+  // revokes every current editor omitted from the set (see `complete-editor-set-replaces-grants`),
   // then disables the triggers of removed editors when the agent is hidden (see
-  // `hide-disables-non-editor-triggers`). The caller gates on `admin` (see `agent-verbs`).
-  private async updateEditorsInPlace(
+  // `hide-disables-non-editor-triggers`). A no-op when the set is unchanged, so it is safe to call
+  // unconditionally and does not require permission for an unchanged set; a real change requires
+  // `admin` (see `agent-verbs`).
+  async updateEditorsInPlace(
     auth: Authenticator,
     { editors }: { editors: UserType[] }
   ): Promise<Result<undefined, Error>> {
+    const currentEditors = (await this.listEditors(auth)) ?? [];
+    const currentIds = new Set(currentEditors.map((e) => e.id));
+    const nextIds = new Set(editors.map((e) => e.id));
+    const changed =
+      currentIds.size !== nextIds.size ||
+      [...nextIds].some((id) => !currentIds.has(id));
+    if (!changed) {
+      return new Ok(undefined);
+    }
+    if (!auth.can("admin", this)) {
+      return new Err(
+        new Error("You don't have permission to change this agent's editors.")
+      );
+    }
+
     const removedEditors = await withTransaction(async (t) => {
       await this.grantEditors(auth, { editors, transaction: t });
       const editorsBeforeRevoke = await this.listEditors(auth, {
@@ -1819,27 +1947,20 @@ export class AgentResource
     return new Ok(undefined);
   }
 
-  // Persists an agent configuration version and everything that belongs to it (editors, tags, MCP
-  // actions, and skill associations) in a single self-owned managed transaction, so a failure
-  // anywhere rolls the whole save back before it is returned as `Err`. (In `NODE_ENV=test` the
-  // ambient CLS transaction is reused with no savepoint, so this rollback is not exercised by the
-  // suite — the test's own transaction rolls back at teardown.)
+  // Writes a brand-new agent configuration version and everything that belongs to it (editors, tags,
+  // MCP actions, and skill associations) in a single self-owned managed transaction, so a failure
+  // anywhere rolls the whole save back before it is returned as `Err`. This is the low-level version
+  // writer and ALWAYS creates a version: the version-or-not decision lives in `saveConfiguration`;
+  // `makeNew` uses this to create an agent's first version. (In `NODE_ENV=test` the ambient CLS
+  // transaction is reused with no savepoint, so this rollback is not exercised by the suite — the
+  // test's own transaction rolls back at teardown.)
   /**
    * @cc [owner:tdraier,label:backend] agent-save-atomic
    * The configuration row and everything created with it — editors, tags, MCP actions, and skill
    * associations — MUST be committed in one transaction owned by this method, so a failure in any
    * part leaves no partial agent version behind and needs no external rollback.
    */
-  /**
-   * @cc [owner:tdraier,label:backend] save-skips-noop-version
-   * Saving an existing active agent whose incoming configuration is identical to its current version
-   * MUST NOT create a new version: it returns the current resource unchanged. The comparison covers
-   * every persisted field — name, description, instructions, picture, status, scope, model, template,
-   * requested spaces, reinforcement, tags, editors, tools and skills — but not the version author,
-   * and it MUST be conservative: any uncertainty about equality MUST fall through to a normal save so
-   * a real edit is never silently dropped.
-   */
-  private static async _saveConfiguration(
+  private static async _writeVersion(
     auth: Authenticator,
     {
       name,
@@ -1900,53 +2021,6 @@ export class AgentResource
     });
     if (publishCheck.isErr()) {
       return new Err(publishCheck.error);
-    }
-
-    // Skip saving a new version when the incoming configuration is identical to the agent's current
-    // one. Only the regular update path of an existing active agent carries a prior version worth
-    // comparing against — a brand-new agent or an in-place pending update does not (see
-    // `save-skips-noop-version`).
-    if (agentConfigurationId) {
-      const currentAgent = await AgentResource.fetchById(
-        auth,
-        agentConfigurationId
-      );
-      if (currentAgent?.isFull() && currentAgent.status === "active") {
-        const currentParams = await currentAgent.buildResaveParams(auth);
-        const currentCanonical =
-          canonicalizeSaveParamsForComparison(currentParams);
-        const incomingCanonical = canonicalizeSaveParamsForComparison({
-          name,
-          description,
-          instructions,
-          instructionsHtml,
-          pictureUrl,
-          status,
-          scope,
-          model,
-          templateId,
-          requestedSpaceIds,
-          tags,
-          editors,
-          authorId,
-          // An omitted reinforcement mode preserves the current one on save (it is not reset to the
-          // default), so resolve it the same way here or an unchanged `on`/`off` agent would look
-          // edited on every save.
-          reinforcement: reinforcement ?? currentParams.reinforcement,
-          actions,
-          skills,
-        });
-        if (isEqual(currentCanonical, incomingCanonical)) {
-          logger.info(
-            {
-              workspaceId: owner.sId,
-              agentConfigurationId,
-            },
-            "Skipping agent save: configuration unchanged, no new version created."
-          );
-          return new Ok(currentAgent);
-        }
-      }
     }
 
     // Track removed editors so their triggers can be disabled if this save leaves the agent hidden.
