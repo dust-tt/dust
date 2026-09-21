@@ -1512,7 +1512,7 @@ export class AgentResource
       return new Err(new Error("Creating agents is restricted."));
     }
 
-    return AgentResource._writeVersion(auth, {
+    return AgentResource._saveConfiguration(auth, {
       ...params,
       agentConfigurationId: undefined,
     });
@@ -1655,7 +1655,7 @@ export class AgentResource
     // A new version carries only the definition change; scope/editors stay current on it and are
     // (re)applied in place below through their own gated paths.
     if (versionParams) {
-      const versionRes = await AgentResource._writeVersion(auth, {
+      const versionRes = await AgentResource._saveConfiguration(auth, {
         ...versionParams,
         agentConfigurationId: this.sId,
       });
@@ -1772,7 +1772,7 @@ export class AgentResource
    * transaction owned by this method, so a failure in any part leaves no partial agent version behind
    * and needs no external rollback.
    */
-  private static async _writeVersion(
+  private static async _saveConfiguration(
     auth: Authenticator,
     {
       name,
