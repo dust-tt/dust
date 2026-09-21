@@ -1,5 +1,7 @@
+// @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
 import { Authenticator } from "@app/lib/auth";
 import { AgentModel } from "@app/lib/models/agent/agent";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -118,7 +120,7 @@ async function selectAgentModelIds(
   return rows.map(({ id }) => id);
 }
 
-// Batched counterpart of `GroupResource.delete`: the orphan
+// Batched counterpart of `GroupResource.delete`, which runs six statements per group: the orphan
 // identities of a workspace are cleaned up in a fixed number of statements instead.
 async function deleteGroups(
   workspace: MigrationWorkspace,
@@ -141,6 +143,10 @@ async function deleteGroups(
     transaction,
   });
 
+  await GroupAgentModel.destroy({
+    where: { groupId: groupModelIds, workspaceId: workspace.id },
+    transaction,
+  });
   await GroupMembershipModel.destroy({
     where: { groupId: groupModelIds, workspaceId: workspace.id },
     transaction,

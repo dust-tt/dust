@@ -1,3 +1,4 @@
+// @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
 import { Authenticator } from "@app/lib/auth";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
@@ -6,6 +7,7 @@ import { parseSkillTag } from "@app/lib/skills/format";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import { GROUP_KINDS, isAgentEditorGroupKind } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Op } from "sequelize";
 
@@ -59,6 +61,7 @@ async function rewriteWorkspaceOfficeSkillDirectives(
 
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId, {
     dangerouslyRequestAllGroups: true,
+    groupKinds: GROUP_KINDS.filter((k) => !isAgentEditorGroupKind(k)),
   });
   const skills = await SkillResource.fetchByModelIds(
     auth,

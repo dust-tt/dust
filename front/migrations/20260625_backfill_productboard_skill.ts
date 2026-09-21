@@ -1,15 +1,18 @@
+// @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
 import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -307,46 +310,62 @@ async function createProductboardSkill(
 async function addAgentEditorsToSkill(
   auth: Authenticator,
   {
-    agents,
+    agentConfigurationModelIds,
     logger,
     skill,
   }: {
-    agents: AgentConfigurationModel[];
+    agentConfigurationModelIds: ModelId[];
     logger: Logger;
     skill: SkillResource;
   }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  if (agents.length === 0) {
+  if (agentConfigurationModelIds.length === 0) {
     return;
   }
 
-  const editorsByAgentId = await AgentResource.batchListEditors(
-    auth,
-    agents.map((agent) =>
-      AgentResource.fromAgentConfigurationModel(auth, agent)
-    )
-  );
-  const agentEditors = [
-    ...new Map(
-      [...editorsByAgentId.values()]
-        .flatMap((editors) => editors ?? [])
-        .map((user) => [user.id, user])
-    ).values(),
+  const agentEditorLinks = await GroupAgentModel.findAll({
+    where: {
+      workspaceId: owner.id,
+      agentConfigurationId: { [Op.in]: agentConfigurationModelIds },
+    },
+  });
+  const agentEditorGroupModelIds = [
+    ...new Set(agentEditorLinks.map((link) => link.groupId)),
   ];
 
-  if (agentEditors.length === 0) {
+  if (agentEditorGroupModelIds.length === 0) {
     logger.warn(
       { skillId: skill.sId, workspaceId: owner.sId },
-      "No agent editors found for Productboard agents"
+      "No agent editor groups found for Productboard agents"
     );
     return;
   }
 
+  const agentEditorGroups = await GroupResource.dangerouslyFetchByModelIds(
+    auth,
+    agentEditorGroupModelIds
+  );
+
+  const activeAgentEditorMemberships =
+    await GroupResource.getActiveMembershipsForGroups(auth, agentEditorGroups);
+  const agentEditorUserModelIds = [
+    ...new Set(Object.values(activeAgentEditorMemberships).flat()),
+  ];
+
+  if (agentEditorUserModelIds.length === 0) {
+    logger.warn(
+      { skillId: skill.sId, workspaceId: owner.sId },
+      "No agent editor members found for Productboard agents"
+    );
+    return;
+  }
+
+  const users = await UserResource.fetchByModelIds(agentEditorUserModelIds);
   const { memberships } = await MembershipResource.getActiveMemberships({
-    users: agentEditors,
-    workspace: owner,
+    users,
+    workspace: auth.getNonNullableWorkspace(),
   });
   const builderUserModelIds = new Set(
     memberships
@@ -358,7 +377,7 @@ async function addAgentEditorsToSkill(
   const existingSkillEditorModelIds = new Set(
     existingSkillEditors.map((user) => user.id)
   );
-  const usersToAdd = agentEditors.filter(
+  const usersToAdd = users.filter(
     (user) =>
       builderUserModelIds.has(user.id) &&
       !existingSkillEditorModelIds.has(user.id)
@@ -368,7 +387,7 @@ async function addAgentEditorsToSkill(
     logger.info(
       {
         skippedNonBuilderEditorCount:
-          agentEditors.length - builderUserModelIds.size,
+          agentEditorUserModelIds.length - builderUserModelIds.size,
         skillId: skill.sId,
         workspaceId: owner.sId,
       },
@@ -387,7 +406,7 @@ async function addAgentEditorsToSkill(
     {
       addedEditorCount: usersToAdd.length,
       skippedNonBuilderEditorCount:
-        agentEditors.length - builderUserModelIds.size,
+        agentEditorUserModelIds.length - builderUserModelIds.size,
       skillId: skill.sId,
       workspaceId: owner.sId,
     },
@@ -415,13 +434,11 @@ async function backfillWorkspace(
 
   const existingSkill = await fetchActiveProductboardSkill(auth);
 
-  const productboardAgentConfigurationModelIds = productboardAgents.map(
-    (agent) => agent.id
-  );
+  const productboardAgentModelIds = productboardAgents.map((agent) => agent.id);
 
   logger.info(
     {
-      agentIdsToLink: productboardAgentConfigurationModelIds.length,
+      agentIdsToLink: productboardAgentModelIds.length,
       productboardAgentCount: productboardAgents.length,
       productboardAgents: productboardAgents.map((agent) => ({
         agentId: agent.sId,
@@ -449,14 +466,14 @@ async function backfillWorkspace(
     // We add some editors to the skill to make sure we're not creating a skill with 0 editor.
     // We take the agent editors as they are the most prone to know about Productboard at their company.
     await addAgentEditorsToSkill(auth, {
-      agents: productboardAgents,
+      agentConfigurationModelIds: productboardAgentModelIds,
       logger,
       skill,
     });
   }
 
   await AgentSkillModel.bulkCreate(
-    productboardAgentConfigurationModelIds.map((agentConfigurationModelId) => ({
+    productboardAgentModelIds.map((agentConfigurationModelId) => ({
       agentConfigurationId: agentConfigurationModelId,
       customSkillId: skill.id,
       globalSkillId: null,
@@ -473,7 +490,7 @@ async function backfillWorkspace(
 
   logger.info(
     {
-      agentIdsToLink: productboardAgentConfigurationModelIds.length,
+      agentIdsToLink: productboardAgentModelIds.length,
       productboardMCPServerConfigurationsRemoved:
         productboardMCPServerConfigurationModelIds.length,
       skillId: skill.sId,

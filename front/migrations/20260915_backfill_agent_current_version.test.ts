@@ -2,6 +2,7 @@ import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { backfillAgentCurrentVersion } from "@app/migrations/20260915_backfill_agent_current_version";
 import baseLogger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -86,6 +87,9 @@ describe("backfillAgentCurrentVersion", () => {
       { name: "Kept agent" }
     );
     // Leave the identity behind, as a hard delete that stopped short of the identity would.
+    await GroupAgentModel.destroy({
+      where: { agentConfigurationId: agent.id, workspaceId: workspace.id },
+    });
     await AgentConfigurationModel.destroy({
       where: { sId: agent.sId, workspaceId: workspace.id },
     });
