@@ -254,13 +254,6 @@ export async function pruneConflictingSkillUserFacingDescriptionSuggestions(
   );
 }
 
-/**
- * @cc [owner:achilleburah,label:product] prune-conflicting-name-suggestions
- * Recording a new `name` suggestion, or applying one to the skill, MUST mark every other pending
- * `name` suggestion for the same skill `outdated`: the field holds a single value, so two pending
- * renames always conflict. Approving a suggestion without applying it changes nothing on the
- * skill and prunes nothing.
- */
 export async function pruneConflictingSkillNameSuggestions(
   auth: Authenticator,
   skill: SkillResource,

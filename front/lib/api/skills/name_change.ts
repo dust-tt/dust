@@ -26,17 +26,10 @@ export interface SkillNameChange {
 
 /**
  * @cc [owner:achilleburah,label:security;product] same-rules-as-manual-rename
- * A change MUST pass exactly when `PATCH /skills/:sId` would accept the name from the same
- * caller: `skill.canWrite(auth)`, skill not archived, the raw name within `SkillNameSchema`
- * (matching the raw-body check `PATCH` runs before trimming), its trimmed form non-empty, and no
- * other active skill in the workspace carrying that trimmed name. The returned `name` is the
- * trimmed value the caller MUST write, never the raw input.
- */
-/**
- * @cc [owner:achilleburah,label:security] name-uniqueness-checked-across-the-workspace
- * The uniqueness check MUST see every active skill in the workspace regardless of the caller's
- * read permissions, because the `(workspaceId, name, status)` unique index does: a homonym hidden
- * from the caller must fail with `already_exists`, not surface as a database error.
+ * A rename MUST pass exactly when a manual edit by the same caller would: caller can write the
+ * skill, skill not archived, raw name within the length limit before trimming, trimmed name
+ * non-empty, and no other active skill in the workspace already carrying it. The returned name
+ * is always the trimmed value, never the raw input.
  */
 export async function validateSkillNameChange(
   auth: Authenticator,

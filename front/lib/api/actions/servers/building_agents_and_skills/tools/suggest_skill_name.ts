@@ -15,11 +15,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isNameSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 
-/**
- * @cc [owner:achilleburah,label:security] requires-skill-write
- * A suggestion MUST only be created for a custom skill the calling user can write; otherwise the
- * call fails with an `MCPError` and no row is created.
- */
 export async function suggestSkillName(
   auth: Authenticator,
   { skillId, name, analysis, title }: SuggestSkillNameArgs
