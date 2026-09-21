@@ -68,16 +68,32 @@ export function useInputBarSlashCommandCapabilities({
   owner: LightWorkspaceType;
   query: string;
 }) {
+  const { hasFeature } = useFeatureFlags();
+  const useSkillSearch = hasFeature("skills_search");
   const { spaces: globalSpaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global"],
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
-  const { skills, isSkillsLoading } = useSearchSkills({
-    owner,
-    searchTerm: query,
-    swrOptions: CAPABILITIES_SWR_OPTIONS,
-  });
+  const { skills: listedSkills, isSkillsLoading: isListedSkillsLoading } =
+    useSkills({
+      owner,
+      status: "active",
+      disabled: useSkillSearch,
+      swrOptions: CAPABILITIES_SWR_OPTIONS,
+    });
+  const { skills: searchSkills, isSkillsLoading: isSearchSkillsLoading } =
+    useSearchSkills({
+      owner,
+      searchTerm: query,
+      limit: MAX_RENDERED_CAPABILITY_ITEMS,
+      disabled: !useSkillSearch,
+      swrOptions: CAPABILITIES_SWR_OPTIONS,
+    });
+  const skills = useSkillSearch ? searchSkills : listedSkills;
+  const isSkillsLoading = useSkillSearch
+    ? isSearchSkillsLoading
+    : isListedSkillsLoading;
   // The JIT views endpoint only returns views whose tools can be enabled directly in a
   // conversation, no further filtering needed here.
   const { serverViews, isLoading: isServerViewsLoading } =
@@ -91,12 +107,12 @@ export function useInputBarSlashCommandCapabilities({
     () =>
       buildCapabilitySlashCommandItems({
         excludeSkillId,
-        query: query.slice(0, 200),
-        useSearchRanking: true,
+        query,
+        useSearchRanking: useSkillSearch,
         skills,
         tools: serverViews,
       }),
-    [excludeSkillId, query, serverViews, skills]
+    [excludeSkillId, query, serverViews, skills, useSkillSearch]
   );
 
   return {
