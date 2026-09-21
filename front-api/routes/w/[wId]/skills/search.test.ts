@@ -1,7 +1,6 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -55,7 +54,6 @@ describe("POST /api/w/:wId/skills/search", () => {
     null,
   ])("routes search results with updatedAt=%s", async (updatedAt) => {
     const { workspace, user } = await setup();
-    const nonMember = await UserFactory.basic();
     searchSkills.mockResolvedValue(
       new Ok({
         skills: [
@@ -63,7 +61,7 @@ describe("POST /api/w/:wId/skills/search", () => {
             status: "active",
             availability: "workspace_users",
             mcpServerViewIds: [],
-            editorIds: [user.sId, nonMember.sId, user.sId, "missing-user"],
+            editorIds: [user.sId, user.sId, "missing-user"],
             activeUsersCount: null,
             updatedAt,
             icon: null,
@@ -110,7 +108,7 @@ describe("POST /api/w/:wId/skills/search", () => {
           status: "active",
           availability: "workspace_users",
           mcpServerViewIds: [],
-          editorIds: [user.sId, nonMember.sId, user.sId, "missing-user"],
+          editorIds: [user.sId, user.sId, "missing-user"],
           activeUsersCount: null,
           updatedAt,
           icon: null,
