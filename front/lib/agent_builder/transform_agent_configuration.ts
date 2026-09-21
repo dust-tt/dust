@@ -47,6 +47,8 @@ export function transformAgentConfigurationToFormData(
     triggersToUpdate: [], // Will be populated reactively from the hook
     triggersToDelete: [],
     maxStepsPerRun: agentConfiguration.maxStepsPerRun || 8,
+    ignoreCreditSpendThresholdAlert:
+      agentConfiguration.ignoreCreditSpendThresholdAlert ?? false,
   };
 }
 
@@ -85,6 +87,7 @@ export function getDefaultAgentFormData({
     triggersToUpdate: [],
     triggersToDelete: [],
     maxStepsPerRun: 8,
+    ignoreCreditSpendThresholdAlert: false,
   };
 }
 

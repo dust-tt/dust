@@ -155,6 +155,7 @@ export async function resolveExistingAgentAndVersion(
         "workspaceId",
         "createdAt",
         "reinforcement",
+        "ignoreCreditSpendThresholdAlert",
       ],
       order: [["version", "DESC"]],
       transaction: t,
@@ -236,6 +237,7 @@ export async function writeAgentConfigurationRow({
   templateModelId,
   requestedSpaceIds,
   reinforcement,
+  ignoreCreditSpendThresholdAlert,
   owner,
   transaction: t,
 }: {
@@ -255,6 +257,7 @@ export async function writeAgentConfigurationRow({
   templateModelId: ModelId | undefined;
   requestedSpaceIds: ModelId[];
   reinforcement: AgentReinforcementMode | undefined;
+  ignoreCreditSpendThresholdAlert: boolean | undefined;
   owner: LightWorkspaceType;
   transaction: Transaction;
 }): Promise<AgentConfigurationModel> {
@@ -279,6 +282,10 @@ export async function writeAgentConfigurationRow({
     requestedSpaceIds,
     responseFormat: model.responseFormat,
     reinforcement: reinforcement ?? existingAgent?.reinforcement ?? "auto",
+    ignoreCreditSpendThresholdAlert:
+      ignoreCreditSpendThresholdAlert ??
+      existingAgent?.ignoreCreditSpendThresholdAlert ??
+      false,
   };
 
   if (existingAgent && existingAgent.status === "pending") {

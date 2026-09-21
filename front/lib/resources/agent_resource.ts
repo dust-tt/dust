@@ -196,6 +196,7 @@ export type SaveAgentConfigurationParams = {
   editors: UserType[];
   authorId: ModelId;
   reinforcement?: AgentReinforcementMode;
+  ignoreCreditSpendThresholdAlert?: boolean;
   // MCP action configurations to create atomically with the agent version. Created inside the same
   // transaction as the configuration row (see `agent-save-atomic`), so a failure rolls the whole
   // save back and no partial version is ever committed. Defaults to none.
@@ -2503,6 +2504,7 @@ export class AgentResource
       reinforcement: this.reinforcement,
       lastReinforcementAnalysisAt:
         this.lastReinforcementAnalysisAt?.toISOString() ?? null,
+      ignoreCreditSpendThresholdAlert: content.ignoreCreditSpendThresholdAlert,
       canRead: this._verbs.has("read"),
       // Regular API keys hold `write` from the admin role but may only edit an active version
       // (see the `regular-key-agent-editability` contract on `enrichAgentConfigurations`).
@@ -2914,6 +2916,7 @@ export class AgentResource
       editors,
       authorId,
       reinforcement,
+      ignoreCreditSpendThresholdAlert,
       actions = [],
       skills = [],
     }: {
@@ -2932,6 +2935,7 @@ export class AgentResource
       editors: UserType[];
       authorId: ModelId;
       reinforcement?: AgentReinforcementMode;
+      ignoreCreditSpendThresholdAlert?: boolean;
       actions?: ServerSideMCPServerConfigurationType[];
       skills?: SkillResource[];
     }
@@ -3018,6 +3022,7 @@ export class AgentResource
           templateModelId: template?.id,
           requestedSpaceIds,
           reinforcement,
+          ignoreCreditSpendThresholdAlert,
           owner,
           transaction: t,
         });

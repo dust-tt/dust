@@ -137,6 +137,78 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - additionalRequ
   });
 });
 
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - ignoreCreditSpendThresholdAlert", () => {
+  function postAgent(workspace: { sId: string }, body: unknown) {
+    return honoApp.request(
+      `/api/w/${workspace.sId}/assistant/agent_configurations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }
+    );
+  }
+
+  it("is preserved across an update that omits it", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "POST",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const createResponse = await postAgent(workspace, {
+      assistant: {
+        name: "Test Agent With Cost Override",
+        description: "Test Agent Description",
+        instructions: "Test instructions",
+        pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+        status: "active",
+        scope: "visible",
+        model: {
+          providerId: "openai",
+          modelId: "gpt-5-mini",
+          temperature: 0.7,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+        ignoreCreditSpendThresholdAlert: true,
+      },
+    });
+    expect(createResponse.status).toBe(200);
+    const agent = (await createResponse.json()).agentConfiguration;
+
+    const patchResponse = await patch(workspace, agent.sId, {
+      assistant: {
+        name: agent.name,
+        description: agent.description,
+        instructions: "Updated instructions",
+        pictureUrl: agent.pictureUrl,
+        status: "active",
+        scope: agent.scope,
+        model: {
+          providerId: agent.model.providerId,
+          modelId: agent.model.modelId,
+          temperature: agent.model.temperature,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+      },
+    });
+
+    expect(patchResponse.status).toBe(200);
+    const data = await patchResponse.json();
+    expect(data.agentConfiguration.ignoreCreditSpendThresholdAlert).toBe(true);
+  });
+});
+
 describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor admin", () => {
   it("cannot edit the instructions of an agent it is not an editor of", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
