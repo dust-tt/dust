@@ -29,7 +29,9 @@ export type AgentArchivalSkipReason =
   // Gone, or not visible to this actor, since the mentions read.
   | "agent_not_found"
   // The update matched no row: someone else archived it first. Only the executor emits this.
-  | "archive_raced";
+  | "archive_raced"
+  // Archival failed (e.g. a trigger's Temporal schedule could not be removed). Executor-only.
+  | "archive_failed";
 
 export interface AgentArchivalSkip {
   agentId: string;

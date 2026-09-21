@@ -1,7 +1,3 @@
-import {
-  archiveAgentConfiguration,
-  restoreAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
 import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent_requirements";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -12,7 +8,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { Err } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
 
@@ -58,12 +54,18 @@ describe("resource-owned agent search indexation", () => {
         expect((await resource.setUserFavorite(auth, true)).isOk()).toBe(true);
       },
       async () => {
-        expect(await archiveAgentConfiguration(auth, agent.sId)).toBe(true);
+        expect(
+          await (await AgentResource.fetchById(auth, agent.sId))!.archive(auth)
+        ).toEqual(new Ok(true));
       },
       async () => {
-        expect((await restoreAgentConfiguration(auth, agent.sId)).isOk()).toBe(
-          true
-        );
+        expect(
+          (
+            await (await AgentResource.fetchById(auth, agent.sId))!.restore(
+              auth
+            )
+          ).isOk()
+        ).toBe(true);
       },
     ];
     for (const mutate of mutations) {

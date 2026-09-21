@@ -1,8 +1,6 @@
-import {
-  archiveAgentConfiguration,
-  getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -140,7 +138,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_scope", (
       role: "admin",
     });
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    await archiveAgentConfiguration(auth, agent.sId);
+    await (await AgentResource.fetchById(auth, agent.sId))!.archive(auth);
 
     const response = await batchUpdateScope(workspace, {
       agentIds: [agent.sId],

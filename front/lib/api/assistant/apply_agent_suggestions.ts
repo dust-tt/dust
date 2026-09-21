@@ -1,9 +1,6 @@
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { DROID_AVATAR_URLS } from "@app/lib/agent_builder/avatars";
-import {
-  archiveAgentConfiguration,
-  getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
@@ -142,8 +139,22 @@ async function applyDeleteSuggestion(
   }
 
   // Editor access is enforced by the route (`agent.canEdit`), matching the manual DELETE route.
-  const archived = await archiveAgentConfiguration(auth, agent.sId);
-  if (!archived) {
+  const agentToArchive = await AgentResource.fetchById(auth, agent.sId);
+  if (!agentToArchive) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The agent this suggestion targets was not found."
+      )
+    );
+  }
+  const archiveResult = await agentToArchive.archive(auth);
+  if (archiveResult.isErr()) {
+    return new Err(
+      new DustError("invalid_request_error", archiveResult.error.message)
+    );
+  }
+  if (!archiveResult.value) {
     return new Err(
       new DustError(
         "invalid_request_error",

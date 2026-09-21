@@ -1,8 +1,8 @@
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import createWorkspaceManagementServer from "@app/lib/api/actions/servers/workspace_management";
 import { TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -235,7 +235,10 @@ describe("workspace_management tools", () => {
         authenticator,
         { name: "Removed Agent" }
       );
-      await archiveAgentConfiguration(authenticator, removed.sId);
+      await (await AgentResource.fetchById(
+        authenticator,
+        removed.sId
+      ))!.archive(authenticator);
 
       // The default view also carries Dust's global agents, so assert on membership.
       const active = await callTool("list_agents", {}, authenticator);

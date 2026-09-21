@@ -1,5 +1,4 @@
 import {
-  archiveAgentConfiguration,
   getAgentConfiguration,
   getAgentConfigurationForDetails,
 } from "@app/lib/api/assistant/configuration/agent";
@@ -50,7 +49,9 @@ it("uses agent grants for list, manage and archived views", async () => {
     });
     expect(agents.map((agent) => agent.sId)).toContain(grantAgent.sId);
   }
-  await archiveAgentConfiguration(authorAuth, grantAgent.sId);
+  await (await AgentResource.fetchById(authorAuth, grantAgent.sId))!.archive(
+    authorAuth
+  );
   const archived = await getAgentConfigurationsForView({
     auth,
     agentsGetView: "archived",

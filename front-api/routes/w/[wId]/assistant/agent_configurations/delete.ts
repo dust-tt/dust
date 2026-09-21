@@ -1,7 +1,5 @@
-import {
-  archiveAgentConfiguration,
-  getAgentConfigurations,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -52,7 +50,22 @@ app.post(
     }
 
     for (const agentConfiguration of toDelete) {
-      await archiveAgentConfiguration(auth, agentConfiguration.sId);
+      const agentToArchive = await AgentResource.fetchById(
+        auth,
+        agentConfiguration.sId
+      );
+      if (agentToArchive) {
+        const archiveResult = await agentToArchive.archive(auth);
+        if (archiveResult.isErr()) {
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Could not archive one of the agent configurations.",
+            },
+          });
+        }
+      }
     }
 
     return ctx.json({ archived: agentConfigurations.length });

@@ -10,14 +10,23 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getEffectiveReasoningEffort } from "@app/lib/llms/model_configurations";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import {
+  AgentChildAgentConfigurationModel,
+  AgentMCPServerConfigurationModel,
+} from "@app/lib/models/agent/actions/mcp";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfigurationModel,
   AgentModel,
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
+import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
+import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { canonicalizeSaveParamsForComparison } from "@app/lib/resources/agent_configuration_comparison";
 import {
   assertPublishPermissionForScopeChange,
@@ -36,6 +45,7 @@ import {
   invalidateAgentResourceCache,
 } from "@app/lib/resources/agent_resource_cache";
 import { launchAgentSearchIndexation } from "@app/lib/resources/agent_resource_indexation";
+import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { defineCachedResourceValue } from "@app/lib/resources/cached_resource_store";
@@ -50,9 +60,11 @@ import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { launchDeleteAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
 import type {
   AgentConfigurationBaseType,
@@ -336,11 +348,15 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  *   `draft-agent-owner`). It also requires the caller to read every space in `requestedSpaceIds`
  *   (see `agent-read-requires-space-read`).
  * - `write`: editing the agent's definition: configuration versions, tags, model, skills, linked
- *   Slack channels, archiving and restoring.
- * - `admin`: managing the agent's editors, and — as the sole definition exceptions — changing the
- *   agent's model (see `model-change-requires-edit`) and, for a workspace admin, its tags (see
- *   `tags-change-requires-edit`). `admin` alone MUST NOT allow changing any other definition field,
- *   and `write` alone MUST NOT allow changing the editors.
+ *   Slack channels.
+ * - `admin`: managing the agent's editors, archiving and restoring the agent (lifecycle changes,
+ *   not definition edits; see `agent-archive-restore-requires-admin`), and — as the sole definition
+ *   exceptions — changing the agent's model (see `model-change-requires-edit`) and, for a workspace
+ *   admin, its tags (see `tags-change-requires-edit`). `admin` alone MUST NOT allow changing any
+ *   other definition field, and `write` alone MUST NOT allow changing the editors. Like editor
+ *   management, archiving/restoring is gated on `admin` and is not additionally space-gated, so a
+ *   workspace admin may archive/restore an agent it cannot read (e.g. hidden agents surfaced by
+ *   "Show hidden agents").
  * Holding any verb makes the agent fetchable, but without `read` only its light core fields may be
  * exposed (see `unreadable-agent-is-light`). The explicit `admin_can_see_private_entities` admin
  * override is the only exception and may expose the full configuration.
@@ -1304,15 +1320,479 @@ export class AgentResource
     }
   }
 
-  // Agent deletion goes through the configuration layer (archive/hard-delete). The resource-level
-  // teardown lives in `destroyPermissionsAndGroups`, called after the last configuration is removed.
-  async delete(): Promise<Result<undefined, Error>> {
-    return new Err(
-      new Error(
-        "AgentResource.delete is not supported; archive the agent via " +
-          "archiveAgentConfiguration and clean up with destroyPermissionsAndGroups."
-      )
+  // Cancels every wake-up of the agent (best-effort: a wake-up whose Temporal state cannot be
+  // cancelled is logged and left in place). Shared by `archive` and available to `delete`.
+  private async cancelWakeUps(auth: Authenticator): Promise<void> {
+    const owner = auth.getNonNullableWorkspace();
+    const wakeUps = await WakeUpResource.listByAgentConfigurationId(
+      auth,
+      this.sId
     );
+
+    await concurrentExecutor(
+      wakeUps,
+      async (wakeUp) => {
+        const cancelResult = await wakeUp.forceCancel(auth);
+        if (cancelResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: owner.sId,
+              agentConfigurationId: this.sId,
+              wakeUpId: wakeUp.sId,
+              error: cancelResult.error,
+            },
+            `Failed to cancel wake-up ${wakeUp.sId} for agent ${this.sId}`
+          );
+        }
+      },
+      { concurrency: 5 }
+    );
+  }
+
+  // Archives the agent in place: flips the current version row to `archived` (older versions were
+  // already archived when they were superseded, so the agent has no active version afterwards),
+  // disables its triggers, cancels its wake-ups, then invalidates the cache and reindexes. Returns
+  // `Ok(whether a row changed)`, or `Err` when a trigger cannot be disabled (nothing is archived).
+  /**
+   * @cc [owner:tdraier,label:security] agent-archive-restore-requires-admin
+   * Archiving, restoring, or hard-deleting a custom agent MUST require the agent `admin` verb,
+   * checked inside the resource (`auth.can("admin", this)`) and never delegated to the caller: no
+   * caller may archive, restore, or delete an agent it does not hold `admin` on. Editors and
+   * workspace admins hold it; a Poke superuser session holds it through its admin role.
+   */
+  /**
+   * @cc [owner:tdraier,label:product] archive-disables-triggers
+   * Archiving MUST first disable every trigger of the agent (removing its Temporal schedule); if any
+   * trigger cannot be disabled, archiving MUST abort before flipping the status, so the agent is
+   * never left `archived` while a trigger keeps firing. Disabling is idempotent, so a retry after a
+   * transient failure converges.
+   */
+  async archive(auth: Authenticator): Promise<Result<boolean, Error>> {
+    assert(this.scope !== "global", "Global agents cannot be archived.");
+    if (!auth.can("admin", this)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Archiving an agent requires the agent `admin` verb."
+        )
+      );
+    }
+    const owner = auth.getNonNullableWorkspace();
+
+    // Disable all triggers before archiving. If a trigger cannot be disabled (its Temporal schedule
+    // could not be removed), abort without archiving rather than leave an archived agent with a live
+    // trigger (see the `archive-disables-triggers` contract). The failure is returned so callers can
+    // surface it (see `no-catching-own-errors`).
+    const triggers = await TriggerResource.listByAgentConfigurationId(
+      auth,
+      this.sId
+    );
+    for (const trigger of triggers) {
+      const disableResult = await trigger.disable(auth);
+      if (disableResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId: this.sId,
+            triggerId: trigger.sId,
+            error: disableResult.error,
+          },
+          `Failed to disable trigger ${trigger.sId} when archiving agent ${this.sId}`
+        );
+        return new Err(disableResult.error);
+      }
+    }
+
+    await this.cancelWakeUps(auth);
+
+    // Only the current version is `active` (older versions were archived when superseded), so
+    // flipping the current row suffices (see the `archive-current-version-only` behavior mirrored by
+    // `restore`).
+    const [affectedCount] = await AgentConfigurationModel.update(
+      { status: "archived" },
+      { where: { id: this.agentConfigurationModelId, workspaceId: owner.id } }
+    );
+
+    if (affectedCount > 0) {
+      void emitAuditLogEvent({
+        auth,
+        action: "agent.archived",
+        targets: [
+          buildAuditLogTarget("workspace", owner),
+          buildAuditLogTarget("agent", this),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          agent_name: this.name,
+        },
+      });
+
+      // The agent no longer has an active version, so drop its cached AgentResource and reindex.
+      await AgentResource.invalidateCache(owner.id, this.sId);
+      await AgentResource.launchSearchIndexation(auth, [this.sId]);
+    }
+
+    return new Ok(affectedCount > 0);
+  }
+
+  // Re-enables the agent's triggers as their respective editors. Shared by `restore`.
+  private async reEnableTriggers(auth: Authenticator): Promise<void> {
+    const owner = auth.getNonNullableWorkspace();
+    const triggers = await TriggerResource.listByAgentConfigurationId(
+      auth,
+      this.sId
+    );
+    const editors = await UserResource.fetchByModelIds([
+      ...new Set(triggers.map((trigger) => trigger.editor)),
+    ]);
+    const editorByModelId = new Map(
+      editors.map((editor) => [editor.id, editor])
+    );
+
+    for (const trigger of triggers) {
+      const editor = editorByModelId.get(trigger.editor);
+      if (!editor) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId: this.sId,
+            triggerId: trigger.sId,
+          },
+          `Could not find editor ${trigger.editor} for trigger ${trigger.sId} when restoring agent ${this.sId}`
+        );
+        continue;
+      }
+
+      const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        editor.sId,
+        owner.sId
+      );
+      const enableResult = await trigger.enable(editorAuth);
+      if (enableResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId: this.sId,
+            triggerId: trigger.sId,
+            error: enableResult.error,
+          },
+          `Failed to enable trigger ${trigger.sId} when restoring agent ${this.sId}`
+        );
+      }
+    }
+  }
+
+  // Restores the current (archived) version in place: reactivates it, re-enables its triggers, then
+  // invalidates the cache and reindexes. Restoring a `visible` agent republishes it and therefore
+  // needs the `publish` capability. Fails when the agent is not archived or an active agent already
+  // holds its name (the unique `(workspaceId, name)` constraint).
+  async restore(
+    auth: Authenticator
+  ): Promise<
+    Result<
+      { restored: boolean },
+      DustError<"name_conflict" | "internal_error" | "unauthorized">
+    >
+  > {
+    assert(this.scope !== "global", "Global agents cannot be restored.");
+    const owner = auth.getNonNullableWorkspace();
+
+    // Enforce the agent `admin` verb here regardless of any caller-side gate (see the
+    // `agent-archive-restore-requires-admin` contract).
+    if (!auth.can("admin", this)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Restoring an agent requires the agent `admin` verb."
+        )
+      );
+    }
+
+    if (this.status !== "archived") {
+      return new Err(
+        new DustError("internal_error", "Agent configuration is not archived")
+      );
+    }
+
+    // Restoring a visible agent is equivalent to publishing it.
+    if (this.scope === "visible") {
+      const canPublish = auth.hasWorkspacePermission("publish", "agent");
+      if (!canPublish) {
+        return new Err(
+          new DustError("unauthorized", "Publishing agents is restricted.")
+        );
+      }
+    }
+
+    // Check for an active agent with the same name to avoid a unique constraint violation on
+    // (workspaceId, name) during the update.
+    const existingActive = await AgentConfigurationModel.findOne({
+      where: {
+        workspaceId: owner.id,
+        name: this.name,
+        status: "active",
+      },
+    });
+    if (existingActive) {
+      return new Err(
+        new DustError(
+          "name_conflict",
+          `Cannot restore: an active agent named "${this.name}" already exists.`
+        )
+      );
+    }
+
+    const [affectedCount] = await AgentConfigurationModel.update(
+      { status: "active" },
+      { where: { id: this.agentConfigurationModelId, workspaceId: owner.id } }
+    );
+
+    if (affectedCount > 0) {
+      // The restored version is active again, so the cached AgentResource is now stale.
+      await AgentResource.invalidateCache(owner.id, this.sId);
+      await AgentResource.launchSearchIndexation(auth, [this.sId]);
+
+      await this.reEnableTriggers(auth);
+
+      void emitAuditLogEvent({
+        auth,
+        action: "agent.restored",
+        targets: [
+          buildAuditLogTarget("workspace", owner),
+          buildAuditLogTarget("agent", this),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          agent_name: this.name,
+        },
+      });
+    }
+
+    return new Ok({ restored: affectedCount > 0 });
+  }
+
+  // Tears down the agent-scoped resources keyed by `sId` (stable across versions) that carry
+  // external Temporal state or have no DB FK to cascade: triggers (schedule), wake-ups
+  // (schedule / pending workflow) and favorite / agent-user-relation rows. Returns an error when the
+  // Temporal-backed cleanup did not fully complete, so `delete` can abort before removing the
+  // versions and a retry can finish it.
+  private async cleanupScopedResourcesForDeletion(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const triggers = await TriggerResource.listByAgentConfigurationId(
+      auth,
+      this.sId
+    );
+    await concurrentExecutor(
+      triggers,
+      async (trigger) => {
+        const deleteResult = await trigger.delete(auth);
+        if (deleteResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: owner.sId,
+              agentConfigurationId: this.sId,
+              triggerId: trigger.sId,
+              error: deleteResult.error,
+            },
+            `Failed to delete trigger ${trigger.sId} while hard-deleting agent ${this.sId}`
+          );
+        }
+      },
+      { concurrency: 4 }
+    );
+
+    const wakeUps = await WakeUpResource.listByAgentConfigurationId(
+      auth,
+      this.sId
+    );
+    const deletableWakeUpIds: ModelId[] = [];
+    for (const wakeUp of wakeUps) {
+      const cleanupResult = await wakeUp.forceCancel(auth);
+      if (cleanupResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId: this.sId,
+            wakeUpId: wakeUp.sId,
+            error: cleanupResult.error,
+          },
+          `Failed cleaning up wake-up ${wakeUp.sId} Temporal state while hard-deleting agent ${this.sId}; leaving row for retry`
+        );
+        continue;
+      }
+      deletableWakeUpIds.push(wakeUp.id);
+    }
+    await WakeUpResource.deleteByModelIds(auth, deletableWakeUpIds);
+
+    await AgentUserRelationResource.deleteForAgent(auth, this.sId);
+
+    const remainingTriggers = await TriggerResource.listByAgentConfigurationId(
+      auth,
+      this.sId
+    );
+    const remainingWakeUps = await WakeUpResource.listByAgentConfigurationId(
+      auth,
+      this.sId
+    );
+    const remainingFavoriteCount =
+      await AgentUserRelationResource.countForAgent(auth, this.sId);
+
+    if (
+      remainingTriggers.length > 0 ||
+      remainingWakeUps.length > 0 ||
+      remainingFavoriteCount > 0
+    ) {
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          agentConfigurationId: this.sId,
+          remainingTriggerIds: remainingTriggers.map((t) => t.sId),
+          remainingWakeUpIds: remainingWakeUps.map((w) => w.sId),
+          remainingFavoriteCount,
+        },
+        "Agent scoped cleanup incomplete; aborting hard-delete of agent versions. " +
+          "Resolve the underlying Temporal failure and rerun."
+      );
+      return new Err(
+        new Error(
+          `Agent scoped cleanup incomplete for ${this.sId}; aborted before deleting versions.`
+        )
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
+  // Hard-deletes the agent: every version and its satellites (tools and their data-source / table /
+  // child-agent links, tags, skills, suggestions), the scoped resources (triggers, wake-ups,
+  // favorites), the agent's permission grants and groups, and finally the `agents` identity row. The
+  // cached entry is invalidated on commit and the agent is removed from the search index. This
+  // permanently destroys the agent. Like archive/restore, it requires the agent `admin` verb, checked
+  // here regardless of any caller-side gate (see `agent-archive-restore-requires-admin`).
+  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
+    assert(this.scope !== "global", "Global agents cannot be deleted.");
+    const owner = auth.getNonNullableWorkspace();
+    const workspaceId = owner.id;
+    assert(
+      workspaceId === this.workspaceId,
+      "Unexpected: agent belongs to another workspace"
+    );
+    if (!auth.can("admin", this)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Deleting an agent requires the agent `admin` verb."
+        )
+      );
+    }
+
+    const cleanupRes = await this.cleanupScopedResourcesForDeletion(auth);
+    if (cleanupRes.isErr()) {
+      return cleanupRes;
+    }
+
+    await withTransaction(async (t) => {
+      const configurations = await AgentConfigurationModel.findAll({
+        where: { sId: this.sId, workspaceId },
+        attributes: ["id"],
+        transaction: t,
+      });
+      const configurationModelIds = configurations.map(
+        (configuration) => configuration.id
+      );
+
+      if (configurationModelIds.length > 0) {
+        // Tools first: their data-source / table / child-agent links reference the MCP server
+        // configuration rows, which reference the configurations.
+        const mcpConfigurations =
+          await AgentMCPServerConfigurationModel.findAll({
+            where: {
+              agentConfigurationId: { [Op.in]: configurationModelIds },
+              workspaceId,
+            },
+            attributes: ["id"],
+            transaction: t,
+          });
+        const mcpConfigurationModelIds = mcpConfigurations.map(
+          (configuration) => configuration.id
+        );
+        if (mcpConfigurationModelIds.length > 0) {
+          await AgentDataSourceConfigurationModel.destroy({
+            where: {
+              workspaceId,
+              mcpServerConfigurationId: { [Op.in]: mcpConfigurationModelIds },
+            },
+            transaction: t,
+          });
+          await AgentTablesQueryConfigurationTableModel.destroy({
+            where: {
+              workspaceId,
+              mcpServerConfigurationId: { [Op.in]: mcpConfigurationModelIds },
+            },
+            transaction: t,
+          });
+          await AgentChildAgentConfigurationModel.destroy({
+            where: {
+              workspaceId,
+              mcpServerConfigurationId: { [Op.in]: mcpConfigurationModelIds },
+            },
+            transaction: t,
+          });
+          await AgentMCPServerConfigurationModel.destroy({
+            where: { workspaceId, id: { [Op.in]: mcpConfigurationModelIds } },
+            transaction: t,
+          });
+        }
+
+        await TagAgentModel.destroy({
+          where: {
+            workspaceId,
+            agentConfigurationId: { [Op.in]: configurationModelIds },
+          },
+          transaction: t,
+        });
+        await AgentSkillModel.destroy({
+          where: {
+            workspaceId,
+            agentConfigurationId: { [Op.in]: configurationModelIds },
+          },
+          transaction: t,
+        });
+        await AgentSuggestionModel.destroy({
+          where: {
+            workspaceId,
+            agentConfigurationId: { [Op.in]: configurationModelIds },
+          },
+          transaction: t,
+        });
+
+        await AgentConfigurationModel.destroy({
+          where: { workspaceId, id: { [Op.in]: configurationModelIds } },
+          transaction: t,
+        });
+      }
+
+      // The `agent_configurations` rows (and their FK to `agents`) are gone, so the grants, groups
+      // and the identity row can be removed.
+      await this.destroyPermissionsAndGroups(auth, { transaction: t });
+      await AgentModel.destroy({
+        where: { id: this.id, workspaceId },
+        transaction: t,
+      });
+
+      // Drop the cached entry once the deletion commits.
+      await AgentResource.invalidateCache(workspaceId, this.sId, t);
+    });
+
+    // Remove the agent from the search index after the deletion commits (see
+    // `agent-search-after-commit`).
+    return launchDeleteAgentSearchWorkflow({
+      workspaceId: owner.sId,
+      agentId: this.sId,
+    });
   }
 
   // Whether the caller can read every space backing the agent's tools/skills/data. Space read comes

@@ -1,15 +1,9 @@
-import {
-  archiveAgentConfiguration,
-  getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { SuccessResponseBody } from "@front-api/routes/types";
-import {
-  ARCHIVED_AGENT_API_ERROR,
-  isArchivedAgent,
-} from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
+import { ARCHIVED_AGENT_API_ERROR } from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 import details from "./details";
@@ -32,11 +26,8 @@ app.delete(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (!agentConfiguration) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -46,11 +37,20 @@ app.delete(
       });
     }
 
-    if (isArchivedAgent(agentConfiguration)) {
+    if (agent.status === "archived") {
       return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
-    await archiveAgentConfiguration(auth, agentConfiguration.sId);
+    const archiveResult = await agent.archive(auth);
+    if (archiveResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Could not archive the agent configuration.",
+        },
+      });
+    }
 
     return ctx.json({ success: true });
   }
