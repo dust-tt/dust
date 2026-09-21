@@ -1537,7 +1537,7 @@ describe("building_agents_and_skills tools", () => {
       expect(await stateOf(edit.sId)).toBe("pending");
     });
 
-    it("rejects a workspace admin who is not an editor, creating no row", async () => {
+    it("allows a workspace admin who is not an editor to suggest an availability change", async () => {
       const { authenticator: ownerAuth, workspace } = await createResourceTest({
         role: "user",
       });
@@ -1553,14 +1553,7 @@ describe("building_agents_and_skills tools", () => {
         availability: "workspace_users",
       });
 
-      expectMcpError(result, "Only editors can modify this skill");
-      const suggestions =
-        await SkillSuggestionResource.listBySkillConfigurationId(
-          ownerAuth,
-          skill.sId,
-          { sources: ["conversational"] }
-        );
-      expect(suggestions).toHaveLength(0);
+      expect(result.isOk()).toBe(true);
     });
 
     it("rejects an archived skill", async () => {

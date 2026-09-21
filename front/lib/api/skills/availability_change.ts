@@ -25,10 +25,11 @@ export interface SkillAvailabilityChange {
 
 /**
  * @cc [owner:achilleburah,label:security;product] same-rules-as-manual-availability-change
- * A change MUST pass exactly when `PATCH /skills/:sId` would accept the availability from the
- * same caller: `skill.canWrite(auth)`, skill not archived, then, only when the requested value
- * differs from the current one, `hasWorkspacePermission("publish", "skill")` and, when either
- * side is `users_and_agents`, `hasWorkspacePermission("make_discoverable", "skill")`
+ * A change MUST pass exactly when `PATCH /skills/availability` would accept it from the same
+ * caller: `skill.canAdministrate(auth)` (editors of this skill or workspace admins, matching
+ * `validateSkillDeletion`), skill not archived, then, only when the requested value differs from
+ * the current one, `hasWorkspacePermission("publish", "skill")` and, when either side is
+ * `users_and_agents`, `hasWorkspacePermission("make_discoverable", "skill")`
  * (`skill-publish-capability`, `skill-make-discoverable-capability`). A requested value equal to
  * the current one returns `Ok(null)`: nothing to write and no capability consulted. Every check
  * reads the `auth` and `skill` passed in, so callers MUST pass a freshly fetched skill and
@@ -41,11 +42,11 @@ export async function validateSkillAvailabilityChange(
 ): Promise<
   Result<SkillAvailabilityChange | null, SkillAvailabilityChangeError>
 > {
-  if (!skill.canWrite(auth)) {
+  if (!skill.canAdministrate(auth)) {
     return new Err(
       new SkillAvailabilityChangeError(
         "not_authorized",
-        "Only editors can modify this skill."
+        "Only editors of this skill or workspace admins can change its availability."
       )
     );
   }
