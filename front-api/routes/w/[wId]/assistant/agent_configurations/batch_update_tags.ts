@@ -66,8 +66,8 @@ app.post(
       auth,
       agentIds,
       {
-        addTags: tagsToAdd.map((tag) => tag.toJSON()),
-        removeTags: tagsToRemove.map((tag) => tag.toJSON()),
+        addTags: tagsToAdd,
+        removeTags: tagsToRemove,
       }
     );
 
