@@ -218,7 +218,7 @@ export function useSearchSkills({
     limit,
     permissionFiltering,
   };
-  const skillsFetcher: Fetcher<SearchSkillsResponseBody> = () =>
+  const skillsFetcher = (): Promise<SearchSkillsResponseBody> =>
     fetcherWithBody([url, body, "POST"]);
 
   const { data, error, isLoading } = useSWRWithDefaults(
