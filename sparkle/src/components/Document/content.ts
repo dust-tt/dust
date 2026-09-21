@@ -145,15 +145,17 @@ export const parseDocumentContent = (
 export const serializeDocumentMarkdown = (
   document: JSONContent
 ): string | null => {
-  try {
-    const content = withoutTrailingParagraphs(document);
-    const markdown = documentMarkdown.serialize(content);
+  const content = withoutTrailingParagraphs(document);
+  let markdown: string;
 
-    return hasSupportedMarkdown(markdown) &&
-      canRoundTripMarkdown(content, markdown)
-      ? markdown
-      : null;
+  try {
+    markdown = documentMarkdown.serialize(content);
   } catch {
     return null;
   }
+
+  return hasSupportedMarkdown(markdown) &&
+    canRoundTripMarkdown(content, markdown)
+    ? markdown
+    : null;
 };
