@@ -285,6 +285,76 @@ describe("FileExplorer navigation", () => {
 });
 
 describe("FileExplorer Frame packages", () => {
+  it("renames a Frame package from its source folder name", async () => {
+    const user = userEvent.setup();
+    const manifest = makeFile({
+      contentType: "application/json",
+      fileName: "manifest.json",
+      fileResourceContentType: frameV2ContentType,
+      lastModifiedMs: 2,
+      path: "status/manifest.json",
+    });
+    const onRename = vi.fn();
+
+    render(
+      <ControlledFileExplorer
+        defaultViewMode="list"
+        displayFramePackages
+        files={[manifest]}
+        getFileUrl={(path) => `/files/${path}`}
+        isLoading={false}
+        onDownload={vi.fn().mockResolvedValue(undefined)}
+        onRename={onRename}
+      />
+    );
+
+    const packageTitle = screen.getByText("status");
+    const packageRow = packageTitle.closest("div.cursor-pointer");
+    if (!(packageRow instanceof HTMLElement)) {
+      throw new Error("Frame package row not found.");
+    }
+
+    await user.click(within(packageRow).getByRole("button"));
+    await user.click(screen.getByText("Rename"));
+
+    expect(onRename).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileId: "file-manifest.json",
+        kind: "frame_package",
+        fileName: "status",
+      })
+    );
+  });
+
+  it("offers no Rename on a Frame package when renaming is unavailable", async () => {
+    const user = userEvent.setup();
+    const manifest = makeFile({
+      contentType: "application/json",
+      fileName: "manifest.json",
+      fileResourceContentType: frameV2ContentType,
+      lastModifiedMs: 2,
+      path: "status/manifest.json",
+    });
+
+    render(
+      <ControlledFileExplorer
+        defaultViewMode="list"
+        displayFramePackages
+        files={[manifest]}
+        getFileUrl={(path) => `/files/${path}`}
+        isLoading={false}
+        onDownload={vi.fn().mockResolvedValue(undefined)}
+      />
+    );
+
+    const packageRow = screen
+      .getByText("status")
+      .closest("div.cursor-pointer") as HTMLElement;
+    await user.click(within(packageRow).getByRole("button"));
+
+    expect(screen.queryByText("Rename")).not.toBeInTheDocument();
+  });
+
   it("opens the Frame and downloads its source folder", async () => {
     const user = userEvent.setup();
     mockClientFetch.mockResolvedValue(new Response("preview content"));
@@ -348,7 +418,9 @@ describe("FileExplorer Frame packages", () => {
 
     await user.click(within(packageRow).getByRole("button"));
     expect(screen.getByText("View source")).toBeInTheDocument();
-    expect(screen.queryByText("Rename")).not.toBeInTheDocument();
+    // A Frame is renamed by moving its source folder, so Rename is offered but "Move to…",
+    // which only handles single files, is not.
+    expect(screen.getByText("Rename")).toBeInTheDocument();
     expect(screen.queryByText("Move to…")).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("Delete"));
     expect(onDelete).toHaveBeenCalledWith(
