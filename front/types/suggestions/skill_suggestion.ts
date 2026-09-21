@@ -53,6 +53,7 @@ export const SKILL_SUGGESTION_KINDS = [
   "edit",
   "editors",
   "user_facing_description",
+  "create",
 ] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
@@ -158,10 +159,23 @@ export type SkillUserFacingDescriptionSuggestionType = z.infer<
   typeof SkillUserFacingDescriptionSuggestionSchema
 >;
 
+export const SkillCreateSuggestionSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("The name the agent proposed for the new skill."),
+});
+
+export type SkillCreateSuggestionType = z.infer<
+  typeof SkillCreateSuggestionSchema
+>;
+
 export type SkillSuggestionPayload =
   | SkillEditSuggestionType
   | SkillEditorsSuggestionType
-  | SkillUserFacingDescriptionSuggestionType;
+  | SkillUserFacingDescriptionSuggestionType
+  | SkillCreateSuggestionType;
 
 const SkillEditSuggestionDataSchema = z.object({
   kind: z.literal("edit"),
@@ -178,10 +192,16 @@ const SkillUserFacingDescriptionSuggestionDataSchema = z.object({
   suggestion: SkillUserFacingDescriptionSuggestionSchema,
 });
 
+const SkillCreateSuggestionDataSchema = z.object({
+  kind: z.literal("create"),
+  suggestion: SkillCreateSuggestionSchema,
+});
+
 const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillEditSuggestionDataSchema,
   SkillEditorsSuggestionDataSchema,
   SkillUserFacingDescriptionSuggestionDataSchema,
+  SkillCreateSuggestionDataSchema,
 ]);
 
 type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
@@ -203,6 +223,11 @@ export type SkillEditorsSuggestionData = Extract<
 export type SkillUserFacingDescriptionSuggestionData = Extract<
   SkillSuggestionData,
   { kind: "user_facing_description" }
+>;
+
+export type SkillCreateSuggestionData = Extract<
+  SkillSuggestionData,
+  { kind: "create" }
 >;
 
 // `kind` and `suggestion` are separate columns, so narrowing one without the other would lie about
@@ -241,6 +266,12 @@ export function isUserFacingDescriptionSkillSuggestion<
   T extends { kind: SkillSuggestionKind; suggestion: unknown },
 >(carrier: T): carrier is T & SkillUserFacingDescriptionSuggestionData {
   return isSkillSuggestionOfKind(carrier, "user_facing_description");
+}
+
+export function isCreateSkillSuggestion<
+  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+>(carrier: T): carrier is T & SkillCreateSuggestionData {
+  return isSkillSuggestionOfKind(carrier, "create");
 }
 
 const SkillSuggestionUpdatedBySchema = z.object({

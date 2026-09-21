@@ -138,6 +138,9 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
           model: SkillConfigurationModel,
           as: "skillConfiguration",
           required: true,
+          // Only used for the required inner join's existence check: canAdministrateCustomSkillId
+          // and modelIdToSId resolve permissions and sId from the id alone, no column needed here.
+          attributes: [],
         },
         {
           model: UserModel,
@@ -159,28 +162,17 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       return [];
     }
 
-    // Get unique skill configuration IDs to check permissions.
-    const skillConfigIds = [
-      ...new Set(suggestions.map((s) => s.skillConfigurationId)),
-    ];
-
-    const skillResources = await SkillResource.fetchByModelIds(
-      auth,
-      skillConfigIds
-    );
-
-    const skillResourceByModelId = new Map(
-      skillResources.map((s) => [s.id, s])
-    );
-
-    // Filter suggestions to only include those for skills the user can
-    // administrate.
+    // Filter suggestions to only include those for skills the user can administrate. Resolved
+    // without fetching the skill row: `canAdministrateCustomSkillId` only needs the id and
+    // workspace id, and `sId` is a pure derivation from the same pair.
     const resources = removeNulls(
       suggestions.map((suggestion) => {
-        const skillResource = skillResourceByModelId.get(
-          suggestion.skillConfigurationId
-        );
-        if (!skillResource || !skillResource.canAdministrate(auth)) {
+        if (
+          !SkillResource.canAdministrateCustomSkillId(auth, {
+            id: suggestion.skillConfigurationId,
+            workspaceId: owner.id,
+          })
+        ) {
           return null;
         }
         const user = suggestion.updatedByUser;
@@ -196,7 +188,10 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
         return new this(
           SkillSuggestionModel,
           suggestion.get(),
-          skillResource.sId,
+          SkillResource.modelIdToSId({
+            id: suggestion.skillConfigurationId,
+            workspaceId: owner.id,
+          }),
           updatedBy,
           suggestion.notificationConversation?.sId ?? null
         );
