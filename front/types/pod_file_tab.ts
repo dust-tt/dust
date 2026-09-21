@@ -206,6 +206,14 @@ export function podFileTabBasename(path: string): string {
   return base.replace(/\.[^.]+$/, "") || base;
 }
 
+/**
+ * The title a tab gets when it is created without the user naming it. Callers that need to tell
+ * an auto-seeded title from one the user edited compare against this.
+ */
+export function seedPodFileTabTitle(fileName: string): string {
+  return podFileTabBasename(fileName).slice(0, MAX_POD_FILE_TAB_TITLE_LENGTH);
+}
+
 /** Tab value / hash prefix remains `frame:` / `#frame/...` for existing deep links. */
 export function makePodFileTabValue(path: string): string {
   return `frame:${path}`;

@@ -22,13 +22,13 @@ vi.mock("@app/lib/lock", async (importActual) => ({
   },
 }));
 
-import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
 import {
   getFramePublishLockName,
   getFrameSourceLockName,
 } from "@app/lib/api/frames/operation_lock";
 import {
   frameManifest,
+  moveFrameSourceForTest,
   setupFrameSourceStorageTest,
 } from "@app/lib/api/frames/source_storage.test_utils";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -62,18 +62,19 @@ describe("moveFrameV2Source", () => {
       "/Archive/Renamed"
     );
 
-    const moved = await moveFrameV2Source(c.auth, {
-      conversation: c.conversation,
+    const moved = await moveFrameSourceForTest(c, {
       destinationDirectoryPath,
       sourceDirectoryPath: c.sourceDirectoryPath,
     });
 
     assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
-    expect(moved.value).toEqual({
-      destinationDirectoryPath,
-      frameId: c.frame.sId,
-      sourceDeletionFailed: false,
-    });
+    expect(moved.value.destinationDirectoryPath).toBe(destinationDirectoryPath);
+    expect(moved.value.sourceDeletionFailed).toBe(false);
+    // The move hands back the Frame it updated, already pointing at the new path.
+    expect(moved.value.frame.sId).toBe(c.frame.sId);
+    expect(moved.value.frame.mountFilePath).toBe(
+      `${destinationMountDirectory}/${FRAME_MANIFEST_FILE}`
+    );
     const reloaded = await FileResource.fetchById(c.auth, c.frame.sId);
     expect(reloaded?.mountFilePath).toBe(
       `${destinationMountDirectory}/${FRAME_MANIFEST_FILE}`

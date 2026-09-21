@@ -23,9 +23,9 @@ vi.mock("@app/lib/api/frames/source_storage", async (importActual) => ({
   deleteFrameSourceStorage,
 }));
 
-import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
 import {
   frameManifest,
+  moveFrameSourceForTest,
   setupFrameSourceStorageTest,
 } from "@app/lib/api/frames/source_storage.test_utils";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -50,8 +50,7 @@ describe("moveFrameV2Source edge cases", () => {
     const c = await setupFrameSourceStorageTest();
     const lookup = vi.spyOn(FileResource, "fetchByMountFilePaths");
 
-    const moved = await moveFrameV2Source(c.auth, {
-      conversation: c.conversation,
+    const moved = await moveFrameSourceForTest(c, {
       destinationDirectoryPath: "pod-pod_123/Status",
       sourceDirectoryPath: c.sourceDirectoryPath,
     });
@@ -78,8 +77,7 @@ describe("moveFrameV2Source edge cases", () => {
     c.listedObjects.push(nestedManifestPath);
     fileStorageMock.setObject(nestedManifestPath, frameManifest);
 
-    const moved = await moveFrameV2Source(c.auth, {
-      conversation: c.conversation,
+    const moved = await moveFrameSourceForTest(c, {
       destinationDirectoryPath: `conversation-${c.conversation.sId}/ParentMoved`,
       sourceDirectoryPath: c.sourceDirectoryPath,
     });
@@ -99,8 +97,7 @@ describe("moveFrameV2Source edge cases", () => {
       new Error("database unavailable")
     );
 
-    const moved = await moveFrameV2Source(c.auth, {
-      conversation: c.conversation,
+    const moved = await moveFrameSourceForTest(c, {
       destinationDirectoryPath: `conversation-${c.conversation.sId}/CommitFail`,
       sourceDirectoryPath: c.sourceDirectoryPath,
     });
@@ -119,8 +116,7 @@ describe("moveFrameV2Source edge cases", () => {
     const c = await setupFrameSourceStorageTest();
     const destinationDirectoryPath = `conversation-${c.conversation.sId}/Moved`;
 
-    const moved = await moveFrameV2Source(c.auth, {
-      conversation: c.conversation,
+    const moved = await moveFrameSourceForTest(c, {
       destinationDirectoryPath,
       sourceDirectoryPath: c.sourceDirectoryPath,
     });
