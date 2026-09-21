@@ -69,9 +69,12 @@ describe("useConsumptionQuery", () => {
       });
       return null;
     }
+    // Stable provider values so the remount below is the only change.
+    const swrConfig = { provider: () => new Map() };
+    const fetcher = vi.fn();
     const tree = (probeKey: string) => (
-      <SWRConfig value={{ provider: () => new Map() }}>
-        <FetcherProvider fetcher={vi.fn()} fetcherWithBody={fetcherWithBody}>
+      <SWRConfig value={swrConfig}>
+        <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
           <Probe key={probeKey} />
         </FetcherProvider>
       </SWRConfig>
