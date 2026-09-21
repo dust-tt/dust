@@ -1,4 +1,11 @@
-import { getSchema, type JSONContent, type MarkdownToken } from "@tiptap/core";
+import {
+  type ExtendableConfig,
+  flattenExtensions,
+  getExtensionField,
+  getSchema,
+  type JSONContent,
+  type MarkdownToken,
+} from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
 import { Fragment, type Node } from "@tiptap/pm/model";
 import { z } from "zod";
@@ -9,28 +16,38 @@ const documentMarkdown = new MarkdownManager({
   extensions: documentExtensions,
 });
 const documentEnvelope = z.object({ type: z.literal("doc") }).passthrough();
-const SUPPORTED_MARKDOWN_TOKENS = new Set([
-  "space",
-  "paragraph",
-  "heading",
-  "blockquote",
-  "list",
-  "list_item",
-  "code",
-  "hr",
-  "text",
-  "strong",
-  "em",
-  "del",
-  "codespan",
-  "br",
-  "link",
-  "underline",
-]);
+
+/**
+ * @cc [owner:flvndvd,label:architecture] document-markdown-capabilities
+ * Supported token names MUST derive from the editor extensions' parse and render handlers.
+ */
+const supportedMarkdownTokens = new Set(
+  flattenExtensions(documentExtensions)
+    .filter(
+      (extension) =>
+        getExtensionField<ExtendableConfig["parseMarkdown"]>(
+          extension,
+          "parseMarkdown"
+        ) &&
+        getExtensionField<ExtendableConfig["renderMarkdown"]>(
+          extension,
+          "renderMarkdown"
+        )
+    )
+    .map(
+      (extension) =>
+        getExtensionField<ExtendableConfig["markdownTokenName"]>(
+          extension,
+          "markdownTokenName"
+        ) || extension.name
+    )
+);
 
 const isSupportedMarkdownToken = (token: MarkdownToken) =>
   token.type !== undefined &&
-  SUPPORTED_MARKDOWN_TOKENS.has(token.type) &&
+  // Whitespace separates blocks without an editor extension.
+  (token.type === "space" || supportedMarkdownTokens.has(token.type)) &&
+  // Registered list and code handlers still discard task markers and tilde fences.
   !(token.type === "list_item" && token.task) &&
   (token.type !== "code" ||
     token.raw?.startsWith("```") ||

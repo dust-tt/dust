@@ -43,9 +43,10 @@ spacing, list markers, and emphasis delimiters. Empty trailing paragraphs are
 omitted. Dirty state is tracked separately from the serialized output so a
 successful Markdown save acknowledges the same draft as a JSON save.
 
-Markdown loading is conservative. Tables, images, task lists, HTML, reference
-definitions, escaped punctuation, and tilde code fences are shown as their original
-read-only source because the installed parser cannot reliably preserve them.
+Markdown support is derived from the configured editor extensions. Loading is
+conservative. Tables, images, task lists, HTML, reference definitions, escaped
+punctuation, and tilde code fences are shown as their original read-only source
+because the installed parser cannot reliably preserve them.
 Supported input is also checked by serializing and parsing it again. Before a
 Markdown save, the same check prevents a conversion from changing the draft's
 content or formatting. Conversion failures preserve the draft and never call
