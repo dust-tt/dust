@@ -1094,7 +1094,6 @@ function getDynamicToolDisplayLabels({
     case "luma":
     case "missing_action_catcher":
     case "monday":
-    case "openai_usage":
     case "productboard":
     case "common_utilities":
     case "run_dust_app":

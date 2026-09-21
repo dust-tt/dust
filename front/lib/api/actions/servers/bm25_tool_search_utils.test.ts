@@ -38,7 +38,6 @@ import { MICROSOFT_EXCEL_SERVER } from "@app/lib/api/actions/servers/microsoft_e
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
 import { MONDAY_SERVER } from "@app/lib/api/actions/servers/monday/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
-import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
 import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { POD_MANAGER_SERVER } from "@app/lib/api/actions/servers/pod_manager/metadata";
@@ -204,7 +203,6 @@ const SERVER_SOURCES: Array<{
   { name: "common_utilities", tools: COMMON_UTILITIES_SERVER.tools },
   { name: "exa_people_and_company", tools: EXA_SERVER.tools },
   { name: "microsoft_excel", tools: MICROSOFT_EXCEL_SERVER.tools },
-  { name: "openai_usage", tools: OPENAI_USAGE_SERVER.tools },
   {
     name: "data_sources_file_system",
     tools: DATA_SOURCES_FILE_SYSTEM_SERVER.tools,

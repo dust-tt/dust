@@ -878,7 +878,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_flex_processing"
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_feature"
-  | "openai_usage_mcp"
   | "power_bi_mcp"
   | "reinforced_agents"
   | "self_improvement_beta_tester"

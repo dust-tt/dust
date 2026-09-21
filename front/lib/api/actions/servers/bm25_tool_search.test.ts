@@ -620,18 +620,6 @@ const QUERIES: LabeledQuery[] = [
     expected: "outlook_calendar.check_availability",
   },
 
-  // --- openai_usage ---
-  {
-    query: "get OpenAI token usage by model",
-    expected: "openai_usage.get_completions_usage",
-    maxRank: 1,
-  },
-  {
-    query: "get OpenAI spending costs for my organization",
-    expected: "openai_usage.get_organization_costs",
-    maxRank: 1,
-  },
-
   // --- microsoft_teams ---
   {
     query: "search microsoft teams messages for the budget discussion",

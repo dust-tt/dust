@@ -1004,27 +1004,6 @@ const baseEnrichments: Record<string, IntegrationEnrichment> = {
     ],
     relatedIntegrations: ["slack", "jira"],
   },
-
-  // ===== AI =====
-  openai_usage: {
-    tagline: "Monitor and analyze your OpenAI API usage",
-    useCases: [
-      {
-        title: "Usage Analytics",
-        description:
-          "Track API costs, token usage, and performance metrics across your organization.",
-        icon: "ActionPieChartIcon",
-      },
-    ],
-    faq: [
-      {
-        question: "What can I learn from OpenAI usage data?",
-        answer:
-          "You can track costs, identify usage patterns, and optimize your API consumption.",
-      },
-    ],
-    relatedIntegrations: ["slack"],
-  },
 };
 
 // Merge the tool-grounded chat storylines + benefit cards over the base copy.

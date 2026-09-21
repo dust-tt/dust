@@ -59,7 +59,6 @@
     { "name": "freshservice", "id": 26 },
     { "name": "google_drive", "id": 27 },
     { "name": "slack_bot", "id": 31 },
-    { "name": "openai_usage", "id": 32 },
     { "name": "confluence", "id": 33 },
     { "name": "microsoft_drive", "id": 35 },
     { "name": "microsoft_teams", "id": 36 },

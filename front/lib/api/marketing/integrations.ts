@@ -81,7 +81,6 @@ const EXCLUDED_MCP_SERVERS = new Set([
   "web_search_&_browse",
   // Feature-flagged/preview (not generally available)
   "slack_bot",
-  "openai_usage",
   "http_client",
   // Internal admin only
   "poke",
@@ -141,8 +140,6 @@ const MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   snowflake: "data",
   // Security
   vanta: "security",
-  // AI
-  openai_usage: "ai",
   // Transcripts
   fathom: "transcripts",
 };
@@ -208,7 +205,6 @@ const MCP_DISPLAY_NAMES: Record<string, string> = {
   outlook_calendar: "Outlook Calendar",
   freshservice: "Freshservice",
   google_drive: "Google Drive",
-  openai_usage: "OpenAI Usage",
   confluence: "Confluence",
   microsoft_drive: "Microsoft OneDrive",
   microsoft_teams: "Microsoft Teams",
