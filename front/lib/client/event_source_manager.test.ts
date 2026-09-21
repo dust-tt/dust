@@ -166,8 +166,60 @@ describe("EventSourceManager", () => {
     expect(sources[0].close).toHaveBeenCalledOnce();
     expect(remountedStates.at(-1)).toEqual({ kind: "terminal" });
 
+    const unsubscribeRestarted = manager.subscribe({
+      streamId: "message-msg_1",
+      config: {
+        buildURL: () => "/events/restarted",
+        replayBufferedEventsOnSubscribe: true,
+        restartKey: "message-msg_1-restarted",
+        workspaceId: "w_1",
+      },
+      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: true,
+    });
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
     unsubscribeRemounted();
+    unsubscribeRestarted();
+    expect(sources[1].close).not.toHaveBeenCalled();
+
     manager.releaseWorkspace("w_1");
+    expect(sources[1].close).toHaveBeenCalledOnce();
+  });
+
+  it("serializes a restart behind a pending source factory", async () => {
+    const resolveFactories: Array<(source: FakeEventSource) => void> = [];
+    const sourceFactory = vi.fn(
+      (url: string) =>
+        new Promise<FakeEventSource>((resolve) => {
+          resolveFactories.push(resolve);
+        })
+    );
+    const manager = new EventSourceManager(sourceFactory);
+    const subscribe = (restartKey: string) =>
+      manager.subscribe({
+        streamId: "message-msg_pending",
+        config: {
+          buildURL: () => `/events/${restartKey}`,
+          replayBufferedEventsOnSubscribe: false,
+          restartKey,
+          workspaceId: "w_1",
+        },
+        subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+        keepAliveWithoutSubscribers: false,
+      });
+    const unsubscribeFirst = subscribe("first");
+    const unsubscribeSecond = subscribe("second");
+
+    expect(sourceFactory).toHaveBeenCalledOnce();
+    const staleSource = new FakeEventSource("/events/first");
+    resolveFactories[0](staleSource);
+    await vi.waitFor(() => expect(sourceFactory).toHaveBeenCalledTimes(2));
+    expect(staleSource.close).toHaveBeenCalledOnce();
+    expect(sourceFactory).toHaveBeenLastCalledWith("/events/second", undefined);
+
+    resolveFactories[1](new FakeEventSource("/events/second"));
+    unsubscribeFirst();
+    unsubscribeSecond();
   });
 
   it("does not replay events for ordinary subscriber-owned streams", async () => {

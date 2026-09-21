@@ -13,7 +13,6 @@ import type {
   EventSourceManagerOptions,
   Subscriber,
 } from "@app/types/event_source";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type {
   Event as PolyfillEvent,
   MessageEvent as PolyfillMessageEvent,
@@ -102,21 +101,25 @@ export class EventSourceManager {
       entry = this.createEntry(config, keepAliveWithoutSubscribers);
       this.connections.set(streamId, entry);
     } else if (entry.config.restartKey !== config.restartKey) {
-      this.restart(streamId, entry, config);
+      this.restart(streamId, config, keepAliveWithoutSubscribers);
+      entry = this.connections.get(streamId);
+      if (!entry) {
+        return () => undefined;
+      }
     } else {
       entry.config = config;
       entry.keepAliveWithoutSubscribers ||= keepAliveWithoutSubscribers;
     }
 
     entry.subscribers.add(subscriber);
-    this.logVerbose(streamId, entry, "subscriber_added");
+    this.logVerbose(streamId, "subscriber_added");
     subscriber.onStateChange(entry.state);
     if (entry.config.replayBufferedEventsOnSubscribe) {
       for (const event of entry.events) {
-        this.notifyEventSubscriber(entry, subscriber, event);
+        this.notifyEventSubscriber(subscriber, event);
       }
     }
-    this.ensureConnected(streamId, entry);
+    this.ensureConnected(streamId);
 
     return () => {
       const current = this.connections.get(streamId);
@@ -124,12 +127,12 @@ export class EventSourceManager {
         return;
       }
       current.subscribers.delete(subscriber);
-      this.logVerbose(streamId, current, "subscriber_removed");
+      this.logVerbose(streamId, "subscriber_removed");
       if (
         current.subscribers.size === 0 &&
         !current.keepAliveWithoutSubscribers
       ) {
-        this.destroy(streamId, current);
+        this.destroy(streamId);
       }
     };
   }
@@ -141,7 +144,7 @@ export class EventSourceManager {
   releaseWorkspace(workspaceId: string): void {
     for (const [streamId, entry] of this.connections) {
       if (entry.config.workspaceId === workspaceId) {
-        this.destroy(streamId, entry);
+        this.destroy(streamId);
       }
     }
   }
@@ -153,9 +156,9 @@ export class EventSourceManager {
     }
     entry.keepAliveWithoutSubscribers = true;
     entry.reconnectAttempts = 0;
-    this.logVerbose(streamId, entry, "resume");
-    this.transition(streamId, entry, { kind: "idle" });
-    this.ensureConnected(streamId, entry);
+    this.logVerbose(streamId, "resume");
+    this.transition(streamId, { kind: "idle" });
+    this.ensureConnected(streamId);
   }
 
   private createEntry(
@@ -180,9 +183,15 @@ export class EventSourceManager {
 
   private restart(
     streamId: string,
-    entry: ConnectionEntry,
-    config: ConnectionConfig
+    config: ConnectionConfig,
+    keepAliveWithoutSubscribers: boolean
   ): void {
+    const entry = this.connections.get(streamId);
+    if (!entry) {
+      return;
+    }
+    const hasPendingFactory =
+      entry.state.kind === "connecting" && entry.source === null;
     entry.generation++;
     const source = entry.source;
     entry.source = null;
@@ -196,11 +205,18 @@ export class EventSourceManager {
     entry.lastEvent = null;
     entry.lastEventAt = null;
     entry.lastURL = null;
+    entry.keepAliveWithoutSubscribers ||= keepAliveWithoutSubscribers;
     entry.reconnectAttempts = 0;
-    this.transition(streamId, entry, { kind: "idle" });
+    if (!hasPendingFactory) {
+      this.transition(streamId, { kind: "idle" });
+    }
   }
 
-  private ensureConnected(streamId: string, entry: ConnectionEntry): void {
+  private ensureConnected(streamId: string): void {
+    const entry = this.connections.get(streamId);
+    if (!entry) {
+      return;
+    }
     if (
       entry.source ||
       entry.reconnectTimeout ||
@@ -210,23 +226,24 @@ export class EventSourceManager {
     ) {
       return;
     }
-    void this.connect(streamId, entry);
+    void this.connect(streamId);
   }
 
-  private async connect(
-    streamId: string,
-    entry: ConnectionEntry
-  ): Promise<void> {
+  private async connect(streamId: string): Promise<void> {
+    const entry = this.connections.get(streamId);
+    if (!entry) {
+      return;
+    }
     const url = entry.config.buildURL(entry.lastEvent);
     if (!url) {
-      this.markTerminal(streamId, entry);
+      this.markTerminal(streamId);
       return;
     }
     entry.lastURL = url;
 
     const generation = ++entry.generation;
-    this.logVerbose(streamId, entry, "sse_connect");
-    this.transition(streamId, entry, {
+    this.logVerbose(streamId, "sse_connect");
+    this.transition(streamId, {
       kind: "connecting",
       attempt: entry.reconnectAttempts + 1,
       startedAt: Date.now(),
@@ -236,46 +253,54 @@ export class EventSourceManager {
     try {
       source = await this.sourceFactory(url, entry.config.headers);
     } catch (error) {
-      // A newer attempt may have replaced this one while the factory was pending.
-      // Only the current attempt may consume retry budget or change stream state.
-      if (generation === entry.generation) {
-        this.handleDisconnect(streamId, entry, null, {
+      const current = this.connections.get(streamId);
+      if (!current) {
+        return;
+      }
+      if (generation === current.generation) {
+        this.handleDisconnect(streamId, {
           kind: "failure",
           failure: error,
         });
+      } else if (current.state.kind === "connecting") {
+        this.transition(streamId, { kind: "idle" });
+        this.ensureConnected(streamId);
       }
       return;
     }
 
-    // Generation rejects an older attempt on this entry; map identity rejects an
-    // entry removed or replaced during the await. Close either stale source.
-    if (
-      generation !== entry.generation ||
-      this.connections.get(streamId) !== entry
-    ) {
+    const current = this.connections.get(streamId);
+    if (!current) {
       source.close();
       return;
     }
+    if (generation !== current.generation) {
+      source.close();
+      if (current.state.kind === "connecting") {
+        this.transition(streamId, { kind: "idle" });
+        this.ensureConnected(streamId);
+      }
+      return;
+    }
 
-    entry.source = source;
+    current.source = source;
     source.onopen = () => {
-      if (entry.source !== source) {
+      if (this.connections.get(streamId)?.source !== source) {
         return;
       }
-      this.transition(streamId, entry, { kind: "open", openedAt: Date.now() });
+      this.transition(streamId, { kind: "open", openedAt: Date.now() });
     };
     source.onmessage = (event: PolyfillMessageEvent) => {
-      if (entry.source !== source || typeof event.data !== "string") {
+      const active = this.connections.get(streamId);
+      if (active?.source !== source || typeof event.data !== "string") {
         return;
       }
       if (event.data === "done") {
         const isHealthyRollover =
-          entry.state.kind === "open" &&
-          Date.now() - entry.state.openedAt >= MIN_HEALTHY_SSE_LIFETIME_MS;
+          active.state.kind === "open" &&
+          Date.now() - active.state.openedAt >= MIN_HEALTHY_SSE_LIFETIME_MS;
         this.handleDisconnect(
           streamId,
-          entry,
-          source,
           isHealthyRollover
             ? { kind: "rollover" }
             : {
@@ -286,26 +311,26 @@ export class EventSourceManager {
         return;
       }
 
-      entry.reconnectAttempts = 0;
-      entry.lastEvent = event.data;
-      entry.lastEventAt = Date.now();
-      this.logVerbose(streamId, entry, "event_received", {
+      active.reconnectAttempts = 0;
+      active.lastEvent = event.data;
+      active.lastEventAt = Date.now();
+      this.logVerbose(streamId, "event_received", {
         eventLength: event.data.length,
       });
-      if (entry.config.replayBufferedEventsOnSubscribe) {
-        entry.events.push(event.data);
+      if (active.config.replayBufferedEventsOnSubscribe) {
+        active.events.push(event.data);
       }
-      for (const subscriber of entry.subscribers) {
-        this.notifyEventSubscriber(entry, subscriber, event.data);
+      for (const subscriber of active.subscribers) {
+        this.notifyEventSubscriber(subscriber, event.data);
       }
 
-      if (entry.config.isTerminalEvent?.(event.data)) {
-        this.markTerminal(streamId, entry);
+      if (active.config.isTerminalEvent?.(event.data)) {
+        this.markTerminal(streamId);
       }
     };
     source.onerror = (event: PolyfillEvent) => {
-      if (entry.source === source) {
-        this.handleDisconnect(streamId, entry, source, {
+      if (this.connections.get(streamId)?.source === source) {
+        this.handleDisconnect(streamId, {
           kind: "failure",
           failure: event,
         });
@@ -315,16 +340,19 @@ export class EventSourceManager {
 
   private handleDisconnect(
     streamId: string,
-    entry: ConnectionEntry,
-    source: EventSourceLike | null,
     outcome: { kind: "rollover" } | { kind: "failure"; failure: unknown }
   ): void {
+    const entry = this.connections.get(streamId);
+    if (!entry) {
+      return;
+    }
+    const source = entry.source;
     const readyState = source?.readyState ?? null;
     entry.source = null;
     source?.close();
     if (outcome.kind === "failure") {
       entry.reconnectAttempts++;
-      this.logVerbose(streamId, entry, "sse_failure", { readyState });
+      this.logVerbose(streamId, "sse_failure", { readyState });
 
       const context = this.telemetryContext({
         streamId,
@@ -336,7 +364,7 @@ export class EventSourceManager {
       if (entry.reconnectAttempts >= this.maxReconnectAttempts) {
         const error = new Error("Too many SSE connection failures.");
         entry.keepAliveWithoutSubscribers = false;
-        this.transition(streamId, entry, {
+        this.transition(streamId, {
           kind: "failed",
           attempt: entry.reconnectAttempts,
           error,
@@ -349,7 +377,7 @@ export class EventSourceManager {
           subscriber.onTerminalError?.(error);
         }
         if (entry.subscribers.size === 0) {
-          this.destroy(streamId, entry);
+          this.destroy(streamId);
         }
         return;
       }
@@ -363,21 +391,25 @@ export class EventSourceManager {
       this.reconnectDelayBaseMs + this.random() * this.reconnectDelayJitterMs;
     this.logVerbose(
       streamId,
-      entry,
       outcome.kind === "rollover" ? "sse_rollover" : "sse_retry",
       {
         delayMs: reconnectDelayMs,
       }
     );
-    this.transition(streamId, entry, {
+    this.transition(streamId, {
       kind: "reconnecting",
       attempt: entry.reconnectAttempts,
       reconnectAt: Date.now() + reconnectDelayMs,
     });
-    entry.reconnectTimeout = setTimeout(() => {
-      entry.reconnectTimeout = null;
-      this.ensureConnected(streamId, entry);
+    const reconnectTimeout = setTimeout(() => {
+      const current = this.connections.get(streamId);
+      if (!current || current.reconnectTimeout !== reconnectTimeout) {
+        return;
+      }
+      current.reconnectTimeout = null;
+      this.ensureConnected(streamId);
     }, reconnectDelayMs);
+    entry.reconnectTimeout = reconnectTimeout;
   }
 
   private telemetryContext({
@@ -436,26 +468,15 @@ export class EventSourceManager {
     }
   }
 
-  private notifyEventSubscriber(
-    entry: ConnectionEntry,
-    subscriber: Subscriber,
-    event: string
-  ): void {
-    try {
-      subscriber.onEvent(event);
-    } catch (error) {
-      datadogLogger.error(
-        {
-          ...entry.config.telemetryContext,
-          workspaceId: entry.config.workspaceId,
-          err: normalizeError(error),
-        },
-        "SSE subscriber failed to process an event."
-      );
-    }
+  private notifyEventSubscriber(subscriber: Subscriber, event: string): void {
+    subscriber.onEvent(event);
   }
 
-  private markTerminal(streamId: string, entry: ConnectionEntry): void {
+  private markTerminal(streamId: string): void {
+    const entry = this.connections.get(streamId);
+    if (!entry) {
+      return;
+    }
     entry.generation++;
     const source = entry.source;
     entry.source = null;
@@ -465,20 +486,23 @@ export class EventSourceManager {
       clearTimeout(entry.reconnectTimeout);
       entry.reconnectTimeout = null;
     }
-    this.transition(streamId, entry, { kind: "terminal" });
+    this.transition(streamId, { kind: "terminal" });
     if (entry.subscribers.size === 0) {
-      this.destroy(streamId, entry);
+      this.destroy(streamId);
     }
   }
 
   private transition(
     streamId: string,
-    entry: ConnectionEntry,
     state: EventSourceConnectionState
   ): void {
+    const entry = this.connections.get(streamId);
+    if (!entry) {
+      return;
+    }
     const previousState = entry.state.kind;
     entry.state = state;
-    this.logVerbose(streamId, entry, "state_change", {
+    this.logVerbose(streamId, "state_change", {
       previousState,
       nextState: state.kind,
     });
@@ -489,7 +513,6 @@ export class EventSourceManager {
 
   private logVerbose(
     streamId: string,
-    entry: ConnectionEntry,
     event: string,
     details: {
       delayMs?: number;
@@ -499,7 +522,8 @@ export class EventSourceManager {
       readyState?: number | null;
     } = {}
   ): void {
-    if (!isSseVerbose()) {
+    const entry = this.connections.get(streamId);
+    if (!entry || !isSseVerbose()) {
       return;
     }
     console.info("[Dust SSE]", {
@@ -513,8 +537,12 @@ export class EventSourceManager {
     });
   }
 
-  private destroy(streamId: string, entry: ConnectionEntry): void {
-    this.logVerbose(streamId, entry, "destroy");
+  private destroy(streamId: string): void {
+    const entry = this.connections.get(streamId);
+    if (!entry) {
+      return;
+    }
+    this.logVerbose(streamId, "destroy");
     entry.generation++;
     const source = entry.source;
     entry.source = null;
@@ -542,14 +570,14 @@ export class EventSourceManager {
           continue;
         }
         if (entry.source?.readyState === EventSourcePolyfill.CLOSED) {
-          this.handleDisconnect(streamId, entry, entry.source, {
+          this.handleDisconnect(streamId, {
             kind: "failure",
             failure: new Error(
               "SSE source closed while the page was inactive."
             ),
           });
         } else if (!entry.source && !entry.reconnectTimeout) {
-          this.ensureConnected(streamId, entry);
+          this.ensureConnected(streamId);
         }
       }
     };
