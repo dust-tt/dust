@@ -40,9 +40,7 @@ function RoleCell({ role }: { role: RoleType }) {
     <DataTable.CellContent>
       <Chip
         label={capitalize(displayRole(role))}
-        color={
-          role !== "none" ? ROLES_DATA[role]["color"] : undefined
-        }
+        color={role !== "none" ? ROLES_DATA[role]["color"] : undefined}
       />
     </DataTable.CellContent>
   );
