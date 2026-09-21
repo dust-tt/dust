@@ -306,8 +306,9 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  *   `agent-read-requires-space-read`).
  * - `write`: editing the agent's definition: configuration versions, tags, model, skills, linked
  *   Slack channels, archiving and restoring.
- * - `admin`: managing the agent's editors. `admin` alone MUST NOT allow changing the definition,
- *   and `write` alone MUST NOT allow changing the editors.
+ * - `admin`: managing the agent's editors, and — as the sole definition exception — changing the
+ *   agent's model (see `model-change-requires-edit`). `admin` alone MUST NOT allow changing any
+ *   other definition field, and `write` alone MUST NOT allow changing the editors.
  * Holding any verb makes the agent fetchable, but without `read` only its light core fields may be
  * exposed (see `unreadable-agent-is-light`). The explicit `admin_can_see_private_entities` admin
  * override is the only exception and may expose the full configuration.
@@ -1534,10 +1535,12 @@ export class AgentResource
    * require `admin` (see `agent-verbs`). A property whose provided value equals the current one MUST
    * be a no-op (no version, no permission check). A new version created alongside a scope/editor
    * change MUST carry the current scope/editors, so those take effect only through their own gated
-   * path. All required permissions MUST be checked before any change is applied so a save never
-   * partially succeeds. A caller that cannot read the agent (a `light` resource) cannot create a
-   * version, so provided definition fields are ignored; it may still change scope/editors it is
-   * authorized for.
+   * path. A pending agent is the sole versioning exception: a definition edit updates its single row
+   * in place (preserving version 0 and its FK relationships, see `writeAgentConfigurationRow`) rather
+   * than archiving it and creating a new version. All required permissions MUST be checked before any
+   * change is applied so a save never partially succeeds. A caller that cannot read the agent (a
+   * `light` resource) cannot create a version, so provided definition fields are ignored; it may
+   * still change scope/editors it is authorized for.
    */
   /**
    * @cc [owner:tdraier,label:backend] save-skips-noop-version
@@ -1637,13 +1640,7 @@ export class AgentResource
         );
       }
     }
-    if (
-      scopeChange &&
-      !(
-        auth.can("publish", this) &&
-        (auth.can("write", this) || auth.can("admin", this))
-      )
-    ) {
+    if (scopeChange && !this.canWriteScope(auth)) {
       return new Err(new Error("You don't have permission to publish agents."));
     }
     if (editorsChange && !auth.can("admin", this)) {
@@ -1652,23 +1649,9 @@ export class AgentResource
       );
     }
 
-    // A new version carries only the definition change; scope/editors stay current on it and are
-    // (re)applied in place below through their own gated paths.
-    if (versionParams) {
-      const versionRes = await AgentResource._saveConfiguration(auth, {
-        ...versionParams,
-        agentConfigurationId: this.sId,
-      });
-      if (versionRes.isErr()) {
-        return versionRes;
-      }
-    }
-    if (scopeChange) {
-      const scopeRes = await this.updateScopeInPlace(auth, scopeChange);
-      if (scopeRes.isErr()) {
-        return scopeRes;
-      }
-    }
+    // Editors are applied first: they are agent-level grants on the stable identity, so an invalid
+    // editor set fails here — before a new version is written — rather than leaving a committed
+    // version behind (see the no-partial-success clause of `agent-edit-in-place`).
     if (editorsChange) {
       const editorsRes = await syncAgentEditors(auth, {
         agentResource: this,
@@ -1678,24 +1661,57 @@ export class AgentResource
         return editorsRes;
       }
     }
+    // A new version carries only the definition change; scope/editors stay current on it and are
+    // (re)applied in place through their own gated paths. `_saveConfiguration` archives the current
+    // row and returns the resource for the NEW active version, which subsequent in-place changes must
+    // target (the old row is now archived).
+    let target: AgentResource = this;
+    if (versionParams) {
+      const versionRes = await AgentResource._saveConfiguration(auth, {
+        ...versionParams,
+        agentConfigurationId: this.sId,
+      });
+      if (versionRes.isErr()) {
+        return versionRes;
+      }
+      target = versionRes.value;
+    }
+    // Scope is applied last, to the current version, so its trigger reconciliation (disabling the
+    // triggers of users who are no longer editors of a now-hidden agent) sees the final editor set.
+    if (scopeChange) {
+      const scopeRes = await target.updateScopeInPlace(auth, scopeChange);
+      if (scopeRes.isErr()) {
+        return scopeRes;
+      }
+    }
 
     const updated = await AgentResource.fetchById(auth, this.sId);
-    return new Ok({ resource: updated ?? this, changed: true });
+    return new Ok({ resource: updated ?? target, changed: true });
+  }
+
+  // Whether `auth` may write this agent's scope. A scope change is a publish/unpublish only on an
+  // active agent, so it additionally requires `publish`; changing the scope of a draft, pending or
+  // archived agent is a plain edit (see `agent-publish-capability`) needing only `write`/`admin`.
+  private canWriteScope(auth: Authenticator): boolean {
+    const canEdit = auth.can("write", this) || auth.can("admin", this);
+    const needsPublish = this.status === "active";
+    return canEdit && (!needsPublish || auth.can("publish", this));
   }
 
   // Changes this agent's scope in place — no new version. A no-op when the scope is unchanged, so it
   // is safe to call unconditionally and does not require permission for an unchanged value. A real
-  // change requires `publish` AND (`write` or `admin`) and, on `visible` -> `hidden`, disables the
-  // triggers of non-editors.
+  // change requires scope-write permission (see `canWriteScope`) and, on `visible` -> `hidden`,
+  // disables the triggers of non-editors.
   /**
    * @cc [owner:tdraier,label:security;product] scope-change-requires-edit-and-publish
-   * (Un)publishing an agent — changing its scope — requires BOTH `publish` AND (`write` or `admin`)
-   * on the agent, all resolved per-resource via `auth.can`. Both MUST be enforced wherever a scope is
-   * written (`updateScopeInPlace`, and `bulkUpdate` per agent): the scope of an agent the caller does
-   * not fully satisfy `auth.can("publish", r) && (auth.can("write", r) || auth.can("admin", r))` MUST
-   * NOT be written. `publish` is a workspace-wide capability that `getGovernanceGrantVerbs` folds
-   * into every instance's verbs, so it resolves per-resource via `auth.can("publish", r)` (grant-
-   * backed, never role-derived).
+   * (Un)publishing an agent — changing its scope — requires `write` OR `admin` on the agent, plus
+   * `publish` when the agent is active (an active-agent scope change is exactly a publish/unpublish;
+   * a draft, pending or archived agent's scope change is a plain edit and does not need `publish` —
+   * see `agent-publish-capability`). All resolved per-resource via `auth.can`. This MUST be enforced
+   * wherever a scope is written (`updateScopeInPlace`, and `bulkUpdate` per agent): the scope of an
+   * agent the caller does not satisfy MUST NOT be written. `publish` is a workspace-wide capability
+   * that `getGovernanceGrantVerbs` folds into every instance's verbs, so it resolves per-resource via
+   * `auth.can("publish", r)` (grant-backed, never role-derived).
    */
   /**
    * @cc [owner:tdraier,label:security] hide-disables-non-editor-triggers
@@ -1710,12 +1726,7 @@ export class AgentResource
     if (this.scope === scope) {
       return new Ok(undefined);
     }
-    if (
-      !(
-        auth.can("publish", this) &&
-        (auth.can("write", this) || auth.can("admin", this))
-      )
-    ) {
+    if (!this.canWriteScope(auth)) {
       return new Err(new Error("You don't have permission to publish agents."));
     }
 

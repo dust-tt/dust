@@ -7,6 +7,7 @@ import {
 } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
@@ -1320,6 +1321,52 @@ describe("AgentResource", () => {
       expect(after.content.version).toBe(before.content.version + 1);
       expect(after.description).toBe("A brand new description");
       expect(after.scope).toBe("visible");
+    });
+
+    it("applies a scope change to the new version when a definition field also changed", async () => {
+      const { user, workspace } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { scope: "visible" }
+      );
+
+      // Grant the workspace the `publish` capability so the author can (un)publish, then re-resolve
+      // the authenticator to pick up the new grant.
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const globalGroup =
+        await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+      assert(globalGroup.isOk());
+      await GroupPermissionResource.grantTypeWide(adminAuth, {
+        group: globalGroup.value,
+        grantType: "publish",
+        resourceType: "agent",
+      });
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const before = await AgentResource.fetchById(auth, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(auth);
+
+      // A definition change bumps the version (archiving the old row); the scope change must land on
+      // that NEW active version, not on the now-archived row it was read from.
+      const res = await before.updateConfiguration(auth, {
+        ...baseParams,
+        description: "A brand new description",
+        scope: "hidden",
+      });
+      assert(res.isOk());
+
+      const after = await AgentResource.fetchById(auth, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(before.content.version + 1);
+      expect(after.description).toBe("A brand new description");
+      expect(after.scope).toBe("hidden");
     });
 
     it("rejects a scope change without publish and creates no version even if a definition field also changed", async () => {

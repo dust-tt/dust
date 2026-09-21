@@ -21,6 +21,13 @@ const ACTION_IDENTITY_KEYS_TO_DROP = new Set([
 // never descended into — dropping a key inside them could silently skip a real edit.
 const OPAQUE_ACTION_KEYS = new Set(["jsonSchema", "additionalConfiguration"]);
 
+// A reconstructed `dustAppConfiguration` also carries the app's presentation fields (`name`,
+// `description`) the PATCH payload never sends — only `appId`/`appWorkspaceId`/`type` identify it.
+// Dropped so an unchanged Dust-app tool compares equal (they are derived from the app, not editable
+// here, so a real change is always reflected by `appId`).
+const DUST_APP_CONFIG_KEY = "dustAppConfiguration";
+const DUST_APP_PRESENTATION_KEYS_TO_DROP = new Set(["name", "description"]);
+
 function isRecordValue(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -37,13 +44,35 @@ function normalizeActionForComparison(value: unknown): unknown {
       if (ACTION_IDENTITY_KEYS_TO_DROP.has(key)) {
         continue;
       }
-      result[key] = OPAQUE_ACTION_KEYS.has(key)
-        ? value[key]
-        : normalizeActionForComparison(value[key]);
+      if (OPAQUE_ACTION_KEYS.has(key)) {
+        result[key] = value[key];
+      } else if (key === DUST_APP_CONFIG_KEY && isRecordValue(value[key])) {
+        result[key] = normalizeDustAppConfigForComparison(value[key]);
+      } else {
+        result[key] = normalizeActionForComparison(value[key]);
+      }
     }
     return result;
   }
   return value;
+}
+
+// Projects a `dustAppConfiguration` onto the fields the wire payload carries, dropping the
+// reconstructed-only identity and presentation fields.
+function normalizeDustAppConfigForComparison(
+  value: Record<string, unknown>
+): Record<string, unknown> {
+  const result: Record<string, unknown> = Object.create(null);
+  for (const key of Object.keys(value)) {
+    if (
+      ACTION_IDENTITY_KEYS_TO_DROP.has(key) ||
+      DUST_APP_PRESENTATION_KEYS_TO_DROP.has(key)
+    ) {
+      continue;
+    }
+    result[key] = value[key];
+  }
+  return result;
 }
 
 // Reduces save params to the fields a version persists, normalized so equal configs compare equal:

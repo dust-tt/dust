@@ -1,4 +1,9 @@
 import { isSelfHostedImageWithValidContentType } from "@app/lib/api/assistant/configuration/agent_image";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
@@ -461,6 +466,32 @@ export async function syncAgentEditors(
       transaction: t,
     });
     return removed;
+  });
+
+  // Editors get access to the agent's private data (prompt, skills, knowledge), so the change is
+  // audited as soon as it commits — this in-place path skips `_saveConfiguration`, whose own audit
+  // event would otherwise cover it (see `audit-security-sensitive-mutations`). `actor_added_self`
+  // flags an admin granting themselves that access.
+  const addedEditors = editors.filter((e) => !currentIds.has(e.id));
+  const actorUserId = auth.user()?.sId;
+  void emitAuditLogEvent({
+    auth,
+    action: "agent.editors_updated",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("agent", agentResource),
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      agent_name: agentResource.name,
+      scope: agentResource.scope,
+      added_editor_ids: addedEditors.map((u) => u.sId).join(","),
+      removed_editor_ids: removedEditors.map((u) => u.sId).join(","),
+      actor_added_self: String(
+        actorUserId !== undefined &&
+          addedEditors.some((u) => u.sId === actorUserId)
+      ),
+    },
   });
 
   if (removedEditors.length > 0 && agentResource.scope === "hidden") {
