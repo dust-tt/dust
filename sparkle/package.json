@@ -124,12 +124,20 @@
     "@radix-ui/react-tooltip": "^1.1.3",
     "@tanstack/react-table": "^8.13.0",
     "@tanstack/react-virtual": "^3.5.0",
+    "@tiptap/core": "^3.19.0",
+    "@tiptap/extension-bubble-menu": "^3.19.0",
+    "@tiptap/extensions": "^3.19.0",
+    "@tiptap/markdown": "^3.19.0",
+    "@tiptap/pm": "^3.19.0",
+    "@tiptap/react": "^3.19.0",
+    "@tiptap/starter-kit": "^3.19.0",
     "allotment": "^1.20.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "emoji-mart": "^5.5.2",
     "framer-motion": "^11.18.2",
     "lottie-react": "^2.4.0",
+    "lucide-react": "^0.483.0",
     "mermaid": "^11.4.1",
     "react-confetti": "^6.1.0",
     "react-katex": "^3.0.1",
@@ -143,6 +151,7 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.5.3",
     "tailwind-scrollbar-hide": "^1.1.7",
-    "unist-util-visit": "^5.0.0"
+    "unist-util-visit": "^5.0.0",
+    "zod": "^3.25.76"
   }
 }
