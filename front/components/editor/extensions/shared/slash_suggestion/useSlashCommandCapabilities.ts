@@ -88,7 +88,6 @@ export function useInputBarSlashCommandCapabilities({
       searchTerm: query,
       limit: MAX_RENDERED_CAPABILITY_ITEMS,
       disabled: !useSkillSearch,
-      swrOptions: CAPABILITIES_SWR_OPTIONS,
     });
   const skills = useSkillSearch ? searchSkills : listedSkills;
   const isSkillsLoading = useSkillSearch
