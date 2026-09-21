@@ -6,6 +6,7 @@ import {
 import type { SkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
+import { findSkillEditorsWithoutAccessToSpaceIds } from "@app/lib/api/skills/space_requirements";
 import type { Authenticator } from "@app/lib/auth";
 import type { AppliedSkillInstructions } from "@app/lib/editor/skill_instructions_html";
 import {
@@ -13,16 +14,23 @@ import {
   convertMarkdownToBlockHtml,
 } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
+import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
 import {
   pruneConflictingSkillEditorsSuggestions,
   pruneConflictingSkillNameSuggestions,
   pruneConflictingSkillUserFacingDescriptionSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { extractToolTags } from "@app/lib/tools/format";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
 import {
   isEditorsSkillSuggestion,
@@ -30,6 +38,7 @@ import {
   isUserFacingDescriptionSkillSuggestion,
   parseSkillSuggestionData,
 } from "@app/types/suggestions/skill_suggestion";
+import uniq from "lodash/uniq";
 
 /**
  * What a suggestion asks to change on the skill. `editors` is not a skill field: it is written as
@@ -157,6 +166,111 @@ function resolveInstructions(
   return applyInstructionEditsToHtml(instructionsHtml, instructionEdits);
 }
 
+async function resolveInstructionAttachments(
+  auth: Authenticator,
+  instructions: string
+): Promise<
+  Result<
+    {
+      attachedKnowledge: SkillAttachedKnowledge[];
+      mcpServerViews: MCPServerViewResource[];
+    },
+    DustError<"invalid_request_error">
+  >
+> {
+  const toolReferences = extractToolTags(instructions);
+  const mcpServerViewIds = uniq(toolReferences.map((t) => t.id));
+  const mcpServerViews = mcpServerViewIds.length
+    ? await MCPServerViewResource.fetchByIds(auth, mcpServerViewIds)
+    : [];
+  const resolvedToolIds = new Set(mcpServerViews.map((v) => v.sId));
+
+  const knowledgeReferences = extractKnowledgeTagReferences(instructions);
+  const dataSourceViewIds = uniq(
+    removeNulls(knowledgeReferences.map((k) => k.dataSourceViewId))
+  );
+  const dataSourceViews = dataSourceViewIds.length
+    ? await DataSourceViewResource.fetchByIds(auth, dataSourceViewIds)
+    : [];
+  const dataSourceViewsById = new Map(
+    dataSourceViews.map((dsv) => [dsv.sId, dsv])
+  );
+
+  const attachedKnowledge: SkillAttachedKnowledge[] = [];
+  const unresolved: string[] = [];
+
+  for (const { dataSourceViewId, id, title } of knowledgeReferences) {
+    const dataSourceView = dataSourceViewId
+      ? dataSourceViewsById.get(dataSourceViewId)
+      : undefined;
+
+    if (dataSourceView) {
+      attachedKnowledge.push({ dataSourceView, nodeId: id });
+    } else {
+      unresolved.push(`knowledge "${title}" (${id})`);
+    }
+  }
+
+  for (const { id, name } of toolReferences) {
+    if (!resolvedToolIds.has(id)) {
+      unresolved.push(`tool "${name}" (${id})`);
+    }
+  }
+
+  if (unresolved.length > 0) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        `These instructions reference resources you cannot use: ` +
+          `${unresolved.join(", ")}. ` +
+          `They do not exist, or they live in a space you cannot read.`
+      )
+    );
+  }
+
+  return new Ok({ attachedKnowledge, mcpServerViews });
+}
+
+/**
+ * The tools, knowledge and spaces the skill must hold once `instructions` are in place.
+ *
+ * `PATCH /skills/:sId` computes the same spaces from what the builder's editor sends it; here the
+ * rewritten instructions are the only source, so the attachments are read back out of them first.
+ */
+async function resolveInstructionRequirements(
+  auth: Authenticator,
+  skill: SkillResource,
+  instructions: string
+): Promise<
+  Result<
+    {
+      attachedKnowledge: SkillAttachedKnowledge[];
+      mcpServerViews: MCPServerViewResource[];
+      requestedSpaceIds: ModelId[];
+    },
+    DustError<"invalid_request_error">
+  >
+> {
+  const attachments = await resolveInstructionAttachments(auth, instructions);
+  if (attachments.isErr()) {
+    return attachments;
+  }
+
+  const { attachedKnowledge, mcpServerViews } = attachments.value;
+
+  return new Ok({
+    attachedKnowledge,
+    mcpServerViews,
+    requestedSpaceIds: await SkillResource.computeRequestedSpaceIds(auth, {
+      attachedKnowledge,
+      mcpServerViews,
+      excludedSkillId: skill.sId,
+      instructions,
+      manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
+    }),
+  });
+}
+
 async function applySkillFieldEdits(
   auth: Authenticator,
   skill: SkillResource,
@@ -172,22 +286,49 @@ async function applySkillFieldEdits(
     return instructions;
   }
 
-  const attachedKnowledge = await skill.getAttachedKnowledge(auth);
+  // A batch that does not change the instructions keeps the attachments it already has: nothing it
+  // changed can add or drop a reference.
+  const requirementsRes = instructions.value
+    ? await resolveInstructionRequirements(
+        auth,
+        skill,
+        instructions.value.instructions
+      )
+    : new Ok({
+        attachedKnowledge: await skill.getAttachedKnowledge(auth),
+        mcpServerViews: skill.mcpServerViews,
+        requestedSpaceIds: skill.requestedSpaceIds,
+      });
+  if (requirementsRes.isErr()) {
+    return requirementsRes;
+  }
+  const requirements = requirementsRes.value;
+
+  // A suggestion can pull in a restricted space, which would lock out an editor that cannot read
+  // it. Checked before the write so a rejected batch leaves the skill untouched.
+  const editorsAccessError = await findSkillEditorsWithoutAccessToSpaceIds(
+    auth,
+    skill,
+    requirements.requestedSpaceIds
+  );
+  if (editorsAccessError) {
+    return new Err(new DustError("invalid_request_error", editorsAccessError));
+  }
 
   // `updateSkill` replaces the whole skill, so every field no suggestion touched is carried over
   // from the current values.
   await skill.updateSkill(auth, {
     agentFacingDescription:
       agentFacingDescription ?? skill.agentFacingDescription,
-    attachedKnowledge,
+    attachedKnowledge: requirements.attachedKnowledge,
     icon: skill.icon,
     instructions: instructions.value?.instructions ?? skill.instructions,
     instructionsHtml:
       instructions.value?.instructionsHtml ?? skill.instructionsHtml,
     manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
-    mcpServerViews: skill.mcpServerViews,
+    mcpServerViews: requirements.mcpServerViews,
     name: name ?? skill.name,
-    requestedSpaceIds: skill.requestedSpaceIds,
+    requestedSpaceIds: requirements.requestedSpaceIds,
     userFacingDescription: userFacingDescription ?? skill.userFacingDescription,
   });
 

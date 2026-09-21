@@ -1572,7 +1572,7 @@ describe("POST /api/w/:wId/skills", () => {
     const responseData = await response.json();
     expect(responseData.skill).toMatchObject({
       name: "Skill With Additional Space",
-      requestedSpaceIds: [globalSpace.sId, openSpace.sId],
+      requestedSpaceIds: [openSpace.sId, globalSpace.sId],
     });
 
     const createdSkill = await SkillResource.fetchById(

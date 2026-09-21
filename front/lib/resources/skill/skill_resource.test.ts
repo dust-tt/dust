@@ -2972,7 +2972,7 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("computeRequestedSpaceIds", () => {
+  describe("computeToolAndKnowledgeSpaceIds", () => {
     it("should compute space IDs from attached knowledge", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
       await SpaceFactory.attachGroup(space, testContext.globalGroup);
@@ -2987,13 +2987,14 @@ describe("SkillResource", () => {
         { dataSourceView: dsv, nodeId: "node1" },
       ];
 
-      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
-        testContext.authenticator,
-        {
-          mcpServerViews: [],
-          attachedKnowledge,
-        }
-      );
+      const requestedSpaceIds =
+        await SkillResource.computeToolAndKnowledgeSpaceIds(
+          testContext.authenticator,
+          {
+            mcpServerViews: [],
+            attachedKnowledge,
+          }
+        );
 
       expect(requestedSpaceIds).toContain(space.id);
     });

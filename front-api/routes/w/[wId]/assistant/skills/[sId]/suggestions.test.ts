@@ -48,13 +48,15 @@ async function setup(
   } = {}
 ) {
   const role = options.role ?? "user";
-  const { workspace, auth } = await createPrivateApiMockRequest({ role });
+  const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
+    role,
+  });
 
   const skill = await SkillFactory.create(auth, options.skill);
   // Refresh authenticator to pick up the skill's editor group membership.
   await auth.refresh();
 
-  return { workspace, auth, skill };
+  return { workspace, auth, globalSpace, skill };
 }
 
 async function setupAdminWithOtherBuilderSkill() {
@@ -503,14 +505,14 @@ async function setupSkillWithBlockInstructions(
   markdown: string = "Original instructions"
 ) {
   const instructionsHtml = convertMarkdownToBlockHtml(markdown);
-  const { workspace, auth, skill } = await setup({
+  const { workspace, auth, globalSpace, skill } = await setup({
     skill: { instructions: markdown, instructionsHtml },
   });
 
   const blockIds = blockIdsOf(instructionsHtml);
   assert(blockIds.length > 0, "the generated instructions have no block");
 
-  return { workspace, auth, skill, blockIds };
+  return { workspace, auth, globalSpace, skill, blockIds };
 }
 
 function instructionEditSuggestion(targetBlockId: string, content: string) {
@@ -567,13 +569,21 @@ describe("PATCH with applyToSkill", () => {
   });
 
   it("applies an edit holding a closed <tool></tool> tag", async () => {
-    const { workspace, auth, skill, blockIds } =
+    const { workspace, auth, globalSpace, skill, blockIds } =
       await setupSkillWithBlockInstructions();
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Web search",
+    });
+    const view = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      globalSpace
+    );
     const suggestion = await SkillSuggestionFactory.create(auth, skill, {
       state: "pending",
       suggestion: instructionEditSuggestion(
         blockIds[0],
-        '<p>Use <tool id="msv_abc123" name="Web search"></tool> then summarize.</p>'
+        `<p>Use <tool id="${view.sId}" name="Web search"></tool> then summarize.</p>`
       ),
     });
 
@@ -587,18 +597,22 @@ describe("PATCH with applyToSkill", () => {
 
     const updated = await SkillResource.fetchById(auth, skill.sId);
     expect(updated?.instructions).toBe(
-      'Use <tool id="msv_abc123" name="Web search" /> then summarize.'
+      `Use <tool id="${view.sId}" name="Web search" /> then summarize.`
     );
   });
 
-  it.skip("correctly applies an edit that inserts a <knowledge> tag", async () => {
-    const { workspace, auth, skill, blockIds } =
+  it("correctly applies an edit that inserts a <knowledge> tag", async () => {
+    const { workspace, auth, globalSpace, skill, blockIds } =
       await setupSkillWithBlockInstructions();
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
     const suggestion = await SkillSuggestionFactory.create(auth, skill, {
       state: "pending",
       suggestion: instructionEditSuggestion(
         blockIds[0],
-        '<p>Read <knowledge id="node_1" title="Handbook" space="spc_1" dsv="dsv_1" hasChildren="false"></knowledge> first.</p>'
+        `<p>Read <knowledge id="node_1" title="Handbook" space="${globalSpace.sId}" dsv="${dataSourceView.sId}" hasChildren="false"></knowledge> first.</p>`
       ),
     });
 
@@ -620,6 +634,59 @@ describe("PATCH with applyToSkill", () => {
 
     // Whatever the instructions reference, the skill must actually have attached.
     expect(attachedNodeIds).toEqual(referencedNodeIds);
+  });
+
+  it("rejects an edit that adds a <knowledge> tag the caller cannot read", async () => {
+    const { workspace, auth, skill, blockIds } =
+      await setupSkillWithBlockInstructions();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      suggestion: instructionEditSuggestion(
+        blockIds[0],
+        '<p>Read <knowledge id="node_1" title="Handbook" space="spc_1" dsv="dsv_1" hasChildren="false"></knowledge> first.</p>'
+      ),
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      'knowledge "Handbook" (node_1)'
+    );
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.instructions).toBe("Original instructions");
+  });
+
+  it("rejects an edit that adds a <tool> tag that does not exist", async () => {
+    const { workspace, auth, skill, blockIds } =
+      await setupSkillWithBlockInstructions();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      suggestion: instructionEditSuggestion(
+        blockIds[0],
+        '<p>Use <tool id="msv_abc123" name="Web search"></tool> then summarize.</p>'
+      ),
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      'tool "Web search" (msv_abc123)'
+    );
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.instructions).toBe("Original instructions");
+    expect(updated?.mcpServerViews).toEqual([]);
   });
 
   // A regular space with no global group attached is restricted: only its members read it. The
@@ -647,7 +714,7 @@ describe("PATCH with applyToSkill", () => {
     );
   }
 
-  it.skip("requests the spaces of a nested skill a suggestion adds", async () => {
+  it("requests the spaces of a nested skill a suggestion adds", async () => {
     const { workspace, auth, skill, blockIds } =
       await setupSkillWithBlockInstructions();
     const restrictedSpace = await restrictedSpaceWithCaller(workspace, auth);
@@ -678,8 +745,8 @@ describe("PATCH with applyToSkill", () => {
     expect(updated.requestedSpaceIds).toContain(restrictedSpace.id);
   });
 
-  it.skip("rejects a nested skill whose spaces another editor cannot read", async () => {
-    const { workspace, auth, skill, blockIds } =
+  it("rejects a nested skill whose spaces another editor cannot read", async () => {
+    const { workspace, auth, globalSpace, skill, blockIds } =
       await setupSkillWithBlockInstructions();
     const otherEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, otherEditor, { role: "user" });
@@ -710,7 +777,7 @@ describe("PATCH with applyToSkill", () => {
 
     const updated = await SkillResource.fetchById(auth, skill.sId);
     expect(updated?.instructions).toBe("Original instructions");
-    expect(updated?.requestedSpaceIds).toEqual([]);
+    expect(updated?.requestedSpaceIds).toEqual([globalSpace.id]);
 
     const reloaded = await SkillSuggestionResource.fetchById(
       auth,
@@ -738,7 +805,7 @@ describe("PATCH with applyToSkill", () => {
     return { restrictedSpace, view };
   }
 
-  it.skip("attaches the tool a suggestion adds and requests its space", async () => {
+  it("attaches the tool a suggestion adds and requests its space", async () => {
     const { workspace, auth, skill, blockIds } =
       await setupSkillWithBlockInstructions();
     const { restrictedSpace, view } = await toolViewInRestrictedSpace(
@@ -768,8 +835,49 @@ describe("PATCH with applyToSkill", () => {
     expect(updated.requestedSpaceIds).toContain(restrictedSpace.id);
   });
 
-  it.skip("detaches the tool a suggestion removes and stops requesting its space", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+  it("rejects a tool whose space another editor cannot read", async () => {
+    const { workspace, auth, globalSpace, skill, blockIds } =
+      await setupSkillWithBlockInstructions();
+    const otherEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherEditor, { role: "user" });
+    expect((await skill.addEditors(auth, [otherEditor])).isOk()).toBe(true);
+    // The caller joins the space; `otherEditor` does not.
+    const { view } = await toolViewInRestrictedSpace(workspace, auth);
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      suggestion: instructionEditSuggestion(
+        blockIds[0],
+        `<p>Use <tool id="${view.sId}" name="GitHub"></tool> then summarize.</p>`
+      ),
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "do not have access"
+    );
+
+    // Nothing was written: not the text, not the attachment, not the space.
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    assert(updated, "the skill is gone");
+    expect(updated.instructions).toBe("Original instructions");
+    expect(updated.mcpServerViews).toEqual([]);
+    expect(updated.requestedSpaceIds).toEqual([globalSpace.id]);
+
+    const reloaded = await SkillSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(reloaded?.state).toBe("pending");
+  });
+
+  it("detaches the tool a suggestion removes and stops requesting its space", async () => {
+    const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
       role: "user",
     });
     const { restrictedSpace, view } = await toolViewInRestrictedSpace(
@@ -805,10 +913,10 @@ describe("PATCH with applyToSkill", () => {
     assert(updated, "the skill is gone");
     expect(updated.instructions).toBe("Summarize from memory.");
     expect(updated.mcpServerViews).toEqual([]);
-    expect(updated.requestedSpaceIds).toEqual([]);
+    expect(updated.requestedSpaceIds).toEqual([globalSpace.id]);
   });
 
-  it.skip("attaches the knowledge a suggestion adds and requests its space", async () => {
+  it("attaches the knowledge a suggestion adds and requests its space", async () => {
     const { workspace, auth, skill, blockIds } =
       await setupSkillWithBlockInstructions();
     const restrictedSpace = await restrictedSpaceWithCaller(workspace, auth);

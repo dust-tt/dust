@@ -4,8 +4,7 @@ import {
   SkillNameSchema,
 } from "@app/lib/api/skills/schemas";
 import {
-  findSkillEditorsWithoutSpaceAccess,
-  getReferencedSkillSpaceModelIds,
+  findSkillEditorsWithoutAccessToSpaceIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -13,7 +12,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import logger from "@app/logger/logger";
@@ -39,7 +37,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { rejectArchivedSkill } from "@front-api/routes/w/[wId]/skills/guards";
 import type { Context, TypedResponse } from "hono";
 import uniq from "lodash/uniq";
-import uniqBy from "lodash/uniqBy";
 import { z } from "zod";
 
 import editors from "./editors";
@@ -373,17 +370,6 @@ app.patch(
       })
     );
 
-    const computedRequestedSpaceIds =
-      await SkillResource.computeRequestedSpaceIds(auth, {
-        mcpServerViews,
-        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
-      });
-    const referencedSkillSpaceIds = await getReferencedSkillSpaceModelIds(
-      auth,
-      body.instructions,
-      skill.sId
-    );
-
     // `additionalRequestedSpaceIds` is the wire name of the skill's manual space selection, stored
     // as `manuallyRequestedSpaceIds`.
     let additionalRequestedSpaceIds: ModelId[];
@@ -411,29 +397,23 @@ app.patch(
       additionalRequestedSpaceIds = [...skill.manuallyRequestedSpaceIds];
     }
 
-    // A skill requests a space for one of four reasons: one of its tools lives there, some of its
-    // attached knowledge does, a skill it references requests it, or a person picked it by hand.
-    // Only the last one is stored; the other three are derived, and disappear with what pulled
-    // them in. The global space is always required.
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    const requestedSpaceIds = uniq([
-      ...computedRequestedSpaceIds, // Tools and attached knowledge.
-      ...referencedSkillSpaceIds, // Nested skills.
-      ...additionalRequestedSpaceIds, // Picked by hand.
-      globalSpace.id,
-    ]);
-
-    // Adding a restricted space can lock out editors that are already on the skill. `updateSkill`
-    // also makes the caller an editor, so they are part of the set to validate.
-    const editors = (await skill.listEditors(auth)) ?? [];
-    const requestedSpaces = await SpaceResource.fetchByModelIds(
+    const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
       auth,
+      {
+        attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        excludedSkillId: skill.sId,
+        instructions: body.instructions,
+        manuallyRequestedSpaceIds: additionalRequestedSpaceIds,
+        mcpServerViews,
+      }
+    );
+
+    // Adding a restricted space can lock out editors that are already on the skill.
+    const editorsAccessError = await findSkillEditorsWithoutAccessToSpaceIds(
+      auth,
+      skill,
       requestedSpaceIds
     );
-    const editorsAccessError = await findSkillEditorsWithoutSpaceAccess(auth, {
-      editors: uniqBy([...editors, auth.getNonNullableUser()], "id"),
-      requestedSpaces,
-    });
     if (editorsAccessError) {
       return apiError(ctx, {
         status_code: 400,
