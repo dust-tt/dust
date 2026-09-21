@@ -12,7 +12,7 @@ import { Err, Ok } from "@app/types/shared/result";
  * selected, each agent gets a new configuration version; everything else (name, instructions, tools,
  * skills, tags, editors, requested spaces, and each agent's own temperature) is carried over
  * untouched. Validation of the model happens here; the versioned save is done by
- * `AgentResource.bulkUpdateModel`.
+ * `AgentResource.bulkUpdate`.
  *
  * Not atomic: agents that cannot be edited (archived, global, or not editable by the caller) are
  * skipped and reported back rather than failing the whole batch.
@@ -66,11 +66,16 @@ export async function updateAgentConfigurationsModel(
     }
   }
 
-  const result = await AgentResource.bulkUpdateModel(auth, agentIds, {
-    providerId: model.providerId,
-    modelId: model.modelId,
-    reasoningEffort: effort,
-    responseFormat,
+  // Only the model changes; `bulkUpdate` merges these fields into each agent's current model
+  // (preserving e.g. its temperature) and creates a new version per agent. `responseFormat` is
+  // included only when set, so an unspecified value leaves the current one untouched.
+  const result = await AgentResource.bulkUpdate(auth, agentIds, {
+    model: {
+      providerId: model.providerId,
+      modelId: model.modelId,
+      reasoningEffort: effort,
+      ...(responseFormat !== undefined ? { responseFormat } : {}),
+    },
   });
 
   return new Ok(result);
