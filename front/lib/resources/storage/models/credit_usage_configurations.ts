@@ -4,6 +4,7 @@ export const DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON = false;
 export const DEFAULT_AUTO_SEAT_UPGRADE_ENABLED = false;
 export const DEFAULT_TOP_UP_ENABLED = false;
 export const DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED = true;
+export const DEFAULT_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS = 200;
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
@@ -66,6 +67,9 @@ import type { CreationOptional } from "sequelize";
  *   the admin hasn't overridden it: the effective value then defaults based
  *   on the workspace's plan. A non-NULL value is an explicit admin override
  *   that applies regardless of plan.
+ * - creditSpendCheckpointThresholdAwuCredits: Cumulative message spend, in AWU
+ *   credits, above which the agent loop pauses for the user to confirm
+ *   continuing (when the gate above is active). Defaults to 200.
  *
  * The Metronome balance-threshold alert id (used by the webhook to match the
  * firing alert) is NOT stored here: it is a Metronome-generated value resolved
@@ -87,6 +91,7 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare topUpEnabled: CreationOptional<boolean>;
   declare autoInvoiceFinalizationEnabled: CreationOptional<boolean>;
   declare creditSpendCheckpointEnabled: boolean | null;
+  declare creditSpendCheckpointThresholdAwuCredits: CreationOptional<number>;
 }
 
 CreditUsageConfigurationModel.init(
@@ -178,6 +183,20 @@ CreditUsageConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: true,
       defaultValue: null,
+    },
+    creditSpendCheckpointThresholdAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: DEFAULT_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+      validate: {
+        isPositive(value: number) {
+          if (value <= 0) {
+            throw new Error(
+              "creditSpendCheckpointThresholdAwuCredits must be strictly positive"
+            );
+          }
+        },
+      },
     },
   },
   {
