@@ -148,11 +148,21 @@ export function SearchSkillsPage() {
     <>
       <div className="flex w-full flex-col gap-6 pb-4">
         <Page.Header
-          title="Manage Skills"
+          title={
+            <div className="flex w-full flex-wrap items-center justify-between gap-4">
+              <Page.H>Manage Skills</Page.H>
+              {hasPermission("create", "skill") && (
+                <CreateSkillButton
+                  owner={owner}
+                  onImport={() => setIsImportDialogOpen(true)}
+                />
+              )}
+            </div>
+          }
           description="Reusable packages of instructions and tools that agents can share."
           noTopPadding
         />
-        <div className="flex items-center gap-2">
+        <div className="px-2">
           <label htmlFor="skill-search" className="sr-only">
             Search skills
           </label>
@@ -162,14 +172,8 @@ export function SearchSkillsPage() {
             placeholder="Search skills by name"
             value={searchTerm}
             onChange={setSearchTerm}
-            className="flex-1"
+            className="w-full max-w-sm"
           />
-          {hasPermission("create", "skill") && (
-            <CreateSkillButton
-              owner={owner}
-              onImport={() => setIsImportDialogOpen(true)}
-            />
-          )}
         </div>
         <Tabs defaultValue="all">
           <TabsList>
