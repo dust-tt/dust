@@ -4423,6 +4423,34 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(message);
   }
 
+  /**
+   * @cc [owner:id13,label:security;backend] scoped-agent-message-status
+   * The returned status MUST belong to the given conversation and authenticated workspace.
+   */
+  static async fetchAgentMessageStatus(
+    auth: Authenticator,
+    conversation: ConversationResource,
+    messageId: string
+  ): Promise<AgentMessageStatus | null> {
+    const message = await MessageModel.findOne({
+      attributes: ["id"],
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: messageId,
+      },
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          attributes: ["status"],
+          required: true,
+        },
+      ],
+    });
+    return message?.agentMessage?.status ?? null;
+  }
+
   static async getMessageByIds(
     auth: Authenticator,
     conversation: ConversationWithoutContentType | ConversationResource,
