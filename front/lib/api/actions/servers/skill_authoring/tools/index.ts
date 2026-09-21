@@ -38,9 +38,7 @@ function requireInteractiveUser(
   const user = auth.user();
   if (!user) {
     return new Err(
-      new MCPError(
-        "Skill authoring requires an interactive user context."
-      )
+      new MCPError("Skill authoring requires an interactive user context.")
     );
   }
 
