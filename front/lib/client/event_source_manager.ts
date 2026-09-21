@@ -13,7 +13,6 @@ import type {
   LongPollFactory,
   Subscriber,
 } from "@app/types/event_source";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { MANAGED_SSE_HANDSHAKE_EVENT } from "@app/types/sse";
 import type {
   Event as PolyfillEvent,
@@ -32,51 +31,34 @@ const HEARTBEAT_TIMEOUT_MS = 5 * 60 * 1000;
 const SSE_HANDSHAKE_TIMEOUT_MS = 2_500;
 const MIN_HEALTHY_SSE_LIFETIME_MS = 30_000;
 
-type ManagedConnectionState =
-  | { kind: "idle" }
-  | {
-      kind: "connecting";
-      attempt: number;
-      restartKey: string;
-      startedAt: number;
-    }
-  | {
-      kind: "awaiting_handshake";
-      attempt: number;
-      startedAt: number;
-      source: EventSourceLike;
-      timeout: ReturnType<typeof setTimeout>;
-    }
-  | { kind: "open"; source: EventSourceLike; openedAt: number }
-  | {
-      kind: "long_polling";
-      startedAt: number;
-      controller: AbortController;
-    }
-  | {
-      kind: "reconnecting";
-      attempt: number;
-      reconnectAt: number;
-      timeout: ReturnType<typeof setTimeout>;
-    }
-  | { kind: "failed"; attempt: number; error: Error }
-  | { kind: "terminal" };
-
 type KeepAliveState = "inactive" | "active" | "paused";
 type BrowserSseHealth = "unknown" | "healthy" | "degraded";
+type ActiveTransport =
+  | {
+      kind: "sse";
+      source: EventSourceLike;
+      handshakeTimeout: ReturnType<typeof setTimeout> | null;
+    }
+  | {
+      kind: "long_polling";
+      controller: AbortController;
+    };
 
 type ConnectionEntry = {
   config: ConnectionConfig;
   events: string[];
+  generation: number;
   lastEvent: string | null;
   lastEventAt: number | null;
   lastResumeAtMs: number | null;
   lastURL: string | null;
   keepAliveState: KeepAliveState;
-  retryAttempts: number;
-  state: ManagedConnectionState;
+  reconnectAttempts: number;
   unsuccessfulResumes: number;
+  reconnectTimeout: ReturnType<typeof setTimeout> | null;
+  state: EventSourceConnectionState;
   subscribers: Set<Subscriber>;
+  transport: ActiveTransport | null;
 };
 
 function getClientPath(url: string): string {
@@ -104,32 +86,6 @@ async function createEventSource(
   });
 }
 
-function isLongPollResponse(value: unknown): value is { events: string[] } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "events" in value &&
-    Array.isArray(value.events) &&
-    value.events.every((event) => typeof event === "string")
-  );
-}
-
-function getErrorDetails(
-  failure: unknown
-): { name: string; message: string } | null {
-  if (
-    typeof failure !== "object" ||
-    failure === null ||
-    !("name" in failure) ||
-    typeof failure.name !== "string" ||
-    !("message" in failure) ||
-    typeof failure.message !== "string"
-  ) {
-    return null;
-  }
-  return { name: failure.name, message: failure.message };
-}
-
 async function createLongPoll(
   url: string,
   { headers, signal }: { headers?: Record<string, string>; signal: AbortSignal }
@@ -142,9 +98,14 @@ async function createLongPoll(
   if (!response.ok) {
     throw new Error(`Long poll failed with status ${response.status}.`);
   }
-
   const body: unknown = await response.json();
-  if (!isLongPollResponse(body)) {
+  if (
+    typeof body !== "object" ||
+    body === null ||
+    !("events" in body) ||
+    !Array.isArray(body.events) ||
+    !body.events.every((event) => typeof event === "string")
+  ) {
     throw new Error("Long poll returned an invalid response.");
   }
   return body.events;
@@ -158,7 +119,7 @@ async function createLongPoll(
 /**
  * @cc [owner:id13,label:architecture;concurrency] single-connection-state-machine
  * Stopping, replacing, failing, terminating, or destroying a stream MUST release its active
- * transport resource before another transport starts.
+ * transport before another transport starts.
  */
 /**
  * @cc [owner:id13,label:performance;concurrency] persistent-stream-lifecycle
@@ -221,22 +182,26 @@ export class EventSourceManager {
       entry = this.createEntry(config, keepAliveWithoutSubscribers);
       this.connections.set(streamId, entry);
     } else if (entry.config.restartKey !== config.restartKey) {
-      this.restart(streamId, config);
+      this.restart(streamId, config, keepAliveWithoutSubscribers);
+      entry = this.connections.get(streamId);
+      if (!entry) {
+        return () => undefined;
+      }
     } else {
       entry.config = config;
-    }
-    if (
-      entry.keepAliveState === "inactive" &&
-      keepAliveWithoutSubscribers &&
-      entry.state.kind !== "failed" &&
-      entry.state.kind !== "terminal"
-    ) {
-      entry.keepAliveState = "active";
+      if (
+        entry.keepAliveState === "inactive" &&
+        keepAliveWithoutSubscribers &&
+        entry.state.kind !== "failed" &&
+        entry.state.kind !== "terminal"
+      ) {
+        entry.keepAliveState = "active";
+      }
     }
 
     entry.subscribers.add(subscriber);
     this.logVerbose(streamId, "subscriber_added");
-    subscriber.onStateChange(this.toPublicState(entry.state));
+    subscriber.onStateChange(entry.state);
     if (entry.config.replayBufferedEventsOnSubscribe) {
       for (const event of entry.events) {
         this.notifyEventSubscriber(subscriber, event);
@@ -327,7 +292,7 @@ export class EventSourceManager {
     if (!entry) {
       return;
     }
-    entry.retryAttempts = 0;
+    entry.reconnectAttempts = 0;
     this.logVerbose(streamId, "resume");
     this.transition(streamId, { kind: "idle" });
     this.ensureConnected(streamId);
@@ -340,34 +305,48 @@ export class EventSourceManager {
     return {
       config,
       events: [],
+      generation: 0,
       lastEvent: null,
       lastEventAt: null,
       lastResumeAtMs: null,
       lastURL: null,
       keepAliveState: keepAliveWithoutSubscribers ? "active" : "inactive",
-      retryAttempts: 0,
-      state: { kind: "idle" },
+      reconnectAttempts: 0,
       unsuccessfulResumes: 0,
+      reconnectTimeout: null,
+      state: { kind: "idle" },
       subscribers: new Set(),
+      transport: null,
     };
   }
 
-  private restart(streamId: string, config: ConnectionConfig): void {
+  private restart(
+    streamId: string,
+    config: ConnectionConfig,
+    keepAliveWithoutSubscribers: boolean
+  ): void {
     const entry = this.connections.get(streamId);
     if (!entry) {
       return;
     }
-    const isConnecting = entry.state.kind === "connecting";
-    if (!isConnecting) {
-      this.stop(streamId);
+    const hasPendingFactory =
+      entry.state.kind === "connecting" && entry.transport === null;
+    entry.generation++;
+    this.stopTransport(entry);
+    if (entry.reconnectTimeout) {
+      clearTimeout(entry.reconnectTimeout);
+      entry.reconnectTimeout = null;
     }
     entry.config = config;
     entry.events = [];
     entry.lastEvent = null;
     entry.lastEventAt = null;
     entry.lastURL = null;
-    entry.retryAttempts = 0;
-    if (!isConnecting) {
+    if (entry.keepAliveState === "inactive" && keepAliveWithoutSubscribers) {
+      entry.keepAliveState = "active";
+    }
+    entry.reconnectAttempts = 0;
+    if (!hasPendingFactory) {
       this.transition(streamId, { kind: "idle" });
     }
   }
@@ -377,29 +356,19 @@ export class EventSourceManager {
     if (!entry) {
       return;
     }
-    if (entry.state.kind !== "idle") {
+    if (
+      entry.transport ||
+      entry.reconnectTimeout ||
+      entry.state.kind === "connecting" ||
+      entry.state.kind === "terminal" ||
+      entry.state.kind === "failed"
+    ) {
       return;
     }
-    if (this.sseHealth === "degraded" && this.hasLongPollFallback(entry)) {
+    if (this.sseHealth === "degraded" && entry.config.buildLongPollURL) {
       this.startLongPolling(streamId);
     } else {
-      void this.startSse(streamId).catch((failure: unknown) => {
-        const current = this.connections.get(streamId);
-        if (
-          !current ||
-          (current.state.kind !== "connecting" &&
-            current.state.kind !== "awaiting_handshake")
-        ) {
-          return;
-        }
-        this.handlePreHandshakeFailure(
-          streamId,
-          current.state.kind === "awaiting_handshake"
-            ? current.state.source
-            : null,
-          failure
-        );
-      });
+      void this.startSse(streamId);
     }
   }
 
@@ -413,9 +382,6 @@ export class EventSourceManager {
     if (!entry) {
       return;
     }
-    if (entry.state.kind !== "idle") {
-      return;
-    }
     const url = entry.config.buildURL(entry.lastEvent);
     if (!url) {
       this.markTerminal(streamId);
@@ -423,231 +389,205 @@ export class EventSourceManager {
     }
     entry.lastURL = url;
 
-    const attempt = entry.retryAttempts + 1;
-    const startedAt = Date.now();
-    const connectingState: ManagedConnectionState = {
-      kind: "connecting",
-      attempt,
-      restartKey: entry.config.restartKey,
-      startedAt,
-    };
+    const generation = ++entry.generation;
     this.logVerbose(streamId, "sse_connect");
-    this.transition(streamId, connectingState);
+    this.transition(streamId, {
+      kind: "connecting",
+      attempt: entry.reconnectAttempts + 1,
+      startedAt: Date.now(),
+    });
 
     let source: EventSourceLike;
     try {
       source = await this.sourceFactory(url, entry.config.headers);
-    } catch (failure) {
+    } catch (error) {
       const current = this.connections.get(streamId);
-      if (current === entry && current.state === connectingState) {
-        if (entry.config.restartKey === connectingState.restartKey) {
-          this.handlePreHandshakeFailure(streamId, null, failure);
-        } else {
-          this.transition(streamId, { kind: "idle" });
-          this.ensureConnected(streamId);
-        }
+      if (!current) {
+        return;
+      }
+      if (generation === current.generation) {
+        this.handleSseDisconnect(streamId, {
+          kind: "failure",
+          failure: error,
+        });
+      } else if (current.state.kind === "connecting") {
+        this.transition(streamId, { kind: "idle" });
+        this.ensureConnected(streamId);
       }
       return;
     }
 
     const current = this.connections.get(streamId);
-    if (current !== entry || current.state !== connectingState) {
+    if (!current) {
       source.close();
       return;
     }
-    if (current.config.restartKey !== connectingState.restartKey) {
+    if (generation !== current.generation) {
       source.close();
-      this.transition(streamId, { kind: "idle" });
-      this.ensureConnected(streamId);
+      if (current.state.kind === "connecting") {
+        this.transition(streamId, { kind: "idle" });
+        this.ensureConnected(streamId);
+      }
       return;
     }
 
-    const timeout = setTimeout(() => {
-      if (
-        entry.state.kind === "awaiting_handshake" &&
-        entry.state.source === source
-      ) {
-        this.handlePreHandshakeFailure(
-          streamId,
-          source,
-          new Error("SSE handshake timed out.")
-        );
+    const transport: ActiveTransport = {
+      kind: "sse",
+      source,
+      handshakeTimeout: null,
+    };
+    current.transport = transport;
+    transport.handshakeTimeout = setTimeout(() => {
+      if (current.transport === transport) {
+        this.handleSseDisconnect(streamId, {
+          kind: "failure",
+          failure: new Error("SSE handshake timed out."),
+        });
       }
     }, this.handshakeTimeoutMs);
-    this.transition(streamId, {
-      kind: "awaiting_handshake",
-      attempt,
-      startedAt,
-      source,
-      timeout,
-    });
-
     source.addEventListener(MANAGED_SSE_HANDSHAKE_EVENT, () => {
       if (
-        entry.state.kind !== "awaiting_handshake" ||
-        entry.state.source !== source
+        current.transport !== transport ||
+        current.state.kind !== "connecting"
       ) {
         return;
       }
-      clearTimeout(entry.state.timeout);
+      if (transport.handshakeTimeout) {
+        clearTimeout(transport.handshakeTimeout);
+        transport.handshakeTimeout = null;
+      }
       const openedAt = Date.now();
-      const handshakeLatencyMs = openedAt - entry.state.startedAt;
+      const handshakeLatencyMs = openedAt - current.state.startedAt;
       this.consecutivePreHandshakeFailures = 0;
       if (this.sseHealth !== "degraded") {
         this.sseHealth = "healthy";
       }
-      this.transition(streamId, { kind: "open", source, openedAt });
+      this.transition(streamId, { kind: "open", openedAt });
       this.logVerbose(streamId, "sse_handshake", { handshakeLatencyMs });
     });
     source.onmessage = (event: PolyfillMessageEvent) => {
+      const active = this.connections.get(streamId);
       if (
-        entry.state.kind !== "open" ||
-        entry.state.source !== source ||
+        active?.transport !== transport ||
+        active.state.kind !== "open" ||
         typeof event.data !== "string"
       ) {
         return;
       }
       if (event.data === "done") {
         const isHealthyRollover =
-          Date.now() - entry.state.openedAt >= MIN_HEALTHY_SSE_LIFETIME_MS;
-        const readyState = source.readyState;
-        this.stop(streamId);
-        if (isHealthyRollover) {
-          entry.retryAttempts = 0;
-        }
-        this.scheduleReconnect(streamId, {
-          transport: "sse",
-          readyState,
-          failure: isHealthyRollover
-            ? null
-            : new Error("SSE stream ended before a terminal event."),
-          countsAgainstBudget: !isHealthyRollover,
-        });
+          active.state.kind === "open" &&
+          Date.now() - active.state.openedAt >= MIN_HEALTHY_SSE_LIFETIME_MS;
+        this.handleSseDisconnect(
+          streamId,
+          isHealthyRollover
+            ? { kind: "rollover" }
+            : {
+                kind: "failure",
+                failure: new Error("SSE stream ended before a terminal event."),
+              }
+        );
         return;
       }
       this.acceptEvent(streamId, event.data);
     };
-    source.onerror = (failure: PolyfillEvent) => {
-      if (
-        entry.state.kind === "awaiting_handshake" &&
-        entry.state.source === source
-      ) {
-        this.handlePreHandshakeFailure(streamId, source, failure);
-      } else if (entry.state.kind === "open" && entry.state.source === source) {
-        this.handleSseFailure(streamId, source, failure);
+    source.onerror = (event: PolyfillEvent) => {
+      if (this.connections.get(streamId)?.transport === transport) {
+        this.handleSseDisconnect(streamId, {
+          kind: "failure",
+          failure: event,
+        });
       }
     };
   }
 
-  private handlePreHandshakeFailure(
+  private handleSseDisconnect(
     streamId: string,
-    source: EventSourceLike | null,
-    failure: unknown
+    outcome: { kind: "rollover" } | { kind: "failure"; failure: unknown }
   ): void {
     const entry = this.connections.get(streamId);
     if (!entry) {
       return;
     }
-    const readyState = source?.readyState ?? null;
-    this.stop(streamId);
-    this.logVerbose(streamId, "sse_failure", { readyState });
-    this.consecutivePreHandshakeFailures++;
-    if (this.consecutivePreHandshakeFailures >= 2) {
-      this.sseHealth = "degraded";
-    }
+    const isPreHandshake = entry.state.kind === "connecting";
+    const readyState =
+      entry.transport?.kind === "sse"
+        ? entry.transport.source.readyState
+        : null;
+    this.stopTransport(entry);
+    if (outcome.kind === "failure") {
+      entry.reconnectAttempts++;
+      if (isPreHandshake) {
+        this.consecutivePreHandshakeFailures++;
+        if (this.consecutivePreHandshakeFailures >= 2) {
+          this.sseHealth = "degraded";
+        }
+      } else if (
+        entry.config.buildLongPollURL &&
+        entry.reconnectAttempts >= 2
+      ) {
+        this.sseHealth = "degraded";
+      }
+      this.logVerbose(streamId, "sse_failure", { readyState });
 
-    const fallbackAvailable = this.hasLongPollFallback(entry);
-    datadogLogger.warn(
-      {
-        ...this.telemetryContext({ streamId, entry, readyState, failure }),
-        fallbackAvailable,
-        handshakeTimeoutMs: this.handshakeTimeoutMs,
-        transport: "sse",
-      },
-      fallbackAvailable && this.sseHealth === "degraded"
-        ? "SSE handshake failed, switching to long polling."
-        : "SSE handshake failed, reconnecting."
-    );
-
-    if (fallbackAvailable && this.sseHealth === "degraded") {
-      entry.retryAttempts = 0;
-      this.startLongPolling(streamId);
-    } else {
-      this.scheduleReconnect(streamId, {
-        transport: "sse",
+      const context = this.telemetryContext({
+        streamId,
+        entry,
         readyState,
-        failure,
-        countsAgainstBudget: true,
+        failure: outcome.failure,
       });
-    }
-  }
 
-  private handleSseFailure(
-    streamId: string,
-    source: EventSourceLike,
-    failure: unknown
-  ): void {
-    const entry = this.connections.get(streamId);
-    if (!entry) {
-      return;
+      if (entry.config.buildLongPollURL && this.sseHealth === "degraded") {
+        entry.reconnectAttempts = 0;
+        datadogLogger.warn(
+          { ...context, fallbackAvailable: true, transport: "sse" },
+          "SSE connection failed, switching to long polling."
+        );
+        this.startLongPolling(streamId);
+        return;
+      }
+
+      if (entry.reconnectAttempts >= this.maxReconnectAttempts) {
+        this.markFailed(
+          streamId,
+          new Error("Too many SSE connection failures."),
+          { ...context, retryBudgetExhausted: true },
+          "SSE retry budget exhausted."
+        );
+        return;
+      }
+
+      datadogLogger.warn(context, "SSE connection failed, reconnecting.");
+    } else {
+      entry.reconnectAttempts = 0;
     }
-    const readyState = source.readyState;
-    this.stop(streamId);
-    this.logVerbose(streamId, "sse_failure", { readyState });
-    if (this.hasLongPollFallback(entry) && entry.retryAttempts >= 1) {
-      this.sseHealth = "degraded";
-      entry.retryAttempts = 0;
-      datadogLogger.warn(
-        {
-          ...this.telemetryContext({ streamId, entry, readyState, failure }),
-          fallbackAvailable: true,
-          transport: "sse",
-        },
-        "SSE failed after handshake twice, switching to long polling."
-      );
-      this.startLongPolling(streamId);
-      return;
-    }
-    this.scheduleReconnect(streamId, {
-      transport: "sse",
-      readyState,
-      failure,
-      countsAgainstBudget: true,
-    });
+
+    this.scheduleReconnect(
+      streamId,
+      outcome.kind === "rollover" ? "sse_rollover" : "sse_retry"
+    );
   }
 
   private startLongPolling(streamId: string): void {
     const entry = this.connections.get(streamId);
-    if (!entry) {
+    const buildURL = entry?.config.buildLongPollURL;
+    if (!entry || !buildURL) {
       return;
     }
-    if (
-      !this.hasLongPollFallback(entry) ||
-      (entry.state.kind !== "idle" && entry.state.kind !== "long_polling")
-    ) {
-      return;
-    }
-    const url = entry.config.buildLongPollURL(entry.lastEvent);
+    const url = buildURL(entry.lastEvent);
     if (!url) {
       this.markTerminal(streamId);
       return;
     }
     entry.lastURL = url;
-
-    const previousState = entry.state;
     const controller = new AbortController();
-    const pollingState: ManagedConnectionState = {
-      kind: "long_polling",
-      startedAt:
-        previousState.kind === "long_polling"
-          ? previousState.startedAt
-          : Date.now(),
-      controller,
-    };
-    if (previousState.kind === "long_polling") {
-      entry.state = pollingState;
-    } else {
-      this.transition(streamId, pollingState);
+    const transport: ActiveTransport = { kind: "long_polling", controller };
+    entry.transport = transport;
+    if (entry.state.kind !== "long_polling") {
+      this.transition(streamId, {
+        kind: "long_polling",
+        startedAt: Date.now(),
+      });
     }
 
     void this.longPollFactory(url, {
@@ -655,179 +595,91 @@ export class EventSourceManager {
       signal: controller.signal,
     })
       .then((events) => {
-        if (
-          this.connections.get(streamId) !== entry ||
-          entry.state !== pollingState
-        ) {
+        if (entry.transport !== transport) {
           return;
         }
         if (events.length === 0) {
-          this.scheduleReconnect(streamId, {
-            transport: "long_polling",
-            readyState: null,
-            failure: null,
-            countsAgainstBudget: false,
-            delayMs:
-              EMPTY_POLL_DELAY_BASE_MS +
-              this.random() * EMPTY_POLL_DELAY_JITTER_MS,
-            logWarning: false,
-          });
+          this.stopTransport(entry);
+          this.scheduleReconnect(
+            streamId,
+            "poll_retry",
+            EMPTY_POLL_DELAY_BASE_MS +
+              this.random() * EMPTY_POLL_DELAY_JITTER_MS
+          );
           return;
         }
-
-        entry.retryAttempts = 0;
+        entry.reconnectAttempts = 0;
         for (const event of events) {
           this.acceptEvent(streamId, event);
-          if (
-            this.connections.get(streamId) !== entry ||
-            entry.state !== pollingState
-          ) {
+          if (entry.transport !== transport) {
             return;
           }
         }
         this.startLongPolling(streamId);
       })
       .catch((failure: unknown) => {
-        if (controller.signal.aborted || entry.state !== pollingState) {
+        if (controller.signal.aborted || entry.transport !== transport) {
           return;
         }
-        this.scheduleReconnect(streamId, {
-          transport: "long_polling",
+        const context = this.telemetryContext({
+          streamId,
+          entry,
           readyState: null,
           failure,
-          countsAgainstBudget: true,
         });
+        this.stopTransport(entry);
+        entry.reconnectAttempts++;
+        if (entry.reconnectAttempts >= this.maxReconnectAttempts) {
+          this.markFailed(
+            streamId,
+            new Error("Too many long-poll connection failures."),
+            {
+              ...context,
+              retryBudgetExhausted: true,
+              transport: "long_polling",
+            },
+            "Long-poll retry budget exhausted."
+          );
+          return;
+        }
+        datadogLogger.warn(
+          { ...context, transport: "long_polling" },
+          "Long-poll connection failed, reconnecting."
+        );
+        this.scheduleReconnect(streamId, "poll_retry");
       });
   }
 
   private scheduleReconnect(
     streamId: string,
-    {
-      transport,
-      readyState,
-      failure,
-      countsAgainstBudget,
-      delayMs = this.getReconnectDelayMs(),
-      logWarning = true,
-    }: {
-      transport: "sse" | "long_polling";
-      readyState: number | null;
-      failure: unknown;
-      countsAgainstBudget: boolean;
-      delayMs?: number;
-      logWarning?: boolean;
-    }
+    logEvent: "sse_rollover" | "sse_retry" | "poll_retry",
+    delayMs = this.reconnectDelayBaseMs +
+      this.random() * this.reconnectDelayJitterMs
   ): void {
     const entry = this.connections.get(streamId);
     if (!entry) {
       return;
     }
-    this.stop(streamId);
-    if (countsAgainstBudget) {
-      entry.retryAttempts++;
-    }
-    this.logVerbose(
-      streamId,
-      transport === "sse" ? "sse_retry" : "poll_retry",
-      { delayMs }
-    );
-    const context = {
-      ...this.telemetryContext({ streamId, entry, readyState, failure }),
-      transport,
-    };
-    if (entry.retryAttempts >= this.maxReconnectAttempts) {
-      const isLongPolling = transport === "long_polling";
-      this.markFailed(
-        streamId,
-        new Error(
-          isLongPolling
-            ? "Too many long-poll connection failures."
-            : "Too many SSE connection failures."
-        ),
-        entry.retryAttempts,
-        { ...context, retryBudgetExhausted: true },
-        isLongPolling
-          ? "Long-poll retry budget exhausted."
-          : "SSE retry budget exhausted."
-      );
-      return;
-    }
-    if (logWarning && failure !== null) {
-      datadogLogger.warn(
-        context,
-        transport === "long_polling"
-          ? "Long-poll connection failed, reconnecting."
-          : "SSE connection failed, reconnecting."
-      );
-    }
-
-    const reconnectAt = Date.now() + delayMs;
-    const timeout = setTimeout(() => {
-      if (
-        entry.state.kind !== "reconnecting" ||
-        entry.state.timeout !== timeout
-      ) {
-        return;
-      }
-      entry.state = { kind: "idle" };
-      this.ensureConnected(streamId);
-    }, delayMs);
+    this.logVerbose(streamId, logEvent, { delayMs });
     this.transition(streamId, {
       kind: "reconnecting",
-      attempt: entry.retryAttempts,
-      reconnectAt,
-      timeout,
+      attempt: entry.reconnectAttempts,
+      reconnectAt: Date.now() + delayMs,
     });
-  }
-
-  /**
-   * @cc [owner:id13,label:concurrency;reliability] blocked-stream-keepalive
-   * A final blocking event MUST reach subscribers before keepalive pauses. A paused stream MUST
-   * close when its last subscriber leaves, MUST NOT rearm on subscribe, and MUST rearm on the next
-   * accepted nonblocking event.
-   */
-  private acceptEvent(streamId: string, event: string): void {
-    const entry = this.connections.get(streamId);
-    if (!entry) {
-      return;
-    }
-    const pausesKeepAlive = entry.config.isPauseEvent?.(event) ?? false;
-    if (entry.keepAliveState === "paused" && !pausesKeepAlive) {
-      entry.keepAliveState = "active";
-    }
-
-    entry.lastEvent = event;
-    entry.lastEventAt = Date.now();
-    entry.retryAttempts = 0;
-    entry.unsuccessfulResumes = 0;
-    this.logVerbose(streamId, "event_received", {
-      eventLength: event.length,
-    });
-    if (entry.config.replayBufferedEventsOnSubscribe) {
-      entry.events.push(event);
-    }
-    for (const subscriber of entry.subscribers) {
-      this.notifyEventSubscriber(subscriber, event);
-    }
-    if (this.connections.get(streamId) !== entry) {
-      return;
-    }
-
-    if (entry.config.isTerminalEvent?.(event)) {
-      this.markTerminal(streamId);
-    } else if (pausesKeepAlive) {
-      entry.keepAliveState = "paused";
-      this.logVerbose(streamId, "keepalive_paused");
-      if (entry.subscribers.size === 0) {
-        this.destroy(streamId);
+    const reconnectTimeout = setTimeout(() => {
+      const current = this.connections.get(streamId);
+      if (!current || current.reconnectTimeout !== reconnectTimeout) {
+        return;
       }
-    }
+      current.reconnectTimeout = null;
+      this.ensureConnected(streamId);
+    }, delayMs);
+    entry.reconnectTimeout = reconnectTimeout;
   }
 
   private markFailed(
     streamId: string,
     error: Error,
-    attempt: number,
     context: DatadogLogContext,
     message: string
   ): void {
@@ -835,12 +687,15 @@ export class EventSourceManager {
     if (!entry) {
       return;
     }
-    this.stop(streamId);
     if (entry.keepAliveState !== "paused") {
       entry.keepAliveState = "inactive";
     }
-    this.transition(streamId, { kind: "failed", attempt, error });
-    datadogLogger.error(context, message);
+    this.transition(streamId, {
+      kind: "failed",
+      attempt: entry.reconnectAttempts,
+      error,
+    });
+    datadogLogger.error({ ...context, retryBudgetExhausted: true }, message);
     for (const subscriber of entry.subscribers) {
       subscriber.onTerminalError?.(error);
     }
@@ -865,8 +720,8 @@ export class EventSourceManager {
       ...entry.config.telemetryContext,
       workspaceId: entry.config.workspaceId,
       streamId,
-      connectionState: this.toPublicState(entry.state).kind,
-      reconnectAttempt: entry.retryAttempts,
+      connectionState: entry.state.kind,
+      reconnectAttempt: entry.reconnectAttempts,
       maxReconnectAttempts: this.maxReconnectAttempts,
       readyState,
       sseHealth: this.sseHealth,
@@ -885,7 +740,10 @@ export class EventSourceManager {
         typeof failure.type === "string"
           ? failure.type
           : null,
-      error: getErrorDetails(failure),
+      error:
+        failure instanceof Error
+          ? { name: failure.name, message: failure.message }
+          : null,
     };
   }
 
@@ -903,24 +761,60 @@ export class EventSourceManager {
     }
   }
 
-  private getReconnectDelayMs(): number {
-    return (
-      this.reconnectDelayBaseMs + this.random() * this.reconnectDelayJitterMs
-    );
-  }
-
-  private hasLongPollFallback(
-    entry: ConnectionEntry
-  ): entry is ConnectionEntry & {
-    config: ConnectionConfig & {
-      buildLongPollURL: NonNullable<ConnectionConfig["buildLongPollURL"]>;
-    };
-  } {
-    return Boolean(entry.config.buildLongPollURL);
-  }
-
   private notifyEventSubscriber(subscriber: Subscriber, event: string): void {
     subscriber.onEvent(event);
+  }
+
+  /**
+   * @cc [owner:id13,label:concurrency;reliability] blocked-stream-keepalive
+   * A final blocking event MUST reach subscribers before keepalive pauses. A paused stream MUST
+   * close when its last subscriber leaves, MUST NOT rearm on subscribe, and MUST rearm on the next
+   * accepted nonblocking event.
+   */
+  private acceptEvent(streamId: string, event: string): void {
+    const entry = this.connections.get(streamId);
+    if (!entry) {
+      return;
+    }
+    const pausesKeepAlive = entry.config.isPauseEvent?.(event) ?? false;
+    if (entry.keepAliveState === "paused" && !pausesKeepAlive) {
+      entry.keepAliveState = "active";
+    }
+    entry.reconnectAttempts = 0;
+    entry.unsuccessfulResumes = 0;
+    entry.lastEvent = event;
+    entry.lastEventAt = Date.now();
+    this.logVerbose(streamId, "event_received", { eventLength: event.length });
+    if (entry.config.replayBufferedEventsOnSubscribe) {
+      entry.events.push(event);
+    }
+    for (const subscriber of entry.subscribers) {
+      this.notifyEventSubscriber(subscriber, event);
+    }
+    if (this.connections.get(streamId) !== entry) {
+      return;
+    }
+    if (entry.config.isTerminalEvent?.(event)) {
+      this.markTerminal(streamId);
+    } else if (pausesKeepAlive) {
+      entry.keepAliveState = "paused";
+      if (entry.subscribers.size === 0) {
+        this.destroy(streamId);
+      }
+    }
+  }
+
+  private stopTransport(entry: ConnectionEntry): void {
+    const transport = entry.transport;
+    entry.transport = null;
+    if (transport?.kind === "sse") {
+      if (transport.handshakeTimeout) {
+        clearTimeout(transport.handshakeTimeout);
+      }
+      transport.source.close();
+    } else {
+      transport?.controller.abort();
+    }
   }
 
   private markTerminal(streamId: string): void {
@@ -928,90 +822,35 @@ export class EventSourceManager {
     if (!entry) {
       return;
     }
-    this.stop(streamId);
+    entry.generation++;
+    this.stopTransport(entry);
     entry.keepAliveState = "inactive";
+    if (entry.reconnectTimeout) {
+      clearTimeout(entry.reconnectTimeout);
+      entry.reconnectTimeout = null;
+    }
     this.transition(streamId, { kind: "terminal" });
     if (entry.subscribers.size === 0) {
       this.destroy(streamId);
     }
   }
 
-  private toPublicState(
-    state: ManagedConnectionState
-  ): EventSourceConnectionState {
-    switch (state.kind) {
-      case "idle":
-        return state;
-      case "connecting":
-      case "awaiting_handshake":
-        return {
-          kind: "connecting",
-          attempt: state.attempt,
-          startedAt: state.startedAt,
-        };
-      case "open":
-        return { kind: "open", openedAt: state.openedAt };
-      case "long_polling":
-        return { kind: "long_polling", startedAt: state.startedAt };
-      case "reconnecting":
-        return {
-          kind: "reconnecting",
-          attempt: state.attempt,
-          reconnectAt: state.reconnectAt,
-        };
-      case "failed":
-      case "terminal":
-        return state;
-      default:
-        return assertNever(state);
-    }
-  }
-
-  private transition(streamId: string, state: ManagedConnectionState): void {
+  private transition(
+    streamId: string,
+    state: EventSourceConnectionState
+  ): void {
     const entry = this.connections.get(streamId);
     if (!entry) {
       return;
     }
     const previousState = entry.state.kind;
     entry.state = state;
-    const publicState = this.toPublicState(state);
     this.logVerbose(streamId, "state_change", {
-      nextState: publicState.kind,
       previousState,
+      nextState: state.kind,
     });
     for (const subscriber of entry.subscribers) {
-      subscriber.onStateChange(publicState);
-    }
-  }
-
-  private stop(streamId: string): void {
-    const entry = this.connections.get(streamId);
-    if (!entry) {
-      return;
-    }
-    const state = entry.state;
-    entry.state = { kind: "idle" };
-    switch (state.kind) {
-      case "awaiting_handshake":
-        clearTimeout(state.timeout);
-        state.source.close();
-        return;
-      case "open":
-        state.source.close();
-        return;
-      case "long_polling":
-        state.controller.abort();
-        return;
-      case "reconnecting":
-        clearTimeout(state.timeout);
-        return;
-      case "connecting":
-      case "failed":
-      case "idle":
-      case "terminal":
-        return;
-      default:
-        return assertNever(state);
+      subscriber.onStateChange(state);
     }
   }
 
@@ -1023,7 +862,7 @@ export class EventSourceManager {
       eventLength?: number;
       handshakeLatencyMs?: number;
       nextState?: EventSourceConnectionState["kind"];
-      previousState?: ManagedConnectionState["kind"];
+      previousState?: EventSourceConnectionState["kind"];
       readyState?: number | null;
     } = {}
   ): void {
@@ -1035,22 +874,32 @@ export class EventSourceManager {
       event,
       streamId,
       workspaceId: entry.config.workspaceId,
-      state: this.toPublicState(entry.state).kind,
-      reconnectAttempts: entry.retryAttempts,
+      state: entry.state.kind,
+      reconnectAttempts: entry.reconnectAttempts,
       subscriberCount: entry.subscribers.size,
       ...details,
     });
   }
 
   private destroy(streamId: string): void {
-    if (!this.connections.has(streamId)) {
+    const entry = this.connections.get(streamId);
+    if (!entry) {
       return;
     }
     this.logVerbose(streamId, "destroy");
-    this.stop(streamId);
+    entry.generation++;
+    this.stopTransport(entry);
+    if (entry.reconnectTimeout) {
+      clearTimeout(entry.reconnectTimeout);
+    }
     this.connections.delete(streamId);
   }
 
+  /**
+   * A backgrounded page can resume with a closed EventSource but no `onerror` callback. Install
+   * one set of browser-session listeners to recover stale streams when the page becomes active.
+   * Terminal and retry-exhausted streams remain stopped.
+   */
   private installPageWakeRecovery(): void {
     if (this.isPageWakeRecoveryInstalled || typeof window === "undefined") {
       return;
@@ -1059,23 +908,24 @@ export class EventSourceManager {
 
     const recoverStaleStreams = () => {
       for (const [streamId, entry] of this.connections) {
-        if (
-          entry.state.kind === "open" &&
-          entry.state.source.readyState === EventSourcePolyfill.CLOSED
-        ) {
-          const readyState = entry.state.source.readyState;
-          this.stop(streamId);
-          this.scheduleReconnect(streamId, {
-            transport: "sse",
-            readyState,
+        if (entry.state.kind === "terminal" || entry.state.kind === "failed") {
+          continue;
+        }
+        const source =
+          entry.transport?.kind === "sse" ? entry.transport.source : null;
+        if (source?.readyState === EventSourcePolyfill.CLOSED) {
+          this.handleSseDisconnect(streamId, {
+            kind: "failure",
             failure: new Error(
               "SSE source closed while the page was inactive."
             ),
-            countsAgainstBudget: true,
           });
+        } else if (!entry.transport && !entry.reconnectTimeout) {
+          this.ensureConnected(streamId);
         }
       }
     };
+    // Visibility covers returning to a background tab; persisted pageshow covers bfcache restores.
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         recoverStaleStreams();
