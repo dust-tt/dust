@@ -42,6 +42,7 @@ const BASE_ARGS = {
   agentMessageId: "agent_msg_id",
   agentMessageModelId: 42,
   totalCostMicroUsd: 1_000_000,
+  ignoreCreditSpendThresholdAlert: false,
 };
 
 describe("getCreditSpendCheckpointCrossed", () => {
@@ -147,6 +148,42 @@ describe("getCreditSpendCheckpointCrossed", () => {
 
     expect(mockGetCreditSpendCheckpointEnabled).not.toHaveBeenCalled();
     expect(mockTransitionStatus).not.toHaveBeenCalled();
+    expect(result).toBe(false);
+  });
+
+  it("auto-acknowledges the first crossing when the agent ignores the alert, without reading the gate", async () => {
+    mockFetchStatus.mockResolvedValue(null);
+
+    const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, {
+      ...BASE_ARGS,
+      ignoreCreditSpendThresholdAlert: true,
+    });
+
+    expect(mockGetCreditSpendCheckpointEnabled).not.toHaveBeenCalled();
+    expect(mockTransitionStatus).toHaveBeenCalledWith(FAKE_AUTH, {
+      agentMessageModelId: 42,
+      from: null,
+      to: "acknowledged",
+    });
+    expect(mockHasCrossedCreditSpendCheckpoint).not.toHaveBeenCalled();
+    expect(result).toBe(false);
+  });
+
+  it("does not re-acknowledge for an agent ignoring the alert once the status is resolved", async () => {
+    mockFetchStatus.mockResolvedValue("acknowledged");
+    mockHasCrossedCreditSpendCheckpoint.mockReturnValue(false);
+
+    const result = await getCreditSpendCheckpointCrossed(FAKE_AUTH, {
+      ...BASE_ARGS,
+      ignoreCreditSpendThresholdAlert: true,
+    });
+
+    expect(mockTransitionStatus).not.toHaveBeenCalled();
+    expect(mockHasCrossedCreditSpendCheckpoint).toHaveBeenCalledWith({
+      isExempt: false,
+      isRootAgentMessage: true,
+      status: "acknowledged",
+    });
     expect(result).toBe(false);
   });
 });
