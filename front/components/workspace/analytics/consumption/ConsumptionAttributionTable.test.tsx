@@ -375,6 +375,8 @@ describe("ConsumptionAttributionTable", () => {
       />
     );
 
+    // jsdom has no container queries, so assert the collapse classes rather
+    // than visibility.
     expect(screen.getByRole("columnheader", { name: "Messages" })).toHaveClass(
       "w-0",
       "@sm:w-auto"

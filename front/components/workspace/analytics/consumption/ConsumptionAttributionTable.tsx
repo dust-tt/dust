@@ -239,7 +239,9 @@ function usageDifferenceFromAveragePercent({
 // Optional columns collapse to zero width below a container breakpoint
 // (DataTable.Root is a @container, variants are defined in front-spa's
 // index.css) instead of display: none, so the breakdown row's colSpan keeps
-// matching the number of laid out columns.
+// matching the number of laid out columns. The per-column restore classes
+// are spelled out because Tailwind only picks up static literals; their px-2
+// mirrors the DataTable.Head and DataTable.Cell padding.
 const COLLAPSED_COLUMN_CLASSES = "w-0 max-w-0 overflow-hidden px-0";
 
 function buildColumns({
