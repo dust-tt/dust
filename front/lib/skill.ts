@@ -12,7 +12,6 @@ import type {
   SkillWithoutInstructionsAndToolsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
-import type { ModelId } from "@app/types/shared/model_id";
 import { cn, DustLogoSquare, PuzzlePiece01 } from "@dust-tt/sparkle";
 import type { AvatarSizeType } from "@dust-tt/sparkle/dist/esm/components/Avatar";
 import React from "react";
@@ -37,9 +36,12 @@ type SkillAvatarIconInput =
       "editedBy" | "icon"
     >;
 
-export function isDustProvidedSkill(skill: {
-  editedBy: string | ModelId | null;
-}) {
+export function isDustProvidedSkill(
+  skill: Pick<
+    SkillListItemType | SkillWithoutInstructionsAndToolsType,
+    "editedBy"
+  >
+) {
   return skill.editedBy === null;
 }
 
