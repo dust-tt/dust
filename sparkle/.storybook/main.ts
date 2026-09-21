@@ -25,31 +25,34 @@ const config: StorybookConfig = {
     "storybook-addon-tag-badges",
   ],
 
-  viteFinal: async (config) => {
-    config.server = {
-      ...config.server,
-      fs: {
-        ...config.server?.fs,
-        allow: [
-          ...(config.server?.fs?.allow ?? [searchForWorkspaceRoot(__dirname)]),
-          path.resolve(
-            path.dirname(
-              fileURLToPath(import.meta.resolve("@storybook/addon-vitest"))
+  viteFinal: async (viteConfig) => {
+    return {
+      ...viteConfig,
+      server: {
+        ...viteConfig.server,
+        fs: {
+          ...viteConfig.server?.fs,
+          allow: [
+            ...(viteConfig.server?.fs?.allow ?? [
+              searchForWorkspaceRoot(__dirname),
+            ]),
+            path.resolve(
+              path.dirname(
+                fileURLToPath(import.meta.resolve("@storybook/addon-vitest"))
+              ),
+              "../../.."
             ),
-            "../../.."
-          ),
-        ],
+          ],
+        },
+      },
+      resolve: {
+        ...(viteConfig.resolve ?? {}),
+        alias: {
+          ...(viteConfig.resolve?.alias ?? {}),
+          "@sparkle": path.resolve(__dirname, "../src/"),
+        },
       },
     };
-    config.resolve = {
-      ...(config.resolve || {}),
-      alias: {
-        ...(config.resolve?.alias || {}),
-        "@sparkle": path.resolve(__dirname, "../src/"),
-      },
-    };
-
-    return config;
   },
 
   framework: {

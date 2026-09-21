@@ -4,7 +4,6 @@ import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
@@ -25,6 +24,7 @@ import type {
   LightAgentConfigurationType,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
+import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/types/assistant/agent_message_events";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopRuntimeData,

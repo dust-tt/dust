@@ -1,4 +1,4 @@
-import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
+import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/types/assistant/agent_message_events";
 
 const TERMINAL_EVENT_TYPES = new Set<string>([
   ...TERMINAL_AGENT_MESSAGE_EVENT_TYPES,

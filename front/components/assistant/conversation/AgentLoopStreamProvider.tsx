@@ -4,27 +4,26 @@ import {
   isTerminalAgentLoopEvent,
 } from "@app/lib/client/agent_loop_stream";
 import { eventSourceManager } from "@app/lib/client/event_source_manager";
-import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import datadogLogger from "@app/logger/datadogLogger";
-import type { GetOngoingAgentLoopsResponseBody } from "@app/types/api/assistant/conversation/types";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { useOngoingAgentLoops } from "@app/lib/swr/ongoing_agent_loops";
+import type { OngoingAgentLoopType } from "@app/types/api/assistant/conversation/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useEffect, useRef } from "react";
-import type { Fetcher } from "swr";
+import { Spinner } from "@dust-tt/sparkle";
+import { useCallback, useEffect } from "react";
 
-const ONGOING_AGENT_LOOPS_REFRESH_INTERVAL_MS = 2_500;
+interface OngoingAgentLoopConnectionProps {
+  owner: LightWorkspaceType;
+  conversationId: string;
+  messageId: string;
+  refreshAgentLoops: () => void;
+}
 
 function OngoingAgentLoopConnection({
   owner,
   conversationId,
   messageId,
   refreshAgentLoops,
-}: {
-  owner: LightWorkspaceType;
-  conversationId: string;
-  messageId: string;
-  refreshAgentLoops: () => void;
-}) {
+}: OngoingAgentLoopConnectionProps) {
+  const streamId = `message-${messageId}`;
   const buildURL = useCallback(
     (lastEvent: string | null) =>
       `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/events?lastEventId=${getAgentLoopEventId(lastEvent)}`,
@@ -39,7 +38,7 @@ function OngoingAgentLoopConnection({
     [refreshAgentLoops]
   );
 
-  useEventSource(buildURL, onEvent, `message-${messageId}`, {
+  useEventSource(buildURL, onEvent, streamId, {
     workspaceId: owner.sId,
     isTerminalEvent: isTerminalAgentLoopEvent,
     keepAliveOnUnmount: true,
@@ -50,8 +49,17 @@ function OngoingAgentLoopConnection({
       messageId,
     },
   });
+  useEffect(
+    () => () => eventSourceManager.stopKeepingAlive(streamId, owner.sId),
+    [owner.sId, streamId]
+  );
 
   return null;
+}
+
+interface AgentLoopStreamProviderProps {
+  children: React.ReactNode;
+  owner: LightWorkspaceType;
 }
 
 /**
@@ -75,43 +83,23 @@ function OngoingAgentLoopConnection({
 export function AgentLoopStreamProvider({
   children,
   owner,
-}: {
-  children: React.ReactNode;
-  owner: LightWorkspaceType;
-}) {
-  const { fetcher } = useFetcher();
-  const listedStreamIds = useRef(new Set<string>());
-  const agentLoopsFetcher: Fetcher<GetOngoingAgentLoopsResponseBody> = fetcher;
-  const { data, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/assistant/ongoing-agent-loops`,
-    agentLoopsFetcher,
-    {
-      onSuccess: ({ agentLoops }) => {
-        const nextStreamIds = new Set<string>();
-        for (const { messageId } of agentLoops) {
-          const streamId = `message-${messageId}`;
-          nextStreamIds.add(streamId);
-          eventSourceManager.resume(streamId);
-        }
-        for (const streamId of listedStreamIds.current) {
-          if (!nextStreamIds.has(streamId)) {
-            eventSourceManager.stopKeepingAlive(streamId, owner.sId);
-          }
-        }
-        listedStreamIds.current = nextStreamIds;
-      },
-      refreshInterval: ONGOING_AGENT_LOOPS_REFRESH_INTERVAL_MS,
-      refreshWhenHidden: true,
-    }
+}: AgentLoopStreamProviderProps) {
+  const onRegistryRefresh = useCallback(
+    (agentLoops: OngoingAgentLoopType[]) => {
+      for (const { messageId } of agentLoops) {
+        eventSourceManager.resume(`message-${messageId}`);
+      }
+    },
+    []
   );
-  const refreshAgentLoops = useCallback(() => {
-    void mutate().catch((error: unknown) => {
-      datadogLogger.warn(
-        { err: normalizeError(error), workspaceId: owner.sId },
-        "Failed to refresh ongoing agent loops."
-      );
-    });
-  }, [mutate, owner.sId]);
+  const {
+    ongoingAgentLoops,
+    isOngoingAgentLoopsLoading,
+    refreshOngoingAgentLoops,
+  } = useOngoingAgentLoops({
+    workspaceId: owner.sId,
+    onSuccess: onRegistryRefresh,
+  });
 
   useEffect(
     () => () => eventSourceManager.releaseWorkspace(owner.sId),
@@ -121,13 +109,22 @@ export function AgentLoopStreamProvider({
   return (
     <>
       {children}
-      {data?.agentLoops.map(({ conversationId, messageId }) => (
+      {isOngoingAgentLoopsLoading && (
+        <div
+          aria-label="Restoring active conversations"
+          className="fixed right-3 top-3 z-50"
+          role="status"
+        >
+          <Spinner size="xs" />
+        </div>
+      )}
+      {ongoingAgentLoops.map(({ conversationId, messageId }) => (
         <OngoingAgentLoopConnection
           key={messageId}
           owner={owner}
           conversationId={conversationId}
           messageId={messageId}
-          refreshAgentLoops={refreshAgentLoops}
+          refreshAgentLoops={refreshOngoingAgentLoops}
         />
       ))}
     </>

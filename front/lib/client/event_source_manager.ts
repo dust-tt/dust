@@ -253,11 +253,9 @@ export class EventSourceManager {
     entry.events = [];
     entry.lastEvent = null;
     entry.lastEventAt = null;
-    entry.lastResumeAtMs = null;
     entry.lastURL = null;
     entry.keepAliveWithoutSubscribers ||= keepAliveWithoutSubscribers;
     entry.reconnectAttempts = 0;
-    entry.unsuccessfulResumes = 0;
     if (!hasPendingFactory) {
       this.transition(streamId, { kind: "idle" });
     }

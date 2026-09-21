@@ -614,6 +614,58 @@ describe("EventSourceManager", () => {
     manager.releaseWorkspace("w_1");
   });
 
+  it("preserves registry resume limits across subscriber config restarts", async () => {
+    let nowMs = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => nowMs);
+    const sources: FakeEventSource[] = [];
+    const manager = new EventSourceManager(
+      async (url) => {
+        const source = new FakeEventSource(url);
+        sources.push(source);
+        return source;
+      },
+      () => 0,
+      { maxReconnectAttempts: 1 }
+    );
+    const subscribe = (restartKey: string) =>
+      manager.subscribe({
+        streamId: "message-msg_registry_restart",
+        config: {
+          buildURL: () => "/events",
+          replayBufferedEventsOnSubscribe: false,
+          restartKey,
+          workspaceId: "w_1",
+        },
+        subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+        keepAliveWithoutSubscribers: true,
+      });
+
+    subscribe("initial");
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].onerror?.({ type: "error", target: sources[0] });
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      nowMs = attempt * 90_000;
+      manager.resume("message-msg_registry_restart");
+      await vi.waitFor(() => expect(sources).toHaveLength(attempt + 1));
+      sources[attempt].onerror?.({
+        type: "error",
+        target: sources[attempt],
+      });
+    }
+
+    subscribe("reloaded");
+    await vi.waitFor(() => expect(sources).toHaveLength(5));
+    sources[4].onerror?.({ type: "error", target: sources[4] });
+    nowMs = 360_000;
+    manager.resume("message-msg_registry_restart");
+    expect(sources).toHaveLength(5);
+
+    manager.reconnect("message-msg_registry_restart");
+    await vi.waitFor(() => expect(sources).toHaveLength(6));
+    manager.releaseWorkspace("w_1");
+  });
+
   it("restarts a failed visible stream when its registry entry is readded", async () => {
     let nowMs = 0;
     vi.spyOn(Date, "now").mockImplementation(() => nowMs);
