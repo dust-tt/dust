@@ -41,15 +41,24 @@ function manualClock(gapLimitMs = AWAKE_GAP_LIMIT_MS): {
 describe("AwakeClock", () => {
   test("counts steady forward time and ignores a sandbox-sized jump", () => {
     const { clock, setMono } = manualClock();
-    setMono(60_000);
-    expect(clock.now()).toBe(60_000);
+    // Real time arrives as gaps no larger than the limit. A minute of runtime
+    // is twelve samples, not one 60s jump (that jump would look like a pause).
+    const minute = 60_000;
+    for (
+      let elapsed = AWAKE_GAP_LIMIT_MS;
+      elapsed <= minute;
+      elapsed += AWAKE_GAP_LIMIT_MS
+    ) {
+      setMono(elapsed);
+      expect(clock.now()).toBe(elapsed);
+    }
 
-    // Worker ran for a minute, the sandbox was paused for an hour, then woke.
-    setMono(60_000 + 60 * 60 * 1_000);
-    expect(clock.now()).toBe(60_000);
+    // The sandbox was paused for an hour, then woke. That one gap does not count.
+    setMono(minute + 60 * 60 * 1_000);
+    expect(clock.now()).toBe(minute);
 
-    setMono(60_000 + 60 * 60 * 1_000 + 500);
-    expect(clock.now()).toBe(60_500);
+    setMono(minute + 60 * 60 * 1_000 + 500);
+    expect(clock.now()).toBe(minute + 500);
   });
 
   test("counts a gap at the limit and drops a gap just past it", () => {
