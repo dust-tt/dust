@@ -981,3 +981,91 @@ export const WithAvatarStack = () => {
     </div>
   );
 };
+
+interface UsageRow {
+  agent: string;
+  runs: number;
+  costCents: number;
+  status: "active" | "paused";
+  menuItems?: MenuItem[];
+}
+
+const usageRows: UsageRow[] = [
+  { agent: "Sales assistant", runs: 12840, costCents: 41250, status: "active" },
+  { agent: "Support triage", runs: 3391, costCents: 9820, status: "active" },
+  { agent: "Weekly digest", runs: 52, costCents: 1204, status: "paused" },
+  { agent: "Onboarding coach", runs: 987, costCents: 15075, status: "active" },
+];
+
+const usageColumns: ColumnDef<UsageRow>[] = [
+  {
+    accessorKey: "agent",
+    id: "agent",
+    header: "Agent",
+    meta: { className: "w-full" },
+    cell: (info) => (
+      <DataTable.CellContent>{info.row.original.agent}</DataTable.CellContent>
+    ),
+  },
+  {
+    accessorKey: "status",
+    id: "status",
+    header: "Status",
+    meta: { type: "status", className: "w-24" },
+    cell: (info) => (
+      <DataTable.BasicCellContent label={info.row.original.status} />
+    ),
+  },
+  {
+    accessorKey: "runs",
+    id: "runs",
+    header: "Runs",
+    meta: { type: "numeric", className: "w-28" },
+    cell: (info) => (
+      <DataTable.BasicCellContent
+        label={info.row.original.runs.toLocaleString("en-US")}
+      />
+    ),
+  },
+  {
+    accessorKey: "costCents",
+    id: "cost",
+    header: "Cost",
+    meta: { type: "numeric", className: "w-28" },
+    cell: (info) => (
+      <DataTable.BasicCellContent
+        label={`$${(info.row.original.costCents / 100).toFixed(2)}`}
+      />
+    ),
+  },
+  {
+    id: "actions",
+    header: "",
+    meta: { type: "action" },
+    cell: () => (
+      <DataTable.MoreButton
+        menuItems={[{ kind: "item", label: "Open", onClick: fn() }]}
+      />
+    ),
+  },
+];
+
+/**
+ * Column presets from `meta.type`: `numeric` right-aligns header and cells in
+ * tabular figures, `action` fixes the overflow-menu column at 48px and makes
+ * it unsortable, `status` keeps labels on one line.
+ * @summary Numeric, status and action column presets.
+ */
+export const ColumnTypes = () => {
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "runs", desc: true },
+  ]);
+  return (
+    <DataTable
+      data={usageRows}
+      columns={usageColumns}
+      sorting={sorting}
+      setSorting={setSorting}
+    />
+  );
+};

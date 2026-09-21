@@ -1,3 +1,4 @@
+import { getDataTableColumnPresets } from "@sparkle/components/DataTable";
 import { Icon } from "@sparkle/components/Icon";
 import { ChevronSelectorVertical } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
@@ -71,37 +72,44 @@ export function DataTableSkeleton<
       >
         <thead>
           <tr className="border-b border-separator">
-            {table.getFlatHeaders().map((header) => (
-              <th
-                key={header.id}
-                className={cn(
-                  "heading-xs px-2 py-2 text-left capitalize text-foreground",
-                  header.column.columnDef.meta?.className
-                )}
-              >
-                <div
+            {table.getFlatHeaders().map((header) => {
+              const presets = getDataTableColumnPresets(header.column);
+              return (
+                <th
+                  key={header.id}
                   className={cn(
-                    "flex items-center space-x-1 whitespace-nowrap",
-                    header.column.columnDef.meta?.headerAlign === "right" &&
-                      "justify-end",
-                    header.column.columnDef.meta?.headerAlign === "center" &&
-                      "justify-center"
+                    "heading-xs px-2 py-2 capitalize text-foreground",
+                    presets.headerAlign === "right"
+                      ? "text-right"
+                      : presets.headerAlign === "center"
+                        ? "text-center"
+                        : "text-left",
+                    presets.headerClassName,
+                    header.column.columnDef.meta?.className
                   )}
                 >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
-                  {header.column.getCanSort() && (
-                    <Icon
-                      visual={ChevronSelectorVertical}
-                      size="xs"
-                      className="ml-1"
-                    />
-                  )}
-                </div>
-              </th>
-            ))}
+                  <div
+                    className={cn(
+                      "flex items-center space-x-1 whitespace-nowrap",
+                      presets.headerAlign === "right" && "justify-end",
+                      presets.headerAlign === "center" && "justify-center"
+                    )}
+                  >
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                    {header.column.getCanSort() && presets.sortable && (
+                      <Icon
+                        visual={ChevronSelectorVertical}
+                        size="xs"
+                        className="ml-1"
+                      />
+                    )}
+                  </div>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody aria-hidden="true">
@@ -110,7 +118,11 @@ export function DataTableSkeleton<
               {table.getAllLeafColumns().map((column) => (
                 <td
                   key={column.id}
-                  className={cn("px-2", column.columnDef.meta?.className)}
+                  className={cn(
+                    "px-2",
+                    getDataTableColumnPresets(column).cellClassName,
+                    column.columnDef.meta?.className
+                  )}
                   style={{ height: rowHeight }}
                 >
                   <SkeletonCell
