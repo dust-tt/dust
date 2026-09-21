@@ -565,15 +565,17 @@ function AgentBuilderForm({
         ? null
         : (agentConfiguration?.sId ?? pendingAgentId ?? null);
 
+      const areSlackChannelsChanged = form.getFieldState(
+        "agentSettings.slackChannels"
+      ).isDirty;
+
       const result = await submitAgentBuilderForm({
         user,
         formData,
         owner,
         isDraft: false,
         agentConfigurationId: effectiveAgentConfigurationId,
-        areSlackChannelsChanged: form.getFieldState(
-          "agentSettings.slackChannels"
-        ).isDirty,
+        areSlackChannelsChanged,
         fetcherWithBody,
       });
 
@@ -606,6 +608,19 @@ function AgentBuilderForm({
           formData.generationSettings.modelSettings?.providerId ?? "",
       });
 
+      // A save can leave nothing to persist: the configuration matched the current version (no new
+      // version created) and no Slack channels or triggers changed either. Tell the user rather than
+      // claiming a save happened.
+      const hasTriggerChanges =
+        formData.triggersToCreate.length > 0 ||
+        formData.triggersToUpdate.length > 0 ||
+        formData.triggersToDelete.length > 0;
+      const nothingChanged =
+        !isCreatingNew &&
+        createdAgent._versionCreated === false &&
+        !areSlackChannelsChanged &&
+        !hasTriggerChanges;
+
       // Check if there's a warning about Slack channel linking
       if (
         "_warning" in createdAgent &&
@@ -615,6 +630,12 @@ function AgentBuilderForm({
           title: isCreatingNew ? "Agent created" : "Agent saved",
           description:
             "The agent has been saved successfully. Some channels are currently being linked, the operation will complete shortly.",
+          type: "info",
+        });
+      } else if (nothingChanged) {
+        sendNotification({
+          title: "No changes to save",
+          description: "This agent is already up to date.",
           type: "info",
         });
       } else {

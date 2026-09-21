@@ -39,6 +39,9 @@ const ParamsSchema = z.object({
 
 export type GetAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
+  // Set by the PATCH handler: false when the save was a no-op (the incoming configuration matched
+  // the current version, so no new version was created). Absent on GET.
+  versionCreated?: boolean;
 };
 
 export type DeleteAgentConfigurationResponseBody = {
@@ -151,7 +154,15 @@ app.patch(
       });
     }
 
-    return ctx.json({ agentConfiguration: agentConfigurationRes.value });
+    // A no-op save returns the current version unchanged, so its version does not move; surface that
+    // so the client can tell the user nothing was saved rather than claiming a new version.
+    const versionCreated =
+      agentConfigurationRes.value.version !== agent.version;
+
+    return ctx.json({
+      agentConfiguration: agentConfigurationRes.value,
+      versionCreated,
+    });
   }
 );
 
