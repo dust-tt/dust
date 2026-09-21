@@ -1,3 +1,4 @@
+import { isAuthorizedForSkillSuggestionKind } from "@app/lib/api/skills/suggestion_authorization";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
@@ -96,13 +97,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   ): Promise<SkillSuggestionResource> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Deletion is a lifecycle operation (see `skill-verbs`): it only requires `canAdministrate`,
-    // never `canWrite`.
-    const isAuthorized =
-      blob.kind === "delete"
-        ? skill.canAdministrate(auth)
-        : skill.canWrite(auth);
-    if (!isAuthorized) {
+    if (!isAuthorizedForSkillSuggestionKind(auth, skill, blob.kind)) {
       throw new Error("User does not have permission to edit this skill");
     }
 

@@ -46,7 +46,7 @@ export async function suggestSkillDeletion(
     skill,
     {
       kind: "delete",
-      suggestion: { name: skill.name },
+      suggestion: {},
       analysis: analysis ?? null,
       title: null,
       state: "pending",

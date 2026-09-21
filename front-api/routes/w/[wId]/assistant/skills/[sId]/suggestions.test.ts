@@ -547,7 +547,7 @@ describe("PATCH with applyToSkill", () => {
     const suggestion = await SkillSuggestionFactory.create(auth, skill, {
       kind: "delete",
       state: "pending",
-      suggestion: { name: skill.name },
+      suggestion: {},
     });
 
     const response = await patch(workspace, skill.sId, {
@@ -570,7 +570,7 @@ describe("PATCH with applyToSkill", () => {
     const suggestion = await SkillSuggestionFactory.create(auth, skill, {
       kind: "delete",
       state: "pending",
-      suggestion: { name: skill.name },
+      suggestion: {},
     });
     await skill.archive(auth);
 
@@ -979,7 +979,7 @@ describe("PATCH with applyToSkill", () => {
     const suggestion = await SkillSuggestionFactory.create(ownerAuth, skill, {
       state: "pending",
       kind: "delete",
-      suggestion: { name: skill.name },
+      suggestion: {},
     });
 
     const response = await patch(workspace, skill.sId, {

@@ -1,4 +1,8 @@
 import { applySkillSuggestions } from "@app/lib/api/skills/apply_skill_suggestions";
+import {
+  isAuthorizedToApplySkillSuggestions,
+  skillSuggestionsRequireAdmin,
+} from "@app/lib/api/skills/suggestion_authorization";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
@@ -135,18 +139,17 @@ app.patch(
       });
     }
 
-    const requiresWrite = suggestions.some((s) => s.kind !== "delete");
-    const isAuthorizedToApply = requiresWrite
-      ? skill.canWrite(auth)
-      : skill.canAdministrate(auth);
-    if (applyToSkill && !isAuthorizedToApply) {
+    if (
+      applyToSkill &&
+      !isAuthorizedToApplySkillSuggestions(auth, skill, suggestions)
+    ) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
-          message: requiresWrite
-            ? "Only editors can modify this skill."
-            : "Only editors of this skill or workspace admins can delete it.",
+          message: skillSuggestionsRequireAdmin(suggestions)
+            ? "Only editors of this skill or workspace admins can apply this."
+            : "Only editors can modify this skill.",
         },
       });
     }
