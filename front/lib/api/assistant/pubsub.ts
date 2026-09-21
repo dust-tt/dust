@@ -244,7 +244,7 @@ export async function getMessagesEventsBatch({
       batchReady.resolve();
     },
     "message_events_long_poll",
-    { lastEventId }
+    { lastEventId, signal }
   );
 
   const onAbort = () => batchReady.resolve();
@@ -261,12 +261,14 @@ export async function getMessagesEventsBatch({
       );
     }
 
-    const events: MessageStreamBatchEvent[] = [...history, ...liveEvents].map(
-      (event) => ({
+    const events: MessageStreamBatchEvent[] = [...history, ...liveEvents]
+      .sort((left, right) =>
+        left.id.localeCompare(right.id, undefined, { numeric: true })
+      )
+      .map((event) => ({
         eventId: event.id,
         data: JSON.parse(event.message.payload),
-      })
-    );
+      }));
     return events;
   } finally {
     signal.removeEventListener("abort", onAbort);

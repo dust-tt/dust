@@ -12,7 +12,7 @@ const app = workspaceApp();
  *     summary: Stream message events
  *     description: |
  *       Stream real-time events for an agent message. The request redirects to /api/sse/ for SSE traffic routing.
- *       The stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed message frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.
+ *       The stream starts with a `:connect` comment. Message frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.
  *     tags:
  *       - Private Events
  *     parameters:
@@ -45,7 +45,7 @@ const app = workspaceApp();
  *     responses:
  *       200:
  *         description: |
- *           SSE event stream with a named handshake followed by unnamed message frames. Each message frame is sent as `data: {json}\n\n`. The `data` field inside the JSON wrapper is discriminated by `type` and includes a `step` integer.
+ *           SSE event stream with a `:connect` comment followed by message frames. Each message frame is sent as `data: {json}\n\n`. The `data` field inside the JSON wrapper is discriminated by `type` and includes a `step` integer.
  *         content:
  *           text/event-stream:
  *             schema:

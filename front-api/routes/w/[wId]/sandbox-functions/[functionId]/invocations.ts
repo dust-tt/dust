@@ -60,7 +60,7 @@ const app = workspaceApp();
  *     summary: Stream sandbox function invocation events
  *     description: |
  *       Stream sandbox function invocation events using Server-Sent Events (SSE). The request redirects to /api/sse/ for SSE traffic routing.
- *       The stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed event frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.
+ *       The stream starts with a `:connect` comment. Event frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.
  *     tags:
  *       - Private Events
  *     parameters:
@@ -93,7 +93,7 @@ const app = workspaceApp();
  *     responses:
  *       200:
  *         description: |
- *           SSE event stream with a named handshake followed by unnamed invocation frames. Each invocation frame is sent as `data: {json}\n\n`. The `data` field inside the JSON wrapper is discriminated by `type`.
+ *           SSE event stream with a `:connect` comment followed by invocation frames. Each invocation frame is sent as `data: {json}\n\n`. The `data` field inside the JSON wrapper is discriminated by `type`.
  *         content:
  *           text/event-stream:
  *             schema:

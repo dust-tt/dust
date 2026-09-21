@@ -254,6 +254,11 @@ class RedisHybridManager {
    * Subscribe to a channel for real-time updates
    * and fetch history from the corresponding stream
    */
+  /**
+   * @cc [owner:id13,label:concurrency;performance] cancellable-subscription-setup
+   * When the supplied signal aborts before setup completes, `subscribe` MUST remove its temporary
+   * callback and release the Redis channel if no other subscriber uses it.
+   */
   public async subscribe(
     channelName: string,
     callback: EventCallback,
@@ -261,7 +266,12 @@ class RedisHybridManager {
     {
       lastEventId = null,
       skipHistory = false,
-    }: { lastEventId?: string | null; skipHistory?: boolean } = {}
+      signal,
+    }: {
+      lastEventId?: string | null;
+      skipHistory?: boolean;
+      signal?: AbortSignal;
+    } = {}
   ): Promise<{
     history: EventPayload[];
     unsubscribe: () => void;
@@ -270,11 +280,18 @@ class RedisHybridManager {
       "redis.hybrid.subscribe",
       { resource: origin },
       async () => {
+        if (signal?.aborted) {
+          return { history: [], unsubscribe: () => undefined };
+        }
+
         const subscribeStartMs = Date.now();
 
         const clientsStartMs = Date.now();
         const subscriptionClient = await this.getSubscriptionClient();
         const streamClient = await this.getStreamAndPublishClient();
+        if (signal?.aborted) {
+          return { history: [], unsubscribe: () => undefined };
+        }
         const clientsDurationMs = Date.now() - clientsStartMs;
         statsDMetrics.distribution(
           "sse.subscribe.get_clients_duration_ms",
@@ -290,6 +307,27 @@ class RedisHybridManager {
           this.subscribers.set(pubSubChannelName, new Set());
           // Subscribe to the channel if this is the first subscriber
           await subscriptionClient.subscribe(pubSubChannelName, this.onMessage);
+        }
+
+        const cleanupUnusedChannel = async () => {
+          const subscribers = this.subscribers.get(pubSubChannelName);
+          if (!subscribers || subscribers.size > 0) {
+            return;
+          }
+          this.subscribers.delete(pubSubChannelName);
+          try {
+            await subscriptionClient.unsubscribe(pubSubChannelName);
+          } catch (error) {
+            logger.error(
+              { error, channel: pubSubChannelName },
+              "Error unsubscribing from channel"
+            );
+          }
+        };
+
+        if (signal?.aborted) {
+          await cleanupUnusedChannel();
+          return { history: [], unsubscribe: () => undefined };
         }
         const channelSetupDurationMs = Date.now() - channelSetupStartMs;
         statsDMetrics.distribution(
@@ -317,14 +355,33 @@ class RedisHybridManager {
             .get(pubSubChannelName)!
             .add(eventsDuringHistoryFetchCallback);
 
+          let abortCleanup: Promise<void> | null = null;
+          const cleanupAbortedSetup = () => {
+            this.subscribers
+              .get(pubSubChannelName)
+              ?.delete(eventsDuringHistoryFetchCallback);
+            abortCleanup ??= cleanupUnusedChannel();
+            return abortCleanup;
+          };
+          const onSetupAbort = () => {
+            void cleanupAbortedSetup();
+          };
+          signal?.addEventListener("abort", onSetupAbort, { once: true });
+
           const historyFetchStartMs = Date.now();
+          const historyResult = await this.getHistory(
+            streamClient,
+            streamName,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            lastEventId || "0-0"
+          );
+          signal?.removeEventListener("abort", onSetupAbort);
+          if (signal?.aborted) {
+            await cleanupAbortedSetup();
+            return { history: [], unsubscribe: () => undefined };
+          }
           const { events: historyEvents, hasMore: historyHasMore } =
-            await this.getHistory(
-              streamClient,
-              streamName,
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              lastEventId || "0-0"
-            );
+            historyResult;
           const historyFetchDurationMs = Date.now() - historyFetchStartMs;
           statsDMetrics.distribution(
             "sse.subscribe.history_fetch_duration_ms",
@@ -353,7 +410,9 @@ class RedisHybridManager {
               }
             }
             // Sort the history just in case
-            history.sort((a, b) => a.id.localeCompare(b.id));
+            history.sort((a, b) =>
+              a.id.localeCompare(b.id, undefined, { numeric: true })
+            );
           }
           const dedupeDurationMs = Date.now() - dedupeStartMs;
           statsDMetrics.distribution(

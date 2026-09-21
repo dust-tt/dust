@@ -17,7 +17,7 @@ const app = publicApiApp();
  *     summary: Get the events for a conversation
  *     description: |
  *       Stream conversation events for the workspace identified by {wId} using Server-Sent Events (SSE).
- *       The stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed event frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.
+ *       The stream starts with a `:connect` comment. Event frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.
  *     tags:
  *       - Conversations
  *     parameters:
@@ -43,7 +43,7 @@ const app = publicApiApp();
  *       - BearerAuth: []
  *     responses:
  *       200:
- *         description: SSE event stream with a named handshake followed by unnamed conversation frames. Each conversation frame contains JSON with `eventId` and `data` fields. The `data` field is the conversation event. View the "Events" page from this documentation for more information.
+ *         description: SSE event stream with a `:connect` comment followed by conversation frames. Each conversation frame contains JSON with `eventId` and `data` fields. The `data` field is the conversation event. View the "Events" page from this documentation for more information.
  *         content:
  *           text/event-stream:
  *             schema:

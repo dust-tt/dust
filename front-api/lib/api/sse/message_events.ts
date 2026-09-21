@@ -119,7 +119,8 @@ export async function streamMessageEventsForRoute(
 /**
  * @cc [owner:id13,label:api;performance] terminal-empty-message-poll
  * When a non-aborted batch has no events and the persisted agent message is terminal, the response
- * MUST contain one end-of-stream event. A message still in `created` status MUST return an empty batch.
+ * MUST contain one end-of-stream event. Under the same empty-batch condition, a message still in
+ * `created` status MUST return an empty batch.
  */
 export async function pollMessageEventsForRoute(
   ctx: Context,
