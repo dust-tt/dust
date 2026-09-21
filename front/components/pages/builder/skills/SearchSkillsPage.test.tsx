@@ -128,7 +128,8 @@ describe("search-backed Manage Skills", () => {
         sortBy: "usage",
         status: ["active"],
         limit: 50,
-        cursor: undefined,
+        cursor: null,
+        permissionFiltering: undefined,
       },
       "POST",
     ]);
@@ -163,7 +164,7 @@ describe("search-backed Manage Skills", () => {
         status: ["active"],
         codeDefinedOnly: true,
         sortBy: "usage",
-        cursor: undefined,
+        cursor: null,
       }),
       "POST",
     ]);
@@ -176,7 +177,8 @@ describe("search-backed Manage Skills", () => {
           status: ["archived"],
           sortBy: "usage",
           limit: 50,
-          cursor: undefined,
+          cursor: null,
+          permissionFiltering: undefined,
         },
         "POST",
       ])
@@ -200,16 +202,54 @@ describe("search-backed Manage Skills", () => {
       hasMore: false,
       nextCursor: "last",
     });
-    await userEvent.click(screen.getByText("Load more"));
+    const [, nextPageButton] = screen
+      .getAllByRole("button", { name: "" })
+      .slice(-2);
+    await userEvent.click(nextPageButton);
     await screen.findByRole("button", { name: /Alpha/ });
     expect(fetcherWithBody).toHaveBeenLastCalledWith([
       expect.any(String),
       expect.objectContaining({ cursor, sortBy: "usage" }),
       "POST",
     ]);
-    const rows = screen.getAllByRole("row");
-    expect(rows[1]).toHaveTextContent("Zebra");
-    expect(rows[2]).toHaveTextContent("Alpha");
+    expect(screen.getAllByRole("row")[1]).toHaveTextContent("Alpha");
+    expect(
+      screen.queryByRole("button", { name: /Zebra/ })
+    ).not.toBeInTheDocument();
+    const [previousPageButton, lastPageButton] = screen
+      .getAllByRole("button", { name: "" })
+      .slice(-2);
+    expect(lastPageButton).toBeDisabled();
+
+    search.mockResolvedValue({
+      skills: [{ ...skill, name: "Zebra" }],
+      editors: [],
+      hasMore: true,
+      nextCursor: cursor,
+    });
+    await userEvent.click(previousPageButton);
+    await screen.findByRole("button", { name: /Zebra/ });
+    expect(
+      screen.queryByRole("button", { name: /Alpha/ })
+    ).not.toBeInTheDocument();
+
+    search.mockResolvedValue({
+      skills: [{ ...skill, sId: "next", name: "Alpha" }],
+      editors: [],
+      hasMore: false,
+      nextCursor: "last",
+    });
+    const [, nextButton] = screen
+      .getAllByRole("button", { name: "" })
+      .slice(-2);
+    await userEvent.click(nextButton);
+    await screen.findByRole("button", { name: /Alpha/ });
+    search.mockResolvedValue({
+      skills: [skill],
+      editors: [],
+      hasMore: false,
+      nextCursor: null,
+    });
 
     const input = screen.getByLabelText("Search skills");
     await userEvent.type(input, "report");
@@ -219,7 +259,7 @@ describe("search-backed Manage Skills", () => {
         expect.objectContaining({
           query: "report",
           sortBy: "relevance",
-          cursor: undefined,
+          cursor: null,
         }),
         "POST",
       ])
@@ -227,11 +267,18 @@ describe("search-backed Manage Skills", () => {
     expect(
       screen.queryByRole("button", { name: /Zebra/ })
     ).not.toBeInTheDocument();
+    search.mockResolvedValue({
+      skills: [{ ...skill, name: "Zebra" }],
+      editors: [],
+      hasMore: true,
+      nextCursor: cursor,
+    });
     await userEvent.clear(input);
     await screen.findByRole("button", { name: /Zebra/ });
-    // Returning to the same query restores its already-loaded pages from SWR.
     expect(screen.getAllByRole("row")[1]).toHaveTextContent("Zebra");
-    expect(screen.getAllByRole("row")[2]).toHaveTextContent("Alpha");
+    expect(
+      screen.queryByRole("button", { name: /Alpha/ })
+    ).not.toBeInTheDocument();
   });
 
   it("shows loading and a retryable error without falling back to the old list", async () => {

@@ -4,11 +4,12 @@ import {
   useSetContentWidth,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
+import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import { useInfiniteSkillSearch } from "@app/lib/swr/skill_search";
+import { useSearchSkills } from "@app/lib/swr/skill_configurations";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SkillSearchFilters } from "@app/types/api/skills";
 import {
@@ -23,6 +24,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+
+const SKILL_SEARCH_PAGE_SIZE = 50;
 
 const SEARCH_TABS = [
   { id: "all", label: "All", filters: { status: ["active"] } },
@@ -48,23 +51,27 @@ function SkillSearchResults({
   onSelect,
 }: SkillSearchResultsProps) {
   const owner = useWorkspace();
+  const { cursorPagination, tablePagination, handlePaginationChange } =
+    useCursorPaginationForDataTable(SKILL_SEARCH_PAGE_SIZE);
   const {
     skills,
     editors,
     hasMore,
-    isLoading,
-    isLoadingMore,
-    isError,
-    loadMore,
+    nextCursor,
+    isSkillsLoading,
+    isSkillsError,
     mutate,
-  } = useInfiniteSkillSearch({
+  } = useSearchSkills({
     owner,
     searchTerm,
     filters,
+    cursor: cursorPagination.cursor,
+    limit: SKILL_SEARCH_PAGE_SIZE,
+    sortBy: searchTerm.trim() ? "relevance" : "usage",
     disabled: isDebouncing,
   });
 
-  if (isLoading || isDebouncing) {
+  if (isSkillsLoading || isDebouncing) {
     return (
       <div
         className="flex min-h-64 items-center justify-center"
@@ -78,7 +85,7 @@ function SkillSearchResults({
 
   return (
     <div className="flex flex-col gap-4">
-      {isError && (
+      {isSkillsError && (
         <div
           role="alert"
           className="flex items-center justify-between gap-4 py-4"
@@ -91,17 +98,21 @@ function SkillSearchResults({
           />
         </div>
       )}
-      {skills.length > 0 ? (
+      {!isSkillsError &&
+      (skills.length > 0 || tablePagination.pageIndex > 0) ? (
         <SkillSearchTable
           owner={owner}
           skills={skills}
           editors={editors}
           onSelect={onSelect}
           onRefresh={() => void mutate()}
-          onLoadMore={hasMore && !isError ? () => void loadMore() : undefined}
-          isLoadingMore={isLoadingMore}
+          pagination={tablePagination}
+          setPagination={(pagination) =>
+            handlePaginationChange(pagination, nextCursor)
+          }
+          hasMore={hasMore}
         />
-      ) : !isError ? (
+      ) : !isSkillsError ? (
         <EmptyCTA
           message={
             searchTerm.trim()
@@ -162,6 +173,7 @@ export function SearchSkillsPage() {
           {SEARCH_TABS.map((tab) => (
             <TabsContent key={tab.id} value={tab.id}>
               <SkillSearchResults
+                key={`${owner.sId}:${debouncedValue}`}
                 searchTerm={debouncedValue}
                 filters={tab.filters}
                 isDebouncing={isDebouncing}

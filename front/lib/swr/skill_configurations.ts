@@ -18,6 +18,7 @@ import type {
   SearchSkillsResponseBody,
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
+  SkillSearchSort,
 } from "@app/types/api/skills";
 import type { ImportSkillsResponseBody } from "@app/types/api/skills/detection/github/import_skills";
 import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
@@ -190,6 +191,7 @@ export function useSearchSkills({
   searchTerm,
   cursor,
   limit,
+  sortBy,
   permissionFiltering,
   filters,
   disabled,
@@ -198,6 +200,7 @@ export function useSearchSkills({
   searchTerm: string;
   cursor?: string | null;
   limit?: number;
+  sortBy?: SkillSearchSort;
   permissionFiltering?: SkillSearchPermissionFiltering;
   filters?: SkillSearchFilters;
   disabled?: boolean;
@@ -218,6 +221,7 @@ export function useSearchSkills({
     query: debouncedSearchTerm,
     cursor,
     limit,
+    sortBy,
     permissionFiltering,
   };
   const skillsFetcher = async () => {
@@ -229,7 +233,7 @@ export function useSearchSkills({
     return { ...response, searchTerm: debouncedSearchTerm };
   };
 
-  const { data, error, isLoading } = useSWRWithDefaults(
+  const { data, error, isLoading, mutate } = useSWRWithDefaults(
     [url, body],
     skillsFetcher,
     {
@@ -244,10 +248,14 @@ export function useSearchSkills({
     skills:
       (disabled ? undefined : data?.skills) ?? emptyArray<SkillListItemType>(),
     resolvedSearchTerm: disabled ? null : (data?.searchTerm ?? null),
+    editors:
+      data?.editors ??
+      emptyArray<SearchSkillsResponseBody["editors"][number]>(),
     hasMore: data?.hasMore ?? false,
     nextCursor: data?.nextCursor ?? null,
     isSkillsError: !!error,
     isSkillsLoading: !disabled && (isDebouncing || isLoading),
+    mutate,
   };
 }
 

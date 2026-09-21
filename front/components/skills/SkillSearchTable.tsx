@@ -8,7 +8,7 @@ import type { SkillListItemType } from "@app/types/assistant/skill_configuration
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, DataTable, Tooltip } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 
 interface SkillSearchTableProps {
   owner: LightWorkspaceType;
@@ -16,8 +16,9 @@ interface SkillSearchTableProps {
   editors: SearchSkillsResponseBody["editors"];
   onSelect: (skillId: string) => void;
   onRefresh: () => void;
-  onLoadMore?: () => void;
-  isLoadingMore?: boolean;
+  pagination: PaginationState;
+  setPagination: (pagination: PaginationState) => void;
+  hasMore: boolean;
 }
 
 type SkillSearchRow = SkillListItemType & { onClick: () => void };
@@ -28,8 +29,9 @@ export function SkillSearchTable({
   editors,
   onSelect,
   onRefresh,
-  onLoadMore,
-  isLoadingMore,
+  pagination,
+  setPagination,
+  hasMore,
 }: SkillSearchTableProps) {
   const editorsById = new Map(editors.map((editor) => [editor.sId, editor]));
   const columns: ColumnDef<SkillSearchRow>[] = [
@@ -159,8 +161,15 @@ export function SkillSearchTable({
         editors: "sm",
         updatedAt: "sm",
       }}
-      onLoadMore={onLoadMore}
-      isLoadingMore={isLoadingMore}
+      pagination={pagination}
+      setPagination={setPagination}
+      totalRowCount={
+        hasMore
+          ? (pagination.pageIndex + 1) * pagination.pageSize + 1
+          : pagination.pageIndex * pagination.pageSize + skills.length
+      }
+      rowCountIsCapped={hasMore}
+      disablePaginationNumbers
     />
   );
 }
