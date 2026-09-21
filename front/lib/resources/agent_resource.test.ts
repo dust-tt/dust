@@ -1246,4 +1246,88 @@ describe("AgentResource", () => {
       expect(afterEdit.content.version).toBe(before.content.version + 1);
     });
   });
+
+  describe("in-place scope and editor edits", () => {
+    it("applies an editor-set change in place without creating a new version", async () => {
+      const { authenticator, workspace } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "visible" }
+      );
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(authenticator);
+
+      const newEditor = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, newEditor, { role: "user" });
+
+      const res = await before.updateConfiguration(authenticator, {
+        ...baseParams,
+        editors: [...baseParams.editors, newEditor.toJSON()],
+      });
+      assert(res.isOk());
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      // No new version was created for an editor-only change.
+      expect(after.content.version).toBe(before.content.version);
+      const editorIds = (await after.listEditors(authenticator))?.map(
+        (e) => e.id
+      );
+      expect(editorIds).toContain(newEditor.id);
+    });
+
+    it("creates a new version when a definition field changes, preserving scope", async () => {
+      const { authenticator } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "visible" }
+      );
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(authenticator);
+
+      const res = await before.updateConfiguration(authenticator, {
+        ...baseParams,
+        description: "A brand new description",
+      });
+      assert(res.isOk());
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(before.content.version + 1);
+      expect(after.description).toBe("A brand new description");
+      expect(after.scope).toBe("visible");
+    });
+
+    it("rejects a scope change without publish and creates no version even if a definition field also changed", async () => {
+      const { authenticator } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "visible" }
+      );
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(authenticator);
+
+      // A regular editor holds `write`/`admin` on the agent but not the workspace `publish`
+      // capability, so it cannot change the scope — and the permission is checked before anything is
+      // written, so the definition change is not persisted either.
+      const res = await before.updateConfiguration(authenticator, {
+        ...baseParams,
+        description: "Should not be saved",
+        scope: "hidden",
+      });
+      assert(res.isErr());
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(before.content.version);
+      expect(after.scope).toBe("visible");
+      expect(after.description).toBe(before.description);
+    });
+  });
 });
