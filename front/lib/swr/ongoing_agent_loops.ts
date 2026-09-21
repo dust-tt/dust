@@ -8,7 +8,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
-const ONGOING_AGENT_LOOPS_REFRESH_INTERVAL_MS = 2_500;
+const ONGOING_AGENT_LOOPS_REFRESH_INTERVAL_MS = 10_000;
 
 interface UseOngoingAgentLoopsOptions {
   workspaceId: string;

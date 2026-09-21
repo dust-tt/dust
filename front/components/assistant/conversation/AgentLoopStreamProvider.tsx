@@ -7,7 +7,6 @@ import { eventSourceManager } from "@app/lib/client/event_source_manager";
 import { useOngoingAgentLoops } from "@app/lib/swr/ongoing_agent_loops";
 import type { OngoingAgentLoopType } from "@app/types/api/assistant/conversation/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Spinner } from "@dust-tt/sparkle";
 import { useCallback, useEffect } from "react";
 
 interface OngoingAgentLoopConnectionProps {
@@ -66,7 +65,7 @@ interface AgentLoopStreamProviderProps {
  * Keeps SSE connections alive for user-launched agent loops when their conversation UI is not
  * mounted. Temporal workflows maintain the Redis registry that backs the polling endpoint.
  *
- * Redis registry --> 2.5 s API poll --> headless SSE subscriber
+ * Redis registry --> 10 s API poll --> headless SSE subscriber
  *                                          |
  *                                          v
  * Conversation UI <-- replay and dedupe <-- EventSourceManager
@@ -92,11 +91,7 @@ export function AgentLoopStreamProvider({
     },
     []
   );
-  const {
-    ongoingAgentLoops,
-    isOngoingAgentLoopsLoading,
-    refreshOngoingAgentLoops,
-  } = useOngoingAgentLoops({
+  const { ongoingAgentLoops, refreshOngoingAgentLoops } = useOngoingAgentLoops({
     workspaceId: owner.sId,
     onSuccess: onRegistryRefresh,
   });
@@ -109,15 +104,6 @@ export function AgentLoopStreamProvider({
   return (
     <>
       {children}
-      {isOngoingAgentLoopsLoading && (
-        <div
-          aria-label="Restoring active conversations"
-          className="fixed right-3 top-3 z-50"
-          role="status"
-        >
-          <Spinner size="xs" />
-        </div>
-      )}
       {ongoingAgentLoops.map(({ conversationId, messageId }) => (
         <OngoingAgentLoopConnection
           key={messageId}
