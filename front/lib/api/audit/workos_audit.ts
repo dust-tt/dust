@@ -84,6 +84,7 @@ export const AUDIT_ACTIONS = [
   // Self-improvement.
   "self_improvement.enabled",
   "self_improvement.batch_mode_updated",
+  "skill.availability_updated",
   "skill.editors_updated",
   "skill.self_improvement_updated",
   // Sandbox.

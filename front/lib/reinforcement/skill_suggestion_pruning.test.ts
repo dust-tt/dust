@@ -2,6 +2,7 @@ import { buildDescendantMap } from "@app/lib/editor/instructions_block_conflict"
 import {
   hasSuggestionSelfConflict,
   instructionEditSetsConflict,
+  pruneConflictingSkillAvailabilitySuggestions,
   pruneConflictingSkillEditorsSuggestions,
   pruneConflictingSkillEditSuggestions,
   pruneConflictingSkillNameSuggestions,
@@ -15,6 +16,7 @@ import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory"
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { SkillEditSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import {
+  isAvailabilitySkillSuggestion,
   isEditorsSkillSuggestion,
   isEditSkillSuggestion,
   isNameSkillSuggestion,
@@ -709,6 +711,75 @@ describe("pruneConflictingSkillNameSuggestions", () => {
 
     expect(await stateOf(edit.sId)).toBe("pending");
     expect(await stateOf(otherSkillName.sId)).toBe("pending");
+    expect(await stateOf(approved.sId)).toBe("approved");
+  });
+});
+
+describe("pruneConflictingSkillAvailabilitySuggestions", () => {
+  let authenticator: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["authenticator"];
+
+  beforeEach(async () => {
+    ({ authenticator } = await createResourceTest({ role: "admin" }));
+  });
+
+  const createAvailability = async (
+    skill: Awaited<ReturnType<typeof SkillFactory.create>>,
+    availability: "editors" | "workspace_users" | "users_and_agents"
+  ) => {
+    const created = await SkillSuggestionFactory.create(authenticator, skill, {
+      kind: "availability",
+      suggestion: { availability },
+      source: "conversational",
+    });
+    if (!isAvailabilitySkillSuggestion(created)) {
+      throw new Error("The factory did not create an availability suggestion.");
+    }
+
+    return created;
+  };
+
+  const stateOf = async (sId: string) =>
+    (await SkillSuggestionResource.fetchById(authenticator, sId))?.state;
+
+  it("outdates every other pending availability suggestion on the skill", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const older = await createAvailability(skill, "workspace_users");
+    const newer = await createAvailability(skill, "users_and_agents");
+
+    await pruneConflictingSkillAvailabilitySuggestions(authenticator, skill, [
+      newer,
+    ]);
+
+    expect(await stateOf(older.sId)).toBe("outdated");
+    expect(await stateOf(newer.sId)).toBe("pending");
+  });
+
+  it("keeps suggestions of other kinds, other skills and non-pending states", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const otherSkill = await SkillFactory.create(authenticator, {
+      name: "Other Test Skill",
+    });
+    const edit = await SkillSuggestionFactory.createEdit(authenticator, skill);
+    const otherSkillAvailability = await createAvailability(
+      otherSkill,
+      "workspace_users"
+    );
+    const approved = await createAvailability(skill, "workspace_users");
+    await SkillSuggestionResource.bulkUpdateState(
+      authenticator,
+      [approved],
+      "approved"
+    );
+    const newer = await createAvailability(skill, "users_and_agents");
+
+    await pruneConflictingSkillAvailabilitySuggestions(authenticator, skill, [
+      newer,
+    ]);
+
+    expect(await stateOf(edit.sId)).toBe("pending");
+    expect(await stateOf(otherSkillAvailability.sId)).toBe("pending");
     expect(await stateOf(approved.sId)).toBe("approved");
   });
 });

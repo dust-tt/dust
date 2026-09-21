@@ -193,6 +193,28 @@ describe("SkillSuggestionResource", () => {
       });
     });
 
+    it("should create and fetch an availability suggestion by id", async () => {
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          kind: "availability",
+          suggestion: { availability: "workspace_users" },
+          source: "conversational",
+        }
+      );
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.kind).toBe("availability");
+      expect(fetched?.toJSON()).toMatchObject({
+        kind: "availability",
+        suggestion: { availability: "workspace_users" },
+      });
+    });
+
     it("should fetch multiple suggestions by ids", async () => {
       const s1 = await SkillSuggestionFactory.create(authenticator, skill);
       const s2 = await SkillSuggestionFactory.create(authenticator, skill);

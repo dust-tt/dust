@@ -22,6 +22,7 @@ function instructionEditsOf(suggestion: SkillSuggestionResource) {
     case "create":
     case "name":
     case "delete":
+    case "availability":
       return undefined;
     default:
       assertNever(json);

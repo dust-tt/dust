@@ -3,7 +3,10 @@ import {
   AGENT_FACING_DESCRIPTION_MAX_LENGTH,
   USER_FACING_DESCRIPTION_MAX_LENGTH,
 } from "@app/lib/skills/labels";
-import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
+import {
+  SKILL_AVAILABILITIES,
+  SKILL_NAME_MAX_LENGTH,
+} from "@app/types/assistant/skill_configuration_constants";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { SkillInstructionEditItemSchema } from "@app/types/suggestions/skill_suggestion";
 import { z } from "zod";
@@ -23,6 +26,8 @@ export const SUGGEST_AGENT_DELETION_TOOL_NAME =
 export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME =
   "suggest_skill_user_facing_description" as const;
 export const SUGGEST_SKILL_NAME_TOOL_NAME = "suggest_skill_name" as const;
+export const SUGGEST_SKILL_AVAILABILITY_TOOL_NAME =
+  "suggest_skill_availability" as const;
 
 // Bounds the O(n²) pairwise conflict check in hasSuggestionSelfConflict; larger rewrites
 // should target the instructions root block instead.
@@ -213,6 +218,34 @@ export type SuggestSkillNameArgs = z.infer<
   typeof SUGGEST_SKILL_NAME_INPUT_SCHEMA
 >;
 
+export const SUGGEST_SKILL_AVAILABILITY_INPUT_SCHEMA = z.object({
+  skillId: z
+    .string()
+    .describe("The id of the custom skill whose availability to change."),
+  availability: z
+    .enum(SKILL_AVAILABILITIES)
+    .describe(
+      "Who the skill will be available to: `editors` (unpublished, editors only), " +
+        "`workspace_users` (every member can find and use it), or `users_and_agents` " +
+        "(members and agents, which may pick it on their own)."
+    ),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Why the skill should be available to this audience."),
+  title: z
+    .string()
+    .max(25)
+    .optional()
+    .describe(
+      "A short, action-oriented user-facing title for this suggestion (at most 25 characters)."
+    ),
+});
+
+export type SuggestSkillAvailabilityArgs = z.infer<
+  typeof SUGGEST_SKILL_AVAILABILITY_INPUT_SCHEMA
+>;
+
 export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   {
     name: DESCRIBE_SKILL_TOOL_NAME,
@@ -324,6 +357,22 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting skill name",
       done: "Suggest skill name",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
+    description:
+      "Suggest who an existing custom Skill is available to: editors only, every member, or " +
+      "members and agents. The change is not applied directly: it is recorded as a pending " +
+      "suggestion that the skill's editors can review, accept, or reject. Changing availability " +
+      "requires the workspace permission to publish skills.",
+    schema: SUGGEST_SKILL_AVAILABILITY_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting skill availability",
+      done: "Suggest skill availability",
     },
     toolCostCategory: "basic",
     freeUsage: true,

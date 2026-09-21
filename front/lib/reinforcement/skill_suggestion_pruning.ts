@@ -8,6 +8,7 @@ import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type {
+  SkillAvailabilitySuggestionData,
   SkillEditorsSuggestionData,
   SkillEditSuggestionData,
   SkillEditSuggestionType,
@@ -17,6 +18,7 @@ import type {
   SkillUserFacingDescriptionSuggestionData,
 } from "@app/types/suggestions/skill_suggestion";
 import {
+  isAvailabilitySkillSuggestion,
   isEditorsSkillSuggestion,
   isEditSkillSuggestion,
   isNameSkillSuggestion,
@@ -304,6 +306,40 @@ export async function pruneConflictingSkillDeletionSuggestions(
   ).filter((s) => s.sId !== newSuggestion.sId);
 
   await SkillSuggestionResource.bulkUpdateState(auth, conflicting, "outdated");
+}
+
+/**
+ * @cc [owner:achilleburah,label:product] prune-conflicting-availability-suggestions
+ * Recording a new `availability` suggestion, or accepting one, MUST mark every other pending
+ * `availability` suggestion for the same skill `outdated`: the field holds a single value, so two
+ * pending changes always conflict. This holds even when the accepted suggestion's value already
+ * matches the skill's current availability and no write occurs.
+ */
+export async function pruneConflictingSkillAvailabilitySuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  newSuggestions: (SkillSuggestionResource & SkillAvailabilitySuggestionData)[]
+): Promise<void> {
+  if (newSuggestions.length === 0) {
+    return;
+  }
+
+  const excluded = new Set(newSuggestions.map((s) => s.sId));
+  const toMarkOutdated = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
+      states: ["pending"],
+      kinds: ["availability"],
+      sources: PRUNED_SOURCES,
+    })
+  )
+    .filter(isAvailabilitySkillSuggestion)
+    .filter((s) => !excluded.has(s.sId));
+
+  await SkillSuggestionResource.bulkUpdateState(
+    auth,
+    toMarkOutdated,
+    "outdated"
+  );
 }
 
 /**

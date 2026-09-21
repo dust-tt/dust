@@ -64,6 +64,16 @@
           "sId": "ConvBuildingAMsg06",
           "content": "Here is the proposal to delete the skill:\n\n:skill_suggestion[]{sId=__SKILL_DELETE_SUGGESTION_SID__ kind=delete skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting it archives the skill; it can be restored afterwards if you change your mind."
         }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg07",
+          "content": "Also, agents keep grabbing this skill for things that are not meeting notes at all. Can we stop that without hiding it from people?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg07",
+          "content": "Yes: the skill is currently available to members and agents, which lets agents pick it on their own. Making it available to members only keeps it in everyone's composer while agents stop discovering it:\n\n:skill_suggestion[]{sId=__SKILL_AVAILABILITY_SUGGESTION_SID__ kind=availability skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting this requires the permission to publish skills."
+        }
       }
     ]
   }

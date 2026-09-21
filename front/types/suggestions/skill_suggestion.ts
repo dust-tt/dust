@@ -1,5 +1,8 @@
 import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
-import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
+import {
+  SKILL_AVAILABILITIES,
+  SKILL_NAME_MAX_LENGTH,
+} from "@app/types/assistant/skill_configuration_constants";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { z } from "zod";
 
@@ -57,6 +60,7 @@ export const SKILL_SUGGESTION_KINDS = [
   "create",
   "name",
   "delete",
+  "availability",
 ] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
@@ -192,13 +196,24 @@ export type SkillDeleteSuggestionType = z.infer<
   typeof SkillDeleteSuggestionSchema
 >;
 
+export const SkillAvailabilitySuggestionSchema = z.object({
+  availability: z
+    .enum(SKILL_AVAILABILITIES)
+    .describe("Who the skill will be available to."),
+});
+
+export type SkillAvailabilitySuggestionType = z.infer<
+  typeof SkillAvailabilitySuggestionSchema
+>;
+
 export type SkillSuggestionPayload =
   | SkillEditSuggestionType
   | SkillEditorsSuggestionType
   | SkillUserFacingDescriptionSuggestionType
   | SkillCreateSuggestionType
   | SkillNameSuggestionType
-  | SkillDeleteSuggestionType;
+  | SkillDeleteSuggestionType
+  | SkillAvailabilitySuggestionType;
 
 const SkillEditSuggestionDataSchema = z.object({
   kind: z.literal("edit"),
@@ -230,6 +245,11 @@ const SkillDeleteSuggestionDataSchema = z.object({
   suggestion: SkillDeleteSuggestionSchema,
 });
 
+const SkillAvailabilitySuggestionDataSchema = z.object({
+  kind: z.literal("availability"),
+  suggestion: SkillAvailabilitySuggestionSchema,
+});
+
 const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillEditSuggestionDataSchema,
   SkillEditorsSuggestionDataSchema,
@@ -237,6 +257,7 @@ const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillCreateSuggestionDataSchema,
   SkillNameSuggestionDataSchema,
   SkillDeleteSuggestionDataSchema,
+  SkillAvailabilitySuggestionDataSchema,
 ]);
 
 type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
@@ -273,6 +294,11 @@ export type SkillNameSuggestionData = Extract<
 export type SkillDeleteSuggestionData = Extract<
   SkillSuggestionData,
   { kind: "delete" }
+>;
+
+export type SkillAvailabilitySuggestionData = Extract<
+  SkillSuggestionData,
+  { kind: "availability" }
 >;
 
 // `kind` and `suggestion` are separate columns, so narrowing one without the other would lie about
@@ -329,6 +355,12 @@ export function isDeleteSkillSuggestion<
   T extends { kind: SkillSuggestionKind; suggestion: unknown },
 >(carrier: T): carrier is T & SkillDeleteSuggestionData {
   return isSkillSuggestionOfKind(carrier, "delete");
+}
+
+export function isAvailabilitySkillSuggestion<
+  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+>(carrier: T): carrier is T & SkillAvailabilitySuggestionData {
+  return isSkillSuggestionOfKind(carrier, "availability");
 }
 
 const SkillSuggestionUpdatedBySchema = z.object({

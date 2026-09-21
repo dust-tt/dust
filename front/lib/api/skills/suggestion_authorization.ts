@@ -19,6 +19,7 @@ const SKILL_SUGGESTION_KIND_REQUIRED_VERB: Record<
   name: "write",
   editors: "admin",
   delete: "admin",
+  availability: "admin",
 };
 
 function isAuthorizedForVerb(

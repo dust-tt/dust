@@ -1672,3 +1672,126 @@ describe("PATCH with applyToSkill (name)", () => {
     expect(states).toEqual(["outdated", "pending"]);
   });
 });
+
+describe("PATCH with applyToSkill (availability)", () => {
+  // `hasWorkspacePermission` is true for admins; the editor-without-publish case uses a plain user.
+  async function setupWithFlag(role: MembershipRoleType) {
+    const context = await setup({ role });
+    await FeatureFlagFactory.basic(context.auth, "conversational_building");
+
+    return context;
+  }
+
+  async function availabilitySuggestion(
+    auth: Authenticator,
+    skill: SkillResource,
+    availability: "editors" | "workspace_users" | "users_and_agents"
+  ) {
+    return SkillSuggestionFactory.create(auth, skill, {
+      kind: "availability",
+      source: "conversational",
+      state: "pending",
+      suggestion: { availability },
+    });
+  }
+
+  it("changes the availability and saves a version", async () => {
+    const { workspace, auth, skill } = await setupWithFlag("admin");
+    const suggestion = await availabilitySuggestion(
+      auth,
+      skill,
+      "users_and_agents"
+    );
+    const versionsBefore = (await skill.listVersions(auth)).length;
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.availability).toBe("users_and_agents");
+    expect((await skill.listVersions(auth)).length).toBe(versionsBefore + 1);
+  });
+
+  it("does not save a version when the skill already has the suggested availability", async () => {
+    const { workspace, auth, skill } = await setupWithFlag("admin");
+    const suggestion = await availabilitySuggestion(auth, skill, "editors");
+    const versionsBefore = (await skill.listVersions(auth)).length;
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+    expect((await skill.listVersions(auth)).length).toBe(versionsBefore);
+  });
+
+  it("returns 400 when the approving editor lacks the publish capability", async () => {
+    const { workspace, auth, skill } = await setupWithFlag("user");
+    const suggestion = await availabilitySuggestion(
+      auth,
+      skill,
+      "workspace_users"
+    );
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "change this skill's availability"
+    );
+
+    const reloaded = await SkillSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(reloaded?.state).toBe("pending");
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.availability).toBe("editors");
+  });
+
+  it("outdates the other pending availability suggestions only", async () => {
+    const { workspace, auth, skill } = await setupWithFlag("admin");
+    const approved = await availabilitySuggestion(
+      auth,
+      skill,
+      "workspace_users"
+    );
+    const conflicting = await availabilitySuggestion(
+      auth,
+      skill,
+      "users_and_agents"
+    );
+    const edit = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [approved.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const states = await Promise.all(
+      [conflicting, edit].map(
+        async (suggestion) =>
+          (await SkillSuggestionResource.fetchById(auth, suggestion.sId))?.state
+      )
+    );
+    expect(states).toEqual(["outdated", "pending"]);
+  });
+});
