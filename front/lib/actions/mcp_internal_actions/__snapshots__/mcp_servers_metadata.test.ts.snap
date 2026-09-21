@@ -2700,6 +2700,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "search_knowledge": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "update_group_members": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -3532,6 +3536,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list_skills": "never_ask",
     "list_tools": "never_ask",
     "list_workspace_members": "never_ask",
+    "search_knowledge": "never_ask",
     "update_group_members": "high",
   },
   "zendesk": {

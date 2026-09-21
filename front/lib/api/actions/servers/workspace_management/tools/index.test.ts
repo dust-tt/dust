@@ -4,6 +4,7 @@ import { TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -1322,6 +1323,60 @@ describe("workspace_management tools", () => {
       );
 
       expect(text).toContain("No tool found");
+    });
+  });
+
+  // Search mode needs the core API, so only browse mode is covered here, like the copilot's tests.
+  describe("search_knowledge", () => {
+    it("lists the knowledge sources of readable spaces in browse mode", async () => {
+      const { workspace, globalSpace, authenticator } =
+        await createResourceTest({ role: "user" });
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+
+      const visible = await DataSourceViewFactory.folder(
+        workspace,
+        globalSpace
+      );
+      await DataSourceViewFactory.folder(workspace, restrictedSpace);
+
+      const text = await callTool("search_knowledge", {}, authenticator);
+      const parsed: {
+        dataSourceViews: { dataSourceViewId: string; spaceId: string }[];
+        nodes: unknown[];
+      } = JSON.parse(text);
+
+      expect(parsed.nodes).toEqual([]);
+      expect(parsed.dataSourceViews.map((dsv) => dsv.dataSourceViewId)).toEqual(
+        [visible.sId]
+      );
+      expect(parsed.dataSourceViews[0].spaceId).toBe(globalSpace.sId);
+    });
+
+    it("filters by category", async () => {
+      const { workspace, globalSpace, authenticator } =
+        await createResourceTest({ role: "admin" });
+      await DataSourceViewFactory.folder(workspace, globalSpace);
+
+      const text = await callTool(
+        "search_knowledge",
+        { category: "website" },
+        authenticator
+      );
+      const parsed: { dataSourceViews: unknown[] } = JSON.parse(text);
+
+      expect(parsed.dataSourceViews).toEqual([]);
+    });
+
+    it("reports a workspace without knowledge", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const text = await callTool("search_knowledge", {}, authenticator);
+
+      expect(JSON.parse(text)).toEqual({
+        dataSourceViews: [],
+        nodes: [],
+        message: "No knowledge sources found in the workspace.",
+      });
     });
   });
 });
