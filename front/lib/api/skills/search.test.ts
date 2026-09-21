@@ -57,14 +57,17 @@ describe("searchSkills pagination", () => {
     const skill = await SkillFactory.create(auth, { name: "ÉclairBot" });
     const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
     const hits = [
-      { _source: document, sort: [3.25, skill.sId] },
+      {
+        _source: document,
+        sort: [3.25, document.active_users_count, skill.sId],
+      },
       {
         _source: { ...document, skill_id: "second", name: "ReportBot" },
-        sort: [2, "second"],
+        sort: [2, document.active_users_count, "second"],
       },
       {
         _source: { ...document, skill_id: "third", name: "AlphaBot" },
-        sort: [2, "third"],
+        sort: [2, document.active_users_count, "third"],
       },
     ];
     mockSearch
@@ -97,7 +100,11 @@ describe("searchSkills pagination", () => {
       await SkillResource.listAvailableCodeDefinedIds(auth);
     expect(mockSearch.mock.calls[1][0]).toMatchObject({
       size: 3,
-      sort: [{ _score: { order: "desc" } }, { skill_id: { order: "asc" } }],
+      sort: [
+        { _score: { order: "desc" } },
+        { active_users_count: { order: "desc", missing: "_last" } },
+        { skill_id: { order: "asc" } },
+      ],
       search_after: hits[1].sort,
       query: buildSkillSearchQuery(auth, { ...options, codeDefinedSkillIds }),
     });
@@ -136,7 +143,7 @@ describe("code-defined skill search", () => {
           )
           .map((document) => ({
             _source: document,
-            sort: [1, document.name.toLowerCase(), document.skill_id],
+            sort: [1, document.active_users_count, document.skill_id],
           })),
       },
     }));
@@ -236,7 +243,7 @@ describe("code-defined skill search", () => {
           )
           .map((document) => ({
             _source: document,
-            sort: [1, document.skill_id],
+            sort: [1, document.active_users_count, document.skill_id],
           })),
       },
     }));
@@ -272,11 +279,14 @@ describe("code-defined skill search", () => {
     );
     assert(global);
     const hits = [
-      { _source: custom, sort: [3.25, "weeklydeepreport", skill.sId] },
-      { _source: global, sort: [2, "go deep", global.skill_id] },
+      { _source: custom, sort: [3.25, custom.active_users_count, skill.sId] },
+      {
+        _source: global,
+        sort: [2, global.active_users_count, global.skill_id],
+      },
       {
         _source: { ...custom, skill_id: "last", name: "Deep" },
-        sort: [1.5, "deep", "last"],
+        sort: [1.5, custom.active_users_count, "last"],
       },
     ];
     mockSearch
