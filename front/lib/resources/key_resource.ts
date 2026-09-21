@@ -79,6 +79,10 @@ export const MARK_AS_USED_MIN_INTERVAL_MS = 60 * 60 * 1000;
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface KeyResource extends ReadonlyAttributesType<KeyModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+/**
+ * @cc [owner:philipperolet,label:security;backend] supported-api-key-roles
+ * `KeyResource` construction MUST throw when the persisted role is not accepted by `RoleSchema`.
+ */
 export class KeyResource extends BaseResource<KeyModel> {
   static model: ModelStaticWorkspaceAware<KeyModel> = KeyModel;
 

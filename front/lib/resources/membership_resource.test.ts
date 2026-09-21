@@ -659,6 +659,19 @@ describe("MembershipResource", () => {
         });
         expect(role).toBe("none");
       });
+
+      it("rejects an unsupported role read from cache", async () => {
+        const user = await UserFactory.withoutLastLogin();
+        const roleCacheKey = `cacheWithRedis-_getActiveRoleForUserInWorkspaceUncached-role:user:${user.id}:workspace:${workspace.id}`;
+        inMemoryCache.set(roleCacheKey, JSON.stringify("unsupported"));
+
+        await expect(
+          MembershipResource.getActiveRoleForUserInWorkspace({
+            user,
+            workspace: lightWorkspace,
+          })
+        ).rejects.toThrow("Invalid membership role: unsupported");
+      });
     });
 
     describe("countActiveSeatsInWorkspace", () => {

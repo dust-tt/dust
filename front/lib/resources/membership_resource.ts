@@ -81,6 +81,11 @@ type MembershipsWithTotal = {
 export interface MembershipResource
   extends ReadonlyAttributesType<MembershipModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+/**
+ * @cc [owner:philipperolet,label:security;backend] supported-membership-roles
+ * `MembershipResource` MUST throw whenever it reads a persisted membership role outside
+ * `MEMBERSHIP_ROLE_TYPES`; an absent active membership may resolve to `none`.
+ */
 export class MembershipResource extends BaseResource<MembershipModel> {
   static model: ModelStaticWorkspaceAware<MembershipModel> = MembershipModel;
 
@@ -646,10 +651,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         transaction,
       });
     }
-    return this.getActiveRoleForUserInWorkspaceCached({
+    const role = await this.getActiveRoleForUserInWorkspaceCached({
       userModelId: user.id,
       workspaceModelId: workspace.id,
     });
+    assert(
+      role === "none" || isMembershipRoleType(role),
+      `Invalid membership role: ${role}`
+    );
+    return role;
   }
 
   static async getActiveMembershipOfUserInWorkspace({

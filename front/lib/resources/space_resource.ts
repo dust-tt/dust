@@ -2073,8 +2073,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    *
    * 2. Global spaces:
    * - Read: All workspace members
-   * - Write: Workspace admins and managers (legacy: builders), plus the members of the space's
-   *   member groups
+   * - Write: Workspace admins and managers, plus the members of the space's member groups
    *
    * 3. Open spaces:
    * - Read: All workspace members

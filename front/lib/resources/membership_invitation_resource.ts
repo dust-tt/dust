@@ -34,6 +34,11 @@ import type { WorkspaceResource } from "./workspace_resource";
 export interface MembershipInvitationResource
   extends ReadonlyAttributesType<MembershipInvitationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+/**
+ * @cc [owner:philipperolet,label:security;backend] supported-invitation-roles
+ * `MembershipInvitationResource` construction MUST throw when the persisted initial role is not an
+ * active workspace role.
+ */
 export class MembershipInvitationResource extends BaseResource<MembershipInvitationModel> {
   static model: ModelStaticWorkspaceAware<MembershipInvitationModel> =
     MembershipInvitationModel;
