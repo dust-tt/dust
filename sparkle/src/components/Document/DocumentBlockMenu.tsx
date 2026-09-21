@@ -1,8 +1,8 @@
+import { Icon } from "@sparkle/components/Icon";
 import { cn } from "@sparkle/lib/utils";
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
-import { CornerDownLeft } from "lucide-react";
 import React, { useId, useState } from "react";
 import { BLOCKS, getBlockQuery } from "./blocks";
 
@@ -140,8 +140,11 @@ export const DocumentBlockMenu = ({ editor, menu }: DocumentBlockMenuProps) => (
               "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             )}
           >
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground group-data-[active=true]:text-foreground">
-              <block.icon size={20} aria-hidden="true" />
+            <span
+              aria-hidden="true"
+              className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border bg-background text-muted-foreground group-data-[active=true]:text-foreground"
+            >
+              <Icon visual={block.icon} size="sm" />
             </span>
             <span>
               <span className="block label-sm">{block.name}</span>
@@ -149,11 +152,12 @@ export const DocumentBlockMenu = ({ editor, menu }: DocumentBlockMenuProps) => (
                 {block.description}
               </span>
             </span>
-            <CornerDownLeft
-              size={13}
-              className="invisible ml-auto shrink-0 text-muted-foreground group-data-[active=true]:visible"
+            <span
+              className="invisible ml-auto shrink-0 text-muted-foreground text-sm group-data-[active=true]:visible"
               aria-hidden="true"
-            />
+            >
+              ↵
+            </span>
           </button>
         ))}
         {menu.blocks.length === 0 && (

@@ -1,6 +1,12 @@
 import { cn } from "@sparkle/lib/utils";
 import { useEditor } from "@tiptap/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { documentExtensions, parseDocumentContent } from "./extensions";
 import type { DocumentProps, DocumentSaveResult } from "./types";
 
@@ -47,12 +53,12 @@ export const useDocumentEditor = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
-  const onSaveRef = useRef(onSave);
   const editable = !readOnly && onSave !== undefined && initial.ok;
+  const persistenceRef = useRef({ onSave, editable, baseline });
 
-  useEffect(() => {
-    onSaveRef.current = onSave;
-  }, [onSave]);
+  useLayoutEffect(() => {
+    persistenceRef.current = { onSave, editable, baseline };
+  }, [onSave, editable, baseline]);
 
   const editor = useEditor({
     extensions: documentExtensions,
@@ -91,7 +97,7 @@ export const useDocumentEditor = ({
   });
 
   // TipTap ignores editable changes passed to useEditor after mount.
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (editor && editor.isEditable !== editable) {
       editor.setEditable(editable, false);
     }
@@ -100,13 +106,28 @@ export const useDocumentEditor = ({
   const dirty = baseline !== null && draft !== baseline;
 
   const save = useCallback(async () => {
-    const persist = onSaveRef.current;
+    const {
+      onSave: persist,
+      editable: canSave,
+      baseline: savedContent,
+    } = persistenceRef.current;
 
-    if (!editor || !persist || !editable || !dirty || savingRef.current) {
+    if (
+      !editor ||
+      !persist ||
+      !canSave ||
+      savedContent === null ||
+      savingRef.current
+    ) {
       return;
     }
 
     const content = JSON.stringify(editor.getJSON());
+
+    if (content === savedContent) {
+      return;
+    }
+
     savingRef.current = true;
     setSaving(true);
     setError(null);
@@ -126,10 +147,10 @@ export const useDocumentEditor = ({
       return;
     }
 
-    if (JSON.stringify(editor.getJSON()) !== baseline) {
+    if (JSON.stringify(editor.getJSON()) !== savedContent) {
       setError(result.error || SAVE_ERROR_MESSAGE);
     }
-  }, [editor, editable, dirty, baseline]);
+  }, [editor]);
 
   useEffect(() => {
     if (draft === null || !dirty || saving || error || !editable) {

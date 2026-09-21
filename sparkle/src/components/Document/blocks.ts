@@ -1,16 +1,14 @@
+import {
+  Code01,
+  DoubleQuotes,
+  Hash01,
+  Heading01,
+  List,
+  Minus,
+  Type01,
+} from "@sparkle/icons/v2-stroke";
 import { type ChainedCommands, isTextSelection } from "@tiptap/core";
 import type { EditorState } from "@tiptap/pm/state";
-import {
-  Code2,
-  Heading1,
-  Heading2,
-  Heading3,
-  List,
-  ListOrdered,
-  Minus,
-  Quote,
-  Type,
-} from "lucide-react";
 
 export const getBlockQuery = (state: EditorState) => {
   const { selection } = state;
@@ -30,28 +28,28 @@ export const BLOCKS = [
   {
     name: "Text",
     description: "Start writing with plain text",
-    icon: Type,
+    icon: Type01,
     keywords: "paragraph",
     apply: (chain: ChainedCommands) => chain.setParagraph().run(),
   },
   {
     name: "Heading 1",
     description: "A big section heading",
-    icon: Heading1,
+    icon: Heading01,
     keywords: "h1 title",
     apply: (chain: ChainedCommands) => chain.setHeading({ level: 1 }).run(),
   },
   {
     name: "Heading 2",
     description: "A medium section heading",
-    icon: Heading2,
+    icon: Heading01,
     keywords: "h2 subtitle",
     apply: (chain: ChainedCommands) => chain.setHeading({ level: 2 }).run(),
   },
   {
     name: "Heading 3",
     description: "A small section heading",
-    icon: Heading3,
+    icon: Heading01,
     keywords: "h3 subtitle",
     apply: (chain: ChainedCommands) => chain.setHeading({ level: 3 }).run(),
   },
@@ -65,21 +63,21 @@ export const BLOCKS = [
   {
     name: "Numbered list",
     description: "Keep things in order",
-    icon: ListOrdered,
+    icon: Hash01,
     keywords: "ordered",
     apply: (chain: ChainedCommands) => chain.toggleOrderedList().run(),
   },
   {
     name: "Quote",
     description: "Make a passage stand out",
-    icon: Quote,
+    icon: DoubleQuotes,
     keywords: "blockquote",
     apply: (chain: ChainedCommands) => chain.toggleBlockquote().run(),
   },
   {
     name: "Code",
     description: "A block of code",
-    icon: Code2,
+    icon: Code01,
     keywords: "codeblock",
     apply: (chain: ChainedCommands) => chain.toggleCodeBlock().run(),
   },

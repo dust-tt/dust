@@ -1,5 +1,7 @@
+import { Icon } from "@sparkle/components/Icon";
+import { Spinner } from "@sparkle/components/Spinner";
+import { AlertCircle, Check } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
-import { AlertCircle, Check, LoaderCircle } from "lucide-react";
 import React from "react";
 
 interface DocumentSaveStatusProps {
@@ -29,26 +31,17 @@ export const DocumentSaveStatus = ({
         className="inline-flex items-center gap-1.5"
         title={`Changes save automatically after ${autosaveDebounceMs / 1_000}s of inactivity`}
       >
-        {error ? (
-          <AlertCircle
-            size={14}
-            className="text-warning-500"
-            aria-hidden="true"
-          />
-        ) : saving ? (
-          <LoaderCircle
-            size={14}
-            className="animate-spin motion-reduce:animate-none"
-            aria-hidden="true"
-          />
-        ) : dirty ? (
-          <span
-            className="mx-1 size-1 rounded-full bg-current"
-            aria-hidden="true"
-          />
-        ) : (
-          <Check size={14} aria-hidden="true" />
-        )}
+        <span aria-hidden="true" className="inline-flex items-center">
+          {error ? (
+            <Icon visual={AlertCircle} size="xs" className="text-warning-500" />
+          ) : saving ? (
+            <Spinner size="xs" />
+          ) : dirty ? (
+            <span className="mx-1 size-1 rounded-full bg-current" />
+          ) : (
+            <Icon visual={Check} size="xs" />
+          )}
+        </span>
         {error
           ? "Not saved"
           : saving

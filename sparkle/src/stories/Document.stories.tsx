@@ -1,11 +1,22 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { expect, fn, mocked, userEvent, waitFor, within } from "storybook/test";
 import {
   Document,
   type DocumentProps,
   type DocumentSaveResult,
 } from "@sparkle/components/Document";
+import { useDocumentEditor } from "@sparkle/components/Document/useDocumentEditor";
+import {
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@sparkle/components/Sheet";
+import { EditorContent } from "@tiptap/react";
 
 const SEED =
   "# Team update\n\nA short document, ready to edit.\n\n- Review the proposal\n- Share feedback";
@@ -31,6 +42,7 @@ type Story = StoryObj<typeof meta>;
 
 const HOST_RERENDER_INTERVAL_MS = 100;
 const HOST_AUTOSAVE_DEBOUNCE_MS = 1_000;
+const UNDO_GROUP_PAUSE_MS = 600;
 
 /** @summary The writing surface with headings, lists, and a quote. */
 export const DocumentPage: Story = {
@@ -201,6 +213,68 @@ export const FormatSelection: Story = {
   },
 };
 
+/** @summary Formatting tooltips stay inside the enclosing sheet. */
+export const InSheet: Story = {
+  args: { initialContent: "Select these words." },
+  render: (args) => (
+    <Sheet>
+      <SheetTrigger asChild>
+        <button type="button" className="m-4 rounded border px-3 py-2">
+          Open document
+        </button>
+      </SheetTrigger>
+      <SheetContent size="xl">
+        <SheetHeader hideButton>
+          <SheetTitle>Document</SheetTitle>
+          <SheetDescription>Edit and format your draft.</SheetDescription>
+        </SheetHeader>
+        <SheetContainer>
+          <Document {...args} />
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
+  ),
+  play: async ({ canvas, canvasElement, args }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Open document" })
+    );
+
+    const page = within(canvasElement.ownerDocument.body);
+    const sheet = await page.findByRole("dialog", { name: "Document" });
+    const editor = await within(sheet).findByRole("textbox", {
+      name: "Document content",
+    });
+    await userEvent.click(editor);
+
+    const paragraph = editor.querySelector("p");
+    if (!paragraph) {
+      throw new Error("Expected a document paragraph");
+    }
+
+    const range = canvasElement.ownerDocument.createRange();
+    range.selectNodeContents(paragraph);
+    const selection = canvasElement.ownerDocument.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    canvasElement.ownerDocument.dispatchEvent(new Event("selectionchange"));
+
+    const toolbar = await within(sheet).findByRole("toolbar", {
+      name: "Format selection",
+    });
+    const bold = within(toolbar).getByRole("button", { name: "Bold" });
+    await userEvent.hover(bold);
+    await expect(await within(sheet).findByRole("tooltip")).toHaveTextContent(
+      "Bold"
+    );
+    await userEvent.click(bold);
+    await expect(editor.querySelector("strong")).toHaveTextContent(
+      "Select these words."
+    );
+    await userEvent.keyboard("{Control>}s{/Control}");
+    await waitFor(() => expect(args.onSave).toHaveBeenCalledTimes(1));
+  },
+};
+
 /** @summary Configure the autosave delay and avoid requests for unchanged content. */
 export const Autosave: Story = {
   args: {
@@ -288,6 +362,129 @@ export const AutosaveDuringParentUpdates: Story = {
     await expect(
       Number(canvas.getByLabelText("Saved callback revision").textContent)
     ).toBeGreaterThan(0);
+  },
+};
+
+type CommitChange = "none" | "callback" | "readOnly" | "removal" | "undo";
+
+const SaveDuringCommit = ({
+  initialContent,
+  contentType = "markdown",
+  autosaveDebounceMs = HOST_AUTOSAVE_DEBOUNCE_MS,
+  onSave,
+}: DocumentProps) => {
+  const [change, setChange] = useState<CommitChange>("none");
+  const [savedCallback, setSavedCallback] = useState("");
+  const queuedSave = useRef<(() => Promise<void>) | null>(null);
+  const { editor, save, dirty } = useDocumentEditor({
+    initialContent,
+    contentType,
+    autosaveDebounceMs,
+    readOnly: change === "readOnly",
+    onSave:
+      onSave && change !== "removal"
+        ? (content) => {
+            setSavedCallback(
+              change === "callback" ? "Replacement" : "Original"
+            );
+            return onSave(content);
+          }
+        : undefined,
+  });
+
+  useLayoutEffect(() => {
+    const pending = queuedSave.current;
+    queuedSave.current = null;
+    // Run the queued save after commit and before passive timer cleanup.
+    void pending?.();
+  }, [change]);
+
+  const commitChange = (next: CommitChange) => {
+    queuedSave.current = save;
+    if (next === "undo") {
+      editor?.commands.undo();
+    }
+    setChange(next);
+  };
+
+  return (
+    <div className="mx-auto max-w-3xl p-6">
+      <div className="mb-4 flex flex-wrap gap-2">
+        {(
+          [
+            ["callback", "Replace callback"],
+            ["readOnly", "Revoke write access"],
+            ["removal", "Remove persistence"],
+            ["undo", "Undo to saved content"],
+          ] as const
+        ).map(([next, label]) => (
+          <button
+            key={next}
+            type="button"
+            className="rounded border px-3 py-2"
+            onClick={() => commitChange(next)}
+          >
+            {label}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="rounded border px-3 py-2"
+          onClick={() => setChange("none")}
+        >
+          Restore write access
+        </button>
+      </div>
+      <p>Draft: {dirty ? "Unsaved" : "Saved"}</p>
+      <output aria-label="Persistence callback">{savedCallback}</output>
+      <EditorContent editor={editor} />
+    </div>
+  );
+};
+
+/** @summary Queued saves respect committed callbacks, permissions, and undo. */
+export const QueuedSaveDuringCommit: Story = {
+  tags: ["!manifest"],
+  args: { initialContent: "A saved draft", autosaveDebounceMs: 60_000 },
+  render: (args) => <SaveDuringCommit {...args} />,
+  play: async ({ canvas, args }) => {
+    const editor = await canvas.findByRole("textbox", {
+      name: "Document content",
+    });
+    await userEvent.type(editor, " with edits");
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Replace callback" })
+    );
+    await waitFor(() => expect(args.onSave).toHaveBeenCalledTimes(1));
+    await expect(
+      canvas.getByLabelText("Persistence callback")
+    ).toHaveTextContent("Replacement");
+    await expect(canvas.getByText("Draft: Saved")).toBeVisible();
+
+    const savedText = editor.textContent;
+    // Start a separate undo group for the next edit.
+    await new Promise((resolve) => setTimeout(resolve, UNDO_GROUP_PAUSE_MS));
+    await userEvent.type(editor, " plus a pending edit");
+    const draft = editor.textContent;
+
+    for (const action of ["Revoke write access", "Remove persistence"]) {
+      await userEvent.click(canvas.getByRole("button", { name: action }));
+      await expect(editor).toHaveAttribute("contenteditable", "false");
+      await expect(editor.textContent).toBe(draft);
+      await expect(canvas.getByText("Draft: Unsaved")).toBeVisible();
+      await expect(args.onSave).toHaveBeenCalledTimes(1);
+      await userEvent.click(
+        canvas.getByRole("button", { name: "Restore write access" })
+      );
+      await expect(editor).toHaveAttribute("contenteditable", "true");
+    }
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Undo to saved content" })
+    );
+    await expect(editor.textContent).toBe(savedText);
+    await expect(canvas.getByText("Draft: Saved")).toBeVisible();
+    await expect(args.onSave).toHaveBeenCalledTimes(1);
   },
 };
 
