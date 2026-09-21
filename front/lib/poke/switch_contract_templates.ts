@@ -2,7 +2,11 @@ import {
   CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
   CREDIT_PRICED_ENTERPRISE_PILOT_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
-import { CP_ENTERPRISE_BASIS } from "@app/lib/plans/pricing";
+import {
+  CP_ENTERPRISE_BASIS,
+  CP_MAX_SEAT_COST_YEARLY,
+  CP_PRO_SEAT_COST_YEARLY,
+} from "@app/lib/plans/pricing";
 import type { MembershipSeatType } from "@app/types/memberships";
 
 // Hardcoded pre-fill templates for the Switch Contract poke dialog. Selecting a
@@ -134,6 +138,33 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     seats: {
       pro_yearly: { selected: true },
       max_yearly: { selected: true },
+    },
+  },
+  {
+    id: "enterprise-seat-based-monthly",
+    name: "Enterprise seat-based — monthly",
+    description:
+      "Enterprise Seat-based billed monthly: monthly Pro/Max per-user seats at 1/12 the yearly rate.",
+    package: { tier: "enterprise", namePattern: "seat-based" },
+    planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
+    startMode: "select",
+    stripeCollectionMethod: "send_invoice",
+    seats: {
+      // Disable the package's default yearly seats; bill the monthly Pro/Max
+      // seats instead at 1/12 the yearly rate (yearly = monthly rate * 12),
+      // invoiced monthly.
+      pro_yearly: { selected: false },
+      max_yearly: { selected: false },
+      pro: {
+        selected: true,
+        rate: CP_ENTERPRISE_BASIS + CP_PRO_SEAT_COST_YEARLY,
+        paymentSchedule: { frequency: "monthly", periods: 12 },
+      },
+      max: {
+        selected: true,
+        rate: CP_ENTERPRISE_BASIS + CP_MAX_SEAT_COST_YEARLY,
+        paymentSchedule: { frequency: "monthly", periods: 12 },
+      },
     },
   },
   {
