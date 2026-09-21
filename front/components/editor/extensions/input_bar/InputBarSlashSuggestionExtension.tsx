@@ -31,7 +31,6 @@ interface InputBarSlashSuggestionExtensionOptions {
   includeAttachKnowledgeRef: RefObject<boolean>;
   includePickModelRef: RefObject<boolean>;
   includeSelectSpacesRef: RefObject<boolean>;
-  isSelectableSpacesLoadingRef: RefObject<boolean>;
   onActiveChangeRef?: RefObject<((active: boolean) => void) | undefined>;
   onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
   onModelSelectRef: RefObject<((selection: Selection) => void) | undefined>;
@@ -43,7 +42,6 @@ interface InputBarSlashSuggestionExtensionOptions {
     ((space: SelectableConversationSpaceType) => void) | undefined
   >;
   owner?: WorkspaceType;
-  selectableSpacesRef: RefObject<SelectableConversationSpaceType[]>;
   selectedSpaceIdsRef: RefObject<string[]>;
   slashCommandsRef: RefObject<InputBarSlashCommand[]>;
   spaceIdRef: RefObject<string | null | undefined>;
@@ -71,13 +69,11 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     includeAttachKnowledgeRef: { current: false },
     includePickModelRef: { current: false },
     includeSelectSpacesRef: { current: false },
-    isSelectableSpacesLoadingRef: { current: false },
     onModelSelectRef: { current: undefined },
     onNodeSelectRef: { current: undefined },
     onSelectRef: { current: undefined },
     onSpaceSelectRef: { current: undefined },
     onDetailsRef: { current: undefined },
-    selectableSpacesRef: { current: [] },
     selectedSpaceIdsRef: { current: [] },
     slashCommandsRef: { current: [] },
     spaceIdRef: { current: null },
@@ -116,13 +112,11 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     includeAttachKnowledgeRef: options.includeAttachKnowledgeRef,
     includePickModelRef: options.includePickModelRef,
     includeSelectSpacesRef: options.includeSelectSpacesRef,
-    isSelectableSpacesLoadingRef: options.isSelectableSpacesLoadingRef,
     onDetailsRef: options.onDetailsRef,
     onModelSelectRef: options.onModelSelectRef,
     onNodeSelectRef: options.onNodeSelectRef,
     onSpaceSelectRef: options.onSpaceSelectRef,
     owner: options.owner,
-    selectableSpacesRef: options.selectableSpacesRef,
     selectedSpaceIdsRef: options.selectedSpaceIdsRef,
     slashCommandsRef: options.slashCommandsRef,
     spaceIdRef: options.spaceIdRef,

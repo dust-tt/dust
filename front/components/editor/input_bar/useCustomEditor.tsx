@@ -352,7 +352,6 @@ export interface CustomEditorProps {
     includeAttachKnowledgeRef: React.RefObject<boolean>;
     includePickModelRef: React.RefObject<boolean>;
     includeSelectSpacesRef: React.RefObject<boolean>;
-    isSelectableSpacesLoadingRef: React.RefObject<boolean>;
     onModelSelectRef: React.RefObject<
       ((selection: Selection) => void) | undefined
     >;
@@ -362,7 +361,6 @@ export interface CustomEditorProps {
     onSpaceSelectRef: React.RefObject<
       ((space: SelectableConversationSpaceType) => void) | undefined
     >;
-    selectableSpacesRef: React.RefObject<SelectableConversationSpaceType[]>;
     selectedSpaceIdsRef: React.RefObject<string[]>;
     spaceIdRef: React.RefObject<string | null | undefined>;
   };
@@ -526,14 +524,11 @@ export const buildEditorExtensions = ({
         onNodeSelectRef: slashSuggestion.onNodeSelectRef,
         onSpaceSelectRef: slashSuggestion.onSpaceSelectRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,
-        selectableSpacesRef: slashSuggestion.selectableSpacesRef,
         selectedSpaceIdsRef: slashSuggestion.selectedSpaceIdsRef,
         slashCommandsRef: slashSuggestion.slashCommandsRef,
         includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,
         includePickModelRef: slashSuggestion.includePickModelRef,
         includeSelectSpacesRef: slashSuggestion.includeSelectSpacesRef,
-        isSelectableSpacesLoadingRef:
-          slashSuggestion.isSelectableSpacesLoadingRef,
         spaceIdRef: slashSuggestion.spaceIdRef,
       })
     );

@@ -3,7 +3,10 @@ import type { SlashCommand } from "@app/components/editor/extensions/shared/slas
 import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { isSelectSpaceSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
 import type { SlashMenuStackFrame } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
+import { useSelectableConversationSpaces } from "@app/lib/swr/conversation_selected_spaces";
+import { useSpaces } from "@app/lib/swr/spaces";
 import type { SelectableConversationSpaceType } from "@app/types/assistant/conversation";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 
@@ -13,12 +16,12 @@ interface SelectSpacesSubMenuDropdownProps
     "clientRect" | "editor" | "query" | "range"
   > {
   activeFrame: SlashMenuStackFrame;
-  isLoading: boolean;
+  conversationId: string | null;
   onBack: () => void;
   onClose: () => void;
   onSelect: (space: SelectableConversationSpaceType) => void;
+  owner: LightWorkspaceType;
   selectedSpaceIds: string[];
-  spaces: SelectableConversationSpaceType[];
 }
 
 interface SelectSpacesSubMenuDropdownRef {
@@ -33,19 +36,51 @@ export const SelectSpacesSubMenuDropdown = forwardRef<
     {
       activeFrame,
       clientRect,
-      isLoading,
+      conversationId,
       onBack,
       onClose,
       onSelect,
+      owner,
       query,
       selectedSpaceIds,
-      spaces,
     },
     ref
   ) => {
     const dropdownRef = useRef<{
       onKeyDown: (props: { event: KeyboardEvent }) => boolean;
     }>(null);
+
+    // The sub-menu only mounts while open, so these fetch on open. Within a conversation the
+    // server knows which spaces are selectable; for a draft we offer all regular spaces.
+    const { spaces: conversationSpaces, isSelectableSpacesLoading } =
+      useSelectableConversationSpaces({
+        conversationId,
+        disabled: !conversationId,
+        owner,
+      });
+    const { spaces: workspaceSpaces, isSpacesLoading } = useSpaces({
+      workspaceId: owner.sId,
+      kinds: ["regular"],
+      disabled: !!conversationId,
+    });
+
+    const spaces: SelectableConversationSpaceType[] = useMemo(() => {
+      if (conversationId) {
+        return conversationSpaces;
+      }
+
+      const selectedSpaceIdSet = new Set(selectedSpaceIds);
+      return workspaceSpaces
+        .toSorted((a, b) => a.name.localeCompare(b.name))
+        .map((space) => ({
+          ...space,
+          selected: selectedSpaceIdSet.has(space.sId),
+        }));
+    }, [conversationId, conversationSpaces, selectedSpaceIds, workspaceSpaces]);
+
+    const isLoading = conversationId
+      ? isSelectableSpacesLoading
+      : isSpacesLoading;
 
     const items = useMemo(
       () =>

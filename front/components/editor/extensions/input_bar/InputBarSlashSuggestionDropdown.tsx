@@ -47,7 +47,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     includeAttachKnowledgeRef: RefObject<boolean>;
     includePickModelRef: RefObject<boolean>;
     includeSelectSpacesRef: RefObject<boolean>;
-    isSelectableSpacesLoadingRef: RefObject<boolean>;
     onClose: () => void;
     onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
     onModelSelectRef: RefObject<((selection: Selection) => void) | undefined>;
@@ -58,7 +57,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       ((space: SelectableConversationSpaceType) => void) | undefined
     >;
     owner: LightWorkspaceType;
-    selectableSpacesRef: RefObject<SelectableConversationSpaceType[]>;
     selectedSpaceIdsRef: RefObject<string[]>;
     slashCommandsRef: RefObject<InputBarSlashCommand[]>;
     spaceIdRef: RefObject<string | null | undefined>;
@@ -73,7 +71,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       includeAttachKnowledgeRef,
       includePickModelRef,
       includeSelectSpacesRef,
-      isSelectableSpacesLoadingRef,
       onClose,
       onDetailsRef,
       onModelSelectRef,
@@ -82,7 +79,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       owner,
       query,
       range,
-      selectableSpacesRef,
       selectedSpaceIdsRef,
       slashCommandsRef,
       spaceIdRef,
@@ -271,15 +267,15 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           ref={subMenuRef}
           activeFrame={activeFrame}
           clientRect={clientRect}
+          conversationId={conversationIdRef?.current ?? null}
           editor={editor}
-          isLoading={isSelectableSpacesLoadingRef.current ?? false}
           onBack={() => pop(range)}
           onClose={onClose}
           onSelect={handleSpaceSelect}
+          owner={owner}
           query={subMenuQuery}
           range={range}
           selectedSpaceIds={selectedSpaceIdsRef.current ?? []}
-          spaces={selectableSpacesRef.current ?? []}
         />
       );
     }

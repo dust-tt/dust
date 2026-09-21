@@ -405,10 +405,6 @@ const InputBarContainer = ({
   includePickModelRef.current = actions.includes("model-picker");
   const includeSelectSpacesRef = useRef(false);
   includeSelectSpacesRef.current = shouldShowSpacesAction;
-  const selectableSpacesRef = useRef(selectableSpaces);
-  selectableSpacesRef.current = selectableSpaces;
-  const isSelectableSpacesLoadingRef = useRef(isSelectableSpacesLoading);
-  isSelectableSpacesLoadingRef.current = isSelectableSpacesLoading;
   const onSpaceSelectRef = useRef<
     ((space: SelectableConversationSpaceType) => void) | undefined
   >(undefined);
@@ -806,11 +802,9 @@ const InputBarContainer = ({
       includeAttachKnowledgeRef,
       includePickModelRef,
       includeSelectSpacesRef,
-      isSelectableSpacesLoadingRef,
       onModelSelectRef,
       onNodeSelectRef,
       onSpaceSelectRef,
-      selectableSpacesRef,
       selectedSpaceIdsRef,
       spaceIdRef,
     },
