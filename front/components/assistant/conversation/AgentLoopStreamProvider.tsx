@@ -1,3 +1,4 @@
+import { AgentLoopStreamContext } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
   getAgentLoopEventId,
@@ -8,7 +9,7 @@ import { eventSourceManager } from "@app/lib/client/event_source_manager";
 import { useOngoingAgentLoops } from "@app/lib/swr/ongoing_agent_loops";
 import type { OngoingAgentLoopType } from "@app/types/api/assistant/conversation/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 interface OngoingAgentLoopConnectionProps {
   owner: LightWorkspaceType;
@@ -104,6 +105,16 @@ export function AgentLoopStreamProvider({
     workspaceId: owner.sId,
     onSuccess: onRegistryRefresh,
   });
+  const conversationStreamIds = useMemo(
+    () =>
+      new Map(
+        ongoingAgentLoops.map(({ conversationId, messageId }) => [
+          conversationId,
+          `message-${messageId}`,
+        ])
+      ),
+    [ongoingAgentLoops]
+  );
 
   useEffect(
     () => () => eventSourceManager.releaseWorkspace(owner.sId),
@@ -111,7 +122,7 @@ export function AgentLoopStreamProvider({
   );
 
   return (
-    <>
+    <AgentLoopStreamContext.Provider value={conversationStreamIds}>
       {children}
       {ongoingAgentLoops.map(({ conversationId, messageId }) => (
         <OngoingAgentLoopConnection
@@ -122,6 +133,6 @@ export function AgentLoopStreamProvider({
           refreshAgentLoops={refreshOngoingAgentLoops}
         />
       ))}
-    </>
+    </AgentLoopStreamContext.Provider>
   );
 }

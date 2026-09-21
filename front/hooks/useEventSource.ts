@@ -1,3 +1,4 @@
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { eventSourceManager } from "@app/lib/client/event_source_manager";
 import type { DatadogLogContext } from "@app/logger/logger";
 import type { EventSourceConnectionState } from "@app/types/event_source";
@@ -36,6 +37,11 @@ export function useEventSource(
   }: UseEventSourceOptions
 ) {
   const hasLongPollFallback = Boolean(buildLongPollURL);
+  const { hasFeature } = useFeatureFlags();
+  const longPollActivation =
+    hasLongPollFallback && hasFeature("agent_stream_long_polling")
+      ? "immediate"
+      : "fallback";
   const [connectionState, setConnectionState] =
     useState<EventSourceConnectionState>({ kind: "idle" });
   const [isError, setIsError] = useState<Error | null>(null);
@@ -87,6 +93,7 @@ export function useEventSource(
         isPauseEvent: (event) => isPauseEventRef.current?.(event) ?? false,
         isTerminalEvent: (event) =>
           isTerminalEventRef.current?.(event) ?? false,
+        longPollActivation,
         replayBufferedEventsOnSubscribe: replayBufferedEventsOnMount,
         restartKey,
         telemetryContext: telemetryContextRef.current,
@@ -105,6 +112,7 @@ export function useEventSource(
     hasLongPollFallback,
     isReadyToConsumeStream,
     keepAliveOnUnmount,
+    longPollActivation,
     replayBufferedEventsOnMount,
     restartKey,
     streamId,
