@@ -375,9 +375,10 @@ describe("ConsumptionAttributionTable", () => {
       />
     );
 
-    expect(
-      screen.getByRole("columnheader", { name: "Messages" })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Messages" })).toHaveClass(
+      "w-0",
+      "@sm:w-auto"
+    );
     expect(screen.getByText("1,234")).toBeInTheDocument();
 
     rerender(

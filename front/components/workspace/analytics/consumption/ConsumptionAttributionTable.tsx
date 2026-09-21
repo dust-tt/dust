@@ -236,6 +236,12 @@ function usageDifferenceFromAveragePercent({
   );
 }
 
+// Optional columns collapse to zero width below a container breakpoint
+// (DataTable.Root is a @container, variants are defined in front-spa's
+// index.css) instead of display: none, so the breakdown row's colSpan keeps
+// matching the number of laid out columns.
+const COLLAPSED_COLUMN_CLASSES = "w-0 max-w-0 overflow-hidden px-0";
+
 function buildColumns({
   dimension,
   hasAvatar,
@@ -365,7 +371,14 @@ function buildColumns({
             id: "activeMembers",
             header: "Active / total members",
             enableSorting: false,
-            meta: { sizeRatio: 18, headerAlign: "right" },
+            meta: {
+              className: cn(
+                COLLAPSED_COLUMN_CLASSES,
+                "@xs:w-auto @xs:max-w-none @xs:px-2"
+              ),
+              sizeRatio: 18,
+              headerAlign: "right",
+            },
             cell: (info) => (
               <DataTable.BasicCellContent
                 className="justify-end text-right tabular-nums"
@@ -386,7 +399,14 @@ function buildColumns({
             id: "usageVsAverage",
             header: "Vs workspace avg",
             enableSorting: false,
-            meta: { sizeRatio: 22, headerAlign: "right" },
+            meta: {
+              className: cn(
+                COLLAPSED_COLUMN_CLASSES,
+                "@md:w-auto @md:max-w-none @md:px-2"
+              ),
+              sizeRatio: 22,
+              headerAlign: "right",
+            },
             cell: (info) => {
               const usagePercent = usageDifferenceFromAveragePercent({
                 credits: info.row.original.credits,
@@ -409,7 +429,10 @@ function buildColumns({
             header: "Consumption share",
             enableSorting: true,
             meta: {
-              className: "w-36",
+              className: cn(
+                COLLAPSED_COLUMN_CLASSES,
+                "@xs:w-36 @xs:max-w-none @xs:px-2"
+              ),
               sizeRatio: 20,
               headerAlign: "left",
             },
@@ -443,7 +466,14 @@ function buildColumns({
       accessorKey: "count",
       header: countLabel,
       enableSorting: false,
-      meta: { sizeRatio: 16, headerAlign: "right" },
+      meta: {
+        className: cn(
+          COLLAPSED_COLUMN_CLASSES,
+          "@sm:w-auto @sm:max-w-none @sm:px-2"
+        ),
+        sizeRatio: 16,
+        headerAlign: "right",
+      },
       cell: (info) => (
         <DataTable.BasicCellContent
           className="justify-end text-right tabular-nums"
@@ -456,7 +486,14 @@ function buildColumns({
       accessorKey: "avgCredits",
       header: avgLabel,
       enableSorting: false,
-      meta: { sizeRatio: 22, headerAlign: "right" },
+      meta: {
+        className: cn(
+          COLLAPSED_COLUMN_CLASSES,
+          "@md:w-auto @md:max-w-none @md:px-2"
+        ),
+        sizeRatio: 22,
+        headerAlign: "right",
+      },
       cell: (info) => (
         <DataTable.BasicCellContent
           className="justify-end text-right tabular-nums"
@@ -468,7 +505,14 @@ function buildColumns({
       id: "vsPrev",
       header: "vs prev",
       enableSorting: false,
-      meta: { className: "w-24", sizeRatio: 18, headerAlign: "right" },
+      meta: {
+        className: cn(
+          COLLAPSED_COLUMN_CLASSES,
+          "@lg:w-24 @lg:max-w-none @lg:px-2"
+        ),
+        sizeRatio: 18,
+        headerAlign: "right",
+      },
       cell: (info) => (
         <VsPrevCell
           credits={info.row.original.credits}
