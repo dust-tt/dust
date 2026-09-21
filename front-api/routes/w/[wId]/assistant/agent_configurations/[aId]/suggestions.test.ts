@@ -691,6 +691,36 @@ describe("PATCH with applyToAgent", () => {
     expect(placeholder?.status).toBe("pending");
   });
 
+  it("renames the agent for a name suggestion, leaving its other fields alone", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const suggestion = await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "IncidentHelper" },
+    });
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const renamed = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "full",
+    });
+    expect(renamed).toMatchObject({
+      sId: agent.sId,
+      status: "active",
+      name: "IncidentHelper",
+      description: agent.description,
+      scope: agent.scope,
+      instructions: agent.instructions,
+      version: agent.version + 1,
+    });
+  });
+
   it("returns 400 for kinds that cannot be applied server-side", async () => {
     const { workspace, auth, agent } = await setupTest();
     const suggestion = await AgentSuggestionFactory.createInstructions(
