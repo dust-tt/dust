@@ -53,7 +53,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     await FeatureFlagFactory.basic(auth, "skills_search");
     const skill = await SkillFactory.create(auth);
     const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
-    const sort = [42, skill.sId];
+    const sort = sortBy === "usage" ? [42, skill.sId] : [1, 42, skill.sId];
     mockSearch.mockResolvedValue({
       hits: { hits: [{ _source: document, sort }] },
     });
@@ -70,9 +70,8 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     expect(mockSearch.mock.calls[1][0]).toMatchObject({
       search_after: sort,
       sort: [
-        sortBy === "usage"
-          ? { active_users_count: { order: "desc", missing: "_last" } }
-          : { _score: { order: "desc" } },
+        ...(sortBy === "relevance" ? [{ _score: { order: "desc" } }] : []),
+        { active_users_count: { order: "desc", missing: "_last" } },
         { skill_id: { order: "asc" } },
       ],
     });
