@@ -30,12 +30,55 @@ for (const [family, color] of Object.entries(families)) {
     opacity: 100,
   });
   cases.push({
+    id: `${family}-slash-100`,
+    family,
+    className: `${color} ${family}-red-500/100 ${family}-opacity-25`,
+    opacity: 100,
+  });
+  cases.push({
+    id: `${family}-semantic`,
+    family,
+    className: `${color.replace(`${family}-red-500`, `${family}-background`)} ${family}-opacity-25`,
+    opacity: 100,
+    rgb: [255, 255, 255],
+  });
+  cases.push({
     id: `${family}-slash`,
     family,
     className: `${color} ${family}-red-500/50 ${family}-opacity-25`,
     opacity: 50,
   });
 }
+cases.push({
+  id: "arbitrary",
+  family: "bg",
+  className: "bg-[#ff0000] bg-opacity-50",
+  opacity: 50,
+  rgb: [255, 0, 0],
+});
+cases.push(
+  {
+    id: "white",
+    family: "bg",
+    className: "bg-white bg-opacity-50",
+    opacity: 50,
+    rgb: [255, 255, 255],
+  },
+  {
+    id: "black-ring",
+    family: "ring",
+    className: "ring-2 ring-black ring-opacity-25",
+    opacity: 25,
+    rgb: [0, 0, 0],
+  },
+  {
+    id: "custom-stone",
+    family: "bg",
+    className: "bg-stone-150 bg-opacity-50",
+    opacity: 50,
+    rgb: [238, 238, 236],
+  }
+);
 const aliases = [
   ["blur-0", "filter", "blur(0px)"],
   ["backdrop-blur-0", "backdropFilter", "blur(0px)"],
@@ -73,6 +116,11 @@ try {
     <div id="linear" class="bg-gradient-to-b from-white to-stone-50"></div>
     <div id="radial" class="bg-gradient-radial from-white to-stone-50"></div>
     <div id="conic" class="bg-gradient-conic from-white to-stone-50"></div>
+
+    <div id="border-directions" class="border-2 border-red-500 border-x-blue-500 border-opacity-50"></div>
+    <div class="bg-red-500 bg-opacity-50"><div id="opacity-child" class="bg-red-500"></div></div>
+    <div id="ring-default" class="ring-2"></div>
+    <div id="ring-no-color" class="ring-2 ring-opacity-50"></div>
     <div id="max-width" class="max-w-lg"></div>
     <div id="columns" class="columns-lg"></div>
     <div id="rounded" class="rounded-md"></div>
@@ -90,8 +138,17 @@ try {
         divide: "borderBottomColor",
         placeholder: "color",
       };
+      const canvas = document.createElement("canvas");
+      canvas.width = canvas.height = 1;
+      const context = canvas.getContext("2d");
+      const pixel = (color) => {
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        return Array.from(context.getImageData(0, 0, 1, 1).data);
+      };
       const colors = Object.fromEntries(
-        cases.map(({ id, family }) => {
+        cases.map(({ id, family, opacity, rgb = [239, 68, 68] }) => {
           const element = document.getElementById(id);
           const target =
             family === "divide"
@@ -104,11 +161,14 @@ try {
             target,
             family === "placeholder" ? "::placeholder" : null
           );
+          const color =
+            family === "ring" ? style.color : style[properties[family]];
           return [
             id,
             {
-              color:
-                family === "ring" ? style.color : style[properties[family]],
+              color,
+              pixel: pixel(color),
+              expectedPixel: pixel(`rgba(${rgb.join(",")}, ${opacity / 100})`),
               borderWidth: family === "divide" ? style.borderBottomWidth : null,
             },
           ];
@@ -135,6 +195,14 @@ try {
         gradients: ["linear", "radial", "conic"].map(
           (id) => style(id).backgroundImage
         ),
+
+        borders: [
+          style("border-directions").borderTopColor,
+          style("border-directions").borderRightColor,
+        ],
+        childBackground: style("opacity-child").backgroundColor,
+        ringDefault: style("ring-default").boxShadow,
+        ringNoColor: style("ring-no-color").boxShadow,
         maxWidth: style("max-width").maxWidth,
         columns: style("columns").columnWidth,
         radius: style("rounded").borderRadius,
@@ -145,10 +213,15 @@ try {
     { cases, aliases }
   );
   for (const fixture of cases) {
-    const alpha = fixture.opacity / 100;
-    const expected =
-      alpha === 1 ? "rgb(239, 68, 68)" : `rgba(239, 68, 68, ${alpha})`;
-    assert.equal(observations.colors[fixture.id].color, expected, fixture.id);
+    const { pixel, expectedPixel, color } = observations.colors[fixture.id];
+    // V4 may serialize identical colors as rgb(), oklab(), or color(srgb).
+    // Allow one 8-bit rounding step after conversion and alpha premultiplication.
+    assert.ok(
+      pixel.every(
+        (channel, index) => Math.abs(channel - expectedPixel[index]) <= 1
+      ),
+      `${fixture.id}: ${color} rendered as ${pixel}, expected ${expectedPixel}`
+    );
     if (fixture.family === "divide") {
       assert.equal(
         observations.colors[fixture.id].borderWidth,
@@ -167,6 +240,13 @@ try {
   assert.deepEqual(observations.space, { first: "0px", second: "6px" });
   assert.equal(observations.navigationLeft, 150);
   assert.ok(observations.gradients.every((gradient) => gradient !== "none"));
+
+  assert.deepEqual(observations.borders, [
+    "rgba(239, 68, 68, 0.5)",
+    "rgba(59, 130, 246, 0.5)",
+  ]);
+  assert.equal(observations.childBackground, "rgb(239, 68, 68)");
+  assert.equal(observations.ringNoColor, observations.ringDefault);
   assert.equal(observations.maxWidth, "512px");
   assert.equal(observations.columns, "512px");
   assert.equal(observations.radius, "7.2px");

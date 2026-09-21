@@ -81,8 +81,10 @@
     "@types/papaparse": "^5.3.14",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "color-name": "^1.1.4",
     "playwright": "1.57.0",
     "postcss": "^8",
+    "postcss-selector-parser": "^7.1.1",
     "tailwindcss": "^4.3.0",
     "tsup": "^8.4.0",
     "vitest": "^4.0.16"
