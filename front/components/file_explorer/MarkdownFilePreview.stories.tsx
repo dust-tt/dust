@@ -138,7 +138,7 @@ export const FailedSave: Story = {
   },
 };
 
-/** @summary Pinned documents and restricted files stay read-only without persistence. */
+/** @summary Files stay read-only without persistence when edit permission is missing. */
 export const ReadOnly: Story = {
   args: { canEdit: false },
   play: async ({ canvas, args }) => {

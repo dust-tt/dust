@@ -85,7 +85,12 @@ const followLocalAnchor = (view: EditorView, event: MouseEvent) => {
   const heading = Array.from(
     view.dom.querySelectorAll<HTMLElement>("[id]")
   ).find((element) => element.id === id);
-  heading?.scrollIntoView({ block: "start" });
+  heading?.scrollIntoView({
+    block: "start",
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "instant"
+      : "smooth",
+  });
   return true;
 };
 
@@ -93,6 +98,7 @@ const followLocalAnchor = (view: EditorView, event: MouseEvent) => {
  * @cc [owner:flvndvd,label:product] document-local-anchor-navigation
  * Unmodified primary clicks on local heading links MUST scroll within this document
  * without opening a tab or changing the URL, in both editable and read-only modes.
+ * Scrolling MUST be smooth unless the user prefers reduced motion.
  */
 export const DocumentAnchors = Extension.create({
   name: "documentAnchors",

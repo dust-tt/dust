@@ -4,7 +4,9 @@ import {
 } from "@app/components/file_explorer/FilePreviewContent";
 import { FilePreviewFallback } from "@app/components/file_explorer/FilePreviewFallback";
 import type { FileEntry } from "@app/components/file_explorer/types";
+import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { MissingPodFileTabCallout } from "@app/components/pod/MissingPodFileTabCallout";
+import { useViewChangeLock } from "@app/hooks/useViewChangeGuard";
 import {
   getFilePathDownloadUrl,
   getFilePathViewUrl,
@@ -21,13 +23,18 @@ import { useMemo } from "react";
 interface PodFileTabPreviewProps {
   owner: LightWorkspaceType;
   filePath: string;
+  canEdit: boolean;
 }
 
 /**
  * @cc [owner:flvndvd,label:product] pinned-markdown-read-only
- * Pinned Markdown files MUST remain read-only, including for Pod editors.
+ * Pinned Markdown MUST stay read-only and never persist changes when canEdit is false.
  */
-export function PodFileTabPreview({ owner, filePath }: PodFileTabPreviewProps) {
+export function PodFileTabPreview({
+  owner,
+  filePath,
+  canEdit,
+}: PodFileTabPreviewProps) {
   const { metadata, isFileMetadataLoading, isFileMetadataNotFound } =
     useFileMetadataFromPath({
       owner,
@@ -79,6 +86,20 @@ export function PodFileTabPreview({ owner, filePath }: PodFileTabPreviewProps) {
     enabled: !!entry,
   });
 
+  const markdown = useMarkdownFileEditor({
+    category,
+    entryPath: entry?.path,
+    fileUrl,
+    isActive: !!entry,
+    isContentLoading,
+    isTooLarge,
+    owner,
+    processedContent,
+    canEdit,
+  });
+
+  useViewChangeLock(markdown.isDirty || markdown.isSaving);
+
   if (isFileMetadataLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center">
@@ -120,6 +141,7 @@ export function PodFileTabPreview({ owner, filePath }: PodFileTabPreviewProps) {
               fileUrl={fileUrl}
               isContentLoading={isContentLoading}
               isFullWidth
+              markdown={markdown}
               owner={owner}
               processedContent={processedContent}
             />

@@ -95,7 +95,12 @@ export const HeadingLinks: Story = {
       });
 
       await expect(window.open).not.toHaveBeenCalled();
-      await expect(scroll).toHaveBeenCalledWith({ block: "start" });
+      await expect(scroll).toHaveBeenCalledWith({
+        block: "start",
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+      });
       await expect(window.location.href).toBe(href);
       await expect(args.onSave).not.toHaveBeenCalled();
     } finally {

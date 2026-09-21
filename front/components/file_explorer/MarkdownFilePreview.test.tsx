@@ -10,11 +10,13 @@ describe("MarkdownFilePreview", () => {
   beforeEach(() => {
     originalScrollIntoView = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = scrollIntoView;
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
   });
 
   afterEach(() => {
     scrollIntoView.mockReset();
     Element.prototype.scrollIntoView = originalScrollIntoView;
+    vi.unstubAllGlobals();
   });
 
   it("renders heading ids from the document", async () => {
@@ -53,7 +55,10 @@ describe("MarkdownFilePreview", () => {
 
     fireEvent.click(link);
 
-    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      block: "start",
+      behavior: "smooth",
+    });
   });
 
   it("keeps external links opening in a new tab", async () => {
