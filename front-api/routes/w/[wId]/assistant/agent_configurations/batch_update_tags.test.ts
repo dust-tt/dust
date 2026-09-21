@@ -1,5 +1,6 @@
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -7,7 +8,6 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { Err } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -22,12 +22,29 @@ function batchUpdateTags(workspace: { sId: string }, body: unknown) {
   );
 }
 
+// Tags are attached to a specific configuration version, so a batch tag edit creates a new version
+// per agent; read the tags of the current version by re-fetching the agent.
+async function currentTagSIds(
+  auth: Authenticator,
+  sId: string
+): Promise<string[]> {
+  const agent = await AgentResource.fetchById(auth, sId);
+  if (!agent) {
+    return [];
+  }
+  const tags = await TagResource.listForAgent(
+    auth,
+    agent.agentConfigurationModelId
+  );
+  return tags.map((tag) => tag.sId).sort();
+}
+
 describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("adds and removes tags while ignoring duplicate additions", async () => {
+  it("adds and removes tags as a new version, ignoring duplicate additions", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -53,17 +70,25 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
     });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ success: true });
+    expect(await response.json()).toEqual({
+      success: true,
+      updatedAgentIds: expect.arrayContaining([
+        firstAgent.sId,
+        secondAgent.sId,
+      ]),
+      skippedAgentIds: [],
+    });
 
-    const tagsByAgent = await TagResource.listForAgents(auth, [
-      firstAgent.id,
-      secondAgent.id,
-    ]);
-    for (const agent of [firstAgent, secondAgent]) {
-      expect(tagsByAgent[agent.id]?.map((tag) => tag.sId)).toEqual([
-        tagToAdd.sId,
-      ]);
-    }
+    // Both agents end up with only the added tag: the removal took, and re-adding a tag the first
+    // agent already had is not duplicated.
+    expect(await currentTagSIds(auth, firstAgent.sId)).toEqual([tagToAdd.sId]);
+    expect(await currentTagSIds(auth, secondAgent.sId)).toEqual([tagToAdd.sId]);
+
+    // The change is a new version, not an in-place mutation of the current one.
+    const after = await AgentResource.fetchById(auth, firstAgent.sId);
+    expect(after?.isFull() && after.content.version).toBe(
+      firstAgent.version + 1
+    );
   });
 
   it("tags an unpublished agent of another member built on a restricted space", async () => {
@@ -72,7 +97,8 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
       role: "admin",
     });
     // The agent is authored and edited by another member, is unpublished, and requires a space the
-    // acting admin is not a member of: exactly what "Show hidden agents" surfaces.
+    // acting admin is not a member of: exactly what "Show hidden agents" surfaces. The admin holds
+    // neither `write` nor `read` on it, but may still tag it (see `tags-change-requires-edit`).
     const agentOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, agentOwner, {
       role: "user",
@@ -98,31 +124,36 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
     });
 
     expect(response.status).toBe(200);
-    const tagsByAgent = await TagResource.listForAgents(auth, [agent.id]);
-    expect(tagsByAgent[agent.id]?.map((t) => t.sId)).toEqual([tag.sId]);
+    expect(await response.json()).toEqual({
+      success: true,
+      updatedAgentIds: [agent.sId],
+      skippedAgentIds: [],
+    });
+    expect(await currentTagSIds(agentOwnerAuth, agent.sId)).toEqual([tag.sId]);
   });
 
-  it("returns 400 when adding tags fails", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+  it("returns 404 when a tag id is unknown", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
-    vi.spyOn(TagResource, "addToAgents").mockResolvedValue(
-      new Err(new Error("Failed to add tags"))
-    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
-    const response = await batchUpdateTags(workspace, { agentIds: [] });
+    const response = await batchUpdateTags(workspace, {
+      agentIds: [agent.sId],
+      addTagIds: ["tag_does_not_exist"],
+    });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(404);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
-        message: "Failed to add tags",
+        type: "agent_configuration_not_found",
+        message: "One or more specified tags were not found.",
       },
     });
   });
 
-  it("rejects a batch containing an archived agent", async () => {
+  it("skips an archived agent rather than tagging it", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -136,32 +167,11 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
       addTagIds: [tag.sId],
     });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message: "An archived agent cannot be updated. Restore it first.",
-      },
-    });
-  });
-
-  it("returns 400 when removing tags fails", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      role: "admin",
-    });
-    vi.spyOn(TagResource, "removeFromAgents").mockResolvedValue(
-      new Err(new Error("Failed to remove tags"))
-    );
-
-    const response = await batchUpdateTags(workspace, { agentIds: [] });
-
-    expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message: "Failed to remove tags",
-      },
+      success: true,
+      updatedAgentIds: [],
+      skippedAgentIds: [agent.sId],
     });
   });
 });

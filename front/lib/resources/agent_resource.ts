@@ -192,11 +192,40 @@ export type SaveAgentConfigurationParams = {
 // configuration. Only provided properties are considered. `model` may itself be partial — the
 // provided fields are merged into the agent's current model, so a bulk model change can set the
 // provider/model/effort without discarding each agent's other model settings (e.g. temperature).
+// `tags` may be given as a full set or, for a bulk tag edit across agents with differing current
+// tags, as `addTags`/`removeTags` deltas resolved per agent (see `applyTagDelta`).
 export type AgentConfigurationUpdate = Partial<
   Omit<SaveAgentConfigurationParams, "model">
 > & {
   model?: Partial<AgentModelConfigurationType>;
+  addTags?: TagType[];
+  removeTags?: TagType[];
 };
+
+// Resolves a tag delta against a current tag set: drops `removeTags`, then adds `addTags` (deduped
+// by `sId`). A tag present in both is dropped — a removal wins over an add. Used to turn a bulk tag
+// edit (uniform add/remove across agents) into each agent's own resulting tag set.
+function applyTagDelta(
+  currentTags: TagType[],
+  {
+    addTags = [],
+    removeTags = [],
+  }: { addTags?: TagType[]; removeTags?: TagType[] }
+): TagType[] {
+  const removeIds = new Set(removeTags.map((tag) => tag.sId));
+  const byId = new Map<string, TagType>();
+  for (const tag of currentTags) {
+    if (!removeIds.has(tag.sId)) {
+      byId.set(tag.sId, tag);
+    }
+  }
+  for (const tag of addTags) {
+    if (!removeIds.has(tag.sId)) {
+      byId.set(tag.sId, tag);
+    }
+  }
+  return [...byId.values()];
+}
 
 // The `SaveAgentConfigurationParams` fields that define a configuration version (everything except
 // `scope`/`editors`, which are applied in place, and `authorId`, which is version metadata). A save
@@ -333,15 +362,15 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
 /**
  * @cc [owner:tdraier,label:security] agent-edit-requires-write
  * Creating a new configuration version of an existing agent by changing a definition field other
- * than the model (see `agent-edit-in-place`) MUST require `write` on that agent
+ * than the model and tags (see `agent-edit-in-place`) MUST require `write` on that agent
  * (`auth.can("write", this)`), enforced inside the resource (`updateConfiguration`) — callers may
  * double-check, but MUST NOT be the sole gate. `read` alone (any member can read a visible agent)
  * MUST NOT allow editing the definition. For human and system-key callers the workspace `admin` role
- * alone (which grants `admin`, not `write`, on agents they do not edit) MUST NOT allow editing a
- * non-model definition field (though `admin` alone does allow changing that agent's model — see
- * `model-change-requires-edit` — or its editor set in place). Regular API keys are the sole
- * exception: the admin role grants them `write` (see `admin-key-agent-write`), so an admin key may
- * edit an agent it holds no editor grant on.
+ * alone (which grants `admin`, not `write`, on agents they do not edit) MUST NOT allow editing such
+ * a definition field (though `admin` alone does allow changing that agent's model — see
+ * `model-change-requires-edit` — or its tags — see `tags-change-requires-edit` — or its editor set
+ * in place). Regular API keys are the sole exception: the admin role grants them `write` (see
+ * `admin-key-agent-write`), so an admin key may edit an agent it holds no editor grant on.
  */
 export class AgentResource
   extends BaseResource<AgentModel>
@@ -1527,10 +1556,11 @@ export class AgentResource
   /**
    * @cc [owner:tdraier,label:security;product] agent-edit-in-place
    * Saving an existing agent MUST route each changed property by kind and gate it on its own
-   * permission: a definition field other than the model (name, description, instructions, picture,
-   * status, template, requested spaces, reinforcement, tags, tools or skills) creates a new version
-   * and MUST require `write`; the `model` creates a new version but MUST require `write` OR `admin`
-   * (see `model-change-requires-edit`); `scope` is applied in place (no new version) and MUST satisfy
+   * permission: a definition field other than the model and tags (name, description, instructions,
+   * picture, status, template, requested spaces, reinforcement, tools or skills) creates a new
+   * version and MUST require `write`; the `model` or `tags` create a new version but MUST require
+   * `write` OR `admin` (see `model-change-requires-edit`/`tags-change-requires-edit`); `scope` is
+   * applied in place (no new version) and MUST satisfy
    * `scope-change-requires-edit-and-publish`; an editor-set change is applied in place and MUST
    * require `admin` (see `agent-verbs`). A property whose provided value equals the current one MUST
    * be a no-op (no version, no permission check). A new version created alongside a scope/editor
@@ -1554,6 +1584,14 @@ export class AgentResource
    * Only callers who hold `write` or `admin` on an agent may change its model: `updateConfiguration`
    * MUST gate a model change on `auth.can("write", this) || auth.can("admin", this)`, so the model of
    * an agent the caller cannot edit MUST NOT be written (including through `bulkUpdate`).
+   */
+  /**
+   * @cc [owner:tdraier,label:security] tags-change-requires-edit
+   * Only callers who hold `write` or `admin` on an agent may change its tags: `updateConfiguration`
+   * MUST gate a tags change on `auth.can("write", this) || auth.can("admin", this)`. This lets a
+   * workspace admin (bulk-)tag agents they do not edit — including ones they cannot read, since
+   * `bulkUpdate` resolves rows caller-independently — while still creating a proper new version.
+   * Protected tags remain separately gated on the `publish` capability in `syncAgentTags`.
    */
   /**
    * @cc [owner:philipperolet,label:security;product] complete-editor-set-replaces-grants
@@ -1586,12 +1624,14 @@ export class AgentResource
     // configuration is read (to diff and to fill the new version's unchanged columns) ONLY when a
     // definition field is provided AND the agent is readable — an unreadable (`light`) caller cannot
     // create a version, so its definition fields are ignored (it may still change scope/editors).
+    const hasTagDelta =
+      (update.addTags?.length ?? 0) > 0 || (update.removeTags?.length ?? 0) > 0;
     const providedDefinitionKeys = AGENT_CONFIGURATION_KEYS.filter(
       (key) => update[key] !== undefined
     );
     let versionParams: SaveAgentConfigurationParams | null = null;
     let allowForAdmins = false;
-    if (providedDefinitionKeys.length > 0 && this.isFull()) {
+    if ((providedDefinitionKeys.length > 0 || hasTagDelta) && this.isFull()) {
       const currentParams = await this.buildResaveParams(auth);
       const mergedParams: SaveAgentConfigurationParams = { ...currentParams };
       for (const key of providedDefinitionKeys) {
@@ -1603,6 +1643,11 @@ export class AgentResource
         } else {
           (mergedParams as Record<string, unknown>)[key] = update[key];
         }
+      }
+      // Tag deltas resolve against the (possibly just-overridden) tag set, so a bulk tag edit keeps
+      // each agent's other tags while adding/removing the requested ones.
+      if (hasTagDelta) {
+        mergedParams.tags = applyTagDelta(mergedParams.tags, update);
       }
       mergedParams.authorId = update.authorId ?? currentParams.authorId;
 
@@ -1617,7 +1662,11 @@ export class AgentResource
       );
       if (changedDefinitionKeys.length > 0) {
         versionParams = mergedParams;
-        allowForAdmins = changedDefinitionKeys.every((key) => key === "model");
+        // The model and tags alone may be changed by an editor OR an admin; every other definition
+        // field requires `write` (see `model-change-requires-edit`/`tags-change-requires-edit`).
+        allowForAdmins = changedDefinitionKeys.every(
+          (key) => key === "model" || key === "tags"
+        );
       }
     }
 
@@ -1629,8 +1678,9 @@ export class AgentResource
 
     // Check every required permission up front so a save never partially succeeds.
     if (versionParams) {
-      // The model alone may be changed by an editor or an admin; every other definition field
-      // requires `write` (see `agent-edit-in-place` / `model-change-requires-edit`).
+      // The model and tags may be changed by an editor or an admin; every other definition field
+      // requires `write` (see `agent-edit-in-place` / `model-change-requires-edit` /
+      // `tags-change-requires-edit`).
       const canEditDefinition = allowForAdmins
         ? auth.can("write", this) || auth.can("admin", this)
         : auth.can("write", this);

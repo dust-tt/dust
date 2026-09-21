@@ -8,6 +8,7 @@ import {
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
@@ -17,6 +18,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -1193,6 +1195,137 @@ describe("AgentResource", () => {
         updatedAgentIds: [],
         skippedAgentIds: [agent.sId],
       });
+    });
+  });
+
+  describe("bulkUpdate (tags)", () => {
+    async function currentTagSIds(
+      auth: Authenticator,
+      sId: string
+    ): Promise<string[]> {
+      const agent = await AgentResource.fetchById(auth, sId);
+      assert(agent);
+      const tags = await TagResource.listForAgent(
+        auth,
+        agent.agentConfigurationModelId
+      );
+      return tags.map((tag) => tag.sId).sort();
+    }
+
+    it("adds a tag as a new version, keeping the agent's existing tags", async () => {
+      const { authenticator, workspace } = testContext;
+
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const existingTag = await TagFactory.create(workspace, {
+        name: "existing",
+      });
+      await existingTag.addToAgent(authenticator, agent);
+
+      const newTag = await TagFactory.create(workspace, { name: "new" });
+      const result = await AgentResource.bulkUpdate(
+        authenticator,
+        [agent.sId],
+        {
+          addTags: [newTag.toJSON()],
+        }
+      );
+
+      expect(result).toEqual({
+        updatedAgentIds: [agent.sId],
+        skippedAgentIds: [],
+      });
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      // A new version was created and both tags are attached to it.
+      expect(after.content.version).toBe(agent.version + 1);
+      expect(await currentTagSIds(authenticator, agent.sId)).toEqual(
+        [existingTag.sId, newTag.sId].sort()
+      );
+    });
+
+    it("removes a tag as a new version", async () => {
+      const { authenticator, workspace } = testContext;
+
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const tag = await TagFactory.create(workspace, { name: "to-remove" });
+      await tag.addToAgent(authenticator, agent);
+
+      const result = await AgentResource.bulkUpdate(
+        authenticator,
+        [agent.sId],
+        {
+          removeTags: [tag.toJSON()],
+        }
+      );
+
+      expect(result).toEqual({
+        updatedAgentIds: [agent.sId],
+        skippedAgentIds: [],
+      });
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(agent.version + 1);
+      expect(await currentTagSIds(authenticator, agent.sId)).toEqual([]);
+    });
+
+    it("does not create a new version when the tag is already present", async () => {
+      const { authenticator, workspace } = testContext;
+
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const tag = await TagFactory.create(workspace, { name: "present" });
+      await tag.addToAgent(authenticator, agent);
+
+      // Adding the tag it already has leaves the set unchanged, so no new version is created.
+      const result = await AgentResource.bulkUpdate(
+        authenticator,
+        [agent.sId],
+        {
+          addTags: [tag.toJSON()],
+        }
+      );
+      expect(result.updatedAgentIds).toEqual([agent.sId]);
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(agent.version);
+    });
+
+    it("lets a workspace admin who is not an editor tag an agent", async () => {
+      const { authenticator, workspace } = testContext;
+
+      // The agent is authored (and edited) by the regular test user, so the admin below holds
+      // `admin` but not `write` on it.
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const adminUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+      const before = await AgentResource.fetchById(adminAuth, agent.sId);
+      assert(before);
+      expect(adminAuth.can("write", before)).toBe(false);
+      expect(adminAuth.can("admin", before)).toBe(true);
+
+      const tag = await TagFactory.create(workspace, { name: "governance" });
+      const result = await AgentResource.bulkUpdate(adminAuth, [agent.sId], {
+        addTags: [tag.toJSON()],
+      });
+
+      expect(result).toEqual({
+        updatedAgentIds: [agent.sId],
+        skippedAgentIds: [],
+      });
+      expect(await currentTagSIds(authenticator, agent.sId)).toEqual([tag.sId]);
     });
   });
 
