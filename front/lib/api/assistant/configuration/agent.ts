@@ -134,6 +134,9 @@ export async function createPendingAgentConfiguration(
     );
   });
 
+  // The pending agent's editor grant was created after this authenticator's permission snapshot.
+  await auth.refresh();
+
   return new Ok({ sId });
 }
 

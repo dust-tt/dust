@@ -1863,6 +1863,7 @@ export class AgentResource
 
     try {
       let template: TemplateResource | null = null;
+      let createdInitialEditorGrant = false;
       if (templateId) {
         template = await TemplateResource.fetchByExternalId(templateId);
       }
@@ -1933,6 +1934,7 @@ export class AgentResource
             auth,
             agentConfigurationInstance
           ).grantEditors(auth, { editors, transaction: t });
+          createdInitialEditorGrant = true;
         }
 
         // Create the MCP actions and skill associations in the same transaction as the
@@ -1967,6 +1969,11 @@ export class AgentResource
       // Self-owned managed transaction: a throw in `performCreation` auto-rolls-back the whole save
       // before it is converted to an `Err` (see `agent-save-atomic`).
       const agent = await withTransaction(performCreation);
+
+      if (createdInitialEditorGrant) {
+        // The initial grant was created after this authenticator's permission snapshot.
+        await auth.refresh();
+      }
 
       // The saved version becomes the agent's current version, so any cached resource is now stale
       // (a no-op for a brand-new agent from `makeNew`). The save above is a self-owned transaction,
