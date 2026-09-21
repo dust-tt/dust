@@ -1067,6 +1067,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       "notion-search": "never_ask",
       "notion-ai-search": "never_ask",
       "notion-fetch": "never_ask",
+      "notion-get-tool-access": "never_ask",
       "notion-get-comments": "never_ask",
       "notion-get-teams": "never_ask",
       "notion-get-users": "never_ask",
@@ -1096,6 +1097,10 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       "notion-fetch": {
         running: "Fetching from Notion",
         done: "Fetched from Notion",
+      },
+      "notion-get-tool-access": {
+        running: "Checking Notion tool access",
+        done: "Checked Notion tool access",
       },
       "notion-create-pages": {
         running: "Creating pages in Notion",
