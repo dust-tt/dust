@@ -579,11 +579,18 @@ export function getTimeframeSecondsFromLiteral(
 }
 
 /**
- * Unconditionally records `incrementBy` units against a fixed-window counter
+ * Unconditionally records `incrementBy` against a fixed-window counter
  * identified by `bounds`. Unlike the rolling `addRateLimiterCount`, the key
  * encodes the current window (via `bounds.label`) and is a plain `INCRBY` with
  * `PEXPIREAT` set to `bounds.windowEndMs` — enforcement (reading the count and
  * comparing to a limit) happens beforehand via `getFixedWindowCount`, not here.
+ *
+ * `incrementBy` is a raw integer in caller-defined units, stored verbatim: the
+ * caller owns the unit and must read back with the same unit via
+ * `getFixedWindowCount` and compare against a limit in that unit (spend-cap and
+ * fair-use callers use microCredits). This differs from `addRateLimiterCount`,
+ * which takes a (possibly fractional) credit amount and converts to microCredits
+ * internally — do not pass credits here.
  */
 export async function addFixedWindowCount({
   key,

@@ -426,8 +426,7 @@ export async function resetFairUseAwuCreditsRateLimitForUser({
   );
 
   // Reset regardless of the enforcement mode: expire both the rolling key and
-  // the current fixed-window key (`<base>:<label>`), which are distinct Redis
-  // keys, so the button works whether or not `fixed_window_fair_use` is on.
+  // the current fixed-window key (`<base>:<label>`).
   const resetResult = await expireRateLimiterKey({ key: baseKey });
   if (resetResult.isErr()) {
     return resetResult;

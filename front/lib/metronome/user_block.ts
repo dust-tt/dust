@@ -181,9 +181,6 @@ export async function getFairUseAwuCreditsStatus({
   workspace: LightWorkspaceType;
   user: UserType;
   plan: PlanType | null;
-  // When true (`fixed_window_fair_use`), read the fixed UTC-calendar counter for
-  // the plan timeframe instead of the rolling window, and report the window
-  // boundary as the reset.
   useFixedWindow?: boolean;
 }): Promise<FairUseAwuCreditsStatus> {
   if (!plan) {
@@ -302,8 +299,6 @@ export async function getFairUseAwuCreditsUsedCountsByUser({
   workspace: LightWorkspaceType;
   users: UserType[];
   plan: PlanType | null;
-  // Mirror `getFairUseAwuCreditsStatus`: read the fixed UTC-calendar counter so
-  // the sort key matches the displayed value.
   useFixedWindow?: boolean;
 }): Promise<Map<string, number>> {
   if (!plan || plan.limits.assistant.maxAwuCredits === -1) {
