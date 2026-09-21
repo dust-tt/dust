@@ -366,9 +366,11 @@ async function addAgentEditorsToSkill(
     users,
     workspace: auth.getNonNullableWorkspace(),
   });
+  // Ran when the (since removed) `builder` role still existed; now covers the
+  // remaining privileged roles.
   const builderUserModelIds = new Set(
     memberships
-      .filter((membership) => membership.isBuilder)
+      .filter((membership) => ["admin", "manager"].includes(membership.role))
       .map((membership) => membership.userId)
   );
 

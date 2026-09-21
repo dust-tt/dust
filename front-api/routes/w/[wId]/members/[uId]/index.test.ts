@@ -130,7 +130,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
       expect(data.member.workspaces[0].role).toBe("manager");
     });
 
-    it("should return 400 when assigning the deprecated builder role", async () => {
+    it("should return 400 when assigning an unknown role", async () => {
       const { workspace } = await createPrivateApiMockRequest({
         method: "POST",
         role: "admin",
@@ -146,7 +146,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: "builder" }),
+          body: JSON.stringify({ role: "owner" }),
         }
       );
 

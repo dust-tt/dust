@@ -350,7 +350,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
 
   it("keeps returning not found to a non-admin for an unpublished agent", async () => {
     const { workspace } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
       method: "GET",
     });
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
@@ -373,7 +373,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
 
   it("keeps returning not found to a non-admin for an agent built on a space they cannot read", async () => {
     const { workspace } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
       method: "GET",
     });
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(

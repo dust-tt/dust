@@ -41,7 +41,7 @@ vi.mock("@app/lib/resources/storage", async (importActual) => {
 describe("fetchFeedbackExportRows", () => {
   it("reads feedback from Postgres, resolving agent name, user sId/email, and the conversation URL", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
-      role: "builder",
+      role: "user",
     });
 
     const agent = await AgentConfigurationFactory.createTestAgent(
@@ -106,7 +106,7 @@ describe("fetchFeedbackExportRows", () => {
   });
 
   it("returns an empty array when there is no feedback in the requested window", async () => {
-    const { workspace } = await createResourceTest({ role: "builder" });
+    const { workspace } = await createResourceTest({ role: "user" });
 
     const result = await fetchFeedbackExportRows({
       owner: workspace,
@@ -124,7 +124,7 @@ describe("fetchFeedbackExportRows", () => {
 
   it("includes feedback created exactly at the start-of-day boundary", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
-      role: "builder",
+      role: "user",
     });
 
     const agent = await AgentConfigurationFactory.createTestAgent(
@@ -176,7 +176,7 @@ describe("fetchFeedbackExportRows", () => {
 
   it("keeps the row with an empty user fallback when the feedback author was deleted", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
-      role: "builder",
+      role: "user",
     });
 
     const agent = await AgentConfigurationFactory.createTestAgent(

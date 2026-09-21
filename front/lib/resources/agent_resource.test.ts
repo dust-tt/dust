@@ -647,7 +647,7 @@ describe("AgentResource", () => {
 
   it.each([
     "admin",
-    "builder",
+    "user",
   ] as const)("applies the %s API-key write policy only to workspace custom agents", async (role) => {
     const { auth } = await createPublicApiMockRequest({ role });
     const configuration = makeAgentConfiguration({

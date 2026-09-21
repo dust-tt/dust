@@ -23,20 +23,6 @@ export class KeyFactory {
         workspaceId: groups[0].workspaceId,
         isSystem: false,
         status: "active",
-        role: "builder",
-      },
-      groups
-    );
-  }
-
-  static async readOnly(groupOrGroups: GroupResource | GroupResource[]) {
-    const groups = normalizeGroups(groupOrGroups);
-    return KeyResource.makeNew(
-      {
-        name: "key-" + faker.string.alphanumeric(8),
-        workspaceId: groups[0].workspaceId,
-        isSystem: false,
-        status: "active",
         role: "user",
       },
       groups
@@ -65,7 +51,7 @@ export class KeyFactory {
         workspaceId: groups[0].workspaceId,
         isSystem: false,
         status: "disabled",
-        role: "builder",
+        role: "user",
       },
       groups
     );
