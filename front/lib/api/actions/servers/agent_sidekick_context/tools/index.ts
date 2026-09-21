@@ -354,7 +354,9 @@ async function createToolsSuggestions({
       ],
     }
   );
-  const foundToolIds = new Set(tools.map((t) => t.sId));
+  const foundToolIds = new Set(
+    tools.filter((t) => t.canRead(auth)).map((t) => t.sId)
+  );
   const missingToolIds = suggestionToolIds.filter(
     (id) => !foundToolIds.has(id)
   );
@@ -1392,7 +1394,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       params.suggestion;
     const view = await DataSourceViewResource.fetchById(auth, dataSourceViewId);
 
-    if (!view) {
+    if (!view || !view.canRead(auth)) {
       return new Err(
         new MCPError(
           `The data source view ID "${dataSourceViewId}" is invalid or not accessible. ` +

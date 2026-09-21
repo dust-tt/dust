@@ -5,11 +5,15 @@ import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_vie
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AppFactory } from "@app/tests/utils/AppFactory";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -624,6 +628,316 @@ describe("POST /api/w/:wId/assistant/agent_configurations - additionalRequestedS
         },
       });
     expect(agentMCPServerConfigurationCount).toBe(0);
+  });
+});
+
+describe("POST /api/w/:wId/assistant/agent_configurations - tools in spaces the user cannot read", () => {
+  const BASE_ACTION = {
+    type: "mcp_server_configuration",
+    description: "Tool description",
+    dataSources: null,
+    tables: null,
+    childAgentId: null,
+    timeFrame: null,
+    jsonSchema: null,
+    additionalConfiguration: {},
+    dustAppConfiguration: null,
+    secretName: null,
+    dustProject: null,
+  };
+
+  async function setupNonMemberBuilder() {
+    const { workspace, user, auth, globalSpace } =
+      await createPrivateApiMockRequest({ role: "user", method: "POST" });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "agent",
+    });
+    await auth.refresh();
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    expect(auth.can("read", restrictedSpace)).toBe(false);
+    return { workspace, user, auth, globalSpace, restrictedSpace };
+  }
+
+  it("rejects a tool whose MCP server view lives in a restricted space", async () => {
+    const { workspace, user, restrictedSpace } = await setupNonMemberBuilder();
+    const server = await RemoteMCPServerFactory.create(workspace);
+    const view = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      restrictedSpace
+    );
+
+    const response = await postAgent(workspace, {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        scope: "hidden",
+        editors: [{ sId: user.sId }],
+        actions: [
+          { ...BASE_ACTION, mcpServerViewId: view.sId, name: "restricted" },
+        ],
+      },
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.message).toContain(
+      `User does not have access to the following spaces: ${restrictedSpace.sId}`
+    );
+    expect(
+      await AgentConfigurationModel.count({
+        where: { workspaceId: workspace.id },
+      })
+    ).toBe(0);
+  });
+
+  it("rejects a search tool whose data source view lives in a restricted space", async () => {
+    const { workspace, user, globalSpace, restrictedSpace } =
+      await setupNonMemberBuilder();
+    const searchView = await MCPServerViewFactory.internal(
+      workspace,
+      "search",
+      globalSpace
+    );
+    const dsv = await DataSourceViewFactory.folder(workspace, restrictedSpace);
+
+    const response = await postAgent(workspace, {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        scope: "hidden",
+        editors: [{ sId: user.sId }],
+        actions: [
+          {
+            ...BASE_ACTION,
+            mcpServerViewId: searchView.sId,
+            name: "search_restricted",
+            dataSources: [
+              {
+                dataSourceViewId: dsv.sId,
+                workspaceId: workspace.sId,
+                filter: { parents: null, tags: null },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.message).toContain(
+      `User does not have access to the following spaces: ${restrictedSpace.sId}`
+    );
+  });
+
+  it("rejects a Dust app that lives in a restricted space", async () => {
+    const { workspace, user, globalSpace, restrictedSpace } =
+      await setupNonMemberBuilder();
+    const app = await AppFactory.basic(workspace, restrictedSpace);
+    const server = await RemoteMCPServerFactory.create(workspace);
+    const view = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      globalSpace
+    );
+
+    const response = await postAgent(workspace, {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        scope: "hidden",
+        editors: [{ sId: user.sId }],
+        actions: [
+          {
+            ...BASE_ACTION,
+            mcpServerViewId: view.sId,
+            name: "run_restricted_app",
+            dustAppConfiguration: {
+              type: "dust_app_run_configuration",
+              appWorkspaceId: workspace.sId,
+              appId: app.sId,
+            },
+          },
+        ],
+      },
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.message).toContain(
+      `User does not have access to the following Dust apps: ${app.sId}`
+    );
+  });
+
+  it("rejects a Pod tool configured with a restricted Pod", async () => {
+    const { workspace, user, auth, globalSpace } =
+      await setupNonMemberBuilder();
+    const restrictedPod = await SpaceFactory.project(workspace);
+    expect(auth.can("read", restrictedPod)).toBe(false);
+    const podView = await MCPServerViewFactory.internal(
+      workspace,
+      "pod_manager",
+      globalSpace
+    );
+
+    const response = await postAgent(workspace, {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        scope: "hidden",
+        editors: [{ sId: user.sId }],
+        actions: [
+          {
+            ...BASE_ACTION,
+            mcpServerViewId: podView.sId,
+            name: "pod_tool",
+            dustProject: {
+              projectId: restrictedPod.sId,
+              workspaceId: workspace.sId,
+            },
+          },
+        ],
+      },
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.message).toContain(
+      `User does not have access to the following spaces: ${restrictedPod.sId}`
+    );
+  });
+
+  it("rejects a malformed Pod id", async () => {
+    const { workspace, user, globalSpace } = await setupNonMemberBuilder();
+    const podView = await MCPServerViewFactory.internal(
+      workspace,
+      "pod_manager",
+      globalSpace
+    );
+
+    const response = await postAgent(workspace, {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        scope: "hidden",
+        editors: [{ sId: user.sId }],
+        actions: [
+          {
+            ...BASE_ACTION,
+            mcpServerViewId: podView.sId,
+            name: "pod_tool",
+            dustProject: { projectId: "not_a_pod", workspaceId: workspace.sId },
+          },
+        ],
+      },
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.message).toContain(
+      "User does not have access to the following spaces: not_a_pod"
+    );
+  });
+
+  it("rejects space ids that alias a readable space through another prefix or workspace", async () => {
+    const { workspace, user, globalSpace } = await setupNonMemberBuilder();
+    const aliasedIds = [
+      makeSId("data_source_view", {
+        id: globalSpace.id,
+        workspaceId: workspace.id,
+      }),
+      makeSId("space", { id: globalSpace.id, workspaceId: workspace.id + 1 }),
+    ];
+    const podView = await MCPServerViewFactory.internal(
+      workspace,
+      "pod_manager",
+      globalSpace
+    );
+
+    for (const aliasedId of aliasedIds) {
+      const asAdditionalSpace = await postAgent(workspace, {
+        assistant: {
+          ...TEST_AGENT_PARAMS,
+          scope: "hidden",
+          editors: [{ sId: user.sId }],
+          additionalRequestedSpaceIds: [aliasedId],
+        },
+      });
+      expect(asAdditionalSpace.status).toBe(400);
+      expect((await asAdditionalSpace.json()).error.message).toContain(
+        `User does not have access to the following spaces: ${aliasedId}`
+      );
+
+      const asPod = await postAgent(workspace, {
+        assistant: {
+          ...TEST_AGENT_PARAMS,
+          scope: "hidden",
+          editors: [{ sId: user.sId }],
+          actions: [
+            {
+              ...BASE_ACTION,
+              mcpServerViewId: podView.sId,
+              name: "pod_tool",
+              dustProject: { projectId: aliasedId, workspaceId: workspace.sId },
+            },
+          ],
+        },
+      });
+      expect(asPod.status).toBe(400);
+      expect((await asPod.json()).error.message).toContain(
+        `User does not have access to the following spaces: ${aliasedId}`
+      );
+    }
+  });
+
+  it("rejects a malformed additional space id", async () => {
+    const { workspace, user } = await setupNonMemberBuilder();
+
+    const response = await postAgent(workspace, {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        scope: "hidden",
+        editors: [{ sId: user.sId }],
+        additionalRequestedSpaceIds: ["not_a_space"],
+      },
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.message).toContain(
+      "User does not have access to the following spaces: not_a_space"
+    );
+  });
+
+  it("accepts the same tools once the user is a member of the space", async () => {
+    const { workspace, user, restrictedSpace } = await setupNonMemberBuilder();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const addMembersResult = await restrictedSpace.addMembers(adminAuth, {
+      userIds: [user.sId],
+    });
+    expect(addMembersResult.isOk()).toBe(true);
+    const server = await RemoteMCPServerFactory.create(workspace);
+    const view = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      restrictedSpace
+    );
+
+    const response = await postAgent(workspace, {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        scope: "hidden",
+        editors: [{ sId: user.sId }],
+        actions: [
+          { ...BASE_ACTION, mcpServerViewId: view.sId, name: "restricted" },
+        ],
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.agentConfiguration.requestedSpaceIds).toEqual([
+      restrictedSpace.sId,
+    ]);
   });
 });
 

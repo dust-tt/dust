@@ -2,15 +2,15 @@ import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { resolveAgentRequestedSpaceModelIds } from "@app/lib/api/assistant/configuration/requested_spaces";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
@@ -27,6 +27,22 @@ import uniq from "lodash/uniq";
  * provided, a new version of the agent configuration with that same
  * agentConfigurationId is created. Otherwise a brand-new agent configuration
  * is created. In both cases the new agent configuration is returned.
+ */
+/**
+ * @cc [owner:rfrenoy,label:security;product] requested-spaces-readable-by-caller
+ * Unless `dangerouslySkipPermissionFiltering` is set, the call MUST return an `Err` and persist
+ * nothing when any space of the new version's `requestedSpaceIds` (collected from the actions'
+ * MCP server views, data source views, Dust apps and Pods, from the skills, and from
+ * `additionalRequestedSpaceIds`) is not readable by `auth` (`auth.can("read", space)`), through
+ * `resolveAgentRequestedSpaceModelIds`. Agent visibility is gated on the same predicate, so a
+ * version saved through a space the caller cannot read would lock the caller out of the agent.
+ */
+/**
+ * @cc [owner:rfrenoy,label:security;product] dust-apps-readable-by-caller
+ * Unless `dangerouslySkipPermissionFiltering` is set, the call MUST return an `Err` and persist
+ * nothing when an action's `dustAppConfiguration.appId` does not resolve to a Dust app readable by
+ * `auth`. `AppResource` fetchers drop unreadable apps, so without this check such an app would add
+ * no space requirement and its id would still be persisted on the action.
  */
 export async function createOrUpgradeAgentConfiguration({
   auth,
@@ -108,6 +124,24 @@ export async function createOrUpgradeAgentConfiguration({
     );
   }
 
+  if (!dangerouslySkipPermissionFiltering) {
+    const dustAppIds = uniq(
+      removeNulls(actions.map((action) => action.dustAppConfiguration?.appId))
+    );
+    const dustApps = await AppResource.fetchByIds(auth, dustAppIds);
+    const foundDustAppIds = new Set(dustApps.map((app) => app.sId));
+    const inaccessibleDustAppIds = dustAppIds.filter(
+      (appId) => !foundDustAppIds.has(appId)
+    );
+    if (inaccessibleDustAppIds.length > 0) {
+      return new Err(
+        new Error(
+          `User does not have access to the following Dust apps: ${inaccessibleDustAppIds.join(", ")}`
+        )
+      );
+    }
+  }
+
   const requirements = await getAgentConfigurationRequirementsFromCapabilities(
     auth,
     {
@@ -116,45 +150,23 @@ export async function createOrUpgradeAgentConfiguration({
     }
   );
 
-  let allRequestedSpaceIds = requirements.requestedSpaceIds;
-
-  // Collect additional requestedSpaceIds
-  if (
-    assistant.additionalRequestedSpaceIds &&
-    assistant.additionalRequestedSpaceIds.length > 0
-  ) {
-    const additionalSpaces = await SpaceResource.fetchByIds(
-      auth,
-      assistant.additionalRequestedSpaceIds
-    );
-
-    // Validate that all requested spaces were found and user can read them
-    if (!dangerouslySkipPermissionFiltering) {
-      const readableSpaceIds = new Set(
-        additionalSpaces
-          .filter((space) => auth.can("read", space))
-          .map((s) => s.sId)
-      );
-      const inaccessibleSpaces = assistant.additionalRequestedSpaceIds.filter(
-        (sId) => !readableSpaceIds.has(sId)
-      );
-      if (inaccessibleSpaces.length > 0) {
-        return new Err(
-          new Error(
-            `User does not have access to the following spaces: ${inaccessibleSpaces.join(", ")}`
-          )
-        );
-      }
-    }
-
-    const additionalSpaceModelIds = removeNulls(
-      additionalSpaces.map((s) => getResourceIdFromSId(s.sId))
-    );
-
-    allRequestedSpaceIds = uniq(
-      allRequestedSpaceIds.concat(additionalSpaceModelIds)
-    );
+  // Pods are referenced by sId: resolving them here reports a malformed or unknown id instead of
+  // dropping it when the requirements are computed.
+  const podIds = removeNulls(
+    actions.map((action) => action.dustProject?.projectId ?? null)
+  );
+  const requestedSpaceIdsRes = await resolveAgentRequestedSpaceModelIds(auth, {
+    capabilitySpaceModelIds: requirements.requestedSpaceIds,
+    requestedSpaceIds: [
+      ...(assistant.additionalRequestedSpaceIds ?? []),
+      ...podIds,
+    ],
+    dangerouslySkipPermissionFiltering,
+  });
+  if (requestedSpaceIdsRes.isErr()) {
+    return requestedSpaceIdsRes;
   }
+  const allRequestedSpaceIds = requestedSpaceIdsRes.value;
 
   const resolvedAuthorId = authorId ?? auth.user()?.id;
   if (!resolvedAuthorId) {
