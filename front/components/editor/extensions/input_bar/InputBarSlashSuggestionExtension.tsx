@@ -38,7 +38,6 @@ interface InputBarSlashSuggestionExtensionOptions {
   >;
   onSelectRef: RefObject<((item: SlashCommand) => void) | undefined>;
   owner?: WorkspaceType;
-  selectedMCPServerViewIdsRef: RefObject<Set<string>>;
   slashCommandsRef: RefObject<InputBarSlashCommand[]>;
   spaceIdRef: RefObject<string | null | undefined>;
 }
@@ -69,7 +68,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     onNodeSelectRef: { current: undefined },
     onSelectRef: { current: undefined },
     onDetailsRef: { current: undefined },
-    selectedMCPServerViewIdsRef: { current: new Set<string>() },
     slashCommandsRef: { current: [] },
     spaceIdRef: { current: null },
   },
@@ -111,7 +109,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     onModelSelectRef: options.onModelSelectRef,
     onNodeSelectRef: options.onNodeSelectRef,
     owner: options.owner,
-    selectedMCPServerViewIdsRef: options.selectedMCPServerViewIdsRef,
     slashCommandsRef: options.slashCommandsRef,
     spaceIdRef: options.spaceIdRef,
   }),

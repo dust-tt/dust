@@ -48,7 +48,6 @@ describe("buildEditorExtensions", () => {
           onModelSelectRef: { current: undefined },
           onNodeSelectRef: { current: undefined },
           onSelectRef: { current: undefined },
-          selectedMCPServerViewIdsRef: { current: new Set<string>() },
           slashCommandsRef: { current: [] },
           includeAttachKnowledgeRef: { current: false },
           includePickModelRef: { current: false },

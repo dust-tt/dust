@@ -42,7 +42,6 @@ import useCustomEditor, {
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
-import { getIcon } from "@app/components/resources/resources_icons";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import {
   useCompactConversation,
@@ -53,7 +52,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceLiveTranscriberService } from "@app/hooks/useVoiceLiveTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
@@ -112,7 +111,6 @@ import type { Editor, EditorEvents } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import type React from "react";
 import {
-  Fragment,
   useCallback,
   useContext,
   useEffect,
@@ -338,10 +336,6 @@ const InputBarContainer = ({
     null
   );
   const { subscription } = useAuth();
-  const { featureFlags } = useFeatureFlags();
-  const isInlineReferenceEnabled = featureFlags.includes(
-    "inline_tool_knowledge_reference"
-  );
   const isMobile = useIsMobile();
   const clientType = useClientType();
   const {
@@ -403,15 +397,6 @@ const InputBarContainer = ({
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
   const attachedNodesRef = useRef(attachedNodes);
   attachedNodesRef.current = attachedNodes;
-  const selectedMCPServerViewIds = useMemo(
-    () =>
-      isInlineReferenceEnabled
-        ? new Set<string>()
-        : new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
-    [isInlineReferenceEnabled, selectedMCPServerViews]
-  );
-  const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
-  selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
   const selectedSpaceIdsRef = useRef(selectedSpaceIds);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
   // The slash suggestion extension captures its options at editor initialization, while the
@@ -695,10 +680,6 @@ const InputBarContainer = ({
   const handleToolSelect = (view: MCPServerViewLightType) => {
     onMCPServerViewSelect(view);
 
-    if (!isInlineReferenceEnabled) {
-      return;
-    }
-
     editorRef.current
       ?.chain()
       .focus()
@@ -711,11 +692,6 @@ const InputBarContainer = ({
   };
 
   const handleNodeSelect = (node: DataSourceViewContentNode) => {
-    if (!isInlineReferenceEnabled) {
-      onNodeSelect(node);
-      return;
-    }
-
     editorRef.current
       ?.chain()
       .focus()
@@ -835,7 +811,6 @@ const InputBarContainer = ({
       onSelectRef,
       onDetailsRef,
       onSkillDetails: setSelectedSkillIdForDetails,
-      selectedMCPServerViewIdsRef,
       onToolDetailsById: setSelectedServerViewIdForDetails,
       slashCommandsRef,
       includeAttachKnowledgeRef,
@@ -1225,9 +1200,7 @@ const InputBarContainer = ({
     };
   }, [editor, handleEditorUpdate, handleContentDeleted]);
 
-  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced, {
-    insertKnowledgeNode: isInlineReferenceEnabled,
-  });
+  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
@@ -1307,11 +1280,7 @@ const InputBarContainer = ({
       );
 
       if (nodes.length > 0) {
-        const node = nodes[0];
-        if (!isInlineReferenceEnabled) {
-          onNodeSelect(node);
-        }
-        setSelectedNode(node);
+        setSelectedNode(nodes[0]);
         return;
       }
     }
@@ -1801,31 +1770,6 @@ const InputBarContainer = ({
             }}
           >
             <div className="mb-1 flex flex-wrap items-center px-3">
-              {!isInlineReferenceEnabled &&
-                selectedMCPServerViews.map((msv) => (
-                  <Fragment key={msv.sId}>
-                    {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
-                    <Chip
-                      size="xs"
-                      label={getMcpServerViewDisplayName(msv)}
-                      icon={getIcon(msv.server.icon)}
-                      className="m-0.5 hidden bg-background text-foreground xs:flex"
-                      onClick={() => setSelectedServerViewForDetails(msv)}
-                      onRemove={() => {
-                        onMCPServerViewDeselect(msv);
-                      }}
-                    />
-                    <Chip
-                      size="xs"
-                      icon={getIcon(msv.server.icon)}
-                      className="m-0.5 flex bg-background text-foreground xs:hidden"
-                      onClick={() => setSelectedServerViewForDetails(msv)}
-                      onRemove={() => {
-                        onMCPServerViewDeselect(msv);
-                      }}
-                    />
-                  </Fragment>
-                ))}
               {selectedSpaces.map((selectedSpace) => (
                 <Chip
                   key={selectedSpace.sId}
