@@ -8,6 +8,24 @@ interface UseDebounceOptions {
 
 const USE_DEBOUNCE_WITH_ABORT_ABORT_REASON = "Aborted in useDebounceWithAbort";
 
+export function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    if (Object.is(value, debouncedValue)) {
+      return;
+    }
+
+    const timeout = setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => clearTimeout(timeout);
+  }, [debouncedValue, delayMs, value]);
+
+  return {
+    debouncedValue,
+    isDebouncing: !Object.is(value, debouncedValue),
+  };
+}
+
 export function useDebounce(
   initialValue: string,
   options: UseDebounceOptions = {}

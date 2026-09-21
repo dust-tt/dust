@@ -1,5 +1,8 @@
 import type { ImportFormValues } from "@app/components/skills/import/formSchema";
-import { useDebounceWithAbort } from "@app/hooks/useDebounce";
+import {
+  useDebouncedValue,
+  useDebounceWithAbort,
+} from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAppRouter } from "@app/lib/platform";
 import type {
@@ -34,7 +37,7 @@ import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
@@ -202,17 +205,8 @@ export function useSearchSkills({
 }) {
   const { fetcherWithBody } = useFetcher();
   const query = searchTerm.slice(0, SEARCH_SKILLS_QUERY_MAX_LENGTH);
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(query);
-  const isDebouncing = query !== debouncedSearchTerm;
-
-  // Don't show the previous query's skills alongside tools matching the current query.
-  useEffect(() => {
-    const timeout = setTimeout(
-      () => setDebouncedSearchTerm(query),
-      SEARCH_SKILLS_DEBOUNCE_MS
-    );
-    return () => clearTimeout(timeout);
-  }, [query]);
+  const { debouncedValue: debouncedSearchTerm, isDebouncing } =
+    useDebouncedValue(query, SEARCH_SKILLS_DEBOUNCE_MS);
 
   const url = `/api/w/${owner.sId}/skills/search`;
   const body = {
@@ -229,6 +223,7 @@ export function useSearchSkills({
     [url, body],
     skillsFetcher,
     {
+      // Don't show the previous query's skills alongside tools matching the current query.
       disabled: disabled || isDebouncing,
       keepPreviousData: false,
     }
