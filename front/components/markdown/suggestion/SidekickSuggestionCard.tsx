@@ -691,6 +691,11 @@ export function SidekickSuggestionCard({
     useSidekickSuggestions();
 
   switch (agentSuggestion.kind) {
+    case "create":
+    case "delete":
+      return (
+        <ConnectedAgentSuggestionActionCard agentSuggestion={agentSuggestion} />
+      );
     case "instructions":
       return (
         <InstructionsSuggestionCard
@@ -699,21 +704,16 @@ export function SidekickSuggestionCard({
           getCommittedInstructionsHtml={getCommittedInstructionsHtml}
         />
       );
-    case "tools":
-      return <ToolSuggestionCard agentSuggestion={agentSuggestion} />;
-    case "sub_agent":
-      return <SubAgentSuggestionCard agentSuggestion={agentSuggestion} />;
-    case "skills":
-      return <SkillSuggestionCard agentSuggestion={agentSuggestion} />;
-    case "model":
-      return <ModelSuggestionCard agentSuggestion={agentSuggestion} />;
     case "knowledge":
       return <KnowledgeSuggestionCard agentSuggestion={agentSuggestion} />;
-    case "create":
-    case "delete":
-      return (
-        <ConnectedAgentSuggestionActionCard agentSuggestion={agentSuggestion} />
-      );
+    case "model":
+      return <ModelSuggestionCard agentSuggestion={agentSuggestion} />;
+    case "skills":
+      return <SkillSuggestionCard agentSuggestion={agentSuggestion} />;
+    case "sub_agent":
+      return <SubAgentSuggestionCard agentSuggestion={agentSuggestion} />;
+    case "tools":
+      return <ToolSuggestionCard agentSuggestion={agentSuggestion} />;
     default:
       assertNeverAndIgnore(agentSuggestion);
       return null;

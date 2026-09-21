@@ -257,6 +257,26 @@ function SuggestionDetails({
   workspaceId,
 }: SuggestionDetailsProps) {
   switch (suggestion.kind) {
+    case "availability":
+      return (
+        <SuggestedSkillAvailability
+          suggestion={suggestion.suggestion}
+          skillId={suggestion.skillConfigurationId}
+          workspaceId={workspaceId}
+        />
+      );
+
+    case "create":
+      return null;
+
+    case "delete":
+      return (
+        <DeleteSuggestionSection
+          skillId={suggestion.skillConfigurationId}
+          workspaceId={workspaceId}
+        />
+      );
+
     case "edit": {
       const { instructionEdits, agentFacingDescriptionEdit } =
         suggestion.suggestion;
@@ -297,18 +317,6 @@ function SuggestionDetails({
         />
       );
 
-    case "user_facing_description":
-      return (
-        <SuggestedSkillUserFacingDescription
-          suggestion={suggestion.suggestion}
-          skillId={suggestion.skillConfigurationId}
-          workspaceId={workspaceId}
-        />
-      );
-
-    case "create":
-      return null;
-
     case "name":
       return (
         <SuggestedSkillName
@@ -318,17 +326,9 @@ function SuggestionDetails({
         />
       );
 
-    case "delete":
+    case "user_facing_description":
       return (
-        <DeleteSuggestionSection
-          skillId={suggestion.skillConfigurationId}
-          workspaceId={workspaceId}
-        />
-      );
-
-    case "availability":
-      return (
-        <SuggestedSkillAvailability
+        <SuggestedSkillUserFacingDescription
           suggestion={suggestion.suggestion}
           skillId={suggestion.skillConfigurationId}
           workspaceId={workspaceId}

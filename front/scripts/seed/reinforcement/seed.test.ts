@@ -15,15 +15,15 @@ import { beforeEach, describe, expect, it } from "vitest";
 function instructionEditsOf(suggestion: SkillSuggestionResource) {
   const json = suggestion.toJSON();
   switch (json.kind) {
+    case "availability":
+    case "create":
+    case "delete":
+    case "editors":
+    case "name":
+    case "user_facing_description":
+      return undefined;
     case "edit":
       return json.suggestion.instructionEdits;
-    case "editors":
-    case "user_facing_description":
-    case "create":
-    case "name":
-    case "delete":
-    case "availability":
-      return undefined;
     default:
       assertNever(json);
   }

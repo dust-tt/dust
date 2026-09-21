@@ -504,10 +504,10 @@ describe("AgentSuggestionResource", () => {
           expect(json.suggestion.targetBlockId).toBe("block123");
           expect(json.suggestion.type).toBe("replace");
           break;
-        case "tools":
-        case "skills":
         case "model":
+        case "skills":
         case "sub_agent":
+        case "tools":
           throw new Error("Unexpected kind");
       }
     });
