@@ -16,7 +16,7 @@ export type PokeGetGroupDetails = {
 // Resolve a group by sId for Poke, regardless of kind.
 //
 // `GroupResource.fetchById` deliberately does not surface the internal kinds (`regular_auto`
-// groups backing a space's members/editors, `system`, `agent_editors`) — outside Poke those are
+// groups backing a space's members/editors, `system`) — outside Poke those are
 // reached from the resource they back. Poke is the exception: its group permissions tables list
 // grants of every kind and link each group name to its group page, so that page (and the
 // grants-by-group endpoint behind it) must resolve any group id an operator arrives with.

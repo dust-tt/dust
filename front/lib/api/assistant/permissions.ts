@@ -84,6 +84,20 @@ export async function getAgentConfigurationRequirementsFromCapabilities(
     dustAppRequirements = dustApps.map((app) => app.space.id);
   }
 
+  // Collect Pod permissions by space. Only spaces whose canonical sId matches a configured id
+  // count, so an id with another prefix or workspace cannot alias a space of this workspace.
+  const podIds = new Set(
+    removeNulls(
+      actions
+        .filter(isServerSideMCPServerConfiguration)
+        .map((action) => action.dustProject?.projectId ?? null)
+    )
+  );
+  const pods = await SpaceResource.fetchByIds(auth, [...podIds]);
+  const podRequirements = pods
+    .filter((pod) => podIds.has(pod.sId))
+    .map((pod) => pod.id);
+
   // Collect Skill permissions by space.
   const skillRequirements = skills.flatMap((skill) => skill.requestedSpaceIds);
 
@@ -91,6 +105,7 @@ export async function getAgentConfigurationRequirementsFromCapabilities(
     ...dsViewRequirements,
     ...mcpServerViewRequirements,
     ...dustAppRequirements,
+    ...podRequirements,
     ...skillRequirements,
   ]).filter((id) => !ignoreSpaceModelIds.has(id));
 

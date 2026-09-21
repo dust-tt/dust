@@ -413,10 +413,10 @@ export function usePodTasksPanelState({
   );
 
   const handleAddTask = useCallback(
-    async (text: string, assigneeSId: string | null): Promise<boolean> => {
+    async (text: string, assigneeId: string | null): Promise<boolean> => {
       const result = await doCreateTask({
         text,
-        assigneeUserId: assigneeSId,
+        assigneeUserId: assigneeId,
       });
       if (!result.isOk()) {
         return false;

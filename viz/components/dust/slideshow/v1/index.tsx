@@ -1,3 +1,5 @@
+import { SlideshowGrid } from "@viz/components/dust/slideshow/SlideshowGrid";
+import { SlideThumbnail } from "@viz/components/dust/slideshow/SlideThumbnail";
 import { SlideshowNavigation } from "@viz/components/dust/slideshow/v1/navigation";
 import {
   Sidebar,
@@ -5,7 +7,6 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
-  SidebarInset,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -24,18 +25,7 @@ interface SlideMiniatureProps {
 
 export function SlideMiniature({ slide }: SlideMiniatureProps) {
   return (
-    <div className="absolute inset-0 overflow-hidden">
-      <div
-        className="origin-top-left pointer-events-none"
-        style={{
-          width: "1920px",
-          height: "1080px",
-          transform: "scale(0.11)",
-        }}
-      >
-        {React.cloneElement(slide, { isPreview: false })}
-      </div>
-    </div>
+    <SlideThumbnail slide={React.cloneElement(slide, { isPreview: false })} />
   );
 }
 
@@ -384,38 +374,35 @@ function SlideshowRoot({ children, className }: SlideshowProps) {
 
   return (
     <div
-      className={cn("@container h-full w-full", className)}
+      className={cn("@container h-screen w-full", className)}
       role="region"
       aria-label="Slideshow"
       onMouseMove={resetHideTimer}
       onClick={resetHideTimer}
     >
-      <SidebarProvider>
-        <div className="hidden @xl:block">
-          <SlideshowPreviewSidebar
+      <SidebarProvider className="h-full min-h-0">
+        <main
+          ref={slideshowRef}
+          className="relative flex h-full w-full items-center justify-center overflow-hidden bg-background [&:fullscreen]:h-screen [&:fullscreen]:w-screen [&:fullscreen]:bg-background"
+          aria-live="polite"
+          aria-label={`Slide ${activeIndex + 1} of ${slides.length}`}
+        >
+          {slides[activeIndex]}
+          <SlideshowGrid
             slides={slides}
             activeIndex={activeIndex}
             onSlideSelect={goToSlide}
+            slideshowRef={slideshowRef}
           />
-        </div>
-        <SidebarInset>
-          <main
-            ref={slideshowRef}
-            className="flex flex-1 items-center justify-center relative [&:fullscreen]:h-screen [&:fullscreen]:w-screen [&:fullscreen]:bg-background"
-            aria-live="polite"
-            aria-label={`Slide ${activeIndex + 1} of ${slides.length}`}
-          >
-            {slides[activeIndex]}
-            <SlideshowNavigation
-              slideshowRef={slideshowRef}
-              index={activeIndex}
-              isVisible={isNavigationVisible}
-              total={slides.length}
-              prev={prevSlide}
-              next={nextSlide}
-            />
-          </main>
-        </SidebarInset>
+          <SlideshowNavigation
+            slideshowRef={slideshowRef}
+            index={activeIndex}
+            isVisible={isNavigationVisible}
+            total={slides.length}
+            prev={prevSlide}
+            next={nextSlide}
+          />
+        </main>
       </SidebarProvider>
     </div>
   );

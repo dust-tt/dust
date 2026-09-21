@@ -3,9 +3,12 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
 import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinforced_analysis";
-import { SKILL_INSTRUCTION_HTML_EDIT_PROMPT } from "@app/lib/reinforcement/skill_instruction_edit_prompt";
+import {
+  SKILL_INSTRUCTION_HTML_EDIT_PROMPT,
+  SKILL_INSTRUCTIONS_GUIDANCE_BODY,
+  skillAgentFacingDescriptionGuidanceBody,
+} from "@app/lib/reinforcement/skill_instruction_edit_prompt";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { AGENT_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import logger from "@app/logger/logger";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -93,15 +96,7 @@ ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmeti
 4. Sequence - Did the agent call the tools in the correct order?
 `,
 
-  instructions_guidance: `When suggesting instruction improvements for skills, follow these principles:
-
-- Focus on actionable information that changes what the skill does.
-- Preserve the skill's existing goals — NEVER change what the goal is, only improve HOW it achieves it.
-- Instructions SHOULD reference how to use tools that are inlined in the skill instructions.
-- Suggestions ALWAYS need to be using the same language as the existing instructions OR, for new skills, the language of the user conversation.
-- Prefer small, focused changes over large rewrites.
-- Extract the INTENT from examples, not the literal pattern.
-- Filter out information only relevant for humans, not the LLM.`,
+  instructions_guidance: SKILL_INSTRUCTIONS_GUIDANCE_BODY,
 
   instruction_editing: SKILL_INSTRUCTION_HTML_EDIT_PROMPT,
 
@@ -114,19 +109,9 @@ ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmeti
 - Suggest tool additions by creating an instruction edit that embeds a self-closing <tool> tag in the relevant instruction block. Suggest tool removals by creating an instruction edit that removes the obsolete <tool> tag and related usage instructions.
 - When the conversation involves a tool call that failed or produced unexpected results, call describe_mcp for the relevant MCP to understand the full list of available tools and their correct usage before suggesting instruction changes.`,
 
-  agent_facing_description_guidance: `The agent-facing description (\`<agentFacingDescription>\` in the skill context) is what the agent reads to decide WHEN to enable the skill. It is NOT the skill's behavior — that lives in \`<instructions>\`.
-
-Suggest editing it only when the conversation surfaces clear evidence of a routing problem:
-- The agent enabled the skill in a situation it does not actually cover.
-- The agent failed to enable the skill in a situation that should obviously have triggered it.
-- The current description is misleading, vague, or incomplete in a way that explains the routing mistake.
-
-When suggesting a description edit:
-- Provide the FULL replacement text in \`agentFacingDescriptionEdit.content\` — it overwrites the existing description.
-- Max description size is ${AGENT_FACING_DESCRIPTION_MAX_LENGTH} characters.
-- Preserve the skill's actual purpose. Sharpen the trigger conditions; do not redefine the skill.
-- Keep it focused on routing signals (when to use, what scenarios). Do not duplicate the instructions.
-- Use the same language as the existing description.`,
+  agent_facing_description_guidance: skillAgentFacingDescriptionGuidanceBody({
+    evidenceOnly: true,
+  }),
 };
 
 export function buildSkillAnalysisSystemPrompt(): string {
@@ -143,7 +128,7 @@ export function buildSkillAnalysisPrompt(
   const systemPrompt = buildSkillAnalysisSystemPrompt();
 
   const skillContexts = skills
-    .map((s) => formatSkillContext(s))
+    .map((s) => formatSkillContext(s, "full"))
     .join("\n\n---\n\n");
 
   const userMessage = `<skill_context>

@@ -1,26 +1,21 @@
 import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PodDatabase, SandboxDatabase } from "@dust/pod";
 import {
   db,
   FRAME_ID_ENV,
-  FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV,
-  FrameDatabaseNotDeclaredError,
   FrameDatabaseUnavailableError,
-  FramePublicationDescriptorError,
   POD_DATABASE_BUSY_TIMEOUT_MS,
   POD_DATABASE_MAX_SIZE_BYTES_ENV,
   POD_DATABASE_NAME_REGEX,
   POD_DATABASE_PREFIX_ENV,
   POD_DATABASES_DIR_ENV,
-  POD_SPACE_ID_ENV,
   PodDatabaseError,
   PodDatabaseFullError,
   PodDatabaseInvalidNameError,
-  PodDatabaseNotDeclaredError,
   PodDatabasesUnavailableError,
   runWithInvocationEnv,
   SANDBOX_DATABASE_BUSY_TIMEOUT_MS,
@@ -32,7 +27,6 @@ import {
   SandboxDatabaseFullError,
   SandboxDatabaseInvalidNameError,
   SandboxDatabasesUnavailableError,
-  SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION,
 } from "@dust/pod";
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
@@ -72,43 +66,16 @@ function uniqueName(prefix: string): string {
   return `${prefix}_${uniqueNameCounter}`;
 }
 
-function createFramePublicationDescriptor(
-  databaseNames: string[],
-  schemaVersion = SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION
-): string {
-  const descriptorPath = join(
-    databasesDir,
-    `${uniqueName("publication")}.json`
-  );
-  writeFileSync(
-    descriptorPath,
-    JSON.stringify({
-      schemaVersion,
-      manifest: {
-        databases: databaseNames.map((name) => ({ name })),
-      },
-    })
-  );
-  return descriptorPath;
-}
-
-let originalSpaceId: string | undefined;
 let originalFrameId: string | undefined;
-let originalFramePublicationDescriptorPath: string | undefined;
 
 beforeEach(() => {
   databasesDir = mkdtempSync(join(tmpdir(), "dust-pod-test-"));
   process.env[SANDBOX_DATABASES_DIR_ENV] = databasesDir;
   // Both env vars are required and normally set by front through dsbx.
   process.env[SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV] = String(ONE_GIB_BYTES);
-  // Pod sandboxes carry SPACE_ID as a sandbox-global env var.
-  originalSpaceId = process.env[POD_SPACE_ID_ENV];
-  process.env[POD_SPACE_ID_ENV] = "spc_test_pod";
+  // Frame sandboxes carry FRAME_ID as a sandbox-global env var.
   originalFrameId = process.env[FRAME_ID_ENV];
-  delete process.env[FRAME_ID_ENV];
-  originalFramePublicationDescriptorPath =
-    process.env[FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV];
-  delete process.env[FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV];
+  process.env[FRAME_ID_ENV] = "fil_test_frame";
 });
 
 afterEach(() => {
@@ -118,21 +85,10 @@ afterEach(() => {
   delete process.env[POD_DATABASE_MAX_SIZE_BYTES_ENV];
   delete process.env[SANDBOX_DATABASE_PREFIX_ENV];
   delete process.env[POD_DATABASE_PREFIX_ENV];
-  if (originalSpaceId === undefined) {
-    delete process.env[POD_SPACE_ID_ENV];
-  } else {
-    process.env[POD_SPACE_ID_ENV] = originalSpaceId;
-  }
   if (originalFrameId === undefined) {
     delete process.env[FRAME_ID_ENV];
   } else {
     process.env[FRAME_ID_ENV] = originalFrameId;
-  }
-  if (originalFramePublicationDescriptorPath === undefined) {
-    delete process.env[FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV];
-  } else {
-    process.env[FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV] =
-      originalFramePublicationDescriptorPath;
   }
   rmSync(databasesDir, { recursive: true, force: true });
 });
@@ -195,112 +151,31 @@ describe("legacy database compatibility aliases", () => {
 });
 
 describe("sandbox database owner guard", () => {
-  test("both owner ids absent throws even when the file exists", () => {
+  test("FRAME_ID absent throws even when the file exists", () => {
     const name = uniqueName("guard");
     createDatabaseFile(name);
-    delete process.env[POD_SPACE_ID_ENV];
+    delete process.env[FRAME_ID_ENV];
     expect(() => db(name)).toThrow(PodDatabasesUnavailableError);
-    expect(() => db(name)).toThrow(/has no database owner/);
+    expect(() => db(name)).toThrow(/has no Frame database owner/);
   });
 
-  test("empty owner ids are treated as absent", () => {
+  test("empty FRAME_ID is treated as absent", () => {
     const name = uniqueName("guard");
     createDatabaseFile(name);
-    process.env[POD_SPACE_ID_ENV] = "";
     process.env[FRAME_ID_ENV] = "";
     expect(() => db(name)).toThrow(PodDatabasesUnavailableError);
   });
 
-  test("FRAME_ID makes databases available without SPACE_ID", () => {
+  test("FRAME_ID makes databases available", () => {
     const name = uniqueName("frame_guard");
     createDatabaseFile(name);
-    delete process.env[POD_SPACE_ID_ENV];
-    process.env[FRAME_ID_ENV] = "fil_test_frame";
-    process.env[FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV] =
-      createFramePublicationDescriptor([name]);
 
     expect(() => db(name)).not.toThrow();
   });
 
   test("the guard runs before the missing-file check", () => {
-    delete process.env[POD_SPACE_ID_ENV];
     delete process.env[FRAME_ID_ENV];
     expect(() => db(uniqueName("guard"))).toThrow(PodDatabasesUnavailableError);
-  });
-});
-
-describe("Frame publication database contract", () => {
-  function frameInvocationEnv(descriptorPath?: string) {
-    return {
-      [SANDBOX_DATABASES_DIR_ENV]: databasesDir,
-      [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
-      [FRAME_ID_ENV]: "fil_test_frame",
-      ...(descriptorPath
-        ? { [FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV]: descriptorPath }
-        : {}),
-    };
-  }
-
-  test("opens only databases declared by the selected publication", () => {
-    const declared = uniqueName("frame_db");
-    const undeclared = uniqueName("frame_db");
-    createDatabaseFile(declared);
-    createDatabaseFile(undeclared);
-    const descriptorPath = createFramePublicationDescriptor([declared]);
-
-    expect(() =>
-      runWithInvocationEnv(frameInvocationEnv(descriptorPath), () =>
-        db(declared)
-      )
-    ).not.toThrow();
-    expect(() =>
-      runWithInvocationEnv(frameInvocationEnv(descriptorPath), () =>
-        db(undeclared)
-      )
-    ).toThrow(FrameDatabaseNotDeclaredError);
-  });
-
-  test("reports declared state that reconciliation has not created", () => {
-    const name = uniqueName("frame_db");
-    const descriptorPath = createFramePublicationDescriptor([name]);
-
-    expect(() =>
-      runWithInvocationEnv(frameInvocationEnv(descriptorPath), () => db(name))
-    ).toThrow(FrameDatabaseUnavailableError);
-    expect(existsSync(join(databasesDir, `${name}.db`))).toBe(false);
-  });
-
-  test("requires a readable, supported publication descriptor", () => {
-    const name = uniqueName("frame_db");
-    createDatabaseFile(name);
-
-    expect(() =>
-      runWithInvocationEnv(frameInvocationEnv(), () => db(name))
-    ).toThrow(FramePublicationDescriptorError);
-
-    const unsupported = createFramePublicationDescriptor(
-      [name],
-      SUPPORTED_FRAME_PUBLICATION_SCHEMA_VERSION + 1
-    );
-    expect(() =>
-      runWithInvocationEnv(frameInvocationEnv(unsupported), () => db(name))
-    ).toThrow(FramePublicationDescriptorError);
-  });
-
-  test("rechecks declarations before returning a warm cached database", () => {
-    const name = uniqueName("frame_db");
-    createDatabaseFile(name);
-    const declaringPublication = createFramePublicationDescriptor([name]);
-    const removingPublication = createFramePublicationDescriptor([]);
-
-    runWithInvocationEnv(frameInvocationEnv(declaringPublication), () =>
-      db(name)
-    );
-    expect(() =>
-      runWithInvocationEnv(frameInvocationEnv(removingPublication), () =>
-        db(name)
-      )
-    ).toThrow(FrameDatabaseNotDeclaredError);
   });
 });
 
@@ -336,20 +211,20 @@ describe("name validation", () => {
 });
 
 describe("must-exist open", () => {
-  test("missing database file throws PodDatabaseNotDeclaredError", () => {
+  test("missing database file throws FrameDatabaseUnavailableError", () => {
     const name = uniqueName("missing");
-    expect(() => db(name)).toThrow(PodDatabaseNotDeclaredError);
+    expect(() => db(name)).toThrow(FrameDatabaseUnavailableError);
   });
 
-  test("the error tells the agent databases are created by publish", () => {
+  test("the error tells the agent to republish and reconcile", () => {
     const name = uniqueName("missing");
-    expect(() => db(name)).toThrow(/created by their first reconcile/);
-    expect(() => db(name)).toThrow(new RegExp(`databases/${name}\\.db\\.ts`));
+    expect(() => db(name)).toThrow(/is unavailable/);
+    expect(() => db(name)).toThrow(/Publish the Frame again/);
   });
 
   test("a failed open does not mint an empty database file", () => {
     const name = uniqueName("missing");
-    expect(() => db(name)).toThrow(PodDatabaseNotDeclaredError);
+    expect(() => db(name)).toThrow(FrameDatabaseUnavailableError);
     expect(existsSync(join(databasesDir, `${name}.db`))).toBe(false);
   });
 
@@ -409,7 +284,7 @@ describe("app prefix resolution", () => {
         {
           [POD_DATABASES_DIR_ENV]: databasesDir,
           [POD_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
-          [POD_SPACE_ID_ENV]: "spc_test_pod",
+          [FRAME_ID_ENV]: "fil_test_frame",
           [POD_DATABASE_PREFIX_ENV]: "legacyapp__",
         },
         () => ownerOf(name)
@@ -487,7 +362,7 @@ describe("app prefix resolution", () => {
     const name = uniqueName("missing");
     process.env[SANDBOX_DATABASE_PREFIX_ENV] = "myapp__";
 
-    expect(() => db(name)).toThrow(PodDatabaseNotDeclaredError);
+    expect(() => db(name)).toThrow(FrameDatabaseUnavailableError);
   });
 
   // A resident server serves concurrent invocations from different apps without
@@ -496,7 +371,7 @@ describe("app prefix resolution", () => {
     const contextEnv = (prefix: string) => ({
       [SANDBOX_DATABASES_DIR_ENV]: databasesDir,
       [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
-      [POD_SPACE_ID_ENV]: "spc_test_pod",
+      [FRAME_ID_ENV]: "fil_test_frame",
       [SANDBOX_DATABASE_PREFIX_ENV]: prefix,
     });
 
@@ -509,23 +384,13 @@ describe("app prefix resolution", () => {
       ).toBe("myapp");
     });
 
-    test("accepts a Frame-only invocation context", () => {
+    test("accepts a Frame invocation with an empty prefix", () => {
       const name = uniqueName("frame_context");
       createDatabaseOwnedBy(name, "frame");
-      const descriptorPath = createFramePublicationDescriptor([name]);
 
-      expect(
-        runWithInvocationEnv(
-          {
-            [SANDBOX_DATABASES_DIR_ENV]: databasesDir,
-            [SANDBOX_DATABASE_MAX_SIZE_BYTES_ENV]: String(ONE_GIB_BYTES),
-            [FRAME_ID_ENV]: "fil_test_frame",
-            [FRAME_PUBLICATION_DESCRIPTOR_PATH_ENV]: descriptorPath,
-            [SANDBOX_DATABASE_PREFIX_ENV]: "",
-          },
-          () => ownerOf(name)
-        )
-      ).toBe("frame");
+      expect(runWithInvocationEnv(contextEnv(""), () => ownerOf(name))).toBe(
+        "frame"
+      );
     });
 
     test("the context's prefix wins over the one in process.env", () => {

@@ -17,7 +17,7 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface GlobalSpaceSettingsModalProps {
   isOpen: boolean;
@@ -74,36 +74,44 @@ export function GlobalSpaceSettingsModal({
   // membership it does not know.
   const isAccessUnavailable = !!isSpaceInfoError || isGroupsError;
 
-  // Seeded once per opening: `spaceInfo` is revalidated by SWR while the panel is open, and
-  // re-seeding on every revalidation would discard the admin's pending edits.
-  const hasSeededRef = useRef(false);
-
+  // The selection mirrors `spaceInfo` until the admin edits it: it is (re)seeded on opening and on
+  // every revalidation while the form is not dirty, and left alone once it is, so the admin's
+  // pending edits are never discarded. Re-seeding on revalidation matters on reopening: SWR serves
+  // the cached membership first and refetches in the background, and the panel must end up on the
+  // refetched one.
   useEffect(() => {
-    if (!isOpen) {
-      hasSeededRef.current = false;
-      return;
-    }
     // Nothing is seeded until the space's current access is known: seeding an empty selection from
     // a failed or pending fetch would let a save replace the whole member list with a partial one.
-    if (hasSeededRef.current || isAccessLoading || !spaceInfo) {
+    if (!isOpen || isDirty || isAccessLoading || !spaceInfo) {
       return;
     }
-    hasSeededRef.current = true;
-
     setSelectedMemberIds(
       new Set(spaceInfo.members.map((member) => member.sId))
     );
     setSelectedGroups(
       groups.filter((group) => spaceInfo.groupIds.includes(group.sId))
     );
-    setIsDirty(false);
-  }, [groups, isAccessLoading, isOpen, spaceInfo]);
+  }, [groups, isAccessLoading, isDirty, isOpen, spaceInfo]);
 
   const handleClose = useCallback(() => {
     onClose();
     setIsDirty(false);
     setIsSaving(false);
   }, [onClose]);
+
+  // The sheet stays open until the save completes; `onSave` closes it itself. Closing it earlier
+  // disables `useSpaceInfo` (its SWR key becomes `null`) which never revalidates the data post-save.
+  // The Save button's own close trigger is suppressed in its `onClick` (see `SheetFooter`); this
+  // covers the other dismissals (overlay click, Escape).
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (open || isSaving) {
+        return;
+      }
+      handleClose();
+    },
+    [handleClose, isSaving]
+  );
 
   const onSave = useCallback(async () => {
     setIsSaving(true);
@@ -131,7 +139,7 @@ export function GlobalSpaceSettingsModal({
   const spaceName = getSpaceName(space);
 
   return (
-    <Sheet open={isOpen} onOpenChange={handleClose}>
+    <Sheet open={isOpen} onOpenChange={handleOpenChange}>
       <SheetContent trapFocusScope={false} size="lg">
         <SheetHeader>
           <SheetTitle>Space Settings - {spaceName}</SheetTitle>
@@ -148,9 +156,9 @@ export function GlobalSpaceSettingsModal({
                 read this data.
               </span>
               <span>
-                Only admins, managers and the people selected here can modify
-                the data (upload files, delete documents, connect data
-                sources...).
+                Only admins, managers and the people and groups selected here
+                can modify the data (upload files, delete documents, connect
+                data sources...).
               </span>
               <span>
                 They are the people picked below, plus everyone in the groups
@@ -191,11 +199,17 @@ export function GlobalSpaceSettingsModal({
           leftButtonProps={{
             label: "Cancel",
             variant: "outline",
-            onClick: onClose,
+            onClick: handleClose,
+            disabled: isSaving,
           }}
           rightButtonProps={{
             label: isSaving ? "Saving..." : "Save",
-            onClick: onSave,
+            // `SheetFooter` wraps the button in a Radix close trigger, which skips its close when the
+            // click is default-prevented: the sheet closes from `onSave`, once the save is done.
+            onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
+              event.preventDefault();
+              await onSave();
+            },
             disabled:
               !isDirty || isSaving || isAccessLoading || isAccessUnavailable,
           }}

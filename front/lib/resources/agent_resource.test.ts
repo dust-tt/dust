@@ -1,17 +1,27 @@
+import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import {
+  AgentConfigurationModel,
+  AgentModel,
+} from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import assert from "assert";
+import type { JSONSchema7 } from "json-schema";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const AGENT_MODEL_ID = 42;
@@ -76,7 +86,7 @@ describe("AgentResource", () => {
     );
     assert(agent.agentModelId !== null);
 
-    const bySId = await AgentResource.fetchById(
+    const byId = await AgentResource.fetchById(
       testContext.authenticator,
       agent.sId
     );
@@ -85,7 +95,7 @@ describe("AgentResource", () => {
       agent.agentModelId
     );
 
-    for (const resource of [bySId, byModelId]) {
+    for (const resource of [byId, byModelId]) {
       expect(resource).not.toBeNull();
       expect(resource?.isFull()).toBe(true);
       expect(resource?.id).toBe(agent.agentModelId);
@@ -126,6 +136,52 @@ describe("AgentResource", () => {
     expect(asAuthor?.createdAt.getTime()).toBe(createdAt.getTime());
     expect(asAdmin?.isFull()).toBe(false);
     expect(asAdmin?.createdAt.getTime()).toBe(createdAt.getTime());
+  });
+
+  it("carries the configuration row id on full and light resources alike", async () => {
+    // Hidden, so the non-author admin below gets it light.
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { scope: "hidden" }
+    );
+
+    const currentConfiguration = await AgentConfigurationModel.findOne({
+      where: {
+        sId: agent.sId,
+        status: "active",
+        workspaceId: testContext.workspace.id,
+      },
+    });
+    assert(currentConfiguration !== null);
+
+    const adminUser = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, adminUser, {
+      role: "admin",
+    });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      testContext.workspace.sId
+    );
+
+    const asAuthor = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    const asAdmin = await AgentResource.fetchById(adminAuth, agent.sId);
+    const fromConfiguration = AgentResource.fromAgentConfiguration(
+      testContext.authenticator,
+      agent
+    );
+
+    // The tables keyed by that id (skills, tools, tags) are read by callers who cannot read the
+    // agent, so the id is core: the light shape carries it just like the full one.
+    expect(asAuthor?.isFull()).toBe(true);
+    expect(asAuthor?.agentConfigurationModelId).toBe(currentConfiguration.id);
+    expect(asAdmin?.isFull()).toBe(false);
+    expect(asAdmin?.agentConfigurationModelId).toBe(currentConfiguration.id);
+    expect(fromConfiguration.agentConfigurationModelId).toBe(
+      currentConfiguration.id
+    );
   });
 
   it("returns a light resource when the caller holds a verb but cannot read the agent", async () => {
@@ -188,7 +244,7 @@ describe("AgentResource", () => {
 
     await archiveAgentConfiguration(testContext.authenticator, agent.sId);
 
-    const bySId = await AgentResource.fetchById(
+    const byId = await AgentResource.fetchById(
       testContext.authenticator,
       agent.sId
     );
@@ -197,7 +253,7 @@ describe("AgentResource", () => {
       agent.agentModelId
     );
 
-    for (const resource of [bySId, byModelId]) {
+    for (const resource of [byId, byModelId]) {
       expect(resource).not.toBeNull();
       expect(resource?.id).toBe(agent.agentModelId);
       expect(resource?.sId).toBe(agent.sId);
@@ -252,7 +308,7 @@ describe("AgentResource", () => {
     assert(firstAgent.agentModelId !== null);
     assert(secondAgent.agentModelId !== null);
 
-    const bySIds = await AgentResource.fetchByIds(testContext.authenticator, [
+    const byIds = await AgentResource.fetchByIds(testContext.authenticator, [
       firstAgent.sId,
       secondAgent.sId,
     ]);
@@ -261,12 +317,241 @@ describe("AgentResource", () => {
       [firstAgent.agentModelId, secondAgent.agentModelId]
     );
 
-    expect(bySIds.map((resource) => resource.sId).sort()).toEqual(
+    expect(byIds.map((resource) => resource.sId).sort()).toEqual(
       [firstAgent.sId, secondAgent.sId].sort()
     );
     expect(byModelIds.map((resource) => resource.id).sort()).toEqual(
       [firstAgent.agentModelId, secondAgent.agentModelId].sort()
     );
+  });
+
+  it("serializes and restores a full resource without loss", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+
+    const full = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(full?.isFull());
+
+    const restored = AgentResource.fromSnapshot(full.toSnapshot());
+
+    // The restored resource is indistinguishable from the one it was serialized from.
+    expect(restored.isFull()).toBe(true);
+    expect(restored.content).toEqual(full.content);
+    expect(restored.toSnapshot()).toEqual(full.toSnapshot());
+  });
+
+  it("round-trips the agent createdAt distinct from the version createdAt", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+    assert(agent.agentModelId !== null);
+
+    // Set only the `agents` row's `createdAt` (not the configuration's), the way the backfill can —
+    // so the agent's identity date differs from the version's date.
+    const agentCreatedAt = new Date("2020-02-02T00:00:00.000Z");
+    await AgentModel.update(
+      { createdAt: agentCreatedAt },
+      {
+        where: {
+          id: agent.agentModelId,
+          workspaceId: testContext.workspace.id,
+        },
+      }
+    );
+
+    const resource = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(resource?.isFull());
+
+    // The snapshot round-trip must keep the agent row's `createdAt`, not fall back to the version's.
+    expect(resource.createdAt.getTime()).toBe(agentCreatedAt.getTime());
+    expect(resource.content.createdAt.getTime()).not.toBe(
+      agentCreatedAt.getTime()
+    );
+  });
+
+  it("keeps the cached snapshot in sync with the configuration model", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+
+    const full = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(full?.isFull());
+    const snapshot = full.toSnapshot();
+
+    // `content` must carry every `AgentConfigurationModel` column except the ones folded into the
+    // resource's identity/core, or explicitly excluded. When this fails the model changed shape:
+    // reconcile `AgentResourceContent` and bump `AGENT_RESOURCE_CACHE_VERSION`.
+    const foldedIntoIdentityOrCore = new Set([
+      // Carried as the core `agentConfigurationModelId`, not `content`.
+      "id",
+      "agentId",
+      "workspaceId",
+      "sId",
+      "scope",
+      "name",
+      "description",
+      "status",
+      "pictureUrl",
+      "authorId",
+      "requestedSpaceIds",
+      // Carried by the core `modelConfiguration`, not `content`.
+      "providerId",
+      "modelId",
+      "temperature",
+      "reasoningEffort",
+      "responseFormat",
+    ]);
+    // Deliberately not carried by `AgentResource` (deprecated/unused column).
+    const excludedColumns = new Set(["visualizationEnabled"]);
+    const expectedContentColumns = Object.keys(
+      AgentConfigurationModel.getAttributes()
+    )
+      .filter(
+        (column) =>
+          !foldedIntoIdentityOrCore.has(column) && !excludedColumns.has(column)
+      )
+      .sort();
+    const actualContentColumns = Object.keys(snapshot.content).sort();
+
+    expect(actualContentColumns).toEqual(expectedContentColumns);
+  });
+
+  it("serves the same full content from the cache as from the database", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+
+    // First read populates the cache; the second is served from it.
+    await AgentResource.fetchById(testContext.authenticator, agent.sId);
+    const cached = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    const [fromDatabase] = await AgentResource.fetchByIds(
+      testContext.authenticator,
+      [agent.sId]
+    );
+
+    assert(cached?.isFull());
+    assert(fromDatabase?.isFull());
+    expect(cached.toSnapshot()).toEqual(fromDatabase.toSnapshot());
+  });
+
+  it("reflects a fresh archive on the next read", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+
+    // Populate the cache with the active version.
+    const active = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(active?.isFull());
+    expect(active.status).toBe("active");
+
+    await archiveAgentConfiguration(testContext.authenticator, agent.sId);
+
+    // The agent still resolves (its latest version, now archived); invalidation keeps the read fresh.
+    const archived = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(archived?.isFull());
+    expect(archived.status).toBe("archived");
+  });
+
+  it("resolves from the database on every read while the cache ships in dry-run", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { description: "before" }
+    );
+
+    const first = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    expect(first?.description).toBe("before");
+
+    // Mutate the row directly, without calling `invalidateCache`. A live cache would keep serving
+    // the stale value; dry-run reads the database on every call.
+    await AgentConfigurationModel.update(
+      { description: "after" },
+      { where: { sId: agent.sId, workspaceId: testContext.workspace.id } }
+    );
+
+    const second = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    expect(second?.description).toBe("after");
+  });
+
+  it("resolves a global agent by id through the uncached global path", async () => {
+    // Global agents have no configuration rows and are never cached; `fetchById` resolves them via
+    // the global path (`fetchGlobalAgents`), not the cache.
+    const resource = await AgentResource.fetchById(
+      testContext.authenticator,
+      GLOBAL_AGENTS_SID.HELPER
+    );
+
+    expect(resource).not.toBeNull();
+    expect(resource?.sId).toBe(GLOBAL_AGENTS_SID.HELPER);
+    expect(resource?.scope).toBe("global");
+  });
+
+  it("caches the highest version after a new version is created", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { name: "Versioned agent", description: "v0" }
+    );
+
+    // Populate the cache with the first version.
+    const v0 = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(v0?.isFull());
+    expect(v0.description).toBe("v0");
+
+    // A new active version supersedes it; createAgentConfiguration invalidates the cache.
+    await AgentConfigurationFactory.updateTestAgent(
+      testContext.authenticator,
+      agent.sId,
+      { name: "Versioned agent", description: "v1" }
+    );
+
+    const latest = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    assert(latest?.isFull());
+    expect(latest.description).toBe("v1");
+    expect(latest.content.version).toBeGreaterThan(v0.content.version);
+  });
+
+  it("does not serve an agent to a caller from another workspace", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+    // Populate the cache from the owning workspace.
+    await AgentResource.fetchById(testContext.authenticator, agent.sId);
+
+    const otherContext = await createResourceTest({ role: "admin" });
+
+    expect(
+      await AgentResource.fetchById(otherContext.authenticator, agent.sId)
+    ).toBeNull();
   });
 
   it("lists agent editors from grants individually and in batches", async () => {
@@ -581,5 +866,535 @@ describe("AgentResource", () => {
     expect(managerAuth.hasPermission("write", analyst)).toBe(false);
     expect(managerAuth.hasPermission("admin", analyst)).toBe(false);
     expect(await helper.listEditors(testContext.authenticator)).toBeNull();
+  });
+  describe("toSearchDocument", () => {
+    it("serializes a custom agent with the caller-supplied counts and ids", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Indexed", description: "Indexed description", scope: "hidden" }
+      );
+      const resource = await AgentResource.fetchById(
+        testContext.authenticator,
+        agent.sId
+      );
+      assert(resource);
+
+      const document = resource.toSearchDocument(testContext.workspace, {
+        activeUsersCount: null,
+        editors: [testContext.user, testContext.user],
+        favoriteCount: 4,
+        feedbackNegativeCount: 1,
+        feedbackPositiveCount: 9,
+        lastEditedByUser: testContext.user,
+        mcpServerViewIds: ["view-b", "view-a"],
+        skillIds: ["skill-b", "skill-a", "skill-b"],
+        tagIds: ["tag-a"],
+      });
+
+      expect(document).toEqual({
+        workspace_id: testContext.workspace.sId,
+        agent_id: agent.sId,
+        status: "active",
+        scope: "hidden",
+        model: {
+          provider_id: "openai",
+          model_id: "gpt-5-mini",
+          reasoning_effort: "medium",
+        },
+        name: "Indexed",
+        description: "Indexed description",
+        picture_url: agent.pictureUrl,
+        last_edited_by_user_id: testContext.user.sId,
+        editor_ids: [testContext.user.sId],
+        requested_space_ids: [],
+        created_at: resource.createdAt.toISOString(),
+        updated_at: resource.updatedAt.toISOString(),
+        skill_ids: ["skill-a", "skill-b"],
+        mcp_server_view_ids: ["view-a", "view-b"],
+        tag_ids: ["tag-a"],
+        feedback_positive_count: 9,
+        feedback_negative_count: 1,
+        active_users_count: null,
+        favorite_count: 4,
+      });
+    });
+
+    it("serializes a model stream at its default reasoning effort", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { model: { providerId: "auto", modelId: "auto" } }
+      );
+      const resource = await AgentResource.fetchById(
+        testContext.authenticator,
+        agent.sId
+      );
+      assert(resource);
+
+      const document = resource.toSearchDocument(testContext.workspace, {
+        activeUsersCount: null,
+        editors: [],
+        favoriteCount: 0,
+        feedbackNegativeCount: 0,
+        feedbackPositiveCount: 0,
+        lastEditedByUser: null,
+        mcpServerViewIds: [],
+        skillIds: [],
+        tagIds: [],
+      });
+
+      expect(document.model).toEqual({
+        provider_id: "auto",
+        model_id: "auto",
+        reasoning_effort: "none",
+      });
+    });
+
+    it("refuses to serialize a global agent", async () => {
+      const resource = await AgentResource.fetchById(
+        testContext.authenticator,
+        GLOBAL_AGENTS_SID.HELPER
+      );
+      assert(resource);
+
+      expect(() =>
+        resource.toSearchDocument(testContext.workspace, {
+          activeUsersCount: null,
+          editors: [],
+          favoriteCount: 0,
+          feedbackNegativeCount: 0,
+          feedbackPositiveCount: 0,
+          lastEditedByUser: null,
+          mcpServerViewIds: [],
+          skillIds: [],
+          tagIds: [],
+        })
+      ).toThrow("Search documents require a custom agent in the workspace.");
+    });
+  });
+
+  describe("listSkills", () => {
+    it("lists the skills linked to the agent's current configuration", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent With Skills" }
+      );
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Linked Skill",
+      });
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: agent.id,
+      });
+
+      const resource = await AgentResource.fetchById(
+        testContext.authenticator,
+        agent.sId
+      );
+      assert(resource);
+      // The `agents` row id and the `agent_configurations` row id are distinct: listing skills off
+      // the former would silently return nothing.
+      expect(resource.id).not.toEqual(resource.agentConfigurationModelId);
+
+      const skills = await resource.listSkills(testContext.authenticator);
+
+      expect(skills.map((s) => s.id)).toEqual([skill.id]);
+    });
+
+    it("lists the code-defined skills a global agent declares", async () => {
+      const resource = AgentResource.fromGlobalAgent(
+        testContext.authenticator,
+        makeAgentConfiguration({
+          sId: GLOBAL_AGENTS_SID.HELPER,
+          scope: "global",
+          agentModelId: null,
+          name: "Helper",
+          description: "Helper description",
+          codeDefinedSkillIds: ["support", "frames"],
+        })
+      );
+
+      const skills = await resource.listSkills(testContext.authenticator);
+
+      expect(skills.map((s) => s.sId).sort()).toEqual(["frames", "support"]);
+    });
+
+    it("carries the code-defined skills a fetched global agent declares", async () => {
+      const resource = await AgentResource.fetchById(
+        testContext.authenticator,
+        GLOBAL_AGENTS_SID.HELPER
+      );
+      assert(resource);
+
+      const skills = await resource.listSkills(testContext.authenticator);
+
+      expect(skills.map((s) => s.sId)).toEqual(["frames"]);
+    });
+  });
+
+  describe("bulkUpdate (model)", () => {
+    it("saves a new version with the new model, keeping the agent's tools and author", async () => {
+      const { authenticator, globalSpace } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            temperature: 0.7,
+          },
+        }
+      );
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const mcpServerView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        globalSpace
+      );
+      await AgentMCPServerConfigurationFactory.create(
+        authenticator,
+        globalSpace,
+        {
+          agent,
+          mcpServerView,
+        }
+      );
+
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const toolsBefore = (
+        await fetchMCPServerActionConfigurations(authenticator, {
+          configurationModelIds: [before.agentConfigurationModelId],
+          variant: "full",
+        })
+      ).get(before.agentConfigurationModelId);
+      expect(toolsBefore).toHaveLength(1);
+
+      const result = await AgentResource.bulkUpdate(
+        authenticator,
+        [agent.sId],
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5",
+            reasoningEffort: "medium",
+          },
+        }
+      );
+
+      expect(result).toEqual({
+        updatedAgentIds: [agent.sId],
+        skippedAgentIds: [],
+      });
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      // A new version, with the new model, keeping the agent's own temperature.
+      expect(after.content.version).toBe(agent.version + 1);
+      expect(after.modelConfiguration.modelId).toBe("gpt-5");
+      expect(after.modelConfiguration.reasoningEffort).toBe("medium");
+      expect(after.modelConfiguration.temperature).toBe(0.7);
+      // The version's author is preserved, not re-attributed to the caller.
+      expect(after.versionAuthorId).toBe(before.versionAuthorId);
+      // The tool is carried onto the new version instead of being dropped.
+      const toolsAfter = (
+        await fetchMCPServerActionConfigurations(authenticator, {
+          configurationModelIds: [after.agentConfigurationModelId],
+          variant: "full",
+        })
+      ).get(after.agentConfigurationModelId);
+      expect(toolsAfter).toHaveLength(1);
+    });
+
+    it("does not create a new version when the model is unchanged", async () => {
+      const { authenticator } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            temperature: 0.7,
+          },
+        }
+      );
+
+      // First change bumps the version and pins the reasoning effort.
+      const first = await AgentResource.bulkUpdate(authenticator, [agent.sId], {
+        model: {
+          providerId: "openai",
+          modelId: "gpt-5",
+          reasoningEffort: "medium",
+        },
+      });
+      expect(first.updatedAgentIds).toEqual([agent.sId]);
+
+      const afterFirst = await AgentResource.fetchById(
+        authenticator,
+        agent.sId
+      );
+      assert(afterFirst?.isFull());
+      expect(afterFirst.content.version).toBe(agent.version + 1);
+
+      // Re-applying the exact same model is a no-op: no new version is created.
+      const second = await AgentResource.bulkUpdate(
+        authenticator,
+        [agent.sId],
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5",
+            reasoningEffort: "medium",
+          },
+        }
+      );
+      expect(second).toEqual({
+        updatedAgentIds: [agent.sId],
+        skippedAgentIds: [],
+      });
+
+      const afterSecond = await AgentResource.fetchById(
+        authenticator,
+        agent.sId
+      );
+      assert(afterSecond?.isFull());
+      expect(afterSecond.content.version).toBe(afterFirst.content.version);
+    });
+
+    it("skips archived agents and reports them", async () => {
+      const { authenticator } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            temperature: 0.7,
+          },
+        }
+      );
+      await archiveAgentConfiguration(authenticator, agent.sId);
+
+      const result = await AgentResource.bulkUpdate(
+        authenticator,
+        [agent.sId],
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5",
+            reasoningEffort: "medium",
+          },
+        }
+      );
+
+      expect(result).toEqual({
+        updatedAgentIds: [],
+        skippedAgentIds: [agent.sId],
+      });
+    });
+  });
+
+  describe("save no-op comparison of tool configuration", () => {
+    it("creates a new version when a tool's JSON schema changes under an identity-named property", async () => {
+      const { authenticator, globalSpace } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            temperature: 0.7,
+          },
+        }
+      );
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const mcpServerView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        globalSpace
+      );
+      const mcpConfig = await AgentMCPServerConfigurationFactory.create(
+        authenticator,
+        globalSpace,
+        {
+          agent,
+          mcpServerView,
+        }
+      );
+      // A tool input schema whose own property is literally named `id` — an identity key the
+      // comparison strips structurally. Content under it must still register as a change.
+      const oldSchema: JSONSchema7 = {
+        type: "object",
+        properties: { id: { type: "string", description: "old" } },
+      };
+      const newSchema: JSONSchema7 = {
+        type: "object",
+        properties: { id: { type: "string", description: "new" } },
+      };
+      await mcpConfig.update({ jsonSchema: oldSchema });
+
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(authenticator);
+      assert(baseParams.actions);
+
+      // Re-saving the exact same configuration is a no-op: the JSON schema does not spuriously diff.
+      const noop = await before.updateConfiguration(authenticator, baseParams);
+      assert(noop.isOk());
+      const afterNoop = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(afterNoop?.isFull());
+      expect(afterNoop.content.version).toBe(before.content.version);
+
+      // Editing the schema under the `id` property is a real change and MUST create a new version,
+      // rather than being masked by the identity-key drop and silently skipped.
+      const editedParams = {
+        ...baseParams,
+        actions: baseParams.actions.map((action) => ({
+          ...action,
+          jsonSchema: newSchema,
+        })),
+      };
+      const edited = await before.updateConfiguration(
+        authenticator,
+        editedParams
+      );
+      assert(edited.isOk());
+      const afterEdit = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(afterEdit?.isFull());
+      expect(afterEdit.content.version).toBe(before.content.version + 1);
+    });
+  });
+
+  describe("in-place scope and editor edits", () => {
+    it("applies an editor-set change in place without creating a new version", async () => {
+      const { authenticator, workspace } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "visible" }
+      );
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(authenticator);
+
+      const newEditor = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, newEditor, { role: "user" });
+
+      const res = await before.updateConfiguration(authenticator, {
+        ...baseParams,
+        editors: [...baseParams.editors, newEditor.toJSON()],
+      });
+      assert(res.isOk());
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      // No new version was created for an editor-only change.
+      expect(after.content.version).toBe(before.content.version);
+      const editorIds = (await after.listEditors(authenticator))?.map(
+        (e) => e.id
+      );
+      expect(editorIds).toContain(newEditor.id);
+    });
+
+    it("creates a new version when a definition field changes, preserving scope", async () => {
+      const { authenticator } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "visible" }
+      );
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(authenticator);
+
+      const res = await before.updateConfiguration(authenticator, {
+        ...baseParams,
+        description: "A brand new description",
+      });
+      assert(res.isOk());
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(before.content.version + 1);
+      expect(after.description).toBe("A brand new description");
+      expect(after.scope).toBe("visible");
+    });
+
+    it("applies a scope change to the new version when a definition field also changed", async () => {
+      const { user, workspace } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { scope: "visible" }
+      );
+
+      // Grant the workspace the `publish` capability so the author can (un)publish, then re-resolve
+      // the authenticator to pick up the new grant.
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const globalGroup =
+        await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+      assert(globalGroup.isOk());
+      await GroupPermissionResource.grantTypeWide(adminAuth, {
+        group: globalGroup.value,
+        grantType: "publish",
+        resourceType: "agent",
+      });
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const before = await AgentResource.fetchById(auth, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(auth);
+
+      // A definition change bumps the version (archiving the old row); the scope change must land on
+      // that NEW active version, not on the now-archived row it was read from.
+      const res = await before.updateConfiguration(auth, {
+        ...baseParams,
+        description: "A brand new description",
+        scope: "hidden",
+      });
+      assert(res.isOk());
+
+      const after = await AgentResource.fetchById(auth, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(before.content.version + 1);
+      expect(after.description).toBe("A brand new description");
+      expect(after.scope).toBe("hidden");
+    });
+
+    it("rejects a scope change without publish and creates no version even if a definition field also changed", async () => {
+      const { authenticator } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "visible" }
+      );
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(authenticator);
+
+      // A regular editor holds `write`/`admin` on the agent but not the workspace `publish`
+      // capability, so it cannot change the scope — and the permission is checked before anything is
+      // written, so the definition change is not persisted either.
+      const res = await before.updateConfiguration(authenticator, {
+        ...baseParams,
+        description: "Should not be saved",
+        scope: "hidden",
+      });
+      assert(res.isErr());
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(before.content.version);
+      expect(after.scope).toBe("visible");
+      expect(after.description).toBe(before.description);
+    });
   });
 });

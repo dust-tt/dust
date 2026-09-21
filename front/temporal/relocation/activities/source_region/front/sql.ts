@@ -173,11 +173,6 @@ export async function readFrontTableChunk({
 
   localLogger.info("[SQL Table] Reading table chunk");
 
-  let realLimit = limit;
-  if (tableName === "agent_mcp_action_output_items" && limit > 100) {
-    realLimit = 100;
-  }
-
   const workspace = await getWorkspaceInfos(workspaceId);
   assert(workspace, "Workspace not found");
 
@@ -189,7 +184,7 @@ export async function readFrontTableChunk({
      ORDER BY id
      LIMIT :limit`,
     {
-      replacements: { workspaceId: workspace.id, limit: realLimit },
+      replacements: { workspaceId: workspace.id, limit },
       type: QueryTypes.SELECT,
       raw: true,
     }
@@ -226,7 +221,7 @@ export async function readFrontTableChunk({
 
       return {
         dataPath,
-        hasMore: rows.length === realLimit,
+        hasMore: rows.length === limit,
         lastId: rows[rows.length - 1]?.id ?? lastId,
         nextLimit: null,
       };
@@ -237,7 +232,7 @@ export async function readFrontTableChunk({
         hasMore: true,
         lastId,
       },
-      limit: realLimit,
+      limit,
       localLogger,
     }
   );

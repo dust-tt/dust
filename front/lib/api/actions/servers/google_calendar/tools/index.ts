@@ -97,7 +97,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         orderBy: "startTime",
       });
 
-      const userTimezone = getUserTimezone({ runContext });
+      const userTimezone = await getUserTimezone({ runContext });
 
       const enrichedEvents = res.data.items
         ? res.data.items
@@ -135,7 +135,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         eventId,
       });
 
-      const userTimezone = getUserTimezone({ runContext });
+      const userTimezone = await getUserTimezone({ runContext });
       const enrichedEvent = isGoogleCalendarEvent(res.data)
         ? enrichEventWithDayOfWeek(res.data, userTimezone)
         : null;
@@ -220,7 +220,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         },
       });
 
-      const userTimezone = getUserTimezone({ runContext });
+      const userTimezone = await getUserTimezone({ runContext });
       const enrichedEvent = isGoogleCalendarEvent(res.data)
         ? enrichEventWithDayOfWeek(res.data, userTimezone)
         : null;
@@ -298,7 +298,7 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         },
       });
 
-      const userTimezone = getUserTimezone({ runContext });
+      const userTimezone = await getUserTimezone({ runContext });
       const enrichedEvent = isGoogleCalendarEvent(res.data)
         ? enrichEventWithDayOfWeek(res.data, userTimezone)
         : null;

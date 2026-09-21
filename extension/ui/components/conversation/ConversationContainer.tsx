@@ -1,6 +1,9 @@
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import {
+  useConversationSidePanelContext,
+  useRegisterSidePanelConversation,
+} from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SubscriptionType } from "@app/types/plan";
@@ -43,6 +46,7 @@ export const ConversationContainer = ({
 }: ConversationContainerProps) => {
   const platform = usePlatform();
   const { currentPanel } = useConversationSidePanelContext();
+  useRegisterSidePanelConversation(!!conversation);
   const { setSidebarOpen } = useContext(SidebarContext);
 
   const clientSideMCPServerIds = useClientSideMCPServerIds();

@@ -113,13 +113,11 @@ makeScript(
       })
     ).memberships.map((m) => m.userId);
     const activeUserModelIds = new Set(activeUsers);
-    const activeUsersBySId = new Map(
+    const activeUsersById = new Map(
       users.filter((u) => activeUserModelIds.has(u.id)).map((u) => [u.sId, u])
     );
 
-    const skippedInactive = allUserIds.filter(
-      (id) => !activeUsersBySId.has(id)
-    );
+    const skippedInactive = allUserIds.filter((id) => !activeUsersById.has(id));
     if (skippedInactive.length > 0) {
       scriptLogger.warn(
         { skippedInactive, workspaceId },
@@ -148,7 +146,7 @@ makeScript(
       }
 
       const usersForGroup = removeNulls(
-        [...userIdSet].map((sId) => activeUsersBySId.get(sId))
+        [...userIdSet].map((sId) => activeUsersById.get(sId))
       ).map((u) => u.toJSON());
 
       if (usersForGroup.length === 0) {

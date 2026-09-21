@@ -1,0 +1,5 @@
+{
+  "extends": "./frame-types/tsconfig.json",
+  "include": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"],
+  "exclude": ["functions", "databases", "node_modules"]
+}

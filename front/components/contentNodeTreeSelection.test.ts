@@ -7,6 +7,7 @@ import type {
   ContentNode,
   ContentNodeWithParent,
 } from "@app/types/connectors/connectors_api";
+import type { FetchChildResourcesError } from "@app/types/connectors/content_nodes";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
@@ -54,7 +55,10 @@ describe("collectSelectableNodesForSelectAll", () => {
       parentIds: [],
     });
 
-    expect(getOkValue(selected)).toEqual([{ node: folder, parents: [] }]);
+    expect(getOkValue(selected)).toEqual({
+      nodes: [{ node: folder, parents: [] }],
+      skippedNodes: [],
+    });
   });
 
   it("selects selectable children of prevented containers", async () => {
@@ -69,7 +73,9 @@ describe("collectSelectableNodesForSelectAll", () => {
       title: "Documents",
       parentInternalId: "site",
     });
-    const fetchChildResources = vi.fn(async () => new Ok([drive]));
+    const fetchChildResources = vi.fn(
+      async () => new Ok<ContentNode[]>([drive])
+    );
 
     const selected = await collectSelectableNodesForSelectAll({
       nodes: [site],
@@ -78,7 +84,10 @@ describe("collectSelectableNodesForSelectAll", () => {
     });
 
     expect(fetchChildResources).toHaveBeenCalledWith("site");
-    expect(getOkValue(selected)).toEqual([{ node: drive, parents: ["site"] }]);
+    expect(getOkValue(selected)).toEqual({
+      nodes: [{ node: drive, parents: ["site"] }],
+      skippedNodes: [],
+    });
   });
 
   it("recurses through nested prevented containers", async () => {
@@ -102,12 +111,12 @@ describe("collectSelectableNodesForSelectAll", () => {
     });
     const fetchChildResources = vi.fn(async (parentId: string) => {
       if (parentId === "site") {
-        return new Ok([subSite]);
+        return new Ok<ContentNode[]>([subSite]);
       }
       if (parentId === "subsite") {
-        return new Ok([drive]);
+        return new Ok<ContentNode[]>([drive]);
       }
-      return new Ok([]);
+      return new Ok<ContentNode[]>([]);
     });
 
     const selected = await collectSelectableNodesForSelectAll({
@@ -116,9 +125,10 @@ describe("collectSelectableNodesForSelectAll", () => {
       fetchChildResources,
     });
 
-    expect(getOkValue(selected)).toEqual([
-      { node: drive, parents: ["subsite", "site"] },
-    ]);
+    expect(getOkValue(selected)).toEqual({
+      nodes: [{ node: drive, parents: ["subsite", "site"] }],
+      skippedNodes: [],
+    });
   });
 
   it("limits child fetching concurrency across the full traversal", async () => {
@@ -139,7 +149,7 @@ describe("collectSelectableNodesForSelectAll", () => {
       activeFetches -= 1;
 
       if (parentId.startsWith("site-") && !parentId.includes("subsite")) {
-        return new Ok(
+        return new Ok<ContentNode[]>(
           Array.from({ length: 8 }, (_, index) =>
             makeNode({
               internalId: `${parentId}-subsite-${index}`,
@@ -150,7 +160,7 @@ describe("collectSelectableNodesForSelectAll", () => {
           )
         );
       }
-      return new Ok([
+      return new Ok<ContentNode[]>([
         makeNode({
           internalId: `${parentId}-drive`,
           title: "Documents",
@@ -164,11 +174,49 @@ describe("collectSelectableNodesForSelectAll", () => {
       fetchChildResources,
     });
 
-    expect(getOkValue(selected)).toHaveLength(64);
+    expect(getOkValue(selected).nodes).toHaveLength(64);
     expect(maxActiveFetches).toBeLessThanOrEqual(8);
   });
 
-  it("returns expected child-loading failures", async () => {
+  it("continues after an inaccessible container", async () => {
+    const inaccessibleSite = makeNode({
+      internalId: "inaccessible-site",
+      title: "Inaccessible Site",
+      preventSelection: true,
+      expandable: true,
+    });
+    const accessibleSite = makeNode({
+      internalId: "accessible-site",
+      title: "Accessible Site",
+      preventSelection: true,
+      expandable: true,
+    });
+    const drive = makeNode({
+      internalId: "drive",
+      title: "Documents",
+      parentInternalId: "accessible-site",
+    });
+    const inaccessibleError: FetchChildResourcesError = {
+      type: "resource_inaccessible",
+      error: new Error("Access denied"),
+    };
+
+    const selected = await collectSelectableNodesForSelectAll({
+      nodes: [inaccessibleSite, accessibleSite],
+      parentIds: [],
+      fetchChildResources: async (parentId) =>
+        parentId === inaccessibleSite.internalId
+          ? new Err(inaccessibleError)
+          : new Ok<ContentNode[]>([drive]),
+    });
+
+    expect(getOkValue(selected)).toEqual({
+      nodes: [{ node: drive, parents: ["accessible-site"] }],
+      skippedNodes: [inaccessibleSite],
+    });
+  });
+
+  it("returns fatal child-loading failures", async () => {
     const site = makeNode({
       internalId: "site",
       title: "Site",
@@ -176,11 +224,15 @@ describe("collectSelectableNodesForSelectAll", () => {
       expandable: true,
     });
     const error = new Error("Could not load children");
+    const fatalError: FetchChildResourcesError = {
+      type: "fatal",
+      error,
+    };
 
     const selected = await collectSelectableNodesForSelectAll({
       nodes: [site],
       parentIds: [],
-      fetchChildResources: async () => new Err(error),
+      fetchChildResources: async () => new Err(fatalError),
     });
 
     expect(selected.isErr()).toBe(true);

@@ -19,10 +19,10 @@ import {
   isAuditLogsEnabled,
 } from "./workos_audit";
 
-async function setDisableAuditLogs(workspaceSId: string, value: boolean) {
-  const resource = await WorkspaceResource.fetchById(workspaceSId);
+async function setDisableAuditLogs(workspaceId: string, value: boolean) {
+  const resource = await WorkspaceResource.fetchById(workspaceId);
   if (!resource) {
-    throw new Error(`Workspace not found: ${workspaceSId}`);
+    throw new Error(`Workspace not found: ${workspaceId}`);
   }
   await resource.updateWorkspaceSettings({
     metadata: { ...(resource.metadata ?? {}), disableAuditLogs: value },
@@ -31,8 +31,8 @@ async function setDisableAuditLogs(workspaceSId: string, value: boolean) {
 
 // Re-fetches the auth so its workspace snapshot reflects metadata changes
 // written after the previous fetch.
-function freshAuth(workspaceSId: string) {
-  return Authenticator.internalAdminForWorkspace(workspaceSId);
+function freshAuth(workspaceId: string) {
+  return Authenticator.internalAdminForWorkspace(workspaceId);
 }
 
 describe("isAuditLogsEnabled", () => {

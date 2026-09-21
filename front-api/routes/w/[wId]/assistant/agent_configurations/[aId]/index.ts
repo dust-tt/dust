@@ -39,6 +39,10 @@ const ParamsSchema = z.object({
 
 export type GetAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
+  // Set by the PATCH handler: whether the save persisted a change. False on a no-op (the incoming
+  // configuration matched the current version and no scope/editor change). True for a new version
+  // AND for an in-place scope/editor change that creates no new version. Absent on GET.
+  updated?: boolean;
 };
 
 export type DeleteAgentConfigurationResponseBody = {
@@ -151,7 +155,12 @@ app.patch(
       });
     }
 
-    return ctx.json({ agentConfiguration: agentConfigurationRes.value });
+    // Surface whether the save persisted a change so the client can tell the user the agent was
+    // updated — including in-place scope/editor changes that create no new version — versus a no-op.
+    return ctx.json({
+      agentConfiguration: agentConfigurationRes.value.agentConfiguration,
+      updated: agentConfigurationRes.value.changed,
+    });
   }
 );
 

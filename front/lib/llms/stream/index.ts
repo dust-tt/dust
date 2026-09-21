@@ -67,6 +67,7 @@ import { DustOpenAIGptFiveNanoEuropeOpenAIResponsesStream } from "@app/lib/llms/
 import { DustOpenAIGptFiveNanoGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_nano_global_openai_responses";
 import { DustOpenAIGptSixAstraEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_six_astra_eu_openai_responses";
 import { DustOpenAIGptSixAstraGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_six_astra_global_openai_responses";
+import { DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_simulated_failure_model_global_openai_responses";
 import { DustThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { DustXaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_five_global_xai";
 import { DustXaiGrokFourDotSixGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_six_global_xai";
@@ -174,6 +175,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustMistralMistralSmallEuropeMistralStream,
 
   [DustNoopNoopGlobalNoopStream.id]: DustNoopNoopGlobalNoopStream,
+  [DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream.id]:
+    DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream,
 
   [DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesStream.id]:
     DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesStream,

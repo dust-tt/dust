@@ -20,11 +20,11 @@ import { buildPodSearchDataSources } from "@app/lib/api/actions/servers/pod_mana
 import {
   buildProjectRetrieveDataSources,
   getPod,
-  getPodMemberAndEditorSIds,
+  getPodMemberAndEditorIds,
   getWritablePodContext,
   makeSuccessResponse,
   partitionMembersToRemove,
-  resolvePodUserRolesBySId,
+  resolvePodUserRolesById,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
 import {
@@ -89,7 +89,7 @@ const LIST_CONVERSATIONS_DEFAULT_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 
 function formatListedConversationWithoutMessages(
   c: ConversationResource,
-  workspaceSId: string
+  workspaceId: string
 ) {
   const j = c.toJSON();
   return {
@@ -101,7 +101,7 @@ function formatListedConversationWithoutMessages(
     actionRequired: j.actionRequired,
     hasError: j.hasError,
     conversationUrl: getConversationRoute(
-      workspaceSId,
+      workspaceId,
       j.sId,
       undefined,
       config.getAppUrl()
@@ -311,7 +311,7 @@ export function createProjectManagerTools(
           const newIsRestricted = access !== "open";
           const currentlyRestricted = await pod.isRestricted(auth);
           if (newIsRestricted !== currentlyRestricted) {
-            const { editorIds, memberIds } = await getPodMemberAndEditorSIds(
+            const { editorIds, memberIds } = await getPodMemberAndEditorIds(
               auth,
               pod
             );
@@ -522,9 +522,9 @@ export function createProjectManagerTools(
           );
         }
 
-        const roleByUserSId = await resolvePodUserRolesBySId(auth, pod);
+        const roleByUserId = await resolvePodUserRolesById(auth, pod);
         const { editorIds: removeEditorIds, memberIds: removeMemberIds } =
-          partitionMembersToRemove(membersToRemove, roleByUserSId);
+          partitionMembersToRemove(membersToRemove, roleByUserId);
 
         const addedMembers: string[] = [];
         const removedMembers: string[] = [];
@@ -851,7 +851,7 @@ export function createProjectManagerTools(
     list_pods: async (params) => {
       return withErrorHandling(async () => {
         const owner = auth.getNonNullableWorkspace();
-        const workspaceSId = owner.sId;
+        const workspaceId = owner.sId;
         const { access = "member", q, limit = 20, pageCursor } = params;
 
         const decodedPageOffset = pageCursor
@@ -919,7 +919,7 @@ export function createProjectManagerTools(
           id: pod.sId,
           name: pod.name,
           dustPod: {
-            uri: makePodConfigurationURI(workspaceSId, pod.sId),
+            uri: makePodConfigurationURI(workspaceId, pod.sId),
             mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
           },
         }));
@@ -1247,8 +1247,8 @@ export function createProjectManagerTools(
           originMessageId = toolContext.runContext.agentMessage.sId;
         }
         if (isSandboxFunctionRunContext(toolContext?.runContext)) {
-          timezone =
-            toolContext.runContext.invocation.context?.timezone ?? timezone;
+          const context = await toolContext.runContext.invocation.getContext();
+          timezone = context?.timezone ?? timezone;
         }
 
         // Get agent configuration name & profile picture URL

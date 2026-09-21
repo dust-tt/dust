@@ -165,44 +165,98 @@ export function invoicePeriodWeights(
 }
 
 /**
- * @cc [owner:tdraier,label:product] commitment-amount-hourly-prorated
- * The commitment amount equals `minSeats` times, for each seat billing period
- * (one year for a yearly seat, one calendar month for a monthly seat) that
- * starts within `[start, end)`, `ratePerPeriod` scaled by the fraction of that
- * period's whole hours that fall before `end` — reproducing Metronome's
- * per-hour subscription proration. It sizes the credit grant and is the default
- * invoice amount.
+ * @cc [owner:tdraier,label:product] commitment-access-tranche-per-billing-period
+ * Returns one access tranche per seat billing period on the grid that Metronome
+ * bills the seat subscription on: for a `contract_start_date`-anchored package
+ * the periods recur on the contract-start day-of-month; for a
+ * `first_billing_period`-anchored package (monthly seats only) they run on
+ * calendar-month boundaries (1st → 1st) with a partial leading stub from the
+ * contract start to the first 1st. Yearly seats always use a single yearly
+ * period from `start`. Each tranche unlocks `minSeats * ratePerPeriod` scaled by
+ * the fraction of its period's whole hours that fall within `[start, end)`, and
+ * runs from that overlap's start to its end. Tranches are contiguous and
+ * non-overlapping, so the committed funds become accessible in step with the
+ * seat's own billing cadence rather than all upfront. Amounts are in the same
+ * unit as `ratePerPeriod` (`amountCurrencyUnits`).
  */
-export function commitmentAmount({
+export function commitmentAccessTranches({
   minSeats,
   ratePerPeriod,
   isAnnual,
   start,
   end,
+  billingAnchor = "contract_start_date",
 }: {
   minSeats: number;
   ratePerPeriod: number;
   isAnnual: boolean;
   start: Date;
   end: Date;
-}): number {
+  billingAnchor?: "contract_start_date" | "first_billing_period";
+}): { startingAt: Date; endingBefore: Date; amountCurrencyUnits: number }[] {
   const periodMonths = isAnnual ? 12 : 1;
-  let total = 0;
+  // For a monthly seat on a first-of-month-anchored package the billing grid
+  // sits on calendar-month boundaries; the first period is then a partial stub
+  // from the contract start to the next 1st. Otherwise the grid is anchored to
+  // the contract start itself (so the loop below reduces to contract-start
+  // periods, and the first tranche starts exactly at `start`).
+  const anchorToCalendarMonth =
+    !isAnnual && billingAnchor === "first_billing_period";
+  const gridStart = anchorToCalendarMonth
+    ? new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1))
+    : start;
+  const tranches: {
+    startingAt: Date;
+    endingBefore: Date;
+    amountCurrencyUnits: number;
+  }[] = [];
   // Bounded well above any realistic commitment (100 years of monthly periods).
   for (let k = 0; k < 1200; k++) {
-    const periodStart = addMonthsUtc(start, k * periodMonths);
-    if (periodStart.getTime() >= end.getTime()) {
+    const periodStart = addMonthsUtc(gridStart, k * periodMonths);
+    const periodEnd = addMonthsUtc(gridStart, (k + 1) * periodMonths);
+    // Clamp the tranche window to the commitment: the leading stub starts at
+    // the contract start, the trailing period ends at `end`.
+    const windowStartMs = Math.max(periodStart.getTime(), start.getTime());
+    if (windowStartMs >= end.getTime()) {
       break;
     }
-    const periodEnd = addMonthsUtc(start, (k + 1) * periodMonths);
-    const overlapEndMs = Math.min(periodEnd.getTime(), end.getTime());
+    const windowEndMs = Math.min(periodEnd.getTime(), end.getTime());
     const periodHours = Math.round(
       (periodEnd.getTime() - periodStart.getTime()) / HOUR_MS
     );
-    const overlapHours = Math.round(
-      (overlapEndMs - periodStart.getTime()) / HOUR_MS
-    );
-    total += ratePerPeriod * (overlapHours / periodHours);
+    const windowHours = Math.round((windowEndMs - windowStartMs) / HOUR_MS);
+    if (windowHours <= 0) {
+      continue;
+    }
+    tranches.push({
+      startingAt: new Date(windowStartMs),
+      endingBefore: new Date(windowEndMs),
+      amountCurrencyUnits:
+        minSeats * ratePerPeriod * (windowHours / periodHours),
+    });
   }
-  return minSeats * total;
+  return tranches;
+}
+
+/**
+ * @cc [owner:tdraier,label:product] commitment-amount-hourly-prorated
+ * The commitment amount equals `minSeats` times, for each seat billing period
+ * (one year for a yearly seat, one calendar month for a monthly seat) that
+ * starts within `[start, end)`, `ratePerPeriod` scaled by the fraction of that
+ * period's whole hours that fall before `end` — reproducing Metronome's
+ * per-hour subscription proration. It is the sum of `commitmentAccessTranches`,
+ * sizes the credit grant, and is the default invoice amount.
+ */
+export function commitmentAmount(args: {
+  minSeats: number;
+  ratePerPeriod: number;
+  isAnnual: boolean;
+  start: Date;
+  end: Date;
+}): number {
+  return commitmentAccessTranches(args).reduce(
+    (totalCurrencyUnits, tranche) =>
+      totalCurrencyUnits + tranche.amountCurrencyUnits,
+    0
+  );
 }

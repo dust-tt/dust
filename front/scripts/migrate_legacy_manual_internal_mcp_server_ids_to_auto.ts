@@ -131,7 +131,7 @@ class ProgressBar {
 
 interface WorkspaceMigrationTarget {
   toolName: AutoInternalMCPServerNameType;
-  legacySId: string;
+  legacyId: string;
 }
 
 interface AffectedWorkspaceScanResult {
@@ -180,11 +180,11 @@ function isLegacyRandomPrefixAutoInternalMCPServerSId(
     return null;
   }
 
-  const canonicalSId = autoInternalMCPServerNameToSId({
+  const canonicalId = autoInternalMCPServerNameToSId({
     name: toolName,
     workspaceId: workspaceModelId,
   });
-  if (sId === canonicalSId) {
+  if (sId === canonicalId) {
     return null;
   }
 
@@ -266,9 +266,9 @@ async function scanAffectedWorkspaces(
     .map(([workspaceModelId, targetsByTool]) => ({
       workspaceModelId,
       targets: [...targetsByTool.entries()].map(
-        ([toolName, legacySId]): WorkspaceMigrationTarget => ({
+        ([toolName, legacyId]): WorkspaceMigrationTarget => ({
           toolName,
-          legacySId,
+          legacyId,
         })
       ),
     }))
@@ -302,11 +302,11 @@ async function fetchViewsByInternalMCPServerId(
 async function findLegacyViewsForTool(
   auth: Authenticator,
   name: InternalMCPServerNameType,
-  canonicalSId: string,
-  knownLegacySId?: string
+  canonicalId: string,
+  knownLegacyId?: string
 ): Promise<MCPServerViewResource[]> {
-  if (knownLegacySId) {
-    return fetchViewsByInternalMCPServerId(auth, knownLegacySId);
+  if (knownLegacyId) {
+    return fetchViewsByInternalMCPServerId(auth, knownLegacyId);
   }
 
   const viewRows = await MCPServerViewModel.findAll({
@@ -324,7 +324,7 @@ async function findLegacyViewsForTool(
       (view) =>
         view.internalMCPServerId !== null &&
         matchesInternalMCPServerName(view.internalMCPServerId, name) &&
-        view.internalMCPServerId !== canonicalSId
+        view.internalMCPServerId !== canonicalId
     )
     .map((view) => view.id);
 
@@ -339,10 +339,10 @@ async function findLegacyViewsForTool(
 
 async function findCanonicalViewsByVaultId(
   auth: Authenticator,
-  canonicalSId: string
+  canonicalId: string
 ): Promise<Map<ModelId, MCPServerViewResource>> {
   return new Map(
-    (await fetchViewsByInternalMCPServerId(auth, canonicalSId)).map((view) => [
+    (await fetchViewsByInternalMCPServerId(auth, canonicalId)).map((view) => [
       view.vaultId,
       view,
     ])
@@ -458,22 +458,22 @@ async function findLegacyTargetsInWorkspace(
     }
   }
 
-  return [...targetsByTool.entries()].map(([toolName, legacySId]) => ({
+  return [...targetsByTool.entries()].map(([toolName, legacyId]) => ({
     toolName,
-    legacySId,
+    legacyId,
   }));
 }
 
 async function migrateInternalMCPServerIdReferences(
   auth: Authenticator,
   {
-    legacySId,
-    canonicalSId,
+    legacyId,
+    canonicalId,
     execute,
     stats,
   }: {
-    legacySId: string;
-    canonicalSId: string;
+    legacyId: string;
+    canonicalId: string;
     execute: boolean;
     stats: MigrationStats;
   }
@@ -485,7 +485,7 @@ async function migrateInternalMCPServerIdReferences(
       where: {
         workspaceId,
         serverType: "internal",
-        internalMCPServerId: legacySId,
+        internalMCPServerId: legacyId,
       },
     }),
     execute
@@ -493,7 +493,7 @@ async function migrateInternalMCPServerIdReferences(
           where: {
             workspaceId,
             serverType: "internal",
-            internalMCPServerId: canonicalSId,
+            internalMCPServerId: canonicalId,
           },
         })
       : Promise.resolve([]),
@@ -502,13 +502,13 @@ async function migrateInternalMCPServerIdReferences(
   if (!execute) {
     stats.migratedConnections += legacyConnectionCount;
     stats.migratedCredentials += await InternalMCPServerCredentialModel.count({
-      where: { workspaceId, internalMCPServerId: legacySId },
+      where: { workspaceId, internalMCPServerId: legacyId },
     });
     stats.migratedToolMetadata += await RemoteMCPServerToolMetadataModel.count({
-      where: { workspaceId, internalMCPServerId: legacySId },
+      where: { workspaceId, internalMCPServerId: legacyId },
     });
     stats.migratedUserApprovals += await UserToolApprovalModel.count({
-      where: { workspaceId, mcpServerId: legacySId },
+      where: { workspaceId, mcpServerId: legacyId },
     });
     return;
   }
@@ -517,7 +517,7 @@ async function migrateInternalMCPServerIdReferences(
     where: {
       workspaceId,
       serverType: "internal",
-      internalMCPServerId: legacySId,
+      internalMCPServerId: legacyId,
     },
   });
 
@@ -535,15 +535,15 @@ async function migrateInternalMCPServerIdReferences(
     }
 
     stats.migratedConnections += 1;
-    await legacyConnection.update({ internalMCPServerId: canonicalSId });
+    await legacyConnection.update({ internalMCPServerId: canonicalId });
   }
 
   const legacyCredential = await InternalMCPServerCredentialModel.findOne({
-    where: { workspaceId, internalMCPServerId: legacySId },
+    where: { workspaceId, internalMCPServerId: legacyId },
   });
   if (legacyCredential) {
     const canonicalCredential = await InternalMCPServerCredentialModel.findOne({
-      where: { workspaceId, internalMCPServerId: canonicalSId },
+      where: { workspaceId, internalMCPServerId: canonicalId },
     });
 
     if (canonicalCredential) {
@@ -551,18 +551,18 @@ async function migrateInternalMCPServerIdReferences(
       await legacyCredential.destroy();
     } else {
       stats.migratedCredentials += 1;
-      await legacyCredential.update({ internalMCPServerId: canonicalSId });
+      await legacyCredential.update({ internalMCPServerId: canonicalId });
     }
   }
 
   const legacyToolMetadata = await RemoteMCPServerToolMetadataModel.findAll({
-    where: { workspaceId, internalMCPServerId: legacySId },
+    where: { workspaceId, internalMCPServerId: legacyId },
   });
   for (const metadata of legacyToolMetadata) {
     const duplicate = await RemoteMCPServerToolMetadataModel.findOne({
       where: {
         workspaceId,
-        internalMCPServerId: canonicalSId,
+        internalMCPServerId: canonicalId,
         toolName: metadata.toolName,
       },
     });
@@ -574,18 +574,18 @@ async function migrateInternalMCPServerIdReferences(
     }
 
     stats.migratedToolMetadata += 1;
-    await metadata.update({ internalMCPServerId: canonicalSId });
+    await metadata.update({ internalMCPServerId: canonicalId });
   }
 
   const legacyApprovals = await UserToolApprovalModel.findAll({
-    where: { workspaceId, mcpServerId: legacySId },
+    where: { workspaceId, mcpServerId: legacyId },
   });
   for (const approval of legacyApprovals) {
     const duplicate = await UserToolApprovalModel.findOne({
       where: {
         workspaceId,
         userId: approval.userId,
-        mcpServerId: canonicalSId,
+        mcpServerId: canonicalId,
         toolName: approval.toolName,
         argsAndValuesMd5: approval.argsAndValuesMd5,
       },
@@ -598,7 +598,7 @@ async function migrateInternalMCPServerIdReferences(
     }
 
     stats.migratedUserApprovals += 1;
-    await approval.update({ mcpServerId: canonicalSId });
+    await approval.update({ mcpServerId: canonicalId });
   }
 }
 
@@ -607,13 +607,13 @@ async function migrateViewReferences(
   {
     legacyView,
     destinationView,
-    canonicalSId,
+    canonicalId,
     execute,
     stats,
   }: {
     legacyView: MCPServerViewResource;
     destinationView: MCPServerViewResource;
-    canonicalSId: string;
+    canonicalId: string;
     execute: boolean;
     stats: MigrationStats;
   }
@@ -631,7 +631,7 @@ async function migrateViewReferences(
     await AgentMCPServerConfigurationModel.update(
       {
         mcpServerViewId: destinationView.id,
-        internalMCPServerId: canonicalSId,
+        internalMCPServerId: canonicalId,
       },
       {
         where: {
@@ -751,8 +751,8 @@ async function migrateWorkspace(
     targets ?? (await findLegacyTargetsInWorkspace(auth, toolNames));
 
   for (const target of migrationTargets) {
-    const { toolName: name, legacySId: knownLegacySId } = target;
-    const canonicalSId = autoInternalMCPServerNameToSId({
+    const { toolName: name, legacyId: knownLegacyId } = target;
+    const canonicalId = autoInternalMCPServerNameToSId({
       name,
       workspaceId: auth.getNonNullableWorkspace().id,
     });
@@ -760,8 +760,8 @@ async function migrateWorkspace(
     const legacyViews = await findLegacyViewsForTool(
       auth,
       name,
-      canonicalSId,
-      knownLegacySId
+      canonicalId,
+      knownLegacyId
     );
     if (legacyViews.length === 0) {
       continue;
@@ -771,11 +771,11 @@ async function migrateWorkspace(
 
     const canonicalViewsByVaultId = await findCanonicalViewsByVaultId(
       auth,
-      canonicalSId
+      canonicalId
     );
 
-    const legacySId = legacyViews[0].internalMCPServerId;
-    if (!legacySId) {
+    const legacyId = legacyViews[0].internalMCPServerId;
+    if (!legacyId) {
       continue;
     }
 
@@ -783,8 +783,8 @@ async function migrateWorkspace(
       {
         workspaceId: workspace.sId,
         mcpServerName: name,
-        legacySId,
-        canonicalSId,
+        legacyId,
+        canonicalId,
         legacyViewCount: legacyViews.length,
       },
       execute
@@ -793,8 +793,8 @@ async function migrateWorkspace(
     );
 
     await migrateInternalMCPServerIdReferences(auth, {
-      legacySId,
-      canonicalSId,
+      legacyId,
+      canonicalId,
       execute,
       stats,
     });
@@ -809,7 +809,7 @@ async function migrateWorkspace(
             mcpServerName: name,
             legacyViewId: legacyView.id,
             vaultId: legacyView.vaultId,
-            canonicalSId,
+            canonicalId,
           },
           "No canonical MCP server view found in the same space; skipping legacy view"
         );
@@ -819,7 +819,7 @@ async function migrateWorkspace(
       await migrateViewReferences(auth, {
         legacyView,
         destinationView,
-        canonicalSId,
+        canonicalId,
         execute,
         stats,
       });
@@ -996,11 +996,9 @@ makeScript(
               const toolNamesForEntry = entry.targets.map(
                 (target) => target.toolName
               );
-              const legacySIds = entry.targets.map(
-                (target) => target.legacySId
-              );
+              const legacyIds = entry.targets.map((target) => target.legacyId);
               console.log(
-                `- ${workspace.sId} (${workspace.name}): tools=[${toolNamesForEntry.join(", ")}] legacySIds=[${legacySIds.join(", ")}]`
+                `- ${workspace.sId} (${workspace.name}): tools=[${toolNamesForEntry.join(", ")}] legacyIds=[${legacyIds.join(", ")}]`
               );
             }
           }

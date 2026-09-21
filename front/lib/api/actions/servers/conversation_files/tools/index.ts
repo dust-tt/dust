@@ -23,6 +23,7 @@ import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversat
 import type { AttachmentUsageHints } from "@app/lib/api/assistant/conversation/attachments";
 import {
   attachmentUsageHintsFor,
+  contentNodeAttachmentsDataSourceConfigurations,
   conversationAttachmentId,
   isContentNodeAttachmentType,
   renderAttachmentXml,
@@ -314,19 +315,11 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
       }
     }
 
-    const dataSources: DataSourceConfiguration[] = contentNodeAttachments.map(
-      (f) => ({
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        dataSourceViewId: f.nodeDataSourceViewId,
-        filter: {
-          parents: {
-            in: [f.nodeId],
-            not: [],
-          },
-          tags: null,
-        },
-      })
-    );
+    const dataSources: DataSourceConfiguration[] =
+      contentNodeAttachmentsDataSourceConfigurations(
+        auth.getNonNullableWorkspace().sId,
+        contentNodeAttachments
+      );
 
     const dataSourceIds = new Set(
       [...fileIdToDataSourceViewMap.values()].map(

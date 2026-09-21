@@ -14,6 +14,7 @@ import {
 import { isModelHealthDetectionPaused } from "@app/lib/api/llm/health/kill_switch";
 import type { LLMAttemptOutcomeTelemetry } from "@app/lib/api/llm/telemetry";
 import { runOnRedisCache } from "@app/lib/api/redis";
+import type { Authenticator } from "@app/lib/auth";
 import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
 import { degradedModelEndpointKey } from "@app/lib/model_constructors/types/degradations";
 import { NOOP_HOST } from "@app/lib/model_constructors/types/hosts";
@@ -98,10 +99,12 @@ function isEvaluationDue(
 export async function recordLLMAttempt({
   endpoint,
   outcome,
+  auth,
   now = new Date(),
 }: {
   endpoint: DegradedModelEndpointType;
   outcome: LLMAttemptOutcomeTelemetry;
+  auth: Authenticator;
   now?: Date;
 }): Promise<void> {
   // The noop model is a test fixture, not an endpoint anyone can be degraded on.
@@ -142,7 +145,7 @@ export async function recordLLMAttempt({
       // While recovery holds the endpoint, evaluating again buys nothing: the
       // window still breaches and the start still comes back rejected. How long
       // that stays true depends on the outcome, so the hold does too.
-      const evaluation = await evaluateEndpoint(endpoint, now);
+      const evaluation = await evaluateEndpoint(endpoint, auth, now);
       nextEvaluationAtMs.set(
         degradedModelEndpointKey(endpoint),
         evaluationDueAtMs(evaluation, nowMs)

@@ -157,8 +157,8 @@ makeScript(
     let workspaceModelIdsFilter: number[] | null = null;
     if (wIds && wIds.length > 0) {
       const scopedWorkspaces = await WorkspaceResource.fetchByIds(wIds);
-      const foundSIds = new Set(scopedWorkspaces.map((w) => w.sId));
-      const missing = wIds.filter((sId) => !foundSIds.has(sId));
+      const foundIds = new Set(scopedWorkspaces.map((w) => w.sId));
+      const missing = wIds.filter((sId) => !foundIds.has(sId));
       if (missing.length > 0) {
         logger.warn(
           { missing },

@@ -566,7 +566,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       const cachedToolNames = new Set(cachedTools.map((tool) => tool.name));
 
       await RemoteMCPServerToolMetadataResource.deleteStaleTools(auth, {
-        serverId: this.id,
+        serverModelId: this.id,
         toolsToKeep: Array.from(cachedToolNames),
       });
     }
@@ -752,7 +752,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     //const parsedMetadata = await OAuthMetadataSchema.parseAsync(metadata);
 
     // Dynamic client registration
-    const clientMetadata = provider.clientMetadata;
+    const clientMetadata = { ...provider.clientMetadata };
 
     clientMetadata.scope = getMCPAuthorizationScope({
       extraScopes,
@@ -782,6 +782,11 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     }
 
     try {
+      clientMetadata.token_endpoint_auth_method =
+        ["none", "client_secret_basic", "client_secret_post"].find((method) =>
+          metadata.token_endpoint_auth_methods_supported?.includes(method)
+        ) ?? clientMetadata.token_endpoint_auth_method;
+
       // Try DCR.
       const fullInformation = await registerClient(serverUrl, {
         metadata,

@@ -990,7 +990,7 @@ describe("computeSeatCreditTransfers", () => {
     });
     expect(transfers).toEqual([
       {
-        userSId: "u1",
+        userId: "u1",
         oldSeatType: "pro",
         newSeatType: "max",
         oldCreditName: PRO_SEAT_CREDIT_NAME,
@@ -1025,7 +1025,7 @@ describe("computeSeatCreditTransfers", () => {
     });
     expect(transfers).toEqual([
       {
-        userSId: "u1",
+        userId: "u1",
         oldSeatType: "pro",
         newSeatType: "max",
         oldCreditName: PRO_SEAT_CREDIT_NAME,
@@ -1047,7 +1047,7 @@ describe("computeSeatCreditTransfers", () => {
     });
     expect(transfers).toEqual([
       {
-        userSId: "u1",
+        userId: "u1",
         oldSeatType: "pro",
         newSeatType: "max",
         oldCreditName: PRO_SEAT_CREDIT_NAME,
@@ -1084,7 +1084,7 @@ describe("computeSeatCreditTransfers", () => {
     });
     expect(transfers).toEqual([
       {
-        userSId: "u1",
+        userId: "u1",
         oldSeatType: "max",
         newSeatType: "max_yearly",
         oldCreditName: MAX_SEAT_CREDIT_NAME,
@@ -1149,8 +1149,8 @@ describe("computeSeatCreditTransfers", () => {
       ]),
       allocationBySeatType: ALLOCATIONS,
     });
-    expect(transfers.map((t) => t.userSId).sort()).toEqual(["u1", "u3"]);
-    expect(transfers.find((t) => t.userSId === "u3")).toMatchObject({
+    expect(transfers.map((t) => t.userId).sort()).toEqual(["u1", "u3"]);
+    expect(transfers.find((t) => t.userId === "u3")).toMatchObject({
       remaining: 8000,
       consumed: 0,
     });

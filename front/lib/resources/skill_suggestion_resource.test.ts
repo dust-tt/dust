@@ -96,6 +96,125 @@ describe("SkillSuggestionResource", () => {
       expect(fetched?.kind).toBe("edit");
     });
 
+    it("should create and fetch a user_facing_description suggestion by id", async () => {
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          kind: "user_facing_description",
+          suggestion: { userFacingDescription: "Paste notes, get a summary." },
+          source: "conversational",
+        }
+      );
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.kind).toBe("user_facing_description");
+      expect(fetched?.toJSON()).toMatchObject({
+        kind: "user_facing_description",
+        suggestion: { userFacingDescription: "Paste notes, get a summary." },
+      });
+    });
+
+    it("should create and fetch a create suggestion on a suggested skill", async () => {
+      const draft = await SkillFactory.create(authenticator, {
+        name: "Drafted Skill",
+        status: "suggested",
+      });
+      await authenticator.refresh();
+
+      const suggestion =
+        await SkillSuggestionFactory.createSkillCreationSuggestion(
+          authenticator,
+          draft,
+          { title: "Create Drafted Skill" }
+        );
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.kind).toBe("create");
+      expect(fetched?.skillConfigurationSId).toBe(draft.sId);
+      expect(fetched?.toJSON()).toMatchObject({
+        kind: "create",
+        source: "conversational",
+        suggestion: { name: "Drafted Skill" },
+      });
+    });
+
+    it("should create and fetch a name suggestion by id", async () => {
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          kind: "name",
+          suggestion: { name: "Renamed Skill" },
+          source: "conversational",
+        }
+      );
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.kind).toBe("name");
+      expect(fetched?.toJSON()).toMatchObject({
+        kind: "name",
+        suggestion: { name: "Renamed Skill" },
+      });
+    });
+
+    it("should create and fetch a delete suggestion by id", async () => {
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          kind: "delete",
+          suggestion: {},
+          analysis: "Unused for months",
+          source: "conversational",
+        }
+      );
+
+      expect(suggestion.kind).toBe("delete");
+      expect(suggestion.suggestion).toEqual({});
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.kind).toBe("delete");
+      expect(fetched?.toJSON()).toMatchObject({
+        kind: "delete",
+        suggestion: {},
+      });
+    });
+
+    it("should create and fetch an availability suggestion by id", async () => {
+      const suggestion = await SkillSuggestionFactory.create(
+        authenticator,
+        skill,
+        {
+          kind: "availability",
+          suggestion: { availability: "workspace_users" },
+          source: "conversational",
+        }
+      );
+
+      const fetched = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.kind).toBe("availability");
+      expect(fetched?.toJSON()).toMatchObject({
+        kind: "availability",
+        suggestion: { availability: "workspace_users" },
+      });
+    });
+
     it("should fetch multiple suggestions by ids", async () => {
       const s1 = await SkillSuggestionFactory.create(authenticator, skill);
       const s2 = await SkillSuggestionFactory.create(authenticator, skill);

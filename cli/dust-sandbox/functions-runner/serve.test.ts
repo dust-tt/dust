@@ -1,11 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import {
-  copyFileSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  utimesSync,
-} from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -21,8 +15,8 @@ import {
 const runner = join(import.meta.dir, "runner.ts");
 const fixturesDir = join(import.meta.dir, "fixtures");
 
-// Each test gets its own scratch dir holding the socket (and, for staleness
-// tests, a private functions dir whose bundles it rewrites).
+// Each test gets its own scratch dir holding the socket (and, when needed,
+// a private functions dir).
 let scratchDirs: string[] = [];
 
 function scratch(): string {
@@ -205,31 +199,27 @@ describe("runner serve", () => {
     }
   });
 
-  test("serves multiple functions from one process, reporting import kinds", async () => {
+  test("serves multiple preloaded functions from one process", async () => {
     const { proc, socketPath } = await startWorker(fixturesDir);
     try {
       const first = await requestFrames(
         socketPath,
         warmRequest("hello", {}, { url: "http://localhost/?name=one" })
       );
-      expect(first[1]?.importKind).toBe("fresh");
+      expect(first[1]?.outcome?.output).toEqual({ hello: "one" });
 
       const again = await requestFrames(
         socketPath,
         warmRequest("hello", {}, { url: "http://localhost/?name=two" })
       );
       expect(again[1]?.outcome?.output).toEqual({ hello: "two" });
-      expect(again[1]?.importKind).toBe("cached");
 
-      // A different function on the same worker: its own lazy import, its
-      // own module, no interference.
       const other = await requestFrames(
         socketPath,
         warmRequest("throws", {}, { url: "http://localhost/" })
       );
       expect(other[1]?.outcome?.ok).toBe(false);
       expect(other[1]?.outcome?.error?.code).toBe("threw");
-      expect(other[1]?.importKind).toBe("fresh");
     } finally {
       proc.kill();
     }
@@ -242,7 +232,8 @@ describe("runner serve", () => {
         socketPath,
         warmRequest("no-such-function", {}, { url: "http://localhost/" })
       );
-      expect(missing.stale).toBe(true);
+      expect(missing.outcome?.ok).toBe(false);
+      expect(missing.outcome?.error?.code).toBe("bad_input");
 
       const alive = await request(
         socketPath,
@@ -369,69 +360,6 @@ describe("runner serve", () => {
     }
   }, 15_000);
 
-  test("a rewritten imported bundle is refused as stale and drains the worker", async () => {
-    const dir = scratch();
-    const bundle = join(dir, "hello.ts");
-    copyFileSync(join(fixturesDir, "hello.ts"), bundle);
-    const { proc, socketPath } = await startWorker(dir);
-    try {
-      // Import it first: staleness of an already-imported bundle is what
-      // forces the recycle (the module cannot be evicted).
-      const served = await request(
-        socketPath,
-        warmRequest("hello", {}, { url: "http://localhost/?name=first" })
-      );
-      expect(served.outcome?.ok).toBe(true);
-
-      // Same content, different mtime — a republish rewrites the object, and
-      // mtime/size is the staleness signal.
-      const later = new Date(Date.now() + 5_000);
-      utimesSync(bundle, later, later);
-
-      const reply = await request(
-        socketPath,
-        warmRequest("hello", {}, { url: "http://localhost/" })
-      );
-      expect(reply.stale).toBe(true);
-      expect(await proc.exited).toBe(0);
-    } finally {
-      proc.kill();
-    }
-  });
-
-  test("a stale-triggered drain lets in-flight invocations finish", async () => {
-    const dir = scratch();
-    copyFileSync(join(fixturesDir, "sleepy.ts"), join(dir, "sleepy.ts"));
-    const bundle = join(dir, "hello.ts");
-    copyFileSync(join(fixturesDir, "hello.ts"), bundle);
-    const { proc, socketPath } = await startWorker(dir);
-    try {
-      // Import hello so its rewrite below recycles the worker.
-      await request(
-        socketPath,
-        warmRequest("hello", {}, { url: "http://localhost/" })
-      );
-      const inFlight = request(socketPath, sleepyRequest(600));
-      await new Promise((resolve) => setTimeout(resolve, 150));
-
-      const later = new Date(Date.now() + 5_000);
-      utimesSync(bundle, later, later);
-      const refused = await request(
-        socketPath,
-        warmRequest("hello", {}, { url: "http://localhost/" })
-      );
-      expect(refused.stale).toBe(true);
-
-      // The invocation that was already executing still delivers its
-      // outcome; only then does the drained worker exit.
-      const served = await inFlight;
-      expect(served.outcome?.ok).toBe(true);
-      expect(await proc.exited).toBe(0);
-    } finally {
-      proc.kill();
-    }
-  });
-
   test("serves a request stamped with the matching bundle hash", async () => {
     const { proc, socketPath } = await startWorker(fixturesDir);
     try {
@@ -446,129 +374,6 @@ describe("runner serve", () => {
       );
       expect(reply.outcome?.ok).toBe(true);
       expect(reply.outcome?.output).toEqual({ hello: "stamped" });
-    } finally {
-      proc.kill();
-    }
-  });
-
-  test("a mismatched hash on a first request refuses without poisoning the worker", async () => {
-    // The stat cannot see a rewrite (gcsfuse lag): the stamped hash is the
-    // only signal. On a bundle the worker has NOT imported yet, it must
-    // refuse before importing, so a later correctly-stamped request is
-    // still served by the same worker.
-    const { proc, socketPath } = await startWorker(fixturesDir);
-    try {
-      const refused = await request(
-        socketPath,
-        warmRequest(
-          "hello",
-          {},
-          { url: "http://localhost/", bundleSha256: "0".repeat(64) }
-        )
-      );
-      expect(refused.stale).toBe(true);
-      expect(refused.outcome).toBeUndefined();
-
-      const bundleSha256 = await sha256Of(join(fixturesDir, "hello.ts"));
-      const served = await request(
-        socketPath,
-        warmRequest(
-          "hello",
-          {},
-          { url: "http://localhost/?name=alive", bundleSha256 }
-        )
-      );
-      expect(served.outcome?.output).toEqual({ hello: "alive" });
-    } finally {
-      proc.kill();
-    }
-  });
-
-  test("a mismatched hash on an imported bundle refuses without draining when uncached", async () => {
-    const { proc, socketPath } = await startWorker(fixturesDir);
-    try {
-      const served = await request(
-        socketPath,
-        warmRequest("hello", {}, { url: "http://localhost/?name=warm" })
-      );
-      expect(served.outcome?.ok).toBe(true);
-
-      // Republished but not yet in the cache: the client goes cold (which
-      // populates the cache), and the worker keeps serving everything else.
-      const reply = await request(
-        socketPath,
-        warmRequest(
-          "hello",
-          {},
-          { url: "http://localhost/", bundleSha256: "0".repeat(64) }
-        )
-      );
-      expect(reply.stale).toBe(true);
-
-      const alive = await request(
-        socketPath,
-        warmRequest("sleepy", {}, { url: "http://localhost/?delayMs=10" })
-      );
-      expect(alive.outcome?.ok).toBe(true);
-    } finally {
-      proc.kill();
-    }
-  });
-
-  test("a stamped republish is served from the bundle cache without recycling", async () => {
-    // The worker gets its own HOME so the test controls the cache dir.
-    const home = scratch();
-    const dir = scratch();
-    copyFileSync(join(fixturesDir, "hello.ts"), join(dir, "hello.ts"));
-    copyFileSync(join(fixturesDir, "sleepy.ts"), join(dir, "sleepy.ts"));
-    const { proc, socketPath } = await startWorker(dir, { HOME: home });
-    try {
-      // Warm both functions on the old versions.
-      const before = await request(
-        socketPath,
-        warmRequest("hello", {}, { url: "http://localhost/?name=v1" })
-      );
-      expect(before.outcome?.output).toEqual({ hello: "v1" });
-      await request(socketPath, sleepyRequest(10));
-
-      // "Republish" hello: a cold run would read the new bytes and populate
-      // the content-addressed cache. Simulate exactly that.
-      const republished =
-        "export default { async fetch() { return Response.json({ hello: 'republished' }); } };\n";
-      const newSha = new Bun.CryptoHasher("sha256")
-        .update(new TextEncoder().encode(republished))
-        .digest("hex");
-      const cacheDir = join(home, ".dust-fn", "bundles");
-      await Bun.write(join(cacheDir, `${newSha}.js`), republished);
-
-      // The stamped request is served from the cache: new version, fresh
-      // import, and nothing recycles.
-      const frames = await requestFrames(
-        socketPath,
-        warmRequest(
-          "hello",
-          {},
-          { url: "http://localhost/", bundleSha256: newSha }
-        )
-      );
-      expect(frames[1]?.outcome?.output).toEqual({ hello: "republished" });
-      expect(frames[1]?.importKind).toBe("fresh");
-
-      // Served from the module cache from now on.
-      const again = await requestFrames(
-        socketPath,
-        warmRequest(
-          "hello",
-          {},
-          { url: "http://localhost/", bundleSha256: newSha }
-        )
-      );
-      expect(again[1]?.importKind).toBe("cached");
-
-      // The sibling function never lost its warmth.
-      const sibling = await requestFrames(socketPath, sleepyRequest(10));
-      expect(sibling[1]?.outcome?.ok).toBe(true);
-      expect(sibling[1]?.importKind).toBe("cached");
     } finally {
       proc.kill();
     }
@@ -661,35 +466,6 @@ describe("runner serve", () => {
         marker: "from-spawn",
         token: "unset",
       });
-    } finally {
-      proc.kill();
-    }
-  });
-
-  test("a bundle rewritten during its import poisons and recycles the worker", async () => {
-    // The hash is taken before the import; if the bytes change in between,
-    // the module registry holds bytes the hash does not describe. The
-    // single-flight import re-stats after importing and must recycle
-    // instead of recording the wrong hash.
-    const dir = scratch();
-    const bundle = join(dir, "slow-import.ts");
-    copyFileSync(join(fixturesDir, "slow-import.ts"), bundle);
-    const { proc, socketPath } = await startWorker(dir);
-    try {
-      const first = request(
-        socketPath,
-        warmRequest("slow-import", {}, { url: "http://localhost/" })
-      );
-      // The fixture's import takes ~400ms; rewrite the file mid-import.
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      await Bun.write(
-        bundle,
-        `${await Bun.file(bundle).text()}// republished\n`
-      );
-
-      const reply = await first;
-      expect(reply.stale).toBe(true);
-      expect(await proc.exited).toBe(0);
     } finally {
       proc.kill();
     }

@@ -154,18 +154,24 @@ const fetchGcsContentCached = cacheWithRedis(
   }
 );
 
-const warmOneGcsContent = warmCacheWithRedis(
+const stageOneGcsContent = warmCacheWithRedis(
   fetchGcsContent,
   gcsContentCacheKey,
   { ttlMs: GCS_CONTENT_CACHE_TTL_MS }
 );
 
-export async function warmGcsContentCache(
+/**
+ * Stages MCP output item content in Redis under the same keys readers use
+ * (`fetchGcsContentCached`). Call before returning from createOutputItems so
+ * consumers can read without waiting on GCS. Replaces post-GCS cache warming.
+ */
+export async function stageMcpOutputContentCache(
   auth: Authenticator,
   items: Array<{
     itemId: ModelId;
-    gcsPath: string;
     content: OutputContent;
+    /** Unused for the key; pass the eventual GCS path when known, else "". */
+    gcsPath?: string;
   }>
 ): Promise<void> {
   if (items.length === 0) {
@@ -173,12 +179,15 @@ export async function warmGcsContentCache(
   }
   await concurrentExecutor(
     items,
-    async ({ itemId, gcsPath, content }) => {
-      await warmOneGcsContent(content, auth, gcsPath, itemId);
+    async ({ itemId, gcsPath = "", content }) => {
+      await stageOneGcsContent(content, auth, gcsPath, itemId);
     },
     { concurrency: REDIS_CACHE_CONCURRENCY }
   );
 }
+
+/** @deprecated Use {@link stageMcpOutputContentCache}. */
+export const warmGcsContentCache = stageMcpOutputContentCache;
 
 /**
  * Fetches content for a single item from cache (LRU) or GCS.
@@ -329,4 +338,58 @@ export async function deleteActionOutputsFromGcs(
   );
 
   return deleteContentsFromGcs(uncoveredPaths);
+}
+
+// --- Sandbox-function action output staging (same Redis helpers, action-scoped key) ---
+
+export const SANDBOX_FUNCTION_ACTION_OUTPUT_CACHE_TTL_MS =
+  GCS_CONTENT_CACHE_TTL_MS;
+
+/**
+ * Loader identity for `cacheWithRedis` / `warmCacheWithRedis` keying only.
+ * Misses mean the write-behind window expired or was never warmed — not a GCS fetch.
+ */
+async function sandboxFunctionActionOutput(
+  _actionId: string
+): Promise<object | null> {
+  return null;
+}
+
+const sandboxFunctionActionOutputCacheKey = (actionId: string) =>
+  `sfa_output:${actionId}:v1`;
+
+const warmSandboxFunctionActionOutput = warmCacheWithRedis(
+  sandboxFunctionActionOutput,
+  sandboxFunctionActionOutputCacheKey,
+  { ttlMs: SANDBOX_FUNCTION_ACTION_OUTPUT_CACHE_TTL_MS }
+);
+
+const readSandboxFunctionActionOutputCached = cacheWithRedis(
+  sandboxFunctionActionOutput,
+  sandboxFunctionActionOutputCacheKey,
+  {
+    cacheNullValues: false,
+    ttlMs: SANDBOX_FUNCTION_ACTION_OUTPUT_CACHE_TTL_MS,
+  }
+);
+
+/**
+ * Stages the full sandbox-function action output envelope in Redis so poll
+ * `readOutput` can return before the GCS write finishes.
+ */
+export async function stageSandboxFunctionActionOutput(
+  _auth: Authenticator,
+  actionId: string,
+  output: object
+): Promise<void> {
+  await warmSandboxFunctionActionOutput(output, actionId);
+}
+
+/**
+ * Reads a staged sandbox-function action output, if still within TTL.
+ */
+export async function readStagedSandboxFunctionActionOutput(
+  actionId: string
+): Promise<object | null> {
+  return readSandboxFunctionActionOutputCached(actionId);
 }

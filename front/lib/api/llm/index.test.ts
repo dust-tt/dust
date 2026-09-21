@@ -51,7 +51,7 @@ describe("getWorkspaceFilter", () => {
     expect(flashEndpoints.every((e) => e.host === AGENT_PLATFORM_HOST)).toBe(
       true
     );
-    expect(flashEndpoints.map((e) => e.region)).toEqual(["eu", "global"]);
+    expect(flashEndpoints.map((e) => e.region)).toEqual(["global"]);
 
     const proEndpoints = getStreamEndpoints(workspaceConfig, {
       ...filter,
@@ -60,6 +60,41 @@ describe("getWorkspaceFilter", () => {
     expect(proEndpoints.every((e) => e.host !== GOOGLE_AI_STUDIO_HOST)).toBe(
       true
     );
+  });
+
+  it("opens the EU agent-platform endpoints to credit-priced and vertex-flagged workspaces only", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const filter = getWorkspaceFilter(auth);
+
+    const regionsFor = (workspaceConfig: WorkspaceConfig) =>
+      [GEMINI_3_8_FLASH, CLAUDE_OPUS_5].map((model) =>
+        getStreamEndpoints(workspaceConfig, {
+          ...filter,
+          model: { eq: model },
+        }).map((e) => e.region)
+      );
+
+    const baseConfig: WorkspaceConfig = {
+      featureFlags: [],
+      isEnterprise: false,
+      isCreditPriced: false,
+    };
+
+    expect(regionsFor(baseConfig)).toEqual([["global"], ["global"]]);
+    expect(regionsFor({ ...baseConfig, isCreditPriced: true })).toEqual([
+      ["eu", "global"],
+      ["eu", "global"],
+    ]);
+    expect(
+      regionsFor({
+        ...baseConfig,
+        featureFlags: ["use_vertex_for_supported_models"],
+      })
+    ).toEqual([
+      ["eu", "global"],
+      ["eu", "global"],
+    ]);
   });
 
   it("keeps the direct Google AI Studio API endpoints for byok workspaces", async () => {

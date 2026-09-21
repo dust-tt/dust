@@ -107,6 +107,7 @@ export function InlineKnowledgeChip({
         color={color}
         onRemove={onRemove}
         size="xs"
+        className="max-w-44"
       >
         {children}
       </Chip>
@@ -114,7 +115,13 @@ export function InlineKnowledgeChip({
   }
 
   return (
-    <Chip label={title} color={color} onRemove={onRemove} size="xs">
+    <Chip
+      label={title}
+      color={color}
+      onRemove={onRemove}
+      size="xs"
+      className="max-w-44"
+    >
       {children}
     </Chip>
   );
@@ -137,6 +144,7 @@ export function KnowledgeErrorChip({
       color="primary"
       onRemove={onRemove}
       size="xs"
+      className="max-w-44"
     />
   );
 }

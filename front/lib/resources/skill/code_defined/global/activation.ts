@@ -229,7 +229,7 @@ This should happen with minimal user effort.
 You should bias towards including a Skill and/or Trigger rung in the plan whenever it meets the criteria below.
 
 Include a Skill rung only when ALL of these hold:
-- The user's workspace role is "admin" or "builder".
+- The activation context says the user can create Skills in this workspace.
 - No similar skill already exists (NEVER plan a duplicate). Check existing skills before including the rung.
 
 Include a Trigger rung when it could be useful to create a recurring task for the user.
@@ -349,6 +349,10 @@ async function buildActivationContext(
     parts.push(`The user's workspace Role is: ${role}`);
   }
 
+  if (await auth.hasWorkspacePermission("create", "skill")) {
+    parts.push("The user can create Skills in this workspace.");
+  }
+
   const user = auth.user();
   if (user) {
     const owner = auth.getNonNullableWorkspace();
@@ -425,7 +429,7 @@ export const activationSkill = {
     { name: "triggers_management" },
     { name: "agent_delegation" },
   ],
-  version: 8,
+  version: 9,
   icon: "ActionRocketIcon",
   isRestricted: undefined,
 } as const satisfies GlobalSkillDefinition;

@@ -62,6 +62,22 @@ function tokensEvent(text: string): MessageStreamEvent {
   };
 }
 
+function creditSpendCheckpointEvent(
+  status: "paused" | "acknowledged"
+): MessageStreamEvent {
+  return {
+    eventId: `checkpoint-${status}`,
+    data: {
+      type: "agent_credit_spend_checkpoint_updated",
+      created: 0,
+      configurationId: "dust",
+      messageId: "msg",
+      status,
+      step: 0,
+    },
+  };
+}
+
 function getMessageEvents(
   workspaceId: string,
   conversationId: string,
@@ -86,17 +102,17 @@ async function setupAgentMessage() {
     agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
     messagesCreatedAt: [new Date()],
   });
-  const agentMessageSId = await getMessageSIdByRank(
+  const agentMessageId = await getMessageSIdByRank(
     userAuth,
     conversation.sId,
     1
   );
-  const userMessageSId = await getMessageSIdByRank(
+  const userMessageId = await getMessageSIdByRank(
     userAuth,
     conversation.sId,
     0
   );
-  return { workspace, key, conversation, agentMessageSId, userMessageSId };
+  return { workspace, key, conversation, agentMessageId, userMessageId };
 }
 
 describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events", () => {
@@ -134,13 +150,13 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
   });
 
   it("returns 400 when the target message is not an agent message", async () => {
-    const { workspace, key, conversation, userMessageSId } =
+    const { workspace, key, conversation, userMessageId } =
       await setupAgentMessage();
 
     const response = await getMessageEvents(
       workspace.sId,
       conversation.sId,
-      userMessageSId,
+      userMessageId,
       key.secret
     );
 
@@ -151,7 +167,7 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
   });
 
   it("streams an empty SSE response when no events are produced", async () => {
-    const { workspace, key, conversation, agentMessageSId } =
+    const { workspace, key, conversation, agentMessageId } =
       await setupAgentMessage();
 
     vi.mocked(getMessagesEvents).mockImplementation(emptyAsyncIterator);
@@ -159,7 +175,7 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
     const response = await getMessageEvents(
       workspace.sId,
       conversation.sId,
-      agentMessageSId,
+      agentMessageId,
       key.secret
     );
 
@@ -167,7 +183,7 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
   });
 
   it("streams events for an agent message to the client", async () => {
-    const { workspace, key, conversation, agentMessageSId } =
+    const { workspace, key, conversation, agentMessageId } =
       await setupAgentMessage();
 
     vi.mocked(getMessagesEvents).mockImplementation(
@@ -177,7 +193,7 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
     const response = await getMessageEvents(
       workspace.sId,
       conversation.sId,
-      agentMessageSId,
+      agentMessageId,
       key.secret
     );
 
@@ -187,5 +203,30 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
       "hello",
       "world",
     ]);
+  });
+
+  it("drops the internal-only credit spend checkpoint event", async () => {
+    const { workspace, key, conversation, agentMessageId } =
+      await setupAgentMessage();
+
+    vi.mocked(getMessagesEvents).mockImplementation(
+      asyncIteratorFrom([
+        creditSpendCheckpointEvent("paused"),
+        tokensEvent("kept"),
+        creditSpendCheckpointEvent("acknowledged"),
+      ])
+    );
+
+    const response = await getMessageEvents(
+      workspace.sId,
+      conversation.sId,
+      agentMessageId,
+      key.secret
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    expect(body).toContain("kept");
+    expect(body).not.toContain("agent_credit_spend_checkpoint");
   });
 });

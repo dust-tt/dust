@@ -236,8 +236,8 @@ makeScript({}, async ({ execute }, logger) => {
   const sIds = generateSIds(workspaceIds);
   logger.info(
     {
-      totalSIds: sIds.length,
-      sampleSIds: sIds.slice(0, 5),
+      totalIds: sIds.length,
+      sampleIds: sIds.slice(0, 5),
     },
     "Generated sIds to search for"
   );
@@ -254,11 +254,11 @@ makeScript({}, async ({ execute }, logger) => {
 
   const results = await concurrentExecutor(
     batches,
-    async (sIdBatch, idx) => {
+    async (idBatch, idx) => {
       const mcpServerViews: MCPServerViewModel[] =
         await MCPServerViewModelTyped.findAll({
           where: {
-            internalMCPServerId: { [Op.in]: sIdBatch },
+            internalMCPServerId: { [Op.in]: idBatch },
           },
           includeDeleted: true,
           // WORKSPACE_ISOLATION_BYPASS: Migration script operates across all workspaces to delete orphaned records
@@ -288,7 +288,7 @@ makeScript({}, async ({ execute }, logger) => {
 
   logger.info(
     {
-      totalSIds: sIds.length,
+      totalIds: sIds.length,
       totalDeleted,
       execute,
     },

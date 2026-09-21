@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -22,6 +23,33 @@ const outputSchema: JSONSchema = { type: "object" };
 
 export const TEST_FRAME_BUNDLE_CODE =
   "export default { fetch: async () => Response.json({}) };";
+
+/**
+ * A Frames v2 file in `space`, with no publication stored. Deliberately not "ready": markAsReady
+ * copies the file into its mount, which several suites' file-storage mocks do not implement, and
+ * no caller reads the Frame's contents. The mount path is seeded for the same reason, and because
+ * `deleteFrameV2` needs it.
+ */
+export async function createTestFrameFile(
+  auth: Authenticator,
+  {
+    space,
+    activePublicationId,
+  }: { space: SpaceResource; activePublicationId?: string }
+): Promise<FileResource> {
+  return FileFactory.create(auth, null, {
+    contentType: frameV2ContentType,
+    fileName: FRAME_MANIFEST_FILE,
+    fileSize: 100,
+    status: "created",
+    useCase: "project_context",
+    useCaseMetadata: { spaceId: space.sId, activePublicationId },
+    mountFilePath: `${getPodFilesBasePath({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      podId: space.sId,
+    })}Frame/${FRAME_MANIFEST_FILE}`,
+  });
+}
 
 /**
  * A Frame in `space` with one published function, for suites that already own their auth and
@@ -50,21 +78,9 @@ export async function createTestFrameFunction(
     publicationId?: string;
   }
 ) {
-  // Deliberately not "ready": markAsReady copies the file into its mount, which several suites'
-  // file-storage mocks do not implement, and no caller reads the Frame's contents.
-  const frame = await FileFactory.create(auth, null, {
-    contentType: frameV2ContentType,
-    fileName: FRAME_MANIFEST_FILE,
-    fileSize: 100,
-    status: "created",
-    useCase: "project_context",
-    useCaseMetadata: { spaceId: space.sId, activePublicationId: publicationId },
-    // Seeded rather than resolved on markAsReady, which copies the file into its mount — several
-    // suites' file-storage mocks do not implement that, and `deleteFrameV2` needs the path.
-    mountFilePath: `${getPodFilesBasePath({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      podId: space.sId,
-    })}Frame/${FRAME_MANIFEST_FILE}`,
+  const frame = await createTestFrameFile(auth, {
+    space,
+    activePublicationId: publicationId,
   });
   await withTransaction((transaction) =>
     SandboxFunctionResource.createForFramePublication(
@@ -133,9 +149,13 @@ export async function makeTestFrameFunction({
     useCaseMetadata: {
       spaceId: space.sId,
       activePublicationId: publicationId,
-      frameName: "Task List",
       frameDescription: "Track tasks.",
     },
+    // A Frame always lives in its own folder, and that folder is its name.
+    mountFilePath: `${getPodFilesBasePath({
+      workspaceId: workspace.sId,
+      podId: space.sId,
+    })}Task List/${FRAME_MANIFEST_FILE}`,
   });
   await frame.setShareScope(adminAuth, shareScope);
   await withTransaction((transaction) =>

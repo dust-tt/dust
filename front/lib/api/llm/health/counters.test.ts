@@ -2,13 +2,15 @@ import {
   MIN_DEGRADED_DURATION_MS,
   MIN_EVALUATION_INTERVAL_MS,
 } from "@app/lib/api/llm/health/config";
-import { recordLLMAttempt } from "@app/lib/api/llm/health/counters";
+import { recordLLMAttempt as recordLLMAttemptImpl } from "@app/lib/api/llm/health/counters";
 import { evaluateEndpoint } from "@app/lib/api/llm/health/detect";
 import { modelHealthKey } from "@app/lib/api/llm/health/keys";
 import { isModelHealthDetectionPaused } from "@app/lib/api/llm/health/kill_switch";
 import type { LLMAttemptOutcomeTelemetry } from "@app/lib/api/llm/telemetry";
 import type { LLMErrorType } from "@app/lib/api/llm/types/errors";
 import { runOnRedisCache } from "@app/lib/api/redis";
+import type { Authenticator } from "@app/lib/auth";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { redisMock } from "@app/tests/utils/mocks/redis";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -38,14 +40,23 @@ function providerError(errorType: LLMErrorType) {
 
 const NOW = new Date("2026-09-03T14:32:10Z");
 const KEY = modelHealthKey(ENDPOINT, "202609031432");
+let AUTH: Authenticator;
+
+function recordLLMAttempt(
+  args: Omit<Parameters<typeof recordLLMAttemptImpl>[0], "auth">
+): Promise<void> {
+  return recordLLMAttemptImpl({ ...args, auth: AUTH });
+}
 
 async function record(outcome: LLMAttemptOutcomeTelemetry): Promise<void> {
   await recordLLMAttempt({ endpoint: ENDPOINT, outcome, now: NOW });
 }
 
 describe("model health counters", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     redisMock.reset();
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    AUTH = authenticator;
   });
 
   afterEach(() => {
@@ -154,7 +165,7 @@ describe("model health counters", () => {
       outcome: providerError("overloaded_error"),
       now: NOW,
     });
-    expect(evaluateEndpoint).toHaveBeenCalledWith(endpoint, NOW);
+    expect(evaluateEndpoint).toHaveBeenCalledWith(endpoint, AUTH, NOW);
   });
 
   it("evaluates one endpoint at most once per interval", async () => {

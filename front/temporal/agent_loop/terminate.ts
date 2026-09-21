@@ -1,3 +1,4 @@
+import { deleteOngoingAgentLoop } from "@app/lib/api/assistant/ongoing_agent_loops";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -33,6 +34,20 @@ export async function terminateAllAgentLoopWorkflowsForConversation(
       const handle = client.workflow.getHandle(info.workflowId);
       try {
         await handle.terminate("Conversation blocked via kill switch");
+        const agentMessageId = info.memo?.agentMessageId;
+        const userId = info.memo?.userId;
+        const workspaceId = info.memo?.workspaceId;
+        if (
+          typeof agentMessageId === "string" &&
+          typeof userId === "string" &&
+          typeof workspaceId === "string"
+        ) {
+          await deleteOngoingAgentLoop({
+            workspaceId,
+            userId,
+            messageId: agentMessageId,
+          });
+        }
       } catch (err) {
         if (err instanceof WorkflowNotFoundError) {
           return;

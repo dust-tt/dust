@@ -1,3 +1,4 @@
+// @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";

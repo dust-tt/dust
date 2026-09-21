@@ -116,10 +116,11 @@ echo "==> Pushing dsbx to sandbox $SANDBOX_ID at $REMOTE_PATH..."
 BINARY_SIZE=$(wc -c < "$BINARY" | tr -d ' ')
 echo "    Binary size: $(( BINARY_SIZE / 1024 / 1024 ))MB ($(( BINARY_SIZE / 1024 ))KB)"
 
-e2b sandbox exec "$SANDBOX_ID" -u root "mkdir -p $(dirname $REMOTE_PATH) && rm -f $REMOTE_PATH"
-base64 -i "$BINARY" | e2b sandbox exec "$SANDBOX_ID" -u root "base64 -d > $REMOTE_PATH && chmod +x $REMOTE_PATH"
+# e2b CLI: options must precede <sandboxID>, else -u is treated as the command.
+e2b sandbox exec -u root "$SANDBOX_ID" "mkdir -p $(dirname $REMOTE_PATH) && rm -f $REMOTE_PATH"
+base64 -i "$BINARY" | e2b sandbox exec -u root "$SANDBOX_ID" "base64 -d > $REMOTE_PATH && chmod +x $REMOTE_PATH"
 
 echo "==> Verifying..."
-e2b sandbox exec "$SANDBOX_ID" -u root "$REMOTE_PATH --version" 2>&1 || true
+e2b sandbox exec -u root "$SANDBOX_ID" "$REMOTE_PATH --version" 2>&1 || true
 
 echo "==> Done! dsbx deployed to sandbox $SANDBOX_ID"

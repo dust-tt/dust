@@ -488,6 +488,23 @@ async function checkDiffFiles() {
     .concat(danger.git.created_files)
     .concat(danger.git.deleted_files);
 
+  const codeDefinedSkillsChanged = diffFiles.some(
+    (path) =>
+      (path.startsWith("front/lib/resources/skill/code_defined/") &&
+        path.endsWith(".ts") &&
+        !path.endsWith(".test.ts")) ||
+      path === "front/scripts/reindex_code_defined_skills.ts"
+  );
+  if (codeDefinedSkillsChanged) {
+    warn(
+      "Code-defined skills or their search projection changed. If this adds/removes a skill " +
+        "or changes its ID, name, user-facing description, icon or kind, reindex the catalog " +
+        "after deploy in each region. From `front/`, run " +
+        "`npx tsx scripts/reindex_code_defined_skills.ts --execute`. " +
+        "Instruction-only changes do not require reindexing."
+    );
+  }
+
   // Model files
   const modifiedModelFiles = diffFiles.filter((path) => {
     return (

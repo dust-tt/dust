@@ -93,16 +93,16 @@ function learningSpaceNameForCreator(
   return `${label}${suffix}`;
 }
 
-function cohortBucket(workspaceSId: string, userId: string): number {
+function cohortBucket(workspaceId: string, userId: string): number {
   const digest = createHash("sha256")
-    .update(`${workspaceSId}:${userId}`)
+    .update(`${workspaceId}:${userId}`)
     .digest();
   return digest.readUInt32BE(0) % 100;
 }
 
 // Selects the sIds of active workspace members who don't yet own a Pod, keeping
 // a deterministic percentage of each activation-status group (activated / not-activated).
-async function selectCohortUserSIds(
+async function selectCohortUserIds(
   auth: Authenticator,
   {
     pctActivated,
@@ -538,7 +538,7 @@ export const activationManagementPlugin = createPlugin({
 
     // Resolve the target user set from the selected targeting mode. Every mode
     // produces a list of sIds that flow through the same provision+nudge path.
-    let targetUserSIds: string[];
+    let resolvedUserIds: string[];
     if (mode === "cohort") {
       const pctActivatedValue = pctActivated ?? 0;
       const pctNotActivatedValue = pctNotActivated ?? 0;
@@ -549,7 +549,7 @@ export const activationManagementPlugin = createPlugin({
           );
         }
       }
-      const cohortResult = await selectCohortUserSIds(auth, {
+      const cohortResult = await selectCohortUserIds(auth, {
         pctActivated: pctActivatedValue,
         pctNotActivated: pctNotActivatedValue,
         kind,
@@ -557,8 +557,8 @@ export const activationManagementPlugin = createPlugin({
       if (cohortResult.isErr()) {
         return cohortResult;
       }
-      targetUserSIds = cohortResult.value;
-      if (targetUserSIds.length === 0) {
+      resolvedUserIds = cohortResult.value;
+      if (resolvedUserIds.length === 0) {
         return new Ok({
           display: "markdown",
           value:
@@ -567,34 +567,38 @@ export const activationManagementPlugin = createPlugin({
         });
       }
     } else if (mode === "group") {
-      const groupSId = groupId?.[0]?.trim();
-      if (!groupSId) {
+      const selectedGroupId = groupId?.[0]?.trim();
+      if (!selectedGroupId) {
         return new Err(new Error("Select a group."));
       }
-      const groupResult = await GroupResource.fetchById(auth, groupSId);
+      const groupResult = await GroupResource.fetchById(auth, selectedGroupId);
       if (groupResult.isErr()) {
         return new Err(
-          new Error(`Group not found: ${groupSId} (${groupResult.error.code}).`)
+          new Error(
+            `Group not found: ${selectedGroupId} (${groupResult.error.code}).`
+          )
         );
       }
       const members = await groupResult.value.getActiveMembers(auth);
-      targetUserSIds = [...new Set(members.map((member) => member.sId))];
-      if (targetUserSIds.length === 0) {
+      resolvedUserIds = [...new Set(members.map((member) => member.sId))];
+      if (resolvedUserIds.length === 0) {
         return new Err(new Error("The selected group has no active members."));
       }
     } else {
       const selectedUserIds = (targetUserIds ?? [])
         .map((id) => id.trim())
         .filter((id) => id.length > 0);
-      targetUserSIds = [...new Set(selectedUserIds)];
-      if (targetUserSIds.length === 0) {
+      resolvedUserIds = [...new Set(selectedUserIds)];
+      if (resolvedUserIds.length === 0) {
         return new Err(new Error("Select at least one user."));
       }
     }
 
-    const users = await UserResource.fetchByIds(targetUserSIds);
+    const users = await UserResource.fetchByIds(resolvedUserIds);
     const foundUserIds = new Set(users.map((u) => u.sId));
-    const missingUserIds = targetUserSIds.filter((id) => !foundUserIds.has(id));
+    const missingUserIds = resolvedUserIds.filter(
+      (id) => !foundUserIds.has(id)
+    );
     if (missingUserIds.length > 0) {
       return new Err(
         new Error(`No user(s) found with ID(s): ${missingUserIds.join(", ")}.`)

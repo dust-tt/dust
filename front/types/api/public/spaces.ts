@@ -43,6 +43,14 @@ export const DATA_SOURCE_VIEW_CATEGORIES = [
 export type DataSourceViewCategory =
   (typeof DATA_SOURCE_VIEW_CATEGORIES)[number];
 
+// The data source view categories that count as knowledge an agent or skill can be given.
+export const KNOWLEDGE_CATEGORIES = [
+  "managed",
+  "folder",
+  "website",
+] as const satisfies readonly DataSourceViewCategory[];
+export type KnowledgeCategory = (typeof KNOWLEDGE_CATEGORIES)[number];
+
 export function isValidDataSourceViewCategory(
   category: unknown
 ): category is DataSourceViewCategory {

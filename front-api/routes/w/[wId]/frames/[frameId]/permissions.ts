@@ -28,6 +28,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
 
   return ctx.json<GetFramePermissionsResponseBody>({
     isFrameAuthor: await canWriteFrameV2Source(auth, frame),
+    packageRoot: frame.getFrameV2SourceDirectoryPath(auth),
   });
 });
 
