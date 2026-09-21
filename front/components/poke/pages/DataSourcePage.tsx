@@ -55,7 +55,7 @@ function FolderDisplay({
 }: {
   owner: WorkspaceType;
   dataSource: DataSourceType;
-  onDisplayDocumentSource: (documentId: string, dataSourceSId: string) => void;
+  onDisplayDocumentSource: (documentId: string, dataSourceId: string) => void;
 }) {
   const [limit] = useState(10);
   const [offsetDocument, setOffsetDocument] = useState(0);
@@ -906,7 +906,7 @@ export function DataSourcePage() {
 
   const onDisplayDocumentSource = (
     documentId: string,
-    dataSourceSId: string
+    dataSourceId: string
   ) => {
     if (
       window.confirm(
@@ -914,7 +914,7 @@ export function DataSourcePage() {
       )
     ) {
       window.open(
-        `/poke/${owner.sId}/data_sources/${dataSourceSId}/view?documentId=${encodeURIComponent(documentId)}`
+        `/poke/${owner.sId}/data_sources/${dataSourceId}/view?documentId=${encodeURIComponent(documentId)}`
       );
     }
   };

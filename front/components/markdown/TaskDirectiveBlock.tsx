@@ -369,10 +369,10 @@ function TaskDirectivePopoverBodyLoaded({
  */
 function TaskDirectivePopoverContent({
   owner,
-  taskSId,
+  taskId,
 }: {
   owner: LightWorkspaceType;
-  taskSId: string;
+  taskId: string;
 }) {
   const {
     task,
@@ -382,7 +382,7 @@ function TaskDirectivePopoverContent({
     mutateWorkspacePodTask,
   } = useWorkspacePodTask({
     workspaceId: owner.sId,
-    taskId: taskSId,
+    taskId,
   });
 
   const { agentConfigurations, isLoading: agentsLoading } =
@@ -416,7 +416,7 @@ function TaskDirectivePopoverContent({
   return (
     <TaskDirectivePopoverBodyLoaded
       owner={owner}
-      taskId={taskSId}
+      taskId={taskId}
       data={{ task, space: pod }}
       activeAgents={activeAgents}
       agentsLoading={agentsLoading}
@@ -472,7 +472,7 @@ function TaskDirectiveChipInner({
             so no `disabled` flag is needed on those hooks — they never run while closed.
           */}
           {open ? (
-            <TaskDirectivePopoverContent owner={owner} taskSId={sId} />
+            <TaskDirectivePopoverContent owner={owner} taskId={sId} />
           ) : null}
         </PopoverContent>
       </PopoverRoot>

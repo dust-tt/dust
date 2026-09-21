@@ -87,43 +87,21 @@ function getLimitPromptForCode(
 ) {
   switch (code) {
     case "cant_invite_no_seats_available": {
-      if (subscription.trialing) {
-        return {
-          title: "Fair usage limit reached",
-          validateLabel: "Manage your subscription",
-          onValidate: () => {
-            void router.push(`/w/${owner.sId}/subscription`);
-          },
-          children: (
-            <Page.Vertical gap="lg">
-              <Page.P>
-                You can invite up to {subscription.plan.limits.users.maxUsers}
-                &nbsp;members in during trial.
-              </Page.P>
-              <p className="text-sm font-bold text-muted-foreground">
-                You can end your trial and start paying now to invite more
-                members.
-              </p>
-            </Page.Vertical>
-          ),
-        };
-      } else {
-        return {
-          title: "Plan Limits",
-          validateLabel: "Manage your subscription",
-          onValidate: () => {
-            void router.push(`/w/${owner.sId}/subscription`);
-          },
-          children: (
-            <>
-              <Page.P>
-                Workspace has reached its member limit. Please upgrade or remove
-                inactive members to add more.
-              </Page.P>
-            </>
-          ),
-        };
-      }
+      return {
+        title: "Plan Limits",
+        validateLabel: "Manage your subscription",
+        onValidate: () => {
+          void router.push(`/w/${owner.sId}/subscription`);
+        },
+        children: (
+          <>
+            <Page.P>
+              Workspace has reached its member limit. Please upgrade or remove
+              inactive members to add more.
+            </Page.P>
+          </>
+        ),
+      };
     }
     case "cant_invite_free_plan":
       return {
@@ -177,30 +155,6 @@ function getLimitPromptForCode(
                 You have reached the message limit under the trial. You can
                 subscribe to a paid plan to continue using Dust.
               </Page.P>
-            </>
-          ),
-        };
-      } else if (subscription.trialing) {
-        return {
-          title: "Fair usage limit reached",
-          validateLabel: isAdmin ? "Manage your subscription" : "Ok",
-          onValidate: isAdmin
-            ? () => {
-                void router.push(`/w/${owner.sId}/subscription`);
-              }
-            : undefined,
-          children: (
-            <>
-              <Page.P>
-                We limit usage of Dust during the trial. You've reached your
-                limit for today.
-              </Page.P>
-              <p className="text-sm font-normal text-muted-foreground">
-                Come back tomorrow for a fresh start or&nbsp;
-                <span className="font-bold">
-                  end your trial and start paying now.
-                </span>
-              </p>
             </>
           ),
         };

@@ -6,6 +6,7 @@ import {
   ResourceAvatarWithBadge,
 } from "@app/components/resources/resources_icons";
 import type {
+  SkillListItemType,
   SkillRelations,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
@@ -30,17 +31,26 @@ interface SkillAvatarIconProps {
 type SkillAvatarIconInput =
   | string
   | null
-  | Pick<SkillWithoutInstructionsAndToolsType, "editedBy" | "icon">;
+  | Pick<
+      SkillListItemType | SkillWithoutInstructionsAndToolsType,
+      "editedBy" | "icon"
+    >;
 
 export function isDustProvidedSkill(
-  skill: Pick<SkillWithoutInstructionsAndToolsType, "editedBy">
+  skill: Pick<
+    SkillListItemType | SkillWithoutInstructionsAndToolsType,
+    "editedBy"
+  >
 ) {
   return skill.editedBy === null;
 }
 
 function isSkillAvatarIconSkill(
   input: SkillAvatarIconInput
-): input is Pick<SkillWithoutInstructionsAndToolsType, "editedBy" | "icon"> {
+): input is Pick<
+  SkillListItemType | SkillWithoutInstructionsAndToolsType,
+  "editedBy" | "icon"
+> {
   return input !== null && typeof input === "object";
 }
 

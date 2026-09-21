@@ -47,6 +47,7 @@ const {
 vi.mock("@app/lib/api/config", () => ({
   default: {
     getApiBaseUrl: () => "https://dust.tt",
+    getVizPublicUrl: () => "https://viz.dust.tt",
     getSandboxDevFrontHostName: () => undefined,
   },
 }));
@@ -331,6 +332,9 @@ describe("runSandboxBashTool", () => {
       expect.stringContaining("echo hello"),
       expect.objectContaining({
         user: "agent-proxied",
+        envVars: expect.objectContaining({
+          DUST_VIZ_URL: "https://viz.dust.tt",
+        }),
       })
     );
   });

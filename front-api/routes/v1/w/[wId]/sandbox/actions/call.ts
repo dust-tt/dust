@@ -4,7 +4,9 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
 import { createSandboxFunctionMCPAction } from "@app/lib/api/sandbox_functions/create_sandbox_function_mcp_action";
+import type { SandboxFunctionMcpActionServerTimingsMs } from "@app/lib/api/sandbox_functions/sandbox_function_mcp_action_server_timings";
 import logger from "@app/logger/logger";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { CallMCPToolRequestBodySchema } from "@dust-tt/client";
 import { sandboxApp } from "@front-api/middlewares/ctx";
@@ -12,10 +14,19 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
-type CallSandboxToolResponse = {
-  status: "pending";
-  actionId: string;
-};
+// Conversation sandbox child actions and function-invocation tool calls both
+// return pending; the sandbox polls `GET .../actions/:aId` for the result.
+// `serverTimingsMs` is additive diagnostics on the function path only.
+type CallSandboxToolResponse =
+  | {
+      status: "pending";
+      actionId: string;
+      serverTimingsMs?: SandboxFunctionMcpActionServerTimingsMs;
+    }
+  | {
+      status: "success";
+      action: AgentMCPActionWithOutputType;
+    };
 
 // Mounted at /api/v1/w/:wId/sandbox/actions/call.
 const app = sandboxApp();
@@ -95,8 +106,16 @@ app.post(
         }
       }
 
+      const { actionId, createTimings } = result.value;
+      const serverTimingsMs: SandboxFunctionMcpActionServerTimingsMs = {
+        ...createTimings,
+      };
+      logger.info(
+        { actionId, serverTimingsMs },
+        "Sandbox function MCP action call timings"
+      );
       return ctx.json(
-        { status: "pending" as const, actionId: result.value.actionId },
+        { status: "pending" as const, actionId, serverTimingsMs },
         202
       );
     }

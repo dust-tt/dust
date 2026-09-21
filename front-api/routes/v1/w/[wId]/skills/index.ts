@@ -143,7 +143,7 @@ app.route("/:skillId", skill);
  *                 items:
  *                   type: string
  *                   format: email
- *                 description: Optional editor email addresses to add to imported or updated skills. Editors must be active workspace builders. Existing skills keep their current editors.
+ *                 description: Optional editor email addresses to add to imported or updated skills. Editors must be active workspace members. Existing skills keep their current editors.
  *               availability:
  *                 type: string
  *                 enum: [editors, workspace_users, users_and_agents]

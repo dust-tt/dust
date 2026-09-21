@@ -68,7 +68,7 @@ export const activationRecommendationHistoryPlugin = createPlugin({
     const conversations = conversationModelIds.length
       ? await ConversationResource.fetchByModelIds(auth, conversationModelIds)
       : [];
-    const conversationSIdById = new Map(
+    const conversationIdById = new Map(
       conversations.map((conversation) => [conversation.id, conversation.sId])
     );
 
@@ -78,12 +78,12 @@ export const activationRecommendationHistoryPlugin = createPlugin({
     ];
     const rows = recommendations.map((rec) => {
       const user = userById.get(rec.userId);
-      const conversationSId =
+      const conversationId =
         rec.conversationId !== null
-          ? conversationSIdById.get(rec.conversationId)
+          ? conversationIdById.get(rec.conversationId)
           : undefined;
-      const conversationLink = conversationSId
-        ? `[open](/poke/${workspaceId}/conversation/${conversationSId})`
+      const conversationLink = conversationId
+        ? `[open](/poke/${workspaceId}/conversation/${conversationId})`
         : "—";
       const userLabel = user?.fullName() || user?.email || "unknown";
       const recommendation = `**${escapeCell(rec.title)}** — ${escapeCell(

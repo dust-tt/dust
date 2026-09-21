@@ -144,9 +144,9 @@ async function backfillMcpServerConfigurationSidForWorkspace(
       },
     });
 
-    const configIdToSid = new Map<string, string>();
+    const configIdByModelId = new Map<string, string>();
     for (const cfg of serverConfigs) {
-      configIdToSid.set(cfg.id.toString(), cfg.sId);
+      configIdByModelId.set(cfg.id.toString(), cfg.sId);
     }
 
     const actionsByAgentMessageId = new Map<number, AgentMCPActionResource[]>();
@@ -172,8 +172,8 @@ async function backfillMcpServerConfigurationSidForWorkspace(
       const toolsUsed: AgentMessageAnalyticsToolUsed[] = [];
 
       for (const action of msgActions) {
-        const sid = configIdToSid.get(action.mcpServerConfigurationId);
-        if (!sid) {
+        const configId = configIdByModelId.get(action.mcpServerConfigurationId);
+        if (!configId) {
           continue;
         }
 
@@ -209,7 +209,7 @@ async function backfillMcpServerConfigurationSidForWorkspace(
           step_index: action.stepContent.step,
           server_name: serverName,
           tool_name: toolName,
-          mcp_server_configuration_sid: sid,
+          mcp_server_configuration_sid: configId,
           execution_time_ms: action.executionDurationMs,
           status: action.status,
           // This historical backfill predates per-tool cost tracking; cost_awu

@@ -133,7 +133,6 @@ function createMockAuthenticator(): Authenticator {
     workspace: () => mockWorkspace,
     isAdmin: () => true,
     isManager: () => true,
-    isBuilder: () => true,
     isUser: () => true,
     isDustSuperUser: () => true,
     role: () => "admin",

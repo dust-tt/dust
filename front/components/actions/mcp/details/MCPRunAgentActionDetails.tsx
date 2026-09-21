@@ -346,6 +346,7 @@ function MCPRunAgentActionDetailsDisplay({
                     isLastMessage={false}
                     additionalMarkdownPlugins={additionalMarkdownPlugins}
                     additionalMarkdownComponents={additionalMarkdownComponents}
+                    taskListVariant="step"
                   />
                 </ContentMessage>
               </div>
@@ -380,6 +381,7 @@ function MCPRunAgentActionDetailsDisplay({
                     content={handoverResource.resource.text}
                     additionalMarkdownPlugins={additionalMarkdownPlugins}
                     additionalMarkdownComponents={additionalMarkdownComponents}
+                    taskListVariant="step"
                   />
                 </ContentMessage>
               </div>
@@ -422,6 +424,7 @@ function MCPRunAgentActionDetailsDisplay({
                           additionalMarkdownComponents={
                             additionalMarkdownComponents
                           }
+                          taskListVariant="step"
                         />
                       </CitationsContext.Provider>
 

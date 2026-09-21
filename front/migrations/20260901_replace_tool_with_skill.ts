@@ -144,7 +144,7 @@ async function createReplacementVersion(
     );
   }
 
-  return result.value.version;
+  return result.value.agentConfiguration.version;
 }
 
 makeScript(
@@ -182,7 +182,11 @@ makeScript(
       );
     }
 
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    // Re-saving each agent as a new version needs `write` on it; request all groups so the internal
+    // admin resolves the editor grants that confer it (see `agent-edit-requires-write`).
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId, {
+      dangerouslyRequestAllGroups: true,
+    });
     // Both resource fetches are scoped to the authenticated workspace.
     const [mcpServerView, customSkills] = await Promise.all([
       MCPServerViewResource.fetchById(auth, mcpServerViewId, {

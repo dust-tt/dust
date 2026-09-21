@@ -230,7 +230,7 @@ describe("createSandboxChildAction", () => {
     }: { enabled?: boolean; toolName?: string } = {}
   ) {
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
-      serverSId: serverId,
+      serverId,
       toolName,
       permission,
       enabled,

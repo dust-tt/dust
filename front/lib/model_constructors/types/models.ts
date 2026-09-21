@@ -53,6 +53,7 @@ export const GROK_4_6 = "grok-4.6" as const;
 // Dummy model used for local/dev testing (static replies, simulated credit
 // consumption). Served by the in-process noop endpoint, not an external API.
 export const NOOP_MODEL = "noop" as const;
+export const SIMULATED_FAILURE_MODEL = "simulated-failure-model" as const;
 
 // Include a few examples for now
 export const MODELS = [
@@ -102,6 +103,7 @@ export const MODELS = [
   INKLING,
   GROK_4_5,
   GROK_4_6,
+  SIMULATED_FAILURE_MODEL,
   NOOP_MODEL,
 ] as const;
 

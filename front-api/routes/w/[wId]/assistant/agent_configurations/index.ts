@@ -336,7 +336,9 @@ app.post(
       });
     }
 
-    return ctx.json({ agentConfiguration: agentConfigurationRes.value });
+    return ctx.json({
+      agentConfiguration: agentConfigurationRes.value.agentConfiguration,
+    });
   }
 );
 

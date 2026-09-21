@@ -1,0 +1,19 @@
+PUT /front.agents_1/_mapping
+{
+  "properties": {
+    "model": {
+      "type": "object",
+      "properties": {
+        "provider_id": {
+          "type": "keyword"
+        },
+        "model_id": {
+          "type": "keyword"
+        },
+        "reasoning_effort": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}

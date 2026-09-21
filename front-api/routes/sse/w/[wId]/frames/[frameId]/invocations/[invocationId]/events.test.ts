@@ -48,7 +48,6 @@ describe("GET /api/sse/w/:wId/frames/:frameId/invocations/:invocationId/events",
       await makeTestFrameInvocation();
     await frame.setActiveFramePublication({
       publicationId: "publication-2",
-      name: "Task List",
       description: "Track tasks.",
     });
     mockEventStream({

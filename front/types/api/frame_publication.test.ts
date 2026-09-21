@@ -10,7 +10,6 @@ const publication = {
   schemaVersion: 1,
   manifest: {
     version: 1,
-    name: "Tasks",
     description: "Track tasks.",
     uiEntryPoint: "index.tsx",
     functions: [

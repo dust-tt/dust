@@ -27,14 +27,14 @@ function post(workspace: { sId: string }, body: unknown) {
   });
 }
 
-async function seedDomain(workspaceSId: string, domain: string) {
-  const resource = await WorkspaceResource.fetchById(workspaceSId);
+async function seedDomain(workspaceId: string, domain: string) {
+  const resource = await WorkspaceResource.fetchById(workspaceId);
   const res = await resource?.upsertWorkspaceDomain({ domain });
   expect(res?.isOk()).toBe(true);
 }
 
-async function verifiedDomains(workspaceSId: string) {
-  const resource = await WorkspaceResource.fetchById(workspaceSId);
+async function verifiedDomains(workspaceId: string) {
+  const resource = await WorkspaceResource.fetchById(workspaceId);
   return resource?.getVerifiedDomains() ?? [];
 }
 

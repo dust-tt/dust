@@ -56,10 +56,16 @@ export function SkillBuilderSuggestionsPanel({
   const applyAgentFacingDescriptionEdit = useCallback(
     (suggestion: SkillSuggestionType) => {
       switch (suggestion.kind) {
+        // These are conversational building suggestion only, not supported in the builder.
+        case "availability":
+        case "create":
+        case "delete":
+        case "editors":
+        case "name":
+        case "user_facing_description":
+          return;
         case "edit":
           break;
-        case "editors":
-          return;
         default:
           assertNeverAndIgnore(suggestion);
           return;

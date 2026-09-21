@@ -3,7 +3,11 @@
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
+import {
+  getDisplayNameForDataSource,
+  isFolder,
+  isWebsite,
+} from "@app/lib/data_sources";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
@@ -27,7 +31,10 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { DataSourceViewType } from "@app/types/data_source_view";
+import type {
+  DataSourceViewType,
+  KnowledgeDataSourceViewType,
+} from "@app/types/data_source_view";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -895,6 +902,19 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       id: this.id,
       sId: this.sId,
       kind: this.kind,
+    };
+  }
+
+  // How the view is presented to agents building on it (the sidekick, reinforcement and the
+  // workspace_management servers).
+  toKnowledgeJSON(): KnowledgeDataSourceViewType {
+    const dataSource = this.dataSource.toJSON();
+    return {
+      dataSourceViewId: this.sId,
+      name: getDisplayNameForDataSource(dataSource),
+      connectorProvider: dataSource.connectorProvider,
+      category: getDataSourceCategory(this.dataSource),
+      spaceId: this.space.sId,
     };
   }
 

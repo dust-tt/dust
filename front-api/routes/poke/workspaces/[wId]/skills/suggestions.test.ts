@@ -11,7 +11,7 @@ setupSkillInstructionsMarkdownPipeline();
 
 describe("POST /api/poke/workspaces/:wId/skills/suggestions", () => {
   it("stores inline tool and skill references", async () => {
-    const { auth, workspace } = await createPokeApiMockRequest({
+    const { auth, workspace, globalSpace } = await createPokeApiMockRequest({
       method: "POST",
       isSuperUser: true,
       role: "admin",
@@ -64,6 +64,7 @@ describe("POST /api/poke/workspaces/:wId/skills/suggestions", () => {
 
     const createdSkill = await SkillResource.fetchById(auth, data.skill.sId);
     expect(createdSkill).not.toBeNull();
+    expect(createdSkill?.requestedSpaceIds).toEqual([globalSpace.id]);
     if (!createdSkill) {
       return;
     }

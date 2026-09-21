@@ -6,6 +6,7 @@ import { MCPServerConfigurationSchema } from "@app/lib/actions/mcp_schemas";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentMessageType,
+  CreditSpendCheckpointStatus,
   InlineActivityStep,
 } from "@app/types/assistant/conversation";
 import type { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
@@ -48,6 +49,10 @@ export const AGENT_STATUSES = [
   "pending",
 ] as const;
 export type AgentStatus = (typeof AGENT_STATUSES)[number];
+
+export function isAgentStatus(status: string): status is AgentStatus {
+  return AGENT_STATUSES.some((agentStatus) => agentStatus === status);
+}
 
 const AGENT_CONFIGURATION_STATUSES = [
   "active",
@@ -163,6 +168,10 @@ export type GlobalAgentContext = {
   staticReply?: string;
 };
 
+// The synchronously-available part of a configuration: the static row of an agent plus the caller's
+// in-memory permission snapshot (`canRead`/`canEdit` need no query). This is exactly what
+// `AgentResource.toJSON` renders; the `*EnrichmentSchema`s below add the fields that each need a
+// query, and `Light`/`AgentConfigurationSchema` are recomposed from base + enrichments.
 // `agentModelId` carries the agent's stable identity onto every rendered configuration so callers
 // can build an `AgentResource` (`AgentResource.fromAgentConfiguration`) without a database lookup.
 /**
@@ -171,7 +180,7 @@ export type GlobalAgentContext = {
  * MUST be `null` for global agents (`scope === "global"`). A custom-agent configuration MUST NOT
  * carry a `null` `agentModelId`.
  */
-export const LightAgentConfigurationSchema = z.object({
+export const AgentConfigurationBaseSchema = z.object({
   id: DbModelIdSchema,
   // Stable `AgentModel.id` shared across every version. Null for global agents,
   // which have no `agent` identity row.
@@ -184,16 +193,10 @@ export const LightAgentConfigurationSchema = z.object({
   model: AgentModelConfigurationSchema,
   status: AgentConfigurationStatusSchema,
   scope: z.enum(AGENT_CONFIGURATION_SCOPES),
-  userFavorite: z.boolean(),
   name: z.string(),
   description: z.string(),
   pictureUrl: z.string(),
-  lastAuthors: z.array(z.string()).readonly().optional(),
-  editors: z.array(UserSchema).optional(),
-  usage: AgentUsageSchema.optional(),
-  feedbacks: z.object({ up: z.number(), down: z.number() }).optional(),
   maxStepsPerRun: z.number(),
-  tags: z.array(TagSchema),
   templateId: z.string().nullable(),
   visualizationEnabled: z.boolean().optional(),
   requestedGroupIds: z.array(z.array(z.string())),
@@ -205,6 +208,65 @@ export const LightAgentConfigurationSchema = z.object({
   omittedThinking: z.boolean().optional(),
 });
 
+export type AgentConfigurationBaseType = z.infer<
+  typeof AgentConfigurationBaseSchema
+>;
+
+// -- Builder enrichments: fields the resource builders add on top of the base via a matching
+// `enrichWith*` step in `lib/api/assistant/configuration/enrich.ts`. Each schema's inferred type is
+// the value of the `Map` that step returns, so the builder merges it in by spreading. --
+
+// `enrichWithFavorites` (per requesting user).
+export const AgentFavoriteEnrichmentSchema = z.object({
+  userFavorite: z.boolean(),
+});
+export type AgentFavoriteEnrichment = z.infer<
+  typeof AgentFavoriteEnrichmentSchema
+>;
+
+// `enrichWithTags`.
+export const AgentTagsEnrichmentSchema = z.object({
+  tags: z.array(TagSchema),
+});
+export type AgentTagsEnrichment = z.infer<typeof AgentTagsEnrichmentSchema>;
+
+// `enrichWithActions` (full only). `instructionsHtml` is full-only too but comes from the resource's
+// content, not this step.
+export const AgentActionsEnrichmentSchema = z.object({
+  actions: z.array(MCPServerConfigurationSchema),
+});
+export type AgentActionsEnrichment = z.infer<
+  typeof AgentActionsEnrichmentSchema
+>;
+
+// -- Route decorations: optional fields the list/detail HTTP handlers attach behind their `with*`
+// query flags (getAgentsUsage / feedback counts / getAgentsEditors / getAgentsRecentAuthors). The
+// resource builders do NOT produce them: they need request context the builders don't have — a Redis
+// handle and a page `limit` (usage), a feedback time window (feedbacks), per-user "Me" rendering
+// (authors). They live in the wire type only because a route may add them. --
+export const AgentConfigurationDecorationsSchema = z.object({
+  usage: AgentUsageSchema.optional(),
+  feedbacks: z.object({ up: z.number(), down: z.number() }).optional(),
+  editors: z.array(UserSchema).optional(),
+  lastAuthors: z.array(z.string()).readonly().optional(),
+});
+
+// The full-only delta over light: `instructionsHtml` (from content) + `actions` + `codeDefinedSkillIds`.
+export const AgentConfigurationFullFieldsSchema =
+  AgentActionsEnrichmentSchema.extend({
+    instructionsHtml: z.string().nullable(),
+    // Code-defined skill ids, only set by the in-code global agent definitions.
+    codeDefinedSkillIds: z.array(z.string()).optional(),
+  });
+
+// Light = base + the builder enrichments the light builder produces (favorite, tags) + the optional
+// route decorations.
+export const LightAgentConfigurationSchema = AgentConfigurationBaseSchema.merge(
+  AgentFavoriteEnrichmentSchema
+)
+  .merge(AgentTagsEnrichmentSchema)
+  .merge(AgentConfigurationDecorationsSchema);
+
 /**
  * @swaggerschema AgentConfiguration (swagger_schemas.ts), PrivateLightAgentConfiguration (swagger_private_schemas.ts)
  */
@@ -212,12 +274,10 @@ export type LightAgentConfigurationType = z.infer<
   typeof LightAgentConfigurationSchema
 >;
 
-export const AgentConfigurationSchema = LightAgentConfigurationSchema.extend({
-  instructionsHtml: z.string().nullable(),
-  actions: z.array(MCPServerConfigurationSchema),
-  // Code-defined skill ids, only set by the in-code global agent definitions.
-  codeDefinedSkillIds: z.array(z.string()).optional(),
-});
+// Full = light + the full-only fields.
+export const AgentConfigurationSchema = LightAgentConfigurationSchema.merge(
+  AgentConfigurationFullFieldsSchema
+);
 
 export type AgentConfigurationType = z.infer<typeof AgentConfigurationSchema>;
 
@@ -422,4 +482,14 @@ export type AgentContextPrunedEvent = {
   created: number;
   configurationId: string;
   messageId: string;
+};
+
+// Emitted when the loop pauses on a credit spend checkpoint, and again once a decision has been
+// recorded.
+export type AgentCreditSpendCheckpointUpdatedEvent = {
+  type: "agent_credit_spend_checkpoint_updated";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  status: CreditSpendCheckpointStatus;
 };

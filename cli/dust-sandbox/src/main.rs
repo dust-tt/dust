@@ -119,6 +119,9 @@ async fn run() -> anyhow::Result<()> {
                 out_bundle,
                 out_schema,
             } => commands::cmd_function_build(&src, &out_bundle, &out_schema).await?,
+            commands::function::FunctionCommand::MaterializeArchive => {
+                commands::cmd_function_materialize_archive().await?
+            }
         },
         Commands::Db { command } => match command {
             commands::db::DbCommand::Reconcile { name, schema_file } => {
@@ -409,6 +412,18 @@ mod tests {
                     assert_eq!(name, "greet");
                 }
                 _ => panic!("expected run"),
+            },
+            _ => panic!("expected function"),
+        }
+    }
+
+    #[test]
+    fn function_materialize_archive_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "function", "materialize-archive"]).expect("parse");
+        match cli.command {
+            Commands::Function { command } => match command {
+                commands::function::FunctionCommand::MaterializeArchive => {}
+                _ => panic!("expected materialize-archive"),
             },
             _ => panic!("expected function"),
         }

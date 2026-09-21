@@ -1,16 +1,21 @@
+import { refreshDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
 import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import { resolveModel } from "@app/lib/api/assistant/resolve_model";
+import { SIMULATED_FAILURE_MODEL_ENDPOINT } from "@app/lib/api/llm/simulated_failure_model";
 import { Authenticator } from "@app/lib/auth";
 import { setWorkspaceMaxAllowedTierName } from "@app/lib/model_tiers/allowed_tiers";
 import * as enabledModels from "@app/lib/model_tiers/enabled_models";
+import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { ModelDegradationFactory } from "@app/tests/utils/ModelDegradationFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { AUTO_MODEL_ID, MODEL_STREAMS } from "@app/types/assistant/models/auto";
+import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import {
   GPT_5_4_MINI_MODEL_CONFIG,
@@ -18,6 +23,7 @@ import {
   GPT_5_6_LUNA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import { SIMULATED_FAILURE_MODEL_CONFIG } from "@app/types/assistant/models/simulated_failure_model";
 import type {
   ModelConfigurationType,
   ModelIdType,
@@ -306,6 +312,55 @@ describe("resolveModel", () => {
     });
   });
 
+  it("prefers the synthetic fallback model only for allowlisted workspaces", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await FeatureFlagFactory.basic(auth, "simulated_failure_model_feature");
+
+    const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
+      configuration: makeAgentConfiguration({
+        providerId: AUTO_MODEL_ID,
+        modelId: AUTO_MODEL_ID,
+      }),
+      featureFlags: ["simulated_failure_model_feature"],
+    });
+
+    expect(modelResolutionMethod).toBe(AUTO_MODEL_ID);
+    expect(resolvedModel).toEqual({
+      providerId: SIMULATED_FAILURE_MODEL_CONFIG.providerId,
+      modelId: SIMULATED_FAILURE_MODEL_CONFIG.modelId,
+      reasoningEffort: "high",
+    });
+  });
+
+  it("routes the auto stream around a degradation lease", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await FeatureFlagFactory.basic(auth, "simulated_failure_model_feature");
+    await ModelDegradationFactory.degraded(SIMULATED_FAILURE_MODEL_ENDPOINT, {
+      expiresAt: new Date(Date.now() + 20 * 60 * 1000),
+    });
+    await refreshDegradedModelIds();
+
+    try {
+      const resolved = await resolveModel(auth, {
+        configuration: makeAgentConfiguration({
+          providerId: AUTO_MODEL_ID,
+          modelId: AUTO_MODEL_ID,
+        }),
+        featureFlags: ["simulated_failure_model_feature"],
+      });
+      expect(resolved.resolvedModel.modelId).toBe(
+        GPT_5_6_LUNA_MODEL_CONFIG.modelId
+      );
+    } finally {
+      await ModelDegradationResource.updateDegradedEndpoints([
+        { ...SIMULATED_FAILURE_MODEL_ENDPOINT, degraded: false },
+      ]);
+      await refreshDegradedModelIds();
+    }
+  });
+
   it("resolves the sidekick's auto stream above the member's tier cap", async () => {
     const workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);
@@ -337,7 +392,11 @@ describe("resolveModel", () => {
       featureFlags: [],
     });
     expect(sidekick.modelResolutionMethod).toBe(AUTO_MODEL_ID);
-    expect(sidekick.resolvedModel).toEqual(MODEL_STREAMS[AUTO_MODEL_ID][0]);
+    expect(sidekick.resolvedModel).toEqual({
+      providerId: GPT_5_6_LUNA_MODEL_CONFIG.providerId,
+      modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
+      reasoningEffort: "high",
+    });
   });
 
   it("resolves an auto user selection to a concrete model", async () => {

@@ -91,17 +91,46 @@ export function extractResultSpillPointer(
 }
 
 // Lenient by design: timings are diagnostics from whatever dsbx version runs in the sandbox, and
-// absence or new shapes must never affect result handling. Only the consumed field is modeled.
-const ResultTimingsSchema = z.object({
-  runnerKind: z.enum(["warm", "cold"]).optional(),
-});
+// absence or new shapes must never affect result handling. Unknown fields are ignored.
+const ResultTimingsSchema = z
+  .object({
+    total: z.number().optional(),
+    runner: z.number().optional(),
+    runnerKind: z.enum(["warm", "cold"]).optional(),
+    importKind: z.enum(["cached", "fresh"]).optional(),
+    ensure: z.number().optional(),
+    warmAttempt: z.number().optional(),
+    resolve: z.number().optional(),
+    resolveKind: z.enum(["cache", "gcsfuse"]).optional(),
+    child: z.number().optional(),
+    archive: z.number().optional(),
+    import: z.number().optional(),
+    handler: z.number().optional(),
+    tools: z
+      .object({
+        total: z.number(),
+        count: z.number(),
+        calls: z.array(
+          z.object({
+            server: z.string(),
+            tool: z.string(),
+            post: z.number(),
+            poll: z.number(),
+            offload: z.number().optional(),
+            total: z.number(),
+          })
+        ),
+      })
+      .optional(),
+  })
+  .passthrough();
 
 export type SandboxFunctionResultTimings = z.infer<typeof ResultTimingsSchema>;
 
 /**
  * Extract the timings block from an already-parsed stdout envelope value. Purely observational:
- * used to tag latency metrics with the runner kind (warm server vs cold spawn); never affects the
- * outcome, and never throws.
+ * used to tag latency metrics and log phase breakdowns; never affects the outcome, and never
+ * throws.
  */
 export function extractResultEnvelopeTimings(
   parsedEnvelope: unknown

@@ -17,9 +17,10 @@ import { validateSkillsForImport } from "@app/lib/api/skills/detection/validate_
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { SkillNameSchema } from "@app/lib/api/skills/schemas";
 import type { Authenticator } from "@app/lib/auth";
-import { convertMarkdownToBlockHtml } from "@app/lib/reinforcement/skill_instructions_html";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
@@ -125,6 +126,7 @@ export async function importSkillsFromGitHub(
   const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
 
   const user = auth.getNonNullableUser();
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const imported: SkillResource[] = [];
   const updated: SkillResource[] = [];
   const skipped: { name: string; message: string }[] = [];
@@ -213,7 +215,7 @@ export async function importSkillsFromGitHub(
           instructions: skill.instructions,
           instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
           editedBy: user.id,
-          requestedSpaceIds: [],
+          requestedSpaceIds: [globalSpace.id],
           icon,
           source: "github",
           sourceMetadata: {

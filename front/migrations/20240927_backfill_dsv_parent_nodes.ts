@@ -32,13 +32,13 @@ makeScript({}, async ({ execute }, logger) => {
       continue;
     }
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const dsvSId = DataSourceViewResource.modelIdToSId({
+    const dataSourceViewId = DataSourceViewResource.modelIdToSId({
       id: dataSourceView.id,
       workspaceId: workspace.id,
     });
     const dataSourceViewResource = await DataSourceViewResource.fetchById(
       auth,
-      dsvSId
+      dataSourceViewId
     );
 
     if (!dataSourceViewResource) {

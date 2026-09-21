@@ -33,7 +33,7 @@ describe("Poke cache: group permissions", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
-      key: `group_permissions:v1:ws:${WORKSPACE_MODEL_ID}`,
+      key: `group_permissions:v2:ws:${WORKSPACE_MODEL_ID}`,
       cacheRedis: {
         value: { [String(GROUP_MODEL_ID)]: [["reader", "space", 1]] },
       },
@@ -48,7 +48,7 @@ describe("Poke cache: group permissions", () => {
 
     expect(deleteResponse.status).toBe(200);
     expect(await deleteResponse.json()).toMatchObject({
-      key: `group_permissions:v1:ws:${WORKSPACE_MODEL_ID}`,
+      key: `group_permissions:v2:ws:${WORKSPACE_MODEL_ID}`,
       deleted: true,
     });
 

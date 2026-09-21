@@ -167,7 +167,7 @@ export const getMenuItems = (
   dataSourceViews: DataSourceViewType[],
   addDataToSpace: (
     contentNode: DataSourceViewContentNode,
-    spaceSId: string
+    spaceId: string
   ) => void,
   router: AppRouter,
   onOpenDocument?: (node: DataSourceViewContentNode) => void,

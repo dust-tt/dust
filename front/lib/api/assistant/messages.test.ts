@@ -527,13 +527,13 @@ describe("batchRenderMessages", () => {
       globalSpace,
       user
     );
-    const firstContentFragmentSId = generateRandomModelSId("cf");
-    const secondContentFragmentSId = generateRandomModelSId("cf");
-    const firstMessageSId = generateRandomModelSId();
-    const secondMessageSId = generateRandomModelSId();
+    const firstContentFragmentId = generateRandomModelSId("cf");
+    const secondContentFragmentId = generateRandomModelSId("cf");
+    const firstMessageId = generateRandomModelSId();
+    const secondMessageId = generateRandomModelSId();
 
     const firstContentFragment = await ContentFragmentModel.create({
-      sId: firstContentFragmentSId,
+      sId: firstContentFragmentId,
       version: "latest",
       workspaceId: workspace.id,
       title: "First content node",
@@ -552,7 +552,7 @@ describe("batchRenderMessages", () => {
       expiredReason: null,
     });
     const secondContentFragment = await ContentFragmentModel.create({
-      sId: secondContentFragmentSId,
+      sId: secondContentFragmentId,
       version: "latest",
       workspaceId: workspace.id,
       title: "Second content node",
@@ -573,7 +573,7 @@ describe("batchRenderMessages", () => {
 
     await MessageModel.bulkCreate([
       {
-        sId: firstMessageSId,
+        sId: firstMessageId,
         rank: 0,
         conversationId: conversation.id,
         parentId: null,
@@ -581,7 +581,7 @@ describe("batchRenderMessages", () => {
         workspaceId: workspace.id,
       },
       {
-        sId: secondMessageSId,
+        sId: secondMessageId,
         rank: 1,
         conversationId: conversation.id,
         parentId: null,

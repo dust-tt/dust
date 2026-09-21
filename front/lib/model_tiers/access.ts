@@ -35,7 +35,7 @@ function buildModelTierAccessDeniedError(
 export async function getModelTierAccessErrorForAgentConfiguration(
   auth: Authenticator,
   {
-    agentSId,
+    agentId,
     agentName,
     model,
     reasoningEffort,
@@ -43,7 +43,7 @@ export async function getModelTierAccessErrorForAgentConfiguration(
     modelResolutionMethod,
   }: {
     // Left out when the agent has no sId yet (creation): no agent override applies.
-    agentSId?: string;
+    agentId?: string;
     agentName: string;
     model: ModelConfigurationType;
     reasoningEffort?: ReasoningEffort;
@@ -77,8 +77,8 @@ export async function getModelTierAccessErrorForAgentConfiguration(
     return null;
   }
 
-  const allowedTierNamesOverride = agentSId
-    ? getAgentAllowedTierNamesOverride(agentSId)
+  const allowedTierNamesOverride = agentId
+    ? getAgentAllowedTierNamesOverride(agentId)
     : null;
   const allowedTierNames =
     allowedTierNamesOverride ?? (await resolveAllowedTierNames(auth)).tiers;

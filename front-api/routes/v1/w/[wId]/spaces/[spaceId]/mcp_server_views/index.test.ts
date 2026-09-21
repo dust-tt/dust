@@ -9,11 +9,11 @@ import { describe, expect, it } from "vitest";
 
 function getMCPServerViews(
   workspace: { sId: string },
-  spaceSId: string,
+  spaceId: string,
   key: { secret: string }
 ) {
   return honoApp.request(
-    `/api/v1/w/${workspace.sId}/spaces/${spaceSId}/mcp_server_views`,
+    `/api/v1/w/${workspace.sId}/spaces/${spaceId}/mcp_server_views`,
     {
       headers: { authorization: `Bearer ${key.secret}` },
     }

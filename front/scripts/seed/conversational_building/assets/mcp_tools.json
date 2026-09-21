@@ -1,0 +1,13 @@
+[
+  {
+    "name": "Team Calendar",
+    "description": "A fake calendar tool for scheduling follow-up meetings.",
+    "url": "https://fake-mcp-endpoint.example.com/team-calendar",
+    "tools": [
+      {
+        "name": "create_event",
+        "description": "Creates a calendar event with a title, attendees and a date."
+      }
+    ]
+  }
+]

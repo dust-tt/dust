@@ -110,22 +110,21 @@ echo "==> Pushing @dust/pod to sandbox $SANDBOX_ID at $REMOTE_PATH..."
 BUNDLE_SIZE=$(wc -c < "$BUNDLE" | tr -d ' ')
 echo "    Bundle size: $(( BUNDLE_SIZE / 1024 ))KB"
 
-# 644 root:root, matching what the image's root-owned copy leaves behind: the workload users must
-# be able to import it and must not be able to rewrite it.
-e2b sandbox exec "$SANDBOX_ID" -u root "mkdir -p '$(dirname "$REMOTE_PATH")'"
-base64 -i "$BUNDLE" | e2b sandbox exec "$SANDBOX_ID" -u root \
+# e2b CLI: options must precede <sandboxID>, else -u is treated as the command.
+e2b sandbox exec -u root "$SANDBOX_ID" "mkdir -p '$(dirname "$REMOTE_PATH")'"
+base64 -i "$BUNDLE" | e2b sandbox exec -u root "$SANDBOX_ID" \
   "base64 -d > '$REMOTE_PATH' && chown root:root '$REMOTE_PATH' && chmod 644 '$REMOTE_PATH'"
 
 # A resident warm server imported the old module at startup, so replacing the file on disk does
 # nothing for it (see the warm path in src/commands/function/warm.rs). Drop the servers and their
 # sockets; the next invocation takes the cold path and re-imports.
 echo "==> Restarting warm function servers..."
-e2b sandbox exec "$SANDBOX_ID" -u root \
+e2b sandbox exec -u root "$SANDBOX_ID" \
   "pkill -f '$WARM_DIR/' || true; rm -f '$WARM_DIR'/*.sock"
 
 echo "==> Verifying..."
 LOCAL_SHA=$(shasum -a 256 "$BUNDLE" | cut -d' ' -f1)
-e2b sandbox exec "$SANDBOX_ID" -u root \
+e2b sandbox exec -u root "$SANDBOX_ID" \
   "echo '$LOCAL_SHA  $REMOTE_PATH' | sha256sum -c -" 2>&1 || true
 
 echo "==> Done! @dust/pod deployed to sandbox $SANDBOX_ID"

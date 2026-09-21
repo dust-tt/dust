@@ -102,7 +102,7 @@ import search from "./search";
  *       '400':
  *         description: Invalid request body
  *       '403':
- *         description: Unauthorized - Only admins or builders can administrate spaces
+ *         description: Unauthorized - Only admins can administrate spaces
  *       '404':
  *         description: Data source view not found
  *       '500':
@@ -135,7 +135,7 @@ import search from "./search";
  *       '401':
  *         description: Unauthorized - The data source view is in use and cannot be deleted
  *       '403':
- *         description: Forbidden - Only admins or builders can delete data source views
+ *         description: Forbidden - Only admins can delete data source views
  *       '404':
  *         description: Data source view not found
  */

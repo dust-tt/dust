@@ -452,6 +452,7 @@ export async function runSandboxBashTool(
     workingDirectory: workingDirectory ?? DEFAULT_WORKING_DIRECTORY,
     envVars: {
       DUST_SANDBOX_TOKEN: sandboxToken,
+      DUST_VIZ_URL: config.getVizPublicUrl(),
       DUST_API_URL: `${sandboxAPIBase}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
     },
     timeoutMs: execTimeoutMs,

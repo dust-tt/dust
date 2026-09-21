@@ -131,9 +131,9 @@ describe("getGroupConversationsByDate", () => {
       titleFilter: "foo",
     });
 
-    const allSIds = Object.values(groups)
+    const allIds = Object.values(groups)
       .flat()
       .map((c) => c.sId);
-    expect(allSIds).toEqual(["match"]);
+    expect(allIds).toEqual(["match"]);
   });
 });

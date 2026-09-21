@@ -195,14 +195,12 @@ function UsageSection({
             creditsByType.committed.expirationDate
           )}
           action={
-            !subscription.trialing && (
-              <Button
-                label="Buy credits"
-                variant="outline"
-                size="xs"
-                onClick={() => setShowBuyCreditDialog(true)}
-              />
-            )
+            <Button
+              label="Buy credits"
+              variant="outline"
+              size="xs"
+              onClick={() => setShowBuyCreditDialog(true)}
+            />
           }
         />
         {isEnterprise && (

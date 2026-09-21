@@ -10,6 +10,7 @@ import {
   DESCRIBE_MCP_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
 } from "@app/lib/reinforcement/types";
+import { KNOWLEDGE_CATEGORIES } from "@app/types/api/public/spaces";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import {
@@ -23,7 +24,6 @@ export const AGENT_SIDEKICK_CONTEXT_TOOL_NAME =
   "agent_sidekick_context" as const;
 
 // Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
-const KNOWLEDGE_CATEGORIES = ["managed", "folder", "website"] as const;
 
 // Suggestion tool schemas
 
