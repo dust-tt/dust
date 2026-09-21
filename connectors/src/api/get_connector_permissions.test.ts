@@ -73,4 +73,28 @@ describe("GET /connectors/:connector_id/permissions", () => {
       },
     });
   });
+
+  it("returns 404 not_found on CONTENT_NODE_NOT_FOUND", async () => {
+    mocks.fetchById.mockResolvedValue({ id: 1, type: "microsoft" });
+    mocks.retrievePermissions.mockResolvedValue(
+      new Err(
+        new ConnectorManagerError(
+          "CONTENT_NODE_NOT_FOUND",
+          "Microsoft content node not found"
+        )
+      )
+    );
+
+    const response = await fetch(
+      `${baseUrl}/connectors/1/permissions?viewType=all`
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "not_found",
+        message: "Microsoft content node not found",
+      },
+    });
+  });
 });

@@ -1,6 +1,7 @@
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
-import { Ok } from "@app/types/shared/result";
+import type { FetchChildResourcesError } from "@app/types/connectors/content_nodes";
+import { Err, Ok } from "@app/types/shared/result";
 import {
   act,
   fireEvent,
@@ -150,6 +151,68 @@ describe("ContentNodeTree", () => {
         parents: ["site"],
       },
     });
+  });
+
+  it("selects accessible branches when another branch is inaccessible", async () => {
+    const inaccessibleSite = makeNode({
+      expandable: true,
+      internalId: "inaccessible-site",
+      preventSelection: true,
+      title: "Inaccessible SharePoint site",
+    });
+    const accessibleSite = makeNode({
+      expandable: true,
+      internalId: "accessible-site",
+      preventSelection: true,
+      title: "Accessible SharePoint site",
+    });
+    const drive = makeNode({
+      internalId: "drive",
+      parentInternalId: "accessible-site",
+      title: "Documents",
+    });
+    const setSelectedNodes = vi.fn();
+    const inaccessibleError: FetchChildResourcesError = {
+      type: "resource_inaccessible",
+      error: new Error("Access denied"),
+    };
+    const fetchChildResources = vi.fn(async (parentId: string) =>
+      parentId === inaccessibleSite.internalId
+        ? new Err(inaccessibleError)
+        : new Ok<ContentNode[]>([drive])
+    );
+
+    render(
+      <ContentNodeTree
+        isTitleFilterEnabled
+        selectedNodes={{}}
+        setSelectedNodes={setSelectedNodes}
+        fetchChildResources={fetchChildResources}
+        useResourcesHook={() => ({
+          resources: [inaccessibleSite, accessibleSite],
+          isResourcesLoading: false,
+          isResourcesError: false,
+        })}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Select All" }));
+
+    await waitFor(() => {
+      expect(setSelectedNodes).toHaveBeenCalled();
+    });
+
+    const updateSelection = setSelectedNodes.mock.lastCall?.[0];
+    expect(updateSelection?.({})).toEqual({
+      drive: {
+        isSelected: true,
+        node: drive,
+        parents: ["accessible-site"],
+      },
+    });
+    expect(
+      screen.getByRole("button", { name: "Unselect All" })
+    ).toBeInTheDocument();
   });
 
   it("ignores a Select All result after the search changes", async () => {

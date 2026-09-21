@@ -22,6 +22,11 @@ export const ContentNodesViewTypeCodec = z.enum([
 
 export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeCodec>;
 
+export type FetchChildResourcesError = {
+  error: Error;
+  type: "fatal" | "resource_inaccessible";
+};
+
 export function isValidContentNodesViewType(
   value: unknown
 ): value is ContentNodesViewType {

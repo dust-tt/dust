@@ -9,6 +9,7 @@ import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames } from "@app/lib/utils";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
 import type { APIError } from "@app/types/error";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Brackets,
@@ -407,10 +408,19 @@ function ContentNodeTreeChildren({
       return;
     }
 
-    setSelectAllClicked(true);
+    const { nodes, skippedNodes } = selectionResult.value;
+    if (skippedNodes.length > 0) {
+      sendNotification({
+        type: "info",
+        title: "Some locations could not be selected",
+        description: `Selected accessible folders, but skipped ${skippedNodes.length} inaccessible location${pluralize(skippedNodes.length)}.`,
+      });
+    }
+
+    setSelectAllClicked(nodes.length > 0);
     setSelectedNodes((prev) => {
       const newState = { ...prev };
-      for (const { node, parents } of selectionResult.value) {
+      for (const { node, parents } of nodes) {
         newState[node.internalId] = {
           isSelected: true,
           node,
