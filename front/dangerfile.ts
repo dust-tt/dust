@@ -499,8 +499,9 @@ async function checkDiffFiles() {
     warn(
       "Code-defined skills or their search projection changed. If this adds/removes a skill " +
         "or changes its ID, name, user-facing description, icon or kind, reindex the catalog " +
-        "after deploy in each region. From `front/`, run " +
+        "after deploy in each region for an immediate update. From `front/`, run " +
         "`npx tsx scripts/reindex_code_defined_skills.ts --execute`. " +
+        "Otherwise, the daily usage schedule will reindex the catalog automatically. " +
         "Instruction-only changes do not require reindexing."
     );
   }
