@@ -262,7 +262,6 @@ export function CapabilitiesPicker({
     searchTerm: searchText,
     limit: MAX_RENDERED_CAPABILITY_ITEMS,
     disabled: !useSkillSearch || !isOpen,
-    swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
   const skills: CapabilityPickerSkill[] = useSkillSearch
     ? searchSkills
