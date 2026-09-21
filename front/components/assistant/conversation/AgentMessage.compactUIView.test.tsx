@@ -35,6 +35,10 @@ vi.mock("@app/lib/swr/assistants", () => ({
   useUnifiedAgentConfigurations: () => ({ agentConfigurations: [] }),
 }));
 
+vi.mock("@app/lib/swr/models", () => ({
+  useModels: () => ({ mutateModels: vi.fn() }),
+}));
+
 vi.mock("@app/hooks/conversations/useConversationAttachments", () => ({
   useConversationAttachments: () => ({
     mutateConversationAttachments: vi.fn(),
