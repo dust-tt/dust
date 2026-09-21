@@ -44,7 +44,12 @@ export async function createOrUpgradeAgentConfiguration({
   // updates): without it those spaces are rejected and those skills silently dropped, which would
   // unrestrict the agent and strip its skills. It grants no access to what the spaces protect.
   dangerouslySkipPermissionFiltering?: boolean;
-}): Promise<Result<AgentConfigurationType, Error>> {
+}): Promise<
+  Result<
+    { agentConfiguration: AgentConfigurationType; changed: boolean },
+    Error
+  >
+> {
   const skillsOnlyViews = await MCPServerViewResource.fetchByIds(
     auth,
     assistant.actions.map((action) => action.mcpServerViewId),
@@ -240,7 +245,10 @@ export async function createOrUpgradeAgentConfiguration({
     skills: skillsToAdd,
   };
 
-  let agentConfigurationRes: Result<AgentResource, Error>;
+  let savedResource: AgentResource;
+  // Whether the save actually persisted a change. A brand-new agent always does; an update may be a
+  // no-op (incoming configuration identical to the current version, and no scope/editor change).
+  let changed: boolean;
   if (agentConfigurationId) {
     const agentResource = await AgentResource.fetchById(
       auth,
@@ -260,16 +268,19 @@ export async function createOrUpgradeAgentConfiguration({
     ) {
       return new Err(new Error("Agent configuration not found."));
     }
-    agentConfigurationRes = await agentResource.updateConfiguration(
-      auth,
-      saveParams
-    );
+    const updateRes = await agentResource.updateConfiguration(auth, saveParams);
+    if (updateRes.isErr()) {
+      return updateRes;
+    }
+    savedResource = updateRes.value.resource;
+    changed = updateRes.value.changed;
   } else {
-    agentConfigurationRes = await AgentResource.makeNew(auth, saveParams);
-  }
-
-  if (agentConfigurationRes.isErr()) {
-    return agentConfigurationRes;
+    const makeNewRes = await AgentResource.makeNew(auth, saveParams);
+    if (makeNewRes.isErr()) {
+      return makeNewRes;
+    }
+    savedResource = makeNewRes.value;
+    changed = true;
   }
 
   // The save (configuration row + actions + skills) is atomic (see `agent-save-atomic`), so a
@@ -278,7 +289,7 @@ export async function createOrUpgradeAgentConfiguration({
   // hidden agent) — to build the `AgentConfigurationType` response, including the actions just
   // created.
   const savedConfig = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationRes.value.sId,
+    agentId: savedResource.sId,
     variant: "full",
     dangerouslySkipPermissionFiltering: true,
   });
@@ -301,5 +312,5 @@ export async function createOrUpgradeAgentConfiguration({
     });
   }
 
-  return new Ok(savedConfig);
+  return new Ok({ agentConfiguration: savedConfig, changed });
 }

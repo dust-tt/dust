@@ -141,7 +141,7 @@ export class AgentConfigurationFactory {
     }
 
     return {
-      ...result.value.toJSON(),
+      ...result.value.resource.toJSON(),
       tags: [],
       userFavorite: false,
       instructionsHtml: overrides.instructionsHtml ?? null,

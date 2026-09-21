@@ -18,9 +18,13 @@ export async function saveAgentConfiguration(
     ...params
   }: SaveAgentConfigurationParams & { agentConfigurationId?: string }
 ): Promise<Result<LightAgentConfigurationType, Error>> {
-  let res: Result<AgentResource, Error>;
+  let savedResource: AgentResource;
   if (!agentConfigurationId) {
-    res = await AgentResource.makeNew(auth, params);
+    const res = await AgentResource.makeNew(auth, params);
+    if (res.isErr()) {
+      return res;
+    }
+    savedResource = res.value;
   } else {
     const agentResource = await AgentResource.fetchById(
       auth,
@@ -29,11 +33,11 @@ export async function saveAgentConfiguration(
     if (!agentResource || !auth.can("read", agentResource)) {
       return new Err(new Error("Agent configuration not found."));
     }
-    res = await agentResource.updateConfiguration(auth, params);
-  }
-
-  if (res.isErr()) {
-    return res;
+    const res = await agentResource.updateConfiguration(auth, params);
+    if (res.isErr()) {
+      return res;
+    }
+    savedResource = res.value.resource;
   }
 
   // Re-read the saved agent. `makeNew` returns a resource resolved for the saver, which comes back
@@ -47,7 +51,7 @@ export async function saveAgentConfiguration(
         auth.getNonNullableWorkspace().sId
       );
   const config = await getAgentConfiguration(readAuth, {
-    agentId: res.value.sId,
+    agentId: savedResource.sId,
     variant: "light",
     dangerouslySkipPermissionFiltering: true,
   });
