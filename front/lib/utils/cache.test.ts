@@ -1,8 +1,5 @@
 import logger from "@app/logger/logger";
-import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const ONE_WEEK_MS = 7 * ONE_DAY_MS;
 
 const mockRedisClient = vi.hoisted(() => ({
   get: vi.fn(),
@@ -340,19 +337,14 @@ describe("cacheWithRedis", () => {
       );
     });
 
-    it("accepts a seven-day TTL and rejects longer TTLs", () => {
+    it("throws error when ttlMs > 24 hours", () => {
       const mockFn = vi.fn().mockResolvedValue("data");
 
       expect(() =>
         cacheWithRedis(mockFn, (arg: string) => arg, {
-          ttlMs: ONE_WEEK_MS,
+          ttlMs: 25 * 60 * 60 * 1000,
         })
-      ).not.toThrow();
-      expect(() =>
-        cacheWithRedis(mockFn, (arg: string) => arg, {
-          ttlMs: ONE_WEEK_MS + ONE_DAY_MS,
-        })
-      ).toThrow("ttlMs should be at most 7 days");
+      ).toThrow("ttlMs should be less than 24 hours");
     });
 
     it("resolves ttlMs as a function of the call's own args", async () => {
@@ -378,15 +370,15 @@ describe("cacheWithRedis", () => {
       );
     });
 
-    it("throws only once a call resolves a function ttlMs above 7 days", async () => {
+    it("throws only once a call resolves a function ttlMs above 24 hours", async () => {
       const mockFn = vi.fn().mockResolvedValue("data");
 
       const cachedFn = cacheWithRedis(mockFn, (ttl: number) => `${ttl}`, {
         ttlMs: (ttl: number) => ttl,
       });
 
-      await expect(cachedFn(ONE_WEEK_MS + ONE_DAY_MS)).rejects.toThrow(
-        "ttlMs should be at most 7 days"
+      await expect(cachedFn(25 * 60 * 60 * 1000)).rejects.toThrow(
+        "ttlMs should be less than 24 hours"
       );
     });
   });
@@ -731,13 +723,13 @@ describe("warmCacheWithRedis", () => {
     expect(fn).not.toHaveBeenCalled();
   });
 
-  it("throws when ttlMs > 7 days", () => {
+  it("throws when ttlMs > 24 hours", () => {
     const fn = vi.fn();
     expect(() =>
       warmCacheWithRedis(fn, (arg: string) => arg, {
-        ttlMs: ONE_WEEK_MS + ONE_DAY_MS,
+        ttlMs: 25 * 60 * 60 * 1000,
       })
-    ).toThrow("ttlMs should be at most 7 days");
+    ).toThrow("ttlMs should be less than 24 hours");
   });
 });
 
