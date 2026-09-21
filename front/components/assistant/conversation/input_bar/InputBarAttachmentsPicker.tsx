@@ -42,6 +42,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuFilters,
+  DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
@@ -115,22 +116,22 @@ const PROJECT_FILTER_KEY = getKeyForConnectorProvider({
   dataSourceId: "project",
 });
 
-interface KnowledgeNodeCheckboxItemProps {
+interface KnowledgeNodeItemProps {
   item: DataSourceViewContentNode;
   owner: LightWorkspaceType;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   spacesMap?: Record<string, SpaceType>;
 }
 
-const KnowledgeNodeCheckboxItem = ({
+const KnowledgeNodeItem = ({
   item,
   owner,
   onNodeSelect,
   spacesMap,
-}: KnowledgeNodeCheckboxItemProps) => {
+}: KnowledgeNodeItemProps) => {
   return (
     <NodePathTooltip node={item} owner={owner}>
-      <DropdownMenuCheckboxItem
+      <DropdownMenuItem
         label={item.title}
         icon={
           isWebsite(item.dataSourceView.dataSource) ||
@@ -153,10 +154,8 @@ const KnowledgeNodeCheckboxItem = ({
           item,
           spacesMap
         )}
-        // Selecting inserts a knowledge chip into the editor; the same node
-        // can be inserted several times, so the item never reads as checked.
-        checked={false}
-        onCheckedChange={() => onNodeSelect(item)}
+        inset
+        onClick={() => onNodeSelect(item)}
         truncateText
       />
     </NodePathTooltip>
@@ -710,7 +709,7 @@ export const InputBarAttachmentsPicker = ({
                         ]
                     )
                     .map((item) => (
-                      <KnowledgeNodeCheckboxItem
+                      <KnowledgeNodeItem
                         key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
                         item={item}
                         owner={owner}
@@ -726,7 +725,7 @@ export const InputBarAttachmentsPicker = ({
                         allUnselected || selectedDataSourcesAndTools[key];
                       return isSelected
                         ? r.results.map((item) => (
-                            <KnowledgeNodeCheckboxItem
+                            <KnowledgeNodeItem
                               key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
                               item={item}
                               owner={owner}
