@@ -2,7 +2,7 @@ import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { resolveAgentRequestedSpaceModelIds } from "@app/lib/api/assistant/configuration/requested_spaces";
+import { resolveAgentRequestedSpaces } from "@app/lib/api/assistant/configuration/requested_spaces";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -11,6 +11,7 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
@@ -34,7 +35,7 @@ import uniq from "lodash/uniq";
  * nothing when any space of the new version's `requestedSpaceIds` (collected from the actions'
  * MCP server views, data source views, Dust apps and Pods, from the skills, and from
  * `additionalRequestedSpaceIds`) is not readable by `auth` (`auth.can("read", space)`), through
- * `resolveAgentRequestedSpaceModelIds`. Agent visibility is gated on the same predicate, so a
+ * `resolveAgentRequestedSpaces`. Agent visibility is gated on the same predicate, so a
  * version saved through a space the caller cannot read would lock the caller out of the agent.
  */
 /**
@@ -155,18 +156,24 @@ export async function createOrUpgradeAgentConfiguration({
   const podIds = removeNulls(
     actions.map((action) => action.dustProject?.projectId ?? null)
   );
-  const requestedSpaceIdsRes = await resolveAgentRequestedSpaceModelIds(auth, {
-    capabilitySpaceModelIds: requirements.requestedSpaceIds,
+  const capabilitySpaces = await SpaceResource.fetchByModelIds(
+    auth,
+    requirements.requestedSpaceIds
+  );
+  const requestedSpacesRes = await resolveAgentRequestedSpaces(auth, {
+    capabilitySpaces,
     requestedSpaceIds: [
       ...(assistant.additionalRequestedSpaceIds ?? []),
       ...podIds,
     ],
     dangerouslySkipPermissionFiltering,
   });
-  if (requestedSpaceIdsRes.isErr()) {
-    return requestedSpaceIdsRes;
+  if (requestedSpacesRes.isErr()) {
+    return requestedSpacesRes;
   }
-  const allRequestedSpaceIds = requestedSpaceIdsRes.value;
+  const allRequestedSpaceIds = requestedSpacesRes.value.map(
+    (space) => space.id
+  );
 
   const resolvedAuthorId = authorId ?? auth.user()?.id;
   if (!resolvedAuthorId) {

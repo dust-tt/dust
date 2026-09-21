@@ -805,7 +805,10 @@ describe("POST /api/w/:wId/assistant/agent_configurations - tools in spaces the 
     );
   });
 
-  it("rejects a malformed Pod id", async () => {
+  it.each([
+    "not_a_pod",
+    "vlt",
+  ])("rejects the malformed Pod id %s", async (malformedId) => {
     const { workspace, user, globalSpace } = await setupNonMemberBuilder();
     const podView = await MCPServerViewFactory.internal(
       workspace,
@@ -823,7 +826,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations - tools in spaces the 
             ...BASE_ACTION,
             mcpServerViewId: podView.sId,
             name: "pod_tool",
-            dustProject: { projectId: "not_a_pod", workspaceId: workspace.sId },
+            dustProject: { projectId: malformedId, workspaceId: workspace.sId },
           },
         ],
       },
@@ -832,7 +835,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations - tools in spaces the 
     expect(response.status).toBe(400);
     const data = await response.json();
     expect(data.error.message).toContain(
-      "User does not have access to the following spaces: not_a_pod"
+      `User does not have access to the following spaces: ${malformedId}`
     );
   });
 
@@ -887,7 +890,10 @@ describe("POST /api/w/:wId/assistant/agent_configurations - tools in spaces the 
     }
   });
 
-  it("rejects a malformed additional space id", async () => {
+  it.each([
+    "not_a_space",
+    "vlt",
+  ])("rejects the malformed additional space id %s", async (malformedId) => {
     const { workspace, user } = await setupNonMemberBuilder();
 
     const response = await postAgent(workspace, {
@@ -895,14 +901,14 @@ describe("POST /api/w/:wId/assistant/agent_configurations - tools in spaces the 
         ...TEST_AGENT_PARAMS,
         scope: "hidden",
         editors: [{ sId: user.sId }],
-        additionalRequestedSpaceIds: ["not_a_space"],
+        additionalRequestedSpaceIds: [malformedId],
       },
     });
 
     expect(response.status).toBe(400);
     const data = await response.json();
     expect(data.error.message).toContain(
-      "User does not have access to the following spaces: not_a_space"
+      `User does not have access to the following spaces: ${malformedId}`
     );
   });
 
