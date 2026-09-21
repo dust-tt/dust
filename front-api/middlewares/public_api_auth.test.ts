@@ -89,7 +89,7 @@ describe("publicApiAuth — x-dust-api-key-name attribution", () => {
         keyModelId: regularKey.id,
         keyIsSystem: false,
         // The header must not grant the other key's role.
-        role: "builder",
+        role: "user",
       })
     );
   });

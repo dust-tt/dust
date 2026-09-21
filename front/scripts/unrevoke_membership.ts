@@ -80,16 +80,11 @@ makeScript(
     );
 
     if (execute) {
-      // The `builder` role is deprecated and can no longer be assigned, so restore a
-      // previously-revoked builder as a regular user.
-      const restoredRole =
-        latestMembership.role === "builder" ? "user" : latestMembership.role;
-
       // Use updateMembershipRole with allowTerminated=true to unrevoke
       const result = await MembershipResource.updateMembershipRole({
         user,
         workspace,
-        newRole: restoredRole,
+        newRole: latestMembership.role,
         allowTerminated: true,
         author: "no-author",
       });

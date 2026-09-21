@@ -85,7 +85,7 @@ describe("POST /api/w/:wId/spaces/:spaceId/members", () => {
 
   it("rejects non-admins", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
     });
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
@@ -451,7 +451,7 @@ describe("global space members", () => {
 
   it("rejects non-admins", async () => {
     const { workspace, user, globalSpace } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
     });
 
     const response = await patchMembers(workspace, globalSpace.sId, {

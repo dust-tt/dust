@@ -84,37 +84,7 @@ beforeEach(() => {
 });
 
 describe("handleMembershipInvite", () => {
-  it("downgrades a builder invitation to a user membership", async () => {
-    const workspace = await WorkspaceFactory.creditPricedFree();
-    const user = await UserFactory.basic();
-    await MembershipInvitationFactory.create(workspace, {
-      inviteEmail: user.email,
-      initialRole: "builder",
-    });
-    // Re-fetch so the invitation carries its workspace association.
-    const membershipInvite =
-      await MembershipInvitationResource.getPendingForEmailAndWorkspace({
-        email: user.email,
-        workspace: renderLightWorkspaceType({ workspace }),
-      });
-    expect(membershipInvite).not.toBeNull();
-
-    const result = await handleMembershipInvite({
-      user,
-      membershipInvite: membershipInvite!,
-    });
-
-    expect(result.isOk()).toBe(true);
-
-    const membership =
-      await MembershipResource.getLatestMembershipOfUserInWorkspace({
-        user,
-        workspace: renderLightWorkspaceType({ workspace }),
-      });
-    expect(membership?.role).toBe("user");
-  });
-
-  it("preserves a non-builder invitation role", async () => {
+  it("preserves the invitation role", async () => {
     const workspace = await WorkspaceFactory.creditPricedFree();
     const user = await UserFactory.basic();
     await MembershipInvitationFactory.create(workspace, {

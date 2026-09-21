@@ -27,6 +27,7 @@ import type {
 } from "@app/types/memberships";
 import {
   initialCreditStateForSeatType,
+  isMembershipRoleType,
   isMembershipSeatType,
 } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -74,12 +75,20 @@ type MembershipsWithTotal = {
   nextPageParams?: MembershipsPaginationParams;
 };
 
+// Bypass no-TTL entries written before the deprecated role was migrated.
+const ACTIVE_MEMBERSHIP_ROLE_CACHE_ID = "active-membership-role-v2";
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MembershipResource
   extends ReadonlyAttributesType<MembershipModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+/**
+ * @cc [owner:philipperolet,label:security;backend] supported-membership-roles
+ * `MembershipResource` MUST throw whenever it reads a persisted membership role outside
+ * `MEMBERSHIP_ROLE_TYPES`; an absent active membership may resolve to `none`.
+ */
 export class MembershipResource extends BaseResource<MembershipModel> {
   static model: ModelStaticWorkspaceAware<MembershipModel> = MembershipModel;
 
@@ -90,6 +99,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     blob: Attributes<MembershipModel>,
     { user }: { user?: Attributes<UserModel> } = {}
   ) {
+    assert(
+      isMembershipRoleType(blob.role),
+      `Invalid membership role: ${blob.role}`
+    );
     super(MembershipModel, blob);
 
     this.user = user;
@@ -580,7 +593,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
       transaction,
     });
-    return membership?.role ?? "none";
+    const role = membership?.role ?? "none";
+    assert(
+      role === "none" || isMembershipRoleType(role),
+      `Invalid membership role: ${role}`
+    );
+    return role;
   }
 
   // Cache eviction is handled by Redis's allkeys-lfu eviction policy.
@@ -588,13 +606,17 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     MembershipResource._getActiveRoleForUserInWorkspaceUncached,
     (params: { userModelId: ModelId; workspaceModelId: ModelId }) =>
       MembershipResource.roleCacheKeyResolver(params),
-    { cacheNullValues: false }
+    {
+      cacheId: ACTIVE_MEMBERSHIP_ROLE_CACHE_ID,
+      cacheNullValues: false,
+    }
   );
 
   private static _invalidateRoleCache = invalidateCacheWithRedis(
     MembershipResource._getActiveRoleForUserInWorkspaceUncached,
     (params: { userModelId: ModelId; workspaceModelId: ModelId }) =>
-      MembershipResource.roleCacheKeyResolver(params)
+      MembershipResource.roleCacheKeyResolver(params),
+    { cacheId: ACTIVE_MEMBERSHIP_ROLE_CACHE_ID }
   );
 
   private static invalidateRoleCache = async (params: {
@@ -636,10 +658,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         transaction,
       });
     }
-    return this.getActiveRoleForUserInWorkspaceCached({
+    const role = await this.getActiveRoleForUserInWorkspaceCached({
       userModelId: user.id,
       workspaceModelId: workspace.id,
     });
+    assert(
+      role === "none" || isMembershipRoleType(role),
+      `Invalid membership role: ${role}`
+    );
+    return role;
   }
 
   static async getActiveMembershipOfUserInWorkspace({

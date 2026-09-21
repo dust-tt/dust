@@ -1,9 +1,5 @@
 import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
-import {
-  displayRole,
-  normalizeDisplayRole,
-  ROLES_DATA,
-} from "@app/components/members/Roles";
+import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
@@ -87,18 +83,15 @@ function getColumns({
       header: "Role",
       accessorFn: (row: RowData) => row.initialRole,
       cell: (info: CellContext<RowData, string>) => {
-        // `builder` is deprecated: display it as a regular member.
-        const displayedRole = normalizeDisplayRole(
-          info.row.original.initialRole
-        );
+        const role = info.row.original.initialRole;
         return (
           <DataTable.CellContent>
             <Chip
               size="xs"
-              color={ROLES_DATA[displayedRole]["color"]}
+              color={ROLES_DATA[role]["color"]}
               className="capitalize"
             >
-              {displayRole(displayedRole)}
+              {displayRole(role)}
             </Chip>
           </DataTable.CellContent>
         );

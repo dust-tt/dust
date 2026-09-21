@@ -66,6 +66,7 @@
  *           example: "My Awesome Workspace"
  *         role:
  *           type: string
+ *           enum: [admin, manager, user, none]
  *           description: User's role in the workspace
  *           example: "admin"
  *         segmentation:

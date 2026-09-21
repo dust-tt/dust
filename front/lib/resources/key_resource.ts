@@ -29,7 +29,7 @@ import type {
   LightWorkspaceType,
   RoleType,
 } from "@app/types/user";
-import { formatUserFullName } from "@app/types/user";
+import { formatUserFullName, isRoleType } from "@app/types/user";
 import { blake3 } from "@napi-rs/blake-hash";
 import assert from "assert";
 import type {
@@ -72,6 +72,9 @@ export function isSystemKey<T extends { isSystem: boolean }>(
 export const DEFAULT_SYSTEM_KEY_NAME = "DustSystemKey";
 export const SECRET_KEY_PREFIX = "sk-";
 
+// Bypass no-TTL entries written before the deprecated role was migrated.
+const API_KEY_CACHE_ID = "api-key-by-secret-v2";
+
 // "Last used" is only shown coarsely in the UI; skip DB writes within this window
 // to avoid row-lock contention on hot API keys.
 export const MARK_AS_USED_MIN_INTERVAL_MS = 60 * 60 * 1000;
@@ -79,6 +82,10 @@ export const MARK_AS_USED_MIN_INTERVAL_MS = 60 * 60 * 1000;
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface KeyResource extends ReadonlyAttributesType<KeyModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+/**
+ * @cc [owner:philipperolet,label:security;backend] supported-api-key-roles
+ * `KeyResource` construction MUST throw when the persisted role is not accepted by `RoleSchema`.
+ */
 export class KeyResource extends BaseResource<KeyModel> {
   static model: ModelStaticWorkspaceAware<KeyModel> = KeyModel;
 
@@ -123,17 +130,19 @@ export class KeyResource extends BaseResource<KeyModel> {
   private static fetchBySecretCached = cacheWithRedis(
     KeyResource._fetchBySecretUncached,
     KeyResource.keyCacheKeyResolver,
-    {}
+    { cacheId: API_KEY_CACHE_ID }
   );
 
   private static invalidateKeyCache = invalidateCacheWithRedis(
     KeyResource._fetchBySecretUncached,
-    KeyResource.keyCacheKeyResolver
+    KeyResource.keyCacheKeyResolver,
+    { cacheId: API_KEY_CACHE_ID }
   );
 
   private static batchInvalidateKeyCache = batchInvalidateCacheWithRedis(
     KeyResource._fetchBySecretUncached,
-    KeyResource.keyCacheKeyResolver
+    KeyResource.keyCacheKeyResolver,
+    { cacheId: API_KEY_CACHE_ID }
   );
 
   private static fromCachedData(
@@ -153,6 +162,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     model: ModelStaticWorkspaceAware<KeyModel>,
     blob: Attributes<KeyModel>
   ) {
+    assert(isRoleType(blob.role), `Invalid API key role: ${blob.role}`);
     super(KeyModel, blob);
   }
 
