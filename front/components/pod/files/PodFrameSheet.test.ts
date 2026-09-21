@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const frameV2Metadata = {
   contentType: "application/vnd.dust.frame.v2+json",
   fileName: "manifest.json",
-  useCaseMetadata: { frameName: "Quarterly Revenue", spaceId: "vlt_project" },
+  useCaseMetadata: { spaceId: "vlt_project" },
 };
 
 interface Mocks {
@@ -126,21 +126,27 @@ const openSheetProps = {
 };
 
 describe("PodFrameSheet", () => {
-  it("names a Frame v2 after its active publication", () => {
+  it("names a Frame v2 after the folder holding its manifest", () => {
     render(createElement(PodFrameSheet, openSheetProps));
 
-    expect(screen.getByText("Quarterly Revenue")).toBeInTheDocument();
+    expect(screen.getByText("App")).toBeInTheDocument();
   });
 
-  it("names a Frame v2 without an active publication after its file", () => {
+  it("names a legacy Frame, which has no manifest, after its file", () => {
     mocks.fileMetadata = {
-      ...frameV2Metadata,
+      contentType: "text/vnd.dust.attachment.slack.thread",
+      fileName: "Legacy.tsx",
       useCaseMetadata: { spaceId: "vlt_project" },
     };
 
-    render(createElement(PodFrameSheet, openSheetProps));
+    render(
+      createElement(PodFrameSheet, {
+        ...openSheetProps,
+        framePath: "pod-vlt_project/Legacy.tsx",
+      })
+    );
 
-    expect(screen.getByText("manifest.json")).toBeInTheDocument();
+    expect(screen.getByText("Legacy.tsx")).toBeInTheDocument();
   });
 
   it("loads metadata only while open and forwards the Frames v2 identity", () => {

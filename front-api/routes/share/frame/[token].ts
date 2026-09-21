@@ -7,6 +7,7 @@ import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource"
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { GetShareFrameMetadataResponseBody } from "@app/types/api/files/share";
+import { getFrameV2NameFromManifestPath } from "@app/types/api/frame_manifest";
 import { createHono } from "@front-api/lib/hono";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -144,11 +145,12 @@ app.get(
       requiresEmailVerification,
       shareUrl,
       showSignUpCta: !isBrandedWorkspace,
-      // A Frame v2's file is its manifest, so its display name comes from the active
-      // publication rather than the file name.
+      // A Frame v2's file is its manifest, so its title is the folder holding it rather than
+      // the file name.
       title:
-        file.useCaseMetadata?.frameName ??
-        formatFilenameForDisplay(file.fileName),
+        (file.mountFilePath
+          ? getFrameV2NameFromManifestPath(file.mountFilePath)
+          : null) ?? formatFilenameForDisplay(file.fileName),
       vizUrl: config.getVizPublicUrl(),
       workspaceId: workspace.sId,
       workspaceName: workspace.name,
