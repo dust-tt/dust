@@ -1247,3 +1247,108 @@ export const RelaxedSecondaryLine = () => {
     </div>
   );
 };
+
+const manyUsageRows: UsageRow[] = Array.from({ length: 40 }, (_, index) => {
+  const base = usageRows[index % usageRows.length];
+  return {
+    ...base,
+    agent: `${base.agent} ${index + 1}`,
+    runs: base.runs + index * 37,
+    costCents: base.costCents + index * 815,
+  };
+});
+
+/**
+ * `stickyHeader` with a `maxHeight` class keeps the column headers in view
+ * while the body scrolls, without virtualizing rows or giving up pagination
+ * and filtering the way ScrollableDataTable does.
+ * @summary Header stays visible while the body scrolls.
+ */
+export const StickyHeader = () => {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  return (
+    <DataTable
+      data={manyUsageRows}
+      columns={usageColumns}
+      sorting={sorting}
+      setSorting={setSorting}
+      stickyHeader
+      maxHeight="max-h-80"
+    />
+  );
+};
+
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+const wideColumns: ColumnDef<UsageRow>[] = [
+  {
+    accessorKey: "agent",
+    id: "agent",
+    header: "Agent",
+    meta: { rowHeader: true, className: "w-56 min-w-56" },
+    cell: (info) => (
+      <DataTable.CellContent>{info.row.original.agent}</DataTable.CellContent>
+    ),
+  },
+  {
+    accessorKey: "status",
+    id: "status",
+    header: "Status",
+    meta: { type: "status" },
+    cell: (info) => (
+      <DataTable.StatusCellContent
+        label={info.row.original.status === "active" ? "Active" : "Paused"}
+        color={info.row.original.status === "active" ? "success" : "primary"}
+      />
+    ),
+  },
+  ...MONTHS.map(
+    (month, monthIndex): ColumnDef<UsageRow> => ({
+      id: month.toLowerCase(),
+      header: month,
+      accessorFn: (row) => Math.round(row.runs * (0.6 + monthIndex * 0.05)),
+      meta: { type: "numeric" },
+      cell: (info) => (
+        <DataTable.NumericCellContent
+          value={info.getValue<number>()}
+          locale="en-US"
+        />
+      ),
+    })
+  ),
+];
+
+/**
+ * Wide tables can scroll horizontally instead of hiding or squeezing columns:
+ * `horizontalScroll` gives every column a 124px minimum and `freezeColumns`
+ * keeps the leading columns pinned while the numbers scroll underneath.
+ * Combine with `stickyHeader` for a spreadsheet-like grid.
+ * @summary Horizontal scroll with two frozen leading columns.
+ */
+export const WideTableFrozenColumns = () => {
+  return (
+    <div className="max-w-3xl">
+      <DataTable
+        data={manyUsageRows.slice(0, 12)}
+        columns={wideColumns}
+        horizontalScroll
+        freezeColumns={2}
+        stickyHeader
+        maxHeight="max-h-96"
+      />
+    </div>
+  );
+};
