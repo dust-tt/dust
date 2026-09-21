@@ -97,7 +97,14 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("## Authoring a function");
     expect(instructions).toContain('userIdentity: "workspace_user_required"');
     expect(instructions).toContain("### Fast and durable functions");
-    expect(instructions).toContain("dsbx tools --json");
+    expect(instructions).toContain("tools.call");
+    expect(instructions).toContain('import { tools } from "@dust/pod"');
+    expect(instructions).toContain(
+      "Computer vs Frame function — do not mix the two call styles"
+    );
+    expect(instructions).not.toContain(
+      "Inside a durable function, shell out to:"
+    );
     expect(instructions).toContain("useFrameFunctionMutation");
     expect(instructions).toContain("## Persisting state in a Frame database");
     expect(instructions).toContain('db("comments")');

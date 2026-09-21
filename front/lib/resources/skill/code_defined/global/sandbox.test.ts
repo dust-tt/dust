@@ -59,6 +59,12 @@ describe("sandboxSkill", () => {
 
     expect(instructions).not.toContain("Never use `dsbx frame`");
     expect(instructions).not.toContain("`publish_interactive_content_file`");
+    expect(instructions).toContain(
+      "Inside Frame function source, call Dust tools with `tools.call` from `@dust/pod`"
+    );
+    expect(instructions).toContain(
+      "Do not shell out to `dsbx tools` from a Frame function's `fetch()`"
+    );
   });
 
   it("hides dsbx tools instructions when computer is disabled", async () => {
