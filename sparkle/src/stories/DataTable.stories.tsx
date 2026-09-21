@@ -1098,3 +1098,56 @@ export const ColumnTypes = () => {
     />
   );
 };
+
+/**
+ * With no rows, `emptyState` renders once below the header so the filter and
+ * sort controls stay in place. Type in the filter to see the row appear.
+ * @summary Header stays put while the body explains the empty result.
+ */
+export const EmptyState = () => {
+  const [filter, setFilter] = useState("zzz");
+  return (
+    <div className="flex flex-col gap-2">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <DataTable
+        data={usageRows}
+        columns={usageColumns}
+        filter={filter}
+        filterColumn="agent"
+        emptyState={`No agent matches "${filter}".`}
+      />
+    </div>
+  );
+};
+
+/**
+ * `isLoading` dims the current rows in place and blocks pointer events while
+ * a refetch runs, instead of swapping the table for a skeleton. Toggle it to
+ * compare; the header and sorting stay interactive.
+ * @summary Rows dim in place during a refetch.
+ */
+export const Loading = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  return (
+    <div className="flex flex-col gap-4">
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={isLoading}
+          onChange={(e) => setIsLoading(e.target.checked)}
+        />
+        isLoading
+      </label>
+      <DataTable
+        data={usageRows}
+        columns={usageColumns}
+        isLoading={isLoading}
+      />
+    </div>
+  );
+};
