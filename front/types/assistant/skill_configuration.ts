@@ -115,6 +115,7 @@ export const SkillListItemSchema = z.object({
   requestedSpaceIds: z.array(z.string()),
   mcpServerViewIds: z.array(z.string()),
   editorIds: z.array(z.string()),
+  editedBy: z.string().nullable(),
   availability: z.enum(SKILL_AVAILABILITIES),
   activeUsersCount: z.number().nullable(),
   updatedAt: z.number().nullable(),
