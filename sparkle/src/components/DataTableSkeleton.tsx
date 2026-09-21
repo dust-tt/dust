@@ -81,6 +81,7 @@ export function DataTableSkeleton<
               return (
                 <th
                   key={header.id}
+                  scope="col"
                   className={cn(
                     "heading-xs p-2 capitalize text-foreground",
                     ALIGN_TEXT_CLASS[presets.headerAlign],

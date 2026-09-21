@@ -44,8 +44,10 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  type Header,
   type PaginationState,
   type Row,
+  type RowData,
   type RowSelectionState,
   type SortingState,
   type Updater,
@@ -80,6 +82,14 @@ declare module "@tanstack/react-table" {
      * `status`: no wrapping.
      */
     type?: ColumnType;
+    /** Render this column's body cells as `<th scope="row">` for screen readers. */
+    rowHeader?: boolean;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface TableMeta<TData extends RowData> {
+    /** Human-readable row label used to name selection checkboxes. */
+    getRowLabel?: (row: TData) => string;
   }
 }
 
@@ -131,6 +141,17 @@ export function getDataTableColumnPresets(
       ) || undefined,
     sortable: meta?.type !== "row-actions",
   };
+}
+
+function getSortIcon(sorted: false | "asc" | "desc") {
+  switch (sorted) {
+    case "asc":
+      return ArrowUp;
+    case "desc":
+      return ArrowDown;
+    default:
+      return ChevronSelectorVertical;
+  }
 }
 
 interface TBaseData {
@@ -208,6 +229,8 @@ interface DataTableProps<TData extends TBaseData> {
   /** Omit the default bottom divider on tbody rows (e.g. dense custom lists). */
   hideRowDivider?: boolean;
   disableRowClickSelection?: boolean;
+  /** Human-readable label per row, used to name the selection checkbox ("Select {label}"). */
+  getRowLabel?: (row: TData) => string;
 }
 
 const ROW_REVEAL_DURATION_MS = 300;
@@ -331,6 +354,7 @@ export function DataTable<TData extends TBaseData>({
   enableSortingRemoval = true,
   hideRowDivider = false,
   disableRowClickSelection = false,
+  getRowLabel,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -403,6 +427,7 @@ export function DataTable<TData extends TBaseData>({
     enableRowSelection,
     enableMultiRowSelection,
     getRowId,
+    ...(getRowLabel && { meta: { getRowLabel } }),
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: table is recreated every render, adding it would cause infinite re-runs
@@ -434,45 +459,20 @@ export function DataTable<TData extends TBaseData>({
                 ) {
                   return null;
                 }
-                const { headerAlign, sortable } = getDataTableColumnPresets(
-                  header.column
-                );
-                const canSort = header.column.getCanSort() && sortable;
+                const canSort =
+                  header.column.getCanSort() &&
+                  getDataTableColumnPresets(header.column).sortable;
                 return (
                   <DataTable.Head
                     column={header.column}
                     key={header.id}
-                    onClick={
+                    onSort={
                       canSort
                         ? header.column.getToggleSortingHandler()
                         : undefined
                     }
-                    className={cn(canSort && "cursor-pointer")}
                   >
-                    <div
-                      className={cn(
-                        "flex items-center gap-1 whitespace-nowrap",
-                        headerAlign !== "left" &&
-                          ALIGN_JUSTIFY_CLASS[headerAlign]
-                      )}
-                    >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                      {canSort && (
-                        <Icon
-                          visual={
-                            header.column.getIsSorted() === "asc"
-                              ? ArrowUp
-                              : header.column.getIsSorted() === "desc"
-                                ? ArrowDown
-                                : ChevronSelectorVertical
-                          }
-                          size="xs"
-                        />
-                      )}
-                    </div>
+                    {renderHeaderContent(header, canSort)}
                   </DataTable.Head>
                 );
               })}
@@ -554,6 +554,32 @@ export function DataTable<TData extends TBaseData>({
   );
 }
 
+// Sortable headers get their content straight into Head's sort button; other
+// headers keep the historical flex wrapper so existing layouts do not move.
+function renderHeaderContent<TData>(
+  header: Header<TData, unknown>,
+  canSort: boolean
+) {
+  const content = flexRender(
+    header.column.columnDef.header,
+    header.getContext()
+  );
+  if (canSort) {
+    return content;
+  }
+  const { headerAlign } = getDataTableColumnPresets(header.column);
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-1 whitespace-nowrap",
+        headerAlign !== "left" && ALIGN_JUSTIFY_CLASS[headerAlign]
+      )}
+    >
+      {content}
+    </div>
+  );
+}
+
 export interface ScrollableDataTableProps<TData extends TBaseData>
   extends Omit<DataTableProps<TData>, "onLoadMore" | "isLoadingMore"> {
   /** Height of the scroll container: a max-height class name, true to fill the parent (flex-1), or unset for the default max-h-100. */
@@ -597,6 +623,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
   containerRef,
   hideRowDivider = false,
   disableRowClickSelection = false,
+  getRowLabel,
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -681,6 +708,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
     enableRowSelection,
     enableMultiRowSelection,
     getRowId,
+    ...(getRowLabel && { meta: { getRowLabel } }),
   });
 
   useEffect(() => {
@@ -811,41 +839,36 @@ export function ScrollableDataTable<TData extends TBaseData>({
                     isSorting &&
                     header.column.getCanSort() &&
                     getDataTableColumnPresets(header.column).sortable;
+                  const headerContent = (
+                    <span className="truncate">
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </span>
+                  );
                   return (
                     <DataTable.Head
                       column={header.column}
                       key={header.id}
-                      onClick={
+                      onSort={
                         canSort
                           ? header.column.getToggleSortingHandler()
                           : undefined
                       }
-                      className={cn("max-w-0", canSort && "cursor-pointer")}
+                      className="max-w-0"
                       style={{
                         width: columnSizing[header.id],
                         minWidth: columnSizing[header.id],
                       }}
                     >
-                      <div className="flex w-full items-center gap-1 whitespace-nowrap">
-                        <span className="truncate">
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                        </span>
-                        {canSort && (
-                          <Icon
-                            visual={
-                              header.column.getIsSorted() === "asc"
-                                ? ArrowUp
-                                : header.column.getIsSorted() === "desc"
-                                  ? ArrowDown
-                                  : ChevronSelectorVertical
-                            }
-                            size="xs"
-                          />
-                        )}
-                      </div>
+                      {canSort ? (
+                        headerContent
+                      ) : (
+                        <div className="flex w-full items-center gap-1 whitespace-nowrap">
+                          {headerContent}
+                        </div>
+                      )}
                     </DataTable.Head>
                   );
                 })}
@@ -1004,19 +1027,55 @@ DataTable.Header = function Header({
 interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   children?: ReactNode;
   column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  /**
+   * Makes the header a sort toggle: children render inside a full-width button
+   * with the sort icon, and the cell exposes `aria-sort`. Prefer this over
+   * `onClick` on the cell so keyboard users can sort.
+   */
+  onSort?: React.MouseEventHandler<HTMLButtonElement>;
 }
 
-/** Header cell (th) with alignment and optional tooltip from the column meta. */
+/** Header cell (th) with alignment, optional tooltip, and optional sort button from the column meta. */
 DataTable.Head = function Head({
   children,
   className,
   column,
+  onSort,
   ...props
 }: HeadProps) {
   const presets = getDataTableColumnPresets(column);
+  const sorted = column.getIsSorted();
+
+  const content = onSort ? (
+    <button
+      type="button"
+      onClick={onSort}
+      className={cn(
+        "heading-xs flex w-full cursor-pointer items-center gap-1 whitespace-nowrap rounded-xs capitalize text-foreground",
+        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
+        "active:scale-[0.985] motion-reduce:active:scale-100",
+        ALIGN_JUSTIFY_CLASS[presets.headerAlign]
+      )}
+    >
+      {children}
+      <Icon visual={getSortIcon(sorted)} size="xs" />
+    </button>
+  ) : (
+    children
+  );
 
   return (
     <th
+      scope="col"
+      aria-sort={
+        onSort
+          ? sorted === "asc"
+            ? "ascending"
+            : sorted === "desc"
+              ? "descending"
+              : "none"
+          : undefined
+      }
       className={cn(
         "heading-xs p-2 capitalize",
         ALIGN_TEXT_CLASS[presets.headerAlign],
@@ -1028,9 +1087,14 @@ DataTable.Head = function Head({
       {...props}
     >
       {column.columnDef.meta?.tooltip ? (
-        <Tooltip label={column.columnDef.meta.tooltip} trigger={children} />
+        <Tooltip
+          label={column.columnDef.meta.tooltip}
+          trigger={content}
+          // The sort button must be the trigger itself, not nested in one.
+          tooltipTriggerAsChild={onSort !== undefined}
+        />
       ) : (
-        children
+        content
       )}
     </th>
   );
@@ -1337,7 +1401,7 @@ interface CellProps extends React.HTMLAttributes<HTMLTableCellElement> {
   column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
-/** Body cell (td) with truncation and column meta styling. */
+/** Body cell (td, or th scope="row" with meta.rowHeader) with truncation and column meta styling. */
 DataTable.Cell = function Cell({
   children,
   className,
@@ -1345,12 +1409,16 @@ DataTable.Cell = function Cell({
   ...props
 }: CellProps) {
   const presets = getDataTableColumnPresets(column);
+  const isRowHeader = column.columnDef.meta?.rowHeader === true;
+  const Tag = isRowHeader ? "th" : "td";
 
   return (
-    <td
+    <Tag
+      scope={isRowHeader ? "row" : undefined}
       className={cn(
         cellHeight,
         "truncate px-2",
+        isRowHeader && "text-left font-normal",
         presets.cellClassName,
         presets.align !== "left" && ALIGN_TEXT_CLASS[presets.align],
         column.columnDef.meta?.className,
@@ -1372,7 +1440,7 @@ DataTable.Cell = function Cell({
           {children}
         </div>
       )}
-    </td>
+    </Tag>
   );
 };
 
@@ -1629,6 +1697,14 @@ interface SelectionColumnOptions {
   hideSelectAll?: boolean;
 }
 
+function getSelectionLabel<TData>(
+  getRowLabel: ((row: TData) => string) | undefined,
+  row: Row<TData>
+) {
+  const label = getRowLabel?.(row.original);
+  return label ? `Select ${label}` : "Select row";
+}
+
 /** Builds a checkbox column for multi-row selection, with an optional select-all header. */
 export function createSelectionColumn<TData>({
   hideSelectAll = false,
@@ -1640,6 +1716,7 @@ export function createSelectionColumn<TData>({
     header: ({ table }) =>
       !hideSelectAll ? (
         <Checkbox
+          aria-label="Select all rows"
           checked={
             table.getIsAllRowsSelected()
               ? true
@@ -1655,9 +1732,10 @@ export function createSelectionColumn<TData>({
           }}
         />
       ) : null,
-    cell: ({ row }) => (
+    cell: ({ row, table }) => (
       <div className="flex h-full w-full items-center">
         <Checkbox
+          aria-label={getSelectionLabel(table.options.meta?.getRowLabel, row)}
           checked={row.getIsSelected()}
           disabled={!row.getCanSelect()}
           onCheckedChange={(state) => {
@@ -1682,7 +1760,7 @@ export function createRadioSelectionColumn<TData>(): ColumnDef<TData> {
     enableSorting: false,
     enableHiding: false,
     header: () => null,
-    cell: ({ row }) => (
+    cell: ({ row, table }) => (
       <div className="flex h-full w-full items-center">
         <div
           className={cn(
@@ -1691,6 +1769,7 @@ export function createRadioSelectionColumn<TData>(): ColumnDef<TData> {
             !row.getCanSelect() && "cursor-not-allowed opacity-50"
           )}
           aria-checked={row.getIsSelected()}
+          aria-label={getSelectionLabel(table.options.meta?.getRowLabel, row)}
           role="radio"
         >
           {row.getIsSelected() && <div className={radioIndicatorStyles()} />}
