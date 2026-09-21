@@ -96,19 +96,19 @@ describe("POST /api/w/:wId/skills/search", () => {
     expect(await response.json()).toEqual({
       hasMore: false,
       nextCursor: null,
-      editors: [
-        {
-          sId: user.sId,
-          fullName: user.toJSON().fullName,
-          image: user.toJSON().image,
-        },
-      ],
       skills: [
         {
           status: "active",
           availability: "workspace_users",
           mcpServerViewIds: [],
           editorIds: [user.sId, user.sId, "missing-user"],
+          editors: [
+            {
+              sId: user.sId,
+              fullName: user.toJSON().fullName,
+              image: user.toJSON().image,
+            },
+          ],
           activeUsersCount: null,
           updatedAt,
           icon: null,
@@ -150,7 +150,6 @@ describe("POST /api/w/:wId/skills/search", () => {
     const body = await response.json();
     expect(body).toEqual({
       skills: [],
-      editors: [],
       hasMore: true,
       nextCursor: cursor,
     });

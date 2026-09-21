@@ -3,6 +3,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { SearchSkillsQuerySchema } from "@app/lib/skill_search/query_schema";
 import logger from "@app/logger/logger";
 import type { SearchSkillsResponseBody } from "@app/types/api/skills";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -84,17 +85,27 @@ app.post(
     const editorIds = [
       ...new Set(result.value.skills.flatMap((skill) => skill.editorIds)),
     ];
-    if (editorIds.length === 0) {
-      return ctx.json({ ...result.value, editors: [] });
+    let users: UserResource[] = [];
+    if (editorIds.length > 0) {
+      users = await UserResource.fetchByIds(editorIds);
     }
 
-    const users = await UserResource.fetchByIds(editorIds);
-    const editors = users.map((user) => {
-      const { sId, fullName, image } = user.toJSON();
-      return { sId, fullName, image };
-    });
+    const editorsById = new Map(
+      users.map((user) => {
+        const { sId, fullName, image } = user.toJSON();
+        return [sId, { sId, fullName, image }];
+      })
+    );
 
-    return ctx.json({ ...result.value, editors });
+    return ctx.json({
+      ...result.value,
+      skills: result.value.skills.map((skill) => ({
+        ...skill,
+        editors: removeNulls(
+          [...new Set(skill.editorIds)].map((id) => editorsById.get(id))
+        ),
+      })),
+    });
   }
 );
 

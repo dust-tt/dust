@@ -3,7 +3,7 @@ import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 
 export function toSkillListItem(
   document: SkillSearchDocument
-): SkillListItemType {
+): Omit<SkillListItemType, "editors"> {
   return {
     sId: document.skill_id,
     status: document.status,
