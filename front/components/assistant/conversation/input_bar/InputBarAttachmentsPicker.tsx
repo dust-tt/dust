@@ -35,6 +35,7 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
 import {
+    Attachment01,
   BookOpen01,
   Button,
   DoubleIcon,
