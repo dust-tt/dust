@@ -1545,10 +1545,6 @@ export class Authenticator {
     };
   }
 
-  groupModelIds(): ModelId[] {
-    return this._groupModelIds;
-  }
-
   // The workspace global group's model id, used by openness checks (see
   // `SpaceResource.listOpenSpaceModelIds`). Resolved once by the factory from the caller's group
   // fetch and cached on the instance; falls back to a lazy query for auths that did not provide it
