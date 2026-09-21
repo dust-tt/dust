@@ -1,4 +1,3 @@
-import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
@@ -9,11 +8,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationWithSkillsType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
-import { afterEach, describe, expect, it, vi } from "vitest";
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
+import { describe, expect, it } from "vitest";
 
 function listAgents(
   workspace: { sId: string },
@@ -38,13 +33,11 @@ async function agentNames(response: Response): Promise<string[]> {
 
 // Creates, as another workspace member, one published agent, one unpublished agent the API key
 // is not an editor of, and one published agent requesting a space the API key cannot read.
-async function setupTestAgents(workspace: WorkspaceType, grants: boolean) {
+async function setupTestAgents(workspace: WorkspaceType) {
   const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
     workspace.sId
   );
   await SpaceFactory.defaults(internalAdminAuth);
-  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
-
   const agentOwner = await UserFactory.basic();
   await MembershipFactory.associate(workspace, agentOwner, { role: "user" });
   const agentOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -87,17 +80,14 @@ async function setupTestAgents(workspace: WorkspaceType, grants: boolean) {
   return { skill };
 }
 
-describe.each([
-  false,
-  true,
-])("GET /api/v1/w/[wId]/assistant/agent_configurations (grants: %s)", (grants) => {
+describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
   it.each([
     "admin",
     "builder",
     "user",
   ] as const)("reports edit permissions for a %s key", async (role) => {
     const { workspace, key } = await createPublicApiMockRequest({ role });
-    await setupTestAgents(workspace, grants);
+    await setupTestAgents(workspace);
 
     const response = await listAgents(workspace, key, { view: "all" });
     const {
@@ -120,7 +110,7 @@ describe.each([
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
-    await setupTestAgents(workspace, grants);
+    await setupTestAgents(workspace);
 
     const response = await listAgents(workspace, key, {
       view: "all_unrestricted",
@@ -147,7 +137,7 @@ describe.each([
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
-    await setupTestAgents(workspace, grants);
+    await setupTestAgents(workspace);
 
     const response = await listAgents(workspace, key, { view: "all" });
 
@@ -162,7 +152,7 @@ describe.each([
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
-    const { skill } = await setupTestAgents(workspace, grants);
+    const { skill } = await setupTestAgents(workspace);
 
     const response = await listAgents(workspace, key, { view: "all" });
 

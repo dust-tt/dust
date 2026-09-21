@@ -37,11 +37,9 @@ import {
   getAvailableModelsForWorkspace,
   listAvailableSkills,
   listAvailableTools,
+  searchKnowledge,
 } from "@app/lib/api/assistant/workspace_capabilities";
-import config from "@app/lib/api/config";
-import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
 import {
   DESCRIBE_MCP_TOOL_NAME,
@@ -54,9 +52,6 @@ import type { ConversationResource } from "@app/lib/resources/conversation_resou
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
-import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type {
   AgentMessageType,
   CompactionMessageType,
@@ -72,7 +67,6 @@ import { isModelProviderId } from "@app/types/assistant/models/providers";
 import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
-import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -93,33 +87,12 @@ import {
 import { JSDOM } from "jsdom";
 import type { z } from "zod";
 
-const SIDEKICK_KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
-  "managed",
-  "folder",
-  "website",
-];
-const SIDEKICK_KNOWLEDGE_CATEGORIES_SET = new Set<DataSourceViewCategory>(
-  SIDEKICK_KNOWLEDGE_CATEGORIES
-);
-
 type LimitedSuggestionKind =
   | "instructions"
   | "tools"
   | "sub_agent"
   | "skills"
   | "knowledge";
-
-interface SearchKnowledgeNode {
-  nodeId: string;
-  title: string;
-  parentFolderId: string;
-  parents: string[];
-  dataSourceViewId: string;
-  spaceId: string;
-  hasChildren: boolean;
-  connectorProvider: string | null;
-  sourceUrl: string | null;
-}
 
 function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
   switch (kind) {
@@ -551,26 +524,6 @@ async function createSkillsSuggestions({
   return new Ok(createdSuggestions);
 }
 
-/**
- * Lists all knowledge data source views across all spaces the user has access to.
- * Filters to knowledge categories (managed, folder, website), with optional category narrowing.
- */
-async function listAllKnowledgeDataSourceViews(
-  auth: Authenticator,
-  category?: DataSourceViewCategory
-): Promise<DataSourceViewResource[]> {
-  const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
-  const allViews = await DataSourceViewResource.listBySpaces(auth, spaces);
-
-  return allViews.filter((dsv) => {
-    const dsvCategory = dsv.toJSON().category;
-    if (category) {
-      return dsvCategory === category;
-    }
-    return SIDEKICK_KNOWLEDGE_CATEGORIES_SET.has(dsvCategory);
-  });
-}
-
 const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   get_available_models: async ({ providerId }, { auth }) => {
     let models = await getAvailableModelsForWorkspace(auth);
@@ -641,7 +594,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: formatSkillContext(skill.toJSON(auth)),
+        text: formatSkillContext(skill.toJSON(auth), "full"),
       },
     ]);
   },
@@ -1252,12 +1205,15 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   search_knowledge: async ({ query, topK, category }, { auth }) => {
-    const dataSourceViews = await listAllKnowledgeDataSourceViews(
-      auth,
-      category
-    );
+    const res = await searchKnowledge(auth, { query, topK, category });
+    if (res.isErr()) {
+      return new Err(
+        new MCPError(`Failed to search knowledge: ${res.error.message}`)
+      );
+    }
 
-    if (dataSourceViews.length === 0) {
+    const { dataSourceViews, nodes, totalDataSourceViews } = res.value;
+    if (totalDataSourceViews === 0) {
       return new Ok([
         {
           type: "text" as const,
@@ -1270,105 +1226,10 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       ]);
     }
 
-    const dataSourceEntries = dataSourceViews.map((view) => {
-      const viewJson = view.toJSON();
-      const dataSource = viewJson.dataSource;
-      return {
-        apiId: dataSource.dustAPIDataSourceId,
-        dataSourceView: {
-          sId: view.sId,
-          name: getDisplayNameForDataSource(dataSource),
-          connectorProvider: dataSource.connectorProvider,
-          category: viewJson.category,
-        },
-        spaceId: viewJson.spaceId,
-        searchArg: {
-          projectId: dataSource.dustAPIProjectId,
-          dataSourceId: dataSource.dustAPIDataSourceId,
-          view_filter: view.toViewFilter(),
-        },
-        documentTitles: <string[]>[],
-      };
-    });
-
-    // Browse mode: no query, return all DSVs with no nodes.
-    if (!query) {
-      const dataSourceViews = dataSourceEntries.map((entry) => ({
-        dataSourceViewId: entry.dataSourceView.sId,
-        name: entry.dataSourceView.name,
-        connectorProvider: entry.dataSourceView.connectorProvider,
-        category: entry.dataSourceView.category,
-        spaceId: entry.spaceId,
-      }));
-      return new Ok([
-        {
-          type: "text" as const,
-          text: JSON.stringify({ dataSourceViews, nodes: [] }, null, 2),
-        },
-      ]);
-    }
-
-    // Search mode: semantic search, return matching data source views + individual nodes.
-    const dataSourceByDustAPIId = new Map(
-      dataSourceEntries.map((entry) => [entry.apiId, entry])
-    );
-
-    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const credentials = await getLlmCredentials(auth);
-    const searchResults = await coreAPI.bulkSearchDataSources(
-      query,
-      topK,
-      credentials,
-      false,
-      dataSourceEntries.map((entry) => entry.searchArg)
-    );
-
-    if (searchResults.isErr()) {
-      return new Err(
-        new MCPError(
-          `Failed to search knowledge: ${searchResults.error.message}`
-        )
-      );
-    }
-
-    const nodes: SearchKnowledgeNode[] = [];
-
-    for (const document of searchResults.value.documents) {
-      const entry = dataSourceByDustAPIId.get(document.data_source_id);
-      if (entry) {
-        entry.documentTitles.push(document.title ?? document.document_id);
-        const ancestors = document.parents.filter(
-          (p) => p !== document.document_id
-        );
-        nodes.push({
-          nodeId: document.document_id,
-          title: document.title ?? document.document_id,
-          parentFolderId: document.parent_id ?? entry.dataSourceView.sId,
-          parents: [...ancestors, entry.dataSourceView.sId],
-          dataSourceViewId: entry.dataSourceView.sId,
-          spaceId: entry.spaceId,
-          hasChildren: false,
-          connectorProvider: entry.dataSourceView.connectorProvider,
-          sourceUrl: document.source_url ?? null,
-        });
-      }
-    }
-
-    const roots = dataSourceEntries
-      .filter((entry) => entry.documentTitles.length > 0)
-      .map((entry) => ({
-        dataSourceViewId: entry.dataSourceView.sId,
-        name: entry.dataSourceView.name,
-        connectorProvider: entry.dataSourceView.connectorProvider,
-        category: entry.dataSourceView.category,
-        spaceId: entry.spaceId,
-        childrenCount: entry.documentTitles.length,
-      }));
-
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify({ dataSourceViews: roots, nodes }, null, 2),
+        text: JSON.stringify({ dataSourceViews, nodes }, null, 2),
       },
     ]);
   },

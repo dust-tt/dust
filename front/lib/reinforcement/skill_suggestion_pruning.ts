@@ -8,17 +8,27 @@ import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type {
+  SkillAvailabilitySuggestionData,
   SkillEditorsSuggestionData,
   SkillEditSuggestionData,
   SkillEditSuggestionType,
   SkillInstructionEditItemType,
+  SkillNameSuggestionData,
   SkillSuggestionSource,
+  SkillUserFacingDescriptionSuggestionData,
 } from "@app/types/suggestions/skill_suggestion";
 import {
+  isAvailabilitySkillSuggestion,
   isEditorsSkillSuggestion,
   isEditSkillSuggestion,
+  isNameSkillSuggestion,
+  isUserFacingDescriptionSkillSuggestion,
   REVIEWABLE_SKILL_SUGGESTION_SOURCES,
 } from "@app/types/suggestions/skill_suggestion";
+
+// `delete` suggestions are only ever recorded with source `conversational` (reinforcement never
+// produces this kind), so pruning only needs to look there.
+const DELETE_SUGGESTION_SOURCES: SkillSuggestionSource[] = ["conversational"];
 
 // Reviewable suggestions: pruning applies to every source a user may accept or reject, whether
 // it is surfaced in the builder (`reinforcement`) or inline in a conversation (`conversational`).
@@ -166,12 +176,10 @@ export async function pruneConflictingSkillEditSuggestions(
 }
 
 /**
- * @cc [owner:achilleburah,label:product] prune-conflicting-editors-suggestions
- * Recording a new `editors` suggestion, or applying one to the skill, MUST mark every other
- * pending `editors` suggestion for the same skill `outdated` when both add the same user or both
- * remove the same user. Adding a user in one and removing them in the other is not a conflict:
- * both stay pending for review. Approving a suggestion without applying it changes nothing on the
- * skill and prunes nothing.
+ * @cc [owner:achilleburah,label:product] editors-suggestion-conflict-pruning
+ * Recording or applying an `editors` suggestion outdates every other pending `editors`
+ * suggestion for the same skill that adds or removes the same user. Adding a user in one and
+ * removing them in the other is not a conflict: both stay pending.
  */
 export async function pruneConflictingSkillEditorsSuggestions(
   auth: Authenticator,
@@ -210,6 +218,122 @@ export async function pruneConflictingSkillEditorsSuggestions(
       editors.removeUserIds.some((id) => newRemoveUserIds.has(id))
     );
   });
+
+  await SkillSuggestionResource.bulkUpdateState(
+    auth,
+    toMarkOutdated,
+    "outdated"
+  );
+}
+
+/**
+ * @cc [owner:achilleburah,label:product] single-value-suggestion-conflict-pruning
+ * Recording or applying a `user_facing_description` suggestion outdates every other pending
+ * `user_facing_description` suggestion for the same skill: the field holds one value, so two
+ * pending replacements always conflict.
+ */
+export async function pruneConflictingSkillUserFacingDescriptionSuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  newSuggestions: (SkillSuggestionResource &
+    SkillUserFacingDescriptionSuggestionData)[]
+): Promise<void> {
+  if (newSuggestions.length === 0) {
+    return;
+  }
+
+  const excluded = new Set(newSuggestions.map((s) => s.sId));
+  const toMarkOutdated = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
+      states: ["pending"],
+      kinds: ["user_facing_description"],
+      sources: PRUNED_SOURCES,
+    })
+  )
+    .filter(isUserFacingDescriptionSkillSuggestion)
+    .filter((s) => !excluded.has(s.sId));
+
+  await SkillSuggestionResource.bulkUpdateState(
+    auth,
+    toMarkOutdated,
+    "outdated"
+  );
+}
+
+export async function pruneConflictingSkillNameSuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  newSuggestions: (SkillSuggestionResource & SkillNameSuggestionData)[]
+): Promise<void> {
+  if (newSuggestions.length === 0) {
+    return;
+  }
+
+  const excluded = new Set(newSuggestions.map((s) => s.sId));
+  const toMarkOutdated = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
+      states: ["pending"],
+      kinds: ["name"],
+      sources: PRUNED_SOURCES,
+    })
+  )
+    .filter(isNameSkillSuggestion)
+    .filter((s) => !excluded.has(s.sId));
+
+  await SkillSuggestionResource.bulkUpdateState(
+    auth,
+    toMarkOutdated,
+    "outdated"
+  );
+}
+
+/**
+ * @cc [owner:avervaet,label:product] prune-conflicting-delete-suggestions
+ * Recording a new pending `delete` suggestion MUST mark every other pending `delete` suggestion
+ * for the same skill `outdated`, so only one deletion proposal is ever open for review at a time.
+ */
+export async function pruneConflictingSkillDeletionSuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  newSuggestion: SkillSuggestionResource
+): Promise<void> {
+  const conflicting = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
+      states: ["pending"],
+      kinds: ["delete"],
+      sources: DELETE_SUGGESTION_SOURCES,
+    })
+  ).filter((s) => s.sId !== newSuggestion.sId);
+
+  await SkillSuggestionResource.bulkUpdateState(auth, conflicting, "outdated");
+}
+
+/**
+ * @cc [owner:achilleburah,label:product] prune-conflicting-availability-suggestions
+ * Recording a new `availability` suggestion, or accepting one, MUST mark every other pending
+ * `availability` suggestion for the same skill `outdated`: the field holds a single value, so two
+ * pending changes always conflict. This holds even when the accepted suggestion's value already
+ * matches the skill's current availability and no write occurs.
+ */
+export async function pruneConflictingSkillAvailabilitySuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  newSuggestions: (SkillSuggestionResource & SkillAvailabilitySuggestionData)[]
+): Promise<void> {
+  if (newSuggestions.length === 0) {
+    return;
+  }
+
+  const excluded = new Set(newSuggestions.map((s) => s.sId));
+  const toMarkOutdated = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
+      states: ["pending"],
+      kinds: ["availability"],
+      sources: PRUNED_SOURCES,
+    })
+  )
+    .filter(isAvailabilitySkillSuggestion)
+    .filter((s) => !excluded.has(s.sId));
 
   await SkillSuggestionResource.bulkUpdateState(
     auth,

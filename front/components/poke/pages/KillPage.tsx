@@ -25,7 +25,6 @@ import {
   Fire,
   OpenaiLogo,
   PauseCircle,
-  RefreshCw02,
   Settings01,
   SliderToggle,
   Spinner,
@@ -85,13 +84,6 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
       "Pause the document upsert queue: parked upserts retry every 5 minutes until the switch is disabled.",
     note: "Enqueues keep succeeding and in-flight upserts finish. Use to shed Qdrant write load (e.g. during resharding).",
     icon: PauseCircle,
-  },
-  use_legacy_acls: {
-    title: "Legacy ACLs",
-    description:
-      "Serve agent editor lists, permissions, and views from legacy editor groups instead of grants.",
-    note: "Keep enabled until all four agent PR12 parts are deployed and verified. Disable to switch all workspaces to grants; enable to roll back. Takes up to 60s to apply on each pod. Pods start with legacy reads until the switch loads.",
-    icon: RefreshCw02,
   },
 };
 

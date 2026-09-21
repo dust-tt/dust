@@ -38,7 +38,8 @@
     "migration:mark:post-deploy": "node ../scripts/db/run-migrate.cjs --command mark-post-deploy --execute",
     "debug:profiler": "node ./scripts/debug/run_profiler.ts",
     "generate:custom-models": "tsx scripts/fetch-custom-models.ts",
-    "generate:hubspot-forms": "tsx scripts/generate-hubspot-forms.ts"
+    "generate:hubspot-forms": "tsx scripts/generate-hubspot-forms.ts",
+    "simulated-failure-model": "tsx scripts/simulated_failure_model.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",

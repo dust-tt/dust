@@ -7,6 +7,7 @@ import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/cons
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -117,7 +118,7 @@ async function updateLegacyVizByFrame(
                 timeFrame: null,
                 jsonSchema: null,
               } as ServerSideMCPServerConfigurationType,
-              agentConfiguration
+              AgentResource.fromAgentConfiguration(auth, agentConfiguration)
             );
           }
 

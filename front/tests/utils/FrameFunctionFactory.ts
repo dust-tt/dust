@@ -149,9 +149,13 @@ export async function makeTestFrameFunction({
     useCaseMetadata: {
       spaceId: space.sId,
       activePublicationId: publicationId,
-      frameName: "Task List",
       frameDescription: "Track tasks.",
     },
+    // A Frame always lives in its own folder, and that folder is its name.
+    mountFilePath: `${getPodFilesBasePath({
+      workspaceId: workspace.sId,
+      podId: space.sId,
+    })}Task List/${FRAME_MANIFEST_FILE}`,
   });
   await frame.setShareScope(adminAuth, shareScope);
   await withTransaction((transaction) =>

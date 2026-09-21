@@ -67,6 +67,10 @@ pub struct TimingsMs {
     /// includes import + handler. Warm path omits this.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub child: Option<u64>,
+    /// Cold path: materialize `functions.tar` into the local sha cache before
+    /// resolve. ~0 when the extract already existed; absent on warm.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub archive: Option<u64>,
     /// Dynamic `import()` of the function bundle (cold Bun child only;
     /// warm workers preload at start so this is omitted there).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -74,6 +78,10 @@ pub struct TimingsMs {
     /// Handler `fetch` + response parse.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub handler: Option<u64>,
+    /// Nested tool-call timings collected inside the handler (durable path).
+    /// Shape: `{ total, count, calls: [{ server, tool, post, poll, offload?, total }] }`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tools: Option<serde_json::Value>,
 }
 
 impl ResultEnvelope {
@@ -128,8 +136,10 @@ mod tests {
                 resolve: None,
                 resolve_kind: None,
                 child: None,
+                archive: None,
                 import: None,
                 handler: Some(2),
+                tools: None,
             }),
         );
 

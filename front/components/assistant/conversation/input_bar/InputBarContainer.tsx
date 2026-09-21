@@ -34,7 +34,6 @@ import {
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import { knowledgeNodeToItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
-import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor, {
   INPUT_BAR_DEFAULT_PLACEHOLDER,
@@ -42,7 +41,6 @@ import useCustomEditor, {
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
-import { getIcon } from "@app/components/resources/resources_icons";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import {
   useCompactConversation,
@@ -53,11 +51,10 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceLiveTranscriberService } from "@app/hooks/useVoiceLiveTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
-import { hasAnotherAttachedNode } from "@app/lib/editor/utils";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
@@ -83,12 +80,11 @@ import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   ArrowUp,
-  Attachment01,
+  BookOpen01,
   Button,
   Camera01,
   Chip,
@@ -108,11 +104,10 @@ import {
   TooltipTrigger,
   VoicePicker,
 } from "@dust-tt/sparkle";
-import type { Editor, EditorEvents } from "@tiptap/react";
+import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import type React from "react";
 import {
-  Fragment,
   useCallback,
   useContext,
   useEffect,
@@ -199,7 +194,6 @@ function sameSkillIds(a: string[], b: string[]): boolean {
 export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
-  attachedNodes: DataSourceViewContentNode[];
   disableAgentSelector: boolean;
   // When true, the editor is made non-editable and every picker (agent,
   // tools, attachment, voice) is disabled. Reserved for states where the user
@@ -239,12 +233,7 @@ export interface InputBarContainerProps {
   onVoiceActiveChange?: (active: boolean) => void;
   isSubmitting: boolean;
   onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
-  onMCPServerViewDeselect: (serverView: MCPServerViewLightType) => void;
-  onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
   modelSelectionRef?: React.MutableRefObject<ModelSelectionType | undefined>;
-  onNodeSelect: (node: DataSourceViewContentNode) => void;
-  onNodeUnselect: (node: DataSourceViewContentNode) => void;
-  onResetMCPServerViews: () => void;
   owner: WorkspaceType;
   saveDraft: (
     markdown: string,
@@ -253,7 +242,6 @@ export interface InputBarContainerProps {
   ) => void;
   pendingInputText: PendingInputText | null;
   selectedAgent: RichAgentMention | null;
-  selectedMCPServerViews: MCPServerViewLightType[];
   selectedSpaceIds?: string[];
   selectableSpaces?: SelectableConversationSpaceType[];
   shouldShowSpacesAction?: boolean;
@@ -298,15 +286,8 @@ const InputBarContainer = ({
   defaultSkills,
   isDefaultSkillsLoading,
   isAgentBuilder = false,
-  onNodeSelect,
-  onNodeUnselect,
-  attachedNodes,
-  onMCPServerViewSelect,
   modelSelectionRef,
-  onMCPServerViewDeselect,
-  selectedMCPServerViews,
   selectedSpaceIds = EMPTY_SPACE_IDS,
-  onResetMCPServerViews,
   onSelectedSpaceIdsChange = acceptSelectedSpaceIds,
   selectableSpaces = EMPTY_SELECTABLE_SPACES,
   shouldShowSpacesAction = false,
@@ -338,10 +319,6 @@ const InputBarContainer = ({
     null
   );
   const { subscription } = useAuth();
-  const { featureFlags } = useFeatureFlags();
-  const isInlineReferenceEnabled = featureFlags.includes(
-    "inline_tool_knowledge_reference"
-  );
   const isMobile = useIsMobile();
   const clientType = useClientType();
   const {
@@ -401,17 +378,6 @@ const InputBarContainer = ({
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
-  const attachedNodesRef = useRef(attachedNodes);
-  attachedNodesRef.current = attachedNodes;
-  const selectedMCPServerViewIds = useMemo(
-    () =>
-      isInlineReferenceEnabled
-        ? new Set<string>()
-        : new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
-    [isInlineReferenceEnabled, selectedMCPServerViews]
-  );
-  const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
-  selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
   const selectedSpaceIdsRef = useRef(selectedSpaceIds);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
   // The slash suggestion extension captures its options at editor initialization, while the
@@ -430,7 +396,9 @@ const InputBarContainer = ({
   const onDetailsRef = useRef<((item: SlashCommand) => void) | undefined>(
     undefined
   );
-  const onNodeSelectRef = useRef(onNodeSelect);
+  const onNodeSelectRef = useRef<
+    ((node: DataSourceViewContentNode) => void) | undefined
+  >(undefined);
   const includeAttachKnowledgeRef = useRef(actions.includes("attachment"));
   includeAttachKnowledgeRef.current = actions.includes("attachment");
   const includePickModelRef = useRef(false);
@@ -702,12 +670,6 @@ const InputBarContainer = ({
   };
 
   const handleToolSelect = (view: MCPServerViewLightType) => {
-    onMCPServerViewSelect(view);
-
-    if (!isInlineReferenceEnabled) {
-      return;
-    }
-
     editorRef.current
       ?.chain()
       .focus()
@@ -720,11 +682,6 @@ const InputBarContainer = ({
   };
 
   const handleNodeSelect = (node: DataSourceViewContentNode) => {
-    if (!isInlineReferenceEnabled) {
-      onNodeSelect(node);
-      return;
-    }
-
     editorRef.current
       ?.chain()
       .focus()
@@ -844,14 +801,12 @@ const InputBarContainer = ({
       onSelectRef,
       onDetailsRef,
       onSkillDetails: setSelectedSkillIdForDetails,
-      selectedMCPServerViewIdsRef,
       onToolDetailsById: setSelectedServerViewIdForDetails,
       slashCommandsRef,
       includeAttachKnowledgeRef,
       includePickModelRef,
       includeSelectSpacesRef,
       isSelectableSpacesLoadingRef,
-      attachedNodesRef,
       onModelSelectRef,
       onNodeSelectRef,
       onSpaceSelectRef,
@@ -1047,39 +1002,6 @@ const InputBarContainer = ({
     });
   }, [fileUploaderService.fileBlobs, removePastedAttachmentChip]);
 
-  // Sync: when an attachment card is removed, remove the corresponding
-  // dataSourceLink chip(s) from the editor in a single transaction.
-  useEffect(() => {
-    const editorInstance = editorRef.current;
-    if (!editorInstance) {
-      return;
-    }
-
-    const attachedNodeIds = new Set(attachedNodes.map((n) => n.internalId));
-
-    editorInstance.commands.command(({ state, tr }) => {
-      let removed = false;
-      // Collect positions in reverse order so deletions don't shift later positions.
-      const toDelete: { from: number; to: number }[] = [];
-      state.doc.descendants((node, pos) => {
-        if (
-          node.type.name === "dataSourceLink" &&
-          node.attrs?.nodeId &&
-          !attachedNodeIds.has(String(node.attrs.nodeId))
-        ) {
-          toDelete.push({ from: pos, to: pos + node.nodeSize });
-        }
-      });
-
-      for (let i = toDelete.length - 1; i >= 0; i--) {
-        tr.delete(toDelete[i].from, toDelete[i].to);
-        removed = true;
-      }
-
-      return removed;
-    });
-  }, [attachedNodes]);
-
   const activeVoiceService = useVoiceLiveTranscriberService({
     owner,
     onPartialTranscript: (text) => {
@@ -1135,7 +1057,6 @@ const InputBarContainer = ({
     prevUserMentionedRef.current = userMentioned;
     if (startsWithUserMention && !wasUserMentioned) {
       setSelectedSingleAgent(null);
-      onResetMCPServerViews();
     }
   };
 
@@ -1174,85 +1095,25 @@ const InputBarContainer = ({
     );
   }, []);
 
-  const handleContentDeleted = useCallback(
-    (event: EditorEvents["delete"]) => {
-      if (event.type !== "node") {
-        return;
-      }
-
-      const currentEditor = editorRef.current;
-      if (!currentEditor || currentEditor.isDestroyed) {
-        return;
-      }
-
-      const { node } = event;
-
-      if (node.type.name === "dataSourceLink") {
-        const nodeId = node.attrs.nodeId;
-        if (
-          isString(nodeId) &&
-          !hasAnotherAttachedNode(
-            currentEditor.state.doc,
-            (n) => n.type.name === "dataSourceLink" && n.attrs.nodeId === nodeId
-          )
-        ) {
-          const attachedNode = attachedNodesRef.current.find(
-            (n) => n.internalId === nodeId
-          );
-          if (attachedNode) {
-            onNodeUnselect(attachedNode);
-          }
-        }
-        return;
-      }
-
-      if (node.type.name === TOOL_NODE_TYPE) {
-        const { mcpServerViewId } = node.attrs;
-        if (
-          isString(mcpServerViewId) &&
-          !hasAnotherAttachedNode(
-            currentEditor.state.doc,
-            (n) =>
-              n.type.name === TOOL_NODE_TYPE &&
-              n.attrs.mcpServerViewId === mcpServerViewId
-          )
-        ) {
-          const view = selectedMCPServerViews.find(
-            (v) => v.sId === mcpServerViewId
-          );
-          if (view) {
-            onMCPServerViewDeselect(view);
-          }
-        }
-      }
-    },
-    [onNodeUnselect, onMCPServerViewDeselect, selectedMCPServerViews]
-  );
-
   // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
     if (editorRef.current) {
       editorRef.current.off("update", handleEditorUpdate);
-      editorRef.current.off("delete", handleContentDeleted);
     }
 
     if (editor) {
       editor.on("update", handleEditorUpdate);
-      editor.on("delete", handleContentDeleted);
     }
     editorRef.current = editor;
 
     return () => {
       if (editor) {
         editor.off("update", handleEditorUpdate);
-        editor.off("delete", handleContentDeleted);
       }
     };
-  }, [editor, handleEditorUpdate, handleContentDeleted]);
+  }, [editor, handleEditorUpdate]);
 
-  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced, {
-    insertKnowledgeNode: isInlineReferenceEnabled,
-  });
+  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate, handleUrlReplaced);
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
@@ -1304,12 +1165,7 @@ const InputBarContainer = ({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
-    if (
-      !nodeOrUrlCandidate ||
-      !onNodeSelect ||
-      isSearchLoading ||
-      isSpacesLoading
-    ) {
+    if (!nodeOrUrlCandidate || isSearchLoading || isSpacesLoading) {
       return;
     }
 
@@ -1332,11 +1188,7 @@ const InputBarContainer = ({
       );
 
       if (nodes.length > 0) {
-        const node = nodes[0];
-        if (!isInlineReferenceEnabled) {
-          onNodeSelect(node);
-        }
-        setSelectedNode(node);
+        setSelectedNode(nodes[0]);
         return;
       }
     }
@@ -1344,7 +1196,6 @@ const InputBarContainer = ({
     setNodeOrUrlCandidate(null);
   }, [
     searchResultNodes,
-    onNodeSelect,
     isSearchLoading,
     editorService,
     spacesMap,
@@ -1826,31 +1677,6 @@ const InputBarContainer = ({
             }}
           >
             <div className="mb-1 flex flex-wrap items-center px-3">
-              {!isInlineReferenceEnabled &&
-                selectedMCPServerViews.map((msv) => (
-                  <Fragment key={msv.sId}>
-                    {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
-                    <Chip
-                      size="xs"
-                      label={getMcpServerViewDisplayName(msv)}
-                      icon={getIcon(msv.server.icon)}
-                      className="m-0.5 hidden bg-background text-foreground xs:flex"
-                      onClick={() => setSelectedServerViewForDetails(msv)}
-                      onRemove={() => {
-                        onMCPServerViewDeselect(msv);
-                      }}
-                    />
-                    <Chip
-                      size="xs"
-                      icon={getIcon(msv.server.icon)}
-                      className="m-0.5 flex bg-background text-foreground xs:hidden"
-                      onClick={() => setSelectedServerViewForDetails(msv)}
-                      onRemove={() => {
-                        onMCPServerViewDeselect(msv);
-                      }}
-                    />
-                  </Fragment>
-                ))}
               {selectedSpaces.map((selectedSpace) => (
                 <Chip
                   key={selectedSpace.sId}
@@ -1884,7 +1710,6 @@ const InputBarContainer = ({
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}
-                      attachedNodes={attachedNodes}
                       buttonSize={buttonSize}
                       clientType={clientType}
                       conversation={conversation}
@@ -1902,11 +1727,9 @@ const InputBarContainer = ({
                       modelSelectionRef={modelSelectionRef}
                       modelSelectionCommitRef={modelSelectionCommitRef}
                       onNodeSelect={handleNodeSelect}
-                      onNodeUnselect={onNodeUnselect}
                       onSkillSelect={handleSkillSelect}
                       owner={owner}
                       selectedAgent={selectedSingleAgent}
-                      selectedMCPServerViews={selectedMCPServerViews}
                       selectedSpaceIds={selectedSpaceIds}
                       onSelectedSpaceIdsChange={
                         handleSelectedSpaceIdsChangeSafely
@@ -1954,7 +1777,7 @@ const InputBarContainer = ({
                           <DropdownMenuContent align="end">
                             {actions.includes("attachment") && (
                               <DropdownMenuItem
-                                icon={Attachment01}
+                                icon={BookOpen01}
                                 label="Attach"
                                 onClick={() => {
                                   setIsCaptureDropdownOpen(false);
@@ -2026,8 +1849,6 @@ const InputBarContainer = ({
                           owner={owner}
                           isLoading={false}
                           onNodeSelect={handleNodeSelect}
-                          onNodeUnselect={onNodeUnselect}
-                          attachedNodes={attachedNodes}
                           buttonSize={buttonSize}
                           toolFileUpload={{
                             useCase: "conversation",

@@ -4,6 +4,7 @@
 import { isString } from "@app/types/shared/utils/general";
 import {
   REVIEWABLE_SKILL_SUGGESTION_SOURCES,
+  SKILL_SUGGESTION_KINDS,
   SkillSuggestionSchema,
 } from "@app/types/suggestions/skill_suggestion";
 import { z } from "zod";
@@ -18,7 +19,7 @@ const stringOrArrayToArray = <T extends z.ZodTypeAny>(schema: T) =>
 export const GetSkillSuggestionsQuerySchema = z.object({
   states: stringOrArrayToArray(StateSchema).optional(),
   sources: stringOrArrayToArray(SourceSchema).optional(),
-  kind: z.enum(["edit"]).optional(),
+  kind: z.enum(SKILL_SUGGESTION_KINDS).optional(),
   limit: z.string().optional(),
 });
 

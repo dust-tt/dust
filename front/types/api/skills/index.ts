@@ -1,6 +1,7 @@
 import type { SkillPermissionFilteringMode } from "@app/lib/resources/skill/skill_resource";
 import type {
   SkillAvailability,
+  SkillListItemType,
   SkillStatus,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
@@ -27,7 +28,16 @@ export interface SkillSearchFilters {
   // Supports "edited by me", but not "not edited by me".
   editedByMe?: true;
   availability?: SkillAvailability[];
+  codeDefinedOnly?: true;
 }
+
+export type SkillSearchSort = "relevance" | "usage";
+
+export type SearchSkillsResponseBody = {
+  skills: SkillListItemType[];
+  hasMore: boolean;
+  nextCursor: string | null;
+};
 
 /**
  * @cc [owner:aubin-tchoi,label:api] skill-usage-compatibility

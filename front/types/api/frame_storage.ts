@@ -49,8 +49,8 @@ export function getFrameDatabaseReplicasBasePath(args: {
 }
 
 /**
- * Durable folder holding files a Frame's functions create at run time (uploads and anything else
- * they persist). Frame-owned state, so it sits beside the SQLite replicas under `state/` and is
+ * Persistent folder holding files a Frame's functions create at run time (uploads and anything
+ * else they persist). Frame-owned state, so it sits beside the SQLite replicas under `state/` and is
  * keyed on the stable Frame identity: it survives re-publishing, and the Frame source never seeds
  * it. Deleted with the Frame by the wholesale `getFrameBasePath` prefix delete, so it needs no
  * cleanup of its own.
@@ -60,7 +60,7 @@ export function getFrameDatabaseReplicasBasePath(args: {
  * and these two need opposite ones. The replica is mounted as `dust-state` with no `allow_other`
  * so no other uid can see it, while this folder must be workload-readable and writable.
  */
-export function getFrameDataFilesBasePath(args: {
+export function getFramePersistentFilesBasePath(args: {
   workspaceId: string;
   frameId: string;
 }): string {

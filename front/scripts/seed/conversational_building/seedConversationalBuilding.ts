@@ -132,6 +132,8 @@ export async function seedConversationalBuilding(
     agents,
     placeholders: {
       __MEETING_NOTES_SKILL_SID__: createdSkills.get(SKILL_NAME)?.sId ?? "",
+      __SKILL_AVAILABILITY_SUGGESTION_SID__:
+        createdSkillSuggestions.get("skillAvailability")?.sId ?? "",
       __SKILL_EDIT_INSTRUCTIONS_SUGGESTION_SID__: suggestionSId(
         "skillEditInstructions"
       ),
@@ -142,6 +144,11 @@ export async function seedConversationalBuilding(
       __SKILL_EDIT_TOOL_SUGGESTION_SID__: suggestionSId("skillEditTool"),
       __SKILL_EDIT_KNOWLEDGE_SUGGESTION_SID__:
         suggestionSId("skillEditKnowledge"),
+      __SKILL_USER_FACING_DESCRIPTION_SUGGESTION_SID__: suggestionSId(
+        "skillUserFacingDescription"
+      ),
+      __SKILL_NAME_SUGGESTION_SID__: suggestionSId("skillName"),
+      __SKILL_DELETE_SUGGESTION_SID__: suggestionSId("skillDelete"),
     },
     additionalUsers: createdUsers,
   });

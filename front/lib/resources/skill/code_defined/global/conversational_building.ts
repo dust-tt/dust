@@ -79,8 +79,11 @@ Tools operate on entity ids, not names. Use these tools to get up-to-date inform
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_agents\`: find all agents and resolve a name to an id.
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_skills\`: find all skills and resolve a name to an id.
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.get_agent_details\`: an agent's full configuration (instructions, model, skills, tools, knowledge).
+- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_tools\`: find the tools that can be equipped on agents and skills and resolve a name to an id.
+- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.get_tool_details\`: a tool's description and the functions it exposes with their parameters. Use it before referencing a tool in a suggestion.
+- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.search_knowledge\`: without a query, the knowledge sources (data source views) of the workspace; with a query, the sources and document nodes matching it. Use it before referencing knowledge in a suggestion (see <knowledge_guidance> and <knowledge_nodes>).
 - \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_workspace_members\`: information about members (pass \`userIds\` to look up specific people, e.g. to change a skill's editors).
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.describe_skill\`: a skill's name, agent-facing description and instructions as HTML whose blocks carry a \`data-block-id\`. ALWAYS use this before editing a skill; the block ids are required to target edits.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.describe_skill\`: a custom skill's name, settings, and instructions as HTML whose blocks carry a \`data-block-id\`. Call it to get any info about a skill before acting on it; the block ids are required to target edits.
 
 When editing an entity, repeat the discovery on EVERY turn of the conversation before suggesting anything.
 The user may have accepted, rejected or edited suggestions between two turns, so any configuration retrieved earlier may be outdated.
@@ -93,7 +96,9 @@ The only exception is a turn where you make no suggestion.
 Each call to a \`suggest_*\` tool returns a directive that you MUST include verbatim in your response so the suggestion card renders, e.g.:
 \`\`\`
 :skill_suggestion[]{sId=[id] kind=[kind] skillId=[skillId]}
+:agent_suggestion[]{sId=[id] kind=[kind] agentId=[agentId]}
 \`\`\`
+Do not describe the suggestion in prose instead of the directive, and do not paraphrase or omit it: the directive is what renders the reviewable card.
 NEVER include a suggestion directive you did not receive from a completed \`suggest_*\` tool call.
 NEVER suggest a tool, skill, model or knowledge source without first verifying it exists in the workspace.
 Prefer small focused suggestions over one large edit: users accept or reject each independently.
@@ -159,18 +164,19 @@ ${skillAgentFacingDescriptionGuidanceBody({ evidenceOnly: false })}
   }),
 
   tools: `<tools>
-Discovery (see <discovery_step>):
-- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_agents\`: inventory agents, resolve names to ids.
-- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_skills\`: inventory skills, resolve names to ids.
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.describe_skill\`: a custom skill's instructions as HTML with block ids. Call before suggesting any skill edit.
-- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_workspace_members\`: members with role and job function; pass \`userIds\` to look up specific people.
+Discovery (see <discovery_step>)
 
 Skill suggestions:
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_update\`: instruction edits (block-targeted, see <block_aware_editing>) and/or an agent-facing description replacement for one skill. Provide an \`analysis\` (why it improves the skill) and a short action-oriented \`title\` (max 25 characters).
 - \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_editors\`: add or remove editors of a skill by user id. A change that would leave the skill without any editor is refused.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_user_facing_description\`: replace the user-facing description of a skill, the short text members read when browsing skills.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_name\`: rename a skill. A name already carried by another active skill of the workspace is refused.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_deletion\`: propose deleting an existing custom skill by \`skillId\`.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_availability\`: change who a skill is available to (\`editors\`, \`workspace_users\` or \`users_and_agents\`). Requires the workspace permission to publish skills.
 
 Agent suggestions:
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_creation\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`. Nothing is created for real: the proposal is recorded as a suggestion that its editors review, accept, or reject.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_creation\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`.
+- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_deletion\`: propose deleting an existing agent by \`agentId\`
 </tools>`,
 
   responseStyle: responseStyleSection({ noun: NOUN, editTool: EDIT_TOOLS }),
@@ -178,7 +184,6 @@ Agent suggestions:
 
 /**
  * TODO in tools section:
- * Research tools to search knowledge, list tools, get tools details.
  * Agent feedback and usage insights
  */
 

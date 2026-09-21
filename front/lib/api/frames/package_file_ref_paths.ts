@@ -124,42 +124,6 @@ export function parseExtractableFramePackageRelativePath(
 }
 
 /**
- * If `scopedPath` points at a file under `frameRoot` that is listed in `packageFiles`, return
- * the portable `./…` form. Otherwise null. Used by publish validation (reject absolute in-package
- * refs) and path helpers.
- */
-export function tryRewriteScopedPathToPackageRelative({
-  scopedPath,
-  frameRoot,
-  packageFiles,
-}: {
-  scopedPath: string;
-  frameRoot: string;
-  packageFiles: ReadonlySet<string>;
-}): string | null {
-  if (!isAgentScopedPath(scopedPath)) {
-    return null;
-  }
-
-  const root = frameRoot.replace(/\/+$/, "");
-  const prefix = `${root}/`;
-  if (scopedPath !== root && !scopedPath.startsWith(prefix)) {
-    return null;
-  }
-
-  const relativePath =
-    scopedPath === root ? "" : scopedPath.slice(prefix.length);
-  if (!relativePath || !isSafeFrameRelativePath(relativePath)) {
-    return null;
-  }
-  if (!packageFiles.has(relativePath)) {
-    return null;
-  }
-
-  return formatFramePackageRelativePath(relativePath);
-}
-
-/**
  * Join a package-relative path onto the Frame source root. Rejects escape / unsafe paths.
  */
 export function resolvePackageRelativeToScopedPath({
@@ -189,10 +153,4 @@ export function resolvePackageRelativeToScopedPath({
   }
 
   return joined;
-}
-
-const REWRITABLE_SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx"]);
-
-export function isRewritableFrameSourcePath(relativePath: string): boolean {
-  return REWRITABLE_SOURCE_EXTENSIONS.has(posixExtname(relativePath));
 }

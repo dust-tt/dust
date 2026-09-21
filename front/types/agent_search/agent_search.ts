@@ -3,11 +3,23 @@ import type {
   AgentConfigurationScope,
   AgentConfigurationStatus,
 } from "@app/types/assistant/agent";
+import type {
+  ModelIdType,
+  ModelProviderIdType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
+
+export interface AgentSearchDocumentModel {
+  provider_id: ModelProviderIdType;
+  model_id: ModelIdType;
+  reasoning_effort: ReasoningEffort;
+}
 
 export interface AgentSearchDocument extends ElasticsearchBaseDocument {
   agent_id: string;
   status: AgentConfigurationStatus;
   scope: AgentConfigurationScope;
+  model: AgentSearchDocumentModel;
   name: string;
   picture_url: string;
   last_edited_by_user_id: string | null;

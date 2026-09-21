@@ -493,6 +493,9 @@ export async function serve(
           outcome: delivered,
           timingsMs: {
             handler: timingsMs.handler,
+            ...(timingsMs.tools === undefined
+              ? {}
+              : { tools: timingsMs.tools }),
           },
         });
       }

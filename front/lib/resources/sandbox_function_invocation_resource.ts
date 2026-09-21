@@ -29,6 +29,11 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter";
+import {
+  clearStagedSandboxFunctionInvocationBlob,
+  readStagedSandboxFunctionInvocationBlob,
+  stageSandboxFunctionInvocationBlob,
+} from "@app/lib/resources/sandbox_function_invocation/blob_stage";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -60,8 +65,8 @@ import type {
   SandboxFunctionInvocationType,
 } from "@app/types/api/sandbox_functions";
 import {
-  FRAME_DATA_FILES_DIR_ENV,
-  getFrameDataFilesMountPoint,
+  FRAME_PERSISTENT_FILES_DIR_ENV,
+  getFramePersistentFilesMountPoint,
   getFramePublicationDescriptorMountPoint,
   getFramePublicationFunctionsMountPoint,
   sandboxDatabaseExecEnvVars,
@@ -195,17 +200,6 @@ function migrateStoredInvocationData(
   }
 }
 
-interface SandboxFunctionInvocationForLLM {
-  bundleSha256?: string;
-  createdAt: string;
-  error?: StoredSandboxFunctionCallError;
-  input: unknown;
-  invocationId: string;
-  result?: unknown;
-  status: SandboxFunctionInvocationStatus;
-  updatedAt: string;
-}
-
 function safeParseStoredInvocationData(
   content: string
 ): Result<StoredInvocationData, Error> {
@@ -278,15 +272,22 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     SandboxFunctionInvocationModel;
 
   readonly sandboxFunction: SandboxFunctionResource;
-  private data: SandboxFunctionInvocationData;
+  private _data: SandboxFunctionInvocationData;
+  /**
+   * @cc [owner:Fraggle] data-resolved-means-settled
+   * `_dataResolved` MUST be true only after the blob was supplied at construction
+   * (`makeNew`) or after `getData` finished a load attempt. An unparseable GCS blob
+   * MUST still set `_dataResolved` with a degraded empty `_data` so callers do not
+   * retry forever.
+   */
+  private _dataResolved: boolean;
+  /** Coalesces concurrent `getData` calls into one download. */
+  private _pendingDataLoad: Promise<SandboxFunctionInvocationData> | undefined;
 
   /**
-   * In-flight blob persistence for an inline execution: the deferred initial write (blob +
-   * created event), and after a terminal transition also the write-behind terminal blob write
-   * chained onto it. The chaining keeps the object-level ordering (the terminal write can never
-   * be overwritten by a late initial one) without holding the caller's response on GCS. Only
-   * ever set on the instance that runs the invocation inline; instances rehydrated from the DB
-   * never have one, and never need one.
+   * In-flight blob persistence: the deferred initial GCS write, and after a terminal
+   * transition the write-behind terminal upload chained onto it. Redis is staged up front so
+   * other processes never wait on this promise. Settling drains the chain for tests / handoff.
    */
   private pendingInitialPersistence: Promise<void> | undefined;
 
@@ -327,18 +328,27 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     blob: Attributes<SandboxFunctionInvocationModel>,
     {
       sandboxFunction,
-      data = {
-        version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
-        input: undefined,
-      },
+      data,
+      dataResolved = false,
     }: {
       sandboxFunction: SandboxFunctionResource;
       data?: SandboxFunctionInvocationData;
+      /**
+       * @cc [owner:Fraggle] construction-data-is-resolved
+       * When `data` is the real invocation blob (notably `makeNew`), callers MUST pass
+       * `dataResolved: true`. Fetch paths that only have the DB row MUST leave it false so
+       * `getData` loads from GCS.
+       */
+      dataResolved?: boolean;
     }
   ) {
     super(model, blob);
     this.sandboxFunction = sandboxFunction;
-    this.data = data;
+    this._data = data ?? {
+      version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+      input: undefined,
+    };
+    this._dataResolved = dataResolved;
   }
 
   get sId(): string {
@@ -380,24 +390,65 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     };
   }
 
-  get input(): unknown {
-    return this.data.input;
+  /**
+   * @cc [owner:Fraggle] get-data-returns-resolved-blob
+   * Resolves the invocation blob once and returns it. Prefers the Redis stage (filled
+   * before the deferred GCS write) so the Temporal activity can run without waiting on GCS;
+   * falls back to GCS for cold/history reads. Callers that need input/context/result/error
+   * MUST use the returned value (or call `getData` again after `replaceData`) rather than
+   * reading private `_data` while unresolved.
+   */
+  async getData(): Promise<SandboxFunctionInvocationData> {
+    if (this._dataResolved) {
+      return this._data;
+    }
+    if (!this._pendingDataLoad) {
+      this._pendingDataLoad = this.loadData().finally(() => {
+        this._pendingDataLoad = undefined;
+      });
+    }
+    return this._pendingDataLoad;
   }
 
-  get context(): SandboxFunctionInvocationContext | undefined {
-    return this.data.context;
+  private replaceData(data: SandboxFunctionInvocationData): void {
+    this._data = data;
+    this._dataResolved = true;
   }
 
-  get result(): unknown {
-    return this.data.result;
+  private async loadData(): Promise<SandboxFunctionInvocationData> {
+    const stagedResult = await readStagedSandboxFunctionInvocationBlob(
+      this.sId
+    );
+    if (stagedResult.isErr()) {
+      logger.error(
+        {
+          ...this.observabilityContext(),
+          err: stagedResult.error,
+        },
+        "Failed to read staged sandbox function invocation blob; falling back to GCS"
+      );
+    } else if (stagedResult.value !== null) {
+      const parseResult = StoredInvocationDataSchema.safeParse(
+        stagedResult.value
+      );
+      if (parseResult.success) {
+        const data = migrateStoredInvocationData(parseResult.data);
+        this.replaceData(data);
+        return data;
+      }
+      logger.error(
+        {
+          ...this.observabilityContext(),
+          error: fromError(parseResult.error).toString(),
+        },
+        "Invalid staged sandbox function invocation data; falling back to GCS"
+      );
+    }
+    return this.loadDataFromGcs();
   }
 
-  get error(): StoredSandboxFunctionCallError | undefined {
-    return this.data.error;
-  }
-
-  get bundleSha256(): string | undefined {
-    return this.data.bundleSha256;
+  async getContext(): Promise<SandboxFunctionInvocationContext | undefined> {
+    return (await this.getData()).context;
   }
 
   // WHERE-guarded compare-and-swap on status. Same pattern as
@@ -432,74 +483,62 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   /**
-   * Persist the terminal blob (input, context, outcome), set on `this.data` by the caller.
+   * Persist the terminal blob (input, context, outcome), set via `replaceData` by the caller.
    *
-   * Inline path (a deferred initial persistence is pending): the write chains behind it,
-   * write-behind. The caller's response and the result event carry the outcome, and every
-   * cross-process blob reader is either explicitly settled first (the workflow handoff awaits
-   * settleInitialPersistence) or reads well after the write's ~100-500ms window (inspection,
-   * listings), so nothing is left holding a request on GCS tail latency. The cost is a
-   * narrower durability guarantee: a write that fails, or a process that dies right after
-   * responding, leaves a terminal row whose blob is missing the outcome. Logged loudly; the
-   * outcome itself was still delivered to the caller and the event stream.
-   *
-   * Every other path keeps the awaited write, and gives the terminal claim back on failure so
-   * a retry can record the outcome.
+   * Always write-behind: Redis is staged first so cross-process readers (and the HTTP wait,
+   * which only needs the result event) are not held on GCS. When an initial deferred write is
+   * still pending, the terminal upload chains behind it so object order stays correct. Failure
+   * is logged and the terminal claim is kept — the outcome was already delivered on the event
+   * stream / caller response.
    */
   private async persistTerminalData(
     claimed: Exclude<SandboxFunctionInvocationStatus, "created">
   ): Promise<void> {
-    if (this.pendingInitialPersistence !== undefined) {
-      const pending = this.pendingInitialPersistence;
-      this.pendingInitialPersistence = (async () => {
-        // Invariant: `pending` never rejects — its producers settle internally (makeNew logs
-        // its write failure, createAndStartExecution wraps in Promise.allSettled) — and
-        // writeDataToGcs returns a Result, so this floating chain cannot produce an unhandled
-        // rejection. The claim is deliberately kept on failure, unlike the awaited branch:
-        // releasing here would strand a row whose caller already got the outcome, with nothing
-        // left to retry it.
-        await pending;
-        const writeResult = await this.writeDataToGcs();
-        if (writeResult.isErr()) {
-          logger.error(
-            {
-              ...this.observabilityContext(),
-              claimedStatus: claimed,
-              err: writeResult.error,
-            },
-            "Write-behind terminal sandbox function invocation persistence failed"
-          );
-        }
-      })();
-      return;
-    }
-
-    await this.settleInitialPersistence();
-    const writeResult = await this.writeDataToGcs();
-    if (writeResult.isErr()) {
-      await this.releaseTerminalClaim(claimed);
-      throw writeResult.error;
-    }
-  }
-
-  // Give the claim back if terminal blob persistence fails, so a later fail()/
-  // markCreatedAsErrored() path can still record the outcome.
-  private async releaseTerminalClaim(
-    from: Exclude<SandboxFunctionInvocationStatus, "created">
-  ): Promise<void> {
-    const released = await this.casStatus({ from, to: "created" });
-    if (!released) {
+    const stageResult = await stageSandboxFunctionInvocationBlob(
+      this.sId,
+      this._data
+    );
+    if (stageResult.isErr()) {
       logger.error(
         {
           ...this.observabilityContext(),
-          fromStatus: from,
+          claimedStatus: claimed,
+          err: stageResult.error,
         },
-        "Failed to release sandbox function terminal claim after blob write failure"
+        "Failed to stage terminal sandbox function invocation blob in Redis"
       );
     }
+
+    const pending = this.pendingInitialPersistence;
+    this.pendingInitialPersistence = (async () => {
+      /**
+       * @cc [owner:Fraggle] write-behind-chain-never-rejects
+       * `pending` MUST NOT reject: its producers settle internally (`makeNew` logs write
+       * failures; `createAndStartExecution` wraps in `Promise.allSettled`) and
+       * `writeDataToGcs` returns a `Result`. This floating chain MUST NOT produce an
+       * unhandled rejection. The claim is kept on failure — releasing would strand a row
+       * whose caller already got the outcome, with nothing left to retry it.
+       */
+      if (pending) {
+        await pending;
+      }
+      const writeResult = await this.writeDataToGcs();
+      if (writeResult.isErr()) {
+        logger.error(
+          {
+            ...this.observabilityContext(),
+            claimedStatus: claimed,
+            err: writeResult.error,
+          },
+          "Write-behind terminal sandbox function invocation persistence failed"
+        );
+      }
+    })();
   }
 
   async fail(error: Error | SandboxFunctionCallError): Promise<boolean> {
+    const current = await this.getData();
+
     const callError: SandboxFunctionCallError =
       error instanceof Error
         ? { code: "invocation_failed", message: error.message }
@@ -523,10 +562,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return false;
     }
 
-    this.data = {
+    this.replaceData({
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
-      input: this.input,
-      context: this.context,
+      input: current.input,
+      context: current.context,
       ...(this.executedBundleSha256 === undefined
         ? {}
         : { bundleSha256: this.executedBundleSha256 }),
@@ -534,7 +573,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // why an invocation failed, and dropping them here would leave the message as the only
       // record of a failure the stream classified precisely.
       error: callError,
-    };
+    });
     await this.persistTerminalData("errored");
     await publishSandboxFunctionInvocationEvent(
       {
@@ -551,6 +590,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   async succeed(result: unknown): Promise<boolean> {
+    const current = await this.getData();
+
     const claimed = await this.casStatus({
       from: "created",
       to: "succeeded",
@@ -570,15 +611,15 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return false;
     }
 
-    this.data = {
+    this.replaceData({
       version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
-      input: this.input,
-      context: this.context,
+      input: current.input,
+      context: current.context,
       ...(this.executedBundleSha256 === undefined
         ? {}
         : { bundleSha256: this.executedBundleSha256 }),
       result,
-    };
+    });
     await this.persistTerminalData("succeeded");
     await publishSandboxFunctionInvocationEvent(
       {
@@ -607,6 +648,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     auth: Authenticator,
     { inline = false }: { inline?: boolean } = {}
   ): Promise<Result<undefined, Error>> {
+    const data = await this.getData();
+
     if (this.status !== "created") {
       logger.info(
         {
@@ -617,6 +660,12 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       );
       return new Ok(undefined);
     }
+
+    const phaseStartedAtMs = Date.now();
+    let ensureSandboxMs: number | undefined;
+    let authorizeMs: number | undefined;
+    let mintTokenMs: number | undefined;
+    let execMs: number | undefined;
 
     try {
       const { sandboxFunction } = this;
@@ -671,6 +720,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
       let functionCheck;
       let ensureResult;
+      const ensureStartedAtMs = Date.now();
       if (inline) {
         [functionCheck, ensureResult] = await Promise.all([
           runFunctionCheck(),
@@ -684,6 +734,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           ensureResult = await runEnsure();
         }
       }
+      ensureSandboxMs = Date.now() - ensureStartedAtMs;
       if (!functionCheck) {
         return new Err(new Error("The Frame function no longer exists."));
       }
@@ -708,6 +759,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       if (!scope) {
         return new Err(new Error("The Frame runtime scope is missing."));
       }
+      const authorizeStartedAtMs = Date.now();
       const authorization = await authorizeSandboxFunctionInvocation(auth, {
         userIdentity: persistedFunction.userIdentity,
         origin: this.origin ?? "delegated",
@@ -717,6 +769,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           scope,
         },
       });
+      authorizeMs = Date.now() - authorizeStartedAtMs;
       if (!authorization.authorized) {
         return new Err(
           new SandboxFunctionInvocationError(
@@ -738,6 +791,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // Remember which bundle this execution serves, so the terminal transition records the
       // version behind the outcome.
       this.executedBundleSha256 = persistedFunction.bundleSha256 ?? undefined;
+      const mintStartedAtMs = Date.now();
       const token = await generateSandboxFunctionInvocationToken(auth, {
         sandbox,
         sandboxFunction,
@@ -750,6 +804,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         execId,
         noTools,
       });
+      mintTokenMs = Date.now() - mintStartedAtMs;
 
       const command = buildSandboxFunctionRunCommand(sandboxFunction.slug);
       const inputEnvelope = {
@@ -760,9 +815,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           "x-dust-sandbox-function-id": sandboxFunction.sId,
           "x-dust-sandbox-function-invocation-id": this.sId,
         },
-        ...(this.input === undefined
+        ...(data.input === undefined
           ? {}
-          : { body: JSON.stringify(this.input) }),
+          : { body: JSON.stringify(data.input) }),
         encoding: "utf8",
         // From the persisted row, like the mode above: the warm server refuses to serve a
         // bundle that does not hash to this, so a republished function is never run from a
@@ -829,9 +884,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             envVars: {
               DUST_API_URL: `${dustAPIBaseUrlForSandbox()}/api/v1/w/${auth.getNonNullableWorkspace().sId}`,
               DUST_FUNCTIONS_DIR: functionsDirectory,
-              [FRAME_DATA_FILES_DIR_ENV]: getFrameDataFilesMountPoint(
-                frame.sId
-              ),
+              [FRAME_PERSISTENT_FILES_DIR_ENV]:
+                getFramePersistentFilesMountPoint(frame.sId),
               // The app prefix comes from the slug, so `db("chat")` in the bundle resolves to this
               // app's own database without the source naming the app.
               ...databaseEnvVars,
@@ -857,6 +911,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           });
         }
       );
+      execMs = Date.now() - execStartedAtMs;
       if (execResult.isErr()) {
         // Exec-level failures (timeouts included) must land in the same metric as served runs,
         // or the duration distribution silently drops the slowest attempts.
@@ -864,7 +919,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           ownerKind: frame ? "frame" : "pod",
           runnerKind: "unknown",
           status: "error",
-          durationMs: Date.now() - execStartedAtMs,
+          durationMs: execMs,
         });
         if (inline) {
           // An inline exec that fails is usually one that ran past its ceiling, but nothing in the
@@ -877,6 +932,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
               ...this.observabilityContext(auth),
               timeoutMs: SANDBOX_FUNCTION_INLINE_EXEC_TIMEOUT_MS,
               error: execResult.error.message,
+              phaseTimingsMs: {
+                ensureSandbox: ensureSandboxMs,
+                authorize: authorizeMs,
+                mintToken: mintTokenMs,
+                exec: execMs,
+                total: Date.now() - phaseStartedAtMs,
+              },
             },
             "Inline sandbox function execution failed"
           );
@@ -889,6 +951,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // written a well-formed invocation_failed envelope the worker should keep.
       const parsed = parseStdoutResultEnvelope(stdout);
       const { timings } = parsed;
+      // phaseTimingsMs is front-side (ensure / mint / Process.Start). timingsMs is
+      // in-VM (archive / resolve / child / import / handler / tools). execOverheadMs
+      // approximates Process/Start + dsbx startup outside the child's measured work.
+      const runnerTotalMs =
+        typeof timings?.total === "number" ? timings.total : undefined;
       logger.info(
         {
           ...this.observabilityContext(auth),
@@ -898,6 +965,16 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
             ? {}
             : { spilledResultBytes: parsed.spill.resultBytes }),
           ...(timings === null ? {} : { timingsMs: timings }),
+          phaseTimingsMs: {
+            ensureSandbox: ensureSandboxMs,
+            authorize: authorizeMs,
+            mintToken: mintTokenMs,
+            exec: execMs,
+            ...(runnerTotalMs === undefined || execMs === undefined
+              ? {}
+              : { execOverhead: Math.max(0, execMs - runnerTotalMs) }),
+            total: Date.now() - phaseStartedAtMs,
+          },
         },
         "Sandbox function stdout result delivery"
       );
@@ -913,7 +990,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         ownerKind: frame ? "frame" : "pod",
         runnerKind: timings?.runnerKind ?? "unknown",
         status: normalized.ok ? "success" : "error",
-        durationMs: Date.now() - execStartedAtMs,
+        durationMs: execMs ?? Date.now() - execStartedAtMs,
       });
       if (!normalized.ok || exitCode !== 0) {
         // Without the raw stdout/stderr there is no way to diagnose a rejected envelope.
@@ -949,7 +1026,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     return makeSId("sandbox_function_invocation", { id, workspaceId });
   }
 
-  private async loadDataFromGcs(): Promise<void> {
+  private async loadDataFromGcs(): Promise<SandboxFunctionInvocationData> {
     const downloadResult = await withRetry(() =>
       getPrivateUploadBucket().file(this.gcsPath).download()
     );
@@ -962,9 +1039,10 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       buffer.toString("utf-8")
     );
     if (storedResult.isErr()) {
-      // Listings load every invocation's blob, so failing here would take down a whole listing
-      // over one unreadable record: a truncated write, or a blob a newer deploy wrote mid-rollout.
-      // Degrade to an empty record and keep the rest of the listing readable.
+      // Unparseable blobs must not take down a whole listing over one bad record (truncated
+      // write, or a blob a newer deploy wrote mid-rollout). Degrade to an empty record and
+      // mark resolved so getData does not retry forever — this is a resolved miss, not a
+      // successful payload load.
       logger.error(
         {
           ...this.observabilityContext(),
@@ -973,18 +1051,22 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         },
         "Invalid sandbox function invocation data"
       );
-      this.data = { version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION };
-
-      return;
+      const empty: SandboxFunctionInvocationData = {
+        version: SANDBOX_FUNCTION_INVOCATION_DATA_VERSION,
+      };
+      this.replaceData(empty);
+      return empty;
     }
 
-    this.data = migrateStoredInvocationData(storedResult.value);
+    const data = migrateStoredInvocationData(storedResult.value);
+    this.replaceData(data);
+    return data;
   }
 
   private async writeDataToGcs(): Promise<Result<undefined, Error>> {
     try {
       await getPrivateUploadBucket().uploadBufferToBucket({
-        buffer: Buffer.from(JSON.stringify(this.data), "utf-8"),
+        buffer: Buffer.from(JSON.stringify(this._data), "utf-8"),
         contentType: "application/json",
         filePath: this.gcsPath,
       });
@@ -1023,11 +1105,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       context?: SandboxFunctionInvocationContext;
       origin?: SandboxFunctionInvocationOrigin;
     },
-    transaction?: Transaction,
-    // Inline executions defer the initial blob write (see createAndStartExecution): the terminal
-    // transition rewrites the full blob anyway, so the upload only needs to finish before that
-    // write, not before execution starts.
-    { deferInitialWrite = false }: { deferInitialWrite?: boolean } = {}
+    transaction?: Transaction
   ): Promise<SandboxFunctionInvocationResource> {
     const resource = await withTransaction(async (t) => {
       const invocation = await this.model.create(
@@ -1054,6 +1132,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const resource = new this(this.model, invocation.get(), {
         sandboxFunction,
         data,
+        dataResolved: true,
       });
       const gcsPath = resource.buildGcsPath(auth);
       await resource.update({ gcsPath }, t);
@@ -1061,28 +1140,40 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       return resource;
     }, transaction);
 
-    if (deferInitialWrite) {
-      resource.pendingInitialPersistence = resource
-        .writeDataToGcs()
-        .then((result) => {
-          if (result.isErr()) {
-            // Surfaced here rather than thrown: the terminal transition rewrites the full blob,
-            // so a failed initial upload only matters if the invocation never settles.
-            logger.error(
-              {
-                ...resource.observabilityContext(auth),
-                err: result.error,
-              },
-              "Deferred sandbox function invocation blob write failed"
-            );
-          }
-        });
-    } else {
+    // Stage in Redis first so other processes (Temporal activity) can getData without
+    // waiting on GCS. GCS durability trails via pendingInitialPersistence.
+    const stageResult = await stageSandboxFunctionInvocationBlob(
+      resource.sId,
+      resource._data
+    );
+    if (stageResult.isErr()) {
+      logger.error(
+        {
+          ...resource.observabilityContext(auth),
+          err: stageResult.error,
+        },
+        "Failed to stage sandbox function invocation blob; writing GCS synchronously"
+      );
       const writeResult = await resource.writeDataToGcs();
       if (writeResult.isErr()) {
         throw writeResult.error;
       }
+      return resource;
     }
+
+    resource.pendingInitialPersistence = resource
+      .writeDataToGcs()
+      .then((result) => {
+        if (result.isErr()) {
+          logger.error(
+            {
+              ...resource.observabilityContext(auth),
+              err: result.error,
+            },
+            "Deferred sandbox function invocation blob write failed"
+          );
+        }
+      });
     return resource;
   }
 
@@ -1103,9 +1194,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     // holding the request there would deadlock, since the approval card only renders once the
     // client holds the invocation.
     const inline = sandboxFunction.executionMode === "fast";
-    // Deferring is only safe because no other process reads the blob during execution, which
-    // holds because every run is started with `--result-delivery stdout`: the result comes back
-    // on the exec's own stdout, so nothing fetches the invocation, and its blob, mid-execution.
+    // GCS is deferred in makeNew (Redis staged first). Previously the durable path also
+    // re-uploaded the same blob right before workflow.start.
     const invocation = await this.makeNew(
       auth,
       {
@@ -1114,8 +1204,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         context: body.context,
         origin,
       },
-      undefined,
-      { deferInitialWrite: inline }
+      undefined
     );
     const publishCreated = () =>
       publishSandboxFunctionInvocationEvent(
@@ -1170,19 +1259,13 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           ...invocation.observabilityContext(auth),
           reason: "sandbox_not_running",
         },
-        "Escalating a fast sandbox function invocation to the invocation workflow"
+        "Escalating an inline sandbox function invocation to the invocation workflow"
       );
     }
 
-    // The workflow activity re-reads the invocation, blob included, from another process: a
-    // deferred initial write must be durable before the workflow can be allowed to start. The
-    // rewrite is idempotent (same object, same content) and this is already the slow path.
-    await invocation.settleInitialPersistence();
-    const persistResult = await invocation.writeDataToGcs();
-    if (persistResult.isErr()) {
-      throw persistResult.error;
-    }
-
+    // Redis already holds the blob (staged in makeNew). Do not await GCS before starting the
+    // workflow — that was the create-path latency tax. The activity loads via getData
+    // (stage → GCS).
     const launchResult = await launchSandboxFunctionInvocationWorkflow(auth, {
       sandboxFunction,
       invocation,
@@ -1273,15 +1356,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       ...rest,
     });
 
-    return concurrentExecutor(
-      invocations,
-      async (invocation) => {
-        const blob = invocation.get();
-        const resource = new this(this.model, blob, { sandboxFunction });
-        await resource.loadDataFromGcs();
-        return resource;
-      },
-      { concurrency: GCS_CONCURRENCY }
+    return invocations.map(
+      (invocation) =>
+        new this(this.model, invocation.get(), { sandboxFunction })
     );
   }
 
@@ -1317,6 +1394,36 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     );
 
     return invocation ?? null;
+  }
+
+  static async existsForFunction(
+    auth: Authenticator,
+    {
+      sandboxFunction,
+      invocationId,
+    }: {
+      sandboxFunction: SandboxFunctionResource;
+      invocationId: string;
+    }
+  ): Promise<boolean> {
+    if (!isResourceSId("sandbox_function_invocation", invocationId)) {
+      return false;
+    }
+
+    const invocationModelId = getResourceIdFromSId(invocationId);
+    if (invocationModelId === null) {
+      return false;
+    }
+
+    const row = await this.model.findOne({
+      attributes: ["id"],
+      where: {
+        id: invocationModelId,
+        sandboxFunctionId: sandboxFunction.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    return row !== null;
   }
 
   static async listRecent(
@@ -1436,6 +1543,28 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       { transaction }
     );
     await this.deleteDataFromGcs(invocations.map(({ gcsPath }) => gcsPath));
+    await concurrentExecutor(
+      invocations.map(({ id }) =>
+        SandboxFunctionInvocationResource.modelIdToSId({
+          id,
+          workspaceId: workspaceModelId,
+        })
+      ),
+      async (invocationId) => {
+        const clearResult =
+          await clearStagedSandboxFunctionInvocationBlob(invocationId);
+        if (clearResult.isErr()) {
+          logger.error(
+            {
+              invocationId,
+              err: clearResult.error,
+            },
+            "Failed to clear staged sandbox function invocation blob"
+          );
+        }
+      },
+      { concurrency: 10 }
+    );
 
     return deletedInvocationCount;
   }
@@ -1596,6 +1725,18 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         transaction,
       });
       await SandboxFunctionInvocationResource.deleteDataFromGcs([this.gcsPath]);
+      const clearResult = await clearStagedSandboxFunctionInvocationBlob(
+        this.sId
+      );
+      if (clearResult.isErr()) {
+        logger.error(
+          {
+            ...this.observabilityContext(auth),
+            err: clearResult.error,
+          },
+          "Failed to clear staged sandbox function invocation blob"
+        );
+      }
 
       return new Ok(undefined);
     } catch (error) {
@@ -1622,10 +1763,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
   // The listing shape plus the GCS-backed payload this resource carries once hydrated, and the
   // MCP actions the caller resolved for it.
-  toPokeJSON(
+  async toPokeJSON(
     user: UserResource | null,
     mcpActions: PokeSandboxFunctionMCPAction[]
-  ): PokeSandboxFunctionInvocationDetails {
+  ): Promise<PokeSandboxFunctionInvocationDetails> {
+    const data = await this.getData();
     return {
       ...SandboxFunctionInvocationResource.rowToPokeJSON(
         {
@@ -1639,9 +1781,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         },
         user
       ),
-      input: this.input,
-      result: this.result,
-      error: this.error ?? null,
+      input: data.input,
+      result: data.result,
+      error: data.error ?? null,
       mcpActions,
     };
   }
@@ -1652,23 +1794,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       functionId: this.sandboxFunction.sId,
       status: this.status,
       createdAt: this.createdAt.toISOString(),
-    };
-  }
-
-  toJSONForLLM(): SandboxFunctionInvocationForLLM {
-    return {
-      createdAt: this.createdAt.toISOString(),
-      input: this.input,
-      invocationId: this.sId,
-      status: this.status,
-      updatedAt: this.updatedAt.toISOString(),
-      // Which publish served this invocation: comparable against the hash `publish` and `get`
-      // echo. Absent when the invocation predates the stamping or never reached execution.
-      ...(this.bundleSha256 !== undefined
-        ? { bundleSha256: this.bundleSha256 }
-        : {}),
-      ...(this.result !== undefined ? { result: this.result } : {}),
-      ...(this.error !== undefined ? { error: this.error } : {}),
     };
   }
 }

@@ -266,6 +266,8 @@ function Pods() {
   const [activeTab, setActiveTab] = useState<"chat" | "build" | "admin">(
     "chat"
   );
+  // The Build screens live in the Inbox story, so here the nav only highlights.
+  const [buildNavItem, setBuildNavItem] = useState("agents");
   const [searchText, setSearchText] = useState("");
   const [welcomeAgentTab, setWelcomeAgentTab] =
     useState<WelcomeAgentTab>("favorites");
@@ -1839,6 +1841,8 @@ function Pods() {
 
       {activeTab === "build" && (
         <BuildNav
+          selectedItem={buildNavItem}
+          onSelectItem={setBuildNavItem}
           onNewAgentFromTemplate={() => {
             setP2View({ kind: "templates" });
             setP3View(null);

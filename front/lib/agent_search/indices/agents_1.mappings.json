@@ -13,6 +13,20 @@
     "scope": {
       "type": "keyword"
     },
+    "model": {
+      "type": "object",
+      "properties": {
+        "provider_id": {
+          "type": "keyword"
+        },
+        "model_id": {
+          "type": "keyword"
+        },
+        "reasoning_effort": {
+          "type": "keyword"
+        }
+      }
+    },
     "name": {
       "type": "text",
       "analyzer": "exact_analyzer",

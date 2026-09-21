@@ -4,7 +4,6 @@ import {
   parseExtractableFramePackageRelativePath,
   parseFramePackageRelativePath,
   resolvePackageRelativeToScopedPath,
-  tryRewriteScopedPathToPackageRelative,
 } from "@app/lib/api/frames/package_file_ref_paths";
 import { describe, expect, it } from "vitest";
 
@@ -81,48 +80,6 @@ describe("parseFramePackageRelativePath / formatFramePackageRelativePath", () =>
     );
     expect(parseFramePackageRelativePath("./data.csv")).toBe("data.csv");
     expect(parseFramePackageRelativePath("assets/x.png")).toBe("assets/x.png");
-  });
-});
-
-describe("tryRewriteScopedPathToPackageRelative", () => {
-  const frameRoot = "conversation-conv_123/MyFrame";
-  const packageFiles = new Set(["data.csv", "assets/logo.png", "index.tsx"]);
-
-  it("maps in-package scoped paths to ./ form", () => {
-    expect(
-      tryRewriteScopedPathToPackageRelative({
-        scopedPath: "conversation-conv_123/MyFrame/data.csv",
-        frameRoot,
-        packageFiles,
-      })
-    ).toBe("./data.csv");
-    expect(
-      tryRewriteScopedPathToPackageRelative({
-        scopedPath: "conversation-conv_123/MyFrame/assets/logo.png",
-        frameRoot,
-        packageFiles,
-      })
-    ).toBe("./assets/logo.png");
-  });
-
-  it("leaves external scoped paths alone", () => {
-    expect(
-      tryRewriteScopedPathToPackageRelative({
-        scopedPath: "conversation-conv_123/other.csv",
-        frameRoot,
-        packageFiles,
-      })
-    ).toBeNull();
-  });
-
-  it("leaves paths that are not in the package file set alone", () => {
-    expect(
-      tryRewriteScopedPathToPackageRelative({
-        scopedPath: "conversation-conv_123/MyFrame/missing.csv",
-        frameRoot,
-        packageFiles,
-      })
-    ).toBeNull();
   });
 });
 

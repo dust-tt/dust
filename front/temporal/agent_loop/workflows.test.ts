@@ -10,6 +10,7 @@ const {
   deprecatePatch,
   patched,
   checkCreditsActivity,
+  finalizeCreditSpendCheckpointPausedAgentLoopActivity,
   finalizeErroredSandboxChildToolActivity,
   finalizeSuccessfulAgentLoopActivity,
   runToolActivity,
@@ -19,11 +20,14 @@ const {
   runModelAndCreateActionsActivity,
   runModelAndCreateActionsActivityWithExplicitCancellation,
   publishDeferredEventsActivity,
+  upsertOngoingAgentLoopActivity,
+  deleteOngoingAgentLoopActivity,
   workflowLogError,
 } = vi.hoisted(() => ({
   deprecatePatch: vi.fn(),
   patched: vi.fn(),
   checkCreditsActivity: vi.fn(),
+  finalizeCreditSpendCheckpointPausedAgentLoopActivity: vi.fn(),
   finalizeErroredSandboxChildToolActivity: vi.fn(),
   finalizeSuccessfulAgentLoopActivity: vi.fn(),
   runToolActivity: vi.fn(),
@@ -33,6 +37,8 @@ const {
   runModelAndCreateActionsActivity: vi.fn(),
   runModelAndCreateActionsActivityWithExplicitCancellation: vi.fn(),
   publishDeferredEventsActivity: vi.fn(),
+  upsertOngoingAgentLoopActivity: vi.fn(),
+  deleteOngoingAgentLoopActivity: vi.fn(),
   workflowLogError: vi.fn(),
 }));
 
@@ -69,12 +75,15 @@ vi.mock("@temporalio/workflow", () => {
       compactionCleanupActivity: unusedActivity,
       ensureConversationTitleActivity: unusedActivity,
       finalizeCancelledAgentLoopActivity: unusedActivity,
+      finalizeCreditSpendCheckpointPausedAgentLoopActivity,
       finalizeCreditStoppedAgentLoopActivity: unusedActivity,
       finalizeErroredAgentLoopActivity: unusedActivity,
       finalizeErroredSandboxChildToolActivity,
       finalizeGracefullyStoppedAgentLoopActivity: unusedActivity,
       finalizeInterruptedAgentLoopActivity: unusedActivity,
       finalizeSuccessfulAgentLoopActivity,
+      upsertOngoingAgentLoopActivity,
+      deleteOngoingAgentLoopActivity,
       publishDeferredEventsActivity,
       runModelAndCreateActionsActivity:
         options.cancellationType === undefined
@@ -305,5 +314,143 @@ describe("agentLoopWorkflow activity cancellation", () => {
     expect(deprecatePatch).toHaveBeenCalledWith(
       "wait-for-all-tool-activities-before-finalization"
     );
+  });
+
+  it("registers and removes user-launched loops", async () => {
+    patched.mockReturnValue(true);
+    const userAuthType = { ...authType, userId: "u123" };
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType: userAuthType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    const entry = {
+      workspaceId: "w123",
+      userId: "u123",
+      conversationId: "c123",
+      messageId: "am123",
+    };
+    expect(upsertOngoingAgentLoopActivity).toHaveBeenCalledWith(entry);
+    expect(deleteOngoingAgentLoopActivity).toHaveBeenCalledWith(entry);
+  });
+
+  it("does not change registry state when replaying pre-registry workflows", async () => {
+    patched.mockReturnValue(false);
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType: { ...authType, userId: "u123" },
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(patched).toHaveBeenCalledWith("track-user-agent-loops-in-redis");
+    expect(upsertOngoingAgentLoopActivity).not.toHaveBeenCalled();
+    expect(deleteOngoingAgentLoopActivity).not.toHaveBeenCalled();
+  });
+
+  it("removes user-launched loops when execution fails", async () => {
+    patched.mockReturnValue(true);
+    const error = new Error("model failed");
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockRejectedValue(
+      error
+    );
+
+    await expect(
+      agentLoopWorkflow({
+        agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+        authType: { ...authType, userId: "u123" },
+        initialStartTime: 0,
+        startStep: 0,
+      })
+    ).rejects.toBe(error);
+
+    expect(deleteOngoingAgentLoopActivity).toHaveBeenCalledWith({
+      workspaceId: "w123",
+      userId: "u123",
+      conversationId: "c123",
+      messageId: "am123",
+    });
+  });
+});
+
+describe("agentLoopWorkflow credit spend checkpoint", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    patched.mockReturnValue(true);
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
+      actionBlobs: [
+        {
+          actionId: "action-1",
+          needsApproval: false,
+          retryPolicy: "no_retry",
+        },
+      ],
+      runId: "run-1",
+      creditSpendCheckpointCrossed: false,
+    });
+    runToolActivityWithExplicitCancellation.mockResolvedValue({
+      deferredEvents: [],
+    });
+    checkCreditsActivity.mockResolvedValue({ shouldStop: false, reason: null });
+    finalizeSuccessfulAgentLoopActivity.mockResolvedValue(undefined);
+    finalizeCreditSpendCheckpointPausedAgentLoopActivity.mockResolvedValue(
+      undefined
+    );
+  });
+
+  it("continues the loop when the step result says the checkpoint isn't crossed", async () => {
+    checkCreditsActivity
+      .mockResolvedValueOnce({ shouldStop: false, reason: null })
+      .mockResolvedValue({ shouldStop: true, reason: "credits_exhausted" });
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).toHaveBeenCalledTimes(2);
+    expect(
+      finalizeCreditSpendCheckpointPausedAgentLoopActivity
+    ).not.toHaveBeenCalled();
+  });
+
+  it("breaks out of the loop and finalizes as paused when the checkpoint is crossed", async () => {
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
+      actionBlobs: [
+        {
+          actionId: "action-1",
+          needsApproval: false,
+          retryPolicy: "no_retry",
+        },
+      ],
+      runId: "run-1",
+      creditSpendCheckpointCrossed: true,
+    });
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).toHaveBeenCalledOnce();
+    expect(
+      finalizeCreditSpendCheckpointPausedAgentLoopActivity
+    ).toHaveBeenCalledWith(
+      authType,
+      expect.objectContaining({ agentMessageId: "am123" })
+    );
+    expect(finalizeSuccessfulAgentLoopActivity).not.toHaveBeenCalled();
   });
 });

@@ -3,13 +3,14 @@ import { readFileSync } from "fs";
 
 /**
  * @cc [owner:flvndvd,label:product] frame-skill-checker-assets
- * The Frame skill MUST attach the checker script and both sibling configs from the checked-in
+ * The Frame skill MUST attach the checker script, configs and lint plugin from the checked-in
  * assets. These files MUST remain resolvable from production API and worker bundles.
  */
 export const FRAME_SKILL_FILES: readonly CodeDefinedSkillFile[] = [
   { fileName: "lint.sh", contentType: "text/x-shellscript" },
   { fileName: "tsconfig.json", contentType: "application/json" },
   { fileName: "oxlintrc.json", contentType: "application/json" },
+  { fileName: "frame-rules.cjs", contentType: "text/javascript" },
 ].map(({ fileName, contentType }) => ({
   fileName,
   contentType,

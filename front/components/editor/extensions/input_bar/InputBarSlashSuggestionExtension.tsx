@@ -26,7 +26,6 @@ interface InputBarSlashSuggestionStorage {
 }
 
 interface InputBarSlashSuggestionExtensionOptions {
-  attachedNodesRef: RefObject<DataSourceViewContentNode[]>;
   conversationIdRef?: RefObject<string | null>;
   enabledRef: RefObject<boolean>;
   includeAttachKnowledgeRef: RefObject<boolean>;
@@ -45,7 +44,6 @@ interface InputBarSlashSuggestionExtensionOptions {
   >;
   owner?: WorkspaceType;
   selectableSpacesRef: RefObject<SelectableConversationSpaceType[]>;
-  selectedMCPServerViewIdsRef: RefObject<Set<string>>;
   selectedSpaceIdsRef: RefObject<string[]>;
   slashCommandsRef: RefObject<InputBarSlashCommand[]>;
   spaceIdRef: RefObject<string | null | undefined>;
@@ -67,7 +65,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     ...createSlashMenuNavigationStorage(),
   }),
   defaultOptions: {
-    attachedNodesRef: { current: [] },
     owner: undefined,
     conversationIdRef: { current: null },
     enabledRef: { current: false },
@@ -81,7 +78,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     onSpaceSelectRef: { current: undefined },
     onDetailsRef: { current: undefined },
     selectableSpacesRef: { current: [] },
-    selectedMCPServerViewIdsRef: { current: new Set<string>() },
     selectedSpaceIdsRef: { current: [] },
     slashCommandsRef: { current: [] },
     spaceIdRef: { current: null },
@@ -116,7 +112,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
   shouldMountDropdown: ({ props, options }) =>
     Boolean(options.owner) && Boolean(props.clientRect),
   mapDropdownProps: ({ options }) => ({
-    attachedNodesRef: options.attachedNodesRef,
     conversationIdRef: options.conversationIdRef,
     includeAttachKnowledgeRef: options.includeAttachKnowledgeRef,
     includePickModelRef: options.includePickModelRef,
@@ -128,7 +123,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     onSpaceSelectRef: options.onSpaceSelectRef,
     owner: options.owner,
     selectableSpacesRef: options.selectableSpacesRef,
-    selectedMCPServerViewIdsRef: options.selectedMCPServerViewIdsRef,
     selectedSpaceIdsRef: options.selectedSpaceIdsRef,
     slashCommandsRef: options.slashCommandsRef,
     spaceIdRef: options.spaceIdRef,
@@ -141,6 +135,10 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     if (triggerStart !== null) {
       storage.dismissedTriggerStart = triggerStart;
     }
+  },
+  // A new "/" always starts at the root, however the previous session ended.
+  onDropdownExit: ({ storage }) => {
+    clearSlashSubMenuStack(storage);
   },
   preventEscapeDefault: true,
 });

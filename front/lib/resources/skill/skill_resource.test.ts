@@ -12,11 +12,15 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
+import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
+import { SYSTEM_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/system";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
+import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -53,6 +57,72 @@ describe("SkillResource", () => {
       await config.destroy();
     }
     createdConfigurations.length = 0;
+  });
+
+  describe("toSearchDocument", () => {
+    it("uses the custom skill's workspace and editor resources", async () => {
+      const { authenticator: auth, workspace, globalSpace, user } = testContext;
+      const skill = await SkillFactory.create(auth);
+      const fetched = await SkillResource.fetchById(auth, skill.sId);
+      assert(fetched);
+
+      const document = fetched.toSearchDocument(auth, {
+        editors: [user],
+        lastEditedByUser: user,
+        activeUsersCount: 4,
+      });
+
+      expect(document).toMatchObject({
+        workspace_id: workspace.sId,
+        skill_id: skill.sId,
+        requested_space_ids: [globalSpace.sId],
+        editor_ids: [user.sId],
+        last_edited_by_user_id: user.sId,
+        active_users_count: 4,
+        created_at: skill.createdAt.toISOString(),
+        updated_at: skill.updatedAt.toISOString(),
+      });
+      expect(document).not.toHaveProperty("instructions");
+    });
+
+    it.each([
+      GLOBAL_SKILLS_ARRAY[0],
+      SYSTEM_SKILLS_ARRAY[0],
+    ])("serializes $kind definitions without workspace-specific metadata", async (definition) => {
+      const { authenticator: auth, globalSpace, user } = testContext;
+      const skill = await SkillResource.fetchById(auth, definition.sId, {
+        effectiveSpaceIds: [globalSpace.sId],
+        withInstructions: false,
+        withTools: false,
+      });
+      assert(skill);
+
+      const document = skill.toSearchDocument(auth, {
+        editors: [user],
+        lastEditedByUser: user,
+        activeUsersCount: 4,
+      });
+
+      expect(document).toEqual({
+        workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID,
+        skill_id: definition.sId,
+        status: "active",
+        availability:
+          definition.kind === "global" ? "users_and_agents" : "workspace_users",
+        name: definition.name,
+        description: definition.userFacingDescription,
+        icon: definition.icon,
+        last_edited_by_user_id: null,
+        editor_ids: [],
+        requested_space_ids: [],
+        mcp_server_view_ids: [],
+        active_users_count: null,
+        favorite_count: 0,
+        created_at: null,
+        updated_at: null,
+      });
+      expect(toSkillListItem(document).updatedAt).toBeNull();
+    });
   });
 
   describe("permissions", () => {
@@ -2902,7 +2972,7 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("computeRequestedSpaceIds", () => {
+  describe("computeToolAndKnowledgeSpaceIds", () => {
     it("should compute space IDs from attached knowledge", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
       await SpaceFactory.attachGroup(space, testContext.globalGroup);
@@ -2917,13 +2987,14 @@ describe("SkillResource", () => {
         { dataSourceView: dsv, nodeId: "node1" },
       ];
 
-      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
-        testContext.authenticator,
-        {
-          mcpServerViews: [],
-          attachedKnowledge,
-        }
-      );
+      const requestedSpaceIds =
+        await SkillResource.computeToolAndKnowledgeSpaceIds(
+          testContext.authenticator,
+          {
+            mcpServerViews: [],
+            attachedKnowledge,
+          }
+        );
 
       expect(requestedSpaceIds).toContain(space.id);
     });

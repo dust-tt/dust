@@ -2,6 +2,7 @@ import { MCPServerViewSchema } from "@app/lib/api/mcp_schemas";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import {
   SKILL_AVAILABILITIES,
+  SKILL_REINFORCEMENT_MODES,
   SKILL_STATUSES,
 } from "@app/types/assistant/skill_configuration_constants";
 import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
@@ -9,11 +10,9 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
 import { z } from "zod";
 
-export const SKILL_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
-export type SkillReinforcementMode = (typeof SKILL_REINFORCEMENT_MODES)[number];
-
 export type {
   SkillAvailability,
+  SkillReinforcementMode,
   SkillStatus,
 } from "@app/types/assistant/skill_configuration_constants";
 // Re-exported from the leaf module so importers do not have to care which file they live in.
@@ -21,6 +20,7 @@ export {
   DEFAULT_SKILL_AVAILABILITY,
   isSkillVisibleToViewer,
   SKILL_AVAILABILITIES,
+  SKILL_REINFORCEMENT_MODES,
   SKILL_STATUSES,
 } from "@app/types/assistant/skill_configuration_constants";
 
@@ -115,9 +115,10 @@ export const SkillListItemSchema = z.object({
   requestedSpaceIds: z.array(z.string()),
   mcpServerViewIds: z.array(z.string()),
   editorIds: z.array(z.string()),
+  editedBy: z.string().nullable(),
   availability: z.enum(SKILL_AVAILABILITIES),
   activeUsersCount: z.number().nullable(),
-  updatedAt: z.number(),
+  updatedAt: z.number().nullable(),
 });
 
 export type SkillListItemType = z.infer<typeof SkillListItemSchema>;

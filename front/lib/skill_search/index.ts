@@ -3,6 +3,7 @@ import {
   SKILL_SEARCH_ALIAS_NAME,
   withEs,
 } from "@app/lib/api/elasticsearch";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
@@ -74,13 +75,14 @@ export async function deleteWorkspaceSkillDocuments({
 
 export async function updateSkillSearchActiveUsers({
   workspaceId,
-  skillIds,
+  skills,
   activeUsers,
 }: {
   workspaceId: string;
-  skillIds: string[];
+  skills: SkillResource[];
   activeUsers: Record<string, number>;
 }): Promise<Result<void, ElasticsearchError>> {
+  const skillIds = skills.map((skill) => skill.sId);
   if (skillIds.length === 0) {
     return new Ok(undefined);
   }

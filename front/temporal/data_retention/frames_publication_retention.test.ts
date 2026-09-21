@@ -36,7 +36,6 @@ async function setupFrameWithStalePublication(): Promise<{
   });
   await frame.setActiveFramePublication({
     publicationId: activePublicationId,
-    name: "Task List",
     description: "Track tasks.",
   });
 

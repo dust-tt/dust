@@ -2,8 +2,11 @@ import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/es_indexation/config";
 import {
+  makeDeleteAgentSearchWorkflowId,
   makeDeleteSkillSearchWorkflowId,
+  makeDeleteWorkspaceAgentSearchWorkflowId,
   makeDeleteWorkspaceSkillSearchWorkflowId,
+  makeIndexAgentSearchWorkflowId,
   makeIndexSkillSearchWorkflowId,
   makeIndexUserSearchWorkflowId,
 } from "@app/temporal/es_indexation/helpers";
@@ -15,10 +18,17 @@ import {
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
 
-import { indexSkillSearchSignal, indexUserSearchSignal } from "./signals";
 import {
+  indexAgentSearchSignal,
+  indexSkillSearchSignal,
+  indexUserSearchSignal,
+} from "./signals";
+import {
+  deleteAgentSearchWorkflow,
   deleteSkillSearchWorkflow,
+  deleteWorkspaceAgentSearchWorkflow,
   deleteWorkspaceSkillSearchWorkflow,
+  indexAgentSearchWorkflow,
   indexSkillSearchWorkflow,
   indexUserSearchWorkflow,
   refreshSearchUsageWorkflow,
@@ -143,6 +153,93 @@ export async function launchDeleteWorkspaceSkillSearchWorkflow({
     logger.error(
       { workflowId, workspaceId, error: e },
       "Failed starting workspace skill index deletion workflow"
+    );
+
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchIndexAgentSearchWorkflow({
+  workspaceId,
+  agentId,
+}: {
+  workspaceId: string;
+  agentId: string;
+}): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = makeIndexAgentSearchWorkflowId({ workspaceId, agentId });
+
+  try {
+    await client.workflow.signalWithStart(indexAgentSearchWorkflow, {
+      args: [{ workspaceId, agentId }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      signal: indexAgentSearchSignal,
+      signalArgs: undefined,
+      memo: {
+        workspaceId,
+        agentId,
+      },
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      { workflowId, workspaceId, agentId, error: e },
+      "Failed starting index agent workflow"
+    );
+
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchDeleteAgentSearchWorkflow({
+  workspaceId,
+  agentId,
+}: {
+  workspaceId: string;
+  agentId: string;
+}): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = makeDeleteAgentSearchWorkflowId({ workspaceId, agentId });
+
+  try {
+    await client.workflow.start(deleteAgentSearchWorkflow, {
+      args: [{ workspaceId, agentId }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      memo: { workspaceId, agentId },
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      { workflowId, workspaceId, agentId, error: e },
+      "Failed starting agent index deletion workflow"
+    );
+
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchDeleteWorkspaceAgentSearchWorkflow({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = makeDeleteWorkspaceAgentSearchWorkflowId({ workspaceId });
+
+  try {
+    await client.workflow.start(deleteWorkspaceAgentSearchWorkflow, {
+      args: [{ workspaceId }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      memo: { workspaceId },
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      { workflowId, workspaceId, error: e },
+      "Failed starting workspace agent index deletion workflow"
     );
 
     return new Err(normalizeError(e));

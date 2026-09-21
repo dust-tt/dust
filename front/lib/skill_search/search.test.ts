@@ -15,14 +15,12 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
   };
 });
 
+import { searchSkills } from "@app/lib/api/skills/search";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import {
-  buildSkillSearchQuery,
-  searchSkills,
-} from "@app/lib/skill_search/search";
+import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -60,7 +58,7 @@ async function mockHits(
         )
         .map((document) => ({
           _source: document,
-          sort: [1, document.name, document.skill_id],
+          sort: [1, document.skill_id],
         })),
     },
   }));
@@ -78,10 +76,9 @@ async function searchListings(
   const result = await searchSkills(auth, {
     ...options,
     limit: 200,
-    permissionFiltering: options.permissionFiltering,
   });
   assert(result.isOk());
-  return result.value;
+  return result.value.skills;
 }
 
 describe("custom skill search", () => {
@@ -112,35 +109,55 @@ describe("custom skill search", () => {
             },
           },
         ],
-        filter: [
-          { term: { workspace_id: workspace.sId } },
-          { terms: { status: ["active"] } },
+        filter: [{ terms: { status: ["active"] } }],
+        should: [
           {
             bool: {
-              should: [
+              filter: [
+                { term: { workspace_id: workspace.sId } },
                 {
-                  terms: {
-                    availability: ["workspace_users", "users_and_agents"],
+                  bool: {
+                    should: [
+                      {
+                        terms: {
+                          availability: ["workspace_users", "users_and_agents"],
+                        },
+                      },
+                      { term: { editor_ids: auth.getNonNullableUser().sId } },
+                    ],
+                    minimum_should_match: 1,
                   },
                 },
-                { term: { editor_ids: auth.getNonNullableUser().sId } },
+                {
+                  terms_set: {
+                    requested_space_ids: {
+                      terms: [globalSpace.sId, conversationsSpace.sId].sort(),
+                      minimum_should_match_script: {
+                        source: "doc['requested_space_ids'].size()",
+                      },
+                    },
+                  },
+                },
               ],
-              minimum_should_match: 1,
             },
           },
           {
-            terms_set: {
-              requested_space_ids: {
-                terms: [globalSpace.sId, conversationsSpace.sId].sort(),
-                minimum_should_match_script: {
-                  source: "doc['requested_space_ids'].size()",
-                },
-              },
+            bool: {
+              filter: [
+                { term: { workspace_id: "global" } },
+                { terms: { skill_id: [] } },
+              ],
             },
           },
         ],
+        minimum_should_match: 1,
       },
     });
+    expect(
+      SkillFactory.createCodeDefinedSearchDocuments().filter((document) =>
+        matchesSkillSearchFilters(document, query)
+      )
+    ).toEqual([]);
   });
 
   it.each([
@@ -160,10 +177,11 @@ describe("custom skill search", () => {
     const editor = { term: { editor_ids: auth.getNonNullableUser().sId } };
     expect(query.bool?.filter).toEqual([
       ...[base.bool?.filter].flat(),
-      { terms: { mcp_server_view_ids: ["view-1", "view-2"] } },
+      { terms: { mcp_server_view_ids: ["view-2", "view-1", "view-2"] } },
       { terms: { availability: ["users_and_agents"] } },
       ...(editedByMe ? [editor] : []),
     ]);
+    expect(query.bool?.should).toEqual(base.bool?.should);
   });
 
   it.each(
@@ -242,7 +260,8 @@ describe("custom skill search", () => {
     expect(candidates.map((skill) => skill.sId)).toEqual(expectedIds);
     expect(candidates).toHaveLength(expectedIds.length);
     expect(mockSearch).toHaveBeenCalledOnce();
-    const filters = mockSearch.mock.lastCall![0].query.bool.filter;
+    const { query } = mockSearch.mock.lastCall![0];
+    const filters = query.bool.should[0].bool.filter;
     const terms = filters.at(-1).terms_set.requested_space_ids.terms;
     expect(terms).toEqual(
       expect.arrayContaining([
@@ -253,8 +272,8 @@ describe("custom skill search", () => {
     );
     expect(terms).not.toContain(deniedSpace.sId);
     expect(terms).not.toContain(deniedPod.sId);
-    expect(filters).toHaveLength(4);
-    expect(filters[2].bool.should[1]).toEqual({
+    expect(filters).toHaveLength(3);
+    expect(filters[1].bool.should[1]).toEqual({
       term: { editor_ids: user.sId },
     });
   }, 30_000);
@@ -374,18 +393,31 @@ describe("custom skill search", () => {
     const expected = await searchListings(auth);
     const hits = documents.map((document) => ({
       _source: document,
-      sort: [1, document.name, document.skill_id],
+      sort: [1, document.skill_id],
     }));
     mockSearch.mockResolvedValue({
       hits: {
-        hits: [hits[0], { sort: [1, "Missing", "missing-skill"] }, hits[1]],
+        hits: [hits[0], { sort: [1, "missing-skill"] }, hits[1]],
       },
     });
 
     expect(await searchListings(auth)).toEqual(expected);
+
+    const page = await searchSkills(auth, {
+      searchTerm: "",
+      limit: 2,
+    });
+    assert(page.isOk());
+    expect(page.value).toEqual({
+      skills: [expected[0]],
+      hasMore: true,
+      nextCursor: Buffer.from(JSON.stringify([1, "missing-skill"])).toString(
+        "base64url"
+      ),
+    });
   });
 
-  it("returns only indexed listing metadata without querying the database", async () => {
+  it("projects indexed listing metadata without database reads after search", async () => {
     const { authenticator: auth, globalSpace } = await createResourceTest({
       role: "admin",
     });
@@ -415,10 +447,14 @@ describe("custom skill search", () => {
     documents[0].active_users_count = null;
     documents[0].mcp_server_view_ids = ["tool-view-id"];
     const onQuery = vi.fn();
-    frontSequelize.addHook("afterQuery", "skill-search-no-db", onQuery);
+    const search = mockSearch.getMockImplementation();
+    assert(search);
+    mockSearch.mockImplementationOnce(async (request) => {
+      const response = await search(request);
+      frontSequelize.addHook("afterQuery", "skill-search-no-db", onQuery);
+      return response;
+    });
     try {
-      const defaults = await searchListings(auth);
-      expect(defaults.map((skill) => skill.sId)).toEqual([active.sId]);
       const both = await searchListings(auth, {
         searchTerm: "",
         filters: { status: ["active", "archived"] },
@@ -437,6 +473,7 @@ describe("custom skill search", () => {
         requestedSpaceIds: [globalSpace.sId],
         mcpServerViewIds: ["tool-view-id"],
         editorIds: [auth.getNonNullableUser().sId],
+        editedBy: auth.getNonNullableUser().sId,
         availability: "workspace_users",
         activeUsersCount: null,
         updatedAt: active.updatedAt.getTime(),
@@ -445,14 +482,57 @@ describe("custom skill search", () => {
       expect(mockSearch.mock.lastCall![0]).toMatchObject({
         index: "front.skills",
         _source: true,
-        query: buildSkillSearchQuery(auth, {
+      });
+      expect(mockSearch.mock.lastCall![0].query.bool.filter).toEqual(
+        buildSkillSearchQuery(auth, {
           searchTerm: "",
           filters: { status: ["active", "archived"] },
-        }),
-      });
+        }).bool?.filter
+      );
       expect(onQuery).not.toHaveBeenCalled();
     } finally {
       frontSequelize.removeHook("afterQuery", "skill-search-no-db");
+    }
+  });
+
+  it("projects eligible global documents without database reads after search", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const documents = SkillFactory.createCodeDefinedSearchDocuments();
+    const global = documents.find(
+      (document) => document.skill_id === "go-deep"
+    );
+    assert(global);
+    await mockHits(auth, [], [global]);
+    const onQuery = vi.fn();
+    const search = mockSearch.getMockImplementation();
+    assert(search);
+    mockSearch.mockImplementationOnce(async (request) => {
+      const response = await search(request);
+      frontSequelize.addHook(
+        "afterQuery",
+        "global-skill-search-no-db",
+        onQuery
+      );
+      return response;
+    });
+    try {
+      const result = await searchSkills(auth, {
+        searchTerm: "",
+        limit: 200,
+      });
+      assert(result.isOk());
+      const listings = result.value.skills;
+      expect(listings).toEqual([
+        {
+          ...toSkillListItem(global),
+          editedBy: null,
+          updatedAt: null,
+        },
+      ]);
+      expect(SkillListItemSchema.parse(listings[0]).updatedAt).toBeNull();
+      expect(onQuery).not.toHaveBeenCalled();
+    } finally {
+      frontSequelize.removeHook("afterQuery", "global-skill-search-no-db");
     }
   });
 
@@ -481,10 +561,9 @@ describe("custom skill search", () => {
     expect(SkillListItemSchema.strict().parse(redacted)).toEqual(
       toSkillListItem(document)
     );
-    expect(mockSearch.mock.lastCall![0].query.bool.filter).toEqual([
-      { term: { workspace_id: workspace.sId } },
-      { terms: { status: ["active"] } },
-    ]);
+    expect(
+      mockSearch.mock.lastCall![0].query.bool.should[0].bool.filter
+    ).toEqual([{ term: { workspace_id: workspace.sId } }]);
   });
 
   it("handles absent and type-wide space grants without enumerating spaces", async () => {
@@ -506,7 +585,8 @@ describe("custom skill search", () => {
       resourceIds: [],
     });
     expect(
-      buildSkillSearchQuery(auth, { searchTerm: "" }).bool?.filter
+      [buildSkillSearchQuery(auth, { searchTerm: "" }).bool?.should].flat()[0]
+        ?.bool?.filter
     ).toContainEqual({
       terms_set: {
         requested_space_ids: {
@@ -525,7 +605,8 @@ describe("custom skill search", () => {
     await auth.refresh();
     expect(auth.getReadableSpaceModelIds()).toEqual({ kind: "all" });
     expect(
-      buildSkillSearchQuery(auth, { searchTerm: "" }).bool?.filter
+      [buildSkillSearchQuery(auth, { searchTerm: "" }).bool?.should].flat()[0]
+        ?.bool?.filter
     ).toContainEqual({
       match_all: {},
     });
@@ -590,7 +671,8 @@ describe("custom skill search", () => {
     const [candidate] = await searchListings(auth);
     expect(candidate).toBeUndefined();
     expect(
-      mockSearch.mock.lastCall![0].query.bool.filter[2].bool.should[1]
+      mockSearch.mock.lastCall![0].query.bool.should[0].bool.filter[1].bool
+        .should[1]
     ).toEqual({ term: { editor_ids: user.sId } });
     expect(
       buildSkillSearchQuery(auth, {
@@ -598,5 +680,45 @@ describe("custom skill search", () => {
         filters: { editedByMe: true },
       }).bool?.filter
     ).toContainEqual({ term: { editor_ids: user.sId } });
+  });
+
+  it.each([
+    0, 1, 2, 3,
+  ])("returns page metadata from the last returned hit with %s hits", async (hitCount) => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const skills: SkillResource[] = [];
+    for (const name of ["ÉclairBot", "ReportBot", "WeatherBot"]) {
+      const skill = await SkillFactory.create(auth, { name });
+      skills.push(skill);
+    }
+    const documents = await SkillFactory.createSearchDocuments(auth, skills);
+    const hits = documents.slice(0, hitCount).map((document, index) => ({
+      _source: document,
+      sort: [3 - index, document.skill_id],
+    }));
+    mockSearch.mockResolvedValue({ hits: { hits } });
+
+    const result = await searchSkills(auth, {
+      searchTerm: "",
+      cursor: Buffer.from(JSON.stringify([4, "previous-id"])).toString(
+        "base64url"
+      ),
+      limit: 2,
+    });
+    assert(result.isOk());
+
+    const lastSort = hits[Math.min(hitCount, 2) - 1]?.sort;
+    expect(result.value).toEqual({
+      skills: hits.slice(0, 2).map((hit) => toSkillListItem(hit._source)),
+      hasMore: hitCount > 2,
+      nextCursor: lastSort
+        ? Buffer.from(JSON.stringify(lastSort)).toString("base64url")
+        : null,
+    });
+    expect(mockSearch).toHaveBeenCalledOnce();
+    expect(mockSearch.mock.lastCall![0]).toMatchObject({
+      size: 3,
+      search_after: [4, "previous-id"],
+    });
   });
 });

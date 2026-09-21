@@ -287,8 +287,8 @@ describe("processToolResults", () => {
       useCase: "conversation",
       useCaseMetadata: {
         conversationId: toolContext.runContext.conversation.sId,
-        frameName: "Hello Frame",
       },
+      mountFilePath: `w/w1/conversations/${toolContext.runContext.conversation.sId}/files/Hello Frame/manifest.json`,
     });
 
     const generatedFrame: ToolGeneratedFileType = {
@@ -794,11 +794,14 @@ describe("processToolResults", () => {
       { type: "text", text: "second block" },
     ];
 
-    const { outputItems, generatedFiles } = await processToolResults(auth, {
-      localLogger: logger.child({ test: true }),
-      toolContext,
-      toolCallResultContent,
-    });
+    const { outputItems, generatedFiles, awaitDurablePersist } =
+      await processToolResults(auth, {
+        localLogger: logger.child({ test: true }),
+        toolContext,
+        toolCallResultContent,
+      });
+    const persistResult = await awaitDurablePersist();
+    expect(persistResult.isOk()).toBe(true);
 
     // Sandbox actions persist the whole content array as a single GCS object, but
     // createOutputItems still returns the generic per-content items.
@@ -986,12 +989,16 @@ describe("processToolResults", () => {
     ];
     const structuredContent = { items: [{ id: 1 }], nextCursor: "abc" };
 
-    const { outputItems } = await processToolResults(auth, {
-      localLogger: logger.child({ test: true }),
-      toolContext,
-      toolCallResultContent,
-      toolCallResultStructuredContent: structuredContent,
-    });
+    const { outputItems, awaitDurablePersist } = await processToolResults(
+      auth,
+      {
+        localLogger: logger.child({ test: true }),
+        toolContext,
+        toolCallResultContent,
+        toolCallResultStructuredContent: structuredContent,
+      }
+    );
+    expect((await awaitDurablePersist()).isOk()).toBe(true);
 
     expect(outputItems).toHaveLength(1);
 
@@ -1006,20 +1013,20 @@ describe("processToolResults", () => {
     });
   });
 
-  it("should throw and leave the action without an output path when the sandbox output write fails", async () => {
+  it("should leave the action without an output path when the deferred sandbox output write fails", async () => {
     const { auth, action, toolContext } = await setupSandboxFunctionTest();
 
     fileStorageMock.setFileSaveFails((filePath) =>
       filePath.endsWith(`mcp_output_items/${action.sId}/output.json`)
     );
 
-    await expect(
-      processToolResults(auth, {
-        localLogger: logger.child({ test: true }),
-        toolContext,
-        toolCallResultContent: [{ type: "text", text: "some output" }],
-      })
-    ).rejects.toThrow();
+    const { awaitDurablePersist } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [{ type: "text", text: "some output" }],
+    });
+    const persistResult = await awaitDurablePersist();
+    expect(persistResult.isErr()).toBe(true);
 
     // No acceptable degraded state: the row must not point at an object that was never written.
     const refetched =

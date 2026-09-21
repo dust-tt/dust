@@ -22,10 +22,6 @@ import { isRoleType } from "./user";
  * regular_manual group: Created manually by the user via the UI. They can be used
  * to grant specific permissions to users.
  *
- * agent_editors group: Group specific to represent agent editors, tied to an
- *  agent. Has special permissions: not restricted only to admins. Users can
- *  create, and members of the group can update it.
- *
  *  provisioned group: Contains all users from a provisioned group.
  */
 export const GROUP_KINDS = [
@@ -33,7 +29,6 @@ export const GROUP_KINDS = [
   "regular_manual",
   "global",
   "system",
-  "agent_editors",
   "provisioned",
 ] as const;
 export type GroupKind = (typeof GROUP_KINDS)[number];
@@ -68,8 +63,8 @@ export function isManageableGroupKind(
 
 // Group kinds that any workspace member may see directly (e.g. in the workspace
 // Groups listing or when referencing a group by id). Internal kinds
-// (`regular_auto`, `system`, `agent_editors`) are never surfaced this way: they
-// are implementation details of spaces, permissions, and agent editors.
+// (`regular_auto`, `system`) are never surfaced this way: they are
+// implementation details of spaces and permissions.
 export const USER_VISIBLE_GROUP_KINDS = [
   ...MANAGEABLE_GROUP_KINDS,
   "global",
@@ -133,10 +128,6 @@ export function isRegularManualGroupKind(value: GroupKind): boolean {
   return value === "regular_manual";
 }
 
-export function isAgentEditorGroupKind(value: GroupKind): boolean {
-  return value === "agent_editors";
-}
-
 export type GroupType = {
   id: ModelId;
   name: string;
@@ -162,7 +153,6 @@ export const GroupKindCodec = z.enum([
   "global",
   "regular_auto",
   "regular_manual",
-  "agent_editors",
   "system",
   "provisioned",
 ]);
@@ -217,7 +207,6 @@ export function getHeaderFromRole(role: RoleType | undefined) {
   };
 }
 
-export const AGENT_GROUP_PREFIX = "Group for Agent";
 export const SKILL_GROUP_PREFIX = "Group for Skill";
 export const SPACE_GROUP_PREFIX = "Group for space";
 export const PROJECT_GROUP_PREFIX = "Group for Pod";

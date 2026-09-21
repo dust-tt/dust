@@ -10,10 +10,14 @@ import type { SkillAvailability } from "@app/types/assistant/skill_configuration
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import type { AgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
 import type {
+  SkillAvailabilitySuggestionType,
+  SkillDeleteSuggestionType,
   SkillEditorsSuggestionType,
   SkillEditSuggestionType,
+  SkillNameSuggestionType,
   SkillSuggestionSource,
   SkillSuggestionState,
+  SkillUserFacingDescriptionSuggestionType,
 } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -92,9 +96,35 @@ export interface SkillEditorsSuggestionAsset extends BaseSkillSuggestionAsset {
   suggestion: SkillEditorsSuggestionType;
 }
 
+export interface SkillUserFacingDescriptionSuggestionAsset
+  extends BaseSkillSuggestionAsset {
+  kind: "user_facing_description";
+  suggestion: SkillUserFacingDescriptionSuggestionType;
+}
+
+export interface SkillNameSuggestionAsset extends BaseSkillSuggestionAsset {
+  kind: "name";
+  suggestion: SkillNameSuggestionType;
+}
+
+export interface SkillDeleteSuggestionAsset extends BaseSkillSuggestionAsset {
+  kind: "delete";
+  suggestion: SkillDeleteSuggestionType;
+}
+
+export interface SkillAvailabilitySuggestionAsset
+  extends BaseSkillSuggestionAsset {
+  kind: "availability";
+  suggestion: SkillAvailabilitySuggestionType;
+}
+
 export type SkillSuggestionAsset =
   | SkillEditSuggestionAsset
-  | SkillEditorsSuggestionAsset;
+  | SkillEditorsSuggestionAsset
+  | SkillUserFacingDescriptionSuggestionAsset
+  | SkillNameSuggestionAsset
+  | SkillDeleteSuggestionAsset
+  | SkillAvailabilitySuggestionAsset;
 
 export interface SuggestedSkillAsset {
   name: string;

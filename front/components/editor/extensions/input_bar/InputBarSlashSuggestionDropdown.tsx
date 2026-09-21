@@ -43,7 +43,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     SuggestionProps<SlashCommand>,
     "clientRect" | "command" | "editor" | "query" | "range"
   > & {
-    attachedNodesRef: RefObject<DataSourceViewContentNode[]>;
     conversationIdRef?: RefObject<string | null>;
     includeAttachKnowledgeRef: RefObject<boolean>;
     includePickModelRef: RefObject<boolean>;
@@ -60,7 +59,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     >;
     owner: LightWorkspaceType;
     selectableSpacesRef: RefObject<SelectableConversationSpaceType[]>;
-    selectedMCPServerViewIdsRef: RefObject<Set<string>>;
     selectedSpaceIdsRef: RefObject<string[]>;
     slashCommandsRef: RefObject<InputBarSlashCommand[]>;
     spaceIdRef: RefObject<string | null | undefined>;
@@ -68,7 +66,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
 >(
   (
     {
-      attachedNodesRef,
       clientRect,
       command,
       conversationIdRef,
@@ -86,7 +83,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       query,
       range,
       selectableSpacesRef,
-      selectedMCPServerViewIdsRef,
       selectedSpaceIdsRef,
       slashCommandsRef,
       spaceIdRef,
@@ -100,20 +96,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       pop,
       storage,
     } = useSlashMenuStack(editor, "inputBarSlashSuggestion");
-
-    const isNodeAttached = useCallback(
-      (node: DataSourceViewContentNode) => {
-        const attachedNodes = attachedNodesRef.current ?? [];
-
-        return attachedNodes.some(
-          (attachedNode) =>
-            attachedNode.internalId === node.internalId &&
-            attachedNode.dataSourceView.dataSource.sId ===
-              node.dataSourceView.dataSource.sId
-        );
-      },
-      [attachedNodesRef]
-    );
 
     const handleAttachContextSelect = useCallback(
       (
@@ -193,7 +175,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     const { capabilityItems, isLoading } = useInputBarSlashCommandCapabilities({
       owner,
       query,
-      selectedMCPServerViewIdsRef,
     });
 
     const sections = useMemo(
@@ -255,7 +236,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           clientRect={clientRect}
           conversationId={conversationIdRef?.current ?? null}
           editor={editor}
-          isNodeAttached={isNodeAttached}
           onBack={() => pop(range)}
           onClose={onClose}
           onSelect={handleAttachContextSelect}

@@ -3,7 +3,6 @@ import {
   createPendingAgentConfiguration,
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
-import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -292,15 +291,11 @@ function get(workspace: { sId: string }, aId: string) {
 }
 
 describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the caller cannot read", () => {
-  it.each([
-    false,
-    true,
-  ])("redacts hidden definitions for a non-editor admin (grants: %s)", async (grants) => {
+  it("redacts hidden definitions for a non-editor admin", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
       method: "GET",
     });
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     await SpaceFactory.defaults(auth);
 
     const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
@@ -406,17 +401,13 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(data.error.type).toBe("agent_configuration_not_found");
   });
 
-  it.each([
-    false,
-    true,
-  ])("returns the full agent to a non-editor admin with the admin_can_see_private_entities flag (grants: %s)", async (grants) => {
+  it("returns the full agent to a non-editor admin with the admin_can_see_private_entities flag", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
       method: "GET",
     });
     await SpaceFactory.defaults(auth);
     await FeatureFlagFactory.basic(auth, "admin_can_see_private_entities");
-    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
 
     const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
       workspace,

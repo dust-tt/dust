@@ -14,7 +14,7 @@ import type {
 } from "@app/types/api/file_system/types";
 import {
   getFrameDatabaseReplicasBasePath,
-  getFrameDataFilesBasePath,
+  getFramePersistentFilesBasePath,
 } from "@app/types/api/frame_storage";
 import type { FileSystemMount, SandboxOnlyMount } from "@app/types/file_system";
 import {
@@ -727,8 +727,8 @@ export class GCSFileSystemBackend implements FileSystemBackend {
           frameId: mount.frameId,
         }).replace(/\/$/, "");
 
-      case "frame_data_files":
-        return getFrameDataFilesBasePath({
+      case "frame_persistent_files":
+        return getFramePersistentFilesBasePath({
           workspaceId: this.workspaceId,
           frameId: mount.frameId,
         }).replace(/\/$/, "");
@@ -749,7 +749,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       // Read and written directly by the workload, so it takes the same `allow_other` access
       // model as the agent-facing file mounts rather than the dust-state-only model the
       // Litestream replica needs.
-      case "frame_data_files":
+      case "frame_persistent_files":
         return "workload";
 
       default:

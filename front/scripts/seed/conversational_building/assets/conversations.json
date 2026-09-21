@@ -34,6 +34,46 @@
           "sId": "ConvBuildingAMsg03",
           "content": "Here are two more edits.\n\nFirst, when the notes mention a follow-up meeting, the skill can offer to schedule it with the **Team Calendar** tool using the attendees and date from the notes:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_TOOL_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nSecond, the skill can look acronyms up in the **Team Glossary** and expand them on first use in the summary:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_KNOWLEDGE_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nBoth edits keep the rest of the instructions unchanged."
         }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg04",
+          "content": "One more thing: when people browse skills, the description doesn't tell them what they get out of it. Can you make it clearer?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg04",
+          "content": "Here is a clearer description for members browsing skills. It says what to paste in and what comes back:\n\n:skill_suggestion[]{sId=__SKILL_USER_FACING_DESCRIPTION_SUGGESTION_SID__ kind=user_facing_description skillId=__MEETING_NOTES_SKILL_SID__}\n\nThe agent-facing description from earlier stays as it is; this one is only shown to people."
+        }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg05",
+          "content": "Since it handles more than meeting notes now, should it still be called MeetingNotesFormatter?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg05",
+          "content": "Probably not. Here is a rename that matches what the skill does now:\n\n:skill_suggestion[]{sId=__SKILL_NAME_SUGGESTION_SID__ kind=name skillId=__MEETING_NOTES_SKILL_SID__}\n\nAgents referencing the skill by name in their instructions are updated automatically when the rename is accepted."
+        }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg06",
+          "content": "Actually, nobody has used this skill in months since we started formatting notes directly in the meeting tool. Can you propose retiring it?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg06",
+          "content": "Here is the proposal to delete the skill:\n\n:skill_suggestion[]{sId=__SKILL_DELETE_SUGGESTION_SID__ kind=delete skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting it archives the skill; it can be restored afterwards if you change your mind."
+        }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg07",
+          "content": "Also, agents keep grabbing this skill for things that are not meeting notes at all. Can we stop that without hiding it from people?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg07",
+          "content": "Yes: the skill is currently available to members and agents, which lets agents pick it on their own. Making it available to members only keeps it in everyone's composer while agents stop discovering it:\n\n:skill_suggestion[]{sId=__SKILL_AVAILABILITY_SUGGESTION_SID__ kind=availability skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting this requires the permission to publish skills."
+        }
       }
     ]
   }

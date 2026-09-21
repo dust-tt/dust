@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
 import { buildSkillNameAutocompleteQuery } from "@app/lib/skill_search/ranking";
 import type {
   SkillSearchFilters,
@@ -77,48 +78,71 @@ function buildSelectionFilters(
     ["availability", filters.availability],
   ] as const) {
     if (values?.length) {
-      selected.push({ terms: { [field]: [...new Set(values)].sort() } });
+      selected.push({ terms: { [field]: values } });
     }
   }
   if (filters.editedByMe) {
     selected.push(buildEditorFilter(auth));
+  }
+  if (filters.codeDefinedOnly) {
+    selected.push({ term: { workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID } });
   }
   return selected;
 }
 
 /**
  * @cc [owner:aubin-tchoi,label:security] workspace-scoped-skill-search
- * Every query is workspace- and lifecycle-scoped, defaulting to active skills. Strict mode requires every requested
- * space and editor visibility. Callers must authorize admin-only metadata redaction upstream.
+ * Every query is scoped to the caller's workspace and explicitly eligible code-defined IDs
+ * in the reserved global workspace. It defaults to active skills. Strict mode requires every
+ * requested space and editor visibility. Callers must authorize admin-only metadata redaction upstream.
  */
 export function buildSkillSearchQuery(
   auth: Authenticator,
   {
     searchTerm,
-    filters = {},
     permissionFiltering = "strict",
+    filters = {},
+    codeDefinedSkillIds = [],
   }: {
     searchTerm: string;
     filters?: SkillSearchFilters;
     permissionFiltering?: SkillSearchPermissionFiltering;
+    codeDefinedSkillIds?: string[];
   }
 ): estypes.QueryDslQueryContainer {
   return {
     bool: {
       filter: [
-        { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
-        {
-          terms: { status: [...new Set(filters.status ?? ["active"])].sort() },
-        },
-        ...(permissionFiltering === "strict"
-          ? [
-              buildAvailabilityFilter(auth),
-              buildSpaceAccessFilter(getSkillSearchReadableSpaceIds(auth)),
-            ]
-          : []),
+        { terms: { status: filters.status ?? ["active"] } },
         ...buildSelectionFilters(auth, filters),
       ],
       must: [buildSkillNameAutocompleteQuery(searchTerm)],
+      should: [
+        {
+          bool: {
+            filter: [
+              { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
+              ...(permissionFiltering === "strict"
+                ? [
+                    buildAvailabilityFilter(auth),
+                    buildSpaceAccessFilter(
+                      getSkillSearchReadableSpaceIds(auth)
+                    ),
+                  ]
+                : []),
+            ],
+          },
+        },
+        {
+          bool: {
+            filter: [
+              { term: { workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID } },
+              { terms: { skill_id: codeDefinedSkillIds } },
+            ],
+          },
+        },
+      ],
+      minimum_should_match: 1,
     },
   };
 }

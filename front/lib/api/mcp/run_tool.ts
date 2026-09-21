@@ -21,12 +21,17 @@ import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolContext, ToolOutputItemType } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
+import {
+  recordMcpMarkSucceededMs,
+  recordMcpPauseEventsMs,
+  roundMs,
+} from "@app/lib/api/sandbox_functions/sandbox_function_mcp_action_server_timings";
 import type { Authenticator } from "@app/lib/auth";
+import { heartbeat } from "@app/lib/temporal";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
 
 /**
@@ -88,8 +93,14 @@ export async function* runToolWithStreaming(
 
   // Sandbox function actions and auto-allowed agent-loop actions are created in running
   // status; only approved or resumed actions still carry a pre-run status to transition.
+  // Conditioned on the status we read: a sandbox child blocking against this action between that
+  // read and here (possible on a resume, where parent and children are dispatched in parallel)
+  // must not be overwritten — the post-exec parent refetch then still observes the pause.
   if (isAgentLoopRunContext(runContext) && status !== "running") {
-    await runContext.action.updateStatus("running");
+    await runContext.action.updateStatusFromExpected(auth, {
+      status: "running",
+      expectedStatus: status,
+    });
   }
   const startDate = performance.now();
 
@@ -125,31 +136,42 @@ export async function* runToolWithStreaming(
 
   // Tool result processing can legitimately take up to 5 minutes when processing files,
   // so heartbeat while this scoped post-processing phase is running.
-  const { outputItems, generatedFiles } = await withPeriodicHeartbeat(
-    () =>
-      processToolResults(auth, {
-        localLogger,
-        toolCallResultContent: toolCallResult.content,
-        toolCallResultStructuredContent: toolCallResult.structuredContent,
-        toolContext,
-      }),
-    {
-      intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
-      heartbeatFn: () => {
-        heartbeat();
-        localLogger.info("MCP tool result processing heartbeat");
-      },
-    }
-  );
+  const { outputItems, generatedFiles, awaitDurablePersist } =
+    await withPeriodicHeartbeat(
+      () =>
+        processToolResults(auth, {
+          localLogger,
+          toolCallResultContent: toolCallResult.content,
+          toolCallResultStructuredContent: toolCallResult.structuredContent,
+          toolContext,
+        }),
+      {
+        intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
+        heartbeatFn: () => {
+          heartbeat();
+          localLogger.info("MCP tool result processing heartbeat");
+        },
+      }
+    );
 
   // Parse the output resources to check if we find special events that require the agent loop to pause.
   // This could be an authentication, validation, or unconditional exit from the action.
+  const pauseEventsStarted = performance.now();
   const agentPauseEvents = await getExitOrPauseEvents(auth, {
     outputItems,
     toolContext,
   });
+  recordMcpPauseEventsMs(roundMs(pauseEventsStarted));
 
   if (agentPauseEvents.length > 0) {
+    // Durable GCS may still be in flight from createOutputItems; finish before exiting.
+    const persistResult = await awaitDurablePersist();
+    if (persistResult.isErr()) {
+      localLogger.error(
+        { err: persistResult.error },
+        "Failed to durably persist MCP tool output after pause event"
+      );
+    }
     for (const event of agentPauseEvents) {
       yield event;
     }
@@ -157,7 +179,9 @@ export async function* runToolWithStreaming(
   }
 
   const endDate = performance.now();
+  const markSucceededStarted = performance.now();
   await action.markAsSucceeded({ executionDurationMs: endDate - startDate });
+  recordMcpMarkSucceededMs(roundMs(markSucceededStarted));
 
   yield {
     type: "tool_success",
@@ -167,4 +191,13 @@ export async function* runToolWithStreaming(
     ),
     generatedFiles,
   };
+
+  // Write-behind GCS: poll/agent already unblocked via Redis stage + succeeded status.
+  const persistResult = await awaitDurablePersist();
+  if (persistResult.isErr()) {
+    localLogger.error(
+      { err: persistResult.error },
+      "Failed to durably persist MCP tool output after success"
+    );
+  }
 }

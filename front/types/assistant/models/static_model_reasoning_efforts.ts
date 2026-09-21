@@ -502,6 +502,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: false,
     high: false,
   },
+  "simulated-failure-model": {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
   noop: {
     none: true,
     light: false,

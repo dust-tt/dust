@@ -542,6 +542,47 @@ describe("PATCH with applyToSkill", () => {
     expect(updated?.agentFacingDescription).toBe("A better description");
   });
 
+  it("applies a delete suggestion by archiving the skill", async () => {
+    const { workspace, auth, skill } = await setup();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      kind: "delete",
+      state: "pending",
+      suggestion: {},
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await SkillResource.fetchById(auth, skill.sId, {
+      onlyActive: false,
+    });
+    expect(updated?.status).toBe("archived");
+  });
+
+  it("returns 400 when applying a delete suggestion for an already archived skill", async () => {
+    const { workspace, auth, skill } = await setup();
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      kind: "delete",
+      state: "pending",
+      suggestion: {},
+    });
+    await skill.archive(auth);
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+  });
+
   it("applies an instruction edit", async () => {
     const { workspace, auth, skill, blockIds } =
       await setupSkillWithBlockInstructions();
@@ -920,6 +961,42 @@ describe("PATCH with applyToSkill", () => {
     );
   });
 
+  it("allows an admin who is not an editor to approve and apply a delete suggestion", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "user",
+    });
+    const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const skill = await SkillFactory.create(ownerAuth, {
+      name: "Skill Pending Deletion",
+    });
+    await ownerAuth.refresh();
+    const suggestion = await SkillSuggestionFactory.create(ownerAuth, skill, {
+      state: "pending",
+      kind: "delete",
+      suggestion: {},
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await SkillResource.fetchById(ownerAuth, skill.sId, {
+      onlyActive: false,
+    });
+    expect(updated?.status).toBe("archived");
+  });
+
   it("rejects applying with a state other than approved", async () => {
     const { workspace, auth, skill } = await setup();
     const suggestion = await SkillSuggestionFactory.create(auth, skill, {
@@ -1024,6 +1101,27 @@ describe("GET /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     expect(body.suggestions[0].sId).toBe(matching.sId);
     expect(body.suggestions[0].kind).toBe("edit");
     expect(body.suggestions[0].state).toBe("pending");
+  });
+
+  it("filters on a kind other than edit", async () => {
+    const { workspace, auth, skill } = await setup();
+    const matching = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      kind: "editors",
+      suggestion: { addUserIds: ["usr_a"], removeUserIds: [] },
+    });
+    await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+      kind: "edit",
+    });
+
+    const response = await get(workspace, skill.sId, { kind: "editors" });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.suggestions).toHaveLength(1);
+    expect(body.suggestions[0].sId).toBe(matching.sId);
+    expect(body.suggestions[0].kind).toBe("editors");
   });
 
   it("limits the number of returned suggestions", async () => {
@@ -1398,5 +1496,302 @@ describe("PATCH with applyToSkill (editors)", () => {
     expect(await listEditorIds(auth, skill)).toEqual([
       auth.getNonNullableUser().sId,
     ]);
+  });
+});
+
+describe("PATCH with applyToSkill (user_facing_description)", () => {
+  async function setupWithFlag() {
+    const context = await setup();
+    await FeatureFlagFactory.basic(context.auth, "conversational_building");
+
+    return context;
+  }
+
+  async function descriptionSuggestion(
+    auth: Authenticator,
+    skill: SkillResource,
+    userFacingDescription: string
+  ) {
+    return SkillSuggestionFactory.create(auth, skill, {
+      kind: "user_facing_description",
+      source: "conversational",
+      state: "pending",
+      suggestion: { userFacingDescription },
+    });
+  }
+
+  it("replaces the user-facing description and saves a version", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const suggestion = await descriptionSuggestion(
+      auth,
+      skill,
+      "Paste notes, get a summary."
+    );
+    const versionsBefore = (await skill.listVersions(auth)).length;
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.userFacingDescription).toBe("Paste notes, get a summary.");
+    expect(updated?.agentFacingDescription).toBe(skill.agentFacingDescription);
+    expect((await skill.listVersions(auth)).length).toBe(versionsBefore + 1);
+  });
+
+  it("outdates the other pending description suggestions only", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const approved = await descriptionSuggestion(auth, skill, "Approved.");
+    const conflicting = await descriptionSuggestion(auth, skill, "Other.");
+    const edit = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [approved.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const states = await Promise.all(
+      [conflicting, edit].map(
+        async (suggestion) =>
+          (await SkillSuggestionResource.fetchById(auth, suggestion.sId))?.state
+      )
+    );
+    expect(states).toEqual(["outdated", "pending"]);
+  });
+
+  it("leaves the skill untouched when applyToSkill is not set", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const suggestion = await descriptionSuggestion(auth, skill, "Unapplied.");
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(200);
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.userFacingDescription).toBe(skill.userFacingDescription);
+  });
+});
+
+describe("PATCH with applyToSkill (name)", () => {
+  async function setupWithFlag() {
+    const context = await setup();
+    await FeatureFlagFactory.basic(context.auth, "conversational_building");
+
+    return context;
+  }
+
+  async function nameSuggestion(
+    auth: Authenticator,
+    skill: SkillResource,
+    name: string
+  ) {
+    return SkillSuggestionFactory.create(auth, skill, {
+      kind: "name",
+      source: "conversational",
+      state: "pending",
+      suggestion: { name },
+    });
+  }
+
+  it("renames the skill and saves a version", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const suggestion = await nameSuggestion(auth, skill, "Renamed Skill");
+    const versionsBefore = (await skill.listVersions(auth)).length;
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.name).toBe("Renamed Skill");
+    expect((await skill.listVersions(auth)).length).toBe(versionsBefore + 1);
+  });
+
+  it("returns 400 when the name was taken after the suggestion was recorded", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const suggestion = await nameSuggestion(auth, skill, "Taken Later");
+    await SkillFactory.create(auth, { name: "Taken Later" });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain("already exists");
+
+    const reloaded = await SkillSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(reloaded?.state).toBe("pending");
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.name).toBe(skill.name);
+  });
+
+  it("outdates the other pending renames only", async () => {
+    const { workspace, auth, skill } = await setupWithFlag();
+    const approved = await nameSuggestion(auth, skill, "Approved Name");
+    const conflicting = await nameSuggestion(auth, skill, "Other Name");
+    const edit = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [approved.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const states = await Promise.all(
+      [conflicting, edit].map(
+        async (suggestion) =>
+          (await SkillSuggestionResource.fetchById(auth, suggestion.sId))?.state
+      )
+    );
+    expect(states).toEqual(["outdated", "pending"]);
+  });
+});
+
+describe("PATCH with applyToSkill (availability)", () => {
+  // `hasWorkspacePermission` is true for admins; the editor-without-publish case uses a plain user.
+  async function setupWithFlag(role: MembershipRoleType) {
+    const context = await setup({ role });
+    await FeatureFlagFactory.basic(context.auth, "conversational_building");
+
+    return context;
+  }
+
+  async function availabilitySuggestion(
+    auth: Authenticator,
+    skill: SkillResource,
+    availability: "editors" | "workspace_users" | "users_and_agents"
+  ) {
+    return SkillSuggestionFactory.create(auth, skill, {
+      kind: "availability",
+      source: "conversational",
+      state: "pending",
+      suggestion: { availability },
+    });
+  }
+
+  it("changes the availability and saves a version", async () => {
+    const { workspace, auth, skill } = await setupWithFlag("admin");
+    const suggestion = await availabilitySuggestion(
+      auth,
+      skill,
+      "users_and_agents"
+    );
+    const versionsBefore = (await skill.listVersions(auth)).length;
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.availability).toBe("users_and_agents");
+    expect((await skill.listVersions(auth)).length).toBe(versionsBefore + 1);
+  });
+
+  it("does not save a version when the skill already has the suggested availability", async () => {
+    const { workspace, auth, skill } = await setupWithFlag("admin");
+    const suggestion = await availabilitySuggestion(auth, skill, "editors");
+    const versionsBefore = (await skill.listVersions(auth)).length;
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+    expect((await skill.listVersions(auth)).length).toBe(versionsBefore);
+  });
+
+  it("returns 400 when the approving editor lacks the publish capability", async () => {
+    const { workspace, auth, skill } = await setupWithFlag("user");
+    const suggestion = await availabilitySuggestion(
+      auth,
+      skill,
+      "workspace_users"
+    );
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain(
+      "change this skill's availability"
+    );
+
+    const reloaded = await SkillSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(reloaded?.state).toBe("pending");
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    expect(updated?.availability).toBe("editors");
+  });
+
+  it("outdates the other pending availability suggestions only", async () => {
+    const { workspace, auth, skill } = await setupWithFlag("admin");
+    const approved = await availabilitySuggestion(
+      auth,
+      skill,
+      "workspace_users"
+    );
+    const conflicting = await availabilitySuggestion(
+      auth,
+      skill,
+      "users_and_agents"
+    );
+    const edit = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [approved.sId],
+      state: "approved",
+      applyToSkill: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const states = await Promise.all(
+      [conflicting, edit].map(
+        async (suggestion) =>
+          (await SkillSuggestionResource.fetchById(auth, suggestion.sId))?.state
+      )
+    );
+    expect(states).toEqual(["outdated", "pending"]);
   });
 });

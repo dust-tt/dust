@@ -57,7 +57,7 @@ export async function enrichWithTags(
   resources: AgentResource[]
 ): Promise<Map<ModelId, AgentTagsEnrichment>> {
   const configurationModelIds = resources.map(
-    (resource) => resource.content.agentConfigurationModelId
+    (resource) => resource.agentConfigurationModelId
   );
   const tagsById = await TagResource.listForAgents(auth, configurationModelIds);
 
@@ -81,7 +81,7 @@ export async function enrichWithActions(
   resources: AgentResource[]
 ): Promise<Map<ModelId, AgentActionsEnrichment>> {
   const configurationModelIds = resources.map(
-    (resource) => resource.content.agentConfigurationModelId
+    (resource) => resource.agentConfigurationModelId
   );
   const actionsById = await fetchMCPServerActionConfigurations(auth, {
     configurationModelIds,

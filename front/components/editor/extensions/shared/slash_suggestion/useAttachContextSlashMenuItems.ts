@@ -12,7 +12,6 @@ import { getLocationForDataSourceViewContentNodeWithSpace } from "@app/lib/conte
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
@@ -55,14 +54,12 @@ function contextFileItemToMenuItem(
 
 export function useAttachContextSlashMenuItems({
   conversationId = null,
-  isNodeAttached,
   owner,
   query,
   spaceId = null,
   useCase,
 }: {
   conversationId?: string | null;
-  isNodeAttached?: (node: DataSourceViewContentNode) => boolean;
   owner: LightWorkspaceType;
   query: string;
   spaceId?: string | null;
@@ -142,10 +139,6 @@ export function useAttachContextSlashMenuItems({
 
           const knowledgeNode = { ...rest, dataSourceView };
 
-          if (isNodeAttached?.(knowledgeNode)) {
-            return null;
-          }
-
           return {
             description: getLocationForDataSourceViewContentNodeWithSpace(
               knowledgeNode,
@@ -161,7 +154,7 @@ export function useAttachContextSlashMenuItems({
           };
         })
       ),
-    [isNodeAttached, searchResults, spacesMap]
+    [searchResults, spacesMap]
   );
 
   const items = useMemo<AttachContextSlashMenuItem[]>(

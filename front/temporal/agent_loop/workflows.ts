@@ -10,6 +10,7 @@ import type * as creditCheckActivities from "@app/temporal/agent_loop/activities
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
 import type * as finalizeSandboxChildToolActivities from "@app/temporal/agent_loop/activities/finalize_sandbox_child_tool";
+import type * as ongoingAgentLoopActivities from "@app/temporal/agent_loop/activities/ongoing_agent_loops";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
@@ -174,6 +175,7 @@ const {
   finalizeCancelledAgentLoopActivity,
   finalizeInterruptedAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
+  finalizeCreditSpendCheckpointPausedAgentLoopActivity,
 } = proxyActivities<typeof finalizeActivities>({
   startToCloseTimeout: "1 minute",
 });
@@ -183,6 +185,11 @@ const { finalizeErroredSandboxChildToolActivity } = proxyActivities<
 >({
   startToCloseTimeout: "1 minute",
 });
+
+const { upsertOngoingAgentLoopActivity, deleteOngoingAgentLoopActivity } =
+  proxyActivities<typeof ongoingAgentLoopActivities>({
+    startToCloseTimeout: "1 minute",
+  });
 
 export async function agentLoopConversationTitleWorkflow({
   authType,
@@ -232,11 +239,14 @@ export async function agentLoopWorkflow({
   authType,
   initialStartTime,
   agentLoopArgs,
+  canInitializeConsumption,
   startStep,
 }: {
   authType: AuthenticatorType;
   initialStartTime: number;
   agentLoopArgs: AgentLoopArgs;
+  // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
+  canInitializeConsumption?: boolean;
   startStep: number;
 }) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
@@ -270,9 +280,26 @@ export async function agentLoopWorkflow({
   // Credit stop: the per-step gate found the workspace pool exhausted.
   let creditStopRequested = false;
 
+  // Credit spend checkpoint pause: this message's own spend reached the threshold at which we
+  // ask the user whether to continue.
+  let creditSpendCheckpointPaused = false;
+
   const runIds: string[] = [];
+  const ongoingAgentLoop =
+    authType.userId !== null && patched("track-user-agent-loops-in-redis")
+      ? {
+          workspaceId: authType.workspaceId,
+          userId: authType.userId,
+          conversationId: agentLoopArgs.conversationId,
+          messageId: agentLoopArgs.agentMessageId,
+        }
+      : null;
 
   try {
+    if (ongoingAgentLoop) {
+      await upsertOngoingAgentLoopActivity(ongoingAgentLoop);
+    }
+
     const { agentMessageId, conversationId } = agentLoopArgs;
 
     await executionScope.run(async () => {
@@ -297,18 +324,23 @@ export async function agentLoopWorkflow({
 
         const stepStartTime = Date.now();
 
-        const { runId, shouldContinue, retryWithoutTools } =
-          await executeStepIteration({
-            authType,
-            agentLoopArgs: {
-              ...agentLoopArgs,
-              initialStartTime,
-            },
-            currentStep,
-            runIds,
-            startStep,
-            forceDisableToolUse,
-          });
+        const {
+          runId,
+          shouldContinue,
+          retryWithoutTools,
+          creditSpendCheckpointCrossed,
+        } = await executeStepIteration({
+          authType,
+          agentLoopArgs: {
+            ...agentLoopArgs,
+            initialStartTime,
+          },
+          currentStep,
+          runIds,
+          canInitializeConsumption: canInitializeConsumption === true,
+          startStep,
+          forceDisableToolUse,
+        });
 
         forceDisableToolUse = retryWithoutTools ?? false;
 
@@ -362,6 +394,16 @@ export async function agentLoopWorkflow({
           creditStopRequested = true;
           break;
         }
+
+        // The decision is made on the spend measured before this step ran. The step itself may
+        // have crossed it, in which case the pause lands one step late.
+        if (
+          creditSpendCheckpointCrossed &&
+          patched("credit-spend-checkpoint-gate")
+        ) {
+          creditSpendCheckpointPaused = true;
+          break;
+        }
       }
 
       const stepsCompleted = currentStep - startStep;
@@ -393,6 +435,11 @@ export async function agentLoopWorkflow({
           );
         } else if (creditStopRequested) {
           await finalizeCreditStoppedAgentLoopActivity(
+            authType,
+            argsWithRunIds
+          );
+        } else if (creditSpendCheckpointPaused) {
+          await finalizeCreditSpendCheckpointPausedAgentLoopActivity(
             authType,
             argsWithRunIds
           );
@@ -450,6 +497,12 @@ export async function agentLoopWorkflow({
     }
 
     throw err;
+  } finally {
+    if (ongoingAgentLoop) {
+      await CancellationScope.nonCancellable(() =>
+        deleteOngoingAgentLoopActivity(ongoingAgentLoop)
+      );
+    }
   }
 }
 
@@ -458,6 +511,7 @@ async function executeStepIteration({
   currentStep,
   agentLoopArgs,
   runIds,
+  canInitializeConsumption,
   startStep,
   forceDisableToolUse,
 }: {
@@ -465,16 +519,21 @@ async function executeStepIteration({
   currentStep: number;
   agentLoopArgs: AgentLoopArgsWithTiming;
   runIds: string[];
+  // TODO(@id13): Remove this rollout guard once consumption is the only pipeline.
+  canInitializeConsumption: boolean;
   startStep: number;
   forceDisableToolUse: boolean;
 }): Promise<{
   runId: string | null;
   shouldContinue: boolean;
   retryWithoutTools?: boolean;
+  // Passed through so the caller knows whether to pause and finalize as checkpointed.
+  creditSpendCheckpointCrossed?: boolean;
 }> {
   const result = await runModelAndCreateActionsActivity({
     authType,
     checkForResume: currentStep === startStep, // Only run resume the first time.
+    canInitializeConsumption,
     runAgentArgs: agentLoopArgs,
     runIds,
     step: currentStep,
@@ -489,7 +548,12 @@ async function executeStepIteration({
     };
   }
 
-  const { runId, actionBlobs, retryWithoutTools = false } = result;
+  const {
+    runId,
+    actionBlobs,
+    retryWithoutTools = false,
+    creditSpendCheckpointCrossed,
+  } = result;
 
   // Generation completed or the loop unpaused and no new tools were generated.
   if (actionBlobs.length === 0) {
@@ -501,6 +565,7 @@ async function executeStepIteration({
       // disabled to force a final answer.
       shouldContinue: runId === null || retryWithoutTools,
       retryWithoutTools,
+      creditSpendCheckpointCrossed,
     };
   }
 
@@ -511,6 +576,7 @@ async function executeStepIteration({
     return {
       runId,
       shouldContinue: false,
+      creditSpendCheckpointCrossed,
     };
   }
 
@@ -549,6 +615,7 @@ async function executeStepIteration({
       return {
         runId,
         shouldContinue: false,
+        creditSpendCheckpointCrossed,
       };
     }
   }
@@ -556,6 +623,7 @@ async function executeStepIteration({
   return {
     runId,
     shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
+    creditSpendCheckpointCrossed,
   };
 }
 

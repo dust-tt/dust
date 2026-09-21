@@ -24,7 +24,6 @@ describe("conversation_side_panel.open_frame", () => {
       useCase: "project_context",
       useCaseMetadata: {
         spaceId: projectId,
-        frameName: "Hello Frame",
       },
       mountFilePath: `${getPodFilesBasePath({
         workspaceId: workspace.sId,
@@ -55,8 +54,8 @@ describe("conversation_side_panel.open_frame", () => {
           fileId: frame.sId,
           mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
           snippet: null,
-          text: `Opened Frame '${frame.sId}' (Hello Frame) in the side panel.`,
-          title: "Hello Frame",
+          text: `Opened Frame '${frame.sId}' (hello-frame) in the side panel.`,
+          title: "hello-frame",
           uri: expect.any(String),
         },
       },
@@ -70,7 +69,7 @@ describe("conversation_side_panel.open_frame", () => {
               output: expect.objectContaining({
                 fileId: frame.sId,
                 mimeType: frameV2ContentType,
-                title: "Hello Frame",
+                title: "hello-frame",
                 type: "interactive_content_file",
               }),
             }),

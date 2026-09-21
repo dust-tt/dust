@@ -78,6 +78,27 @@ export class SkillSuggestionFactory {
     });
   }
 
+  static async createSkillCreationSuggestion(
+    auth: Authenticator,
+    skill: SkillResource,
+    overrides: Partial<{
+      suggestion: { name: string };
+      analysis: string | null;
+      title: string | null;
+      state: SkillSuggestionState;
+      source: SkillSuggestionSource;
+    }> = {}
+  ): Promise<SkillSuggestionResource> {
+    return this.create(auth, skill, {
+      kind: "create",
+      suggestion: overrides.suggestion ?? { name: skill.name },
+      analysis: overrides.analysis,
+      title: overrides.title,
+      state: overrides.state,
+      source: overrides.source ?? "conversational",
+    });
+  }
+
   static async setCreatedAt(
     suggestion: SkillSuggestionResource,
     createdAt: Date

@@ -1,13 +1,9 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
-import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
-import { shadowCompare } from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
-import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillHydrationOptions } from "@app/lib/resources/skill/types";
@@ -23,7 +19,6 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
-import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
 import partition from "lodash/partition";
 import uniq from "lodash/uniq";
@@ -64,30 +59,6 @@ export function getModelForAgentConfiguration(
   return model;
 }
 
-export async function isSelfHostedImageWithValidContentType(
-  pictureUrl: string
-) {
-  // Accept static Dust avatars.
-  if (pictureUrl.startsWith("https://dust.tt/static/")) {
-    return true;
-  }
-
-  const filename = pictureUrl.split("/").at(-1);
-  if (!filename) {
-    return false;
-  }
-
-  // Attempt to decode the URL, since Google Cloud Storage URL encodes the filename.
-  const contentTypeResult = await getPublicUploadBucket().getFileContentType(
-    decodeURIComponent(filename)
-  );
-  if (contentTypeResult.isErr() || !contentTypeResult.value) {
-    return false;
-  }
-
-  return contentTypeResult.value.includes("image");
-}
-
 export async function getAgentIdFromName(
   auth: Authenticator,
   name: string
@@ -111,117 +82,6 @@ export async function getAgentIdFromName(
 }
 
 /**
- * @cc [owner:philipperolet,label:logging] shadow-legacy-space-gate
- * The legacy side of the comparison MUST apply the `agent-read-requires-space-read` gate to `read`
- * and `write`: a difference that only comes from a requested space the caller cannot read is not a
- * grant divergence and MUST NOT be logged as a mismatch.
- */
-async function shadowAgentPermissions(
-  auth: Authenticator,
-  agentModels: AgentConfigurationModel[],
-  // Aligned with `agentModels` (see `enrichAgentConfigurations`).
-  agentResources: AgentResource[],
-  legacyAgents: AgentConfigurationType[],
-  spaceById: Map<ModelId, SpaceResource>,
-  reverse = false
-): Promise<void> {
-  const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
-  // User-less callers other than regular keys take legacy access from the grant ACL, whose `write`
-  // the space gate drops; their editor grant is the ungated equivalent.
-  const hasUserlessEditorGrant = (resource: AgentResource) =>
-    !auth.user() &&
-    !isRegularApiKey &&
-    auth
-      .getGovernanceGrantVerbs("agent", resource.id, resource.workspaceId)
-      .includes("write");
-  await shadowCompare({
-    auth,
-    reverse,
-    // Served grants (`reverse`) already apply the space gate; served legacy reads never did.
-    legacy: legacyAgents.map((agent, index) => {
-      const resource = agentResources[index];
-      const spacesReadable = resource.requestedSpacesReadable(auth);
-      return {
-        agentId: agent.sId,
-        agentConfigurationModelId: agent.id,
-        read: agent.canRead && spacesReadable,
-        write: agent.canEdit && spacesReadable,
-        // Served grants keep `admin` on agents whose spaces the editor cannot read, so `canEdit`
-        // only stands for `admin` on the legacy source, before the gate.
-        admin: reverse
-          ? auth.can("admin", resource)
-          : agent.canEdit || hasUserlessEditorGrant(resource) || auth.isAdmin(),
-      };
-    }),
-    candidate: async () => {
-      const groups =
-        reverse && auth.user()
-          ? await GroupResource.findAgentIdsForGroups(
-              auth,
-              auth.groupModelIds()
-            )
-          : [];
-      const editorIds = new Set(
-        groups.map((group) => group.agentConfigurationId)
-      );
-      return agentModels.map((agent, index) => {
-        const resource = agentResources[index];
-        const spacesReadable = resource.requestedSpacesReadable(auth);
-        const legacyAccess =
-          agent.authorId === auth.user()?.id ||
-          editorIds.has(agent.id) ||
-          hasUserlessEditorGrant(resource);
-        const legacyWrite = isRegularApiKey ? auth.isAdmin() : legacyAccess;
-        const read = reverse
-          ? (legacyAccess || agent.scope === "visible") && spacesReadable
-          : auth.can("read", resource);
-        const write =
-          (reverse
-            ? legacyWrite && spacesReadable
-            : auth.can("write", resource)) &&
-          (!isRegularApiKey ||
-            (agent.status === "active" &&
-              canReadRequestedSpaces(
-                auth,
-                spaceById,
-                agent.requestedSpaceIds
-              )));
-        return {
-          agentId: agent.sId,
-          agentConfigurationModelId: agent.id,
-          read,
-          write,
-          // Legacy editors keep administering an agent backed by spaces they cannot read.
-          admin: reverse
-            ? legacyWrite || auth.isAdmin()
-            : auth.can("admin", resource),
-        };
-      });
-    },
-    context: {
-      check: "agent_permissions",
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      authMethod: auth.authMethod(),
-      hasUser: auth.user() !== null,
-      isSystemKey: auth.isSystemKey(),
-    },
-    equals: (legacy, candidate) =>
-      legacy.length === candidate.length &&
-      legacy.every((permissions, index) => {
-        const candidatePermissions = candidate[index];
-        return (
-          permissions.agentId === candidatePermissions.agentId &&
-          permissions.agentConfigurationModelId ===
-            candidatePermissions.agentConfigurationModelId &&
-          permissions.read === candidatePermissions.read &&
-          permissions.write === candidatePermissions.write &&
-          permissions.admin === candidatePermissions.admin
-        );
-      }),
-  });
-}
-
-/**
  * Enrich agent configurations with additional data (actions, tags, favorites).
  */
 /**
@@ -231,37 +91,18 @@ async function shadowAgentPermissions(
  */
 /**
  * @cc [owner:philipperolet,label:security] agent-editability
- * Outside regular API keys, `canEdit` uses agent write permission when grants are enabled and
- * otherwise allows legacy authors/editors or user-less callers with agent write permission;
- * workspace admin role alone does not grant it.
+ * Outside regular API keys, `canEdit` is agent `write` permission; the workspace admin role alone
+ * does not grant it.
  */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
   agentConfigurations: AgentConfigurationModel[],
-  {
-    variant,
-    agentIdsForUserAsEditor,
-  }: {
-    variant: V;
-    agentIdsForUserAsEditor?: ModelId[];
-  }
+  { variant }: { variant: V }
 ): Promise<AgentConfigurationType[]> {
   const configurationModelIds = agentConfigurations.map((a) => a.id);
   const configurationIds = agentConfigurations.map((a) => a.sId);
   const user = auth.user();
   const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
-
-  const useGrants = !isLegacyAclsEnabled();
-
-  // Compute legacy editor permissions if not provided and grants are not serving reads.
-  let editorIds = agentIdsForUserAsEditor;
-  if (!useGrants && !editorIds) {
-    const agentIdsForGroups = user
-      ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
-      : [];
-
-    editorIds = agentIdsForGroups.map((g) => g.agentConfigurationId);
-  }
 
   const mcpServerActionsConfigurationsPerAgent =
     await fetchMCPServerActionConfigurations(auth, {
@@ -287,7 +128,6 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   const spaceById = new Map(spacesForApiKey.map((space) => [space.id, space]));
 
   const agentConfigurationTypes: AgentConfigurationType[] = [];
-  const agentResources: AgentResource[] = [];
   for (const agent of agentConfigurations) {
     const actions =
       variant === "full"
@@ -297,22 +137,14 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const model = getModelForAgentConfiguration(agent);
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
-    const isAuthor = agent.authorId === auth.user()?.id;
-    const isMember = editorIds?.includes(agent.id) ?? false;
     const resource = AgentResource.fromAgentConfigurationModel(auth, agent);
-    const canEditWithoutUser =
-      !user && !isRegularApiKey && auth.can("write", resource);
 
-    const canRead = useGrants
-      ? auth.can("read", resource)
-      : isAuthor || isMember || canEditWithoutUser || agent.scope === "visible";
+    const canRead = auth.can("read", resource);
     const canEdit = isRegularApiKey
-      ? (useGrants ? auth.can("write", resource) : auth.isAdmin()) &&
+      ? auth.can("write", resource) &&
         agent.status === "active" &&
         canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
-      : useGrants
-        ? auth.can("write", resource)
-        : isAuthor || isMember || canEditWithoutUser;
+      : auth.can("write", resource);
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       agentModelId: agent.agentId,
@@ -352,17 +184,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     };
 
     agentConfigurationTypes.push(agentConfigurationType);
-    agentResources.push(resource);
   }
-
-  await shadowAgentPermissions(
-    auth,
-    agentConfigurations,
-    agentResources,
-    agentConfigurationTypes,
-    spaceById,
-    useGrants
-  );
 
   return agentConfigurationTypes;
 }

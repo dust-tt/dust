@@ -5,13 +5,13 @@ import type { SlashCommand } from "@app/components/editor/extensions/shared/slas
 import type { SelectSpacesSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
 import { SELECT_SPACES_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
 import { getSlashCommandAvatarIcon } from "@app/components/editor/extensions/shared/slash_suggestion/slashCommandIcons";
-import { Attachment01, Brain, Planet } from "@dust-tt/sparkle";
+import { BookOpen01, Brain, Planet } from "@dust-tt/sparkle";
 
 export function createAttachKnowledgeSlashCommand(): SlashCommand {
   return {
     action: INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
     description: "Search knowledge and reference conversation or pod files",
-    icon: getSlashCommandAvatarIcon(Attachment01),
+    icon: getSlashCommandAvatarIcon(BookOpen01),
     id: "attach-knowledge",
     label: "Attach",
     tooltip: {

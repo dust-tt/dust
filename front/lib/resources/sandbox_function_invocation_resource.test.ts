@@ -9,6 +9,7 @@ import type {
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { clearStagedSandboxFunctionInvocationBlob } from "@app/lib/resources/sandbox_function_invocation/blob_stage";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import {
   computeSandboxFunctionBundleSha256,
@@ -36,6 +37,12 @@ import { frameV2ContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Use the real cache helpers so Redis stage write-behind is exercised under the
+// redis mock. The global vite.setup stub makes warmCacheWithRedis a no-op.
+vi.mock("@app/lib/utils/cache", async (importOriginal) => {
+  return importOriginal<typeof import("@app/lib/utils/cache")>();
+});
 
 const tracerMocks = vi.hoisted(() => {
   const setTag = vi.fn();
@@ -267,6 +274,16 @@ async function setupFrameExecutionTest({
   };
 }
 
+/** Hydrate the blob and return the poke payload, the one public read of input/result/error. */
+async function loadedPoke(
+  invocation: SandboxFunctionInvocationResource | null | undefined
+) {
+  if (!invocation) {
+    throw new Error("Expected a sandbox function invocation.");
+  }
+  return invocation.toPokeJSON(null, []);
+}
+
 describe("SandboxFunctionInvocationResource", () => {
   it("lists the most recent invocations for one function", async () => {
     const { authenticator, space, sandboxFunction, invocation } =
@@ -310,31 +327,24 @@ describe("SandboxFunctionInvocationResource", () => {
       thirdInvocation.sId,
       secondInvocation.sId,
     ]);
-    expect(recentInvocations[0]?.result).toEqual({ commentId: "comment-3" });
-    expect(recentInvocations[1]?.error).toEqual({
+    expect((await loadedPoke(recentInvocations[0])).result).toEqual({
+      commentId: "comment-3",
+    });
+    expect((await loadedPoke(recentInvocations[1])).error).toEqual({
       code: "invocation_failed",
       message: "second invocation failed",
     });
-    expect(recentInvocations[0]?.toJSONForLLM()).toMatchObject({
-      invocationId: thirdInvocation.sId,
-      status: "succeeded",
-      input: { message: "third" },
-      result: { commentId: "comment-3" },
+    expect((await loadedPoke(recentInvocations[0])).input).toEqual({
+      message: "third",
     });
-    expect(recentInvocations[1]?.toJSONForLLM()).toMatchObject({
-      invocationId: secondInvocation.sId,
-      status: "errored",
-      input: { message: "second" },
-      error: {
-        code: "invocation_failed",
-        message: "second invocation failed",
-      },
+    expect((await loadedPoke(recentInvocations[1])).input).toEqual({
+      message: "second",
     });
     // These invocations settled without going through execute(), so no bundle hash was stamped
     // and none must be invented.
-    expect(recentInvocations[0]?.toJSONForLLM()).not.toHaveProperty(
-      "bundleSha256"
-    );
+    expect(
+      JSON.parse(fileStorageMock.getObject(recentInvocations[0]!.gcsPath!)!)
+    ).not.toHaveProperty("bundleSha256");
   });
 
   it("shows every reader only their own invocations", async () => {
@@ -429,9 +439,10 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(invocation.gcsPath).toBe(
       `w/${authenticator.getNonNullableWorkspace().sId}/frames/${frame.sId}/invocations/${invocation.sId}`
     );
-    expect(invocation.input).toEqual({ message: "hello" });
-    expect(invocation.result).toBeUndefined();
-    expect(invocation.error).toBeUndefined();
+    expect((await loadedPoke(invocation)).input).toEqual({ message: "hello" });
+    expect((await loadedPoke(invocation)).result).toBeUndefined();
+    expect((await loadedPoke(invocation)).error).toBeNull();
+    await invocation.settleInitialPersistence();
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toBe(
       JSON.stringify({ version: 2, input: { message: "hello" } })
     );
@@ -445,7 +456,7 @@ describe("SandboxFunctionInvocationResource", () => {
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
-    expect(refetched?.input).toEqual({ message: "hello" });
+    expect((await loadedPoke(refetched)).input).toEqual({ message: "hello" });
   });
 
   it("stores and reloads its context from GCS", async () => {
@@ -459,7 +470,8 @@ describe("SandboxFunctionInvocationResource", () => {
       }
     );
 
-    expect(invocation.context).toEqual({ timezone: "Europe/Paris" });
+    expect(await invocation.getContext()).toEqual({ timezone: "Europe/Paris" });
+    await invocation.settleInitialPersistence();
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toBe(
       JSON.stringify({
         version: 2,
@@ -471,7 +483,7 @@ describe("SandboxFunctionInvocationResource", () => {
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
-    expect(refetched?.context).toEqual({ timezone: "Europe/Paris" });
+    expect(await refetched?.getContext()).toEqual({ timezone: "Europe/Paris" });
   });
 
   it("records the initiating user", async () => {
@@ -510,15 +522,17 @@ describe("SandboxFunctionInvocationResource", () => {
     await getPrivateUploadBucket()
       .file(invocation.gcsPath!)
       .save(Buffer.from(JSON.stringify({ version: 3 }), "utf-8"));
+    // Simulate a GCS-only blob (no Redis stage), e.g. written before staging existed.
+    await clearStagedSandboxFunctionInvocationBlob(invocation.sId);
 
     // Listings load every invocation's blob, so one unreadable record must not fail the listing.
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
-    expect(refetched?.input).toBeUndefined();
-    expect(refetched?.result).toBeUndefined();
-    expect(refetched?.error).toBeUndefined();
+    expect((await loadedPoke(refetched)).input).toBeUndefined();
+    expect((await loadedPoke(refetched)).result).toBeUndefined();
+    expect((await loadedPoke(refetched)).error).toBeNull();
   });
 
   it("returns an empty record for a blob that is not valid JSON", async () => {
@@ -528,13 +542,14 @@ describe("SandboxFunctionInvocationResource", () => {
     await getPrivateUploadBucket()
       .file(invocation.gcsPath!)
       .save(Buffer.from('{"version": 2, "input"', "utf-8"));
+    await clearStagedSandboxFunctionInvocationBlob(invocation.sId);
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
-    expect(refetched?.input).toBeUndefined();
-    expect(refetched?.error).toBeUndefined();
+    expect((await loadedPoke(refetched)).input).toBeUndefined();
+    expect((await loadedPoke(refetched)).error).toBeNull();
   });
 
   it("stores and reloads its result from GCS on success", async () => {
@@ -545,14 +560,14 @@ describe("SandboxFunctionInvocationResource", () => {
     await invocation.succeed(result);
 
     expect(invocation.status).toBe("succeeded");
-    expect(invocation.result).toEqual(result);
-    expect(invocation.error).toBeUndefined();
+    expect((await loadedPoke(invocation)).result).toEqual(result);
+    expect((await loadedPoke(invocation)).error).toBeNull();
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
-    expect(refetched?.result).toEqual(result);
-    expect(refetched?.error).toBeUndefined();
+    expect((await loadedPoke(refetched)).result).toEqual(result);
+    expect((await loadedPoke(refetched)).error).toBeNull();
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "sandbox_function_invocation_result",
@@ -570,8 +585,8 @@ describe("SandboxFunctionInvocationResource", () => {
     await invocation.fail(new Error("sandbox unavailable"));
 
     expect(invocation.status).toBe("errored");
-    expect(invocation.result).toBeUndefined();
-    expect(invocation.error).toEqual({
+    expect((await loadedPoke(invocation)).result).toBeUndefined();
+    expect((await loadedPoke(invocation)).error).toEqual({
       code: "invocation_failed",
       message: "sandbox unavailable",
     });
@@ -579,8 +594,8 @@ describe("SandboxFunctionInvocationResource", () => {
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
-    expect(refetched?.result).toBeUndefined();
-    expect(refetched?.error).toEqual({
+    expect((await loadedPoke(refetched)).result).toBeUndefined();
+    expect((await loadedPoke(refetched)).error).toEqual({
       code: "invocation_failed",
       message: "sandbox unavailable",
     });
@@ -608,7 +623,7 @@ describe("SandboxFunctionInvocationResource", () => {
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
-    expect(refetched?.error).toEqual({
+    expect((await loadedPoke(refetched)).error).toEqual({
       code: "http_error",
       message: "Function returned HTTP 503.",
       status: 503,
@@ -628,7 +643,8 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.status).toBe("succeeded");
-    expect(refetched?.result).toEqual(result);
+    expect((await loadedPoke(refetched)).result).toEqual(result);
+    await invocation.settleInitialPersistence();
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toContain(
       '"commentId":"comment-1"'
     );
@@ -648,8 +664,8 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.status).toBe("succeeded");
-    expect(refetched?.result).toEqual(result);
-    expect(refetched?.error).toBeUndefined();
+    expect((await loadedPoke(refetched)).result).toEqual(result);
+    expect((await loadedPoke(refetched)).error).toBeNull();
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledTimes(1);
   });
 
@@ -670,33 +686,40 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.status).toBe("succeeded");
-    expect(refetched?.result).toEqual({ commentId: "comment-1" });
+    expect((await loadedPoke(refetched)).result).toEqual({
+      commentId: "comment-1",
+    });
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledTimes(1);
   });
 
-  it("releases a won succeed claim when the terminal blob write fails", async () => {
+  it("keeps a won succeed claim when the write-behind terminal blob write fails", async () => {
     const { authenticator, sandboxFunction, invocation } =
       await setupExecutionTest();
     fileStorageMock.setFileSaveFails(
       (filePath) => filePath === invocation.gcsPath
     );
 
-    await expect(
-      invocation.succeed({ commentId: "comment-1" })
-    ).rejects.toThrow();
+    // Outcome is delivered via the event stream / settledOutcome; GCS failure must not
+    // unwind the claim or block the caller (same contract as the inline write-behind path).
+    expect(await invocation.succeed({ commentId: "comment-1" })).toBe(true);
+    expect(invocation.status).toBe("succeeded");
+    expect(invocation.settledOutcome()).toEqual({
+      status: "succeeded",
+      result: { commentId: "comment-1" },
+    });
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledTimes(1);
+
+    await invocation.settleInitialPersistence();
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
-    expect(refetched?.status).toBe("created");
-    expect(publishSandboxFunctionInvocationEvent).not.toHaveBeenCalled();
-
-    fileStorageMock.setFileSaveFails(() => false);
-    expect(
-      await refetched!.fail(new Error("recoverable after gcs failure"))
-    ).toBe(true);
-    expect(refetched!.status).toBe("errored");
+    expect(refetched?.status).toBe("succeeded");
+    // Redis stage still holds the terminal blob even though GCS write failed.
+    expect((await loadedPoke(refetched)).result).toEqual({
+      commentId: "comment-1",
+    });
   });
 
   it("migrates a v1 blob, which recorded the message only", async () => {
@@ -718,21 +741,23 @@ describe("SandboxFunctionInvocationResource", () => {
           "utf-8"
         )
       );
+    await clearStagedSandboxFunctionInvocationBlob(invocation.sId);
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
-    expect(refetched?.input).toEqual({ message: "hello" });
+    expect((await loadedPoke(refetched)).input).toEqual({ message: "hello" });
     // Fields the v1 and v2 shapes have in common survive the migration.
-    expect(refetched?.context).toEqual({ timezone: "Europe/Paris" });
-    expect(refetched?.error).toEqual({
+    expect(await refetched?.getContext()).toEqual({ timezone: "Europe/Paris" });
+    expect((await loadedPoke(refetched)).error).toEqual({
       code: "invocation_failed",
       message: "written before codes existed",
     });
 
     // The next write persists it as v2, so a blob is migrated once rather than on every read.
     await refetched!.succeed({ commentId: "comment-1" });
+    await refetched!.settleInitialPersistence();
     expect(fileStorageMock.getObject(invocation.gcsPath!)).toContain(
       '"version":2'
     );
@@ -746,13 +771,14 @@ describe("SandboxFunctionInvocationResource", () => {
     await getPrivateUploadBucket()
       .file(invocation.gcsPath!)
       .save(Buffer.from(JSON.stringify({ version: 1 }), "utf-8"));
+    await clearStagedSandboxFunctionInvocationBlob(invocation.sId);
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
       { sandboxFunction, invocationId: invocation.sId }
     );
-    expect(refetched?.error).toBeUndefined();
-    expect(refetched?.input).toBeUndefined();
+    expect((await loadedPoke(refetched)).error).toBeNull();
+    expect((await loadedPoke(refetched)).input).toBeUndefined();
   });
 
   it("executes a Frame function from its exact immutable publication", async () => {
@@ -839,18 +865,17 @@ describe("SandboxFunctionInvocationResource", () => {
       }),
       "Sandbox function stdout result delivery"
     );
-    // The terminal blob records which publish served the invocation, and inspect_invocations
-    // reports it so a caller can match invocations to the hash publish/get echo.
+    // The terminal blob records which publish served the invocation.
     const refetchedInvocation =
       await SandboxFunctionInvocationResource.fetchById(authenticator, {
         sandboxFunction,
         invocationId: invocation.sId,
       });
     expect(refetchedInvocation?.status).toBe("succeeded");
-    expect(refetchedInvocation?.bundleSha256).toBe(TEST_BUNDLE_SHA256);
-    expect(refetchedInvocation?.toJSONForLLM()).toMatchObject({
-      bundleSha256: TEST_BUNDLE_SHA256,
-    });
+    expect(
+      JSON.parse(fileStorageMock.getObject(refetchedInvocation!.gcsPath!)!)
+        .bundleSha256
+    ).toBe(TEST_BUNDLE_SHA256);
   });
 
   it("uses the lifecycle-locked Frame location for authorization and token scope", async () => {
@@ -969,7 +994,9 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.status).toBe("succeeded");
-    expect(refetched?.result).toEqual({ commentId: "comment-big" });
+    expect((await loadedPoke(refetched)).result).toEqual({
+      commentId: "comment-big",
+    });
   });
 
   it("fails the invocation when the spilled result cannot be read back", async () => {
@@ -1000,7 +1027,7 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.status).toBe("errored");
-    expect(refetched?.error).toMatchObject({
+    expect((await loadedPoke(refetched)).error).toMatchObject({
       code: "invocation_failed",
       message:
         "Frame function result could not be read back from /tmp/dust-fn-results/spill.json: file not found",
@@ -1166,7 +1193,7 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.status).toBe("errored");
-    expect(refetched?.error).toEqual({
+    expect((await loadedPoke(refetched)).error).toEqual({
       code: "invocation_failed",
       message: "Frame function produced no stdout result envelope.",
     });
@@ -1199,7 +1226,9 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.status).toBe("succeeded");
-    expect(refetched?.result).toEqual({ commentId: "from-stdout" });
+    expect((await loadedPoke(refetched)).result).toEqual({
+      commentId: "from-stdout",
+    });
   });
 
   it("persists structured runner errors from stdout envelopes with exit 0", async () => {
@@ -1224,7 +1253,10 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.status).toBe("errored");
-    expect(refetched?.error).toEqual({ code: "threw", message: "boom" });
+    expect((await loadedPoke(refetched)).error).toEqual({
+      code: "threw",
+      message: "boom",
+    });
   });
 
   it("persists a stdout invocation_failed envelope even when exit code is non-zero", async () => {
@@ -1252,7 +1284,7 @@ describe("SandboxFunctionInvocationResource", () => {
       { sandboxFunction, invocationId: invocation.sId }
     );
     expect(refetched?.status).toBe("errored");
-    expect(refetched?.error).toEqual({
+    expect((await loadedPoke(refetched)).error).toEqual({
       code: "invocation_failed",
       message: "function produced no output",
     });
@@ -1309,7 +1341,9 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
       return;
     }
     expect(result.value.status).toBe("succeeded");
-    expect(result.value.result).toEqual({ commentId: "inline" });
+    expect((await loadedPoke(result.value)).result).toEqual({
+      commentId: "inline",
+    });
     // The settled outcome is available in memory, so callers can answer without reading the
     // event stream back out of Redis.
     expect(result.value.settledOutcome()).toEqual({
@@ -1324,8 +1358,10 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
       authenticator,
       { sandboxFunction, invocationId: result.value.sId }
     );
-    expect(refetched?.input).toEqual({ message: "hello" });
-    expect(refetched?.result).toEqual({ commentId: "inline" });
+    expect((await loadedPoke(refetched)).input).toEqual({ message: "hello" });
+    expect((await loadedPoke(refetched)).result).toEqual({
+      commentId: "inline",
+    });
     // A rehydrated instance never short-circuits: it did not run the invocation.
     expect(refetched?.settledOutcome()).toBeNull();
     // An inline invocation holds a request while it runs, so it gets a far shorter ceiling than
@@ -1454,6 +1490,6 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
       return;
     }
     expect(result.value.status).toBe("errored");
-    expect(result.value.error?.message).toContain("boom");
+    expect((await loadedPoke(result.value)).error?.message).toContain("boom");
   });
 });

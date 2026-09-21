@@ -347,14 +347,12 @@ export interface CustomEditorProps {
     onSelectRef: React.RefObject<((item: SlashCommand) => void) | undefined>;
     onDetailsRef?: React.RefObject<((item: SlashCommand) => void) | undefined>;
     onSkillDetails?: (skillId: string) => void;
-    selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
     onToolDetailsById?: (mcpServerViewId: string) => void;
     slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
     includeAttachKnowledgeRef: React.RefObject<boolean>;
     includePickModelRef: React.RefObject<boolean>;
     includeSelectSpacesRef: React.RefObject<boolean>;
     isSelectableSpacesLoadingRef: React.RefObject<boolean>;
-    attachedNodesRef: React.RefObject<DataSourceViewContentNode[]>;
     onModelSelectRef: React.RefObject<
       ((selection: Selection) => void) | undefined
     >;
@@ -519,7 +517,6 @@ export const buildEditorExtensions = ({
   if (slashSuggestion) {
     extensions.push(
       InputBarSlashSuggestionExtension.configure({
-        attachedNodesRef: slashSuggestion.attachedNodesRef,
         owner,
         conversationIdRef: slashSuggestion.conversationIdRef,
         enabledRef: slashSuggestion.enabledRef,
@@ -530,8 +527,6 @@ export const buildEditorExtensions = ({
         onSpaceSelectRef: slashSuggestion.onSpaceSelectRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,
         selectableSpacesRef: slashSuggestion.selectableSpacesRef,
-        selectedMCPServerViewIdsRef:
-          slashSuggestion.selectedMCPServerViewIdsRef,
         selectedSpaceIdsRef: slashSuggestion.selectedSpaceIdsRef,
         slashCommandsRef: slashSuggestion.slashCommandsRef,
         includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,

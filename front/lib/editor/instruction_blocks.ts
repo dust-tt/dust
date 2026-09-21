@@ -3,10 +3,16 @@
 //
 // Tiptap is imported for types only and the DOM is passed in rather than read from a global: the
 // server holds a jsdom `document` and a cached parser, and pays no load cost for importing this.
+import { KNOWLEDGE_TAG } from "@app/lib/editor/knowledge_node_constants";
 import {
   BLOCK_ID_ATTRIBUTE,
   INSTRUCTIONS_ROOT_NODE_NAME,
 } from "@app/lib/editor/node_constants";
+import {
+  SKILL_TAG_NAME,
+  UNAVAILABLE_SKILL_TAG_NAME,
+} from "@app/lib/skills/format";
+import { TOOL_TAG_NAME } from "@app/lib/tools/format";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type {
   DOMParser as ProseMirrorDOMParser,
@@ -16,6 +22,34 @@ import type { Transform } from "@tiptap/pm/transform";
 
 // `UniqueID` stores the block id under `BLOCK_ID_ATTRIBUTE` and renders it `data-`-prefixed.
 const BLOCK_ID_DOM_ATTRIBUTE = `data-${BLOCK_ID_ATTRIBUTE}`;
+
+// HTML5 has no self-closing syntax for unknown elements: a parser reads `<skill ... />` as an
+// *open* tag, so the text after it becomes its children and is dropped when the node parses as a
+// leaf. The nodes' `renderHTML` already emits the paired form; model-authored edit content uses
+// the self-closing form, so pair it up here before it reaches the DOM.
+//
+// The regex captures the tag name and the attributes, and pastes both back unchanged.
+//
+// Attributes are read one character at a time, or a whole quoted value at once. That second case
+// matters because a name can hold a `>` (a skill named `A > B`, which `serializeSkillTag` leaves
+// unescaped): stopping there would miss the `/>` and leave the tag self-closing.
+const SELF_CLOSING_CUSTOM_TAG_REGEX = new RegExp(
+  `<(${[
+    KNOWLEDGE_TAG,
+    SKILL_TAG_NAME,
+    TOOL_TAG_NAME,
+    UNAVAILABLE_SKILL_TAG_NAME,
+  ].join("|")})(\\s(?:[^>"']|"[^"]*"|'[^']*')*?)?\\s*/>`,
+  "g"
+);
+
+function pairSelfClosingCustomTags(html: string): string {
+  return html.replace(
+    SELF_CLOSING_CUSTOM_TAG_REGEX,
+    (_match, tag: string, attributes: string | undefined) =>
+      `<${tag}${attributes ?? ""}></${tag}>`
+  );
+}
 
 interface ParseInstructionsHtmlOptions {
   // The browser's `document` in the editor, a jsdom one on the server. Narrowed to what this
@@ -32,7 +66,7 @@ export function parseInstructionsHtml(
   { clearBlockIds = false, document, domParser }: ParseInstructionsHtmlOptions
 ): ProseMirrorNode {
   const tempDiv = document.createElement("div");
-  tempDiv.innerHTML = html;
+  tempDiv.innerHTML = pairSelfClosingCustomTags(html);
 
   if (clearBlockIds) {
     tempDiv
