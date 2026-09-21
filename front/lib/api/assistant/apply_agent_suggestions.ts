@@ -201,12 +201,30 @@ export async function applyAgentSuggestions(
     suggestions: AgentSuggestionResource[];
   }
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
-  for (const suggestion of suggestions) {
-    const data = parseAgentSuggestionData({
+  const parsedSuggestions = suggestions.map((suggestion) =>
+    parseAgentSuggestionData({
       kind: suggestion.kind,
       suggestion: suggestion.suggestion,
-    });
+    })
+  );
 
+  // If several model change suggestions applies keep only the most recent one
+  const modelSuggestions = parsedSuggestions.filter(
+    (data): data is Extract<typeof data, { kind: "model" }> =>
+      data.kind === "model"
+  );
+  if (modelSuggestions.length > 0) {
+    const res = await applyModelSuggestion(
+      auth,
+      agent,
+      modelSuggestions[modelSuggestions.length - 1].suggestion
+    );
+    if (res.isErr()) {
+      return res;
+    }
+  }
+
+  for (const data of parsedSuggestions) {
     switch (data.kind) {
       case "create": {
         const res = await applyCreateSuggestion(auth, agent, data.suggestion);
@@ -224,13 +242,9 @@ export async function applyAgentSuggestions(
         break;
       }
 
-      case "model": {
-        const res = await applyModelSuggestion(auth, agent, data.suggestion);
-        if (res.isErr()) {
-          return res;
-        }
+      case "model":
+        // Already applied above, consolidated across all `model` suggestions in this batch.
         break;
-      }
 
       case "instructions":
       case "tools":

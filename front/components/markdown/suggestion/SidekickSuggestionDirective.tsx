@@ -151,6 +151,10 @@ const CONVERSATION_AGENT_SUGGESTION_KINDS = [
 type ConversationAgentSuggestionKind =
   (typeof CONVERSATION_AGENT_SUGGESTION_KINDS)[number];
 
+// `create` targets a not-yet-created placeholder agent, so there is no configuration to fetch.
+const DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS: ConversationAgentSuggestionKind[] =
+  ["create"];
+
 function isConversationAgentSuggestionKind(
   kind: AgentSuggestionKind
 ): kind is ConversationAgentSuggestionKind {
@@ -188,7 +192,7 @@ function ConversationAgentSuggestion({
   const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
     agentConfigurationId: agentId,
-    disabled: kind === "create",
+    disabled: DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(kind),
   });
 
   if (isSuggestionsLoading) {

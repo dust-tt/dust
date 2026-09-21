@@ -16,8 +16,10 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-function getAgentModelSuggestionLockName(agentSId: string): string {
-  return `agent-suggestion:model:${agentSId}`;
+const AGENT_MODEL_SUGGESTION_LOCK_TTL_MS = 30_000;
+
+function getAgentModelSuggestionLockName(agentId: string): string {
+  return `agent-suggestion:model:${agentId}`;
 }
 
 /**
@@ -118,7 +120,9 @@ export async function suggestAgentModelChange(
         }
       );
       return new Ok(suggestion);
-    }
+    },
+    30_000,
+    { lockTtlMs: AGENT_MODEL_SUGGESTION_LOCK_TTL_MS }
   );
 
   if (result.isErr()) {
