@@ -97,7 +97,7 @@ export function SkillDetailsSheet({
     ) => {
       const didUpdate = await updateSkillFavorite(skill, isFavorite);
       if (didUpdate) {
-        void mutateSkill();
+        await mutateSkill();
       }
     },
     [updateSkillFavorite, mutateSkill]

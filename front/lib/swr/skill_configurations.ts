@@ -48,7 +48,7 @@ export function useSkill(options: {
   isSkillLoading: boolean;
   isSkillError: boolean;
   isSkillNotFound: boolean;
-  mutateSkill: () => void;
+  mutateSkill: () => Promise<GetSkillWithRelationsResponseBody | undefined>;
   // Also refreshes the other variants of the skill fetch (with/without relations).
   mutateSkillRegardlessOfQueryParams: () => void;
 };
@@ -63,7 +63,7 @@ export function useSkill(options: {
   isSkillLoading: boolean;
   isSkillError: boolean;
   isSkillNotFound: boolean;
-  mutateSkill: () => void;
+  mutateSkill: () => Promise<GetSkillResponseBody | undefined>;
   // Also refreshes the other variants of the skill fetch (with/without relations).
   mutateSkillRegardlessOfQueryParams: () => void;
 };
@@ -85,7 +85,9 @@ export function useSkill({
   isSkillLoading: boolean;
   isSkillError: boolean;
   isSkillNotFound: boolean;
-  mutateSkill: () => void;
+  mutateSkill: () => Promise<
+    GetSkillResponseBody | GetSkillWithRelationsResponseBody | undefined
+  >;
   // Also refreshes the other variants of the skill fetch (with/without relations).
   mutateSkillRegardlessOfQueryParams: () => void;
 } {
