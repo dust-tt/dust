@@ -24,7 +24,7 @@ describe("sheetToFrameSkill", () => {
     expect(instructions).toContain(ENABLE_SKILL_TOOL);
     expect(instructions).toContain(framesSkill.name);
     expect(instructions).toContain("Before reading the sheet");
-    expect(instructions).toContain("deliberately does not restate them");
+    expect(instructions).toContain("does not restate them");
     // The Frame tooling and the linter ship with the Frames skill; duplicating its servers here
     // would hand out the tools without the instructions.
     expect(sheetToFrameSkill.mcpServers).toEqual([]);
@@ -38,7 +38,7 @@ describe("sheetToFrameSkill", () => {
     expect(instructions).toContain("xlsx_inspect");
     expect(instructions).toContain("**Calculated columns get no column.**");
     expect(instructions).toContain(
-      "A stored total is the staleness the spreadsheet"
+      "reintroduces the staleness the spreadsheet"
     );
     expect(instructions).toContain("snapshot that constant onto the row");
   });

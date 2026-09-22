@@ -30,122 +30,81 @@ const IMPORT_BATCH_SIZE = 200;
 const SHEET_TO_FRAME_INSTRUCTIONS = `\
 # Turning a spreadsheet into a Frame
 
-A spreadsheet people type rows into is an application waiting to happen. This skill covers the
-decisions specific to that conversion. Every Frame mechanic — manifest, functions, databases,
-linting, publishing — comes from the ${framesSkill.name} skill, which you enable first and follow
-for all of it.
-
-## Is this sheet a candidate?
-
 Convert a sheet when people **add rows to it** and some columns are **formulas**: expense logs,
-time sheets, request intakes, inventory counts, pipeline trackers, bug or incident logs. The tell
-is a header row, one row per event, and at least one column nobody types.
+time sheets, request intakes, inventory counts, trackers.
 
-Do not convert, and say why:
-
-- a dashboard, pivot, or financial model — the sheet is the output, not an entry form. Use the
-  spreadsheet skill instead.
-- a one-off analysis, or a sheet nobody has appended to in months. Build a plain Frame that reads
-  the data, or just answer the question.
-- a sheet whose rows are edited in place by many people at once rather than appended. Ask the user
-  what the editing workflow actually is before designing anything.
-
-When it is a candidate but the user has not asked for a conversion, offer it in one line rather
-than converting unprompted.
+Do not convert, and say why: a dashboard, pivot, or financial model (the sheet is the output — use
+the spreadsheet skill); a one-off analysis; a sheet whose rows are edited in place rather than
+appended, until you understand that workflow. When the sheet qualifies but the user did not ask,
+offer in one line rather than converting unprompted.
 
 ## 1. Enable the ${framesSkill.name} skill first
 
 Before reading the sheet, call \`${ENABLE_SKILL_TOOL}\` with \`skillName\` exactly
-\`${framesSkill.name}\`. That skill carries the \`dsbx frame\` lifecycle, the manifest and database
-contracts, the function and hook APIs, and the linter this workflow depends on. This skill
-deliberately does not restate them. Everything below assumes you are following it.
+\`${framesSkill.name}\`. It carries the \`dsbx frame\` lifecycle, the manifest and database
+contracts, the function and hook APIs, and the linter. This skill does not restate them.
 
 ## 2. Read the sheet twice
 
-Read the same range twice with \`get_worksheet\`:
+Read the same range with \`get_worksheet\` twice: \`valueRenderOption: "FORMATTED_VALUE"\` for the
+data, then \`valueRenderOption: "FORMULA"\` for the source.
 
-1. \`valueRenderOption: "FORMATTED_VALUE"\` — the data, as people see it.
-2. \`valueRenderOption: "FORMULA"\` — the same cells as source.
+The second read is the one that matters: it is the only thing that separates **entered** columns
+from **calculated** ones, and that split drives the whole design. Never infer it from headers — a
+"Total" column is sometimes typed by hand.
 
-The second read is the one that matters. It is the only thing that tells you which columns are
-**entered** and which are **calculated**, and that split drives the entire design. A column whose
-cells come back as \`=B2*C2\` is calculated; a column of literals is entered. Do not infer this from
-column headers — a column called "Total" is sometimes typed by hand, and a column called "Notes"
-sometimes holds a formula.
+Also pick up: rows above the header that are not data; constants the formulas reference from
+outside the row (a rate, a price, a lookup tab) — follow each reference; validation lists, which
+become select inputs; date and author columns, which become inferred fields (step 6); the usual
+sort column; totals rows, which are not data.
 
-While you have both reads, also pick up:
-
-- the header row, and any rows above it (titles, merged banners) that are not data;
-- constants the formulas reference from outside the row — a tax rate, a price, an FX rate parked in
-  its own cell or on a lookup tab. Follow each reference and note the cell;
-- dropdowns and validation lists, which become select inputs;
-- a date column and an author column, which become inferred fields rather than inputs (see step 6);
-- the column the sheet is usually sorted by;
-- empty trailing rows, and totals rows at the bottom. A totals row is not data.
-
-If the sheet is an uploaded \`.xlsx\` or \`.csv\` rather than a Google Sheet, run \`xlsx_inspect\` in
-the Computer instead: it reports each cell's formula and cached value side by side, which gives you
-the same entered-versus-calculated split. Everything after this step is identical.
+For an uploaded \`.xlsx\` or \`.csv\`, run \`xlsx_inspect\` in the Computer instead — it reports
+formula and cached value side by side. Everything after this step is identical.
 
 ## 3. Ask only what the sheet cannot tell you
 
-Batch your questions into one message, and ask only what you could not answer from step 2:
-
-- a column you could not classify, or a formula you could not follow to its source;
-- whether a constant the formulas reference is fixed or something the user wants to change later;
-- meaning carried outside the columns: conditional formatting colors, a legend tab, a column of
-  emoji or initials that stands for a status;
-- who may delete rows — everyone, or only the person who created the row;
-- rows that look like data but are not, when you are unsure.
+Batch your questions into one message: a column you could not classify or a formula you could not
+follow; whether a referenced constant is fixed or something the user wants to change; meaning
+carried outside the columns (conditional formatting, a legend tab, initials standing for a status);
+who may delete rows.
 
 Do not ask which columns are calculated, what the sort order is, or what the date column means. You
-read that. Asking anyway tells the user you did not.
+read that.
 
 ## 4. Schema: store what people type, nothing they do not
 
-One table for the sheet's rows. Give it \`id\` and \`createdAt\` as the ${framesSkill.name} skill
-requires, then:
+One table, with \`id\` and \`createdAt\`, plus:
 
-- **one column per entered field**, typed properly: numbers as numbers, dates as timestamps, a
-  validation list as text constrained in code. Do not store everything as text because the sheet
-  did;
-- \`createdBy\` from \`currentUser().sId\` and \`createdByName\` from the same call, both \`.notNull()\`.
-  Index \`createdBy\`;
-- \`sourceRowKey\`, nullable text, holding a stable identifier for the sheet row an imported row came
-  from (the A1 row reference, or a natural key from the data). Give it a \`uniqueIndex()\` only if
-  you have verified the keys are distinct; otherwise index it and enforce uniqueness in code;
-- an index on each column the table sorts by.
+- one column per entered field, typed properly — numbers as numbers, dates as timestamps. Do not
+  store everything as text because the sheet did;
+- \`createdBy\` from \`currentUser().sId\` and \`createdByName\`, both \`.notNull()\`, with an index on
+  \`createdBy\`;
+- \`sourceRowKey\`, nullable text, identifying the sheet row an imported row came from. Index it and
+  enforce uniqueness in code, or \`uniqueIndex()\` once you have verified the keys are distinct;
+- an index on each sorted column.
 
-**Calculated columns get no column.** They are not stored and not entered — they are computed from
-the stored inputs when the row is read or rendered. A stored total is the staleness the spreadsheet
-already had: change an input and the number lies.
+**Calculated columns get no column.** They are computed from the stored inputs on read. Storing
+them reintroduces the staleness the spreadsheet already had.
 
-The one case where you do store a derived-looking value: when a formula references a constant that
-changes over time — a rate, a price, an exchange rate — snapshot that constant onto the row at
-entry and compute from the snapshot. Otherwise editing the rate silently rewrites every historical
-row. When the user should be able to change such a constant, keep it in its own small table and
-read the current value when creating a row, rather than hard-coding it in the source.
+The exception: when a formula references a constant that drifts over time — a rate, a price, an FX
+rate — snapshot that constant onto the row at entry and compute from the snapshot, otherwise
+editing it rewrites history. Keep a user-changeable constant in its own small table.
 
-Where to compute: put the arithmetic in one helper under \`functions/lib/\` and call it from both the
-read function and the UI, so the live preview in the form and the stored-row display can never
-disagree.
+Put the arithmetic in one helper under \`functions/lib/\`, called from both the read function and
+the UI, so the form preview and the stored row cannot disagree.
 
 ## 5. Functions
 
-Four, all \`fast\` unless one of them has to call a Dust tool:
+Four, all \`fast\` unless one has to call a Dust tool:
 
 - \`list-rows\` — one bounded screen of rows with their computed fields.
 - \`create-row\` — validates, stamps \`createdBy\` and \`createdAt\`, returns the created row with its
-  computed fields so the UI can update without refetching.
-- \`delete-row\` — deletes by id. Enforce whatever deletion rule step 3 established here, server
-  side; a hidden button is not access control.
-- \`import-rows\` — \`userIdentity: "frame_author_required"\`, takes an array of rows, skips any whose
-  \`sourceRowKey\` already exists, and returns how many it inserted and how many it skipped. Author
-  gating keeps the bulk path out of viewers' hands, and skipping on \`sourceRowKey\` makes a re-run
-  after a partial failure safe.
-
-\`create-row\` never accepts a caller id, a creation timestamp, or any calculated field as input. All
-three are server-side facts.
+  computed fields so the UI updates without refetching. It never accepts a caller id, a timestamp,
+  or a calculated field as input: all three are server-side facts.
+- \`delete-row\` — a hidden button is not access control: enforce the deletion rule from step 3
+  server side.
+- \`import-rows\` — \`userIdentity: "frame_author_required"\`, skips rows whose \`sourceRowKey\` already
+  exists, returns inserted and skipped counts. That makes a re-run after a partial failure safe.
 
 ## 6. Seed from the existing data
 
@@ -155,58 +114,46 @@ Publish first, then seed the live Frame from the Computer:
 dsbx frame call <frame-id> import-rows --input '<json>'
 \`\`\`
 
-- Send at most ${IMPORT_BATCH_SIZE} rows per call, from a file rather than a long inline string when
-  the JSON gets big.
-- Map each sheet row to the entered fields only. Let the Frame compute the calculated ones; do not
-  carry the sheet's evaluated totals across. If a computed value disagrees with the sheet's, you
-  have misread a formula — fix the formula, not the data.
-- Set \`createdBy\` for imported rows from the sheet's author column when it has one and the name
-  resolves to a workspace member; otherwise mark them as imported rather than attributing them to
-  yourself or to the user running the import.
-- Then call \`list-rows\` and check the count against the sheet's row count. Report both numbers.
+- At most ${IMPORT_BATCH_SIZE} rows per call, from a file when the JSON gets big.
+- Map entered fields only; let the Frame compute the rest. A computed value that disagrees with the
+  sheet means you misread a formula — fix the formula, not the data.
+- Set \`createdBy\` from the sheet's author column when it resolves to a workspace member; otherwise
+  mark the row as imported rather than attributing it to yourself or to the user.
+- Call \`list-rows\` and check the count against the sheet. Report both numbers.
 
-**The source sheet is read-only.** Never write to it, never clear it, never add a "migrated"
-column. Say explicitly in your final message that the sheet was not modified, and leave archiving
-or freezing it to the user.
+**The source sheet is read-only.** Never write to it, clear it, or add a "migrated" column. Say in
+your final message that it was not modified, and leave archiving to the user.
 
 ## 7. The entry form
 
-The form is the point of the conversion, so it should be visibly less work than the sheet was.
-
 - An input for each **entered** field, and nothing else.
-- **Infer the obvious.** The date defaults to today. The author is the current user, from
-  \`useUserIdentity\`. Neither is ever a form field — showing the user a date picker preloaded with
-  today's date and a name field preloaded with their own name is the sheet's busywork, not an
-  improvement. Show them as text next to the form if they are worth showing at all, and let the
-  user override the date only when back-dating is a real part of the workflow.
-- Input types follow what you read: a select for a validation list, a number input with the sheet's
-  precision for numeric columns, a date picker for dates, a textarea for free text.
-- **Calculated fields render live and read-only** as the user types, using the same helper the read
-  function uses. Watching the total update as you fill the form is what makes the Frame feel like
-  an upgrade over the spreadsheet.
-- Carry over what the sheet enforced: required columns, value ranges, validation lists. Validate in
-  \`create-row\` too — the UI check is a convenience, not the rule.
+- **Infer the obvious.** The date defaults to today; the author comes from \`useUserIdentity\`.
+  Neither is ever a form field. Show them as text beside the form, and allow overriding the date
+  only when back-dating is part of the workflow.
+- Input types follow what you read: select for a validation list, number with the sheet's
+  precision, date picker, textarea for free text.
+- **Calculated fields render live and read-only** as the user types, through the step 4 helper.
+- Carry over what the sheet enforced — required columns, ranges, validation lists — and validate in
+  \`create-row\` too.
 - Submit from a button, not an HTML form submission.
 
 ## 8. The table
 
-- Show the rows, calculated columns included, in the order the sheet was usually sorted.
+- Rows with their calculated columns, in the sheet's usual order.
 - **Sortable columns where sorting means something**: dates, numbers, status, owner. Not free-text
   notes. Sorting is local UI state, not a database write.
-- **Delete per row**, behind a confirmation, respecting the rule from step 3.
-- Loading, empty, and error states for every call, and an empty state that points at the form.
+- Delete per row, behind a confirmation.
+- Loading, empty, and error states, with the empty state pointing at the form.
 - A total or count row when the sheet had one, computed from the rows on screen.
 
 ## 9. Before you call it done
 
-- Run the linter, publish, and open the Frame in the side panel, as the ${framesSkill.name} skill
-  describes.
-- Add one row through the form yourself and confirm its calculated fields match what the sheet's
-  formula would produce for the same inputs.
+- Lint, publish, and open the Frame in the side panel, as the ${framesSkill.name} skill describes.
+- Add one row through the form and confirm its calculated fields match what the sheet's formula
+  produces for the same inputs.
 - Confirm the seeded row count matches the sheet.
-- Tell the user, in a few lines: how many rows came across, which columns became calculated fields
-  they no longer type, what the form now fills in for them, and that the original sheet is
-  untouched.
+- Tell the user how many rows came across, which columns they no longer type, what the form fills
+  in for them, and that the sheet is untouched.
 `;
 
 /**
@@ -224,10 +171,9 @@ export const sheetToFrameSkill = {
   agentFacingDescription:
     "Convert a spreadsheet used as a data-entry form — expense logs, time sheets, request " +
     "intakes, inventory counts, trackers — into a Frames v2 application backed by a Frame " +
-    "database, seeded with the sheet's existing rows. Covers telling entered columns from " +
-    "formula columns, the schema and functions that follow, and the form and table UI. Use when " +
-    "a Google Sheet or an uploaded spreadsheet should become an app, or when asked to replace a " +
-    "shared sheet with something people can actually use.",
+    "database, seeded with the sheet's existing rows. Use when a Google Sheet or an uploaded " +
+    "spreadsheet should become an app, or when asked to replace a shared sheet with something " +
+    "people can actually use.",
   instructions: SHEET_TO_FRAME_INSTRUCTIONS,
   exposeInstructions: true,
   // No MCP servers: the Frame tooling and the linter both ship with the Frames skill, so the
