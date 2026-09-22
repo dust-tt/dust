@@ -1,14 +1,14 @@
-import { Authenticator } from "@app/lib/auth";
 import {
   buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
+  emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
+import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -153,7 +153,8 @@ async function recheckEditorlessAgent(
 
 async function restoreAuthor(
   auth: Authenticator,
-  agent: EditorlessAgent
+  agent: EditorlessAgent,
+  logger: Logger
 ): Promise<EditorlessAgent | null> {
   const restored = await withTransaction(async (transaction) => {
     // This is the same lock as GroupPermissionResource's live grant mutations. Rechecking after it
@@ -186,29 +187,30 @@ async function restoreAuthor(
       throw grantResult.error;
     }
 
-    await AgentResource.launchSearchIndexation(
-      auth,
-      [current.agentId],
-      transaction
-    );
     return current;
   });
 
   if (restored) {
+    const workspace = auth.getNonNullableWorkspace();
     // Unlike the long-running app, makeScript exits the process as soon as its worker returns. Wait
     // for this post-commit attempt so the process cannot terminate it partway through. The audit
     // helper catches its own errors, so a WorkOS failure cannot fail or roll back the repair.
-    await emitAuditLogEvent({
-      auth,
+    await emitAuditLogEventDirect({
+      workspace,
       action: "agent.editors_updated",
+      actor: {
+        type: "system",
+        id: "restore_editorless_agent_authors",
+        name: "Restore editorless agent authors",
+      },
       targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("workspace", workspace),
         buildAuditLogTarget("agent", {
           sId: restored.agentId,
           name: restored.agentName,
         }),
       ],
-      context: getAuditLogContext(auth),
+      context: { location: "internal" },
       metadata: {
         agent_name: restored.agentName,
         scope: restored.agentScope,
@@ -217,6 +219,22 @@ async function restoreAuthor(
         actor_added_self: "false",
       },
     });
+
+    // Keep indexing outside the write transaction so a Temporal connection failure cannot skip the
+    // audit event after the repair has committed. Retry connection failures, then log and continue.
+    const indexation = await withRetry(() =>
+      AgentResource.launchSearchIndexation(auth, [restored.agentId])
+    );
+    if (indexation.isErr()) {
+      logger.error(
+        {
+          error: indexation.error,
+          workspaceId: restored.workspaceId,
+          agentId: restored.agentId,
+        },
+        "Failed to refresh repaired agent in search"
+      );
+    }
   }
 
   return restored;
@@ -238,6 +256,11 @@ async function restoreAuthor(
  * author. Before the script returns, every committed grant MUST complete an
  * `agent.editors_updated` emission attempt. Reruns MUST not add another grant.
  */
+/**
+ * @cc [owner:philipperolet,label:migration] repaired-agent-search-refresh
+ * Every committed repair MUST attempt to refresh the agent in search after the audit attempt.
+ * Exhausted search retries MUST be logged without preventing the remaining repairs.
+ */
 export async function restoreEditorlessAgentAuthors({
   execute,
   logger,
@@ -253,6 +276,9 @@ export async function restoreEditorlessAgentAuthors({
 }): Promise<RestoreEditorlessAuthorsStats> {
   if (!Number.isInteger(batchSize) || batchSize <= 0) {
     throw new Error("batchSize must be a positive integer");
+  }
+  if (wId && !(await WorkspaceResource.fetchById(wId))) {
+    throw new Error(`Workspace not found: ${wId}`);
   }
 
   let cursor = afterAgentId;
@@ -304,7 +330,7 @@ export async function restoreEditorlessAgentAuthors({
           assert(auth);
           // Each agent needs its own transaction and advisory lock to serialize with live editor
           // changes. Concurrency is capped at four to bound database pressure.
-          return restoreAuthor(auth, agent);
+          return restoreAuthor(auth, agent, logger);
         },
         { concurrency: CONCURRENCY }
       );

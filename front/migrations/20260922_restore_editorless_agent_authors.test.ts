@@ -10,9 +10,13 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const logger = baseLogger.child({}, { level: "silent" });
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 async function replaceEditors(
   auth: Parameters<typeof AgentResource.fromAgentConfiguration>[0],
@@ -45,6 +49,9 @@ async function editorIds(
 
 describe("restoreEditorlessAgentAuthors", () => {
   it("restores only editorless agents, with a dry run and idempotent rerun", async () => {
+    const launchSearchIndexation = vi
+      .spyOn(AgentResource, "launchSearchIndexation")
+      .mockResolvedValue();
     const {
       authenticator: auth,
       user,
@@ -79,6 +86,7 @@ describe("restoreEditorlessAgentAuthors", () => {
       resourceType: "agent",
       resourceId: resourceWithGlobalEditor.id,
     });
+    launchSearchIndexation.mockClear();
 
     await expect(
       restoreEditorlessAgentAuthors({
@@ -109,6 +117,10 @@ describe("restoreEditorlessAgentAuthors", () => {
       otherEditor.sId,
     ]);
     expect(await editorIds(auth, resourceWithGlobalEditor)).toEqual([]);
+    expect(launchSearchIndexation).toHaveBeenCalledExactlyOnceWith(
+      expect.anything(),
+      [editorlessAgent.sId]
+    );
 
     await expect(
       restoreEditorlessAgentAuthors({
@@ -121,5 +133,15 @@ describe("restoreEditorlessAgentAuthors", () => {
       authorsRestored: 0,
       agentsSkipped: 0,
     });
+  });
+
+  it("rejects an unknown workspace scope", async () => {
+    await expect(
+      restoreEditorlessAgentAuthors({
+        execute: false,
+        logger,
+        wId: "missing-workspace",
+      })
+    ).rejects.toThrow("Workspace not found: missing-workspace");
   });
 });
