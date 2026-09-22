@@ -1,5 +1,6 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
+import { SkillSuggestionPreviewProvider } from "@app/components/assistant/details/SuggestionPreviewContext";
 import {
   SkillDetailsContent,
   SkillDetailsHeader,
@@ -15,7 +16,13 @@ interface ConversationSkillPanelProps {
 }
 
 export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
-  const { closePanel, data: skillId } = useConversationSidePanelContext();
+  const {
+    closePanel,
+    data: skillId,
+    panelParams,
+  } = useConversationSidePanelContext();
+  const previewSuggestions =
+    panelParams?.type === "skill" ? (panelParams.previewSuggestions ?? []) : [];
   const { user } = useUser();
 
   // Fetching by id (rather than resolving from a list) is what lets non-editors
@@ -40,14 +47,14 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
             <Spinner size="lg" />
           </div>
         ) : (
-          <>
+          <SkillSuggestionPreviewProvider suggestions={previewSuggestions}>
             <SkillDetailsHeader
               skill={skill}
               owner={owner}
               onClose={closePanel}
             />
             <SkillDetailsContent skill={skill} owner={owner} user={user} />
-          </>
+          </SkillSuggestionPreviewProvider>
         )}
       </div>
     </div>

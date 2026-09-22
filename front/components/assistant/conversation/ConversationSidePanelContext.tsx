@@ -5,6 +5,7 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  AGENT_SIDE_PANEL_TYPE,
   CREDITS_SIDE_PANEL_TYPE,
   FILE_PREVIEW_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
@@ -20,10 +21,12 @@ import {
   assertNever,
   assertNeverAndIgnore,
 } from "@app/types/shared/utils/assert_never";
+import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
-type OpenPanelParams =
+export type OpenPanelParams =
   | {
       type: "actions";
       messageId: string;
@@ -49,10 +52,16 @@ type OpenPanelParams =
   | {
       type: "skill";
       skillId: string;
+      previewSuggestions?: SkillSuggestionType[];
     }
   | {
       type: "tool";
       toolId: string;
+    }
+  | {
+      type: "agent";
+      agentId: string;
+      previewSuggestions?: AgentSuggestionType[];
     };
 
 const FILE_PREVIEW_FILE_ID_PREFIX = "id:";
@@ -106,6 +115,8 @@ function panelDataKey(params: OpenPanelParams): string {
       return params.skillId;
     case TOOL_SIDE_PANEL_TYPE:
       return params.toolId;
+    case AGENT_SIDE_PANEL_TYPE:
+      return params.agentId;
     default:
       return assertNever(params);
   }
@@ -159,6 +170,8 @@ function panelParamsFromHash(
       return { type, skillId: data };
     case TOOL_SIDE_PANEL_TYPE:
       return { type, toolId: data };
+    case AGENT_SIDE_PANEL_TYPE:
+      return { type, agentId: data };
     default:
       assertNeverAndIgnore(type);
       return null;
@@ -175,7 +188,8 @@ const isSupportedPanelType = (
   type === "files" ||
   type === "plan" ||
   type === "skill" ||
-  type === "tool";
+  type === "tool" ||
+  type === "agent";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
@@ -197,6 +211,9 @@ interface ConversationSidePanelContextType {
   setVirtuosoMsg: (msg: AgentMessageWithStreaming) => void;
   virtuosoMsg: AgentMessageWithStreaming | null;
   data: string | undefined;
+  // Full params of the shown panel. Unlike `data`, this carries what does not fit in the hash
+  // (suggestions being previewed), so a deep link restores the panel without them.
+  panelParams: OpenPanelParams | null;
 }
 
 // Past a few levels, going back one panel at a time stops matching what the user remembers, so
@@ -267,6 +284,9 @@ export function ConversationSidePanelProvider({
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
   const [hasConversation, setHasConversation] = React.useState(false);
   const [isPanelClosing, setIsPanelClosing] = React.useState(false);
+  const [panelParams, setPanelParams] = React.useState<OpenPanelParams | null>(
+    null
+  );
   const [virtuosoMsg, setVirtuosoMsg] =
     React.useState<AgentMessageWithStreaming | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -290,6 +310,7 @@ export function ConversationSidePanelProvider({
   const onPanelClosed = useCallback(() => {
     setIsPanelClosing(false);
     currentParamsRef.current = null;
+    setPanelParams(null);
     panelHistoryRef.current = [];
     setData(undefined);
     setCurrentPanel(undefined);
@@ -320,6 +341,7 @@ export function ConversationSidePanelProvider({
       setIsPanelClosing(false);
       const previous = currentParamsRef.current;
       currentParamsRef.current = params;
+      setPanelParams(params);
       setCurrentPanel(params.type);
       setData(panelDataKey(params));
       // Only FrameRenderer can leave full screen, so a panel of another type would otherwise be
@@ -470,6 +492,7 @@ export function ConversationSidePanelProvider({
       setVirtuosoMsg,
       virtuosoMsg,
       data,
+      panelParams,
     }),
     [
       currentPanel,
@@ -483,6 +506,7 @@ export function ConversationSidePanelProvider({
       setPanelRef,
       virtuosoMsg,
       data,
+      panelParams,
     ]
   );
 

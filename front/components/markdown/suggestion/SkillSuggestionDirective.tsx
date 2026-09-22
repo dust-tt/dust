@@ -6,6 +6,7 @@
  * card below resolves the suggestion and the skill it targets through their SWR hooks.
  */
 
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
   usePatchSkillSuggestions,
@@ -13,6 +14,7 @@ import {
 } from "@app/hooks/useSkillSuggestions";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { PatchSkillSuggestionResponseBody } from "@app/types/api/assistant/skills/suggestions";
+import { SKILL_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
@@ -93,6 +95,7 @@ function ConversationSkillSuggestion({
   const [pendingAction, setPendingAction] = useState<
     "accept" | "decline" | null
   >(null);
+  const { openPanel } = useConversationSidePanelContext();
 
   const { suggestions, isSuggestionsLoading, mutateSuggestions } =
     useSkillSuggestions({
@@ -187,6 +190,13 @@ function ConversationSkillSuggestion({
       suggestion={suggestion}
       onAccept={handleAccept}
       onDecline={handleDecline}
+      onPreview={() =>
+        openPanel({
+          type: SKILL_SIDE_PANEL_TYPE,
+          skillId,
+          previewSuggestions: [suggestion],
+        })
+      }
       getSkillInstructionsHtml={getSkillInstructionsHtml}
       getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
       workspaceId={owner.sId}

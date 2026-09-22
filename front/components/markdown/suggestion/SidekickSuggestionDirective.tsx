@@ -7,6 +7,7 @@
  */
 
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { AgentSuggestionActionCard } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import {
   SidekickSuggestionCard,
@@ -17,6 +18,7 @@ import {
   useAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { AGENT_SIDE_PANEL_TYPE } from "@app/types/conversation_side_panel";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect } from "react";
@@ -179,6 +181,8 @@ function ConversationAgentSuggestion({
   kind,
   sId,
 }: ConversationAgentSuggestionProps) {
+  const { openPanel } = useConversationSidePanelContext();
+
   const { suggestions, isSuggestionsLoading, mutateSuggestions } =
     useAgentSuggestions({
       agentConfigurationId: agentId,
@@ -215,6 +219,13 @@ function ConversationAgentSuggestion({
         disabled={isSuggestionPending(suggestion)}
         onAccept={() => void acceptSuggestion(suggestion)}
         onReject={() => void rejectSuggestion(suggestion)}
+        onPreview={() =>
+          openPanel({
+            type: AGENT_SIDE_PANEL_TYPE,
+            agentId,
+            previewSuggestions: [suggestion],
+          })
+        }
       />
     </div>
   );

@@ -49,6 +49,7 @@ interface AgentSuggestionActionCardProps {
   agentSuggestion: AgentActionCardSuggestionType;
   onAccept: () => void;
   onReject: () => void;
+  onPreview?: () => void;
   /** Forces the busy/disabled visual, e.g. while an accept/reject request is in flight. */
   disabled?: boolean;
   pictureUrl?: string;
@@ -139,6 +140,7 @@ export function AgentSuggestionActionCard({
   agentSuggestion,
   onAccept,
   onReject,
+  onPreview,
   disabled,
   pictureUrl,
 }: AgentSuggestionActionCardProps) {
@@ -159,6 +161,7 @@ export function AgentSuggestionActionCard({
         }
         onAccept={onAccept}
         onReject={onReject}
+        onPreview={onPreview}
         disabled={disabled}
       />
     );
