@@ -251,6 +251,11 @@ function buildFirstMessagePlaceholders(
   return { userMessage, agentMessages };
 }
 
+/**
+ * @cc [owner:id13,label:react;reliability] terminal-message-state-is-canonical
+ * `agent_message_done` MUST revalidate persisted messages instead of synthesizing terminal message
+ * state from the live stream, which may not have received the final answer or activity steps yet.
+ */
 export const ConversationViewer = ({
   owner,
   user,
@@ -890,43 +895,7 @@ export const ConversationViewer = ({
             // Re-fetch context usage after the agent finishes so the indicator is up-to-date.
             void mutateContextUsage();
 
-            // Terminal errors are persisted before `agent_message_done` is
-            // published. Revalidate from that canonical row: the independent
-            // message stream may not have put the error in Virtuoso yet.
-            if (event.status === "error") {
-              void mutateMessages();
-            } else {
-              const vMsg = virtuosoMessageListRef.current?.data.find(
-                (m) => m.sId === event.messageId
-              );
-              const msg =
-                vMsg && isAgentMessageWithStreaming(vMsg) ? vMsg : null;
-
-              void mutateMessages(
-                (pages) =>
-                  pages?.map((page) => ({
-                    ...page,
-                    messages: page.messages.map((m) =>
-                      isLightAgentMessageType(m) && m.sId === event.messageId
-                        ? {
-                            ...m,
-                            status: "succeeded" as const,
-                            ...(msg !== null
-                              ? {
-                                  content: msg.content,
-                                  completionDurationMs:
-                                    msg.completionDurationMs,
-                                  activitySteps:
-                                    msg.streaming.inlineActivitySteps,
-                                }
-                              : {}),
-                          }
-                        : m
-                    ),
-                  })),
-                { revalidate: msg === null }
-              );
-            }
+            void mutateMessages();
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
