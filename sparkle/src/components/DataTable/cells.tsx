@@ -92,58 +92,27 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   trailing?: ReactNode;
 }
 
-/** Standard cell layout with optional avatar, avatar stack, icon, inline description, secondary line and trailing slot. */
-export function CellContent({
-  children,
-  className,
+interface CellLeadingVisualProps {
+  avatarUrl?: string;
+  avatarTooltipLabel?: string;
+  roundedAvatar?: boolean;
+  avatarStack?: CellContentProps["avatarStack"];
+  icon?: React.ComponentType<{ className?: string }>;
+  iconClassName?: string;
+  avatarSize: "xs" | "sm";
+}
+
+function CellLeadingVisual({
   avatarUrl,
   avatarTooltipLabel,
   roundedAvatar,
+  avatarStack,
   icon,
   iconClassName,
-  description,
-  grow = false,
-  disabled,
-  avatarStack,
-  secondaryLine,
-  trailing,
-  ...props
-}: CellContentProps) {
-  const { density } = useDataTableLayout();
-  const avatarSize = density === "relaxed" ? "sm" : "xs";
-  const showSecondaryLine =
-    secondaryLine !== undefined && density === "relaxed";
-
-  const primaryLine = (
-    <>
-      <div
-        className={cn(
-          grow ? "flex-grow" : "",
-          "truncate text-sm",
-          "text-foreground"
-        )}
-      >
-        {children}
-      </div>
-      {description && (
-        <span className={cn("pl-2 text-sm", "text-muted-foreground")}>
-          {description}
-        </span>
-      )}
-    </>
-  );
-
+  avatarSize,
+}: CellLeadingVisualProps) {
   return (
-    <div
-      className={cn(
-        "flex items-center",
-        grow ? "flex-grow" : "",
-        disabled && "cursor-not-allowed opacity-50",
-        className
-      )}
-      aria-disabled={disabled || undefined}
-      {...props}
-    >
+    <>
       {avatarUrl && avatarTooltipLabel && (
         <Tooltip
           trigger={
@@ -179,28 +148,122 @@ export function CellContent({
           className={cn("mr-2 text-foreground", iconClassName)}
         />
       )}
-      {showSecondaryLine ? (
-        <div
-          className={cn(
-            "flex min-w-0 shrink flex-col truncate",
-            grow ? "flex-grow" : ""
-          )}
-        >
-          <div className="flex items-center truncate">{primaryLine}</div>
-          <div className="truncate text-xs text-muted-foreground">
-            {secondaryLine}
-          </div>
-        </div>
-      ) : (
-        <div
-          className={cn(
-            "flex shrink truncate items-center",
-            grow ? "flex-grow" : ""
-          )}
-        >
-          {primaryLine}
-        </div>
+    </>
+  );
+}
+
+interface CellTextProps {
+  children?: ReactNode;
+  description?: string;
+  grow: boolean;
+  secondaryLine?: ReactNode;
+  showSecondaryLine: boolean;
+}
+
+function CellText({
+  children,
+  description,
+  grow,
+  secondaryLine,
+  showSecondaryLine,
+}: CellTextProps) {
+  const primaryLine = (
+    <>
+      <div
+        className={cn(
+          grow ? "flex-grow" : "",
+          "truncate text-sm",
+          "text-foreground"
+        )}
+      >
+        {children}
+      </div>
+      {description && (
+        <span className={cn("pl-2 text-sm", "text-muted-foreground")}>
+          {description}
+        </span>
       )}
+    </>
+  );
+
+  if (showSecondaryLine) {
+    return (
+      <div
+        className={cn(
+          "flex min-w-0 shrink flex-col truncate",
+          grow ? "flex-grow" : ""
+        )}
+      >
+        <div className="flex items-center truncate">{primaryLine}</div>
+        <div className="truncate text-xs text-muted-foreground">
+          {secondaryLine}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex shrink truncate items-center",
+        grow ? "flex-grow" : ""
+      )}
+    >
+      {primaryLine}
+    </div>
+  );
+}
+
+/** Standard cell layout with optional avatar, avatar stack, icon, inline description, secondary line and trailing slot. */
+export function CellContent({
+  children,
+  className,
+  avatarUrl,
+  avatarTooltipLabel,
+  roundedAvatar,
+  icon,
+  iconClassName,
+  description,
+  grow = false,
+  disabled,
+  avatarStack,
+  secondaryLine,
+  trailing,
+  ...props
+}: CellContentProps) {
+  const { density } = useDataTableLayout();
+  const avatarSize = density === "relaxed" ? "sm" : "xs";
+  const showSecondaryLine =
+    secondaryLine !== undefined && density === "relaxed";
+
+  return (
+    <div
+      className={cn(
+        "flex items-center",
+        grow ? "flex-grow" : "",
+        disabled && "cursor-not-allowed opacity-50",
+        className
+      )}
+      aria-disabled={disabled || undefined}
+      {...props}
+    >
+      <CellLeadingVisual
+        avatarUrl={avatarUrl}
+        avatarTooltipLabel={avatarTooltipLabel}
+        roundedAvatar={roundedAvatar}
+        avatarStack={avatarStack}
+        icon={icon}
+        iconClassName={iconClassName}
+        avatarSize={avatarSize}
+      />
+      <CellText
+        description={description}
+        grow={grow}
+        secondaryLine={secondaryLine}
+        showSecondaryLine={showSecondaryLine}
+      >
+        {children}
+      </CellText>
       {trailing !== undefined && (
         <div className="ml-auto flex shrink-0 items-center pl-2">
           {trailing}
@@ -342,14 +405,70 @@ function formatNumericValue(
   );
 }
 
-const TREND_LABEL: Record<
-  NonNullable<NumericCellContentProps["trend"]>,
-  string
-> = {
+type NumericTrend = NonNullable<NumericCellContentProps["trend"]>;
+
+const TREND_LABEL: Record<NumericTrend, string> = {
   up: "Trending up",
   down: "Trending down",
   flat: "No change",
 };
+
+/** Display string for a numeric cell: placeholder for missing values, otherwise the localized number with its unit. */
+function formatNumericCellValue({
+  value,
+  locale,
+  precision,
+  unit,
+  unitPosition,
+  placeholder,
+}: {
+  value: number | null | undefined;
+  locale: string | undefined;
+  precision: number | undefined;
+  unit: string | undefined;
+  unitPosition: "prefix" | "suffix";
+  placeholder: string;
+}): string {
+  if (value === null || value === undefined) {
+    return placeholder;
+  }
+  const formatted = formatNumericValue(value, locale, precision);
+  if (unit === undefined) {
+    return formatted;
+  }
+  return unitPosition === "prefix"
+    ? `${unit}${formatted}`
+    : `${formatted}${unit}`;
+}
+
+function TrendIndicator({
+  trend,
+  upIsPositive,
+}: {
+  trend: NumericTrend;
+  upIsPositive: boolean;
+}) {
+  const trendIsPositive =
+    trend === "up" ? upIsPositive : trend === "down" ? !upIsPositive : null;
+
+  return (
+    <span
+      role="img"
+      aria-label={TREND_LABEL[trend]}
+      className={cn(
+        "flex items-center",
+        trendIsPositive === true && "text-success-800",
+        trendIsPositive === false && "text-warning-800",
+        trendIsPositive === null && "text-muted-foreground"
+      )}
+    >
+      <Icon
+        visual={trend === "up" ? ArrowUp : trend === "down" ? ArrowDown : Minus}
+        size="xs"
+      />
+    </span>
+  );
+}
 
 /** Right-aligned number in tabular figures with optional unit and trend arrow; pair with a `meta.type: "numeric"` column so the header aligns too. */
 export function NumericCellContent({
@@ -368,17 +487,14 @@ export function NumericCellContent({
 }: NumericCellContentProps) {
   const { density } = useDataTableLayout();
 
-  const formatted =
-    value === null || value === undefined
-      ? placeholder
-      : unit === undefined
-        ? formatNumericValue(value, locale, precision)
-        : unitPosition === "prefix"
-          ? `${unit}${formatNumericValue(value, locale, precision)}`
-          : `${formatNumericValue(value, locale, precision)}${unit}`;
-
-  const trendIsPositive =
-    trend === "up" ? upIsPositive : trend === "down" ? !upIsPositive : null;
+  const formatted = formatNumericCellValue({
+    value,
+    locale,
+    precision,
+    unit,
+    unitPosition,
+    placeholder,
+  });
 
   const content = (
     <div
@@ -393,25 +509,7 @@ export function NumericCellContent({
       {...props}
     >
       <span className="truncate">{formatted}</span>
-      {trend && (
-        <span
-          role="img"
-          aria-label={TREND_LABEL[trend]}
-          className={cn(
-            "flex items-center",
-            trendIsPositive === true && "text-success-800",
-            trendIsPositive === false && "text-warning-800",
-            trendIsPositive === null && "text-muted-foreground"
-          )}
-        >
-          <Icon
-            visual={
-              trend === "up" ? ArrowUp : trend === "down" ? ArrowDown : Minus
-            }
-            size="xs"
-          />
-        </span>
-      )}
+      {trend && <TrendIndicator trend={trend} upIsPositive={upIsPositive} />}
     </div>
   );
 

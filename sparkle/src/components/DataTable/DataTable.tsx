@@ -6,6 +6,7 @@ import {
   type ColumnDef,
   type ColumnFiltersState,
   flexRender,
+  functionalUpdate,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
@@ -14,7 +15,9 @@ import {
   type RowSelectionState,
   type SortingState,
   type Header as TanstackHeader,
+  type HeaderGroup as TanstackHeaderGroup,
   type Row as TanstackRow,
+  type Table as TanstackTable,
   type Updater,
   useReactTable,
 } from "@tanstack/react-table";
@@ -205,81 +208,70 @@ function useRowRevealAnimation(rowCount: number, enabled: boolean) {
   return ref;
 }
 
-/**
- * Sortable, filterable, paginated data table built on TanStack Table, with row
- * selection and a "Load more" footer. For very long or infinite datasets prefer
- * ScrollableDataTable, which virtualizes rows.
- * @summary Sortable, filterable, paginated data table.
- */
-export function DataTableBase<TData extends TBaseData>({
+// Adapts a controlled `(value) => void` setter to TanStack's Updater API; only when both the value and its setter are provided.
+function useControlledUpdater<T>(
+  value: T | undefined,
+  setValue: ((value: T) => void) | undefined
+): ((updater: Updater<T>) => void) | undefined {
+  return value && setValue
+    ? (updater: Updater<T>) => {
+        setValue(functionalUpdate(updater, value));
+      }
+    : undefined;
+}
+
+interface DataTableInstanceOptions<TData extends TBaseData> {
+  data: TData[];
+  columns: ColumnDef<TData, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  totalRowCount?: number;
+  filter?: string;
+  filterColumn?: string;
+  pagination?: PaginationState;
+  setPagination?: (pagination: PaginationState) => void;
+  sorting?: SortingState;
+  setSorting?: (sorting: SortingState) => void;
+  isServerSideSorting: boolean;
+  rowSelection?: RowSelectionState;
+  setRowSelection?: (rowSelection: RowSelectionState) => void;
+  enableRowSelection: boolean | ((row: TanstackRow<TData>) => boolean);
+  enableMultiRowSelection: boolean;
+  getRowId?: DataTableProps<TData>["getRowId"];
+  enableSortingRemoval: boolean;
+  getRowLabel?: (row: TData) => string;
+}
+
+// Builds the TanStack table for DataTableBase, wiring controlled state and the text filter.
+function useDataTableInstance<TData extends TBaseData>({
   data,
-  totalRowCount,
-  rowCountIsCapped = false,
   columns,
-  className,
-  widthClassName = "w-full",
+  totalRowCount,
   filter,
   filterColumn,
-  columnsBreakpoints = {},
   pagination,
   setPagination,
-  onLoadMore,
-  isLoadingMore = false,
-  onShowLess,
   sorting,
   setSorting,
-  isServerSideSorting = false,
-  disablePaginationNumbers = false,
+  isServerSideSorting,
   rowSelection,
   setRowSelection,
-  enableRowSelection = false,
-  enableMultiRowSelection = true,
+  enableRowSelection,
+  enableMultiRowSelection,
   getRowId,
-  enableSortingRemoval = true,
-  hideRowDivider = false,
-  disableRowClickSelection = false,
-  density = "default",
-  isLoading = false,
-  emptyState,
+  enableSortingRemoval,
   getRowLabel,
-  stickyHeader = false,
-  maxHeight,
-  horizontalScroll = false,
-}: DataTableProps<TData>) {
-  const windowSize = useWindowSize();
-
+}: DataTableInstanceOptions<TData>) {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   const isServerSidePagination = !!totalRowCount && totalRowCount > data.length;
   const isClientSideSortingEnabled =
     !isServerSideSorting && !isServerSidePagination;
 
-  const onPaginationChange =
-    pagination && setPagination
-      ? (updater: Updater<PaginationState>) => {
-          const newValue =
-            typeof updater === "function" ? updater(pagination) : updater;
-          setPagination(newValue);
-        }
-      : undefined;
-
-  const onSortingChange =
-    sorting && setSorting
-      ? (updater: Updater<SortingState>) => {
-          const newValue =
-            typeof updater === "function" ? updater(sorting) : updater;
-          setSorting(newValue);
-        }
-      : undefined;
-
-  const onRowSelectionChange =
-    rowSelection && setRowSelection
-      ? (updater: Updater<RowSelectionState>) => {
-          const newValue =
-            typeof updater === "function" ? updater(rowSelection) : updater;
-          setRowSelection(newValue);
-        }
-      : undefined;
+  const onPaginationChange = useControlledUpdater(pagination, setPagination);
+  const onSortingChange = useControlledUpdater(sorting, setSorting);
+  const onRowSelectionChange = useControlledUpdater(
+    rowSelection,
+    setRowSelection
+  );
 
   const table = useReactTable({
     data,
@@ -327,6 +319,218 @@ export function DataTableBase<TData extends TBaseData>({
     }
   }, [filter, filterColumn]);
 
+  return table;
+}
+
+interface DataTableHeaderRowProps<TData extends TBaseData> {
+  headerGroup: TanstackHeaderGroup<TData>;
+  widthClassName: string;
+  isColumnVisible: (columnId: string) => boolean;
+}
+
+function DataTableHeaderRow<TData extends TBaseData>({
+  headerGroup,
+  widthClassName,
+  isColumnVisible,
+}: DataTableHeaderRowProps<TData>) {
+  return (
+    <Row widthClassName={widthClassName}>
+      {headerGroup.headers.map((header) => {
+        if (!isColumnVisible(header.id)) {
+          return null;
+        }
+        const canSort =
+          header.column.getCanSort() &&
+          getDataTableColumnPresets(header.column).sortable;
+        return (
+          <Head
+            column={header.column}
+            key={header.id}
+            onSort={
+              canSort ? header.column.getToggleSortingHandler() : undefined
+            }
+          >
+            {renderHeaderContent(header, canSort)}
+          </Head>
+        );
+      })}
+    </Row>
+  );
+}
+
+interface DataTableBodyRowProps<TData extends TBaseData> {
+  row: TanstackRow<TData>;
+  widthClassName: string;
+  hideRowDivider: boolean;
+  enableRowSelection: boolean | ((row: TanstackRow<TData>) => boolean);
+  enableMultiRowSelection: boolean;
+  disableRowClickSelection: boolean;
+  isColumnVisible: (columnId: string) => boolean;
+}
+
+function DataTableBodyRow<TData extends TBaseData>({
+  row,
+  widthClassName,
+  hideRowDivider,
+  enableRowSelection,
+  enableMultiRowSelection,
+  disableRowClickSelection,
+  isColumnVisible,
+}: DataTableBodyRowProps<TData>) {
+  const handleRowClick = () => {
+    if (enableRowSelection && row.getCanSelect()) {
+      row.toggleSelected(!enableMultiRowSelection ? true : undefined);
+    }
+    row.original.onClick?.();
+  };
+
+  return (
+    <Row
+      widthClassName={widthClassName}
+      hideBottomBorder={hideRowDivider}
+      onClick={
+        enableRowSelection && !disableRowClickSelection
+          ? handleRowClick
+          : row.original.onClick
+      }
+      onDoubleClick={row.original.onDoubleClick}
+      rowData={row.original}
+      {...(enableRowSelection && {
+        "data-selected": row.getIsSelected(),
+      })}
+    >
+      {row.getVisibleCells().map((cell) => {
+        if (!isColumnVisible(cell.column.id)) {
+          return null;
+        }
+        return (
+          <Cell column={cell.column} key={cell.id}>
+            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          </Cell>
+        );
+      })}
+    </Row>
+  );
+}
+
+interface DataTableFooterProps<TData extends TBaseData> {
+  table: TanstackTable<TData>;
+  pagination?: PaginationState;
+  rowCount: number;
+  totalRowCount?: number;
+  rowCountIsCapped: boolean;
+  disablePaginationNumbers: boolean;
+  onLoadMore?: () => void;
+  isLoadingMore: boolean;
+  onShowLess?: () => void;
+}
+
+// Pagination when controlled pagination is set, otherwise the "Load more" control, otherwise nothing.
+function DataTableFooter<TData extends TBaseData>({
+  table,
+  pagination,
+  rowCount,
+  totalRowCount,
+  rowCountIsCapped,
+  disablePaginationNumbers,
+  onLoadMore,
+  isLoadingMore,
+  onShowLess,
+}: DataTableFooterProps<TData>) {
+  if (pagination) {
+    return (
+      <div className="p-1">
+        <Pagination
+          size="xs"
+          pagination={table.getState().pagination}
+          setPagination={table.setPagination}
+          rowCount={table.getRowCount()}
+          rowCountIsCapped={rowCountIsCapped}
+          disablePaginationNumbers={disablePaginationNumbers}
+        />
+      </div>
+    );
+  }
+  if (onLoadMore) {
+    return (
+      <div className="p-1">
+        <LoadMore
+          onLoadMore={onLoadMore}
+          onShowLess={onShowLess}
+          isLoading={isLoadingMore}
+          rowCount={rowCount}
+          totalRowCount={totalRowCount}
+          totalRowCountIsCapped={rowCountIsCapped}
+        />
+      </div>
+    );
+  }
+  return null;
+}
+
+/**
+ * Sortable, filterable, paginated data table built on TanStack Table, with row
+ * selection and a "Load more" footer. For very long or infinite datasets prefer
+ * ScrollableDataTable, which virtualizes rows.
+ * @summary Sortable, filterable, paginated data table.
+ */
+export function DataTableBase<TData extends TBaseData>({
+  data,
+  totalRowCount,
+  rowCountIsCapped = false,
+  columns,
+  className,
+  widthClassName = "w-full",
+  filter,
+  filterColumn,
+  columnsBreakpoints = {},
+  pagination,
+  setPagination,
+  onLoadMore,
+  isLoadingMore = false,
+  onShowLess,
+  sorting,
+  setSorting,
+  isServerSideSorting = false,
+  disablePaginationNumbers = false,
+  rowSelection,
+  setRowSelection,
+  enableRowSelection = false,
+  enableMultiRowSelection = true,
+  getRowId,
+  enableSortingRemoval = true,
+  hideRowDivider = false,
+  disableRowClickSelection = false,
+  density = "default",
+  isLoading = false,
+  emptyState,
+  getRowLabel,
+  stickyHeader = false,
+  maxHeight,
+  horizontalScroll = false,
+}: DataTableProps<TData>) {
+  const windowSize = useWindowSize();
+
+  const table = useDataTableInstance({
+    data,
+    columns,
+    totalRowCount,
+    filter,
+    filterColumn,
+    pagination,
+    setPagination,
+    sorting,
+    setSorting,
+    isServerSideSorting,
+    rowSelection,
+    setRowSelection,
+    enableRowSelection,
+    enableMultiRowSelection,
+    getRowId,
+    enableSortingRemoval,
+    getRowLabel,
+  });
+
   const rows = table.getRowModel().rows;
   // Rendered row count, not data.length, so filtering keeps the height in sync.
   const rowRevealRef = useRowRevealAnimation(
@@ -368,29 +572,12 @@ export function DataTableBase<TData extends TBaseData>({
             )}
           >
             {table.getHeaderGroups().map((headerGroup) => (
-              <Row key={headerGroup.id} widthClassName={widthClassName}>
-                {headerGroup.headers.map((header) => {
-                  if (!isColumnVisible(header.id)) {
-                    return null;
-                  }
-                  const canSort =
-                    header.column.getCanSort() &&
-                    getDataTableColumnPresets(header.column).sortable;
-                  return (
-                    <Head
-                      column={header.column}
-                      key={header.id}
-                      onSort={
-                        canSort
-                          ? header.column.getToggleSortingHandler()
-                          : undefined
-                      }
-                    >
-                      {renderHeaderContent(header, canSort)}
-                    </Head>
-                  );
-                })}
-              </Row>
+              <DataTableHeaderRow
+                key={headerGroup.id}
+                headerGroup={headerGroup}
+                widthClassName={widthClassName}
+                isColumnVisible={isColumnVisible}
+              />
             ))}
           </Header>
           <Body
@@ -400,48 +587,18 @@ export function DataTableBase<TData extends TBaseData>({
                 "pointer-events-none opacity-50 transition-opacity duration-enter ease-enter motion-reduce:transition-none"
             )}
           >
-            {rows.map((row) => {
-              const handleRowClick = () => {
-                if (enableRowSelection && row.getCanSelect()) {
-                  row.toggleSelected(
-                    !enableMultiRowSelection ? true : undefined
-                  );
-                }
-                row.original.onClick?.();
-              };
-
-              return (
-                <Row
-                  widthClassName={widthClassName}
-                  key={row.id}
-                  hideBottomBorder={hideRowDivider}
-                  onClick={
-                    enableRowSelection && !disableRowClickSelection
-                      ? handleRowClick
-                      : row.original.onClick
-                  }
-                  onDoubleClick={row.original.onDoubleClick}
-                  rowData={row.original}
-                  {...(enableRowSelection && {
-                    "data-selected": row.getIsSelected(),
-                  })}
-                >
-                  {row.getVisibleCells().map((cell) => {
-                    if (!isColumnVisible(cell.column.id)) {
-                      return null;
-                    }
-                    return (
-                      <Cell column={cell.column} key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </Cell>
-                    );
-                  })}
-                </Row>
-              );
-            })}
+            {rows.map((row) => (
+              <DataTableBodyRow
+                key={row.id}
+                row={row}
+                widthClassName={widthClassName}
+                hideRowDivider={hideRowDivider}
+                enableRowSelection={enableRowSelection}
+                enableMultiRowSelection={enableMultiRowSelection}
+                disableRowClickSelection={disableRowClickSelection}
+                isColumnVisible={isColumnVisible}
+              />
+            ))}
             {rows.length === 0 && emptyState !== undefined && (
               <tr>
                 <td
@@ -454,30 +611,17 @@ export function DataTableBase<TData extends TBaseData>({
             )}
           </Body>
         </Root>
-        {pagination && (
-          <div className="p-1">
-            <Pagination
-              size="xs"
-              pagination={table.getState().pagination}
-              setPagination={table.setPagination}
-              rowCount={table.getRowCount()}
-              rowCountIsCapped={rowCountIsCapped}
-              disablePaginationNumbers={disablePaginationNumbers}
-            />
-          </div>
-        )}
-        {!pagination && onLoadMore && (
-          <div className="p-1">
-            <LoadMore
-              onLoadMore={onLoadMore}
-              onShowLess={onShowLess}
-              isLoading={isLoadingMore}
-              rowCount={data.length}
-              totalRowCount={totalRowCount}
-              totalRowCountIsCapped={rowCountIsCapped}
-            />
-          </div>
-        )}
+        <DataTableFooter
+          table={table}
+          pagination={pagination}
+          rowCount={data.length}
+          totalRowCount={totalRowCount}
+          rowCountIsCapped={rowCountIsCapped}
+          disablePaginationNumbers={disablePaginationNumbers}
+          onLoadMore={onLoadMore}
+          isLoadingMore={isLoadingMore}
+          onShowLess={onShowLess}
+        />
       </div>
     </DataTableLayoutContext.Provider>
   );

@@ -202,7 +202,8 @@ export function ScrollableDataTable<TData extends TBaseData>({
   });
 
   useEffect(() => {
-    if (!onLoadMore || !loadMoreRef.current) {
+    const node = loadMoreRef.current;
+    if (!onLoadMore || !node) {
       return;
     }
 
@@ -219,12 +220,10 @@ export function ScrollableDataTable<TData extends TBaseData>({
       }
     );
 
-    observer.observe(loadMoreRef.current);
+    observer.observe(node);
 
     return () => {
-      if (loadMoreRef.current) {
-        observer.unobserve(loadMoreRef.current);
-      }
+      observer.unobserve(node);
       observer.disconnect();
     };
   }, [onLoadMore, isLoading]);
