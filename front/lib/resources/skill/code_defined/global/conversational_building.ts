@@ -60,6 +60,30 @@ function buildingToolName(toolName: string): string {
   return getPrefixedToolName(BUILDING_AGENTS_AND_SKILLS_SERVER_NAME, toolName);
 }
 
+const SUB_SKILL_REFERENCES_SECTION = `<sub_skill_references>
+Instructions can reference another skill of the workspace using inline \`<skill>\` tags. The referenced skill is called a sub-skill.
+During runtime, the sub-skill's own instructions and tools are availablr to the parent, so the parent inherits the whole capability instead of duplicating it.
+
+\`\`\`
+<skill id="SKILL_ID" name="SKILL_NAME"/>
+\`\`\`
+
+Reference a sub-skill when an existing skill already owns a capability the parent needs, and that capability sits next to the parent's purpose. Prefer it over restating the sub-skill's rules, or over inlining the same \`<tool>\` the sub-skill already wraps: the sub-skill carries the know-how, so a copy here would duplicate it and drift from it.
+Do NOT reference a sub-skill that only partially overlaps, that would drag in unrelated behavior, or whose job the parent's own instructions already cover.
+
+To embed a sub-skill reference:
+1. Call \`${managementToolName(LIST_SKILLS_TOOL_NAME)}\` to find the skill covering the capability, then \`${buildingToolName(DESCRIBE_SKILL_TOOL_NAME)}\` to confirm from its instructions that it does what the parent needs.
+2. Embed the self-closing tag inline inside the relevant instruction block, next to the instructions saying when to delegate to it.
+3. Say WHEN to delegate to it and what to do with what it returns. A bare tag with no surrounding instruction is not enough.
+
+To remove a sub-skill reference, remove the \`<skill>\` tag and any instructions that only make sense with that sub-skill.
+
+Example:
+\`\`\`
+<p data-block-id="a1b2c3d4">When the user asks to open a support ticket, delegate to <skill id="skill_support_ticket" name="Open support ticket"/> and report back the ticket reference it returns.</p>
+\`\`\`
+</sub_skill_references>`;
+
 const SECTIONS = {
   primaryGoal: `<primary_goal>
 You help users build, update, delete and maintain the agents and skills they have access to.
@@ -110,7 +134,7 @@ Refer to <workflow_visualization> when the user asks for a diagram of an entity 
   discoveryStep: `<discovery_step>
 Tools operate on entity ids, not names. Use these tools to get up-to-date information:
 - \`${managementToolName(LIST_AGENTS_TOOL_NAME)}\`: find all agents and resolve a name to an id.
-- \`${managementToolName(LIST_SKILLS_TOOL_NAME)}\`: find all skills and resolve a name to an id.
+- \`${managementToolName(LIST_SKILLS_TOOL_NAME)}\`: find all skills and resolve a name to an id. Use it before referencing a skill as a sub-skill in a suggestion (see <sub_skill_references>).
 - \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`: find the tools that can be equipped on agents and skills and resolve a name to an id.
 - \`${managementToolName(GET_TOOL_DETAILS_TOOL_NAME)}\`: a tool's description and the functions it exposes with their parameters. Use it before referencing a tool in a suggestion.
 - \`${managementToolName(SEARCH_KNOWLEDGE_TOOL_NAME)}\`: without a query, the knowledge sources (data source views) of the workspace; with a query, the sources and document nodes matching it. Use it before referencing knowledge in a suggestion (see <knowledge_guidance> and <knowledge_nodes>).
@@ -186,7 +210,7 @@ ${MODEL_GUIDANCE_LINE}
   skillGuidance: `<skill_guidance>
 This section applies to skills only. Skills are shared across agents and users: every suggestion MUST be useful for all agents using the skill. Skills SHOULD be single purpose and not overloaded with multiple responsibilities.
 
-Skills carry their tools and knowledge INLINE in their instructions, through \`<tool>\` and \`<knowledge>\` tags. This only works for skills, NEVER for agents.
+Skills carry their tools, knowledge and sub-skills INLINE in their instructions, through \`<tool>\`, \`<knowledge>\` and \`<skill>\` tags. This only works for skills, NEVER for agents.
 
 <instructions_guidance>
 ${SKILL_INSTRUCTIONS_GUIDANCE_BODY}
@@ -195,6 +219,8 @@ ${SKILL_INSTRUCTIONS_GUIDANCE_BODY}
 ${SKILL_TOOL_REFERENCES_SECTION}
 
 ${SKILL_KNOWLEDGE_NODES_SECTION}
+
+${SUB_SKILL_REFERENCES_SECTION}
 
 <agent_facing_description_guidance>
 ${skillAgentFacingDescriptionGuidanceBody({ evidenceOnly: false })}
