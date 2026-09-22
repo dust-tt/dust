@@ -50,8 +50,13 @@ import type {
 import { SYSTEM_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/system";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
 import type {
+  SkillAttachedKnowledge,
   SkillConfigurationFindOptions,
+  SkillFetchContext,
   SkillHydrationOptions,
+  SkillMCPServerConfiguration,
+  SkillPermissionFilteringMode,
+  SkillResourceConstructorOptions,
 } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -129,13 +134,14 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-const SKILL_SEARCH_INDEXATION_CONCURRENCY = 8;
+export type {
+  SkillAttachedKnowledge,
+  SkillFetchContext,
+  SkillMCPServerConfiguration,
+  SkillPermissionFilteringMode,
+} from "@app/lib/resources/skill/types";
 
-export type SkillMCPServerConfiguration = {
-  view: MCPServerViewResource;
-  childAgentId?: string;
-  serverNameOverride?: string;
-};
+const SKILL_SEARCH_INDEXATION_CONCURRENCY = 8;
 
 type SkillReferenceTarget = {
   icon: string | null;
@@ -153,54 +159,6 @@ type AgentUsageAttributes = Pick<
 type ReplaceSkillReferenceTagsOptions = {
   html?: boolean;
 };
-
-// How the fetch path treats the custom skills the caller cannot read (row ACL, or a requested
-// space they are not a member of):
-// - "strict" (default): drop them.
-// - "redact_unreadable": keep them, redacted (see `redactedForCaller`). Admins only.
-// - "dangerously_skip": keep them as is. Only for callers that must operate on a skill without
-//   gaining access to what its spaces protect, e.g. an admin re-saving an agent they do not edit:
-//   dropping the skill would silently strip it from the new version.
-export type SkillPermissionFilteringMode =
-  | "strict"
-  | "redact_unreadable"
-  | "dangerously_skip";
-
-export type SkillFetchContext = {
-  permissionFiltering?: SkillPermissionFilteringMode;
-} & (
-  | {
-      agentLoopData?: AgentLoopExecutionData;
-      effectiveSpaceIds: string[];
-    }
-  | {
-      agentLoopData?: never;
-      effectiveSpaceIds?: string[];
-    }
-);
-
-type SkillResourceConstructorOptions =
-  | {
-      codeDefinedSkillId: string;
-      dataSourceConfigurations: SkillDataSourceConfigurationModel[];
-      // When true, the global skill's instructions are exposed to the front-end.
-      exposeInstructions?: boolean;
-      fileAttachments: FileResource[];
-      // Files that ship with a code-defined skill (addressable, not embedded).
-      files?: readonly CodeDefinedSkillFile[];
-      mcpServerConfigurations: SkillMCPServerConfiguration[];
-      version?: number;
-    }
-  | {
-      codeDefinedSkillId?: undefined;
-      dataSourceConfigurations: SkillDataSourceConfigurationModel[];
-      // Custom skills always expose their own instructions; this flag is unused.
-      exposeInstructions?: undefined;
-      fileAttachments: FileResource[];
-      files?: readonly CodeDefinedSkillFile[];
-      mcpServerConfigurations: SkillMCPServerConfiguration[];
-      version?: number;
-    };
 
 type SkillVersionCreationAttributes =
   CreationAttributes<SkillConfigurationModel> & {
@@ -227,11 +185,6 @@ function isSkillResourceWithVersion(
   skill: SkillResource
 ): skill is SkillResource & { version: number } {
   return skill.version !== null;
-}
-
-export interface SkillAttachedKnowledge {
-  dataSourceView: DataSourceViewResource;
-  nodeId: string;
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
