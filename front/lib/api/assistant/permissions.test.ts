@@ -11,8 +11,10 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { describe, expect, it } from "vitest";
 
 describe("getAgentConfigurationRequirementsFromCapabilities", () => {
-  it("should return empty arrays when no actions are provided", async () => {
-    const { authenticator } = await createResourceTest({ role: "admin" });
+  it("should return only the global space when no actions are provided", async () => {
+    const { authenticator, globalSpace } = await createResourceTest({
+      role: "admin",
+    });
 
     const result = await getAgentConfigurationRequirementsFromCapabilities(
       authenticator,
@@ -22,13 +24,14 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
       }
     );
 
-    expect(result.requestedSpaceIds).toEqual([]);
+    expect(result.requestedSpaceIds).toEqual([globalSpace.id]);
   });
 
   it("should handle actions with data sources from different space types", async () => {
-    const { authenticator, workspace, globalGroup } = await createResourceTest({
-      role: "admin",
-    });
+    const { authenticator, workspace, globalGroup, globalSpace } =
+      await createResourceTest({
+        role: "admin",
+      });
 
     // Create a regular space with specific group permissions
     const regularSpace = await SpaceFactory.regular(workspace);
@@ -107,12 +110,15 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
       }
     );
 
-    // Should include space IDs from both spaces
-    expect(result.requestedSpaceIds).toHaveLength(2);
+    // Should include space IDs from both spaces, plus the global space.
+    expect(result.requestedSpaceIds).toHaveLength(3);
+    expect(result.requestedSpaceIds).toContain(regularSpace.id);
+    expect(result.requestedSpaceIds).toContain(publicSpace.id);
+    expect(result.requestedSpaceIds).toContain(globalSpace.id);
   });
 
   it("adds the Pod space of a dustProject configuration", async () => {
-    const { authenticator, workspace } = await createResourceTest({
+    const { authenticator, workspace, globalSpace } = await createResourceTest({
       role: "admin",
     });
     const pod = await SpaceFactory.project(workspace);
@@ -141,13 +147,14 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
       }
     );
 
-    expect(result.requestedSpaceIds).toEqual([pod.id]);
+    expect(result.requestedSpaceIds).toEqual([pod.id, globalSpace.id]);
   });
 
   it("ignores a Pod id that aliases a space through another prefix", async () => {
     const { authenticator, workspace, globalSpace } = await createResourceTest({
       role: "admin",
     });
+    const aliasedSpace = await SpaceFactory.regular(workspace);
 
     const result = await getAgentConfigurationRequirementsFromCapabilities(
       authenticator,
@@ -168,7 +175,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
             secretName: null,
             dustProject: {
               projectId: makeSId("data_source_view", {
-                id: globalSpace.id,
+                id: aliasedSpace.id,
                 workspaceId: workspace.id,
               }),
               workspaceId: workspace.sId,
@@ -179,7 +186,7 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
       }
     );
 
-    expect(result.requestedSpaceIds).toEqual([]);
+    expect(result.requestedSpaceIds).toEqual([globalSpace.id]);
   });
 
   it("should handle actions with MCP server views from different spaces", async () => {
@@ -259,9 +266,10 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
   });
 
   it("should handle ignoreSpaces parameter correctly", async () => {
-    const { authenticator, workspace, globalGroup } = await createResourceTest({
-      role: "admin",
-    });
+    const { authenticator, workspace, globalGroup, globalSpace } =
+      await createResourceTest({
+        role: "admin",
+      });
 
     // Create two spaces using SpaceFactory
     const space1 = await SpaceFactory.regular(workspace);
@@ -334,9 +342,10 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
       }
     );
 
-    expect(resultAll.requestedSpaceIds).toHaveLength(2);
+    expect(resultAll.requestedSpaceIds).toHaveLength(3);
     expect(resultAll.requestedSpaceIds).toContain(space1.id);
     expect(resultAll.requestedSpaceIds).toContain(space2.id);
+    expect(resultAll.requestedSpaceIds).toContain(globalSpace.id);
 
     // With ignoreSpaces - should exclude space1
     const resultIgnore =
@@ -346,15 +355,17 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         ignoreSpaces: [space1],
       });
 
-    expect(resultIgnore.requestedSpaceIds).toHaveLength(1);
+    expect(resultIgnore.requestedSpaceIds).toHaveLength(2);
     expect(resultIgnore.requestedSpaceIds).toContain(space2.id);
+    expect(resultIgnore.requestedSpaceIds).toContain(globalSpace.id);
     expect(resultIgnore.requestedSpaceIds).not.toContain(space1.id);
   });
 
   it("should handle mixed action types correctly", async () => {
-    const { authenticator, workspace, globalGroup } = await createResourceTest({
-      role: "admin",
-    });
+    const { authenticator, workspace, globalGroup, globalSpace } =
+      await createResourceTest({
+        role: "admin",
+      });
 
     // Create different spaces for different resource types
     const dsSpace = await SpaceFactory.regular(workspace);
@@ -408,10 +419,11 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
       }
     );
 
-    // Should include both space IDs
-    expect(result.requestedSpaceIds).toHaveLength(2);
+    // Should include both space IDs, plus the global space.
+    expect(result.requestedSpaceIds).toHaveLength(3);
     expect(result.requestedSpaceIds).toContain(dsSpace.id);
     expect(result.requestedSpaceIds).toContain(mcpSpace.id);
+    expect(result.requestedSpaceIds).toContain(globalSpace.id);
   });
 
   it("should handle internal MCP servers with auto availability correctly", async () => {
@@ -473,8 +485,8 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
         skills: [],
       });
 
-    // Should NOT include any spaces or groups since auto tools are automatically available
-    expect(autoOnlyResult.requestedSpaceIds).toHaveLength(0);
+    // Auto tools are automatically available, so they add nothing beyond the global space.
+    expect(autoOnlyResult.requestedSpaceIds).toEqual([globalSpace.id]);
 
     // Test 2: Mixed action with both auto and regular server
     const mixedActions: ServerSideMCPServerConfigurationType[] = [
@@ -524,16 +536,17 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
       }
     );
 
-    // Should only include the regular space, not the auto tool space
-    expect(mixedResult.requestedSpaceIds).toHaveLength(1);
+    // The auto tool adds nothing: only the regular space on top of the global space.
+    expect(mixedResult.requestedSpaceIds).toHaveLength(2);
     expect(mixedResult.requestedSpaceIds).toContain(regularSpace.id);
-    expect(mixedResult.requestedSpaceIds).not.toContain(globalSpace.id);
+    expect(mixedResult.requestedSpaceIds).toContain(globalSpace.id);
   });
 
   it("should include skill space requirements", async () => {
-    const { authenticator, workspace, globalGroup } = await createResourceTest({
-      role: "admin",
-    });
+    const { authenticator, workspace, globalGroup, globalSpace } =
+      await createResourceTest({
+        role: "admin",
+      });
 
     // Create spaces for the skill requirements
     const skillSpace1 = await SpaceFactory.regular(workspace);
@@ -556,15 +569,17 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
       }
     );
 
-    expect(result.requestedSpaceIds).toHaveLength(2);
+    expect(result.requestedSpaceIds).toHaveLength(3);
     expect(result.requestedSpaceIds).toContain(skillSpace1.id);
     expect(result.requestedSpaceIds).toContain(skillSpace2.id);
+    expect(result.requestedSpaceIds).toContain(globalSpace.id);
   });
 
   it("should combine skill and action space requirements without duplicates", async () => {
-    const { authenticator, workspace, globalGroup } = await createResourceTest({
-      role: "admin",
-    });
+    const { authenticator, workspace, globalGroup, globalSpace } =
+      await createResourceTest({
+        role: "admin",
+      });
 
     // Create a shared space used by both action and skill
     const sharedSpace = await SpaceFactory.regular(workspace);
@@ -653,10 +668,12 @@ describe("getAgentConfigurationRequirementsFromCapabilities", () => {
       }
     );
 
-    // Should include all 3 spaces without duplicates (shared appears in both action and skill)
-    expect(result.requestedSpaceIds).toHaveLength(3);
+    // Should include all 3 spaces without duplicates (shared appears in both action and skill),
+    // plus the global space.
+    expect(result.requestedSpaceIds).toHaveLength(4);
     expect(result.requestedSpaceIds).toContain(sharedSpace.id);
     expect(result.requestedSpaceIds).toContain(actionSpace.id);
     expect(result.requestedSpaceIds).toContain(skillSpace.id);
+    expect(result.requestedSpaceIds).toContain(globalSpace.id);
   });
 });

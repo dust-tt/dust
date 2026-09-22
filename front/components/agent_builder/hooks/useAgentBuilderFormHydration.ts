@@ -4,6 +4,7 @@ import type {
   AgentBuilderSkillsType,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
@@ -105,13 +106,14 @@ function useSlackSettings(
   return { slackProvider, slackChannels };
 }
 
-// Additional spaces = total - actions - skills
+// Additional spaces = total - actions - skills - global space
 function useAdditionalSpaces(
   agentConfiguration: AgentConfigurationType | undefined,
   actions: BuilderAction[],
   skillSpaceIds: string[]
 ): string[] {
   const { mcpServerViews } = useMCPServerViewsContext();
+  const { spaces } = useSpacesContext();
 
   return useMemo(() => {
     if (!agentConfiguration?.requestedSpaceIds) {
@@ -122,12 +124,16 @@ function useAdditionalSpaces(
       Object.keys(getSpaceIdToActionsMap(actions, mcpServerViews))
     );
     const usedBySkills = new Set(skillSpaceIds);
+    const globalSpaceId = spaces.find((s) => s.kind === "global")?.sId;
 
     // The Set also de-duplicates the requested ids before they reach the form.
     return [...new Set(agentConfiguration.requestedSpaceIds)].filter(
-      (spaceId) => !actionSpaceIds.has(spaceId) && !usedBySkills.has(spaceId)
+      (spaceId) =>
+        !actionSpaceIds.has(spaceId) &&
+        !usedBySkills.has(spaceId) &&
+        spaceId !== globalSpaceId
     );
-  }, [agentConfiguration, actions, mcpServerViews, skillSpaceIds]);
+  }, [agentConfiguration, actions, mcpServerViews, skillSpaceIds, spaces]);
 }
 
 function resolveEditors(

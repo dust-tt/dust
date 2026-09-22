@@ -5,6 +5,7 @@ import {
   AgentModel,
 } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type {
   AgentConfigurationType,
   AgentReinforcementMode,
@@ -14,7 +15,15 @@ import type {
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
+import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
+
+async function fetchGlobalSpaceId(
+  auth: Authenticator
+): Promise<ModelId | null> {
+  const spaces = await SpaceResource.listWorkspaceDefaultSpaces(auth);
+  return spaces.find((space) => space.isGlobal())?.id ?? null;
+}
 
 export class AgentConfigurationFactory {
   static async createTestAgent(
@@ -43,7 +52,6 @@ export class AgentConfigurationFactory {
     const providerId = overrides.model?.providerId ?? "openai";
     const modelId = overrides.model?.modelId ?? "gpt-5-mini";
     const temperature = overrides.model?.temperature ?? 0.7;
-    const requestedSpaceIds = overrides.requestedSpaceIds ?? [];
 
     const user = auth.user();
     assert(user, "User is required");
@@ -57,6 +65,12 @@ export class AgentConfigurationFactory {
     const internalAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
+
+    // Every agent requests the workspace's global space (see `agent-stored-global-space`). Some
+    // legacy tests build a workspace without its default spaces; they get no global space here.
+    const requestedSpaceIds =
+      overrides.requestedSpaceIds ??
+      removeNulls([await fetchGlobalSpaceId(internalAuth)]);
 
     const result = await AgentResource.makeNew(internalAuth, {
       name,
@@ -145,7 +159,9 @@ export class AgentConfigurationFactory {
       tags: [],
       editors: [user.toJSON()],
       authorId: user.id,
-      requestedSpaceIds: overrides.requestedSpaceIds ?? [],
+      requestedSpaceIds:
+        overrides.requestedSpaceIds ??
+        removeNulls([await fetchGlobalSpaceId(auth)]),
       // Explicitly clear tools/skills: `updateConfiguration` is a partial merge (an omitted field
       // keeps its current value), and this helper's contract is to produce a bare updated version.
       actions: [],

@@ -174,9 +174,10 @@ describe("getAgentConfigurations", () => {
   });
 
   it("respects the agent grants of a scoped system key", async () => {
-    const { authenticator, workspace, systemGroup } = await createResourceTest({
-      role: "admin",
-    });
+    const { authenticator, workspace, systemGroup, globalGroup } =
+      await createResourceTest({
+        role: "admin",
+      });
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const otherAgent = await AgentConfigurationFactory.createTestAgent(
@@ -196,7 +197,12 @@ describe("getAgentConfigurations", () => {
       resourceId: resource.id,
     });
     const key = await KeyFactory.system(systemGroup);
-    const auth = await Authenticator.fromKey(key, workspace.sId, [group.sId]);
+    // The global group comes with every key (see `scoped-groups`); without it the caller could
+    // not read the global space every agent requests.
+    const auth = await Authenticator.fromKey(key, workspace.sId, [
+      group.sId,
+      globalGroup.sId,
+    ]);
     const agents = await getAgentConfigurations(auth, {
       agentIds: [agent.sId, otherAgent.sId],
       variant: "light",

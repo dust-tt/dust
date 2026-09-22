@@ -103,6 +103,9 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
   };
 });
 
+// This suite mocks `@app/lib/utils/cache`, which leaves `auth` unable to read any space. Its
+// agents are therefore built with an explicit empty `requestedSpaceIds`, instead of the global
+// space they would carry in production (see `agent-stored-global-space`).
 describe("listBlockedActionsForConversation", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
@@ -156,6 +159,7 @@ describe("listBlockedActionsForConversation", () => {
   it("should return blocked actions for conversation", async () => {
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent",
+      requestedSpaceIds: [],
     });
 
     // Create user message at rank 0.
@@ -218,6 +222,7 @@ describe("listBlockedActionsForConversation", () => {
   it("should only return blocked actions, not succeeded ones", async () => {
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent",
+      requestedSpaceIds: [],
     });
 
     // Create user message at rank 0.
@@ -272,6 +277,7 @@ describe("listBlockedActionsForConversation", () => {
   ] as const)("should not return blocked actions whose agent message is %s", async (status) => {
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent",
+      requestedSpaceIds: [],
     });
 
     // Create user message at rank 0.
@@ -325,6 +331,7 @@ describe("listBlockedActionsForConversation", () => {
   it("should only return blocked actions from the latest agent message version at a given rank", async () => {
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent",
+      requestedSpaceIds: [],
     });
 
     // Create user message at rank 0.

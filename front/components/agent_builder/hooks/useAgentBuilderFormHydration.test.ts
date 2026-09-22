@@ -66,6 +66,12 @@ vi.mock("@app/components/shared/tools_picker/MCPServerViewsContext", () => ({
   useMCPServerViewsContext: () => ({ mcpServerViews: [] }),
 }));
 
+vi.mock("@app/components/agent_builder/SpacesContext", () => ({
+  useSpacesContext: () => ({
+    spaces: [{ sId: "space_global", kind: "global" }],
+  }),
+}));
+
 vi.mock("@app/lib/swr/actions", () => ({
   useAgentConfigurationActions: () => ({
     actions: store.actions,
@@ -210,7 +216,7 @@ describe("useAgentBuilderFormHydration", () => {
     expect(result.current.hydratedValues.editors).toEqual([currentUser]);
   });
 
-  it("sets additionalSpaces to the agent's requested spaces minus action and skill spaces, de-duplicated", () => {
+  it("sets additionalSpaces to the agent's requested spaces minus action, skill and global spaces, de-duplicated", () => {
     store.actions = [
       {
         id: "action_1",
@@ -230,6 +236,7 @@ describe("useAgentBuilderFormHydration", () => {
         "space_dup",
         "space_action",
         "space_skill",
+        "space_global",
         "space_other",
       ]),
     });

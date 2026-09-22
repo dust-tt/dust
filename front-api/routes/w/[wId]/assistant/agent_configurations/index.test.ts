@@ -531,7 +531,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations - additionalRequestedS
         method: "POST",
       });
 
-    await SpaceFactory.defaults(auth);
+    const { globalSpace } = await SpaceFactory.defaults(auth);
 
     const openSpace = await SpaceFactory.regular(workspace);
     await SpaceFactory.attachGroup(openSpace, globalGroup);
@@ -580,10 +580,11 @@ describe("POST /api/w/:wId/assistant/agent_configurations - additionalRequestedS
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data).toHaveProperty("agentConfiguration");
-    // The space should appear only once (deduplicated)
+    // The space should appear only once (deduplicated), next to the global space.
     const actualRequestedSpaceIds = data.agentConfiguration.requestedSpaceIds;
-    expect(actualRequestedSpaceIds).toHaveLength(1);
+    expect(actualRequestedSpaceIds).toHaveLength(2);
     expect(actualRequestedSpaceIds).toContain(openSpace.sId);
+    expect(actualRequestedSpaceIds).toContain(globalSpace.sId);
   });
 
   it("filters skills-only tools when saving an agent", async () => {
@@ -941,7 +942,8 @@ describe("POST /api/w/:wId/assistant/agent_configurations - tools in spaces the 
   });
 
   it("accepts the same tools once the user is a member of the space", async () => {
-    const { workspace, user, restrictedSpace } = await setupNonMemberBuilder();
+    const { workspace, user, restrictedSpace, globalSpace } =
+      await setupNonMemberBuilder();
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -969,9 +971,13 @@ describe("POST /api/w/:wId/assistant/agent_configurations - tools in spaces the 
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.agentConfiguration.requestedSpaceIds).toEqual([
-      restrictedSpace.sId,
-    ]);
+    expect(data.agentConfiguration.requestedSpaceIds).toHaveLength(2);
+    expect(data.agentConfiguration.requestedSpaceIds).toContain(
+      restrictedSpace.sId
+    );
+    expect(data.agentConfiguration.requestedSpaceIds).toContain(
+      globalSpace.sId
+    );
   });
 });
 

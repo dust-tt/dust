@@ -101,13 +101,18 @@ export async function getAgentConfigurationRequirementsFromCapabilities(
   // Collect Skill permissions by space.
   const skillRequirements = skills.flatMap((skill) => skill.requestedSpaceIds);
 
+  // The global space is always required, and is never subject to `ignoreSpaces`.
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const requestedSpaceIds = uniq([
-    ...dsViewRequirements,
-    ...mcpServerViewRequirements,
-    ...dustAppRequirements,
-    ...podRequirements,
-    ...skillRequirements,
-  ]).filter((id) => !ignoreSpaceModelIds.has(id));
+    ...[
+      ...dsViewRequirements,
+      ...mcpServerViewRequirements,
+      ...dustAppRequirements,
+      ...podRequirements,
+      ...skillRequirements,
+    ].filter((id) => !ignoreSpaceModelIds.has(id)),
+    globalSpace.id,
+  ]);
 
   return { requestedSpaceIds };
 }

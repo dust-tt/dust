@@ -713,6 +713,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 describe("updateConversationRequirements", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
+  let globalSpace: SpaceResource;
   let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
   let anotherProjectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
 
@@ -720,6 +721,7 @@ describe("updateConversationRequirements", () => {
     const setup = await createResourceTest({});
     workspace = setup.workspace;
     auth = setup.authenticator;
+    globalSpace = setup.globalSpace;
 
     // Create project spaces
     projectSpace = await SpaceFactory.project(workspace);
@@ -1166,7 +1168,7 @@ describe("updateConversationRequirements", () => {
       expect(projectSpaceIdCount).toBe(1);
     });
 
-    it("should handle agents with no space requirements", async () => {
+    it("should add only the global space for an agent with no other space requirements", async () => {
       // Create a regular conversation
       const conversation = await ConversationFactory.create(auth, {
         agentConfigurationId: "test-agent",
@@ -1174,7 +1176,7 @@ describe("updateConversationRequirements", () => {
         visibility: "unlisted",
       });
 
-      // Create an agent with no space requirements (empty array)
+      // Create an agent that requires nothing beyond the always-requested global space.
       const agent = await AgentConfigurationFactory.createTestAgent(auth, {
         name: "Agent 1",
       });
@@ -1213,10 +1215,11 @@ describe("updateConversationRequirements", () => {
       }
       const updatedConversation = updatedConversationResult.value;
 
-      // Should have no new requirements added
-      expect(updatedConversation.requestedSpaceIds.length).toBe(
-        regularConversation.requestedSpaceIds.length
-      );
+      // The global space is the only requirement the agent contributes.
+      expect(updatedConversation.requestedSpaceIds).toEqual([
+        ...regularConversation.requestedSpaceIds,
+        globalSpace.sId,
+      ]);
     });
 
     it("should handle empty agents and content fragments", async () => {
@@ -1343,6 +1346,7 @@ describe("updateConversationRequirements", () => {
 describe("rebuildConversationRequirements", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
+  let globalSpace: SpaceResource;
   let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
   let regularSpace: Awaited<ReturnType<typeof SpaceFactory.regular>>;
   let anotherRegularSpace: Awaited<ReturnType<typeof SpaceFactory.regular>>;
@@ -1351,6 +1355,7 @@ describe("rebuildConversationRequirements", () => {
     const setup = await createResourceTest({});
     workspace = setup.workspace;
     auth = setup.authenticator;
+    globalSpace = setup.globalSpace;
 
     projectSpace = await SpaceFactory.project(workspace);
     regularSpace = await SpaceFactory.regular(workspace);
@@ -1451,7 +1456,7 @@ describe("rebuildConversationRequirements", () => {
     expect(updatedResource.requestedSpaceIds).toEqual([]);
   });
 
-  it("clears the project requirement when the mentioned agent has no required spaces", async () => {
+  it("clears the project requirement when the mentioned agent requires only the global space", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Agent 1",
     });
@@ -1464,6 +1469,6 @@ describe("rebuildConversationRequirements", () => {
     await moveOutAndRebuild(conversation.sId);
 
     const updatedResource = await fetchConversationResource(conversation.sId);
-    expect(updatedResource.requestedSpaceIds).toEqual([]);
+    expect(updatedResource.requestedSpaceIds).toEqual([globalSpace.id]);
   });
 });
