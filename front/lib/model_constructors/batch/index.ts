@@ -9,6 +9,8 @@ import { OpenAIGptFiveDotFiveEuropeOpenAIResponsesBatch } from "@app/lib/model_c
 import { OpenAIGptFiveDotFiveGlobalOpenAIResponsesBatch } from "@app/lib/model_constructors/batch/endpoints/openai_gpt_five_dot_five_global_openai_responses";
 import { OpenAIGptFiveDotSixLunaEuropeOpenAIResponsesBatch } from "@app/lib/model_constructors/batch/endpoints/openai_gpt_five_dot_six_luna_eu_openai_responses";
 import { OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesBatch } from "@app/lib/model_constructors/batch/endpoints/openai_gpt_five_dot_six_luna_global_openai_responses";
+import { OpenAIGptSixLunaEuropeOpenAIResponsesBatch } from "@app/lib/model_constructors/batch/endpoints/openai_gpt_six_luna_eu_openai_responses";
+import { OpenAIGptSixLunaGlobalOpenAIResponsesBatch } from "@app/lib/model_constructors/batch/endpoints/openai_gpt_six_luna_global_openai_responses";
 
 export const BATCH_ENDPOINTS = {
   [AnthropicClaudeSonnetFourDotSixGlobalAnthropicBatch.id]:
@@ -29,6 +31,10 @@ export const BATCH_ENDPOINTS = {
     OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesBatch,
   [OpenAIGptFiveDotSixLunaEuropeOpenAIResponsesBatch.id]:
     OpenAIGptFiveDotSixLunaEuropeOpenAIResponsesBatch,
+  [OpenAIGptSixLunaGlobalOpenAIResponsesBatch.id]:
+    OpenAIGptSixLunaGlobalOpenAIResponsesBatch,
+  [OpenAIGptSixLunaEuropeOpenAIResponsesBatch.id]:
+    OpenAIGptSixLunaEuropeOpenAIResponsesBatch,
   [MistralMistralMedium35EuropeMistralBatch.id]:
     MistralMistralMedium35EuropeMistralBatch,
 } as const satisfies Record<string, BatchEndpointConstructor>;

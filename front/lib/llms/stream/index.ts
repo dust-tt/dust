@@ -68,6 +68,8 @@ import { DustOpenAIGptFiveNanoEuropeOpenAIResponsesStream } from "@app/lib/llms/
 import { DustOpenAIGptFiveNanoGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_nano_global_openai_responses";
 import { DustOpenAIGptSixAstraEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_six_astra_eu_openai_responses";
 import { DustOpenAIGptSixAstraGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_six_astra_global_openai_responses";
+import { DustOpenAIGptSixLunaEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_six_luna_eu_openai_responses";
+import { DustOpenAIGptSixLunaGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_six_luna_global_openai_responses";
 import { DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_simulated_failure_model_global_openai_responses";
 import { DustThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { DustXaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_five_global_xai";
@@ -196,6 +198,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustOpenAIGptFiveDotSixLunaEuropeOpenAIResponsesStream,
   [DustOpenAIGptSixAstraEuropeOpenAIResponsesStream.id]:
     DustOpenAIGptSixAstraEuropeOpenAIResponsesStream,
+  [DustOpenAIGptSixLunaEuropeOpenAIResponsesStream.id]:
+    DustOpenAIGptSixLunaEuropeOpenAIResponsesStream,
   [DustOpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream.id]:
     DustOpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream,
   [DustOpenAIGptFiveDotSixTerraEuropeOpenAIResponsesStream.id]:
@@ -224,6 +228,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustOpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream,
   [DustOpenAIGptSixAstraGlobalOpenAIResponsesStream.id]:
     DustOpenAIGptSixAstraGlobalOpenAIResponsesStream,
+  [DustOpenAIGptSixLunaGlobalOpenAIResponsesStream.id]:
+    DustOpenAIGptSixLunaGlobalOpenAIResponsesStream,
   [DustOpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream.id]:
     DustOpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream,
   [DustOpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream.id]:

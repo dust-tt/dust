@@ -1,4 +1,5 @@
 export const GPT_6_ASTRA = "gpt-6-astra" as const;
+export const GPT_6_LUNA = "gpt-6-luna" as const;
 export const GPT_5_6_SOL = "gpt-5.6-sol" as const;
 export const GPT_5_6_TERRA = "gpt-5.6-terra" as const;
 export const GPT_5_6_TERRA_LONG_CONTEXT = "gpt-5.6-terra-long-context" as const;
@@ -60,6 +61,7 @@ export const SIMULATED_FAILURE_MODEL = "simulated-failure-model" as const;
 // Include a few examples for now
 export const MODELS = [
   GPT_6_ASTRA,
+  GPT_6_LUNA,
   GPT_5_6_SOL,
   GPT_5_6_TERRA,
   GPT_5_6_TERRA_LONG_CONTEXT,
