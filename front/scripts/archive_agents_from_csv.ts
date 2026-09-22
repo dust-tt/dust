@@ -1,5 +1,5 @@
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { ArgumentSpecs } from "@app/scripts/helpers";
 import { makeScript } from "@app/scripts/helpers";
 import { parse } from "csv-parse/sync";
@@ -80,8 +80,17 @@ makeScript(
 
       if (execute) {
         try {
-          const archived = await archiveAgentConfiguration(auth, agentId);
-          if (archived) {
+          const agentToArchive = await AgentResource.fetchById(auth, agentId);
+          const archiveResult = agentToArchive
+            ? await agentToArchive.archive(auth)
+            : null;
+          if (archiveResult?.isErr()) {
+            scriptLogger.error(
+              { agentName, agentId, error: archiveResult.error },
+              "Failed to archive agent"
+            );
+            errorCount++;
+          } else if (archiveResult?.isOk() && archiveResult.value) {
             scriptLogger.info(
               { agentName, agentId },
               "Successfully archived agent"

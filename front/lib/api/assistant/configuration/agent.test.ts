@@ -1,11 +1,9 @@
 import {
-  archiveAgentConfiguration,
-  cleanupAgentScopedResourcesForHardDeletion,
   createPendingAgentConfiguration,
+  destroyAgentConfigurationRow,
   getAgentConfiguration,
   getAgentConfigurations,
-  restoreAgentConfiguration,
-  unsafeHardDeleteAgentConfiguration,
+  syncAgentSearchAfterRowDestroyed,
   updateAgentConfigurationsScope,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getEditors } from "@app/lib/api/assistant/editors";
@@ -24,6 +22,7 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import * as scheduleClient from "@app/temporal/triggers/schedule_client";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -38,6 +37,7 @@ import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration"
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -288,6 +288,24 @@ describe("getAgentConfigurations", () => {
   });
 });
 
+// Hard-deletes a single configuration version through the kept row-destruction primitive, mirroring
+// what the removed `unsafeHardDeleteAgentConfiguration` helper did for a minimal agent (no tools,
+// tags or skills to clean up first).
+async function hardDeleteAgentVersion(
+  auth: Authenticator,
+  version: LightAgentConfigurationType
+): Promise<void> {
+  const agent = AgentResource.fromAgentConfiguration(auth, version);
+  const { agentDeleted } = await withTransaction((t) =>
+    destroyAgentConfigurationRow(
+      auth,
+      { agent, configurationId: agent.agentConfigurationModelId },
+      t
+    )
+  );
+  await syncAgentSearchAfterRowDestroyed(auth, { agent, agentDeleted });
+}
+
 describe("stable agent identities", () => {
   it("reuses one identity across agent versions", async () => {
     const { authenticator, workspace } = await createResourceTest({
@@ -334,16 +352,10 @@ describe("stable agent identities", () => {
     expect(await currentVersion(firstVersion.sId)).toBe(1);
 
     // Rolling back the newest version moves the pointer back to the previous one.
-    await unsafeHardDeleteAgentConfiguration(
-      authenticator,
-      AgentResource.fromAgentConfiguration(authenticator, secondVersion)
-    );
+    await hardDeleteAgentVersion(authenticator, secondVersion);
     expect(await currentVersion(firstVersion.sId)).toBe(0);
 
-    await unsafeHardDeleteAgentConfiguration(
-      authenticator,
-      AgentResource.fromAgentConfiguration(authenticator, firstVersion)
-    );
+    await hardDeleteAgentVersion(authenticator, firstVersion);
     expect(await currentVersion(firstVersion.sId)).toBeNull();
   });
 
@@ -400,10 +412,7 @@ describe("stable agent identities", () => {
       throw new Error("Agent editor grant was not created");
     }
 
-    await unsafeHardDeleteAgentConfiguration(
-      authenticator,
-      AgentResource.fromAgentConfiguration(authenticator, secondVersion)
-    );
+    await hardDeleteAgentVersion(authenticator, secondVersion);
     expect(
       await AgentModel.findOne({
         where: { sId: firstVersion.sId, workspaceId: workspace.id },
@@ -415,10 +424,7 @@ describe("stable agent identities", () => {
       ])
     ).toHaveLength(1);
 
-    await unsafeHardDeleteAgentConfiguration(
-      authenticator,
-      AgentResource.fromAgentConfiguration(authenticator, firstVersion)
-    );
+    await hardDeleteAgentVersion(authenticator, firstVersion);
     expect(
       await AgentModel.findOne({
         where: { sId: firstVersion.sId, workspaceId: workspace.id },
@@ -1029,7 +1035,7 @@ describe("create agent capability", () => {
   });
 });
 
-describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
+describe("AgentResource.archive and AgentResource.restore", () => {
   it("keeps editor grants active while archiving and restoring", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
@@ -1068,8 +1074,11 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
       true
     );
 
-    const archived = await archiveAgentConfiguration(authenticator, agent.sId);
-    expect(archived).toBe(true);
+    const archived = await (await AgentResource.fetchById(
+      authenticator,
+      agent.sId
+    ))!.archive(authenticator);
+    expect(archived).toEqual(new Ok(true));
 
     const membershipsAfterArchive = await GroupMembershipModel.findAll({
       where: {
@@ -1087,10 +1096,10 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
       authenticator.getNonNullableUser().id,
     ]);
 
-    const restoreResult = await restoreAgentConfiguration(
+    const restoreResult = await (await AgentResource.fetchById(
       authenticator,
       agent.sId
-    );
+    ))!.restore(authenticator);
     expect(restoreResult.isOk()).toBe(true);
     expect(restoreResult.isOk() && restoreResult.value.restored).toBe(true);
 
@@ -1110,10 +1119,10 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
 
-    const restoreResult = await restoreAgentConfiguration(
+    const restoreResult = await (await AgentResource.fetchById(
       authenticator,
       agent.sId
-    );
+    ))!.restore(authenticator);
     expect(restoreResult.isErr()).toBe(true);
     if (restoreResult.isErr()) {
       expect(restoreResult.error.message).toBe(
@@ -1130,9 +1139,11 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
       authenticator,
       { scope: "visible" }
     );
-    expect(await archiveAgentConfiguration(authenticator, agent.sId)).toBe(
-      true
-    );
+    expect(
+      await (await AgentResource.fetchById(authenticator, agent.sId))!.archive(
+        authenticator
+      )
+    ).toEqual(new Ok(true));
     const archived = await AgentResource.fetchById(authenticator, agent.sId);
     assert(archived?.isFull());
 
@@ -1174,8 +1185,11 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
       }
     );
 
-    const archived = await archiveAgentConfiguration(authenticator, agent.sId);
-    expect(archived).toBe(true);
+    const archived = await (await AgentResource.fetchById(
+      authenticator,
+      agent.sId
+    ))!.archive(authenticator);
+    expect(archived).toEqual(new Ok(true));
 
     expect(cancelSpy).toHaveBeenCalled();
     const refetched = await WakeUpResource.fetchById(authenticator, wakeUp.sId);
@@ -1218,8 +1232,11 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
     // Only count the Temporal calls made by archiving.
     cancelSpy.mockClear();
 
-    const archived = await archiveAgentConfiguration(authenticator, agent.sId);
-    expect(archived).toBe(true);
+    const archived = await (await AgentResource.fetchById(
+      authenticator,
+      agent.sId
+    ))!.archive(authenticator);
+    expect(archived).toEqual(new Ok(true));
 
     // Archive must reconcile the leaked schedule even though the row is already
     // terminal (it used to skip non-scheduled wake-ups entirely).
@@ -1230,7 +1247,7 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
   });
 });
 
-describe("cleanupAgentScopedResourcesForHardDeletion", () => {
+describe("AgentResource.delete scoped-resource cleanup", () => {
   it("removes triggers, wake-ups and favorites for the agent", async () => {
     const mockCreateSchedule = vi
       .spyOn(scheduleClient, "createOrUpdateAgentSchedule")
@@ -1278,7 +1295,9 @@ describe("cleanupAgentScopedResourcesForHardDeletion", () => {
     );
     expect(favoriteResult.isOk()).toBe(true);
 
-    await cleanupAgentScopedResourcesForHardDeletion(authenticator, agent.sId);
+    await (await AgentResource.fetchById(authenticator, agent.sId))!.delete(
+      authenticator
+    );
 
     const remainingTriggers = await TriggerResource.listByAgentConfigurationId(
       authenticator,
@@ -1326,7 +1345,9 @@ describe("cleanupAgentScopedResourcesForHardDeletion", () => {
       reason: "Daily wake-up",
     });
 
-    await cleanupAgentScopedResourcesForHardDeletion(authenticator, agent.sId);
+    await (await AgentResource.fetchById(authenticator, agent.sId))!.delete(
+      authenticator
+    );
 
     // The Temporal schedule could not be deleted, so the row must survive to
     // keep the wake-up id available for a retry / the reconciler.

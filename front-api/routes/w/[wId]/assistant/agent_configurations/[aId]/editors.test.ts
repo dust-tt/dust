@@ -1,4 +1,3 @@
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
@@ -211,7 +210,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
       requestUserRole: "admin",
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    await archiveAgentConfiguration(auth, agent.sId);
+    await (await AgentResource.fetchById(auth, agent.sId))!.archive(auth);
 
     const newEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, newEditor, { role: "user" });

@@ -22,9 +22,9 @@ app.post(
   async (ctx) => {
     const auth = ctx.get("auth");
 
-    const isSaveAgentConfigurationsEnabled =
+    const isSaveAgentConfigurationsDisabled =
       await KillSwitchResource.isKillSwitchEnabled("save_agent_configurations");
-    if (isSaveAgentConfigurationsEnabled) {
+    if (isSaveAgentConfigurationsDisabled) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {

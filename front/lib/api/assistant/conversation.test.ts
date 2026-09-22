@@ -1,4 +1,3 @@
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   editUserMessage,
   isConversationEventAllowedForAuth,
@@ -31,6 +30,7 @@ import {
   MentionModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -739,8 +739,11 @@ describe("retryAgentMessage", () => {
 
   it("should return error when agent is no longer available", async () => {
     // Archive the agent configuration
-    const archived = await archiveAgentConfiguration(auth, agentConfig.sId);
-    expect(archived).toBe(true);
+    const archived = await (await AgentResource.fetchById(
+      auth,
+      agentConfig.sId
+    ))!.archive(auth);
+    expect(archived).toEqual(new Ok(true));
 
     // Try to retry the agent message
     const result = await retryAgentMessage(auth, {

@@ -1,11 +1,11 @@
 import {
-  archiveAgentConfiguration,
   getAgentConfiguration,
   getAgentConfigurationForDetails,
 } from "@app/lib/api/assistant/configuration/agent";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -199,8 +199,28 @@ app.delete(
       return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
-    const archived = await archiveAgentConfiguration(auth, aId);
-    if (!archived) {
+    const agentToArchive = await AgentResource.fetchById(auth, aId);
+    if (!agentToArchive) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "agent_configuration_not_found",
+          message: "The agent you're trying to delete was not found.",
+        },
+      });
+    }
+
+    const archiveResult = await agentToArchive.archive(auth);
+    if (archiveResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Could not archive the agent configuration.",
+        },
+      });
+    }
+    if (!archiveResult.value) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

@@ -1,4 +1,3 @@
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -160,7 +159,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
     });
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const tag = await TagFactory.create(workspace, { name: "governance" });
-    await archiveAgentConfiguration(auth, agent.sId);
+    await (await AgentResource.fetchById(auth, agent.sId))!.archive(auth);
 
     const response = await batchUpdateTags(workspace, {
       agentIds: [agent.sId],

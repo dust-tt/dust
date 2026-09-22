@@ -1,7 +1,4 @@
-import {
-  archiveAgentConfiguration,
-  getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
@@ -16,10 +13,7 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import {
-  ARCHIVED_AGENT_API_ERROR,
-  isArchivedAgent,
-} from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
+import { ARCHIVED_AGENT_API_ERROR } from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 import yaml from "./export/yaml";
@@ -428,12 +422,13 @@ app.delete(
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: sId,
-      variant: "light",
-    });
+    const agent = await AgentResource.fetchById(auth, sId);
 
-    if (!agentConfiguration) {
+    // Space-scoping: an API key whose groups don't cover every `requestedSpaceId` of the agent must
+    // not archive it, even with the admin role (the `admin` verb survives losing space read). Unlike
+    // `getAgentConfiguration`, `fetchById` returns such an agent to an admin, so re-check space read
+    // here to keep this route's security model (matching its PATCH).
+    if (!agent || !agent.requestedSpacesReadable(auth)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -443,22 +438,17 @@ app.delete(
       });
     }
 
-    if (isArchivedAgent(agentConfiguration)) {
+    if (agent.status === "archived") {
       return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
-    // Space-scoping is enforced upstream: `getAgentConfiguration` (called above) returns null
-    // when the auth's groups don't cover every `requestedSpaceId` of the agent, in which case
-    // the handler 404s before reaching here. This matches the PATCH security model on this
-    // route and means an API key scoped to a subset of spaces cannot archive agents tied to
-    // spaces it can't see.
-    const archived = await archiveAgentConfiguration(auth, sId);
-    if (!archived) {
+    const archiveResult = await agent.archive(auth);
+    if (archiveResult.isErr()) {
       return apiError(ctx, {
-        status_code: 404,
+        status_code: 500,
         api_error: {
-          type: "agent_configuration_not_found",
-          message: "The agent configuration you requested was not found.",
+          type: "internal_server_error",
+          message: "Could not archive the agent configuration.",
         },
       });
     }

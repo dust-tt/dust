@@ -1,4 +1,3 @@
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { AgentArchivalSkip } from "@app/lib/api/assistant/inactivity/fetch_inactive_agents";
 import {
   countSkipsByReason,
@@ -7,6 +6,7 @@ import {
 import type { AgentInactivityPolicyError } from "@app/lib/api/assistant/inactivity/policy";
 import { computeInactivityCutoffAt } from "@app/lib/api/assistant/inactivity/policy";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { heartbeat } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -71,8 +71,21 @@ export async function archiveInactiveWorkspaceAgents(
     await heartbeat();
 
     // Not a compare-and-set: an agent restored since the read is archived anyway. Reversible.
-    const archived = await archiveAgentConfiguration(auth, agentId);
-    if (!archived) {
+    const agentToArchive = await AgentResource.fetchById(auth, agentId);
+    if (!agentToArchive) {
+      skipped.push({ agentId, reason: "archive_raced" });
+      continue;
+    }
+    const archiveResult = await agentToArchive.archive(auth);
+    if (archiveResult.isErr()) {
+      logger.error(
+        { workspaceId: workspace.sId, agentId, error: archiveResult.error },
+        "Failed to archive inactive agent"
+      );
+      skipped.push({ agentId, reason: "archive_failed" });
+      continue;
+    }
+    if (!archiveResult.value) {
       skipped.push({ agentId, reason: "archive_raced" });
       continue;
     }

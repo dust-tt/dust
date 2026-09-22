@@ -1,5 +1,4 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
@@ -244,7 +243,10 @@ describe("AgentResource", () => {
     );
     assert(agent.agentModelId !== null);
 
-    await archiveAgentConfiguration(testContext.authenticator, agent.sId);
+    await (await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    ))!.archive(testContext.authenticator);
 
     const byId = await AgentResource.fetchById(
       testContext.authenticator,
@@ -462,7 +464,10 @@ describe("AgentResource", () => {
     assert(active?.isFull());
     expect(active.status).toBe("active");
 
-    await archiveAgentConfiguration(testContext.authenticator, agent.sId);
+    await (await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    ))!.archive(testContext.authenticator);
 
     // The agent still resolves (its latest version, now archived); invalidation keeps the read fresh.
     const archived = await AgentResource.fetchById(
@@ -1193,7 +1198,9 @@ describe("AgentResource", () => {
           },
         }
       );
-      await archiveAgentConfiguration(authenticator, agent.sId);
+      await (await AgentResource.fetchById(authenticator, agent.sId))!.archive(
+        authenticator
+      );
 
       const result = await AgentResource.bulkUpdate(
         authenticator,

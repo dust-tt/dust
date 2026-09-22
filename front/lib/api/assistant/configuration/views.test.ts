@@ -1,4 +1,3 @@
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -9,6 +8,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
+import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
@@ -237,9 +237,11 @@ describe("getAgentConfigurationsForView, 'archived' view", () => {
       workspace.sId,
       { dangerouslyRequestAllGroups: true }
     );
-    expect(await archiveAgentConfiguration(everySpaceAuth, agent.sId)).toBe(
-      true
-    );
+    expect(
+      await (await AgentResource.fetchById(everySpaceAuth, agent.sId))!.archive(
+        everySpaceAuth
+      )
+    ).toEqual(new Ok(true));
 
     const adminAuth = await authenticatorForNewMember(workspace, "admin");
 
@@ -262,7 +264,9 @@ describe("getAgentConfigurationsForView, 'archived' view", () => {
       workspace.sId,
       { dangerouslyRequestAllGroups: true }
     );
-    await archiveAgentConfiguration(everySpaceAuth, agent.sId);
+    await (await AgentResource.fetchById(everySpaceAuth, agent.sId))!.archive(
+      everySpaceAuth
+    );
 
     const memberAuth = await authenticatorForNewMember(workspace, "user");
 
@@ -281,7 +285,9 @@ describe("getAgentConfigurationsForView, 'archived' view", () => {
       workspace.sId,
       { dangerouslyRequestAllGroups: true }
     );
-    await archiveAgentConfiguration(everySpaceAuth, agent.sId);
+    await (await AgentResource.fetchById(everySpaceAuth, agent.sId))!.archive(
+      everySpaceAuth
+    );
 
     const memberAuth = await authenticatorForNewMember(workspace, "user");
 

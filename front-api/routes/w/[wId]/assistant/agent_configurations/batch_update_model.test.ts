@@ -1,9 +1,7 @@
-import {
-  archiveAgentConfiguration,
-  getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
@@ -170,7 +168,9 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
         model: { ...INITIAL_MODEL },
       }
     );
-    await archiveAgentConfiguration(auth, archivedAgent.sId);
+    await (await AgentResource.fetchById(auth, archivedAgent.sId))!.archive(
+      auth
+    );
 
     const res = await postBatchUpdateModel(workspace, {
       agentIds: [agent.sId, archivedAgent.sId],

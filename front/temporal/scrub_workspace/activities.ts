@@ -1,4 +1,3 @@
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
@@ -22,6 +21,7 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -289,7 +289,23 @@ async function archiveAssistants(auth: Authenticator) {
     (ac) => !isGlobalAgentId(ac.sId)
   );
   for (const agentConfiguration of agentConfigurationsToArchive) {
-    await archiveAgentConfiguration(auth, agentConfiguration.sId);
+    const agentToArchive = await AgentResource.fetchById(
+      auth,
+      agentConfiguration.sId
+    );
+    if (agentToArchive) {
+      const archiveResult = await agentToArchive.archive(auth);
+      if (archiveResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            agentConfigurationId: agentConfiguration.sId,
+            error: archiveResult.error,
+          },
+          "Failed to archive agent during workspace scrub"
+        );
+      }
+    }
   }
 }
 

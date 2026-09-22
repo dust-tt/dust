@@ -1,5 +1,4 @@
 import * as agentIndex from "@app/lib/agent_search";
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { indexAgentSearchActivity } from "@app/temporal/es_indexation/activities";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -93,7 +92,9 @@ describe("agent search indexing activity", () => {
       role: "admin",
     });
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    expect(await archiveAgentConfiguration(auth, agent.sId)).toBe(true);
+    expect(
+      await (await AgentResource.fetchById(auth, agent.sId))!.archive(auth)
+    ).toEqual(new Ok(true));
 
     await indexAgentSearchActivity({
       workspaceId: workspace.sId,

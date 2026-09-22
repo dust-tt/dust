@@ -1,10 +1,10 @@
 import {
-  archiveAgentConfiguration,
   createPendingAgentConfiguration,
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
@@ -194,7 +194,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - archived agent
       method: "PATCH",
     });
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    await archiveAgentConfiguration(auth, agent.sId);
+    await (await AgentResource.fetchById(auth, agent.sId))!.archive(auth);
 
     const response = await patch(workspace, agent.sId, {
       assistant: {

@@ -1,7 +1,4 @@
-import {
-  getAgentConfiguration,
-  restoreAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -24,11 +21,8 @@ app.post(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "light",
-    });
-    if (!agentConfiguration) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -38,10 +32,7 @@ app.post(
       });
     }
 
-    const restoredResult = await restoreAgentConfiguration(
-      auth,
-      agentConfiguration.sId
-    );
+    const restoredResult = await agent.restore(auth);
 
     if (restoredResult.isErr()) {
       switch (restoredResult.error.code) {

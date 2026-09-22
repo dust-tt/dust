@@ -17,12 +17,10 @@ import {
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
   SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
-import {
-  archiveAgentConfiguration,
-  getAgentConfiguration,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -1004,7 +1002,9 @@ describe("building_agents_and_skills tools", () => {
       const { authenticator } = await createResourceTest({ role: "user" });
       const agent =
         await AgentConfigurationFactory.createTestAgent(authenticator);
-      await archiveAgentConfiguration(authenticator, agent.sId);
+      await (await AgentResource.fetchById(authenticator, agent.sId))!.archive(
+        authenticator
+      );
 
       const result = await getTool(SUGGEST_AGENT_DELETION_TOOL_NAME).handler(
         { agentId: agent.sId },
@@ -1134,7 +1134,9 @@ describe("building_agents_and_skills tools", () => {
       const { authenticator } = await createResourceTest({ role: "user" });
       const agent =
         await AgentConfigurationFactory.createTestAgent(authenticator);
-      await archiveAgentConfiguration(authenticator, agent.sId);
+      await (await AgentResource.fetchById(authenticator, agent.sId))!.archive(
+        authenticator
+      );
 
       const result = await suggestDescription(authenticator, {
         agentId: agent.sId,
@@ -1257,7 +1259,9 @@ describe("building_agents_and_skills tools", () => {
       const { authenticator } = await createResourceTest({ role: "user" });
       const agent =
         await AgentConfigurationFactory.createTestAgent(authenticator);
-      await archiveAgentConfiguration(authenticator, agent.sId);
+      await (await AgentResource.fetchById(authenticator, agent.sId))!.archive(
+        authenticator
+      );
 
       const result = await getTool(
         SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME
@@ -1419,7 +1423,9 @@ describe("building_agents_and_skills tools", () => {
       const { authenticator } = await createResourceTest({ role: "user" });
       const agent =
         await AgentConfigurationFactory.createTestAgent(authenticator);
-      await archiveAgentConfiguration(authenticator, agent.sId);
+      await (await AgentResource.fetchById(authenticator, agent.sId))!.archive(
+        authenticator
+      );
 
       const result = await suggestName(authenticator, {
         agentId: agent.sId,
@@ -1712,7 +1718,9 @@ describe("building_agents_and_skills tools", () => {
     it("returns an MCPError for an archived agent", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
       const agent = await createBlockStructuredAgent(authenticator);
-      await archiveAgentConfiguration(authenticator, agent.sId);
+      await (await AgentResource.fetchById(authenticator, agent.sId))!.archive(
+        authenticator
+      );
 
       const result = await getTool(
         SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
