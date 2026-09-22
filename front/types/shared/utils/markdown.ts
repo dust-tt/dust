@@ -7,6 +7,9 @@ const TOOL_SETUP_REGEX = /:toolSetup\[([^\]]+)]\{sId=([^}]+?)}/g;
 const QUICK_REPLY_REGEX = /:quickReply\[([^\]]+)]\{([^}]*)\}/g;
 const CONTENT_NODE_MENTION_REGEX =
   /:content_node_mention\[([^\]]+)](?:\{([^}]*)\})?/g;
+// `:build_skill[Name]{sId=...}` / `:build_agent[Name]{sId=...}` — an agent pointing at the entity
+// it is building.
+const BUILD_ENTITY_REGEX = /:build_(?:skill|agent)\[([^\]]+)]\{[^}]*\}/g;
 const PASTED_REGEX = /:pasted_(?:attachment|content)\[([^\]]+)]\{[^}]*\}/g;
 const VISUALIZATION_BLOCK_REGEX = /:::visualization\s*\n[\s\S]*?\n:::\s*/g;
 const INSTRUCTION_BLOCK_REGEX =
@@ -64,6 +67,12 @@ function replacePastedAttachments(text: string): string {
   });
 }
 
+function replaceBuildEntities(text: string): string {
+  return text.replaceAll(BUILD_ENTITY_REGEX, (_full, name: string) =>
+    normalizeInlineLabel(name)
+  );
+}
+
 function replaceAgentSuggestions(text: string): string {
   return text
     .replaceAll(/::agent_suggestion\[\]\{([^}]*)\}/g, () => "Suggestion")
@@ -106,6 +115,7 @@ function replaceDustDirectives(text: string): string {
   out = replaceQuickReplies(out);
   out = replaceContentNodeMentions(out);
   out = replacePastedAttachments(out);
+  out = replaceBuildEntities(out);
   out = replaceAgentSuggestions(out);
   out = replaceSkillSuggestions(out);
   out = replaceActionCards(out);

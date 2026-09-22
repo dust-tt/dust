@@ -30,6 +30,14 @@ describe("stripMarkdown", () => {
     expect(stripMarkdown(":mention_user[Alice]{sId=user42}")).toBe("@Alice");
   });
 
+  it("replaces built entities with their name, leaving suggestions alone", () => {
+    expect(
+      stripMarkdown(
+        "I updated :build_skill[Meeting Recap]{sId=skill_123} for :build_agent[Scribe]{sId=agent_1} :skill_suggestion[]{sId=s1 kind=edit skillId=skill_123}"
+      )
+    ).toBe("I updated Meeting Recap for Scribe Suggestion");
+  });
+
   it("replaces content node mentions with title", () => {
     expect(
       stripMarkdown(":content_node_mention[My Doc]{url=https://example.com}")

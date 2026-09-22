@@ -89,6 +89,11 @@ User message:
    Did it avoid redundant calls?
 4. **Response Quality**: Is the closing message short and clear? Does it tell the user a
    suggestion was recorded for editors to review rather than pretending the change is live?
+5. **Entity Mention**: Does the message carrying the suggestion directives also name the entity
+   it acted on, as \`:build_skill[Skill Name]{sId=<skillId>}\` or
+   \`:build_agent[Agent Name]{sId=<agentId>}\`, with the same id the suggestion targets, so the
+   user can click it open? An entity named in plain text, or with an invented id, does not render
+   as a clickable chip.
 
 Provide your evaluation using the REASONING: and SCORE: format described above.`;
 
