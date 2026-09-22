@@ -167,11 +167,14 @@ export const ButtonsSwitchList = React.forwardRef<
 
     // Position the indicator under the selected option by measuring the DOM:
     // offsets are relative to the list (its offsetParent, via `relative`).
-    // Re-measured on selection change and whenever the list or the selected
-    // option resizes (font load, label change, fullWidth reflow).
+    // Re-measured on selection change, whenever the list or the selected
+    // option resizes (font load, fullWidth reflow), and whenever `children`
+    // change: a sibling's label changing shifts the selected option without
+    // resizing it or (with fullWidth) the list, so the observers stay silent.
     const [indicator, setIndicator] = React.useState<IndicatorRect | null>(
       null
     );
+    // biome-ignore lint/correctness/useExhaustiveDependencies: children drives re-measurement.
     React.useLayoutEffect(() => {
       const list = listRef.current;
       const active =
@@ -203,7 +206,7 @@ export const ButtonsSwitchList = React.forwardRef<
       observer.observe(list);
       observer.observe(active);
       return () => observer.disconnect();
-    }, [selected]);
+    }, [selected, children]);
 
     return (
       <div
