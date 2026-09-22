@@ -68,7 +68,6 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     skills: searchSkills,
     hasMore: hasMoreSearchSkills,
     isSkillsLoading: isSearchSkillsLoading,
-    isSkillsError,
   } = useSearchSkills({
     owner,
     searchTerm: searchQuery.trim(),
@@ -276,7 +275,6 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               hasMorePods={hasMorePods}
               hasMoreSkills={hasMoreSkills}
               isLoading={isLoading}
-              isSkillsError={isSkillsError}
               selectedIndex={selectedIndex}
               onSelectedIndexChange={setSelectedIndex}
               onItemSelect={handleItemSelect}

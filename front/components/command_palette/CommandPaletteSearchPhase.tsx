@@ -34,7 +34,6 @@ interface CommandPaletteSearchPhaseProps {
   hasMorePods: boolean;
   hasMoreSkills: boolean;
   isLoading: boolean;
-  isSkillsError: boolean;
   selectedIndex: number;
   onSelectedIndexChange: (index: number) => void;
   onItemSelect: (item: CommandPaletteItem) => void;
@@ -63,7 +62,6 @@ export function CommandPaletteSearchPhase({
   hasMorePods,
   hasMoreSkills,
   isLoading,
-  isSkillsError,
   selectedIndex,
   onSelectedIndexChange,
   onItemSelect,
@@ -151,11 +149,6 @@ export function CommandPaletteSearchPhase({
         />
       </div>
       <div className="flex max-h-125 flex-col gap-2 overflow-y-auto p-1.5">
-        {isSkillsError && (
-          <div role="alert" className="px-3 py-2 text-sm text-muted-foreground">
-            Could not load skills. Try again.
-          </div>
-        )}
         {isLoading && flatItems.length === 0 && (
           <div className="flex flex-col gap-1 p-1">
             {Array.from({ length: 9 }, (_, i) => (
@@ -169,12 +162,9 @@ export function CommandPaletteSearchPhase({
             ))}
           </div>
         )}
-        {!isLoading &&
-          !isSkillsError &&
-          flatItems.length === 0 &&
-          searchQuery.length > 0 && (
-            <ItemEmptyState>No results found.</ItemEmptyState>
-          )}
+        {!isLoading && flatItems.length === 0 && searchQuery.length > 0 && (
+          <ItemEmptyState>No results found.</ItemEmptyState>
+        )}
         {!isLoading && flatItems.length === 0 && searchQuery.length === 0 && (
           <ItemEmptyState>
             Type to search agents, pods and skills.
