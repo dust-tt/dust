@@ -381,20 +381,20 @@ describe("getToolSlashCommandItem", () => {
 });
 
 describe("buildCapabilitySlashCommandItems", () => {
-  it("preserves server ranking instead of reranking each skill page", () => {
+  it("reranks search results by autocomplete relevance", () => {
     const result = buildCapabilitySlashCommandItems({
       query: "guide",
       useSearchRanking: true,
       skills: [
-        skillSuggestion({ name: "Create guide", sId: "b" }),
         skillSuggestion({ name: "Create detailed guide", sId: "a" }),
+        skillSuggestion({ name: "Create guide", sId: "b" }),
       ],
       tools: [],
     });
     expect(result.map((item) => item.id)).toEqual(["b", "a"]);
   });
 
-  it("places locally matched tools after server-ranked skills", () => {
+  it("ranks skills and locally matched tools together", () => {
     const result = buildCapabilitySlashCommandItems({
       query: "guide",
       useSearchRanking: true,
@@ -411,9 +411,9 @@ describe("buildCapabilitySlashCommandItems", () => {
       ],
     });
     expect(result.map((item) => item.id)).toEqual([
+      "tool",
       "prefix",
       "substring",
-      "tool",
     ]);
   });
 

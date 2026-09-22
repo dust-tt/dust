@@ -13,6 +13,7 @@ import type { SlashCommand } from "@app/components/editor/extensions/shared/slas
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
 import { GLOBAL_SKILL_SEARCH_ALIASES } from "@app/lib/skills/global_search_aliases";
+import { compareForAutocompleteSort } from "@app/lib/utils";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 
@@ -82,7 +83,11 @@ export function buildCapabilitySlashCommandItems<
           query,
           items: items.filter((item) => item.kind === "tool"),
         }),
-      ].slice(0, MAX_RENDERED_CAPABILITY_ITEMS)
+      ]
+        .toSorted((a, b) =>
+          compareForAutocompleteSort(query.trim(), a.sortName, b.sortName)
+        )
+        .slice(0, MAX_RENDERED_CAPABILITY_ITEMS)
     : searchCapabilityIndex({ query, items });
 
   return removeNulls(
