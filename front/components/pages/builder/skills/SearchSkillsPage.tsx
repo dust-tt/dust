@@ -158,6 +158,7 @@ export function SearchSkillsPage() {
               )}
             </div>
           }
+          description="Reusable packages of instructions and tools that agents can share."
           noTopPadding
         />
         <div className={`${SKILL_SEARCH_NAME_COLUMN_WIDTH} px-2`}>
