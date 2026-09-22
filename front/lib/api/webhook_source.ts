@@ -271,7 +271,7 @@ export async function propagateWebhookSourceViewName(
 
   // Check that the user can administrate all views
   for (const view of allViews) {
-    if (view.sId !== webhookSourceView.sId && !view.canAdministrate(auth)) {
+    if (view.sId !== webhookSourceView.sId && !auth.can("admin", view)) {
       return new Err(
         new DustError("unauthorized", "Not allowed to update all views.")
       );
@@ -322,7 +322,7 @@ export async function propagateWebhookSourceViewDescriptionAndIcon(
 
   // Check that the user can administrate all views
   for (const view of allViews) {
-    if (view.sId !== webhookSourceView.sId && !view.canAdministrate(auth)) {
+    if (view.sId !== webhookSourceView.sId && !auth.can("admin", view)) {
       return new Err(
         new DustError("unauthorized", "Not allowed to update all views.")
       );

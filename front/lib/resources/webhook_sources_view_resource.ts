@@ -190,7 +190,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ): Promise<WebhookSourcesViewResource | null> {
     const [view] = await this.fetchByIds(auth, [id], options);
-    if (!view || !view.canReadOrAdministrate(auth)) {
+    if (!view || !(auth.can("read", view) || auth.can("admin", view))) {
       return null;
     }
     return view;
@@ -213,7 +213,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       },
     });
 
-    return views.filter((view) => view.canReadOrAdministrate(auth));
+    return views.filter((view) => (auth.can("read", view) || auth.can("admin", view)));
   }
 
   static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
@@ -224,7 +224,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
         },
       },
     }).then((views) =>
-      views.filter((view) => view.canReadOrAdministrate(auth))
+      views.filter((view) => (auth.can("read", view) || auth.can("admin", view)))
     );
 
     return views ?? [];
@@ -295,7 +295,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return this.baseFetch(auth, {
       where: { webhookSourceId },
     }).then((views) =>
-      views.filter((view) => view.canReadOrAdministrate(auth))
+      views.filter((view) => (auth.can("read", view) || auth.can("admin", view)))
     );
   }
 
@@ -309,7 +309,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     const views = await this.baseFetch(auth, {
       where: { webhookSourceId: { [Op.in]: webhookSourceIds } },
     });
-    return views.filter((view) => view.canReadOrAdministrate(auth));
+    return views.filter((view) => (auth.can("read", view) || auth.can("admin", view)));
   }
 
   /**
@@ -357,7 +357,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     auth: Authenticator,
     name: string
   ): Promise<Result<number, DustError<"unauthorized">>> {
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new DustError("unauthorized", "Not allowed to update name.")
       );
@@ -434,7 +434,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     description?: string,
     icon?: string
   ): Promise<Result<number, DustError<"unauthorized">>> {
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new DustError(
           "unauthorized",

@@ -170,7 +170,7 @@ export async function createSandboxFunctionMCPAction(
   // TTL; on its own it would not confine, since an admin can administrate any space. Out-of-scope
   // ids report as not-found so the sandbox cannot probe other spaces.
   const inScope = view?.space.sId === runtimeSpaceId || view?.space.isGlobal();
-  if (!view || !inScope || !view.canReadOrAdministrate(auth)) {
+  if (!view || !inScope || !(auth.can("read", view) || auth.can("admin", view))) {
     return new Err(
       new SandboxFunctionMCPActionError(
         "server_view_not_found",
