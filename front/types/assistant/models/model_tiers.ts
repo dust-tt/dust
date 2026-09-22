@@ -267,6 +267,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "premium",
     high: "premium",
   },
+  "claude-opus-5-5": {
+    light: "premium",
+    medium: "premium",
+    high: "premium",
+  },
   "claude-fable-5": {
     light: "premium",
     medium: "premium",
