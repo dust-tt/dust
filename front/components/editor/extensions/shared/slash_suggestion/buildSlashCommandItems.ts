@@ -34,11 +34,6 @@ export function filterSlashCommandItems(
   );
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:product] server-ranked-skill-order
- * Search-backed skills retain server order without local matching or rescoring; matching
- * tools follow them. Legacy callers keep their existing local capability ranking.
- */
 export function buildCapabilitySlashCommandItems<
   V extends MCPServerViewLightType,
 >({
