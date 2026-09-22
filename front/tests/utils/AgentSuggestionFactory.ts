@@ -7,6 +7,7 @@ import type {
   AgentSuggestionState,
   CreateSuggestionType,
   DeleteSuggestionType,
+  DescriptionSuggestionType,
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   NameSuggestionType,
@@ -184,6 +185,32 @@ export class AgentSuggestionFactory {
         kind: "delete",
         suggestion: overrides.suggestion ?? { name: agentConfiguration.name },
         analysis: overrides.analysis ?? "This agent is no longer used",
+        state: overrides.state ?? "pending",
+        conversationId: null,
+        source: overrides.source ?? "conversational",
+      }
+    );
+  }
+
+  static async createDescription(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType,
+    overrides: Partial<{
+      suggestion: DescriptionSuggestionType;
+      analysis: string | null;
+      state: AgentSuggestionState;
+      source: AgentSuggestionSource;
+    }> = {}
+  ): Promise<AgentSuggestionResource> {
+    return AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      agentConfiguration,
+      {
+        kind: "description",
+        suggestion: overrides.suggestion ?? {
+          description: "Updated description",
+        },
+        analysis: overrides.analysis ?? "A clearer description for this agent",
         state: overrides.state ?? "pending",
         conversationId: null,
         source: overrides.source ?? "conversational",

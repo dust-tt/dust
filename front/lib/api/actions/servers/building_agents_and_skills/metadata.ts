@@ -25,6 +25,8 @@ export const SUGGEST_AGENT_CREATION_TOOL_NAME =
   "suggest_agent_creation" as const;
 export const SUGGEST_AGENT_DELETION_TOOL_NAME =
   "suggest_agent_deletion" as const;
+export const SUGGEST_AGENT_DESCRIPTION_TOOL_NAME =
+  "suggest_agent_description" as const;
 export const SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME =
   "suggest_agent_model_change" as const;
 export const SUGGEST_AGENT_NAME_TOOL_NAME = "suggest_agent_name" as const;
@@ -163,6 +165,24 @@ export const SUGGEST_AGENT_DELETION_INPUT_SCHEMA = z.object({
 
 export type SuggestAgentDeletionArgs = z.infer<
   typeof SUGGEST_AGENT_DELETION_INPUT_SCHEMA
+>;
+
+export const SUGGEST_AGENT_DESCRIPTION_DESCRIPTION =
+  "Suggest a new description for an existing agent.";
+
+export const SUGGEST_AGENT_DESCRIPTION_INPUT_SCHEMA = z.object({
+  agentId: z
+    .string()
+    .describe("The id of the agent to change the description for."),
+  description: z.string().min(1).describe("The new description."),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Why this description is better than the current one."),
+});
+
+export type SuggestAgentDescriptionArgs = z.infer<
+  typeof SUGGEST_AGENT_DESCRIPTION_INPUT_SCHEMA
 >;
 
 export const SUGGEST_AGENT_MODEL_CHANGE_DESCRIPTION =
@@ -374,6 +394,18 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting agent deletion",
       done: "Suggest agent deletion",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_AGENT_DESCRIPTION_TOOL_NAME,
+    description: SUGGEST_AGENT_DESCRIPTION_DESCRIPTION,
+    schema: SUGGEST_AGENT_DESCRIPTION_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting agent description",
+      done: "Suggest agent description",
     },
     toolCostCategory: "basic",
     freeUsage: true,
