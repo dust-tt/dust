@@ -91,9 +91,9 @@ import uniq from "lodash/uniq";
 import type { Attributes, Transaction } from "sequelize";
 import { Op, UniqueConstraintError, ValidationError } from "sequelize";
 
-// Legacy `canEdit` also allows changing the editor set, so the author fallback mirrors the full
-// editor role rather than granting write alone.
-const AGENT_EDITOR_VERBS: GrantVerb[] = ["read", "write", "admin"];
+// A draft belongs to its current author until it is published. This is ownership, not an editor
+// grant: once the agent leaves draft status, only explicit grants confer editorship.
+const DRAFT_OWNER_VERBS: GrantVerb[] = ["read", "write", "admin"];
 
 // Agents in these statuses only exist inside the builder — behind its "try" button or before the
 // first save — and are never indexed.
@@ -332,8 +332,9 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  * The verbs a caller holds on an agent mean:
  * - `read`: seeing the agent's full configuration and using it. Mentioning or running an agent
  *   MUST require `read`. A custom agent grants it only when the agent is workspace-visible or the
- *   caller has editor access, and when the caller can read every space in `requestedSpaceIds` (see
- *   `agent-read-requires-space-read`).
+ *   caller has editor access, except that a draft's current author owns that draft (see
+ *   `draft-agent-owner`). It also requires the caller to read every space in `requestedSpaceIds`
+ *   (see `agent-read-requires-space-read`).
  * - `write`: editing the agent's definition: configuration versions, tags, model, skills, linked
  *   Slack channels, archiving and restoring.
  * - `admin`: managing the agent's editors, and — as the sole definition exceptions — changing the
@@ -1346,6 +1347,14 @@ export class AgentResource
    * `requestedSpaceIds` is a core field carried by every variant, so the gate applies regardless of
    * `light`/`full`. Global agents have no requested spaces and are unaffected.
    */
+  /**
+   * @cc [owner:philipperolet,label:security;product] draft-agent-owner
+   * The current author of a draft custom agent owns that draft and holds `read`, `write`, and
+   * `admin` on it. As with explicit editor grants, `read` and `write` remain subject to
+   * `agent-read-requires-space-read`. Authorship alone MUST NOT grant any verb once the agent is
+   * active, archived, pending, or disabled; editorship on those agents comes only from explicit
+   * grants.
+   */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     if (this.scope === "global") {
       assert(isGlobalAgentId(this.sId));
@@ -1364,7 +1373,8 @@ export class AgentResource
       this.id,
       this.workspaceId
     );
-    const isAuthor =
+    const isDraftOwner =
+      this.status === "draft" &&
       auth.workspace()?.id === this.workspaceId &&
       auth.user()?.id === this.versionAuthorId;
     const roles =
@@ -1377,7 +1387,7 @@ export class AgentResource
         : roles;
 
     const verbs = new Set([
-      ...(isAuthor ? [...grants, ...AGENT_EDITOR_VERBS] : grants),
+      ...(isDraftOwner ? [...grants, ...DRAFT_OWNER_VERBS] : grants),
       ...verbsFromRoleGrants(auth, roleGrants, this.workspaceId),
     ]);
 
@@ -1945,6 +1955,7 @@ export class AgentResource
 
     try {
       let template: TemplateResource | null = null;
+      let createdInitialEditorGrant = false;
       if (templateId) {
         template = await TemplateResource.fetchByExternalId(templateId);
       }
@@ -2015,6 +2026,7 @@ export class AgentResource
             auth,
             agentConfigurationInstance
           ).grantEditors(auth, { editors, transaction: t });
+          createdInitialEditorGrant = true;
         }
 
         // Create the MCP actions and skill associations in the same transaction as the
@@ -2049,6 +2061,11 @@ export class AgentResource
       // Self-owned managed transaction: a throw in `performCreation` auto-rolls-back the whole save
       // before it is converted to an `Err` (see `agent-save-atomic`).
       const agent = await withTransaction(performCreation);
+
+      if (createdInitialEditorGrant) {
+        // The initial grant was created after this authenticator's permission snapshot.
+        await auth.refresh();
+      }
 
       // The saved version becomes the agent's current version, so any cached resource is now stale
       // (a no-op for a brand-new agent from `makeNew`). The save above is a self-owned transaction,
