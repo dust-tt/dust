@@ -11,6 +11,8 @@ import type {
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
+export const CONVERSATION_MESSAGES_PAGE_LIMIT = 50;
+
 export function useConversationMessages({
   conversationId,
   workspaceId,

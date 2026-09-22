@@ -16,6 +16,7 @@ import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessag
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
@@ -45,8 +46,10 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { getModelWithReasoningEffortLabel } from "@app/components/model_picker/modelPickerUtils";
 import {
+  CONVERSATION_MESSAGES_PAGE_LIMIT,
   useBranchConversation,
   useCancelMessage,
+  useConversationMessages,
   usePostOnboardingFollowUp,
 } from "@app/hooks/conversations";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
@@ -82,7 +85,10 @@ import {
   isGlobalAgentId,
   isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
-import { isLightAgentMessageType } from "@app/types/assistant/conversation";
+import {
+  isLightAgentMessageType,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
@@ -91,6 +97,7 @@ import {
   isAgentMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
@@ -325,6 +332,13 @@ export function AgentMessage({
     VirtuosoMessage,
     VirtuosoMessageListContext
   >();
+
+  const { mutateMessages } = useConversationMessages({
+    conversationId,
+    workspaceId: owner.sId,
+    limit: CONVERSATION_MESSAGES_PAGE_LIMIT,
+    disabled: true,
+  });
 
   const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
@@ -789,6 +803,7 @@ export function AgentMessage({
     owner,
     conversationId,
   });
+  const { setStickyModelOverride } = useContext(InputBarContext);
 
   const retryHandler = useCallback(
     async ({
@@ -802,6 +817,28 @@ export function AgentMessage({
       blockedOnly?: boolean;
       modelSelection?: ModelSelectionType;
     }) => {
+      if (modelSelection && isModelStreamId(modelSelection.modelId)) {
+        const parentMessageId = agentMessage.parentMessageId;
+        methods.data.map((m) =>
+          isUserMessage(m) && m.sId === parentMessageId
+            ? { ...m, requestedModel: modelSelection }
+            : m
+        );
+        setStickyModelOverride(modelSelection);
+        void mutateMessages(
+          (pages) =>
+            pages?.map((page) => ({
+              ...page,
+              messages: page.messages.map((m) =>
+                isUserMessageType(m) && m.sId === parentMessageId
+                  ? { ...m, requestedModel: modelSelection }
+                  : m
+              ),
+            })),
+          { revalidate: false }
+        );
+      }
+
       setIsRetryHandlerProcessing(true);
       const result = await retryMessage({
         conversationId,
@@ -814,7 +851,14 @@ export function AgentMessage({
         setLimitReachedCode?.(result.error);
       }
     },
-    [retryMessage, setLimitReachedCode]
+    [
+      agentMessage.parentMessageId,
+      methods.data,
+      mutateMessages,
+      retryMessage,
+      setLimitReachedCode,
+      setStickyModelOverride,
+    ]
   );
 
   const reloadMessage = useCallback(

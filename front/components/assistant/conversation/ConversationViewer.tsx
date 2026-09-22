@@ -34,6 +34,7 @@ import {
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import {
+  CONVERSATION_MESSAGES_PAGE_LIMIT,
   requestConversationMarkAsRead,
   useConversation,
   useConversationContextUsage,
@@ -108,7 +109,6 @@ import { mutate } from "swr";
 import { ConversationErrorDisplay } from "./ConversationError";
 import { findFirstUnreadMessageIndex } from "./utils";
 
-const DEFAULT_PAGE_LIMIT = 50;
 // SSE is the fast path; poll slowly in case the completion event is missed before subscription.
 const FORK_PREPARATION_POLL_INTERVAL_MS = 60_000;
 
@@ -343,7 +343,7 @@ export const ConversationViewer = ({
   } = useConversationMessages({
     conversationId,
     workspaceId: owner.sId,
-    limit: DEFAULT_PAGE_LIMIT,
+    limit: CONVERSATION_MESSAGES_PAGE_LIMIT,
     disabled,
   });
 
@@ -887,15 +887,12 @@ export const ConversationViewer = ({
             // Re-fetch context usage after the agent finishes so the indicator is up-to-date.
             void mutateContextUsage();
 
-            // Update the messages SWR cache in place so a future remount
-            // (e.g. navigating away and back) sees the full terminal state.
-            // The message-level SSE fires agent_message_success before this
-            // conversation-level event, so Virtuoso already holds the final
-            // content, completionDurationMs, and activitySteps. We copy them
-            // into the SWR snapshot to avoid a blank message body on remount.
-            // If Virtuoso hasn't committed the update yet (rare race between
-            // two independent SSE streams), we fall back to a real revalidation.
-            {
+            // Terminal errors are persisted before `agent_message_done` is
+            // published. Revalidate from that canonical row: the independent
+            // message stream may not have put the error in Virtuoso yet.
+            if (event.status === "error") {
+              void mutateMessages();
+            } else {
               const vMsg = virtuosoMessageListRef.current?.data.find(
                 (m) => m.sId === event.messageId
               );
@@ -910,10 +907,7 @@ export const ConversationViewer = ({
                       isLightAgentMessageType(m) && m.sId === event.messageId
                         ? {
                             ...m,
-                            status:
-                              event.status === "error"
-                                ? ("failed" as const)
-                                : ("succeeded" as const),
+                            status: "succeeded" as const,
                             ...(msg !== null
                               ? {
                                   content: msg.content,
