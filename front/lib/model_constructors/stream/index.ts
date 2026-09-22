@@ -70,6 +70,8 @@ import { OpenAIGptSixAstraEuropeOpenAIResponsesStream } from "@app/lib/model_con
 import { OpenAIGptSixAstraGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_astra_global_openai_responses";
 import { OpenAIGptSixLunaEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_luna_eu_openai_responses";
 import { OpenAIGptSixLunaGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_luna_global_openai_responses";
+import { OpenAIGptSixSolEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_sol_eu_openai_responses";
+import { OpenAIGptSixSolGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_six_sol_global_openai_responses";
 import { OpenAISimulatedFailureModelGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_simulated_failure_model_global_openai_responses";
 import { ThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { XaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_five_global_xai";
@@ -183,6 +185,8 @@ export const STREAM_ENDPOINTS = {
     OpenAIGptSixAstraEuropeOpenAIResponsesStream,
   [OpenAIGptSixLunaEuropeOpenAIResponsesStream.id]:
     OpenAIGptSixLunaEuropeOpenAIResponsesStream,
+  [OpenAIGptSixSolEuropeOpenAIResponsesStream.id]:
+    OpenAIGptSixSolEuropeOpenAIResponsesStream,
   [OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream.id]:
     OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream,
   [OpenAIGptFiveDotSixTerraEuropeOpenAIResponsesStream.id]:
@@ -213,6 +217,8 @@ export const STREAM_ENDPOINTS = {
     OpenAIGptSixAstraGlobalOpenAIResponsesStream,
   [OpenAIGptSixLunaGlobalOpenAIResponsesStream.id]:
     OpenAIGptSixLunaGlobalOpenAIResponsesStream,
+  [OpenAIGptSixSolGlobalOpenAIResponsesStream.id]:
+    OpenAIGptSixSolGlobalOpenAIResponsesStream,
   [OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream.id]:
     OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream,
   [OpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream.id]:

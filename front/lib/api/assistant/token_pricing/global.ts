@@ -81,6 +81,22 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   },
   // Verified 2026-09-22: https://developers.openai.com/api/docs/pricing
   // Prompts above 272K input tokens cost 2x input and 1.5x output for the full request.
+  "gpt-6-sol": {
+    input: 2.0,
+    output: 10.0,
+    cache_creation_input_tokens: 2.5,
+    cache_read_input_tokens: 0.2,
+    long_context: {
+      // `computeTokensCostForUsageInMicroUsd` switches tiers inclusively.
+      prompt_token_threshold: 272_001,
+      input: 4.0,
+      output: 15.0,
+      cache_creation_input_tokens: 5.0,
+      cache_read_input_tokens: 0.4,
+    },
+  },
+  // Verified 2026-09-22: https://developers.openai.com/api/docs/pricing
+  // Prompts above 272K input tokens cost 2x input and 1.5x output for the full request.
   "gpt-6-luna": {
     input: 0.1,
     output: 0.5,

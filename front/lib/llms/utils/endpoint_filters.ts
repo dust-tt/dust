@@ -15,3 +15,18 @@ export const EU_AGENT_PLATFORM_ENDPOINT_FILTER = {
     { isCreditPriced: { eq: true } },
   ],
 } as const satisfies Where<WorkspaceConfig>;
+
+/**
+ * @cc [owner:pmilliotte,label:product] premium-model-filter-mirrors-availability
+ * Endpoints for a premium model declare exactly this filter, and their model
+ * config declares the matching `availableIfOneOf: { creditPricedPlan: true,
+ * plansWithAdvancedModels: true }`. The two sides gate different things — the
+ * config gates the picker via `isModelAvailable`, the filter gates routing via
+ * `isEndpointAvailable` — and they are consulted at different moments, so
+ * drift does not degrade gracefully: model resolution picks on availability
+ * and only then fails endpoint selection with `AgentLoopDataModelNotFoundError`
+ * rather than falling back.
+ */
+export const PREMIUM_MODEL_ENDPOINT_FILTER = {
+  or: [{ isCreditPriced: { eq: true } }, { isAdvancedModels: { eq: true } }],
+} as const satisfies Where<WorkspaceConfig>;
