@@ -1,5 +1,6 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { SkillActionsMenu } from "@app/components/skills/SkillActionsMenu";
+import { useSkillMenuItems } from "@app/hooks/useSkillMenuItems";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
@@ -19,6 +20,7 @@ export function SkillSearchActionsMenu({
   onSelect,
   onRefresh,
 }: SkillSearchActionsMenuProps) {
+  const getSkillMenuItems = useSkillMenuItems({ owner });
   const [isOpen, setIsOpen] = useState(false);
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const { skill, isSkillLoading, isSkillError, mutateSkill } = useSkill({
@@ -52,22 +54,23 @@ export function SkillSearchActionsMenu({
   return (
     <>
       <SkillActionsMenu
-        owner={owner}
-        skillId={skillId}
-        canEdit={
-          !isSkillLoading &&
-          !isSkillError &&
-          !!skill?.canAdministrate &&
-          skill.canRead
-        }
-        onSelect={() => onSelect(skillId)}
-        onArchive={
-          !isSkillError && skill?.canAdministrate
-            ? () => setIsArchiveDialogOpen(true)
-            : undefined
-        }
+        menuItems={[
+          ...statusItems,
+          ...getSkillMenuItems({
+            skillId,
+            canEdit:
+              !isSkillLoading &&
+              !isSkillError &&
+              !!skill?.canAdministrate &&
+              skill.canRead,
+            onSelect: () => onSelect(skillId),
+            onArchive:
+              !isSkillError && skill?.canAdministrate
+                ? () => setIsArchiveDialogOpen(true)
+                : undefined,
+          }),
+        ]}
         onOpenChange={setIsOpen}
-        statusItems={statusItems}
       />
       {skill && (
         <ArchiveSkillDialog
