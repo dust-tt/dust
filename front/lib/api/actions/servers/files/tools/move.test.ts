@@ -76,7 +76,7 @@ describe("moveHandler", () => {
     if (!result.isErr()) {
       return;
     }
-    expect(result.error.message).toContain("Source file not found");
+    expect(result.error.message).toContain("Source not found");
   });
 
   it("returns Err when source and dest are the same path", async () => {

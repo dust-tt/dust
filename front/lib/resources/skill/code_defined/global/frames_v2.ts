@@ -128,8 +128,10 @@ The manifest declares the UI entry point, every server function, and every datab
 \`\`\`
 
 - A Frame is named by its folder, and \`manifest.json\` carries no name. Choose the folder name
-  carefully at creation: it is the name users see. The user can rename a Frame later, which moves
-  the folder; refer to the Frame by its stable ID when you need an identifier that survives that.
+  carefully at creation: it is the name users see. To rename a Frame, move its folder — the Frame
+  keeps its ID, its active publication and its share link, so there is nothing to republish. The
+  user can rename it the same way from the Pod UI, so refer to a Frame by its stable ID whenever
+  you need an identifier that survives a rename.
 - \`uiEntryPoint\` defaults to \`index.tsx\` when omitted.
 - Function names are lower-case alphanumeric segments separated by single hyphens.
 - \`entryPoint\` paths are relative to the Frame folder. Keep shared helpers under that folder and
