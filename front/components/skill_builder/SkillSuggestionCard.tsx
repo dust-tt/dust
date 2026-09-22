@@ -1,3 +1,4 @@
+import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { SkillFieldEditSection } from "@app/components/skill_builder/SkillFieldEditSection";
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
@@ -375,6 +376,39 @@ export function SkillSuggestionCard({
     return <ReviewedSuggestionCard suggestion={suggestion} />;
   }
 
+  const details = (
+    <>
+      <SuggestionDetails
+        suggestion={suggestion}
+        getSkillInstructionsHtml={getSkillInstructionsHtml}
+        getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
+        workspaceId={workspaceId}
+      />
+
+      <ConversationFooter
+        visibleSourceConversationIds={suggestion.visibleSourceConversationIds}
+        sourceConversationsCount={suggestion.sourceConversationsCount}
+        workspaceId={workspaceId}
+      />
+    </>
+  );
+
+  if (suggestion.source === "conversational") {
+    return (
+      <ConversationalSuggestionCard
+        title={suggestion.title ?? "Suggestion"}
+        analysis={suggestion.analysis}
+        onAccept={hasActions ? () => onAccept(suggestion) : undefined}
+        onReject={hasActions ? () => onDecline(suggestion) : undefined}
+        rejectLabel="Decline"
+        disabled={disabled}
+        isAccepting={isAccepting}
+        isDeclining={isDeclining}
+        collapsibleContent={details}
+      />
+    );
+  }
+
   return (
     <div
       className={`rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300" : ""}`}
@@ -411,18 +445,7 @@ export function SkillSuggestionCard({
           <p className="text-sm text-muted-foreground">{suggestion.analysis}</p>
         )}
 
-        <SuggestionDetails
-          suggestion={suggestion}
-          getSkillInstructionsHtml={getSkillInstructionsHtml}
-          getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
-          workspaceId={workspaceId}
-        />
-
-        <ConversationFooter
-          visibleSourceConversationIds={suggestion.visibleSourceConversationIds}
-          sourceConversationsCount={suggestion.sourceConversationsCount}
-          workspaceId={workspaceId}
-        />
+        {details}
       </Card>
     </div>
   );
