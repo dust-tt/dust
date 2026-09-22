@@ -44,6 +44,10 @@ User message:
 
 {{WORKSPACE_SKILLS}}
 
+## Tools and knowledge seeded in the workspace (the only valid inline references)
+
+{{WORKSPACE_REFERENCES}}
+
 ## Final suggestion tool call
 
 {{FINAL_TOOL_CALL}}
@@ -75,6 +79,9 @@ User message:
    - For agent creations: are the name, description and instructions coherent with the request,
      and are the instructions complete enough for the agent to do its job without inventing
      capabilities (tools, knowledge) that were not verified to exist?
+   - Inline references: a \`<tool id=.../>\` tag must use the id of a seeded tool and a
+     \`<knowledge .../>\` tag must match a seeded document exactly (id, title, space, dsv). Any
+     reference to a tool or document that is not listed above is invented.
    - Are the new instructions clear, specific and well-structured?
    - **CRITICAL**: a suggestion that targets the wrong entity, targets a non-existent block, or
      would lose existing content the user wanted kept = score 0-1, regardless of other factors.
@@ -98,6 +105,19 @@ async function renderWorkspaceSkills(
   return rendered.length > 0 ? rendered.join("\n\n") : "(none)";
 }
 
+function renderWorkspaceReferences(scenario: SeededScenario): string {
+  const lines: string[] = [];
+  for (const [key, toolId] of scenario.toolIdsByKey) {
+    lines.push(`- tool "${key}": <tool id="${toolId}" name="..."/>`);
+  }
+  for (const [key, node] of scenario.knowledgeByKey) {
+    lines.push(
+      `- knowledge "${key}": <knowledge id="${node.nodeId}" title="${node.title}" space="${node.spaceId}" dsv="${node.dataSourceViewId}" hasChildren="false"/>`
+    );
+  }
+  return lines.length > 0 ? lines.join("\n") : "(none)";
+}
+
 export async function evaluateWithJudge(
   scenario: SeededScenario,
   testCase: TestCase,
@@ -112,6 +132,7 @@ export async function evaluateWithJudge(
     getTestCaseUserMessageForDisplay(testCase)
   )
     .replace("{{WORKSPACE_SKILLS}}", await renderWorkspaceSkills(scenario))
+    .replace("{{WORKSPACE_REFERENCES}}", renderWorkspaceReferences(scenario))
     .replace(
       "{{FINAL_TOOL_CALL}}",
       finalToolCall

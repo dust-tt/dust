@@ -1,3 +1,5 @@
+import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
+import { extractToolTags } from "@app/lib/tools/format";
 import { TOOL } from "@app/tests/conversational-building-evals/lib/tool-runner";
 import type {
   FinalToolCallAssertion,
@@ -47,6 +49,71 @@ function resolveMemberId(scenario: SeededScenario, memberKey: string): string {
     throw new Error(`Scenario references unknown member key "${memberKey}"`);
   }
   return memberId;
+}
+
+function getInstructionEditsContent(args: Record<string, unknown>): string {
+  if (!Array.isArray(args.instructionEdits)) {
+    return "";
+  }
+  return args.instructionEdits
+    .map((edit: unknown) =>
+      typeof edit === "object" &&
+      edit !== null &&
+      "content" in edit &&
+      isString(edit.content)
+        ? edit.content
+        : ""
+    )
+    .join("\n");
+}
+
+// Checks that the instruction edits inline the seeded tools and knowledge documents. Tool tags
+// are matched on the seeded MCP server view id; knowledge tags must match the seeded node
+// attribute for attribute (id, title, space, dsv), since a wrong one breaks the reference.
+function checkInlineReferences(
+  args: Record<string, unknown>,
+  references: { toolKeys?: string[]; knowledgeKeys?: string[] },
+  scenario: SeededScenario
+): AssertionResult {
+  const content = getInstructionEditsContent(args);
+
+  const toolTags = extractToolTags(content);
+  for (const key of references.toolKeys ?? []) {
+    const toolId = scenario.toolIdsByKey.get(key);
+    if (!toolId) {
+      throw new Error(`Scenario references unknown tool key "${key}"`);
+    }
+    if (!toolTags.some((tag) => tag.id === toolId)) {
+      return {
+        success: false,
+        error: `Instruction edits do not inline tool "${key}" (<tool id="${toolId}" .../>); tool tags found: ${JSON.stringify(toolTags)}`,
+      };
+    }
+  }
+
+  const knowledgeTags = extractKnowledgeTagReferences(content);
+  for (const key of references.knowledgeKeys ?? []) {
+    const node = scenario.knowledgeByKey.get(key);
+    if (!node) {
+      throw new Error(`Scenario references unknown knowledge key "${key}"`);
+    }
+    const expectedTag = `<knowledge id="${node.nodeId}" title="${node.title}" space="${node.spaceId}" dsv="${node.dataSourceViewId}" hasChildren="false"/>`;
+    const match = knowledgeTags.some(
+      (tag) =>
+        tag.id === node.nodeId &&
+        tag.title === node.title &&
+        tag.spaceId === node.spaceId &&
+        tag.dataSourceViewId === node.dataSourceViewId
+    );
+    if (!match) {
+      return {
+        success: false,
+        error: `Instruction edits do not inline knowledge "${key}" exactly as ${expectedTag}; knowledge tags found: ${JSON.stringify(knowledgeTags)}`,
+      };
+    }
+  }
+
+  return { success: true };
 }
 
 // Shared check for every skill-targeted suggestion: right tool, right skill.
@@ -129,6 +196,13 @@ export function validateFinalToolCall(
           success: false,
           error: `${TOOL.suggestSkillUpdate} carries neither instructionEdits nor agentFacingDescriptionEdit`,
         };
+      }
+      if (assertion.references) {
+        return checkInlineReferences(
+          finalToolCall.arguments,
+          assertion.references,
+          scenario
+        );
       }
       return { success: true };
     }
