@@ -60,6 +60,13 @@ export interface ConversationListItemProps {
    * caller's.
    */
   descriptionPrefix?: ReactNode;
+  /**
+   * A glyph run into the description, for a row whose description is a step
+   * being taken rather than something that was said — the tool the step reaches
+   * for. It comes after the descriptionPrefix, so the sentence still opens with
+   * what places the row.
+   */
+  descriptionIcon?: React.ComponentType<{ className?: string }>;
   /** Formatted timestamp displayed on the right of the title. */
   time?: string;
   /**
@@ -114,6 +121,7 @@ export function ConversationListItem({
   busy = false,
   titleIcon,
   descriptionPrefix,
+  descriptionIcon,
   time,
   trailing,
   replySection,
@@ -220,6 +228,16 @@ export function ConversationListItem({
             <div className="line-clamp-2 text-sm font-normal text-muted-foreground">
               {descriptionPrefix && (
                 <span className="heading-sm">{descriptionPrefix}: </span>
+              )}
+              {descriptionIcon && (
+                <Icon
+                  visual={descriptionIcon}
+                  size="xs"
+                  // A 16px glyph beside 14px text hangs a hair low on the
+                  // baseline it is centred against, so it is lifted back onto
+                  // the line the words sit on.
+                  className="mr-1 inline-block -translate-y-px align-middle text-faint"
+                />
               )}
               {textAnimation === "streaming" ? (
                 <AnimatedText variant="muted">

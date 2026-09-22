@@ -67,6 +67,12 @@ export interface PlannableRow {
    */
   fixedState?: ConversationWorkState;
   fixedUnreadCount?: number;
+  /**
+   * Whether an agent is the last to have spoken in the row. Only those rows
+   * can be waiting on you: what a row pends on is a step its agent stopped to
+   * ask about, which a conversation someone else spoke in last is not.
+   */
+  hasAgentSpeaker?: boolean;
 }
 
 export interface InboxComposition {
@@ -213,18 +219,20 @@ export function planInboxComposition(
       .map((row) => row.id)
   );
 
-  // A row that states its own case is counted, not overruled — except for one
-  // that says it is working from further down the list than work is allowed
-  // to be. That happens when rows arrive after the first plan and push it
-  // down, and an agent that has been overtaken is an agent that is done.
+  // A row that states its own case is counted, not overruled — except where
+  // the case has stopped holding. Rows arriving after the first plan push the
+  // earlier ones down, and an agent overtaken by them is an agent that is
+  // done; a row nobody's agent spoke in last has nothing to be waiting on.
+  // Either way the work is over and what is left is an answer to read.
   for (const row of conversations) {
     if (!row.fixedState) {
       continue;
     }
-    const state =
-      row.fixedState === "thinking" && !working.has(row.id)
-        ? "unread"
-        : row.fixedState;
+    const holds =
+      row.fixedState === "thinking"
+        ? working.has(row.id)
+        : row.fixedState !== "pending" || Boolean(row.hasAgentSpeaker);
+    const state = holds ? row.fixedState : "unread";
     states.set(row.id, state);
     if (state !== "pending") {
       unreadCounts.set(row.id, row.fixedUnreadCount ?? 1);
@@ -235,7 +243,13 @@ export function planInboxComposition(
     draw([...working], target(INBOX_COMPOSITION.thinking, "thinking")),
     "thinking"
   );
-  assign(draw(top, target(INBOX_COMPOSITION.pending, "pending")), "pending");
+  const waitable = conversations
+    .filter((row) => row.hasAgentSpeaker && top.includes(row.id))
+    .map((row) => row.id);
+  assign(
+    draw(waitable, target(INBOX_COMPOSITION.pending, "pending")),
+    "pending"
+  );
 
   const unreadTarget = Math.min(
     target(INBOX_COMPOSITION.unread, "unread"),
