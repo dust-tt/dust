@@ -227,14 +227,14 @@ export function useSearchSkills({
     [url, body],
     skillsFetcher,
     {
-      // Don't show the previous query's skills alongside tools matching the current query.
       disabled: disabled || isDebouncing,
-      keepPreviousData: false,
+      keepPreviousData: true,
     }
   );
 
   return {
-    skills: data?.skills ?? emptyArray<SkillListItemType>(),
+    skills:
+      (disabled ? undefined : data?.skills) ?? emptyArray<SkillListItemType>(),
     hasMore: data?.hasMore ?? false,
     nextCursor: data?.nextCursor ?? null,
     isSkillsError: !!error,
