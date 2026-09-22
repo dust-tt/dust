@@ -319,9 +319,7 @@ export async function storeFramePublication(
   ];
 
   // One object for every published function bundle. Cold invocation extracts
-  // it once; poke/activation read the same archive. Older publications may
-  // still have a per-function `functions/` tree that dsbx falls back to when
-  // this archive is absent — front no longer writes that tree.
+  // it once; poke/activation read the same archive.
   if (functionArtifacts.length > 0) {
     const functionsArchive = await buildFrameFunctionsTarArchive(
       functionArtifacts.map((artifact) => ({

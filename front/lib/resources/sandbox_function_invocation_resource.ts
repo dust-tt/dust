@@ -67,7 +67,6 @@ import type {
 import {
   FRAME_PERSISTENT_FILES_DIR_ENV,
   getFramePersistentFilesMountPoint,
-  getFramePublicationDescriptorMountPoint,
   getFramePublicationFunctionsMountPoint,
   sandboxDatabaseExecEnvVars,
 } from "@app/types/mount_path";
@@ -842,14 +841,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         frameId: frame.sId,
         publicationId,
       });
-      const databaseEnvVars = sandboxDatabaseExecEnvVars({
-        framePublicationDescriptorPath: getFramePublicationDescriptorMountPoint(
-          {
-            frameId: frame.sId,
-            publicationId,
-          }
-        ),
-      });
+      const databaseEnvVars = sandboxDatabaseExecEnvVars();
 
       const execStartedAtMs = Date.now();
       const execResult = await tracer.trace(

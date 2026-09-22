@@ -118,7 +118,7 @@ interface ImportedBundle {
 
 /**
  * Resolve a function name to its bundle file, extension-agnostically —
- * the same contract as dsbx's resolve_existing: exactly one file in the
+ * the same contract as dsbx's archive extract resolve: exactly one file in the
  * functions directory whose stem is the name.
  */
 export function resolveBundle(

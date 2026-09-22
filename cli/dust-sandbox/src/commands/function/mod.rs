@@ -22,9 +22,8 @@ pub use envelope::ResultDelivery;
 pub use get::cmd_function_get;
 pub use run::cmd_function_run;
 
-/// Publish-time seed: extract `functions.tar` (or legacy-copy from fuse) and,
-/// when warm is enabled, start the publication worker with every slug already
-/// imported. Idempotent.
+/// Publish-time seed: extract `functions.tar` and, when warm is enabled, start
+/// the publication worker with every slug already imported. Idempotent.
 pub async fn cmd_function_materialize_archive() -> Result<()> {
     match publication::materialize_publication().await {
         Ok(()) => {
@@ -71,12 +70,12 @@ pub enum FunctionCommand {
         /// front's argument, not before.
         #[arg(long, value_enum, default_value_t = ResultDelivery::Stdout)]
         result_delivery: ResultDelivery,
-        /// Function name (resolved to a <name>.<ext> bundle in ${DUST_FUNCTIONS_DIR})
+        /// Function name (resolved from the publication's `functions.tar`)
         name: String,
     },
     /// Print a function's JSON-Schema I/O contract
     Get {
-        /// Function name (resolved to a <name>.<ext> bundle in ${DUST_FUNCTIONS_DIR})
+        /// Function name (resolved from the publication's `functions.tar`)
         name: String,
     },
     /// Bundle a function source and extract its JSON-Schema contract to files
@@ -88,8 +87,8 @@ pub enum FunctionCommand {
         /// Output path for the extracted JSON-Schema contract
         out_schema: String,
     },
-    /// Seed this publication: extract `functions.tar` (or legacy-copy) and
-    /// start the publication worker with every slug imported.
+    /// Seed this publication: extract `functions.tar` and start the
+    /// publication worker with every slug imported.
     MaterializeArchive,
 }
 
@@ -116,8 +115,8 @@ fn running_as_root() -> bool {
 /// child is launched via `runuser`, which resolves that user's uid/gid/
 /// supplementary groups and drops privileges before exec — so `dsbx` needs no
 /// unsafe privilege-dropping syscalls. The bundle is imported from its absolute
-/// path in `$DUST_FUNCTIONS_DIR` (an agent-readable mount), but Bun is launched
-/// from a local working directory instead of the gcsfuse-backed mount. The only
+/// path under a local extract of `functions.tar`, but Bun is launched from a
+/// local working directory instead of the gcsfuse-backed mount. The only
 /// thing the dropped child can't otherwise read is the embedded-runner temp file
 /// (created by root, 0600), which is made readable for it.
 pub(crate) async fn spawn_function(
@@ -350,13 +349,13 @@ pub(crate) fn ensure_runner() -> Result<TempPath> {
     Ok(file.into_temp_path())
 }
 
-/// Resolve a function name to its bundle file in `$DUST_FUNCTIONS_DIR`,
-/// extension-agnostically: the bundle is `<name>.<ext>` for whatever extension
-/// `bun` can run (`.ts`, `.js`, `.mjs`, `.cjs`, ...), so the extension is not
-/// assumed — the directory is scanned for a file whose stem is `<name>`.
+/// Resolve a function name to its bundle file from the publication's
+/// `functions.tar` (materialized under `$HOME/.dust-fn/archives/`).
+/// `$DUST_FUNCTIONS_DIR` only locates the publication: its parent holds the
+/// sibling `functions.tar`.
 ///
 /// Errors (as a JSON `{error}` on stdout + non-zero exit) for the user-facing
-/// failure modes: bad name, unset dir, missing file, or an ambiguous match.
+/// failure modes: bad name, unset dir, missing archive, or missing slug.
 pub(crate) fn resolve_existing(name: &str) -> Result<PathBuf> {
     if !is_valid_name(name) {
         return Err(emit_error(anyhow!(
@@ -364,25 +363,14 @@ pub(crate) fn resolve_existing(name: &str) -> Result<PathBuf> {
         )));
     }
     let dir = functions_dir().map_err(emit_error)?;
-
-    let entries = std::fs::read_dir(&dir)
-        .map_err(|e| emit_error(anyhow!("cannot read {}: {e}", dir.display())))?;
-    let mut matches: Vec<PathBuf> = entries
-        .flatten()
-        .map(|entry| entry.path())
-        .filter(|path| path.is_file() && path.file_stem().and_then(|s| s.to_str()) == Some(name))
-        .collect();
-
-    match matches.len() {
-        0 => Err(emit_error(anyhow!("function not found: {name}"))),
-        1 => Ok(matches.pop().expect("len == 1")),
-        _ => {
-            matches.sort();
-            Err(emit_error(anyhow!(
-                "multiple files match function {name}: {matches:?}"
-            )))
-        }
-    }
+    let extract = archive::ensure_functions_archive_extracted(&dir).ok_or_else(|| {
+        emit_error(anyhow!(
+            "functions.tar not found or failed to materialize next to {}",
+            dir.display()
+        ))
+    })?;
+    archive::resolve_in_dir(name, &extract)
+        .ok_or_else(|| emit_error(anyhow!("function not found: {name}")))
 }
 
 /// The configured functions directory (`$DUST_FUNCTIONS_DIR`), required.
@@ -440,42 +428,88 @@ mod tests {
         assert!(!is_valid_name("a.b"));
     }
 
-    // Run `f` with DUST_FUNCTIONS_DIR pointing at a fresh temp dir (serialized,
-    // since the env var is process-global).
-    fn with_functions_dir<R>(f: impl FnOnce(&std::path::Path) -> R) -> R {
+    // Run `f` with DUST_FUNCTIONS_DIR pointing at `.../<pub-id>/functions`
+    // and a sibling `functions.tar` under a temp HOME (serialized, since the
+    // env vars are process-global).
+    fn with_publication_functions_dir<R>(
+        entries: &[(&str, &str)],
+        f: impl FnOnce(&std::path::Path) -> R,
+    ) -> R {
         let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
-        let dir = tempfile::tempdir().expect("tempdir");
-        std::env::set_var(FUNCTIONS_DIR_ENV, dir.path());
-        let result = f(dir.path());
+        if rustix::process::geteuid().is_root() {
+            // ensure_trusted_warm_dir refuses root; skip body.
+            let dir = tempfile::tempdir().expect("tempdir");
+            return f(dir.path());
+        }
+        let original_home = std::env::var_os("HOME");
+        let root = tempfile::tempdir().expect("tempdir");
+        let home = root.path().join("home");
+        std::fs::create_dir_all(&home).expect("home");
+        std::env::set_var("HOME", &home);
+
+        let pub_dir = root.path().join("pub-test");
+        let functions_dir = pub_dir.join("functions");
+        std::fs::create_dir_all(&functions_dir).expect("functions dir");
+        archive::write_test_functions_tar(&pub_dir, entries);
+        std::env::set_var(FUNCTIONS_DIR_ENV, &functions_dir);
+
+        let result = f(&functions_dir);
+
         std::env::remove_var(FUNCTIONS_DIR_ENV);
+        match original_home {
+            Some(v) => std::env::set_var("HOME", v),
+            None => std::env::remove_var("HOME"),
+        }
         result
     }
 
     #[test]
     fn resolves_bundle_regardless_of_extension() {
+        if rustix::process::geteuid().is_root() {
+            return;
+        }
         for ext in ["ts", "js", "mjs", "cjs"] {
-            with_functions_dir(|dir| {
-                let bundle = dir.join(format!("greet.{ext}"));
-                std::fs::write(&bundle, b"export default {}").unwrap();
-                assert_eq!(resolve_existing("greet").unwrap(), bundle);
+            let entry_name = format!("greet.{ext}");
+            with_publication_functions_dir(&[(&entry_name, "export default {}")], |_dir| {
+                let resolved = resolve_existing("greet").unwrap();
+                assert_eq!(
+                    resolved.file_name().and_then(|s| s.to_str()),
+                    Some(entry_name.as_str())
+                );
             });
         }
     }
 
     #[test]
     fn errors_when_function_missing() {
-        with_functions_dir(|_dir| {
+        if rustix::process::geteuid().is_root() {
+            return;
+        }
+        with_publication_functions_dir(&[("other.ts", "export default {}")], |_dir| {
             assert!(resolve_existing("greet").is_err());
         });
     }
 
     #[test]
-    fn errors_when_multiple_extensions_match() {
-        with_functions_dir(|dir| {
-            std::fs::write(dir.join("greet.ts"), b"x").unwrap();
-            std::fs::write(dir.join("greet.js"), b"x").unwrap();
-            assert!(resolve_existing("greet").is_err());
-        });
+    fn errors_when_archive_missing() {
+        let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+        if rustix::process::geteuid().is_root() {
+            return;
+        }
+        let original_home = std::env::var_os("HOME");
+        let root = tempfile::tempdir().expect("tempdir");
+        let home = root.path().join("home");
+        std::fs::create_dir_all(&home).expect("home");
+        std::env::set_var("HOME", &home);
+        let functions_dir = root.path().join("pub-test").join("functions");
+        std::fs::create_dir_all(&functions_dir).expect("functions dir");
+        std::env::set_var(FUNCTIONS_DIR_ENV, &functions_dir);
+        assert!(resolve_existing("greet").is_err());
+        std::env::remove_var(FUNCTIONS_DIR_ENV);
+        match original_home {
+            Some(v) => std::env::set_var("HOME", v),
+            None => std::env::remove_var("HOME"),
+        }
     }
 
     #[test]
@@ -553,6 +587,10 @@ export default {
     #[allow(clippy::await_holding_lock)]
     async fn function_get_bun_child_inherits_pod_databases_dir() {
         let _guard = ENV_LOCK.lock().expect("ENV_LOCK poisoned");
+        if rustix::process::geteuid().is_root() {
+            eprintln!("skipping: archive materialize refuses root");
+            return;
+        }
         if !bun_available() {
             eprintln!("skipping: bun not on PATH");
             return;
@@ -562,15 +600,23 @@ export default {
         let original_node_path = std::env::var_os("NODE_PATH");
         let original_pod_dir = std::env::var_os(POD_DATABASES_DIR_ENV);
 
-        // Stage the probe where resolve_existing() will find it, so
-        // `spawn_function("get", "envprobe", ...)` runs the real runner
-        // against it. `get` prints the probe's schema to stdout — which is
-        // where the child's view of the env comes back out (see
-        // ENV_PROBE_FIXTURE).
-        let dir = tempfile::tempdir().expect("tempdir");
-        std::fs::write(dir.path().join("envprobe.ts"), ENV_PROBE_FIXTURE).expect("fixture");
-        std::env::set_var(FUNCTIONS_DIR_ENV, dir.path());
-        std::env::set_var(FUNCTION_WORKING_DIR_ENV, dir.path());
+        // Stage a publication layout with functions.tar so resolve_existing
+        // materializes the archive and `spawn_function("get", "envprobe", ...)`
+        // runs the real runner against the extracted bundle. `get` prints the
+        // probe's schema to stdout — which is where the child's view of the
+        // env comes back out (see ENV_PROBE_FIXTURE).
+        let root = tempfile::tempdir().expect("tempdir");
+        let home = root.path().join("home");
+        std::fs::create_dir_all(&home).expect("home");
+        let original_home = std::env::var_os("HOME");
+        std::env::set_var("HOME", &home);
+
+        let pub_dir = root.path().join("pub-test");
+        let functions_dir = pub_dir.join("functions");
+        std::fs::create_dir_all(&functions_dir).expect("functions dir");
+        archive::write_test_functions_tar(&pub_dir, &[("envprobe.ts", ENV_PROBE_FIXTURE)]);
+        std::env::set_var(FUNCTIONS_DIR_ENV, &functions_dir);
+        std::env::set_var(FUNCTION_WORKING_DIR_ENV, root.path());
         std::env::set_var("NODE_PATH", RUNNER_NODE_MODULES);
 
         // A var set on dsbx's own process reaches the child by inheritance.
@@ -602,6 +648,7 @@ export default {
         restore_env(FUNCTION_WORKING_DIR_ENV, original_working_dir);
         restore_env("NODE_PATH", original_node_path);
         restore_env(POD_DATABASES_DIR_ENV, original_pod_dir);
+        restore_env("HOME", original_home);
     }
 
     /// Same pin for the `dsbx function build` path: schema extraction imports

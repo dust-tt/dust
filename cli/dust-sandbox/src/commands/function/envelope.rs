@@ -36,10 +36,10 @@ pub enum RunnerKind {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ResolveKind {
-    /// Local `~/.dust-fn/bundles/<sha>.js` hit (skips gcsfuse).
+    /// Local `~/.dust-fn/bundles/<sha>.js` hit.
     Cache,
-    /// `$DUST_FUNCTIONS_DIR` readdir + path (typically gcsfuse-backed).
-    Gcsfuse,
+    /// Local archive extract under `~/.dust-fn/archives/<publication_id>/`.
+    Extract,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]

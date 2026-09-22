@@ -1,11 +1,9 @@
 //! Materialization of a publication's `functions.tar`.
 //!
-//! New publications upload an unpacked (ustar, not gzip) tar alongside the
-//! per-function GCS objects. Extracting that single object from the gcsfuse
-//! mount into `$HOME/.dust-fn/archives/<publication_id>/` gives the
-//! publication worker (and the durable cold path) a local tree — at most one
-//! fuse touch when the tar exists. Older publications without the archive
-//! keep using [`super::resolve_existing`] / a one-shot legacy copy.
+//! Publications upload an uncompressed (ustar) tar as the sole function
+//! payload. Extracting that single object from the gcsfuse mount into
+//! `$HOME/.dust-fn/archives/<publication_id>/` gives the publication worker
+//! (and the durable cold path) a local tree — at most one fuse touch.
 
 use std::fs::File;
 use std::io::{copy, ErrorKind, Read, Write};
@@ -30,7 +28,8 @@ const MAX_UNPACKED_BYTES: u64 = 64 * 1024 * 1024;
 /// `$HOME/.dust-fn/archives/<publication_id>/` and eagerly populate the
 /// per-sha bundle cache for every extracted slug (durable cold resolve).
 /// Idempotent when an extract already exists. Used by publication ensure /
-/// seed and by the durable cold path.
+/// seed and by the durable cold path. Returns `None` when the archive is
+/// missing or cannot be materialized.
 pub fn ensure_functions_archive_extracted(functions_dir: &Path) -> Option<PathBuf> {
     let publication_dir = functions_dir.parent()?;
     // Directory name under the Frame publications mount — same id as the
@@ -48,7 +47,6 @@ pub fn ensure_functions_archive_extracted(functions_dir: &Path) -> Option<PathBu
     } else {
         let archive_path = publication_dir.join(ARCHIVE_FILE_NAME);
         // Existence probe: one metadata hit on gcsfuse when the file is remote.
-        // Missing archive (legacy publications) is the common fallback path.
         if !archive_path.is_file() {
             return None;
         }
@@ -59,6 +57,25 @@ pub fn ensure_functions_archive_extracted(functions_dir: &Path) -> Option<PathBu
     // colds of other functions in this publication skip fuse entirely.
     warm::populate_bundle_caches_from_dir(&extract_dir);
     Some(extract_dir)
+}
+
+/// Resolve a function name to its bundle file under an already-extracted
+/// archive directory, extension-agnostically. Exactly one matching stem.
+pub(crate) fn resolve_in_dir(name: &str, dir: &Path) -> Option<PathBuf> {
+    let entries = std::fs::read_dir(dir).ok()?;
+    let mut matches: Vec<PathBuf> = entries
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.is_file()
+                && path.file_name().and_then(|s| s.to_str()) != Some(COMPLETE_MARKER)
+                && path.file_stem().and_then(|s| s.to_str()) == Some(name)
+        })
+        .collect();
+    match matches.len() {
+        1 => matches.pop(),
+        _ => None,
+    }
 }
 
 fn existing_extract_dir(publication_id: &str) -> Option<PathBuf> {
@@ -114,7 +131,7 @@ fn materialize_archive(archive_path: &Path, publication_id: &str) -> Option<Path
         tracing::warn!(
             error = %e,
             archive = %archive_path.display(),
-            "failed to materialize functions.tar; falling back to gcsfuse resolve"
+            "failed to materialize functions.tar"
         );
         return None;
     }
@@ -220,21 +237,20 @@ fn validate_archive_entry_path(path: &Path) -> Result<String> {
 }
 
 #[cfg(test)]
-fn resolve_in_dir(name: &str, dir: &Path) -> Option<PathBuf> {
-    let entries = std::fs::read_dir(dir).ok()?;
-    let mut matches: Vec<PathBuf> = entries
-        .flatten()
-        .map(|entry| entry.path())
-        .filter(|path| {
-            path.is_file()
-                && path.file_name().and_then(|s| s.to_str()) != Some(COMPLETE_MARKER)
-                && path.file_stem().and_then(|s| s.to_str()) == Some(name)
-        })
-        .collect();
-    match matches.len() {
-        1 => matches.pop(),
-        _ => None,
+pub(crate) fn write_test_functions_tar(dir: &Path, entries: &[(&str, &str)]) -> PathBuf {
+    let tar_path = dir.join(ARCHIVE_FILE_NAME);
+    let file = File::create(&tar_path).unwrap();
+    let mut builder = tar::Builder::new(file);
+    for (name, content) in entries {
+        let bytes = content.as_bytes();
+        let mut header = tar::Header::new_gnu();
+        header.set_size(bytes.len() as u64);
+        header.set_mode(0o644);
+        header.set_cksum();
+        builder.append_data(&mut header, *name, bytes).unwrap();
     }
+    builder.finish().unwrap();
+    tar_path
 }
 
 #[cfg(test)]
@@ -242,22 +258,6 @@ mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt as _;
     use tempfile::TempDir;
-
-    fn write_tar(dir: &Path, entries: &[(&str, &str)]) -> PathBuf {
-        let tar_path = dir.join(ARCHIVE_FILE_NAME);
-        let file = File::create(&tar_path).unwrap();
-        let mut builder = tar::Builder::new(file);
-        for (name, content) in entries {
-            let bytes = content.as_bytes();
-            let mut header = tar::Header::new_gnu();
-            header.set_size(bytes.len() as u64);
-            header.set_mode(0o644);
-            header.set_cksum();
-            builder.append_data(&mut header, *name, bytes).unwrap();
-        }
-        builder.finish().unwrap();
-        tar_path
-    }
 
     #[test]
     fn rejects_path_traversal_entries() {
@@ -277,7 +277,7 @@ mod tests {
         let pub_dir = tmp.path().join("pub-abc");
         let functions_dir = pub_dir.join("functions");
         std::fs::create_dir_all(&functions_dir).unwrap();
-        write_tar(&pub_dir, &[("list-todos.ts", "export default {}")]);
+        write_test_functions_tar(&pub_dir, &[("list-todos.ts", "export default {}")]);
 
         // Point warm dir at a temp HOME so we do not touch the real one.
         let home = tmp.path().join("home");
@@ -307,7 +307,7 @@ mod tests {
         std::fs::create_dir_all(&functions_dir).unwrap();
         let list_src = "export const list = 1";
         let add_src = "export const add = 2";
-        write_tar(
+        write_test_functions_tar(
             &pub_dir,
             &[("list-todos.ts", list_src), ("add-todo.ts", add_src)],
         );
