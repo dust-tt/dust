@@ -167,11 +167,7 @@ export const sheetToFrameSkill = {
     "Turn a data-entry spreadsheet into a real app: a form that fills in the obvious, formulas " +
     "that become fields nobody types, and your existing rows carried over.",
   agentFacingDescription:
-    "Convert a spreadsheet used as a data-entry form — expense logs, time sheets, request " +
-    "intakes, inventory counts, trackers — into a Frames v2 application backed by a Frame " +
-    "database, seeded with the sheet's existing rows. Use when a Google Sheet or an uploaded " +
-    "spreadsheet should become an app, or when asked to replace a shared sheet with something " +
-    "people can actually use.",
+    "Use when asked to convert a spreadsheet into a Frame.",
   instructions: SHEET_TO_FRAME_INSTRUCTIONS,
   exposeInstructions: true,
   // No MCP servers: the Frame tooling and the linter both ship with the Frames skill, so the
