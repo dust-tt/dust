@@ -7,6 +7,7 @@ import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usag
 import {
   DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
   DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+  DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED,
   DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
   DEFAULT_TOP_UP_ENABLED,
   DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
@@ -62,9 +63,6 @@ export async function getUsageConfiguration(
         : true),
   };
 }
-
-// The column defaults to the fixed threshold, so the gate is on until an admin turns it off.
-const DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED = true;
 
 // Admins can only flip the checkpoint gate on/off, not pick the threshold: `true` fills the
 // column with the fixed threshold constant, `false` clears it back to NULL (off).
