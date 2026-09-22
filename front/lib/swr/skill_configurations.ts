@@ -220,8 +220,14 @@ export function useSearchSkills({
     limit,
     permissionFiltering,
   };
-  const skillsFetcher = (): Promise<SearchSkillsResponseBody> =>
-    fetcherWithBody([url, body, "POST"]);
+  const skillsFetcher = async () => {
+    const response: SearchSkillsResponseBody = await fetcherWithBody([
+      url,
+      body,
+      "POST",
+    ]);
+    return { ...response, searchTerm: debouncedSearchTerm };
+  };
 
   const { data, error, isLoading } = useSWRWithDefaults(
     [url, body],
@@ -237,6 +243,8 @@ export function useSearchSkills({
   return {
     skills:
       (disabled ? undefined : data?.skills) ?? emptyArray<SkillListItemType>(),
+    // Filter and rank local tools with this query so they update with the skills.
+    resolvedSearchTerm: disabled ? "" : (data?.searchTerm ?? ""),
     hasMore: data?.hasMore ?? false,
     nextCursor: data?.nextCursor ?? null,
     isSkillsError: !!error,
