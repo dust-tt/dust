@@ -5,6 +5,7 @@ export const DEFAULT_AUTO_SEAT_UPGRADE_ENABLED = false;
 export const DEFAULT_TOP_UP_ENABLED = false;
 export const DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED = true;
 
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -63,7 +64,8 @@ import type { CreationOptional } from "sequelize";
  * - creditSpendCheckpointThresholdAwuCredits: Whether the credit spend
  *   checkpoint gate is active for the workspace, and at what threshold. NULL
  *   means the gate is off. A non-NULL value turns the gate on and is the
- *   threshold, in AWU credits.
+ *   threshold, in AWU credits. Defaults to 600, so the gate is on unless a
+ *   workspace explicitly clears it.
  *
  * The Metronome balance-threshold alert id (used by the webhook to match the
  * firing alert) is NOT stored here: it is a Metronome-generated value resolved
@@ -84,7 +86,9 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare balanceThresholdAwuCredits: number | null;
   declare topUpEnabled: CreationOptional<boolean>;
   declare autoInvoiceFinalizationEnabled: CreationOptional<boolean>;
-  declare creditSpendCheckpointThresholdAwuCredits: number | null;
+  declare creditSpendCheckpointThresholdAwuCredits: CreationOptional<
+    number | null
+  >;
 }
 
 CreditUsageConfigurationModel.init(
@@ -175,7 +179,7 @@ CreditUsageConfigurationModel.init(
     creditSpendCheckpointThresholdAwuCredits: {
       type: DataTypes.INTEGER,
       allowNull: true,
-      defaultValue: null,
+      defaultValue: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
     },
   },
   {
