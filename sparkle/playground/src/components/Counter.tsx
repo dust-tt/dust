@@ -1,6 +1,6 @@
 import { cn, Counter as SparkleCounter } from "@dust-tt/sparkle";
 import { counterVariants } from "@sparkle/components/Counter";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ComponentType } from "react";
 
 type SparkleCounterProps = ComponentProps<typeof SparkleCounter>;
 
@@ -17,8 +17,15 @@ export interface CounterProps
   value?: number;
   size?: CounterSizeType;
   /**
+   * Drawn inside the counter in place of the dot, for a state a colour alone
+   * cannot name. The counter fills out to its full size around it. Ignored
+   * once there is a `value`, which leaves no room for it.
+   */
+  icon?: ComponentType<{ className?: string }>;
+  /**
    * Breathes the valueless dot up to 12px and back, for something that is
-   * waiting rather than settled. Ignored once there is a `value`.
+   * waiting rather than settled. Only the dot breathes: a `value` or an `icon`
+   * ignores this.
    */
   isBusy?: boolean;
   /**
@@ -51,6 +58,25 @@ const SPARKLE_SIZE: Record<
 
 /** The pill xxs draws with a number in it: 16px tall, growing with the digits. */
 const XXS_VALUE_CLASS = "h-4 min-w-4 px-0.5";
+
+/**
+ * With an icon the counter is a disc rather than a pill: the padding digits
+ * need goes, so the circle stays the size the row expects it to be.
+ */
+const ICON_CHIP_CLASS: Record<CounterSizeType, string> = {
+  xxs: "h-4 w-4 min-w-4 px-0",
+  xs: "w-5 px-0",
+  sm: "w-6 px-0",
+  md: "w-7 px-0",
+};
+
+/** The glyph inside, drawn a couple of pixels clear of the circle's edge. */
+const ICON_GLYPH_CLASS: Record<CounterSizeType, string> = {
+  xxs: "h-2.5 w-2.5",
+  xs: "h-3 w-3",
+  sm: "h-3.5 w-3.5",
+  md: "h-4 w-4",
+};
 
 // The dot rests at 8px and breathes to 12px, which is further than Sparkle's
 // animate-breathing-scale goes (0.95), so the keyframes are local.
@@ -100,13 +126,15 @@ const COLLAPSED_CLASS = "max-w-0 ml-0 mr-0";
  * Sparkle's Counter, one size smaller, with a valueless state and one it can
  * fold away into. With something to count it is the Counter itself; without —
  * and one is nothing to count, since being there says it — it holds the same
- * space and centers an 8px dot in it, breathing when `isBusy`.
- * @summary Count badge that can hold a dot, and collapse on itself.
+ * space and centers an 8px dot in it, breathing when `isBusy`, or an `icon`
+ * for a state the colour of a dot could not have told you.
+ * @summary Count badge that can hold a dot or a glyph, and collapse on itself.
  */
 export function Counter({
   value,
   size = "xxs",
   variant = "primary",
+  icon: IconComponent,
   isInButton = false,
   isBusy = false,
   isCollapsed = false,
@@ -129,6 +157,17 @@ export function Counter({
         isCollapsed && "scale-50 text-transparent opacity-0"
       )}
     />
+  ) : IconComponent ? (
+    <span
+      className={cn(
+        counterVariants({ size: sparkleSize, variant, isInButton }),
+        ICON_CHIP_CLASS[size],
+        COLLAPSE_INNER_TRANSITION,
+        isCollapsed && "scale-50 opacity-0"
+      )}
+    >
+      <IconComponent className={cn(ICON_GLYPH_CLASS[size], "shrink-0")} />
+    </span>
   ) : (
     <span
       className={cn(

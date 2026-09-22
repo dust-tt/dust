@@ -15,6 +15,7 @@ import {
   ListItemSection,
   MessageChatSquare,
   MessageQuestionCircle,
+  PauseFill,
   Robot,
   SearchInput,
   Spinner,
@@ -33,7 +34,11 @@ import {
   useState,
 } from "react";
 
-import { AGENT_ACTION_TICK_MS, getAgentAction } from "../data/agentActions";
+import {
+  AGENT_ACTION_TICK_MS,
+  getAgentAction,
+  getPendingAction,
+} from "../data/agentActions";
 import { getAgentById } from "../data/agents";
 import { getLastSpeaker } from "../data/conversations";
 import {
@@ -265,7 +270,7 @@ function RowStateIndicator({
         <Counter
           className="ml-2"
           variant="info"
-          isBusy
+          icon={PauseFill}
           aria-label="Waiting for you"
         />
       )}
@@ -498,6 +503,9 @@ export function InboxAltView({
           (row.kind === "conversation"
             ? row.conversation.unreadCount
             : undefined),
+        hasAgentSpeaker:
+          row.kind === "conversation" &&
+          getLastSpeaker(row.conversation)?.type === "agent",
       })),
       previous?.visibleRequestIds
     );
@@ -667,13 +675,19 @@ export function InboxAltView({
   // is a conversation or a request. Leaving before then, or hopping to another
   // row, calls it off.
   const selectedRowId = selectedConversationId ?? selectedRequestId;
+  // Both sets are asked about the row rather than watched: an agent at work
+  // rebuilds them every time its action line ticks over, and a dependency that
+  // changes every 600ms restarts a three-second timer for as long as the agent
+  // keeps working.
+  const isSelectedRowListed = selectedRowId
+    ? visibleRowIds.has(selectedRowId)
+    : false;
+  const isSelectedRowRead = selectedRowId
+    ? (readRowIds?.has(selectedRowId) ?? false)
+    : false;
 
   useEffect(() => {
-    if (
-      !selectedRowId ||
-      !visibleRowIds.has(selectedRowId) ||
-      readRowIds?.has(selectedRowId)
-    ) {
+    if (!selectedRowId || !isSelectedRowListed || isSelectedRowRead) {
       return;
     }
 
@@ -682,7 +696,7 @@ export function InboxAltView({
       READ_DWELL_MS
     );
     return () => clearTimeout(timeout);
-  }, [onRowsRead, readRowIds, selectedRowId, visibleRowIds]);
+  }, [isSelectedRowListed, isSelectedRowRead, onRowsRead, selectedRowId]);
 
   // Clearing is reading in bulk: the rows go now, and stay gone on the next
   // visit because they leave as read. Work still in flight is not yours to
@@ -774,18 +788,24 @@ export function InboxAltView({
     // Something is still moving in the conversation, by the agent or waiting on
     // you, so whoever is in it breathes.
     const isBusy = isInFlight(state);
-    // An agent at work has nothing to summarise yet: the description is the
-    // last thing that happened, and something is happening now, so the row
-    // reports the step instead and keeps the pod that places it.
-    const description =
+    // A row still moving has nothing to summarise yet: the description is the
+    // last thing that happened, and something is happening now. So it reports
+    // the step instead — the one being taken, or the one being waited on, tool
+    // and all — and keeps the pod that places it.
+    const action =
       state === "thinking"
         ? getAgentAction(row.id, Math.floor(elapsedMs / AGENT_ACTION_TICK_MS))
-        : row.conversation.description;
+        : state === "pending"
+          ? getPendingAction(row.id)
+          : undefined;
 
     return (
       <ConversationListItem
         key={row.id}
-        conversation={{ ...row.conversation, description }}
+        conversation={{
+          ...row.conversation,
+          description: action?.label ?? row.conversation.description,
+        }}
         {...getRowSpeakerProps(row.conversation)}
         badge={getConversationBadge(row.conversation)}
         leadingVisual={
@@ -802,6 +822,7 @@ export function InboxAltView({
         // to follow the timestamp has nothing left to say.
         unread={false}
         descriptionPrefix={getConversationDescriptionPrefix(row.source)}
+        descriptionIcon={action?.icon}
         trailing={
           <RowStateIndicator
             state={state}
@@ -813,6 +834,7 @@ export function InboxAltView({
           isUnread: state === "unread",
           onMarkRead: () => onRowsRead?.([row.id]),
           onMarkUnread: () => onRowsUnread?.([row.id]),
+          onClear: isBusy ? undefined : () => clear([row.id]),
           onLeave: () => onLeaveConversation?.(row.id),
         })}
         onClick={() => onConversationClick?.(row.conversation)}
