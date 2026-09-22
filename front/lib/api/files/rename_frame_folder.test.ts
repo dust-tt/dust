@@ -174,6 +174,32 @@ describe("moveCanonicalFile on a Frames v2 package folder", () => {
     expect(reloaded.useCaseMetadata?.activePublicationId).toBe("publication-1");
   });
 
+  it("trims the destination folder, so the bound cannot be slipped by whitespace", async () => {
+    const c = await setupFrameSourceStorageTest();
+    mockStorageCopies();
+    const fsResult = await DustFileSystem.forAgentLoop(c.auth, {
+      conversation: c.conversation,
+      scopedPaths: [c.sourceDirectoryPath],
+    });
+    assert(fsResult.isOk());
+    // Validation trims, so a trailing space would otherwise pass a 128-character check and
+    // persist a 129-character Frame name.
+    const padded = "a".repeat(128);
+
+    const moved = await moveCanonicalFile(
+      c.auth,
+      fsResult.value,
+      c.sourceDirectoryPath,
+      `conversation-${c.conversation.sId}/${padded} `
+    );
+
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    const reloaded = await FileResource.fetchById(c.auth, c.frame.sId);
+    expect(reloaded?.toScopedPath(c.auth)).toBe(
+      `conversation-${c.conversation.sId}/${padded}/${FRAME_MANIFEST_FILE}`
+    );
+  });
+
   it("rejects a destination folder that is not a valid Frame name", async () => {
     const c = await setupFrameSourceStorageTest();
     mockStorageCopies();

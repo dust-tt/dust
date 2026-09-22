@@ -332,6 +332,11 @@ async function fetchFrameV2PackageAt(
  * bytes and strands the registration, its publications and the Pod references addressing it.
  * Every path that can relocate a folder has to consult this, not just the one a UI happens to use.
  *
+ * Scope: this covers a folder that IS a package root. Relocating an ANCESTOR of one still strands
+ * the Frames beneath it, because `fetchFrameV2PackageAt` looks for a manifest directly inside the
+ * folder being moved and does not scan descendants. Closing that needs a descendant scan on every
+ * folder move plus a decision to repoint or refuse, so it is deliberately not promised here.
+ *
  * Callers MUST branch on `fetchFrameV2PackageAt` before relocating a folder, and MUST NOT fall
  * back to the ordinary path when this rejects: a Frame whose move was refused has to stay put,
  * not be relocated by the generic code that would strand it.
@@ -345,6 +350,8 @@ async function moveFrameV2PackageFolder(
   }: { sourceDirectoryPath: string; destinationDirectoryPath: string }
 ): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
   // The destination folder becomes the Frame's name, so it has to be a name a Frame can have.
+  // Move to the validated name rather than the requested one: validation trims, so passing the
+  // raw destination through would let trailing whitespace carry a name past its length bound.
   const validated = validateFrameV2Name(
     path.posix.basename(destinationDirectoryPath)
   );
@@ -354,7 +361,10 @@ async function moveFrameV2PackageFolder(
 
   const moved = await moveFrameV2Source(auth, {
     dustFs,
-    destinationDirectoryPath,
+    destinationDirectoryPath: path.posix.join(
+      path.posix.dirname(destinationDirectoryPath),
+      validated.value
+    ),
     sourceDirectoryPath,
   });
   if (moved.isErr()) {
