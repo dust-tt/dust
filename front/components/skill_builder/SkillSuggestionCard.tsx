@@ -28,7 +28,7 @@ import {
   XCircle,
 } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
-import type { ComponentType } from "react";
+import type { ComponentType, KeyboardEvent } from "react";
 import { useMemo } from "react";
 
 const MAX_VISIBLE_CONVERSATIONS = 3;
@@ -395,9 +395,23 @@ export function SkillSuggestionCard({
 
   const wrapperClassName = `rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300" : ""}`;
 
+  const wrapperProps = onSelect
+    ? {
+        role: "button",
+        tabIndex: 0,
+        onClick: onSelect,
+        onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect();
+          }
+        },
+      }
+    : {};
+
   if (suggestion.source === "conversational") {
     return (
-      <div className={wrapperClassName} onClick={onSelect}>
+      <div className={wrapperClassName} {...wrapperProps}>
         <ConversationalSuggestionCard
           title={suggestion.title ?? "Suggestion"}
           analysis={suggestion.analysis}
@@ -414,7 +428,7 @@ export function SkillSuggestionCard({
   }
 
   return (
-    <div className={wrapperClassName} onClick={onSelect}>
+    <div className={wrapperClassName} {...wrapperProps}>
       <Card variant="primary" size="md" className="flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <span className="heading-base text-foreground">
