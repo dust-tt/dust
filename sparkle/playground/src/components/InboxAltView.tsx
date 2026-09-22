@@ -75,6 +75,7 @@ import {
   type FilterGroup,
   type FilterSelection,
 } from "./FilterMenu";
+import { InputBar } from "./InputBar";
 import { RequestListItem } from "./RequestListItem";
 import { TriggerRunAvatar } from "./TriggerRunAvatar";
 import {
@@ -163,6 +164,8 @@ interface InboxAltViewProps {
   onLeaveConversation?: (conversationId: string) => void;
   onConversationClick?: (conversation: Conversation) => void;
   onRequestClick?: (request: AdminRequest) => void;
+  /** Opens the list with a composer, so new work starts where you triage it. */
+  showComposer?: boolean;
 }
 
 /** A restricted pod is drawn with the outlined cube, as in the Inbox. */
@@ -411,6 +414,7 @@ export function InboxAltView({
   onLeaveConversation,
   onConversationClick,
   onRequestClick,
+  showComposer = false,
 }: InboxAltViewProps) {
   const [searchText, setSearchText] = useState("");
   const [filter, setFilter] = useState<FilterSelection>(null);
@@ -945,6 +949,9 @@ export function InboxAltView({
   return (
     <div className="flex h-full w-full flex-col overflow-x-clip overflow-y-auto bg-background">
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 pt-6 pb-8">
+        {showComposer && (
+          <InputBar placeholder="What are we working on?" className="mb-2" />
+        )}
         {renderContent()}
       </div>
     </div>

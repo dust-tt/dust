@@ -1153,6 +1153,7 @@ function NewNavigation() {
           requests={requests}
           triggers={triggers}
           currentUserId={user.id}
+          showComposer
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
           }
