@@ -1,37 +1,24 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
+import { SkillActionsMenu } from "@app/components/skills/SkillActionsMenu";
 import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
 import { SkillsBatchEditBar } from "@app/components/skills/SkillsBatchEdit";
+import {
+  SkillAvailabilityCell,
+  SkillEditorsCell,
+  SkillLastEditedCell,
+  SkillNameCell,
+} from "@app/components/skills/SkillTableCells";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
-import config from "@app/lib/api/config";
-import { useAppRouter } from "@app/lib/platform";
-import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
-import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
-import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
-import {
-  getManageSkillsRoute,
-  getSkillBuilderRoute,
-} from "@app/lib/utils/router";
+import { useSkillMenuItems } from "@app/hooks/useSkillMenuItems";
+import { isDustProvidedSkill } from "@app/lib/skill";
+import { classNames } from "@app/lib/utils";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
-import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
-import {
-  Checkbox,
-  Chip,
-  Clipboard,
-  ClipboardCheck,
-  DataTable,
-  Edit04,
-  Eye,
-  Label,
-  LoadingBlock,
-  Tooltip,
-  Trash01,
-  useCopyToClipboard,
-} from "@dust-tt/sparkle";
+import { Checkbox, DataTable, Label, LoadingBlock } from "@dust-tt/sparkle";
 import type {
   CellContext,
   ColumnDef,
@@ -198,23 +185,12 @@ const nameColumn = {
   header: "Name",
   accessorKey: "name",
   cell: (info: CellContext<RowData, string>) => {
-    const SkillAvatar = getSkillAvatarIcon(info.row.original);
-
     return (
       <DataTable.CellContent>
-        <div className="flex flex-row items-center gap-2 py-3">
-          <div>
-            <SkillAvatar />
-          </div>
-          <div className="flex min-w-0 grow flex-col">
-            <div className="heading-sm overflow-hidden truncate text-foreground">
-              {info.getValue()}
-            </div>
-            <div className="overflow-hidden truncate text-sm text-muted-foreground">
-              {info.row.original.description}
-            </div>
-          </div>
-        </div>
+        <SkillNameCell
+          skill={info.row.original}
+          description={info.row.original.description}
+        />
       </DataTable.CellContent>
     );
   },
@@ -226,19 +202,9 @@ const nameColumn = {
 const availabilityColumn = {
   header: "Availability",
   accessorKey: "availability",
-  cell: (info: CellContext<RowData, SkillAvailability>) => {
-    const display = SKILL_AVAILABILITY_DISPLAY[info.getValue()];
-    return (
-      <DataTable.CellContent>
-        <Tooltip
-          label={display.tooltip}
-          trigger={
-            <Chip size="xs" color={display.color} label={display.label} />
-          }
-        />
-      </DataTable.CellContent>
-    );
-  },
+  cell: (info: CellContext<RowData, SkillAvailability>) => (
+    <SkillAvailabilityCell availability={info.getValue()} />
+  ),
   meta: {
     className: "hidden @sm:w-40 @sm:table-cell",
   },
@@ -247,24 +213,9 @@ const availabilityColumn = {
 const editorsColumn = {
   header: "Editors",
   accessorKey: "editors",
-  cell: (info: CellContext<RowData, UserType[]>) => {
-    const editors = info.getValue();
-    const items = editors
-      ? editors.map((editor) => ({
-          name: editor.fullName,
-          visual: editor.image,
-          isRounded: true,
-        }))
-      : // Only Dust-managed skills should have no editors
-        [
-          {
-            name: "Dust",
-            visual: DUST_AVATAR_URL,
-            isRounded: false,
-          },
-        ];
-    return <DataTable.CellContent avatarStack={{ items, nbVisibleItems: 4 }} />;
-  },
+  cell: (info: CellContext<RowData, UserType[] | null>) => (
+    <SkillEditorsCell editors={info.getValue()} />
+  ),
   meta: {
     className: "hidden @sm:w-32 @sm:table-cell",
   },
@@ -318,36 +269,18 @@ const usageColumn: ColumnDef<RowData, number | null> = {
 const lastEditedColumn = {
   header: "Last Edited",
   accessorKey: "updatedAt",
-  cell: (info: CellContext<RowData, number | null>) => {
-    const value = info.getValue();
-    return (
-      <DataTable.BasicCellContent
-        tooltip={value ? formatTimestampToFriendlyDate(value, "long") : ""}
-        label={value ? formatTimestampToFriendlyDate(value, "compact") : ""}
-      />
-    );
-  },
+  cell: (info: CellContext<RowData, number | null>) => (
+    <SkillLastEditedCell updatedAt={info.getValue()} />
+  ),
   meta: { className: "hidden @sm:w-32 @sm:table-cell" },
 };
-
-// Control the menu locally so clicking "Copy link" does not close it.
-function SkillActionsMenuButton({ menuItems }: { menuItems: MenuItem[] }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <DataTable.MoreButton
-      menuItems={menuItems}
-      dropdownMenuProps={{ open: isOpen, onOpenChange: setIsOpen }}
-    />
-  );
-}
 
 const menuColumn = {
   header: "",
   accessorKey: "menuItems",
-  cell: (info: CellContext<RowData, MenuItem[]>) => {
-    return <SkillActionsMenuButton menuItems={info.getValue()} />;
-  },
+  cell: (info: CellContext<RowData, MenuItem[]>) => (
+    <SkillActionsMenu menuItems={info.getValue()} />
+  ),
   meta: {
     className: "w-14",
   },
@@ -484,13 +417,11 @@ export function SkillsTable({
   onSelectAvailabilityAction,
   isLoading = false,
 }: SkillsTableProps) {
-  const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
+  const getSkillMenuItems = useSkillMenuItems({ owner });
   const [skillToArchive, setSkillToArchive] = useState<
     GetSkillsWithRelationsResponseBody["skills"][number] | null
   >(null);
-  const [copiedSkillId, setCopiedSkillId] = useState<string | null>(null);
-  const [isSkillLinkCopied, copySkillLink] = useCopyToClipboard();
 
   // Stable columns identity: rebuilding them on every selection change makes the
   // table re-render all rows.
@@ -513,7 +444,6 @@ export function SkillsTable({
     [columns]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(
     () =>
       skills.map((skill) => ({
@@ -531,73 +461,21 @@ export function SkillsTable({
         onClick: () => {
           onSkillClick(skill);
         },
+        // DataTable.Row also uses these items for its right-click context menu.
         menuItems:
           skill.status !== "archived"
-            ? [
-                {
-                  label: "Edit",
-                  icon: Edit04,
-                  // `canRead` is false for skills redacted for an admin (see the details sheet).
-                  disabled: !skill.canAdministrate || !skill.canRead,
-                  onClick: (e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    void router.push(
-                      getSkillBuilderRoute(owner.sId, skill.sId)
-                    );
-                  },
-                  kind: "item" as const,
-                },
-                {
-                  label: "More info",
-                  icon: Eye,
-                  onClick: (e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    onSkillClick(skill);
-                  },
-                  kind: "item" as const,
-                },
-                {
-                  label:
-                    isSkillLinkCopied && copiedSkillId === skill.sId
-                      ? "Copied!"
-                      : "Copy link",
-                  icon:
-                    isSkillLinkCopied && copiedSkillId === skill.sId
-                      ? ClipboardCheck
-                      : Clipboard,
-                  onClick: async (e: React.MouseEvent) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setCopiedSkillId(skill.sId);
-                    await copySkillLink(
-                      `${config.getAppUrl()}${getManageSkillsRoute(owner.sId, skill.sId)}`
-                    );
-                  },
-                  kind: "item" as const,
-                },
-                {
-                  label: "Archive",
-                  icon: Trash01,
-                  disabled: !skill.canAdministrate,
-                  variant: "warning" as const,
-                  onClick: (e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    setSkillToArchive(skill);
-                  },
-                  kind: "item" as const,
-                },
-              ].filter((item) => !item.disabled)
+            ? getSkillMenuItems({
+                skillId: skill.sId,
+                // `canRead` is false for skills redacted for an admin (see the details sheet).
+                canEdit: skill.canAdministrate && skill.canRead,
+                onSelect: () => onSkillClick(skill),
+                onArchive: skill.canAdministrate
+                  ? () => setSkillToArchive(skill)
+                  : undefined,
+              })
             : [],
       })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
-    [
-      skills,
-      onSkillClick,
-      owner.sId,
-      isSkillLinkCopied,
-      copiedSkillId,
-      copySkillLink,
-    ]
+    [skills, onSkillClick, getSkillMenuItems]
   );
 
   const selectionSet = useMemo(
