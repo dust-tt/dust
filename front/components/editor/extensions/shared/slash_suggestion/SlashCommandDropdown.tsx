@@ -397,8 +397,7 @@ export const SlashCommandDropdown = forwardRef<
                   {...getPointerHighlightProps(null, 0, setSelectedIndex)}
                   className={cn(
                     "text-muted-foreground [&_span]:text-xs",
-                    selectedIndex === 0 &&
-                      "bg-muted-background [transition-duration:0ms]"
+                    selectedIndex === 0 && "bg-hover [transition-duration:0ms]"
                   )}
                 />
               ) : null}
@@ -452,7 +451,7 @@ export const SlashCommandDropdown = forwardRef<
                         className={cn(
                           "group",
                           index === selectedIndex &&
-                            "bg-muted-background [transition-duration:0ms]"
+                            "bg-hover [transition-duration:0ms]"
                         )}
                       />
                     );
@@ -564,7 +563,7 @@ export const SlashCommandDropdown = forwardRef<
                       className={cn(
                         "group",
                         entryIndex === selectedIndex &&
-                          "bg-muted-background [transition-duration:0ms]"
+                          "bg-hover [transition-duration:0ms]"
                       )}
                     />
                   );
