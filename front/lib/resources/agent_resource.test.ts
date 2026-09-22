@@ -1220,7 +1220,7 @@ describe("AgentResource", () => {
       const existingTag = await TagFactory.create(workspace, {
         name: "existing",
       });
-      await existingTag.addToAgent(authenticator, agent);
+      await TagFactory.addToAgent(authenticator, existingTag, agent);
 
       const newTag = await TagFactory.create(workspace, { name: "new" });
       const result = await AgentResource.bulkUpdate(
@@ -1251,7 +1251,7 @@ describe("AgentResource", () => {
       const agent =
         await AgentConfigurationFactory.createTestAgent(authenticator);
       const tag = await TagFactory.create(workspace, { name: "to-remove" });
-      await tag.addToAgent(authenticator, agent);
+      await TagFactory.addToAgent(authenticator, tag, agent);
 
       const result = await AgentResource.bulkUpdate(
         authenticator,
@@ -1278,7 +1278,7 @@ describe("AgentResource", () => {
       const agent =
         await AgentConfigurationFactory.createTestAgent(authenticator);
       const tag = await TagFactory.create(workspace, { name: "present" });
-      await tag.addToAgent(authenticator, agent);
+      await TagFactory.addToAgent(authenticator, tag, agent);
 
       // Adding the tag it already has leaves the set unchanged, so no new version is created.
       const result = await AgentResource.bulkUpdate(

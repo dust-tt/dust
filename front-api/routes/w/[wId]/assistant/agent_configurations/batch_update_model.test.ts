@@ -13,6 +13,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
@@ -56,7 +57,7 @@ async function setupTest(role: MembershipRoleType) {
     name: "Test Tag",
     kind: "standard",
   });
-  await tag.addToAgent(auth, agent);
+  await TagFactory.addToAgent(auth, tag, agent);
 
   return { workspace, auth, agent, tag };
 }

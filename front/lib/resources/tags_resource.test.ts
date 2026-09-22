@@ -23,8 +23,8 @@ describe("TagResource", () => {
 
       const tag1 = await TagFactory.create(workspace, { name: "tag-1" });
       const tag2 = await TagFactory.create(workspace, { name: "tag-2" });
-      await tag1.addToAgent(authenticator, agent);
-      await tag2.addToAgent(authenticator, agent);
+      await TagFactory.addToAgent(authenticator, tag1, agent);
+      await TagFactory.addToAgent(authenticator, tag2, agent);
 
       const tags = await TagResource.listForAgentVersion(
         authenticator,
@@ -54,14 +54,14 @@ describe("TagResource", () => {
       const agent =
         await AgentConfigurationFactory.createTestAgent(authenticator);
       const tagV0 = await TagFactory.create(workspace, { name: "tag-v0" });
-      await tagV0.addToAgent(authenticator, agent);
+      await TagFactory.addToAgent(authenticator, tagV0, agent);
 
       const updatedAgent = await AgentConfigurationFactory.updateTestAgent(
         authenticator,
         agent.sId
       );
       const tagV1 = await TagFactory.create(workspace, { name: "tag-v1" });
-      await tagV1.addToAgent(authenticator, updatedAgent);
+      await TagFactory.addToAgent(authenticator, tagV1, updatedAgent);
 
       expect(updatedAgent.version).not.toBe(agent.version);
 
@@ -84,7 +84,7 @@ describe("TagResource", () => {
       const agent =
         await AgentConfigurationFactory.createTestAgent(authenticator);
       const tag = await TagFactory.create(workspace, { name: "tag" });
-      await tag.addToAgent(authenticator, agent);
+      await TagFactory.addToAgent(authenticator, tag, agent);
 
       const otherSetup = await createResourceTest({ role: "admin" });
 

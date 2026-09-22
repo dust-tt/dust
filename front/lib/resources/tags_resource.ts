@@ -6,7 +6,6 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -254,38 +253,6 @@ export class TagResource extends BaseResource<TagModel> {
     return this.baseFetch(auth, {
       where: {
         id: tagAgents.map((tagAgent) => tagAgent.tagId),
-      },
-    });
-  }
-
-  async addToAgent(
-    auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType
-  ) {
-    if (!agentConfiguration.canEdit && !auth.isAdmin()) {
-      throw new Error("You are not allowed to add tags to this agent");
-    }
-
-    await TagAgentModel.create({
-      workspaceId: auth.getNonNullableWorkspace().id,
-      tagId: this.id,
-      agentConfigurationId: agentConfiguration.id,
-    });
-  }
-
-  async removeFromAgent(
-    auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType
-  ) {
-    if (!agentConfiguration.canEdit && !auth.isAdmin()) {
-      throw new Error("You are not allowed to remove tags from this agent");
-    }
-
-    await TagAgentModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        tagId: this.id,
-        agentConfigurationId: agentConfiguration.id,
       },
     });
   }
