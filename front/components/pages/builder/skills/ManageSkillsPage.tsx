@@ -14,6 +14,7 @@ import {
   SKILL_MANAGER_TABS,
   sortSkillsByName,
 } from "@app/components/pages/builder/skills/utils";
+import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
@@ -30,7 +31,6 @@ import {
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { SKILL_ICON } from "@app/lib/skill";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   useSkillsWithRelations,
@@ -49,7 +49,6 @@ import {
   DropdownMenuTrigger,
   EmptyCTA,
   EmptyCTAButton,
-  FolderOpen,
   InfoCircle,
   Page,
   Plus,
@@ -381,23 +380,10 @@ export function ManageSkillsPage() {
               }}
             />
             {canCreateSkill && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button label="Create skill" icon={Plus} isSelect />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem
-                    label="From scratch"
-                    icon={SKILL_ICON}
-                    href={getSkillBuilderRoute(owner.sId, "new")}
-                  />
-                  <DropdownMenuItem
-                    label="From existing"
-                    icon={FolderOpen}
-                    onClick={() => setIsImportDialogOpen(true)}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <CreateSkillButton
+                owner={owner}
+                onImport={() => setIsImportDialogOpen(true)}
+              />
             )}
           </div>
           <div className="flex flex-col pt-3">
