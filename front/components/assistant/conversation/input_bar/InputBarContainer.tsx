@@ -379,6 +379,15 @@ const InputBarContainer = ({
   const [isCaptureDropdownOpen, setIsCaptureDropdownOpen] = useState(false);
   const [showKnowledgePicker, setShowKnowledgePicker] = useState(false);
   const [showSpacesPicker, setShowSpacesPicker] = useState(false);
+  // Every open/close of the picker must go through this handler so the overlay
+  // tracker stays in sync; do not call setShowSpacesPicker directly.
+  const handleSpacesPickerOpenChange = useCallback(
+    (open: boolean) => {
+      setShowSpacesPicker(open);
+      setOverlayOpen("spaces-picker", open);
+    },
+    [setOverlayOpen]
+  );
   const inputBarButtonsRef = useRef<HTMLDivElement>(null);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const isWidthConstrained = useIsWidthConstrained();
@@ -753,7 +762,7 @@ const InputBarContainer = ({
         break;
       case SELECT_SPACES_SLASH_COMMAND_ACTION:
         // The picker's searchbar autofocuses; refocusing the editor would close it.
-        setShowSpacesPicker(true);
+        handleSpacesPickerOpenChange(true);
         return;
       default:
         assertNeverAndIgnore(item);
@@ -951,10 +960,6 @@ const InputBarContainer = ({
   useEffect(() => {
     setOverlayOpen("knowledge-picker", showKnowledgePicker);
   }, [showKnowledgePicker, setOverlayOpen]);
-
-  useEffect(() => {
-    setOverlayOpen("spaces-picker", showSpacesPicker);
-  }, [showSpacesPicker, setOverlayOpen]);
 
   const handleAgentRemove = useCallback(() => {
     setSelectedSingleAgent(null);
@@ -1716,7 +1721,7 @@ const InputBarContainer = ({
                         disabled={disableInput}
                         externalOpen={showSpacesPicker}
                         isLoading={isSelectableSpacesLoading}
-                        onExternalOpenChange={setShowSpacesPicker}
+                        onExternalOpenChange={handleSpacesPickerOpenChange}
                         onSelectedSpaceIdsChange={
                           handleSelectedSpaceIdsChangeSafely
                         }
