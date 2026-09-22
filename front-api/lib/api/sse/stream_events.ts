@@ -4,7 +4,7 @@ import type { Context } from "hono";
 import { stream } from "hono/streaming";
 import { z } from "zod";
 
-const SSE_HANDSHAKE = `event: ${MANAGED_SSE_HANDSHAKE_EVENT}\ndata: {}\n\n`;
+const SSE_HANDSHAKE = `${MANAGED_SSE_HANDSHAKE_EVENT}\n\n`;
 
 // Standard SSE resume parameter shared by every streaming route. An absent or
 // empty `lastEventId` (clients reconnecting without a prior event send `?lastEventId=`)
@@ -31,8 +31,16 @@ type StreamEventsParams<TIn> = {
 
 /**
  * @cc [owner:id13,label:api;architecture] managed-sse-handshake
- * `streamEvents` MUST write the managed SSE handshake before it starts consuming the event
- * iterator so clients can verify that streaming response bytes reach the browser.
+ * `streamEvents` MUST write the `:connect` SSE comment before it starts consuming the event
+ * iterator so managed clients can verify that streaming response bytes reach the browser without
+ * exposing the handshake as an application event.
+ */
+/**
+ * @cc [owner:id13,label:performance;architecture] unpadded-managed-sse-handshake
+ * `streamEvents` MUST emit only the minimal managed handshake frame before it starts the iterator
+ * and MUST NOT insert padding, comment frames, or other filler before the first real event.
+ * A size-threshold proxy could otherwise release the handshake while buffering later events,
+ * making the SSE probe falsely healthy.
  */
 export function streamEvents<TIn>(params: StreamEventsParams<TIn>) {
   setSSEHeaders(params.ctx);

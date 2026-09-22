@@ -18,7 +18,7 @@ describe("getMessagesEventsBatch", () => {
     redisHybridManager.subscribe.mockReset();
   });
 
-  it("returns ordered history and unsubscribes", async () => {
+  it("returns history and unsubscribes", async () => {
     const unsubscribe = vi.fn();
     const history: EventPayload[] = [
       {
@@ -41,7 +41,10 @@ describe("getMessagesEventsBatch", () => {
       "message-msg_1",
       expect.any(Function),
       "message_events_long_poll",
-      { lastEventId: "0-0" }
+      {
+        lastEventId: "0-0",
+        signal: expect.any(AbortSignal),
+      }
     );
     expect(unsubscribe).toHaveBeenCalledOnce();
   });

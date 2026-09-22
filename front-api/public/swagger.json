@@ -1333,7 +1333,7 @@
     "/api/v1/w/{wId}/assistant/conversations/{cId}/events": {
       "get": {
         "summary": "Get the events for a conversation",
-        "description": "Stream conversation events for the workspace identified by {wId} using Server-Sent Events (SSE).\nThe stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed event frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.\n",
+        "description": "Stream conversation events for the workspace identified by {wId} using Server-Sent Events (SSE).\nThe stream starts with a `:connect` comment. Event frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.\n",
         "tags": [
           "Conversations"
         ],
@@ -1373,7 +1373,7 @@
         ],
         "responses": {
           "200": {
-            "description": "SSE event stream with a named handshake followed by unnamed conversation frames. Each conversation frame contains JSON with `eventId` and `data` fields. The `data` field is the conversation event. View the \"Events\" page from this documentation for more information.",
+            "description": "SSE event stream with a `:connect` comment followed by conversation frames. Each conversation frame contains JSON with `eventId` and `data` fields. The `data` field is the conversation event. View the \"Events\" page from this documentation for more information.",
             "content": {
               "text/event-stream": {
                 "schema": {
@@ -2075,7 +2075,7 @@
     "/api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events": {
       "get": {
         "summary": "Get events for a message",
-        "description": "Stream events for a message in the workspace identified by {wId} using Server-Sent Events (SSE).\nThe stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed message frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.\n",
+        "description": "Stream events for a message in the workspace identified by {wId} using Server-Sent Events (SSE).\nThe stream starts with a `:connect` comment. Message frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.\n",
         "tags": [
           "Conversations"
         ],
@@ -2124,7 +2124,7 @@
         ],
         "responses": {
           "200": {
-            "description": "SSE event stream with a named handshake followed by unnamed message frames. The JSON `data` field in each message frame contains the event, discriminated by `type`.",
+            "description": "SSE event stream with a `:connect` comment followed by message frames. The JSON `data` field in each message frame contains the event, discriminated by `type`.",
             "content": {
               "text/event-stream": {
                 "schema": {
@@ -3055,7 +3055,7 @@
     "/api/v1/w/{wId}/mcp/requests": {
       "get": {
         "summary": "Stream MCP tool requests for a workspace",
-        "description": "[Documentation](https://docs.dust.tt/docs/client-side-mcp-server)\nServer-Sent Events (SSE) endpoint that streams MCP tool requests for a workspace.\nThis endpoint is used by client-side MCP servers to listen for tool requests in real-time.\nEvents arrive as new tool requests are made. Reconnect with `lastEventId` after the stream closes to continue receiving events.\nThe stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed request frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.\n",
+        "description": "[Documentation](https://docs.dust.tt/docs/client-side-mcp-server)\nServer-Sent Events (SSE) endpoint that streams MCP tool requests for a workspace.\nThis endpoint is used by client-side MCP servers to listen for tool requests in real-time.\nEvents arrive as new tool requests are made. Reconnect with `lastEventId` after the stream closes to continue receiving events.\nThe stream starts with a `:connect` comment. Request frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.\n",
         "tags": [
           "MCP"
         ],
@@ -3095,7 +3095,7 @@
         ],
         "responses": {
           "200": {
-            "description": "SSE event stream with a named handshake followed by unnamed request frames. The JSON `data` field in each request frame contains the tool request.\n",
+            "description": "SSE event stream with a `:connect` comment followed by request frames. The JSON `data` field in each request frame contains the tool request.\n",
             "content": {
               "text/event-stream": {
                 "schema": {

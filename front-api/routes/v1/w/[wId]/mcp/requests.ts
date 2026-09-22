@@ -19,7 +19,7 @@ app.use("*", streamingTag);
  *       Server-Sent Events (SSE) endpoint that streams MCP tool requests for a workspace.
  *       This endpoint is used by client-side MCP servers to listen for tool requests in real-time.
  *       Events arrive as new tool requests are made. Reconnect with `lastEventId` after the stream closes to continue receiving events.
- *       The stream starts with a named `dust-handshake` frame containing `data: {}`. Unnamed request frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.
+ *       The stream starts with a `:connect` comment. Request frames carry JSON with `eventId` and `data` fields. A plain-text `data: done` frame ends the current connection; clients may reconnect with `lastEventId`.
  *     tags:
  *       - MCP
  *     security:
@@ -46,7 +46,7 @@ app.use("*", streamingTag);
  *     responses:
  *       200:
  *         description: |
- *           SSE event stream with a named handshake followed by unnamed request frames. The JSON `data` field in each request frame contains the tool request.
+ *           SSE event stream with a `:connect` comment followed by request frames. The JSON `data` field in each request frame contains the tool request.
  *         content:
  *           text/event-stream:
  *             schema:

@@ -1524,7 +1524,7 @@
  *                 nullable: true
  *     PrivateConversationStreamEnvelope:
  *       type: object
- *       description: JSON payload of an unnamed conversation SSE data frame. The named dust-handshake frame and plain-text done sentinel use different formats.
+ *       description: JSON payload of a conversation SSE data frame. The `:connect` comment and plain-text done sentinel use different formats.
  *       required: [eventId, data]
  *       properties:
  *         eventId:
@@ -1673,7 +1673,7 @@
  *           description: sId of the user who owns the wake-up.
  *     PrivateSandboxFunctionInvocationStreamEnvelope:
  *       type: object
- *       description: JSON payload of an unnamed sandbox invocation SSE data frame. The named dust-handshake frame and plain-text done sentinel use different formats.
+ *       description: JSON payload of a sandbox invocation SSE data frame. The `:connect` comment and plain-text done sentinel use different formats.
  *       required: [eventId, data]
  *       properties:
  *         eventId:
@@ -1766,7 +1766,7 @@
  *             example: '{"eventId":"end-of-stream","data":{"type":"end-of-stream"}}'
  *     PrivateAgentMessageStreamEnvelope:
  *       type: object
- *       description: JSON payload of an unnamed agent-message SSE data frame. The named dust-handshake frame and plain-text done sentinel use different formats.
+ *       description: JSON payload of an agent-message SSE data frame. The `:connect` comment and plain-text done sentinel use different formats.
  *       required: [eventId, data]
  *       properties:
  *         eventId:
