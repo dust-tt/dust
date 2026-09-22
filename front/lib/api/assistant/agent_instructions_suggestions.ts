@@ -1,6 +1,7 @@
 import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -35,6 +36,13 @@ function countTopLevelBlocks(html: string): number {
  * `canAddPendingSuggestions` (see its own contract) before calling.
  */
 /**
+ * @cc [owner:avervaet,label:product] no-mixed-root-and-block-suggestions
+ * A batch MUST NOT mix a `instructions-root` edit with edits targeting other blocks: both would
+ * be created as `pending`, but accepting the root rewrite makes the other suggestions
+ * inapplicable, so the batch is rejected instead of creating suggestions that pruning cannot
+ * reconcile after the fact.
+ */
+/**
  * Validates, creates and prunes `instructions` suggestions. Shared by every surface that lets a
  * model propose block-targeted edits to an agent's instructions (sidekick and conversational
  * building) so they behave identically.
@@ -45,12 +53,12 @@ export async function createAgentInstructionSuggestions(
     agentConfiguration,
     edits,
     source,
-    conversationId,
+    conversation,
   }: {
     agentConfiguration: AgentConfigurationType;
     edits: InstructionSuggestionEditInput[];
     source: AgentSuggestionSource;
-    conversationId: number | null;
+    conversation: ConversationResource | null;
   }
 ): Promise<Result<CreatedInstructionSuggestion[], string>> {
   // Reject batches where multiple edits target the same block.
@@ -60,6 +68,20 @@ export async function createAgentInstructionSuggestions(
     return new Err(
       "Multiple suggestions target the same block ID. Use a single suggestion per block. " +
         `For full rewrites, target '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' instead.`
+    );
+  }
+
+  // Reject batches mixing a full-rewrite (root) edit with block-targeted edits: a root suggestion
+  // and a block suggestion accepted together would both remain pending even though applying the
+  // root rewrite makes the block suggestion inapplicable.
+  if (
+    targetBlockIds.length > 1 &&
+    targetBlockIds.includes(INSTRUCTIONS_ROOT_TARGET_BLOCK_ID)
+  ) {
+    return new Err(
+      `A suggestion targeting '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' replaces the entire ` +
+        "instructions and cannot be proposed alongside suggestions for other blocks in the " +
+        "same call."
     );
   }
 
@@ -78,26 +100,24 @@ export async function createAgentInstructionSuggestions(
     }
   }
 
-  const created: CreatedInstructionSuggestion[] = await Promise.all(
-    edits.map(async ({ analysis, ...suggestionData }) => {
-      const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
-        auth,
-        agentConfiguration,
-        {
-          kind: "instructions",
-          suggestion: suggestionData,
-          analysis: analysis ?? null,
-          state: "pending",
-          source,
-          conversationId,
-        }
-      );
+  const suggestions = await AgentSuggestionResource.createSuggestionsForAgent(
+    auth,
+    agentConfiguration,
+    edits.map(({ analysis, ...suggestionData }) => ({
+      kind: "instructions" as const,
+      suggestion: suggestionData,
+      analysis: analysis ?? null,
+      state: "pending" as const,
+      source,
+      conversationId: conversation?.id ?? null,
+    }))
+  );
 
-      return {
-        sId: suggestion.sId,
-        kind: "instructions" as const,
-        targetBlockId: suggestionData.targetBlockId,
-      };
+  const created: CreatedInstructionSuggestion[] = suggestions.map(
+    (suggestion, index) => ({
+      sId: suggestion.sId,
+      kind: "instructions" as const,
+      targetBlockId: edits[index].targetBlockId,
     })
   );
 

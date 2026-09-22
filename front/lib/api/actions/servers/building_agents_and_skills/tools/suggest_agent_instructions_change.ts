@@ -15,7 +15,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 export interface SuggestAgentInstructionsChangeResult {
-  agentConfigurationSId: string;
+  agentConfigurationId: string;
   suggestions: CreatedInstructionSuggestion[];
 }
 
@@ -82,14 +82,14 @@ export async function suggestAgentInstructionsChange(
     agentConfiguration: agent,
     edits: instructionEdits.map((edit) => ({ ...edit, analysis })),
     source: "conversational",
-    conversationId: null,
+    conversation: null,
   });
   if (result.isErr()) {
     return new Err(new MCPError(result.error));
   }
 
   return new Ok({
-    agentConfigurationSId: agent.sId,
+    agentConfigurationId: agent.sId,
     suggestions: result.value,
   });
 }
@@ -103,12 +103,12 @@ export async function suggestAgentInstructionsChangeHandler(
     return result;
   }
 
-  const { agentConfigurationSId, suggestions } = result.value;
+  const { agentConfigurationId, suggestions } = result.value;
   const directives = suggestions.map((suggestion) =>
     formatAgentSuggestionDirective({
       sId: suggestion.sId,
       kind: suggestion.kind,
-      _agentConfigurationId: agentConfigurationSId,
+      _agentConfigurationId: agentConfigurationId,
     })
   );
 

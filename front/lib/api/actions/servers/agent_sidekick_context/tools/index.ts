@@ -162,7 +162,7 @@ async function createInstructionSuggestions({
     agentConfiguration,
     edits: suggestions,
     source: "sidekick",
-    conversationId: conversation?.id ?? null,
+    conversation: conversation ?? null,
   });
 }
 

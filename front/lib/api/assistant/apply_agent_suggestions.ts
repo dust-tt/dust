@@ -316,11 +316,16 @@ async function applyAgentFieldEdits(
   return new Ok(undefined);
 }
 
-async function applyInstructionsSuggestion(
+interface PreparedInstructionsUpdate {
+  instructions: string;
+  instructionsHtml: string;
+}
+
+async function prepareInstructionsSuggestion(
   auth: Authenticator,
   agent: LightAgentConfigurationType,
   edits: InstructionsSuggestionSchemaType[]
-): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
+): Promise<Result<PreparedInstructionsUpdate, ApplyAgentSuggestionsError>> {
   if (agent.status !== "active") {
     return new Err(
       new DustError(
@@ -354,9 +359,17 @@ async function applyInstructionsSuggestion(
     return converted;
   }
 
+  return new Ok(converted.value);
+}
+
+async function commitInstructionsSuggestion(
+  auth: Authenticator,
+  agent: LightAgentConfigurationType,
+  prepared: PreparedInstructionsUpdate
+): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
   const result = await AgentResource.bulkUpdate(auth, [agent.sId], {
-    instructions: converted.value.instructions,
-    instructionsHtml: converted.value.instructionsHtml,
+    instructions: prepared.instructions,
+    instructionsHtml: prepared.instructionsHtml,
   });
   if (result.updatedAgentIds.length === 0) {
     return new Err(
@@ -374,6 +387,14 @@ async function applyInstructionsSuggestion(
  * @cc [owner:matteotrab,label:product] one-version-per-batch
  * Applying a batch of accepted suggestions should write at most one new agent version: every field
  * a suggestion changes is merged into a single `createOrUpgradeAgentConfiguration` call.
+ */
+/**
+ * @cc [owner:avervaet,label:error-handling] model-and-instructions-apply-order
+ * When a batch contains both field edits (name/model) and `instructions` suggestions, every
+ * validation that can be performed without writing to the database (agent status, target-block
+ * resolution) MUST run before either kind writes to the database, and `instructions` MUST be
+ * written last. This bounds the failure window after the (non-transactional) field-edit write to
+ * the `instructions` database write itself, rather than to `instructions`-specific validation.
  */
 export async function applyAgentSuggestions(
   auth: Authenticator,
@@ -400,6 +421,21 @@ export async function applyAgentSuggestions(
     mergeAgentChanges(changes);
   const hasFieldEdits = Object.keys(fields).length > 0;
 
+  // Instructions are validated (but not written) before the field edits are written, and only
+  // written once the field-edit write succeeds: see `model-and-instructions-apply-order` above.
+  let preparedInstructions: PreparedInstructionsUpdate | undefined;
+  if (instructions.length > 0) {
+    const prepared = await prepareInstructionsSuggestion(
+      auth,
+      agent,
+      instructions
+    );
+    if (prepared.isErr()) {
+      return prepared;
+    }
+    preparedInstructions = prepared.value;
+  }
+
   if (create) {
     const res = await applyCreateSuggestion(auth, agent, create);
     if (res.isErr()) {
@@ -414,8 +450,12 @@ export async function applyAgentSuggestions(
     }
   }
 
-  if (instructions.length > 0) {
-    const res = await applyInstructionsSuggestion(auth, agent, instructions);
+  if (preparedInstructions) {
+    const res = await commitInstructionsSuggestion(
+      auth,
+      agent,
+      preparedInstructions
+    );
     if (res.isErr()) {
       return res;
     }
