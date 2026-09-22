@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 afterEach(() => {
   cleanup();
+  document.documentElement.classList.remove("dark");
+  document.documentElement.style.colorScheme = "";
   window.history.replaceState(null, "", "/");
 });
 
@@ -18,12 +20,9 @@ describe("Frame theme", () => {
     ["/content?theme=dark&pdfMode=true", true, "light"],
   ] as const)("renders %s in %s PDF mode with %s colors", (url, isPdfMode, theme) => {
     window.history.replaceState(null, "", url);
-    const { unmount } = renderHook(() => useVisualizationTheme(isPdfMode));
+    renderHook(() => useVisualizationTheme(isPdfMode));
     const root = document.documentElement;
     expect(root.classList.contains("dark")).toBe(theme === "dark");
     expect(root.style.colorScheme).toBe(theme);
-    unmount();
-    expect(root.classList.contains("dark")).toBe(false);
-    expect(root.style.colorScheme).toBe("");
   });
 });

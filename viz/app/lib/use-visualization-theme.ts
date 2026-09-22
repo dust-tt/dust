@@ -8,16 +8,9 @@ import { useLayoutEffect } from "react";
 export function useVisualizationTheme(isPdfMode: boolean) {
   useLayoutEffect(() => {
     const root = document.documentElement;
-    const wasDark = root.classList.contains("dark");
-    const previousColorScheme = root.style.colorScheme;
     const theme = new URL(window.location.href).searchParams.get("theme");
     const isDark = !isPdfMode && theme === "dark";
     root.classList.toggle("dark", isDark);
     root.style.colorScheme = isDark ? "dark" : "light";
-
-    return () => {
-      root.classList.toggle("dark", wasDark);
-      root.style.colorScheme = previousColorScheme;
-    };
   }, [isPdfMode]);
 }
