@@ -1,8 +1,4 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
-import {
-  AnnouncementBanner,
-  BANNER_VISIBLE_AFTER_MS,
-} from "@marketing/components/home/AnnouncementBanner";
 import { A } from "@marketing/components/home/ContentComponents";
 import { LogoListsProvider } from "@marketing/components/home/LogoListsContext";
 import { FooterNavigation } from "@marketing/components/home/menu/FooterNavigation";
@@ -67,16 +63,6 @@ export default function LandingLayout({
   const { openSignUpModal } = useSignUpModal();
 
   const router = useRouter();
-  // Initialize from the timestamp so there's no layout shift on first render.
-  // ?preview_banner in the URL forces it on for pre-launch testing.
-  const [showBanner, setShowBanner] = useState(
-    () => Date.now() >= BANNER_VISIBLE_AFTER_MS
-  );
-  useEffect(() => {
-    if ("preview_banner" in router.query) {
-      setShowBanner(true);
-    }
-  }, [router.query]);
 
   useStripUtmParams();
 
@@ -165,8 +151,7 @@ export default function LandingLayout({
         </div>
       ) : (
         <>
-          <AnnouncementBanner show={showBanner} />
-          <ScrollingHeader hasBanner={showBanner}>
+          <ScrollingHeader hasBanner={false}>
             <div className="flex h-full w-full items-center gap-4 px-2 xs:px-6 xl:gap-10">
               <div className="hidden h-[24px] w-[96px] xl:block">
                 <PublicWebsiteLogo />
@@ -238,7 +223,7 @@ export default function LandingLayout({
             "flex w-full flex-col",
             fullWidth ? "" : "container",
             "gap-6 px-6 md:gap-24",
-            hideNavigation ? "pt-6" : showBanner ? "pt-[136px]" : "pt-[96px]",
+            hideNavigation ? "pt-6" : "pt-[96px]",
             "xl:gap-16",
             "2xl:gap-24"
           )}
