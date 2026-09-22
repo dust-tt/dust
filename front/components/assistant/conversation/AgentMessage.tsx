@@ -72,6 +72,7 @@ import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { LinkWrapper } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useModels } from "@app/lib/swr/models";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -309,6 +310,17 @@ export function AgentMessage({
     options: { disabled: true },
   });
 
+  /**
+   * @cc [owner:Nils-Fedrigo,label:product] degradations-refresh-after-agent-error
+   * An `agent_error` event MUST revalidate the model catalog, so the degraded
+   * models the picker warns about include the incident this message just ran
+   * into instead of waiting out the catalog's periodic refresh.
+   */
+  const { mutateModels } = useModels({
+    owner,
+    disabled: true, // We only use the hook to mutate the cache.
+  });
+
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
     VirtuosoMessageListContext
@@ -434,8 +446,14 @@ export function AgentMessage({
               conversationId,
             });
             break;
-          case "agent_generation_cancelled":
           case "agent_error":
+            void mutateModels();
+            void removeAllBlockedActionsForMessage({
+              messageId: sId,
+              conversationId,
+            });
+            break;
+          case "agent_generation_cancelled":
           case "generation_tokens":
             // We can remove all blocked actions for this message (especially useful to let other users see the message updates)
             void removeAllBlockedActionsForMessage({
@@ -486,6 +504,7 @@ export function AgentMessage({
         conversationId,
         owner,
         mutateConversationAttachments,
+        mutateModels,
         mutateSandboxStatus,
         mutateSandboxFiles,
       ]
