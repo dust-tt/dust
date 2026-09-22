@@ -1,4 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -7,6 +12,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import type { Transaction } from "sequelize";
@@ -18,6 +24,8 @@ const CONCURRENCY = 4;
 type EditorlessAgent = {
   agentModelId: ModelId;
   agentId: string;
+  agentName: string;
+  agentScope: AgentConfigurationScope;
   authorModelId: ModelId;
   authorId: string;
   workspaceModelId: ModelId;
@@ -37,6 +45,8 @@ const ELIGIBLE_AGENTS_SQL = `
   SELECT
     agent.id AS "agentModelId",
     agent."sId" AS "agentId",
+    configuration.name AS "agentName",
+    configuration.scope AS "agentScope",
     configuration."authorId" AS "authorModelId",
     author."sId" AS "authorId",
     workspace.id AS "workspaceModelId",
@@ -62,27 +72,36 @@ const ELIGIBLE_AGENTS_SQL = `
     AND NOT EXISTS (
       SELECT 1
       FROM group_permissions AS permission
-      JOIN group_memberships AS group_membership
-        ON group_membership."workspaceId" = permission."workspaceId"
-       AND group_membership."groupId" = permission."groupId"
-       AND group_membership.status = 'active'
-       AND group_membership."startAt" <= :now
-       AND (
-         group_membership."endAt" IS NULL
-         OR group_membership."endAt" > :now
-       )
-      JOIN memberships AS editor_membership
-        ON editor_membership."workspaceId" = group_membership."workspaceId"
-       AND editor_membership."userId" = group_membership."userId"
-       AND editor_membership."startAt" <= :now
-       AND (
-         editor_membership."endAt" IS NULL
-         OR editor_membership."endAt" >= :now
-       )
+      JOIN groups AS permission_group
+        ON permission_group."workspaceId" = permission."workspaceId"
+       AND permission_group.id = permission."groupId"
       WHERE permission."workspaceId" = agent."workspaceId"
         AND permission."resourceType" = 'agent'
         AND permission."resourceId" = agent.id
         AND permission."grantType" = 'editor'
+        AND (
+          permission_group.kind = 'global'
+          OR EXISTS (
+            SELECT 1
+            FROM group_memberships AS group_membership
+            JOIN memberships AS editor_membership
+              ON editor_membership."workspaceId" = group_membership."workspaceId"
+             AND editor_membership."userId" = group_membership."userId"
+             AND editor_membership."startAt" <= :now
+             AND (
+               editor_membership."endAt" IS NULL
+               OR editor_membership."endAt" >= :now
+             )
+            WHERE group_membership."workspaceId" = permission."workspaceId"
+              AND group_membership."groupId" = permission."groupId"
+              AND group_membership.status = 'active'
+              AND group_membership."startAt" <= :now
+              AND (
+                group_membership."endAt" IS NULL
+                OR group_membership."endAt" > :now
+              )
+          )
+        )
     )
 `;
 
@@ -136,14 +155,14 @@ async function restoreAuthor(
   auth: Authenticator,
   agent: EditorlessAgent
 ): Promise<EditorlessAgent | null> {
-  return withTransaction(async (transaction) => {
+  const restored = await withTransaction(async (transaction) => {
     // This is the same lock as GroupPermissionResource's live grant mutations. Rechecking after it
     // prevents the backfill from adding the author when an admin has already added another editor.
     const key = `group_permissions:${agent.workspaceModelId}:agent:${agent.agentModelId}:editor`;
-    await frontSequelize.query(
-      "SELECT pg_advisory_xact_lock(hashtext(:key))",
-      { replacements: { key }, transaction }
-    );
+    await frontSequelize.query("SELECT pg_advisory_xact_lock(hashtext(:key))", {
+      replacements: { key },
+      transaction,
+    });
 
     const current = await recheckEditorlessAgent(agent, transaction);
     if (!current) {
@@ -174,8 +193,48 @@ async function restoreAuthor(
     );
     return current;
   });
+
+  if (restored) {
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.editors_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("agent", {
+          sId: restored.agentId,
+          name: restored.agentName,
+        }),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        agent_name: restored.agentName,
+        scope: restored.agentScope,
+        added_editor_ids: restored.authorId,
+        removed_editor_ids: "",
+        actor_added_self: "false",
+      },
+    });
+  }
+
+  return restored;
 }
 
+/**
+ * @cc [owner:philipperolet,label:migration;security] restore-eligible-agent-authors-only
+ * A repair MUST grant editor access only to the current author of an active current agent when the
+ * author has an active workspace membership and no active editor or workspace-global editor grant
+ * exists.
+ */
+/**
+ * @cc [owner:philipperolet,label:migration] editorless-author-repair-dry-run
+ * A dry run MUST NOT write data or emit an editor-update audit event.
+ */
+/**
+ * @cc [owner:philipperolet,label:migration;security] concurrent-editor-repair-safety
+ * Each repair MUST acquire the live editor-grant lock and recheck eligibility before granting the
+ * author. Every committed grant MUST schedule an `agent.editors_updated` event, and reruns MUST not
+ * add another grant.
+ */
 export async function restoreEditorlessAgentAuthors({
   execute,
   logger,
@@ -240,6 +299,8 @@ export async function restoreEditorlessAgentAuthors({
         async (agent) => {
           const auth = authsByWorkspaceId.get(agent.workspaceId);
           assert(auth);
+          // Each agent needs its own transaction and advisory lock to serialize with live editor
+          // changes. Concurrency is capped at four to bound database pressure.
           return restoreAuthor(auth, agent);
         },
         { concurrency: CONCURRENCY }
@@ -311,11 +372,7 @@ export async function restoreEditorlessAgentAuthors({
   return stats;
 }
 
-if (
-  process.argv[1]?.endsWith(
-    "20260922_restore_editorless_agent_authors.ts"
-  )
-) {
+if (process.argv[1]?.endsWith("20260922_restore_editorless_agent_authors.ts")) {
   makeScript(
     {
       wId: { type: "string", required: false },

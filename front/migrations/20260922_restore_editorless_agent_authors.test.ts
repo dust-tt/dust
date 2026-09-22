@@ -1,4 +1,5 @@
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import baseLogger from "@app/logger/logger";
 import { restoreEditorlessAgentAuthors } from "@app/migrations/20260922_restore_editorless_agent_authors";
@@ -44,9 +45,11 @@ async function editorIds(
 
 describe("restoreEditorlessAgentAuthors", () => {
   it("restores only editorless agents, with a dry run and idempotent rerun", async () => {
-    const { authenticator: auth, user, workspace } = await createResourceTest({
-      role: "admin",
-    });
+    const {
+      authenticator: auth,
+      user,
+      workspace,
+    } = await createResourceTest({ role: "admin" });
     const otherEditor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, otherEditor, { role: "user" });
 
@@ -58,10 +61,24 @@ describe("restoreEditorlessAgentAuthors", () => {
       auth,
       { name: "Agent with editor" }
     );
+    const agentWithGlobalEditor =
+      await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Agent with global editor",
+      });
     const editorlessResource = await replaceEditors(auth, editorlessAgent, []);
     const resourceWithEditor = await replaceEditors(auth, agentWithEditor, [
       otherEditor.toJSON(),
     ]);
+    const resourceWithGlobalEditor = await replaceEditors(
+      auth,
+      agentWithGlobalEditor,
+      []
+    );
+    await GroupPermissionResource.grantToEverybody(auth, {
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: resourceWithGlobalEditor.id,
+    });
 
     await expect(
       restoreEditorlessAgentAuthors({
@@ -91,6 +108,7 @@ describe("restoreEditorlessAgentAuthors", () => {
     expect(await editorIds(auth, resourceWithEditor)).toEqual([
       otherEditor.sId,
     ]);
+    expect(await editorIds(auth, resourceWithGlobalEditor)).toEqual([]);
 
     await expect(
       restoreEditorlessAgentAuthors({
