@@ -76,8 +76,13 @@ export type FinalToolCallAssertion =
       // Which parts of the suggestion must be present. Defaults to at least one of them.
       edits?: SkillUpdateEditKind[];
       // Inline references the instruction edits must carry: `<tool id=.../>` tags for the seeded
-      // tools, and `<knowledge .../>` tags matching the seeded documents attribute for attribute.
-      references?: { toolKeys?: string[]; knowledgeKeys?: string[] };
+      // tools, `<knowledge .../>` tags matching the seeded documents attribute for attribute, and
+      // `<skill id=.../>` tags for the seeded skills referenced as sub-skills.
+      references?: {
+        toolKeys?: string[];
+        knowledgeKeys?: string[];
+        skillKeys?: string[];
+      };
     }
   | {
       type: "suggestSkillEditors";

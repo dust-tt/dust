@@ -27,11 +27,13 @@ import * as fs from "fs";
 import * as path from "path";
 
 export const SKILL_NAME = "MeetingNotesFormatter";
+export const SUB_SKILL_NAME = "TeamDirectoryLookup";
 export const LUKE_USER_SID = "SeedUserLuke";
 export const CONVERSATION_SID = "ConvBuildingConv01";
 export const TEAM_CALENDAR_TOOL_PLACEHOLDER = "__TEAM_CALENDAR_TOOL_ID__";
 export const GLOSSARY_DSV_PLACEHOLDER = "__MEETING_NOTES_ARCHIVE_DSV_ID__";
 export const GLOSSARY_SPACE_PLACEHOLDER = "__MEETING_NOTES_ARCHIVE_SPACE_ID__";
+export const TEAM_DIRECTORY_SKILL_PLACEHOLDER = "__TEAM_DIRECTORY_SKILL_ID__";
 
 interface Assets {
   users: UserAsset[];
@@ -109,6 +111,10 @@ export async function seedConversationalBuilding(
     [TEAM_CALENDAR_TOOL_PLACEHOLDER]: toolView?.sId ?? "",
     [GLOSSARY_DSV_PLACEHOLDER]: knowledgeView?.sId ?? "",
     [GLOSSARY_SPACE_PLACEHOLDER]: knowledgeView?.space.sId ?? "",
+    // The sub-skill is seeded above, so the suggestion referencing it inline can only be
+    // resolved once its sId exists.
+    [TEAM_DIRECTORY_SKILL_PLACEHOLDER]:
+      createdSkills.get(SUB_SKILL_NAME)?.sId ?? "",
   };
 
   // 4. Conversational suggestions on the skill.
@@ -144,6 +150,10 @@ export async function seedConversationalBuilding(
       __SKILL_EDIT_TOOL_SUGGESTION_SID__: suggestionSId("skillEditTool"),
       __SKILL_EDIT_KNOWLEDGE_SUGGESTION_SID__:
         suggestionSId("skillEditKnowledge"),
+      __SKILL_EDIT_SUB_SKILL_SUGGESTION_SID__:
+        suggestionSId("skillEditSubSkill"),
+      __TEAM_DIRECTORY_SKILL_SID__:
+        createdSkills.get(SUB_SKILL_NAME)?.sId ?? "",
       __SKILL_USER_FACING_DESCRIPTION_SUGGESTION_SID__: suggestionSId(
         "skillUserFacingDescription"
       ),

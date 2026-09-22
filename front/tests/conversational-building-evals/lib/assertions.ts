@@ -1,4 +1,5 @@
 import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
+import { extractSkillReferenceTags } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
 import { TOOL } from "@app/tests/conversational-building-evals/lib/tool-runner";
 import type {
@@ -72,7 +73,11 @@ function getInstructionEditsContent(args: Record<string, unknown>): string {
 // attribute for attribute (id, title, space, dsv), since a wrong one breaks the reference.
 function checkInlineReferences(
   args: Record<string, unknown>,
-  references: { toolKeys?: string[]; knowledgeKeys?: string[] },
+  references: {
+    toolKeys?: string[];
+    knowledgeKeys?: string[];
+    skillKeys?: string[];
+  },
   scenario: SeededScenario
 ): AssertionResult {
   const content = getInstructionEditsContent(args);
@@ -109,6 +114,20 @@ function checkInlineReferences(
       return {
         success: false,
         error: `Instruction edits do not inline knowledge "${key}" exactly as ${expectedTag}; knowledge tags found: ${JSON.stringify(knowledgeTags)}`,
+      };
+    }
+  }
+
+  const skillTags = extractSkillReferenceTags(content);
+  for (const key of references.skillKeys ?? []) {
+    const skillId = scenario.skillIdsByKey.get(key);
+    if (!skillId) {
+      throw new Error(`Scenario references unknown skill key "${key}"`);
+    }
+    if (!skillTags.some((tag) => tag.id === skillId && !tag.unavailable)) {
+      return {
+        success: false,
+        error: `Instruction edits do not inline skill "${key}" (<skill id="${skillId}" .../>); skill tags found: ${JSON.stringify(skillTags)}`,
       };
     }
   }
