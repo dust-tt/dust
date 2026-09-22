@@ -835,6 +835,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "agent_message_consumption_bills"
   | "agent_message_consumption_writes"
+  | "agent_stream_long_polling"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "archive_inactive_agents"
