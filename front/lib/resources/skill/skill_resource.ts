@@ -1402,6 +1402,44 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
+  /**
+   * @cc [owner:aubin-tchoi,label:backend] indexed-child-skill-references
+   * Return direct child IDs from skill_references in the authenticator's workspace,
+   * including custom and global references regardless of child visibility or status.
+   * Code-defined parents have no persisted references.
+   */
+  static async batchFetchChildSkillIds(
+    auth: Authenticator,
+    parentSkills: SkillResource[]
+  ): Promise<Map<string, string[]>> {
+    const customParentSkills = parentSkills.filter(
+      (skill) => !skill.codeDefinedSkillId
+    );
+    if (customParentSkills.length === 0) {
+      return new Map();
+    }
+
+    const references = await SkillReferenceModel.findAll({
+      attributes: ["parentSkillId", "childCustomSkillId", "childGlobalSkillId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        parentSkillId: customParentSkills.map((skill) => skill.id),
+      },
+    });
+    const referencesByParentSkillId = groupBy(references, "parentSkillId");
+
+    return new Map(
+      customParentSkills.map((skill) => [
+        skill.sId,
+        removeNulls(
+          (referencesByParentSkillId[skill.id] ?? []).map((reference) =>
+            this.skillReferenceChildId(auth, reference)
+          )
+        ),
+      ])
+    );
+  }
+
   private static skillReferenceChildId(
     auth: Authenticator,
     reference: Pick<
@@ -4776,6 +4814,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Serialize listing metadata without I/O or private content; fetch custom skills with tools.
    * Custom skills use the authenticator's workspace; code-defined skills use the global namespace,
    * without workspace-specific relationships, usage or dates.
+   * Custom child skill IDs must come from persisted references, without visibility filtering.
    */
   toSearchDocument(
     auth: Authenticator,
@@ -4783,10 +4822,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       lastEditedByUser,
       editors,
       activeUsersCount,
+      childSkillIds,
     }: {
       lastEditedByUser: UserResource | null;
       editors: UserResource[];
       activeUsersCount: number | null;
+      childSkillIds: string[];
     }
   ): SkillSearchDocument {
     const isCodeDefined = this.codeDefinedSkillId !== null;
@@ -4814,6 +4855,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcp_server_view_ids: isCodeDefined
         ? []
         : uniq(this.mcpServerViews.map((view) => view.sId)).sort(),
+      child_skill_ids: uniq(childSkillIds).sort(),
       active_users_count: isCodeDefined ? null : activeUsersCount,
       favorite_count: this.favoriteCount,
       created_at: isCodeDefined ? null : this.createdAt.toISOString(),

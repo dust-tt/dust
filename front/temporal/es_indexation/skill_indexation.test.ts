@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import * as skillIndex from "@app/lib/skill_search";
 import { indexSkillSearchActivity } from "@app/temporal/es_indexation/activities";
@@ -17,6 +18,45 @@ describe("skill search indexing activity", () => {
     vi.restoreAllMocks();
     vi.spyOn(skillIndex, "indexSkillDocument").mockResolvedValue(
       new Ok(undefined)
+    );
+  });
+
+  it("indexes direct custom and global references and clears removed references", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const { parentSkill: childSkill } =
+      await SkillFactory.createWithNestedSkill(auth, {
+        parentOverrides: { name: "Child with its own reference" },
+        childOverrides: { name: "Grandchild" },
+      });
+    const childTag = SkillFactory.serializeSkillReferenceTag(childSkill);
+    const parentSkill = await SkillFactory.create(auth, {
+      name: "Parent",
+      instructions: `Use ${childTag} twice: ${childTag}, and ${GlobalSkillsRegistry.serializeSkillTag("frames")}.`,
+    });
+    const target = { workspaceId: workspace.sId, skillId: parentSkill.sId };
+
+    await indexSkillSearchActivity(target);
+
+    expect(skillIndex.indexSkillDocument).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        skill_id: parentSkill.sId,
+        child_skill_ids: [childSkill.sId, "frames"].sort(),
+      })
+    );
+
+    await SkillFactory.updateNestedSkillReferences(auth, {
+      parentSkill,
+      childSkills: [],
+    });
+    await indexSkillSearchActivity(target);
+
+    expect(skillIndex.indexSkillDocument).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        skill_id: parentSkill.sId,
+        child_skill_ids: [],
+      })
     );
   });
 
@@ -62,7 +102,12 @@ describe("skill search indexing activity", () => {
       server.sId,
       space
     );
+    const childSkill = await SkillFactory.create(auth, {
+      name: "Restricted child",
+      requestedSpaceIds: [space.id],
+    });
     const skill = await SkillFactory.create(auth, {
+      instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
       availability: "editors",
       requestedSpaceIds: [space.id],
       mcpServerViews: [serverView],
@@ -71,6 +116,9 @@ describe("skill search indexing activity", () => {
       workspace.sId
     );
     expect(await SkillResource.fetchById(internalAuth, skill.sId)).toBeNull();
+    expect(
+      await SkillResource.fetchById(internalAuth, childSkill.sId)
+    ).toBeNull();
     const target = { workspaceId: workspace.sId, skillId: skill.sId };
 
     await indexSkillSearchActivity(target);
@@ -85,6 +133,7 @@ describe("skill search indexing activity", () => {
         editor_ids: [user.sId],
         last_edited_by_user_id: user.sId,
         mcp_server_view_ids: [serverView.sId],
+        child_skill_ids: [childSkill.sId],
       })
     );
   });

@@ -55,6 +55,7 @@ export class SkillFactory {
       editor_ids: [],
       requested_space_ids: [],
       mcp_server_view_ids: [],
+      child_skill_ids: [],
       active_users_count: null,
       favorite_count: 0,
       created_at: null,
@@ -67,6 +68,10 @@ export class SkillFactory {
     skills: SkillResource[]
   ): Promise<SkillSearchDocument[]> {
     const editors = await SkillResource.batchListEditors(auth, skills);
+    const childSkillIds = await SkillResource.batchFetchChildSkillIds(
+      auth,
+      skills
+    );
     const lastEditors = await UserResource.fetchByModelIds(
       uniq(removeNulls(skills.map((skill) => skill.editedBy)))
     );
@@ -76,6 +81,7 @@ export class SkillFactory {
     return skills.map((skill) =>
       skill.toSearchDocument(auth, {
         editors: editors.get(skill.sId) ?? [],
+        childSkillIds: childSkillIds.get(skill.sId) ?? [],
         lastEditedByUser:
           skill.editedBy === null
             ? null

@@ -28,6 +28,7 @@ function toSkillSearchDocument(skill: SkillDefinition): SkillSearchDocument {
     requested_space_ids: [],
     // Global documents cannot store workspace-specific tools or usage.
     mcp_server_view_ids: [],
+    child_skill_ids: [],
     active_users_count: null,
     favorite_count: 0,
     // Definitions do not have creation or update timestamps.

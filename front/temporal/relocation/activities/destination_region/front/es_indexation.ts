@@ -126,6 +126,10 @@ export async function recreateSkillSearchIndex({
     withFileAttachments: false,
   });
   const editorsBySkillId = await SkillResource.batchListEditors(auth, skills);
+  const childSkillIds = await SkillResource.batchFetchChildSkillIds(
+    auth,
+    skills
+  );
   const lastEditors = await UserResource.fetchByModelIds(
     uniq(removeNulls(skills.map((skill) => skill.editedBy)))
   );
@@ -137,6 +141,7 @@ export async function recreateSkillSearchIndex({
     async (skill) => {
       const document = skill.toSearchDocument(auth, {
         editors: editorsBySkillId.get(skill.sId) ?? [],
+        childSkillIds: childSkillIds.get(skill.sId) ?? [],
         lastEditedByUser:
           skill.editedBy === null
             ? null

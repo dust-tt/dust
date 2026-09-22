@@ -53,6 +53,9 @@
     "mcp_server_view_ids": {
       "type": "keyword"
     },
+    "child_skill_ids": {
+      "type": "keyword"
+    },
     "active_users_count": {
       "type": "integer"
     },

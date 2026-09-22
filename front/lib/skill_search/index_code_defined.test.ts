@@ -63,6 +63,7 @@ describe("reindexCodeDefinedSkills", () => {
             skill.kind === "global" ? "users_and_agents" : "workspace_users",
           requested_space_ids: [],
           mcp_server_view_ids: [],
+          child_skill_ids: [],
           active_users_count: null,
           created_at: null,
           updated_at: null,

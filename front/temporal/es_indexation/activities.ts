@@ -123,12 +123,16 @@ export async function indexSkillSearchActivity({
   }
 
   const editors = await skill.listEditors(auth);
+  const childSkillIds = await SkillResource.batchFetchChildSkillIds(auth, [
+    skill,
+  ]);
   let lastEditor = null;
   if (skill.editedBy) {
     lastEditor = await UserResource.fetchByModelId(skill.editedBy);
   }
   const document = skill.toSearchDocument(auth, {
     editors: editors ?? [],
+    childSkillIds: childSkillIds.get(skill.sId) ?? [],
     lastEditedByUser: lastEditor,
     activeUsersCount: 0,
   });
