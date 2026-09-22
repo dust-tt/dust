@@ -4787,7 +4787,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcp_server_view_ids: isCodeDefined
         ? []
         : uniq(this.mcpServerViews.map((view) => view.sId)).sort(),
-      child_skill_ids: isCodeDefined ? [] : uniq(childSkillIds).sort(),
+      child_skill_ids: uniq(childSkillIds).sort(),
       active_users_count: isCodeDefined ? null : activeUsersCount,
       favorite_count: this.favoriteCount,
       created_at: isCodeDefined ? null : this.createdAt.toISOString(),
