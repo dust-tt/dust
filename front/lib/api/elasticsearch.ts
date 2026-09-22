@@ -270,6 +270,7 @@ export async function searchConsumptionAnalytics<
     sort?: estypes.Sort;
     search_after?: estypes.SortResults;
     allow_partial_search_results?: boolean;
+    track_total_hits?: boolean | number;
   }
 ): Promise<
   Result<estypes.SearchResponse<TDocument, TAggregations>, ElasticsearchError>
@@ -283,6 +284,7 @@ export async function searchConsumptionAnalytics<
     sort: options?.sort,
     search_after: options?.search_after,
     allow_partial_search_results: options?.allow_partial_search_results,
+    track_total_hits: options?.track_total_hits,
     // Never needed for aggregation-only queries (size: 0); excluded unconditionally
     // to keep the raw-lines export from pulling the large tokens payload.
     _source: { excludes: ["tokens"] },
