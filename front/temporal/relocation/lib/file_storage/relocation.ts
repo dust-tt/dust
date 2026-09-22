@@ -83,6 +83,37 @@ export async function writeToRelocationStorage(
   return `gs://${bucket}/${path}`;
 }
 
+type SerializedBuffer = { type: "Buffer"; data: number[] };
+
+// JSON.stringify renders a Buffer as `{ type: "Buffer", data: number[] }`.
+function isSerializedBuffer(value: unknown): value is SerializedBuffer {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "type" in value &&
+    value.type === "Buffer" &&
+    "data" in value &&
+    Array.isArray(value.data) &&
+    value.data.every((byte) => typeof byte === "number")
+  );
+}
+
+function reviveBuffers(_key: string, value: unknown): unknown {
+  return isSerializedBuffer(value) ? Buffer.from(value.data) : value;
+}
+
+// Restores bytea parameters (e.g. workspace_sandbox_env_vars.placeholder_nonce):
+// left as plain objects, pg would bind them as JSON text and Postgres would
+// store those bytes.
+export function parseRelocationStorageContent(content: string): unknown {
+  return JSON.parse(content, reviveBuffers);
+}
+
+/**
+ * @cc [owner:smb2268,label:backend] bytea-params-survive-relocation
+ * Buffer values written by writeToRelocationStorage MUST be read back as
+ * Buffers, never as their JSON `{ type: "Buffer", data }` form.
+ */
 export async function readFromRelocationStorage<T = unknown>(
   dataPath: string
 ): Promise<T> {
@@ -91,7 +122,7 @@ export async function readFromRelocationStorage<T = unknown>(
 
   const content = await relocationBucket.fetchFileContent(path);
 
-  return JSON.parse(content) as T;
+  return parseRelocationStorageContent(content) as T;
 }
 
 export async function deleteFromRelocationStorage(dataPath: string) {
