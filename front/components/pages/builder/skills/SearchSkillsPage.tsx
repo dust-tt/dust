@@ -5,7 +5,6 @@ import {
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
-import { useDebounce } from "@app/hooks/useDebounce";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
@@ -24,6 +23,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { useState } from "react";
 
 const SKILL_SEARCH_PAGE_SIZE = 50;
 
@@ -40,19 +40,28 @@ const SEARCH_TABS = [
 interface SkillSearchResultsProps {
   searchTerm: string;
   filters: SkillSearchFilters;
-  isDebouncing: boolean;
   onSelect: (skillId: string) => void;
 }
 
 function SkillSearchResults({
   searchTerm,
   filters,
-  isDebouncing,
   onSelect,
 }: SkillSearchResultsProps) {
   const owner = useWorkspace();
-  const { cursorPagination, tablePagination, handlePaginationChange } =
-    useCursorPaginationForDataTable(SKILL_SEARCH_PAGE_SIZE);
+  const {
+    cursorPagination,
+    tablePagination,
+    handlePaginationChange,
+    resetPagination,
+  } = useCursorPaginationForDataTable(SKILL_SEARCH_PAGE_SIZE);
+  const [previousSearchTerm, setPreviousSearchTerm] = useState(searchTerm);
+
+  if (searchTerm !== previousSearchTerm) {
+    setPreviousSearchTerm(searchTerm);
+    resetPagination();
+  }
+
   const {
     skills,
     hasMore,
@@ -67,10 +76,9 @@ function SkillSearchResults({
     cursor: cursorPagination.cursor,
     limit: SKILL_SEARCH_PAGE_SIZE,
     sortBy: searchTerm.trim() ? "relevance" : "usage",
-    disabled: isDebouncing,
   });
 
-  if (isSkillsLoading || isDebouncing) {
+  if (isSkillsLoading && skills.length === 0) {
     return (
       <div
         className="flex min-h-64 items-center justify-center"
@@ -105,9 +113,11 @@ function SkillSearchResults({
           onSelect={onSelect}
           onRefresh={mutate}
           pagination={tablePagination}
-          setPagination={(pagination) =>
-            handlePaginationChange(pagination, nextCursor)
-          }
+          setPagination={(pagination) => {
+            if (!isSkillsLoading) {
+              handlePaginationChange(pagination, nextCursor);
+            }
+          }}
           hasMore={hasMore}
         />
       ) : !isSkillsError ? (
@@ -129,8 +139,7 @@ export function SearchSkillsPage() {
   const { user } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
   const [skillId, setSkillId] = useHashParam("skillId");
-  const { inputValue, debouncedValue, isDebouncing, setValue } =
-    useDebounce("");
+  const [searchTerm, setSearchTerm] = useState("");
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Skills");
 
@@ -149,9 +158,8 @@ export function SearchSkillsPage() {
             id="skill-search"
             name="skill-search"
             placeholder="Search skills by name"
-            value={inputValue}
-            onChange={setValue}
-            isLoading={isDebouncing}
+            value={searchTerm}
+            onChange={setSearchTerm}
             className="flex-1"
           />
           {hasPermission("create", "skill") && (
@@ -171,10 +179,9 @@ export function SearchSkillsPage() {
           {SEARCH_TABS.map((tab) => (
             <TabsContent key={tab.id} value={tab.id}>
               <SkillSearchResults
-                key={`${owner.sId}:${debouncedValue}`}
-                searchTerm={debouncedValue}
+                key={owner.sId}
+                searchTerm={searchTerm}
                 filters={tab.filters}
-                isDebouncing={isDebouncing}
                 onSelect={setSkillId}
               />
             </TabsContent>
