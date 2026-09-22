@@ -35,7 +35,7 @@ export function SkillSearchActionsMenu({
   if (isSkillLoading) {
     statusItems.push({
       kind: "item",
-      label: "Loading actions...",
+      label: "Loading actions…",
       icon: () => <Spinner size="xs" />,
       disabled: true,
     });
