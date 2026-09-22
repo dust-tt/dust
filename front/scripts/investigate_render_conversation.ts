@@ -85,7 +85,15 @@ makeScript(
     const routerModel = legacyModelIdToModel(agentConfiguration.model.modelId);
     const endpoint = routerModel
       ? getStreamEndpoints(
-          { featureFlags: [], isEnterprise: true, isCreditPriced: false },
+          {
+            featureFlags: [],
+            isEnterprise: true,
+            // Entitled so gated models still resolve: this looks up the endpoint
+            // for a model, it is not an availability check. Left off
+            // `isCreditPriced` so regional hosting stays out of the selection.
+            isCreditPriced: false,
+            isAdvancedModels: true,
+          },
           { model: { eq: routerModel } }
         )[0]
       : undefined;

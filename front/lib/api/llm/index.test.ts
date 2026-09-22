@@ -32,6 +32,7 @@ async function getWorkspaceConfig(
     featureFlags: await getFeatureFlags(auth),
     isEnterprise: isEnterpriseOrDust(plan),
     isCreditPriced: isCreditPricedPlanPrefix(plan.code),
+    isAdvancedModels: plan.hasAdvancedModelAccess,
   };
 }
 
@@ -79,6 +80,7 @@ describe("getWorkspaceFilter", () => {
       featureFlags: [],
       isEnterprise: false,
       isCreditPriced: false,
+      isAdvancedModels: false,
     };
 
     expect(regionsFor(baseConfig)).toEqual([["global"], ["global"]]);
@@ -135,6 +137,7 @@ describe("getWorkspaceFilter", () => {
       featureFlags: ["use_vertex_for_supported_models"],
       isEnterprise: true,
       isCreditPriced: true,
+      isAdvancedModels: false,
     };
     const filter = getWorkspaceFilter(auth);
 
@@ -162,6 +165,7 @@ describe("getWorkspaceFilter", () => {
       featureFlags: WHITELISTABLE_FEATURES,
       isEnterprise: true,
       isCreditPriced: true,
+      isAdvancedModels: false,
     };
 
     const byokWorkspace = await WorkspaceFactory.byok();
