@@ -41,10 +41,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { Button, LayoutAlt02, Pin02, XClose } from "@dust-tt/sparkle";
 import { useCallback, useContext, useMemo, useState } from "react";
 
-function isFramePackageEntry(entry: FileExplorerEntry): boolean {
-  return entry.kind === "frame_package";
-}
-
 interface ConversationFileExplorerProps {
   conversation: ConversationWithoutContentType;
   owner: LightWorkspaceType;
@@ -306,8 +302,7 @@ export function ConversationFileExplorer({
           }
           getFileUrl={getFileUrl}
           onCurrentFolderChange={setCurrentFolderPath}
-          onDelete={hasFeature("frames_v2") ? onDelete : undefined}
-          canDelete={isFramePackageEntry}
+          onDelete={onDelete}
           onRename={onRename}
           onDownload={onDownload}
           onOpenInteractive={onOpenInteractive}
