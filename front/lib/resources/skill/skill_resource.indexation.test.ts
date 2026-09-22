@@ -149,7 +149,9 @@ describe("resource-owned skill search indexation", () => {
   });
 
   it("refreshes every changed parent after reference rewrites", async () => {
-    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
     const { childSkill, parentSkill } =
       await SkillFactory.createWithNestedSkill(auth, {
         childOverrides: { name: "Indexed child" },
@@ -162,18 +164,24 @@ describe("resource-owned skill search indexation", () => {
     const parentIds = [parentSkill.sId, secondParent.sId];
     const currentChild = await SkillResource.fetchById(auth, childSkill.sId);
     assert(currentChild);
-    for (const { mutate, indexedSkillIds } of [
+    const indexDocument = vi
+      .spyOn(skillIndex, "indexSkillDocument")
+      .mockResolvedValue(new Ok(undefined));
+    for (const { mutate, indexedSkillIds, childSkillIds } of [
       {
         mutate: () => currentChild.archive(auth),
         indexedSkillIds: [childSkill.sId, ...parentIds],
+        childSkillIds: [childSkill.sId],
       },
       {
         mutate: () => currentChild.restore(auth),
         indexedSkillIds: [childSkill.sId, ...parentIds],
+        childSkillIds: [childSkill.sId],
       },
       {
         mutate: () => currentChild.delete(auth),
         indexedSkillIds: parentIds,
+        childSkillIds: [],
       },
     ]) {
       vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
@@ -185,6 +193,16 @@ describe("resource-owned skill search indexation", () => {
             .mock.calls.map(([target]) => target.skillId)
         )
       ).toEqual(new Set(indexedSkillIds));
+      await indexSkillSearchActivity({
+        workspaceId: workspace.sId,
+        skillId: parentSkill.sId,
+      });
+      expect(indexDocument).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          skill_id: parentSkill.sId,
+          child_skill_ids: childSkillIds,
+        })
+      );
     }
   });
 

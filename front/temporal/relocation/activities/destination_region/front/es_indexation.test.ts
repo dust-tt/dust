@@ -23,12 +23,13 @@ describe("recreateSkillSearchIndex", () => {
     });
     const regularSpace = await SpaceFactory.regular(workspace);
     const pod = await SpaceFactory.project(workspace, user.id);
-    const activeSkill = await SkillFactory.create(authenticator, {
-      requestedSpaceIds: [regularSpace.id, pod.id],
-    });
     const archivedSkill = await SkillFactory.create(authenticator, {
       status: "archived",
       requestedSpaceIds: [regularSpace.id],
+    });
+    const activeSkill = await SkillFactory.create(authenticator, {
+      instructions: `Use ${SkillFactory.serializeSkillReferenceTag(archivedSkill)}.`,
+      requestedSpaceIds: [regularSpace.id, pod.id],
     });
     await SkillFactory.create(authenticator, { status: "suggested" });
 
@@ -42,6 +43,7 @@ describe("recreateSkillSearchIndex", () => {
         workspace_id: workspace.sId,
         requested_space_ids: [regularSpace.sId, pod.sId],
         editor_ids: [user.sId],
+        child_skill_ids: [archivedSkill.sId],
       })
     );
     expect(indexSkillDocument).toHaveBeenCalledWith(
@@ -50,6 +52,7 @@ describe("recreateSkillSearchIndex", () => {
         status: "archived",
         workspace_id: workspace.sId,
         requested_space_ids: [regularSpace.sId],
+        child_skill_ids: [],
       })
     );
   });
