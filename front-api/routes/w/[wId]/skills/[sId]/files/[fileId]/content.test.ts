@@ -78,7 +78,7 @@ describe("GET /api/w/:wId/skills/:sId/files/:fileId/content", () => {
       workspace,
     });
 
-    expect(skill.canWrite(readerAuth)).toBe(false);
+    expect(readerAuth.can("write", skill)).toBe(false);
 
     const response = await get(workspace, skill.sId, file.sId);
 

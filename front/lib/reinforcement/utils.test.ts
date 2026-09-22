@@ -15,6 +15,6 @@ describe("getAuthForWorkspace", () => {
 
     const fetchedSkill = await SkillResource.fetchById(auth, skill.sId);
     expect(fetchedSkill).not.toBeNull();
-    expect(fetchedSkill?.canWrite(auth)).toBe(true);
+    expect(auth.can("write", fetchedSkill!)).toBe(true);
   });
 });

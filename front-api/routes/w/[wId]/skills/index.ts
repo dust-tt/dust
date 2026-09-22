@@ -229,11 +229,11 @@ app.get(
           (skill) =>
             isSkillVisibleToViewer({
               availability: skill.availability,
-              viewerCanWrite: skill.canWrite(auth),
+              viewerCanWrite: auth.can("write", skill),
             }) ||
             (skill.status === "suggested" &&
               canCreateSkill &&
-              skill.canAdministrate(auth))
+              auth.can("admin", skill))
         );
 
     if (withRelations === "true") {

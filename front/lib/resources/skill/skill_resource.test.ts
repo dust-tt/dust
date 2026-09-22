@@ -129,16 +129,26 @@ describe("SkillResource", () => {
   });
 
   describe("permissions", () => {
-    it("allows any API key to write and administrate skills, regardless of role", async () => {
+    it("grants the API-key verb exception only to admin keys", async () => {
       const skill = await SkillFactory.create(testContext.authenticator);
-      // Keys have no editor-group assignment mechanism, so even the least-privileged key
-      // role ("user") must be allowed here — there is no role distinction left to gate on.
-      const key = await KeyFactory.readOnly(testContext.globalGroup);
+      const adminKey = await KeyFactory.admin(testContext.globalGroup);
+      const userKey = await KeyFactory.readOnly(testContext.globalGroup);
 
-      const auth = await Authenticator.fromKey(key, testContext.workspace.sId);
+      const adminAuth = await Authenticator.fromKey(
+        adminKey,
+        testContext.workspace.sId
+      );
+      const userAuth = await Authenticator.fromKey(
+        userKey,
+        testContext.workspace.sId
+      );
 
-      expect(skill.canWrite(auth)).toBe(true);
-      expect(skill.canAdministrate(auth)).toBe(true);
+      expect(adminAuth.can("read", skill)).toBe(true);
+      expect(adminAuth.can("write", skill)).toBe(true);
+      expect(adminAuth.can("admin", skill)).toBe(true);
+      expect(userAuth.can("read", skill)).toBe(true);
+      expect(userAuth.can("write", skill)).toBe(false);
+      expect(userAuth.can("admin", skill)).toBe(false);
     });
   });
 
@@ -166,7 +176,7 @@ describe("SkillResource", () => {
         testContext.user.sId,
         testContext.workspace.sId
       );
-      expect(skill.canRead(auth)).toBe(true);
+      expect(auth.can("read", skill)).toBe(true);
     });
 
     it("lets any workspace member read a skill they did not create", async () => {
@@ -185,8 +195,8 @@ describe("SkillResource", () => {
 
       // Not an editor, so no `editor` grant: read comes from the role grants until they are
       // dropped, and from the global group's workspace-wide `reader` grant after that.
-      expect(skill.canRead(otherAuth)).toBe(true);
-      expect(skill.canWrite(otherAuth)).toBe(false);
+      expect(otherAuth.can("read", skill)).toBe(true);
+      expect(otherAuth.can("write", skill)).toBe(false);
 
       const fetched = await SkillResource.fetchById(otherAuth, skill.sId);
       expect(fetched?.sId).toBe(skill.sId);
@@ -2406,7 +2416,7 @@ describe("SkillResource", () => {
       );
 
       expect(fetched).not.toBeNull();
-      expect(fetched!.canRead(testContext.authenticator)).toBe(true);
+      expect(testContext.authenticator.can("read", fetched!)).toBe(true);
       expect(fetched!.toJSON(testContext.authenticator).instructions).toBe(
         "Public guidelines"
       );
@@ -2425,9 +2435,9 @@ describe("SkillResource", () => {
       );
 
       expect(fetched).not.toBeNull();
-      expect(fetched!.canRead(testContext.authenticator)).toBe(false);
+      expect(testContext.authenticator.can("read", fetched!)).toBe(false);
       // Administration is a role matter, unrelated to reading the spaces.
-      expect(fetched!.canAdministrate(testContext.authenticator)).toBe(true);
+      expect(testContext.authenticator.can("admin", fetched!)).toBe(true);
       const json = fetched!.toJSON(testContext.authenticator);
       expect(json.name).toBe("Restricted Space Skill");
       expect(json.canRead).toBe(false);
@@ -2476,7 +2486,7 @@ describe("SkillResource", () => {
       );
 
       expect(fetched).not.toBeNull();
-      expect(fetched!.canRead(testContext.authenticator)).toBe(true);
+      expect(testContext.authenticator.can("read", fetched!)).toBe(true);
       expect(fetched!.toJSON(testContext.authenticator).instructions).toBe(
         "Secret guidelines"
       );
@@ -2506,10 +2516,10 @@ describe("SkillResource", () => {
 
       const byId = new Map(skills.map((s) => [s.sId, s]));
       expect(
-        byId.get(restrictedSkill.sId)!.canRead(testContext.authenticator)
+        testContext.authenticator.can("read", byId.get(restrictedSkill.sId)!)
       ).toBe(false);
       expect(
-        byId.get(readableSkill.sId)!.canRead(testContext.authenticator)
+        testContext.authenticator.can("read", byId.get(readableSkill.sId)!)
       ).toBe(true);
     });
   });
@@ -3434,8 +3444,8 @@ describe("SkillResource", () => {
         await setupSkillWithEditor("Governed Skill");
       const editorAuth = await buildEditorAuth();
 
-      expect(skill.canWrite(editorAuth)).toBe(true);
-      expect(skill.canAdministrate(editorAuth)).toBe(true);
+      expect(editorAuth.can("write", skill)).toBe(true);
+      expect(editorAuth.can("admin", skill)).toBe(true);
     });
 
     it("denies an editor whose grant was revoked", async () => {
@@ -3449,8 +3459,8 @@ describe("SkillResource", () => {
       const editorAuth = await buildEditorAuth();
 
       expect(await skill.listEditors(editorAuth)).toEqual([]);
-      expect(skill.canWrite(editorAuth)).toBe(false);
-      expect(skill.canAdministrate(editorAuth)).toBe(false);
+      expect(editorAuth.can("write", skill)).toBe(false);
+      expect(editorAuth.can("admin", skill)).toBe(false);
     });
 
     it("adds and removes editors through their grants", async () => {
@@ -3487,14 +3497,14 @@ describe("SkillResource", () => {
       };
 
       const otherAuth = await authFor("user");
-      expect(skill.canWrite(otherAuth)).toBe(false);
-      expect(skill.canAdministrate(otherAuth)).toBe(false);
+      expect(otherAuth.can("write", skill)).toBe(false);
+      expect(otherAuth.can("admin", skill)).toBe(false);
 
       // An admin who is not an editor: the role rules grant admin (manage the editor list) but
       // never write — editing the skill itself stays with its editors.
       const adminAuth = await authFor("admin");
-      expect(skill.canAdministrate(adminAuth)).toBe(true);
-      expect(skill.canWrite(adminAuth)).toBe(false);
+      expect(adminAuth.can("admin", skill)).toBe(true);
+      expect(adminAuth.can("write", skill)).toBe(false);
     });
   });
 });

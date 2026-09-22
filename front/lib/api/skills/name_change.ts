@@ -36,7 +36,7 @@ export async function validateSkillNameChange(
   skill: SkillResource,
   { name }: { name: string }
 ): Promise<Result<SkillNameChange, SkillNameChangeError>> {
-  if (!skill.canWrite(auth)) {
+  if (!auth.can("write", skill)) {
     return new Err(
       new SkillNameChangeError(
         "not_authorized",

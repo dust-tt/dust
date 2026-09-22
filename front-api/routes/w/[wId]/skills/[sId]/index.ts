@@ -212,7 +212,7 @@ app.patch(
 
     // Editing a skill remains editor-only; non-editors holding the publish permission use
     // PATCH /skills/:sId/availability to publish or unpublish without editing.
-    if (!skill.canWrite(auth)) {
+    if (!auth.can("write", skill)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -503,7 +503,7 @@ app.delete(
     const { skill } = loaded;
 
     // Check if user can administrate.
-    if (!skill.canAdministrate(auth)) {
+    if (!auth.can("admin", skill)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

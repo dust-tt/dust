@@ -368,23 +368,13 @@ describe("POST /api/v1/w/[wId]/skills", () => {
   });
 
   it("sets availability when creating and updating imported skills", async () => {
-    const { key, workspace } = await createPublicApiMockRequest();
+    const { key, workspace } = await createPublicApiMockRequest({
+      role: "admin",
+    });
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
     await SpaceFactory.defaults(adminAuth);
-    for (const grantType of [
-      "create",
-      "publish",
-      "make_discoverable",
-    ] as const) {
-      await GroupPermissionResource.setForEverybody(adminAuth, {
-        grantType,
-        resourceType: "skill",
-      });
-    }
-    // The permission set is resolved once at Authenticator construction, so build the request auth
-    // after the grants above for its snapshot to include them.
     const auth = await Authenticator.fromKey(key, workspace.sId);
 
     const importWithAvailability = async ({
@@ -471,20 +461,13 @@ describe("POST /api/v1/w/[wId]/skills", () => {
   });
 
   it("adds provided editors to new and existing imported skills", async () => {
-    const { key, workspace } = await createPublicApiMockRequest();
+    const { key, workspace } = await createPublicApiMockRequest({
+      role: "admin",
+    });
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
     await SpaceFactory.defaults(adminAuth);
-    // The mock key's role doesn't grant create/skill by itself — it requires a group grant. The
-    // key is scoped to the workspace's global group, so granting the capability to everybody
-    // satisfies it.
-    await GroupPermissionResource.setForEverybody(adminAuth, {
-      grantType: "create",
-      resourceType: "skill",
-    });
-    // The permission set is resolved once at Authenticator construction, so build the request auth
-    // after the grant above for its snapshot to include the create/skill capability.
     const auth = await Authenticator.fromKey(key, workspace.sId);
     const firstEditor = await UserFactory.basic();
     const secondEditor = await UserFactory.basic();
@@ -548,6 +531,43 @@ describe("POST /api/v1/w/[wId]/skills", () => {
         .map((email) => email.toLowerCase())
         .sort()
     );
+  });
+
+  it("rejects editors before importing with a non-admin API key", async () => {
+    const { key, workspace } = await createPublicApiMockRequest();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+    await GroupPermissionResource.setForEverybody(adminAuth, {
+      grantType: "create",
+      resourceType: "skill",
+    });
+    const auth = await Authenticator.fromKey(key, workspace.sId);
+    const editor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, editor, { role: "user" });
+
+    const result = await importSkillsFromFiles(auth, {
+      uploadedFiles: [
+        await makeSkillZipFile({
+          name: "Unauthorized Editors Import",
+          instructions: "Should never be imported.",
+        }),
+      ],
+      source: "api",
+      onConflict: "error",
+      editors: [editor.email],
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "User is not authorized to update skill editors."
+      );
+    }
+    expect(
+      await SkillResource.fetchByName(auth, "Unauthorized Editors Import")
+    ).toBeNull();
   });
 
   it("rejects the import for a key without the create/skill capability", async () => {

@@ -513,13 +513,13 @@ async function canWriteSkillFile(
     file
   );
   if (isReferenced) {
-    return skills.some((skill) => skill.canWrite(auth));
+    return skills.some((skill) => auth.can("write", skill));
   }
 
   const skillId = file.useCaseMetadata?.skillId;
   if (skillId) {
     const skill = await SkillResource.fetchById(auth, skillId);
-    return skill !== null && skill.canWrite(auth);
+    return skill !== null && auth.can("write", skill);
   }
 
   const isFileAuthor = file.userId === auth.user()?.id;
