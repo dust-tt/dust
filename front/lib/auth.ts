@@ -129,7 +129,9 @@ export interface AuthenticatorType {
   workspaceId: string;
   userId: string | null;
   role: RoleType;
-  groupIds: string[];
+  // The explicit group scope (see `Authenticator._requestedGroupModelIds`); `null` means the
+  // rehydrated auth re-derives its groups on `refresh()`.
+  groupIds: string[] | null;
   subscriptionId: string | null;
   isByok: boolean;
   key?: KeyAuthType;
@@ -155,7 +157,12 @@ export class Authenticator {
   _role: RoleType;
   _subscription: SubscriptionResource | null;
   _user: UserResource | null;
-  _groupModelIds: ModelId[];
+  // The explicit group scope for auths whose groups are NOT derivable from a user or an API key:
+  // sandbox tokens (restricted to the workload's spaces), the `fromKey` `requestedGroupIds` override
+  // (a system key acting as a user), and internal/system auths. `null` means "derive on refresh" —
+  // user auths from live membership, API-key auths from the key. Persisted and serialized because
+  // these scopes cannot be recomputed from the authenticator alone.
+  _requestedGroupModelIds: ModelId[] | null;
   _workspace: WorkspaceResource | null;
   _authMethod: AuthMethodType;
   _providersHealth: ProvidersHealth | null;
@@ -175,7 +182,7 @@ export class Authenticator {
     workspace,
     user,
     role,
-    groupModelIds,
+    requestedGroupModelIds = null,
     authMethod,
     subscription,
     key,
@@ -190,7 +197,7 @@ export class Authenticator {
     workspace?: WorkspaceResource | null;
     user?: UserResource | null;
     role: RoleType;
-    groupModelIds: ModelId[];
+    requestedGroupModelIds?: ModelId[] | null;
     authMethod: AuthMethodType;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
@@ -206,7 +213,7 @@ export class Authenticator {
     this._workspace = workspace || null;
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._user = user || null;
-    this._groupModelIds = groupModelIds;
+    this._requestedGroupModelIds = requestedGroupModelIds;
     this._role = role;
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._subscription = subscription || null;
@@ -334,7 +341,6 @@ export class Authenticator {
         workspace,
         user,
         role,
-        groupModelIds,
         globalGroupModelId,
         subscription,
         providersHealth,
@@ -372,9 +378,16 @@ export class Authenticator {
       return;
     }
 
-    // Reload group memberships for user-backed auths. Key auths carry a fixed group set derived
-    // from the key (not from live membership), so their `_groupModelIds` are left as-is.
-    if (this._user) {
+    // Resolve the group set to re-grant from, by source:
+    // - explicit scope (sandbox tokens, `fromKey` requestedGroupIds, internal/system auths): can't
+    //   be recomputed, so reuse the persisted `_requestedGroupModelIds`;
+    // - user auths: reload live membership;
+    // - API-key auths: re-derive from the key (workspace-scoped, so a foreign-workspace key yields
+    //   no groups, matching `fromKey`).
+    let groupModelIds: ModelId[];
+    if (this._requestedGroupModelIds !== null) {
+      groupModelIds = this._requestedGroupModelIds;
+    } else if (this._user) {
       if (Authenticator.isMember(this._role)) {
         const authGroups = await GroupResource.dangerouslyListUserGroupsForAuth(
           {
@@ -383,24 +396,70 @@ export class Authenticator {
             transaction,
           }
         );
-        this._groupModelIds = authGroups.groupModelIds;
+        groupModelIds = authGroups.groupModelIds;
         this._globalGroupModelId = authGroups.globalGroupModelId;
       } else {
-        this._groupModelIds = [];
+        groupModelIds = [];
         this._globalGroupModelId = null;
       }
+    } else if (this._key) {
+      groupModelIds = await this.groupModelIdsFromKey();
+    } else {
+      groupModelIds = [];
     }
 
-    // Re-resolve grants from the current group set. Grants on those groups can change (backfill,
+    // Re-resolve grants from the group set. Grants on those groups can change (backfill,
     // updatePermissions, create_pod, ...) even when the membership set does not, so this must run
-    // for every auth — including auths that have no user (API/system keys, internal auths), which
-    // the `_user` gate above skips. The agent loop freezes a serialized (user-less) key auth at
-    // workflow start and refreshes it per step (see `fromJsonWithRefrehedGroups`); without this it
-    // would keep a stale grant snapshot and deny access to resources granted mid-run.
+    // for every auth — including auths that have no user (API/system keys, internal auths). The
+    // agent loop freezes a serialized (user-less) key auth at workflow start and refreshes it per
+    // step (see `fromJsonWithRefrehedGroups`); without this it would keep a stale grant snapshot
+    // and deny access to resources granted mid-run.
     this._permissions = await Authenticator.resolvePermissions({
       workspace: this._workspace,
-      groupModelIds: this._groupModelIds,
+      groupModelIds,
     });
+  }
+
+  // Re-derive the API key's group scope on refresh. Fetched workspace-scoped by the key's id, so a
+  // key belonging to another workspace is not found and yields no groups — matching `fromKey`'s
+  // cross-workspace handling. Only reached for plain keys: the requestedGroupIds override carries an
+  // explicit `_requestedGroupModelIds` and never hits this path.
+  private async groupModelIdsFromKey(): Promise<ModelId[]> {
+    if (!this._key || !this._workspace) {
+      return [];
+    }
+    const key = await KeyResource.fetchByWorkspaceAndId({
+      workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+      id: this._key.id,
+    });
+    if (!key) {
+      return [];
+    }
+    const groups = await GroupResource.listWorkspaceGroupsFromKey(key);
+    return groups.map((g) => g.id);
+  }
+
+  // The groups the caller's *principal* belongs to, for entitlement resolution (e.g. model-tier
+  // overrides): a user's live membership, or an API key's own groups (its request-scoped override
+  // when present, else the key's groups). Internal/system and sandbox auths have no principal
+  // membership and return []. Unlike `refresh()`, an internal/sandbox explicit scope is NOT treated
+  // as principal membership — those auths are not tier-entitled principals.
+  async listPrincipalGroupModelIds(): Promise<ModelId[]> {
+    if (this._user) {
+      if (!Authenticator.isMember(this._role) || !this._workspace) {
+        return [];
+      }
+      const { groupModelIds } =
+        await GroupResource.dangerouslyListUserGroupsForAuth({
+          user: this._user,
+          workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+        });
+      return groupModelIds;
+    }
+    if (this._key) {
+      return this._requestedGroupModelIds ?? this.groupModelIdsFromKey();
+    }
+    return [];
   }
 
   /**
@@ -440,7 +499,6 @@ export class Authenticator {
       workspace,
       user,
       role: "none",
-      groupModelIds: [],
       subscription,
       providersHealth,
       permissions: await this.resolvePermissions({
@@ -502,7 +560,6 @@ export class Authenticator {
       workspace,
       user,
       role: "admin",
-      groupModelIds,
       subscription,
       providersHealth,
       permissions: await this.resolvePermissions({
@@ -559,7 +616,6 @@ export class Authenticator {
       workspace,
       user,
       role,
-      groupModelIds,
       globalGroupModelId,
       subscription,
       providersHealth,
@@ -608,7 +664,6 @@ export class Authenticator {
       new Authenticator({
         authMethod: "oauth",
         workspace,
-        groupModelIds: authData.groupModelIds,
         user,
         role: authData.role,
         subscription: authData.subscription,
@@ -762,7 +817,9 @@ export class Authenticator {
         workspace,
         user: user ?? undefined,
         role,
-        groupModelIds,
+        // Sandbox scope is narrowed to the workload's spaces from token claims that aren't retained,
+        // so it must be persisted as an explicit scope (see `_requestedGroupModelIds`).
+        requestedGroupModelIds: groupModelIds,
         subscription,
         providersHealth,
         permissions: await this.resolvePermissions({
@@ -1023,7 +1080,10 @@ export class Authenticator {
 
     return new Authenticator({
       authMethod: key.isSystem ? "system_api_key" : "api_key",
-      groupModelIds: workspaceGroupModelIds,
+      // A plain key re-derives its groups from the key on refresh, so no explicit scope is stored.
+      // The `requestedGroupIds` override (a system key acting as a user) is request-provided and not
+      // recomputable, so it is persisted.
+      requestedGroupModelIds: requestedGroupIds ? workspaceGroupModelIds : null,
       key: key.toAuthJSON(),
       role,
       subscription: workspaceSubscription,
@@ -1066,7 +1126,8 @@ export class Authenticator {
       authMethod: "internal",
       workspace,
       role: "user",
-      groupModelIds,
+      // No user and no key to re-derive from, so persist the resolved scope.
+      requestedGroupModelIds: groupModelIds,
       subscription,
       providersHealth,
       permissions: await this.resolvePermissions({
@@ -1130,7 +1191,8 @@ export class Authenticator {
       authMethod: "internal",
       workspace,
       role: "admin",
-      groupModelIds,
+      // No user and no key to re-derive from, so persist the resolved scope.
+      requestedGroupModelIds: groupModelIds,
       subscription,
       providersHealth,
       permissions: await this.resolvePermissions({
@@ -1223,7 +1285,6 @@ export class Authenticator {
       role: requestedRole
         ? lowestRole(requestedRole, activeMembership.role)
         : "user",
-      groupModelIds,
       globalGroupModelId,
       user,
       subscription: auth._subscription,
@@ -1241,7 +1302,7 @@ export class Authenticator {
       authMethod: this.authMethod(),
       key,
       role: this._role,
-      groupModelIds: this._groupModelIds,
+      requestedGroupModelIds: this._requestedGroupModelIds,
       user: this._user,
       subscription: this._subscription,
       workspace: this._workspace,
@@ -1702,7 +1763,7 @@ export class Authenticator {
       key: this._key,
       attributionKey,
       role: this._role,
-      groupModelIds: this._groupModelIds,
+      requestedGroupModelIds: this._requestedGroupModelIds,
       user: this._user,
       subscription: this._subscription,
       workspace: this._workspace,
@@ -1724,9 +1785,14 @@ export class Authenticator {
       workspaceId: workspace.sId,
       userId: this._user?.sId ?? null,
       role: this._role,
-      groupIds: this._groupModelIds.map((id) =>
-        GroupResource.modelIdToSId({ id, workspaceId: workspace.id })
-      ),
+      // Only an explicit scope is serialized; `null` means the rehydrated auth re-derives its groups
+      // on `refresh()` (user membership / API key). Distinguishing `null` from `[]` matters: `[]` is
+      // an explicit empty scope, `null` is "derive".
+      groupIds: this._requestedGroupModelIds
+        ? this._requestedGroupModelIds.map((id) =>
+            GroupResource.modelIdToSId({ id, workspaceId: workspace.id })
+          )
+        : null,
       subscriptionId: this._subscription?.sId ?? null,
       isByok: this.plan()?.isByok ?? false,
       key: this._key,
@@ -1767,9 +1833,12 @@ export class Authenticator {
       );
     }
 
-    const groupIds = removeNulls(
-      authType.groupIds.map((sId) => getResourceIdFromSId(sId))
-    );
+    // `null` = no explicit scope (derive on refresh). A serialized list rehydrates the explicit
+    // scope. (Old payloads that stored the full group set land here as an explicit scope too, which
+    // is correct: refresh reuses it instead of re-deriving until the payload cycles out.)
+    const requestedGroupModelIds = authType.groupIds
+      ? removeNulls(authType.groupIds.map((sId) => getResourceIdFromSId(sId)))
+      : null;
 
     const providersHealth = await this.fetchByokProvidersHealth(
       workspace,
@@ -1781,7 +1850,7 @@ export class Authenticator {
       workspace,
       user,
       role: authType.role,
-      groupModelIds: groupIds,
+      requestedGroupModelIds,
       subscription,
       key: authType.key,
       attributionKey: authType.attributionKey,
@@ -1795,7 +1864,7 @@ export class Authenticator {
           // running with an empty grant set, which would silently deny every capability check.
           await this.resolvePermissions({
             workspace,
-            groupModelIds: groupIds,
+            groupModelIds: requestedGroupModelIds ?? [],
           }),
     });
   }

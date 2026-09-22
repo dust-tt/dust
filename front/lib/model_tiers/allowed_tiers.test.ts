@@ -15,6 +15,7 @@ import { expandTiersUpTo } from "@app/lib/model_tiers/tier_order";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -220,6 +221,25 @@ describe("allowed model tiers permissions", () => {
 
     expect(resolved.tiers).toEqual(expandTiersUpTo("cost_efficient"));
     expect(resolved.source).toBe("workspace");
+  });
+
+  it("resolves group tier overrides from an API key's groups", async () => {
+    // The key is scoped to a tier-override group granted premium; the workspace default is lower.
+    await setWorkspaceMaxAllowedTierName(auth, "cost_efficient");
+    await setGroupMaxAllowedTier(auth, {
+      groupId: group.sId,
+      tierName: "premium",
+    });
+
+    const key = await KeyFactory.regular(group);
+    const keyAuth = await Authenticator.fromKey(key, workspace.sId);
+    expect(keyAuth.user()).toBeNull();
+
+    // The key has no user but belongs to the tier-override group, so it must inherit that override.
+    const resolved = await resolveAllowedTierNames(keyAuth);
+
+    expect(resolved.tiers).toEqual(expandTiersUpTo("premium"));
+    expect(resolved.source).toBe("groups");
   });
 
   it("user tier override takes precedence over groups and workspace", async () => {
