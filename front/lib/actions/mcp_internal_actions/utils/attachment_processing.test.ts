@@ -23,9 +23,6 @@ describe("processAttachment", () => {
     }
   });
 
-  // Regression test: text attachments used to be corrupted by a base64 round-trip in the
-  // Jira `read_attachment` tool (e.g. `<?xml version="1.0"?><x>ioz</x>` came back as
-  // `�ioz�"�`). See https://github.com/dust-tt/tasks/issues/10397.
   it("returns text/xml content verbatim instead of misdecoding it as base64", async () => {
     const content = `<?xml version="1.0"?><x>ioz</x>`;
     const result = await processAttachment({
