@@ -82,14 +82,28 @@ describe("hasReachedCreditSpendCheckpoint", () => {
 });
 
 describe("getCreditSpendCheckpointEnabled", () => {
-  it("defaults to disabled when no configuration row exists", async () => {
+  it("defaults to enabled when no configuration row exists", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    expect(await getCreditSpendCheckpointEnabled(auth)).toBe(true);
+  });
+
+  it("is disabled when the workspace cleared the threshold", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const createResult = await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      creditSpendCheckpointThresholdAwuCredits: null,
+    });
+    expect(createResult.isOk()).toBe(true);
 
     expect(await getCreditSpendCheckpointEnabled(auth)).toBe(false);
   });
 
-  it("uses the workspace's explicit override", async () => {
+  it("is enabled when the workspace set a threshold", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
