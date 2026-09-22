@@ -68,10 +68,9 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
     };
   }, [isFillEnabled, scroller, stage]);
 
+  // No scroller on mobile: the button still has to move the page, so everything below the
+  // scrollIntoView is optional.
   const goToDiscover = useCallback(() => {
-    if (!scroller) {
-      return;
-    }
     endTransitionRef.current?.();
 
     // Hold the ring at full while the page travels, so completing it reads
@@ -81,13 +80,13 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
     setStage("transition");
     // The lock effect has not run for the new stage yet, and scrollIntoView needs a scroller
     // that can move.
-    scroller.style.removeProperty("overflow-y");
+    scroller?.style.removeProperty("overflow-y");
     discoverRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
     let fallbackTimer = 0;
     const endTransition = () => {
       window.clearTimeout(fallbackTimer);
-      scroller.removeEventListener("scrollend", land);
+      scroller?.removeEventListener("scrollend", land);
       endTransitionRef.current = null;
     };
     const land = () => {
@@ -98,7 +97,7 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
     };
 
     fallbackTimer = window.setTimeout(land, TRANSITION_FALLBACK_MS);
-    scroller.addEventListener("scrollend", land);
+    scroller?.addEventListener("scrollend", land);
     endTransitionRef.current = endTransition;
   }, [scroller]);
 
