@@ -294,8 +294,8 @@ function SuggestionDetails({
 
           {instructionEdits && instructionEdits.length > 0 && (
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-foreground">
-                Instruction changes
+              <span className="text-sm text-muted-foreground">
+                Instructions
               </span>
               {instructionEdits.map((edit, index) => (
                 <InstructionEditDiffBlock
