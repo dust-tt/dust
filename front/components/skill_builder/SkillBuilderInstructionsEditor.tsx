@@ -658,7 +658,12 @@ export function SkillBuilderInstructionsEditor({
   // rejects from the suggestions panel are immediately reflected.
   // Wait for isContentReady to be true so there is content on which the diff must be applied
   useEffect(() => {
-    if (!editor || isSuggestionsLoading || !isContentReady) {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      isSuggestionsLoading ||
+      !isContentReady
+    ) {
       return;
     }
 
