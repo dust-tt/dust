@@ -14,6 +14,8 @@ export type FileAttachment = {
   title: string;
   contentType: AllSupportedFileContentType;
   isUploading: boolean;
+  // Percentage of the file's bytes already sent, `null` before the transfer starts. See `FileBlob`.
+  uploadProgress: number | null;
   size?: number;
   onRemove?: () => void;
   description?: string;
@@ -56,6 +58,8 @@ export interface FileAttachmentCitation extends BaseAttachmentCitation {
   fileId: string | null;
   filePath?: string;
   isUploading?: boolean;
+  // Percentage of the file's bytes already sent, `null` when no upload is in flight.
+  uploadProgress: number | null;
   size?: number;
 }
 

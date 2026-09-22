@@ -156,6 +156,7 @@ export function contentFragmentToAttachmentCitation(
       attachmentCitationType: "fragment",
       sourceUrl: contentFragment.sourceUrl,
       description: null,
+      uploadProgress: null,
     };
   }
 
@@ -209,6 +210,7 @@ export function contentFragmentToAttachmentCitation(
       contentType: contentFragment.contentType,
       attachmentCitationType: "fragment",
       provider: contentFragment.sourceProvider ?? undefined,
+      uploadProgress: null,
     };
   }
 
@@ -226,6 +228,7 @@ export function attachmentToAttachmentCitation(
       title: attachment.title,
       sourceUrl: attachment.sourceUrl ?? null,
       isUploading: attachment.isUploading,
+      uploadProgress: attachment.uploadProgress,
       size: attachment.size,
       visual: (
         <IconForAttachmentCitation
