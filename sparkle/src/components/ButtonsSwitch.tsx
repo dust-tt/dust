@@ -235,9 +235,16 @@ export const ButtonsSwitchList = React.forwardRef<
 );
 ButtonsSwitchList.displayName = "ButtonsSwitchList";
 
-// Options paint no surface of their own (the list's indicator does); their text
-// color swap shares the indicator's timing so pill and label move as one unit.
-const optionStyles = "duration-200 ease-in-out";
+// Options paint no surface of their own (the list's indicator does). The selected
+// one also drops ghost's hover/press tint: hovering it does nothing, and the tint
+// would otherwise paint over the track while the indicator is still sliding in.
+// Its text color swap shares the indicator's timing so pill and label arrive
+// together; inactive options keep Button's snappier hover timing.
+const activeOptionStyles = cn(
+  "hover:bg-transparent active:bg-transparent",
+  "dark:hover:bg-transparent dark:active:bg-transparent",
+  "duration-200 ease-in-out"
+);
 
 interface ButtonsSwitchProps
   extends Omit<React.ComponentProps<typeof Button>, "size" | "variant"> {
@@ -286,7 +293,7 @@ export const ButtonsSwitch = React.forwardRef<
       variant={isActive ? "ghost" : "ghost-secondary"}
       label={label}
       icon={icon}
-      className={cn(optionStyles, className)}
+      className={cn(isActive && activeOptionStyles, className)}
       disabled={isDisabled}
       onClick={handleClick}
       {...props}
