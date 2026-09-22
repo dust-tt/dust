@@ -4,6 +4,8 @@ import {
 } from "@app/components/assistant/conversation/FileUploaderContext";
 import { ConfirmContext } from "@app/components/Confirm";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
+import type { RenameMountItem } from "@app/components/file_explorer/RenameFileDialog";
+import { RenameFileDialog } from "@app/components/file_explorer/RenameFileDialog";
 import type {
   ContentNodeEntry,
   FileEntry,
@@ -22,8 +24,6 @@ import {
   ARCHIVE_FILE_EXTENSION,
   partitionArchiveFiles,
 } from "@app/components/pod/files/podArchiveUpload";
-import type { RenameMountItem } from "@app/components/pod/files/RenameFileDialog";
-import { RenameFileDialog } from "@app/components/pod/files/RenameFileDialog";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
@@ -868,7 +868,6 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
           void mutatePodMetadata();
         }}
         owner={owner}
-        podId={pod.sId}
         item={itemToRename}
       />
 

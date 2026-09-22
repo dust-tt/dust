@@ -1,12 +1,16 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConfirmContext } from "@app/components/Confirm";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
+import type { RenameMountItem } from "@app/components/file_explorer/RenameFileDialog";
+import { RenameFileDialog } from "@app/components/file_explorer/RenameFileDialog";
 import type {
   FileEntry,
   FileExplorerEntry,
   FileExplorerMenuAction,
   FileExplorerPathEntry,
   FileExplorerVirtualScopeRoot,
+  FolderEntry,
+  FramePackageEntry,
 } from "@app/components/file_explorer/types";
 import { useFileExplorerDownload } from "@app/components/file_explorer/useFileExplorerDownload";
 import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
@@ -214,6 +218,10 @@ export function ConversationFileExplorer({
 
   // Only Frame packages get a Delete item here (see `canDelete`); other conversation files stay
   // non-deletable as before.
+  const [itemToRename, setItemToRename] = useState<RenameMountItem | null>(
+    null
+  );
+
   const onDelete = useCallback(
     async (entry: FileExplorerEntry) => {
       if (entry.kind !== "frame_package") {
@@ -238,6 +246,33 @@ export function ConversationFileExplorer({
       }
     },
     [confirm, deleteFileByPath, mutatePodFiles, mutateSandboxFiles]
+  );
+
+  // Files, folders and Frame packages all rename through the same canonical-path endpoint; a
+  // Frame renames as the folder holding its manifest.
+  const onRename = useCallback(
+    (entry: FileEntry | FolderEntry | FramePackageEntry) => {
+      if (entry.kind === "frame_package") {
+        setItemToRename({
+          kind: "frame",
+          path: entry.sourceFolderCanonicalPath,
+          name: entry.fileName,
+        });
+      } else if (entry.kind === "file") {
+        setItemToRename({
+          kind: "file",
+          path: entry.path,
+          name: entry.fileName,
+        });
+      } else {
+        setItemToRename({
+          kind: "folder",
+          path: entry.path,
+          name: entry.name,
+        });
+      }
+    },
+    []
   );
 
   return (
@@ -273,6 +308,7 @@ export function ConversationFileExplorer({
           onCurrentFolderChange={setCurrentFolderPath}
           onDelete={hasFeature("frames_v2") ? onDelete : undefined}
           canDelete={isFramePackageEntry}
+          onRename={onRename}
           onDownload={onDownload}
           onOpenInteractive={onOpenInteractive}
           onOpenInPanel={onOpenInPanel}
@@ -280,6 +316,16 @@ export function ConversationFileExplorer({
           virtualScopeRoots={virtualScopeRoots}
         />
       </div>
+
+      <RenameFileDialog
+        isOpen={itemToRename !== null}
+        onClose={() => setItemToRename(null)}
+        onRenamed={() => {
+          void Promise.all([mutateSandboxFiles(), mutatePodFiles()]);
+        }}
+        owner={owner}
+        item={itemToRename}
+      />
 
       {createFileTabDraft && (
         <EditPodFileTabDialog
