@@ -5,6 +5,7 @@ import {
 } from "@app/config/cors";
 import logger from "@app/logger/logger";
 import {
+  DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
 } from "@app/types/files";
@@ -13,11 +14,13 @@ import type { MiddlewareHandler } from "hono";
 
 const ALLOW_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
 const EXPOSE_HEADERS = [
+  "ETag",
   "X-Reload-Required",
   "WWW-Authenticate",
   "mcp-session-id",
   "mcp-protocol-version",
   DUST_FILE_CONTENT_TYPE_HEADER,
+  DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_ID_HEADER,
 ].join(", ");
 

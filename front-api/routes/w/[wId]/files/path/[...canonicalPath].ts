@@ -5,6 +5,7 @@ import {
   deleteCanonicalFile,
   fetchLinkedFileResource,
   moveCanonicalFile,
+  readCanonicalFileContent,
   renameCanonicalFile,
   streamThumbnail,
   WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
@@ -28,6 +29,7 @@ import type { PostExtractArchiveResponseBody } from "@app/types/api/file_system/
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { DustFileSystemError } from "@app/types/file_system";
 import {
+  DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
   getFileFormat,
@@ -45,6 +47,13 @@ import path from "path";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
+const RevisionHeaderSchema = z.object({
+  "if-match": z
+    .string()
+    .regex(/^"[1-9][0-9]*"$/)
+    .optional(),
+});
+
 const ParamsSchema = z.object({
   canonicalPath: z.string(),
 });
@@ -59,8 +68,13 @@ const ParamsSchema = z.object({
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"rename", fileName }
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"move",   dest }
  *   POST   /api/w/:wId/files/path/{...canonicalPath}?action=extract    expand a ZIP into the folder
- *   PUT    /api/w/:wId/files/path/{...canonicalPath}                    replace text content
+ *   PUT    /api/w/:wId/files/path/{...canonicalPath}                    replace text or JSON content, optional If-Match
  *   DELETE /api/w/:wId/files/path/{...canonicalPath}
+ *
+ * Raw GCS reads return ETag for exactly the streamed bytes. PUT accepts that ETag
+ * in If-Match and returns 412 on a revision mismatch. Successful GCS writes return
+ * their new ETag. Backends without revision support reject conditional writes.
+ * GET and HEAD expose current mount write permission in X-Dust-File-Can-Write.
  */
 const app = workspaceApp();
 
@@ -249,6 +263,9 @@ async function handleHeadRequest(
   const headers: Record<string, string> = {
     "Content-Type": statResult.value.contentType,
     "Content-Length": String(statResult.value.sizeBytes),
+    [DUST_FILE_CAN_WRITE_HEADER]: String(
+      dustFs.checkWriteAccess(canonicalPath).isOk()
+    ),
     "X-Content-Type-Options": "nosniff",
   };
   if (linkedFileResource) {
@@ -395,20 +412,7 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
   }
 
   // Normal inline or attachment stream.
-  const statResult = await dustFs.stat(canonicalPath);
-  if (statResult.isErr()) {
-    return apiError(ctx, mapDustFsError(statResult.error));
-  }
-  if (!statResult.value) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: { type: "file_not_found", message: "File not found." },
-    });
-  }
-
-  const { contentType } = statResult.value;
-
-  const readResult = await dustFs.read(canonicalPath);
+  const readResult = await readCanonicalFileContent(dustFs, canonicalPath);
   if (readResult.isErr()) {
     return apiError(ctx, mapDustFsError(readResult.error));
   }
@@ -418,11 +422,19 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
       api_error: { type: "file_not_found", message: "File not found." },
     });
   }
+  const { contentType, stream, revision } = readResult.value;
 
   const headers: Record<string, string> = {
     "Content-Type": contentType,
     "X-Content-Type-Options": "nosniff",
+    [DUST_FILE_CAN_WRITE_HEADER]: String(
+      dustFs.checkWriteAccess(canonicalPath).isOk()
+    ),
   };
+  if (revision !== undefined) {
+    headers.ETag = `"${revision}"`;
+    headers["Cache-Control"] = "private, no-cache";
+  }
 
   // Unsafe content types and ?download=1 must always be served as attachments.
   if (
@@ -433,9 +445,7 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
     headers["Content-Disposition"] = contentDispositionAttachment(fileName);
   }
 
-  const nodeStream = readResult.value;
-
-  return new Response(readableToReadableStream(nodeStream), {
+  return new Response(readableToReadableStream(stream), {
     status: 200,
     headers,
   });
@@ -626,6 +636,7 @@ app.put(
   "/:canonicalPath{.+}",
   putBodyLimit,
   validate("param", ParamsSchema),
+  validate("header", RevisionHeaderSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
     const { canonicalPath } = ctx.req.valid("param");
@@ -670,7 +681,8 @@ app.put(
       dustFs,
       canonicalPath,
       new Uint8Array(contentBuffer),
-      ctx.req.header("content-type") ?? undefined
+      ctx.req.header("content-type") ?? undefined,
+      ctx.req.valid("header")["if-match"]?.slice(1, -1)
     );
 
     if (writeResult.isErr()) {
@@ -686,6 +698,15 @@ app.put(
                 message: error.message,
               },
             });
+          case "revision_conflict":
+            return apiError(ctx, {
+              status_code: 412,
+              api_error: {
+                type: "invalid_request_error",
+                message: error.message,
+              },
+            });
+          case "revision_not_supported":
           case "unsupported_content_type":
             return apiError(ctx, {
               status_code: 400,
@@ -703,6 +724,10 @@ app.put(
 
     return new Response(null, {
       status: writeResult.value.created ? 201 : 200,
+      headers:
+        writeResult.value.revision !== undefined
+          ? { ETag: `"${writeResult.value.revision}"` }
+          : undefined,
     });
   }
 );
