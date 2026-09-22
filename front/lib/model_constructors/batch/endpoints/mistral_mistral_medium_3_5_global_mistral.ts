@@ -6,10 +6,12 @@ import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 export class MistralMistralMedium35GlobalMistralBatch extends WithMistralMedium35Config(
   MistralBatch
 ) {
-  // Batch pricing is half the standard Mistral rate.
+  // Half the global rate, per `BATCH_DISCOUNT_FACTOR`. No regional uplift: batch
+  // runs on the global host (see `region` below).
   static readonly tokenPricing = {
-    standardInput: 0.2,
-    standardOutput: 1.0,
+    standardInput: 0.75,
+    standardOutput: 3.75,
+    cacheHit: 0.075,
   };
 
   // The Batch API is not served by the regional endpoints, so this runs on the global host

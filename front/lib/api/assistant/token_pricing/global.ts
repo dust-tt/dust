@@ -391,15 +391,24 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     long_cache_creation_input_tokens: 2.0,
     cache_read_input_tokens: 0.1,
   },
-  // Mistral bills cached reads at 10% of standard input and publishes no
-  // cache-write rate: https://docs.mistral.ai/inference/pricing and
-  // https://docs.mistral.ai/studio/conversations/advanced/prompt-caching
-  // (verified 2026-09-22).
+  // https://docs.mistral.ai/inference/pricing (verified 2026-09-22). Cached reads
+  // are 10% of standard input on every row; no cache-write rate is published.
+  //
+  // Each `-latest` alias below is priced for the version it actually resolves to,
+  // read off `GET /v1/models` on 2026-09-22 — the alias tracks the newest GA
+  // model, so a new generation silently repoints it:
+  // https://docs.mistral.ai/inference/model-lifecycle
+  //
+  //   mistral-large-latest -> mistral-large-2512  (Mistral Large 3)
+  //   mistral-small-latest -> mistral-small-2603  (Mistral Small 4)
+  //   codestral-latest     -> codestral-2508      (Codestral 25.08)
   "mistral-large-latest": {
-    input: 2.0,
-    output: 6.0,
-    cache_read_input_tokens: 0.2,
+    input: 0.5,
+    output: 1.5,
+    cache_read_input_tokens: 0.05,
   },
+  // Retired by Mistral and absent from the pricing page; left at its last known
+  // rate. It has no endpoint, so nothing can bill under it going forward.
   "mistral-medium": {
     input: 2.5,
     output: 7.5,
@@ -410,14 +419,14 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     cache_read_input_tokens: 0.15,
   },
   "mistral-small-latest": {
-    input: 0.9,
-    output: 2.8,
-    cache_read_input_tokens: 0.09,
+    input: 0.15,
+    output: 0.6,
+    cache_read_input_tokens: 0.015,
   },
   "codestral-latest": {
-    input: 0.9,
-    output: 2.8,
-    cache_read_input_tokens: 0.09,
+    input: 0.3,
+    output: 0.9,
+    cache_read_input_tokens: 0.03,
   },
   // https://ai.google.dev/gemini-api/docs/pricing: 2/12 up to 200k input tokens,
   // 4/18 beyond that.

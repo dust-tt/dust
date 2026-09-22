@@ -8,9 +8,9 @@ export class MistralCodestralEuropeMistralStream extends WithMistralCodestralCon
 ) {
   // 1.1x list price: https://docs.mistral.ai/inference/regional-inference (2026-09-22).
   static readonly tokenPricing = {
-    standardInput: 0.99,
-    standardOutput: 3.08,
-    cacheHit: 0.099,
+    standardInput: 0.33,
+    standardOutput: 0.99,
+    cacheHit: 0.033,
   };
 
   // Inference runs in the EU; the endpoint remains usable from both US and EU.
