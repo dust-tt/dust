@@ -37,6 +37,7 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
+import { useSWRConfig } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
@@ -256,6 +257,20 @@ export function useSearchSkills({
   };
 }
 
+function useMutateSkillSearch(owner: LightWorkspaceType) {
+  const { mutate } = useSWRConfig();
+
+  // Search filters and cursors are in the body, so refresh every search key for this workspace.
+  return useCallback(
+    () =>
+      mutate(
+        (key) =>
+          Array.isArray(key) && key[0] === `/api/w/${owner.sId}/skills/search`
+      ),
+    [mutate, owner.sId]
+  );
+}
+
 export function useSkillsWithRelations({
   owner,
   disabled,
@@ -398,6 +413,7 @@ export function useArchiveSkill({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
+  const mutateSkillSearch = useMutateSkillSearch(owner);
 
   const { mutateSkillsWithRelations: mutateArchivedSkills } =
     useSkillsWithRelations({
@@ -430,6 +446,7 @@ export function useArchiveSkill({
       void mutateArchivedSkills();
       void mutateActiveSkills();
       void mutateSuggestedSkills();
+      void mutateSkillSearch();
 
       sendNotification({
         type: "success",
@@ -639,6 +656,7 @@ export function useRestoreSkill({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
+  const mutateSkillSearch = useMutateSkillSearch(owner);
 
   const { mutateSkillsWithRelations: mutateArchivedSkills } =
     useSkillsWithRelations({
@@ -664,6 +682,7 @@ export function useRestoreSkill({
 
       void mutateArchivedSkills();
       void mutateActiveSkills();
+      void mutateSkillSearch();
 
       sendNotification({
         type: "success",
@@ -860,6 +879,7 @@ function notifyImportResult(
 export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
+  const mutateSkillSearch = useMutateSkillSearch(owner);
 
   const [isImporting, setIsImporting] = useState(false);
   const { mutateSkillsWithRelations: mutateActiveSkills } =
@@ -904,6 +924,10 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
 
         void mutateActiveSkills();
 
+        if (data.imported.length > 0 || data.updated.length > 0) {
+          void mutateSkillSearch();
+        }
+
         return notifyImportResult(data, sendNotification);
       } catch (err) {
         const message = isAPIErrorResponse(err)
@@ -919,7 +943,13 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
         setIsImporting(false);
       }
     },
-    [owner.sId, mutateActiveSkills, sendNotification, fetcher]
+    [
+      owner.sId,
+      mutateActiveSkills,
+      mutateSkillSearch,
+      sendNotification,
+      fetcher,
+    ]
   );
 
   return { importSkills, isImporting };

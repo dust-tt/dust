@@ -6,6 +6,7 @@ import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { SearchSkillsResponseBody } from "@app/types/api/skills";
+import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SWRConfig } from "swr";
@@ -43,12 +44,21 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function setup({ searchEnabled = true, pageEnabled = true } = {}) {
+async function setup({
+  searchEnabled = true,
+  pageEnabled = true,
+  skillStatus = "active",
+}: {
+  searchEnabled?: boolean;
+  pageEnabled?: boolean;
+  skillStatus?: SkillStatus;
+} = {}) {
   const { authenticator, user } = await createResourceTest({ role: "admin" });
   const resource = await SkillFactory.create(authenticator, {
     name: "Weekly report",
     availability: "workspace_users",
     instructions: "",
+    status: skillStatus,
   });
   const [document] = await SkillFactory.createSearchDocuments(authenticator, [
     resource,
@@ -83,7 +93,28 @@ async function setup({ searchEnabled = true, pageEnabled = true } = {}) {
       nextCursor: null,
     });
   const fetcherWithBody = vi.fn(async () => search());
-  const fetcher = vi.fn(async (url: string) => {
+  const mutation = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === "DELETE" || url.endsWith("/restore")) {
+      await mutation();
+      return {};
+    }
+    if (url.endsWith("/skills/import")) {
+      await mutation();
+      return {
+        imported: [resource.toJSON(authenticator)],
+        updated: [],
+        skipped: [],
+      };
+    }
+    if (url.endsWith("/skills/detect")) {
+      return {
+        skills: [{ name: skill.name, status: "ready", existingSkillId: null }],
+      };
+    }
+    if (url.endsWith("/skills/import/github-connection")) {
+      return { connection: null };
+    }
     if (url.includes(`/skills/${skill.sId}`)) {
       return {
         skill: {
@@ -120,7 +151,7 @@ async function setup({ searchEnabled = true, pageEnabled = true } = {}) {
         </SWRConfig>
       ),
     });
-  return { skill, context, search, fetcher, fetcherWithBody, mount };
+  return { skill, context, search, fetcher, fetcherWithBody, mutation, mount };
 }
 
 describe("search-backed Manage Skills", () => {
@@ -197,6 +228,109 @@ describe("search-backed Manage Skills", () => {
         "POST",
       ])
     );
+  });
+
+  it("refreshes All after importing a skill", async () => {
+    const { skill, search, mutation, mount } = await setup();
+    search.mockResolvedValue({ skills: [], hasMore: false, nextCursor: null });
+    mutation.mockImplementation(async () => {
+      search.mockResolvedValue({
+        skills: [skill],
+        hasMore: false,
+        nextCursor: null,
+      });
+    });
+    mount();
+    await screen.findByText("No skills to show.");
+
+    await userEvent.click(screen.getByRole("button", { name: "Create skill" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "From existing" })
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Import skills" });
+    await userEvent.type(
+      within(dialog).getByPlaceholderText("https://github.com/owner/repo"),
+      "https://github.com/dust-tt/skills"
+    );
+    await within(dialog).findByText(skill.name, {}, { timeout: 3_000 });
+    const importButton = within(dialog).getByRole("button", {
+      name: "Import",
+    });
+    await waitFor(() => expect(importButton).toBeEnabled());
+    await userEvent.click(importButton);
+
+    await screen.findByRole("button", { name: /Weekly report/ });
+    expect(mutation).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    {
+      status: "active",
+      tab: "All",
+      action: "Archive",
+      confirm: "Archive for everyone",
+    },
+    {
+      status: "archived",
+      tab: "Archived",
+      action: "Restore",
+      confirm: "Restore the skill",
+    },
+  ] satisfies {
+    status: SkillStatus;
+    tab: string;
+    action: string;
+    confirm: string;
+  }[])("refreshes $tab after $action from the details sheet", async ({
+    status,
+    tab,
+    action,
+    confirm,
+  }) => {
+    const { search, mutation, mount } = await setup({ skillStatus: status });
+    mutation.mockImplementation(async () => {
+      search.mockResolvedValue({
+        skills: [],
+        hasMore: false,
+        nextCursor: null,
+      });
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    if (tab === "Archived") {
+      await userEvent.click(screen.getByRole("tab", { name: tab }));
+    }
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Weekly report/ })
+    );
+    const sheet = await screen.findByRole("dialog");
+    await within(sheet).findByRole("heading", { name: "Full skill details" });
+
+    if (action === "Archive") {
+      await userEvent.click(
+        within(sheet).getByRole("button", { name: "Skill options" })
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: action })
+      );
+    } else {
+      await userEvent.click(
+        within(sheet).getByRole("button", { name: action })
+      );
+    }
+    const confirmation = await screen.findByRole("dialog", {
+      name:
+        action === "Archive" ? "Archiving the skill" : "Restoring the skill",
+    });
+    await userEvent.click(
+      within(confirmation).getByRole("button", { name: confirm })
+    );
+
+    await screen.findByText("No skills to show.");
+    expect(
+      screen.queryByRole("button", { name: /Weekly report/ })
+    ).not.toBeInTheDocument();
+    expect(mutation).toHaveBeenCalledOnce();
   });
 
   it("passes cursors unchanged, preserves server order and resets pagination when searching", async () => {
