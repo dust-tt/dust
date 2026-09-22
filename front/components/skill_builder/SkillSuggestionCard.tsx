@@ -286,7 +286,7 @@ function SuggestionDetails({
         <>
           {agentFacingDescriptionEdit && (
             <SkillFieldEditSection
-              label="Description change"
+              label="Description"
               currentValue={getCurrentAgentFacingDescription()}
               newValue={agentFacingDescriptionEdit.content}
             />
