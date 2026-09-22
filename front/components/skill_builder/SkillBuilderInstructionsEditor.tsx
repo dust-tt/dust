@@ -614,6 +614,7 @@ export function SkillBuilderInstructionsEditor({
   useEffect(() => {
     if (
       !editor ||
+      editor.isDestroyed ||
       !isContentReady ||
       isDiffMode ||
       initializedAttachedKnowledgeEditorRef.current === editor
@@ -632,7 +633,13 @@ export function SkillBuilderInstructionsEditor({
   }, [editor, isContentReady, isDiffMode, resetField]);
 
   useEffect(() => {
-    if (!editor || !isContentReady || isDiffMode || isMCPServerViewsLoading) {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !isContentReady ||
+      isDiffMode ||
+      isMCPServerViewsLoading
+    ) {
       return;
     }
 
@@ -658,7 +665,13 @@ export function SkillBuilderInstructionsEditor({
   // rejects from the suggestions panel are immediately reflected.
   // Wait for isContentReady to be true so there is content on which the diff must be applied
   useEffect(() => {
-    if (!editor || isSuggestionsLoading || !isContentReady) {
+    // useEditor can destroy this instance before this effect runs when read-only changes.
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      isSuggestionsLoading ||
+      !isContentReady
+    ) {
       return;
     }
 
@@ -751,7 +764,12 @@ export function SkillBuilderInstructionsEditor({
 
   // Sync external changes to the editor content
   useEffect(() => {
-    if (!editor || isDiffMode || !instructionsHtmlField.value) {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      isDiffMode ||
+      !instructionsHtmlField.value
+    ) {
       return;
     }
 
