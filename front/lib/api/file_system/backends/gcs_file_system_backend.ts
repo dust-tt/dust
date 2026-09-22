@@ -23,7 +23,7 @@ import {
   SCOPED_PREFIX_POD,
   SCOPED_PREFIX_USER,
 } from "@app/types/file_system";
-import { stripMimeParameters } from "@app/types/files";
+import { resolveFileContentType } from "@app/types/files";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -279,7 +279,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       const rawCT = isString(meta["contentType"])
         ? (meta["contentType"] as string)
         : "application/octet-stream";
-      const contentType = stripMimeParameters(rawCT);
+      const contentType = resolveFileContentType(rawCT, gcsFile.name);
       const scopedFilePath = this.fromGCSPath(gcsFile.name) ?? gcsFile.name;
 
       return {
@@ -360,7 +360,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
         : "application/octet-stream";
 
       return new Ok({
-        contentType: stripMimeParameters(rawCT),
+        contentType: resolveFileContentType(rawCT, scopedPath),
         sizeBytes: Number(metadata.size ?? 0),
       });
     } catch (err) {

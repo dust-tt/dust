@@ -20,6 +20,7 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { CoreAPIDataSourceDocumentSection } from "@app/types/core/data_source";
+import { documentContentType } from "@app/types/documents";
 import type {
   AllSupportedFileContentType,
   FileType,
@@ -468,6 +469,8 @@ const getProcessingFunction = ({
   }
 
   switch (contentType) {
+    case documentContentType:
+      return undefined;
     case "text/csv":
     case "text/comma-separated-values":
     case "text/tsv":

@@ -413,6 +413,7 @@ const supportedUploadableContentType = [
 ] as SupportedFileContentType[];
 
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
+  | "application/vnd.dust.document+json"
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
   | keyof typeof supportedAudioFileFormats
@@ -423,6 +424,7 @@ const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
 >();
 
 const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
+  | "application/vnd.dust.document+json"
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
   | keyof typeof supportedAudioFileFormats

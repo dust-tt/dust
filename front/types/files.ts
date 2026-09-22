@@ -1,6 +1,7 @@
 // Types.
 import type { DustError } from "@app/lib/error";
 import { getFrameV2NameFromManifestPath } from "@app/types/api/frame_manifest";
+import { documentContentType } from "@app/types/documents";
 import { z } from "zod";
 
 import { assertNever } from "./shared/utils/assert_never";
@@ -495,6 +496,12 @@ type FileFormat = {
 // NOTE: if we add more content types, we need to update the public api package. (but the
 // typechecker should catch it).
 export const FILE_FORMATS = {
+  [documentContentType]: {
+    cat: "data",
+    exts: [".dustdoc"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["conversation", "project_context"],
+  },
   // Images.
   "image/jpeg": {
     cat: "image",
@@ -800,6 +807,7 @@ export const ALL_FILE_FORMATS = {
 };
 // Union type for all supported content types.
 export type AllSupportedFileContentType =
+  | typeof documentContentType
   | InteractiveContentFileContentType
   | FrameV2FileContentType
   | SandboxFunctionFileContentType
@@ -908,6 +916,7 @@ export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
+    contentType === documentContentType ||
     isInteractiveContentType(contentType) ||
     isFrameV2ContentType(contentType) ||
     isSandboxFunctionContentType(contentType) ||
@@ -1084,6 +1093,7 @@ const EXTENSION_CONTENT_TYPE_OVERRIDES: Record<
   string,
   SupportedFileContentType
 > = {
+  ".dustdoc": documentContentType,
   ".csv": "text/csv",
   ".tsv": "text/tsv",
   ".xls": "application/vnd.ms-excel",

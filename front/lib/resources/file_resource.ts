@@ -2,7 +2,6 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 import path from "node:path";
-
 import config from "@app/lib/api/config";
 import {
   SCOPED_PREFIX_CONVERSATION,
@@ -80,6 +79,7 @@ import {
   getFramesBasePath,
 } from "@app/types/api/frame_storage";
 import { CoreAPI } from "@app/types/core/core_api";
+import { documentContentType } from "@app/types/documents";
 import type {
   AuthorizedFileAccessAllowlist,
   AuthorizedFileRef,
@@ -1348,7 +1348,8 @@ export class FileResource extends BaseResource<FileModel> {
     promptSaveAs?: string
   ): Promise<string> {
     return this.getBucketForVersion(version).getSignedUrl(
-      this.getCloudStoragePath(auth, version),
+      this.getDocumentMountPath(version) ??
+        this.getCloudStoragePath(auth, version),
       {
         expirationDelayMs: expirationDelayMs,
         ...(promptSaveAs !== undefined && { promptSaveAs }),
@@ -1554,7 +1555,10 @@ export class FileResource extends BaseResource<FileModel> {
     version: FileVersion;
   }): Readable {
     return this.getBucketForVersion(version)
-      .file(this.getCloudStoragePath(auth, version))
+      .file(
+        this.getDocumentMountPath(version) ??
+          this.getCloudStoragePath(auth, version)
+      )
       .createReadStream();
   }
 
@@ -1571,7 +1575,20 @@ export class FileResource extends BaseResource<FileModel> {
       version,
     });
 
-    return this.getBucketForVersion(version).file(cloudPath).createReadStream();
+    return this.getBucketForVersion(version)
+      .file(this.getDocumentMountPath(version) ?? cloudPath)
+      .createReadStream();
+  }
+
+  /**
+   * @cc [owner:flvndvd,label:product] native-document-live-original
+   * Original reads and downloads of a registered native document MUST use its current mounted
+   * content when a mount path exists, including edits made through canonical Files APIs.
+   */
+  private getDocumentMountPath(version: FileVersion): string | null {
+    return this.contentType === documentContentType && version === "original"
+      ? this.mountFilePath
+      : null;
   }
 
   /**

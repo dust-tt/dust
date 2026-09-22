@@ -1,4 +1,10 @@
 import config from "@app/lib/api/config";
+import { decodeNativeDocumentSource } from "@app/lib/api/documents/content";
+import { documentAPIError } from "@app/lib/api/documents/errors";
+import {
+  loadDocumentByPath,
+  saveDocumentByPath,
+} from "@app/lib/api/documents/files";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   convertCanonicalFileToPdf,
@@ -45,6 +51,13 @@ import path from "path";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
+const DocumentRevisionHeaderSchema = z.object({
+  "if-match": z
+    .string()
+    .regex(/^"[0-9]+"$/)
+    .optional(),
+});
+
 const ParamsSchema = z.object({
   canonicalPath: z.string(),
 });
@@ -55,6 +68,8 @@ const ParamsSchema = z.object({
  *   GET    /api/w/:wId/files/path/conversation-{cId}/report.pdf         stream inline
  *   GET    /api/w/:wId/files/path/pod-{pId}/data.csv?download=1         stream + Content-Disposition
  *   GET    /api/w/:wId/files/path/conversation-{cId}/photo.png?thumbnail=1  stream thumbnail
+ *   GET    /api/w/:wId/files/path/{...canonicalPath}?document=1       native snapshot with revision
+ *   PUT    /api/w/:wId/files/path/{...canonicalPath}?document=1       native JSON, requires If-Match
  *   HEAD   /api/w/:wId/files/path/{...canonicalPath}                    metadata only
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"rename", fileName }
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"move",   dest }
@@ -282,6 +297,15 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
   const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
   if (err) {
     return err;
+  }
+
+  if (ctx.req.query("document") === "1") {
+    const result = await loadDocumentByPath(auth, canonicalPath);
+    if (result.isErr()) {
+      return apiError(ctx, documentAPIError(result.error));
+    }
+    ctx.header("Cache-Control", "private, no-store");
+    return ctx.json(result.value);
   }
 
   const thumbnail = ctx.req.query("thumbnail");
@@ -626,6 +650,7 @@ app.put(
   "/:canonicalPath{.+}",
   putBodyLimit,
   validate("param", ParamsSchema),
+  validate("header", DocumentRevisionHeaderSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
     const { canonicalPath } = ctx.req.valid("param");
@@ -663,6 +688,38 @@ app.put(
 
     if (contentBuffer.byteLength > WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES) {
       return putContentTooLargeError(ctx);
+    }
+
+    if (ctx.req.query("document") === "1") {
+      const revisionHeader = ctx.req.valid("header")["if-match"];
+      if (!revisionHeader || !/^"[0-9]+"$/.test(revisionHeader)) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Document saves require the loaded revision in If-Match.",
+          },
+        });
+      }
+      const decoded = decodeNativeDocumentSource(new Uint8Array(contentBuffer));
+      if (decoded.isErr()) {
+        return apiError(ctx, {
+          status_code: 422,
+          api_error: {
+            type: "invalid_request_error",
+            message: decoded.error.message,
+          },
+        });
+      }
+      const result = await saveDocumentByPath(auth, canonicalPath, {
+        source: decoded.value,
+        revision: revisionHeader.slice(1, -1),
+      });
+      if (result.isErr()) {
+        return apiError(ctx, documentAPIError(result.error));
+      }
+      ctx.header("Cache-Control", "no-store");
+      return ctx.json(result.value);
     }
 
     const writeResult = await writeCanonicalFileContent(

@@ -1,3 +1,4 @@
+import { importDocumentMarkdown } from "@app/lib/api/documents/content";
 // @vitest-environment node: ZIP inspection requires Node builtins.
 
 import { createConversation } from "@app/lib/api/assistant/conversation";
@@ -798,5 +799,72 @@ describe("POST /api/w/:wId/files/path/:canonicalPath?action=extract", () => {
     expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe("file_not_found");
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+});
+
+describe("native documents through Files paths", () => {
+  it("opens an unregistered file, saves with If-Match and rejects stale saves", async () => {
+    const { workspace, conversation } = await setup();
+    fileStorageMock.enableVersioning();
+    const canonicalPath = `conversation-${conversation.sId}/brief.dustdoc`;
+    const storagePath = `w/${workspace.sId}/conversations/${conversation.sId}/files/brief.dustdoc`;
+    const original = importDocumentMarkdown("# Brief");
+    fileStorageMock.setObject(storagePath, JSON.stringify(original));
+    const url = `/api/w/${workspace.sId}/files/path/${canonicalPath}?document=1`;
+    const response = await honoApp.request(url);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toContain("no-store");
+    const snapshot = await response.json();
+    expect(snapshot).toMatchObject({
+      canonicalPath,
+      canEdit: true,
+      document: original,
+    });
+
+    const source = JSON.stringify(importDocumentMarkdown("# Updated"));
+    const save = await honoApp.request(url, {
+      method: "PUT",
+      headers: { "If-Match": `"${snapshot.revision}"` },
+      body: source,
+    });
+    expect(save.status).toBe(200);
+    expect((await save.json()).revision).not.toBe(snapshot.revision);
+    const stale = await honoApp.request(url, {
+      method: "PUT",
+      headers: { "If-Match": `"${snapshot.revision}"` },
+      body: JSON.stringify(original),
+    });
+    expect(stale.status).toBe(409);
+    expect(fileStorageMock.getObject(storagePath)).toBe(source);
+
+    const noRevision = await honoApp.request(url, {
+      method: "PUT",
+      body: source,
+    });
+    expect(noRevision.status).toBe(400);
+    const invalid = await honoApp.request(url, {
+      method: "PUT",
+      headers: { "If-Match": `"${snapshot.revision}"` },
+      body: "{unfinished",
+    });
+    expect(invalid.status).toBe(422);
+    expect(fileStorageMock.getObject(storagePath)).toBe(source);
+  });
+
+  it("infers a sandbox-created document from its filename", async () => {
+    const { workspace, conversation } = await setup();
+    const canonicalPath = `conversation-${conversation.sId}/brief.dustdoc`;
+    setExistingFiles(["/brief.dustdoc"], {
+      contentType: "application/octet-stream",
+      size: "42",
+    });
+    const response = await request(workspace, canonicalPath, {
+      method: "HEAD",
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe(
+      "application/vnd.dust.document+json"
+    );
+    expect(response.headers.get(DUST_FILE_ID_HEADER)).toBeNull();
   });
 });
