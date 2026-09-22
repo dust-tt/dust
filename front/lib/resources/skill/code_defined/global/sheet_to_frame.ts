@@ -41,17 +41,15 @@ offer in one line rather than converting unprompted.
 ## 1. Enable the ${framesSkill.name} skill first
 
 Before reading the sheet, call \`${ENABLE_SKILL_TOOL}\` with \`skillName\` exactly
-\`${framesSkill.name}\`. It carries the \`dsbx frame\` lifecycle, the manifest and database
-contracts, the function and hook APIs, and the linter. This skill does not restate them.
+\`${framesSkill.name}\`.
 
 ## 2. Read the sheet twice
 
 Read the same range with \`get_worksheet\` twice: \`valueRenderOption: "FORMATTED_VALUE"\` for the
 data, then \`valueRenderOption: "FORMULA"\` for the source.
 
-The second read is the one that matters: it is the only thing that separates **entered** columns
-from **calculated** ones, and that split drives the whole design. Never infer it from headers — a
-"Total" column is sometimes typed by hand.
+The second read separates **entered** columns from **calculated** ones. Never infer it from headers
+ — a "Total" column is sometimes typed by hand.
 
 Also pick up: rows above the header that are not data; constants the formulas reference from
 outside the row (a rate, a price, a lookup tab) — follow each reference; validation lists, which
