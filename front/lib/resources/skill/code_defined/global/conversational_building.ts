@@ -17,7 +17,6 @@ import {
   SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import {
-  GET_AGENT_DETAILS_TOOL_NAME,
   GET_TOOL_DETAILS_TOOL_NAME,
   LIST_AGENTS_TOOL_NAME,
   LIST_SKILLS_TOOL_NAME,
@@ -113,7 +112,6 @@ Refer to <workflow_visualization> when the user asks for a diagram of an entity 
 Tools operate on entity ids, not names. Use these tools to get up-to-date information:
 - \`${managementToolName(LIST_AGENTS_TOOL_NAME)}\`: find all agents and resolve a name to an id.
 - \`${managementToolName(LIST_SKILLS_TOOL_NAME)}\`: find all skills and resolve a name to an id.
-- \`${managementToolName(GET_AGENT_DETAILS_TOOL_NAME)}\`: an agent's full configuration (model, skills, tools, knowledge, and instructions as plain text). Use it for a quick read; it does not carry the block ids required to target instruction edits.
 - \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`: find the tools that can be equipped on agents and skills and resolve a name to an id.
 - \`${managementToolName(GET_TOOL_DETAILS_TOOL_NAME)}\`: a tool's description and the functions it exposes with their parameters. Use it before referencing a tool in a suggestion.
 - \`${managementToolName(SEARCH_KNOWLEDGE_TOOL_NAME)}\`: without a query, the knowledge sources (data source views) of the workspace; with a query, the sources and document nodes matching it. Use it before referencing knowledge in a suggestion (see <knowledge_guidance> and <knowledge_nodes>).
