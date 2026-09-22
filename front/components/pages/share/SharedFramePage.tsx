@@ -2,6 +2,7 @@ import { PublicInteractiveContentContainer } from "@app/components/assistant/con
 import Custom404 from "@app/components/pages/Custom404";
 import CustomErrorPage from "@app/components/pages/CustomErrorPage";
 import { EmailVerificationFlow } from "@app/components/pages/share/EmailVerificationFlow";
+import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import config from "@app/lib/api/config";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
@@ -24,6 +25,11 @@ function buildLoginUrl() {
   return `${config.getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(returnTo)}`;
 }
 
+/**
+ * @cc [owner:flvndvd,label:react] shared-frame-theme-context
+ * Shared Frame content MUST have theme context even without the authenticated app layout,
+ * resolving the viewer's saved theme or system preference.
+ */
 export function SharedFramePage() {
   const token = usePathParam("token");
   const posthog = usePostHog();
@@ -219,16 +225,18 @@ export function SharedFramePage() {
   }
 
   return (
-    <div className="flex h-dvh w-full">
-      <PublicInteractiveContentContainer
-        shareToken={token}
-        title={shareMetadata.title}
-        workspaceId={shareMetadata.workspaceId}
-        vizUrl={shareMetadata.vizUrl}
-        logoUrl={shareMetadata.logoUrl}
-        showSignUpCta={shareMetadata.showSignUpCta}
-        hideHeader={hideHeader}
-      />
-    </div>
+    <ThemeProvider>
+      <div className="flex h-dvh w-full">
+        <PublicInteractiveContentContainer
+          shareToken={token}
+          title={shareMetadata.title}
+          workspaceId={shareMetadata.workspaceId}
+          vizUrl={shareMetadata.vizUrl}
+          logoUrl={shareMetadata.logoUrl}
+          showSignUpCta={shareMetadata.showSignUpCta}
+          hideHeader={hideHeader}
+        />
+      </div>
+    </ThemeProvider>
   );
 }
