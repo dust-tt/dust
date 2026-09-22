@@ -1,6 +1,9 @@
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { isMCPApproveExecutionEvent } from "@app/lib/actions/mcp";
-import { setUserAlwaysApprovedTool } from "@app/lib/actions/tool_status";
+import {
+  extractArgRequiringApprovalValues,
+  setUserAlwaysApprovedTool,
+} from "@app/lib/actions/tool_status";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -33,6 +36,14 @@ class SandboxFunctionActionValidationError extends Error {
  * `running` and launches its execution workflow (approved), or to `denied` (rejected), which the
  * in-sandbox poll surfaces as a 403 rejection. The blocked action was created without a workflow,
  * so approval performs the first launch.
+ */
+/**
+ * @cc [owner:davidebbo,label:product] sandbox-always-approve-persists-low-and-medium
+ * An `always_approved` decision MUST persist a `UserToolApproval` for every stake whose approval
+ * card offers the "Always allow" button — `low` (keyed on server + tool) and `medium` (keyed on
+ * server + tool + the values of `argumentsRequiringApproval`) — using the same keying as the
+ * conversation flavor in `validateActions`. Persisting only a subset silently downgrades the
+ * button to a one-time approval and re-prompts the user on every later call.
  */
 export async function validateSandboxFunctionAction(
   auth: Authenticator,
@@ -130,18 +141,34 @@ export async function validateSandboxFunctionAction(
   }
 
   const user = auth.user();
-  if (
-    approvalState === "always_approved" &&
-    user &&
-    // Low-stake approvals are recorded globally per (server, tool), same keying as the
-    // conversation flavor. Medium-stake records are keyed on an agent, which a sandbox function
-    // has none of: treated as a one-time approval.
-    action.toolConfiguration.permission === "low"
-  ) {
-    await setUserAlwaysApprovedTool(auth, {
-      mcpServerId: action.toolConfiguration.toolServerId,
-      functionCallName: action.toolConfiguration.name,
-    });
+  if (approvalState === "always_approved" && user) {
+    // Same keying as the conversation flavor: a low-stake approval is recorded globally per
+    // (server, tool), a medium-stake one per (server, tool, approval-argument values). Neither
+    // carries an agent, so a sandbox function records exactly what a conversation would.
+    // `never_ask` needs no record and `high` is never savable.
+    switch (action.toolConfiguration.permission) {
+      case "low":
+        await setUserAlwaysApprovedTool(auth, {
+          mcpServerId: action.toolConfiguration.toolServerId,
+          functionCallName: action.toolConfiguration.name,
+        });
+        break;
+      case "medium":
+        await user.createToolApproval(auth, {
+          mcpServerId: action.toolConfiguration.toolServerId,
+          toolName: action.toolConfiguration.name,
+          argsAndValues: extractArgRequiringApprovalValues(
+            action.toolConfiguration.argumentsRequiringApproval ?? [],
+            action.inputs
+          ),
+        });
+        break;
+      case "never_ask":
+      case "high":
+        break;
+      default:
+        assertNever(action.toolConfiguration.permission);
+    }
   }
 
   // Same action as the conversation flavor, with frame function identifiers standing in for the

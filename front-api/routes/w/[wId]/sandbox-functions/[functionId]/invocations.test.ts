@@ -255,6 +255,8 @@ async function setupBlockedAction({
   blockedStatus = "blocked_validation_required",
   invocationOwnedByOtherMember = false,
   invocationOwnerless = false,
+  inputs,
+  argumentsRequiringApproval,
 }: {
   permission?: MCPToolStakeLevelType;
   blockedStatus?:
@@ -262,6 +264,8 @@ async function setupBlockedAction({
     | "blocked_authentication_required";
   invocationOwnedByOtherMember?: boolean;
   invocationOwnerless?: boolean;
+  inputs?: Record<string, unknown>;
+  argumentsRequiringApproval?: string[];
 } = {}) {
   const { workspace, sandboxFunction, adminAuth, callerAuth, space, frame } =
     await setupFunctionForBlockedAction();
@@ -302,6 +306,8 @@ async function setupBlockedAction({
     invocation,
     mcpServerView: view,
     permission,
+    inputs,
+    argumentsRequiringApproval,
   });
   const [blockedCount] = await action.updateStatusFromExpected(adminAuth, {
     status: blockedStatus,
@@ -316,6 +322,7 @@ async function setupBlockedAction({
     action,
     view,
     adminAuth,
+    callerAuth,
     frame,
   };
 }
@@ -745,6 +752,71 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations/:invo
         functionCallName: "math_operation",
       }
     );
+  });
+
+  it("records an always-approve for medium-stake tools with no approval arguments", async () => {
+    const { workspace, sandboxFunction, invocation, action, view, callerAuth } =
+      await setupBlockedAction({ permission: "medium" });
+    vi.spyOn(getRedisHybridManager(), "removeEvent").mockResolvedValue(
+      undefined
+    );
+
+    const response = await postValidate({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+      invocationId: invocation.sId,
+      actionId: action.sId,
+      body: { approved: "always_approved" },
+    });
+
+    expect(response.status).toBe(200);
+    // A medium tool declaring no approval arguments records an empty argument set, which every
+    // later call matches: the approval is permanent, same as the conversation flavor.
+    await expect(
+      callerAuth.getNonNullableUser().hasApprovedTool(callerAuth, {
+        mcpServerId: view.mcpServerId,
+        toolName: "math_operation",
+        argsAndValues: {},
+      })
+    ).resolves.toBe(true);
+  });
+
+  it("scopes a medium-stake always-approve to the approval argument values", async () => {
+    const { workspace, sandboxFunction, invocation, action, view, callerAuth } =
+      await setupBlockedAction({
+        permission: "medium",
+        inputs: { expression: "2+2", channel: "general" },
+        argumentsRequiringApproval: ["channel"],
+      });
+    vi.spyOn(getRedisHybridManager(), "removeEvent").mockResolvedValue(
+      undefined
+    );
+
+    const response = await postValidate({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: sandboxFunction.sId,
+      invocationId: invocation.sId,
+      actionId: action.sId,
+      body: { approved: "always_approved" },
+    });
+
+    expect(response.status).toBe(200);
+    const user = callerAuth.getNonNullableUser();
+    await expect(
+      user.hasApprovedTool(callerAuth, {
+        mcpServerId: view.mcpServerId,
+        toolName: "math_operation",
+        argsAndValues: { channel: "general" },
+      })
+    ).resolves.toBe(true);
+    // Another value for the same argument still requires a fresh approval.
+    await expect(
+      user.hasApprovedTool(callerAuth, {
+        mcpServerId: view.mcpServerId,
+        toolName: "math_operation",
+        argsAndValues: { channel: "random" },
+      })
+    ).resolves.toBe(false);
   });
 
   it("returns action_not_blocked on a second validation", async () => {

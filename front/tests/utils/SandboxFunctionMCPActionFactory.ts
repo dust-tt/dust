@@ -16,6 +16,7 @@ export class SandboxFunctionMCPActionFactory {
       inputs = { expression: "2+2" },
       status = "running",
       permission = "never_ask",
+      argumentsRequiringApproval,
     }: {
       invocation: SandboxFunctionInvocationResource;
       mcpServerView: MCPServerViewResource;
@@ -23,6 +24,7 @@ export class SandboxFunctionMCPActionFactory {
       inputs?: Record<string, unknown>;
       status?: "running" | "blocked_validation_required";
       permission?: MCPToolStakeLevelType;
+      argumentsRequiringApproval?: string[];
     }
   ): Promise<SandboxFunctionMCPActionResource> {
     const serverName = mcpServerView.toJSON().server.name;
@@ -50,6 +52,7 @@ export class SandboxFunctionMCPActionFactory {
       permission,
       toolServerId: mcpServerView.mcpServerId,
       retryPolicy: "no_retry",
+      argumentsRequiringApproval,
     };
 
     return SandboxFunctionMCPActionResource.makeNew(auth, {
