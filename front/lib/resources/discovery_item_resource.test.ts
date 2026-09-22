@@ -60,8 +60,8 @@ describe("DiscoveryItemResource", () => {
     });
 
     const listed = await DiscoveryItemResource.listPinnedForAuth(auth);
-    expect(listed.map((item) => item.position)).toEqual([0, 1, 2]);
-    expect(listed.map((item) => item.itemId)).toEqual([
+    expect(listed.map(({ pin }) => pin.position)).toEqual([0, 1, 2]);
+    expect(listed.map(({ pin }) => pin.itemId)).toEqual([
       agentAId,
       agentBId,
       skillId,
@@ -86,7 +86,7 @@ describe("DiscoveryItemResource", () => {
     });
 
     const listed = await DiscoveryItemResource.listPinnedForAuth(auth);
-    expect(listed.map((item) => item.itemId)).toEqual([
+    expect(listed.map(({ pin }) => pin.itemId)).toEqual([
       replacementSkill.sId,
       skillId,
     ]);
@@ -112,7 +112,7 @@ describe("DiscoveryItemResource", () => {
     expect(removed.isOk() && removed.value).toBe(1);
 
     const listed = await DiscoveryItemResource.listPinnedForAuth(auth);
-    expect(listed.map((item) => [item.position, item.itemId])).toEqual([
+    expect(listed.map(({ pin }) => [pin.position, pin.itemId])).toEqual([
       [2, agentAId],
     ]);
   });
@@ -130,7 +130,7 @@ describe("DiscoveryItemResource", () => {
     expect(rejected.isErr()).toBe(true);
 
     const listed = await DiscoveryItemResource.listPinnedForAuth(auth);
-    expect(listed.map((item) => item.itemId)).toEqual([agentAId]);
+    expect(listed.map(({ pin }) => pin.itemId)).toEqual([agentAId]);
   });
 
   it("lists pins across the authenticated groups with the global group first", async () => {
@@ -151,12 +151,12 @@ describe("DiscoveryItemResource", () => {
     });
 
     const listed = await DiscoveryItemResource.listPinnedForAuth(auth);
-    expect(listed.map((item) => item.itemId)).toEqual([agentAId, skillId]);
+    expect(listed.map(({ pin }) => pin.itemId)).toEqual([agentAId, skillId]);
 
     const groupPins = await DiscoveryItemResource.listPinnedForGroup(auth, {
       groupModelId: group.id,
     });
-    expect(groupPins.map((item) => item.itemId)).toEqual([skillId]);
+    expect(groupPins.map(({ pin }) => pin.itemId)).toEqual([skillId]);
   });
 
   it("omits archived targets from every list operation", async () => {
@@ -184,8 +184,8 @@ describe("DiscoveryItemResource", () => {
       auth,
       { groupModelId }
     );
-    expect(listedForAuth.map((item) => item.itemId)).toEqual([agentAId]);
-    expect(listedForGroup.map((item) => item.itemId)).toEqual([agentAId]);
+    expect(listedForAuth.map(({ pin }) => pin.itemId)).toEqual([agentAId]);
+    expect(listedForGroup.map(({ pin }) => pin.itemId)).toEqual([agentAId]);
   });
 
   it("rejects inactive targets when setting a pin", async () => {
@@ -262,8 +262,8 @@ describe("DiscoveryItemResource", () => {
       regularUserAuth,
       { groupModelId }
     );
-    expect(listedForAuth.map((item) => item.itemId)).toEqual([agentAId]);
-    expect(listedForGroup.map((item) => item.itemId)).toEqual([agentAId]);
+    expect(listedForAuth.map(({ pin }) => pin.itemId)).toEqual([agentAId]);
+    expect(listedForGroup.map(({ pin }) => pin.itemId)).toEqual([agentAId]);
   });
 
   it("rejects pin mutations from workspace managers", async () => {

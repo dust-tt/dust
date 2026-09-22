@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { GroupPinnedItemType } from "@app/lib/resources/storage/models/group_pinned_items";
 import {
@@ -12,9 +13,11 @@ import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import type { DiscoveryItemType } from "@app/types/api/discovery";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -25,6 +28,154 @@ export type PinnedDiscoveryItemInput = {
   itemId: string;
   position: number;
 };
+
+type AccessibleDiscoveryTarget<
+  T extends Pick<PinnedDiscoveryItemInput, "type" | "itemId">,
+> = {
+  type: GroupPinnedItemType;
+  pin: T;
+  target: AgentResource | SkillResource;
+  withPin: (pin: DiscoveryItemResource) => ResolvedDiscoveryItem;
+};
+
+export type ResolvedDiscoveryItem = {
+  type: GroupPinnedItemType;
+  pin: DiscoveryItemResource;
+  target: AgentResource | SkillResource;
+  toJSON: () => DiscoveryItemType;
+};
+
+const discoveryTargets: Record<
+  GroupPinnedItemType,
+  {
+    resolve: <T extends Pick<PinnedDiscoveryItemInput, "type" | "itemId">>(
+      auth: Authenticator,
+      indexedPins: Array<{ index: number; pin: T }>
+    ) => Promise<
+      Array<{ index: number; resolved: AccessibleDiscoveryTarget<T> }>
+    >;
+  }
+> = {
+  agent: {
+    async resolve(auth, indexedPins) {
+      const agents = await AgentResource.fetchByIds(
+        auth,
+        indexedPins.map(({ pin }) => pin.itemId)
+      );
+      const agentsById = new Map(
+        agents
+          .filter(
+            (agent) => agent.status === "active" && auth.can("read", agent)
+          )
+          .map((agent) => [agent.sId, agent])
+      );
+
+      return removeNulls(
+        indexedPins.map(({ index, pin }) => {
+          const target = agentsById.get(pin.itemId);
+          if (!target) {
+            return null;
+          }
+          return {
+            index,
+            resolved: {
+              type: "agent",
+              pin,
+              target,
+              withPin: (persisted) => agentDiscoveryItem(persisted, target),
+            },
+          };
+        })
+      );
+    },
+  },
+  skill: {
+    async resolve(auth, indexedPins) {
+      const skills = await SkillResource.fetchByIds(
+        auth,
+        indexedPins.map(({ pin }) => pin.itemId),
+        {
+          onlyActive: true,
+          permissionFiltering: "strict",
+          withFileAttachments: false,
+          withInstructions: false,
+          withTools: false,
+        }
+      );
+      const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
+
+      return removeNulls(
+        indexedPins.map(({ index, pin }) => {
+          const target = skillsById.get(pin.itemId);
+          if (!target) {
+            return null;
+          }
+          return {
+            index,
+            resolved: {
+              type: "skill",
+              pin,
+              target,
+              withPin: (persisted) => skillDiscoveryItem(persisted, target),
+            },
+          };
+        })
+      );
+    },
+  },
+};
+
+function discoveryPinJSON(pin: DiscoveryItemResource) {
+  return {
+    groupId: GroupResource.modelIdToSId({
+      id: pin.groupId,
+      workspaceId: pin.workspaceId,
+    }),
+    position: pin.position,
+  };
+}
+
+function agentDiscoveryItem(
+  pin: DiscoveryItemResource,
+  target: AgentResource
+): ResolvedDiscoveryItem {
+  return {
+    type: "agent",
+    pin,
+    target,
+    toJSON: () => ({
+      type: "agent",
+      pin: discoveryPinJSON(pin),
+      target: {
+        sId: target.sId,
+        name: target.name,
+        description: target.description,
+        pictureUrl: target.pictureUrl,
+      },
+    }),
+  };
+}
+
+function skillDiscoveryItem(
+  pin: DiscoveryItemResource,
+  target: SkillResource
+): ResolvedDiscoveryItem {
+  return {
+    type: "skill",
+    pin,
+    target,
+    toJSON: () => ({
+      type: "skill",
+      pin: discoveryPinJSON(pin),
+      target: {
+        sId: target.sId,
+        name: target.name,
+        description: target.userFacingDescription,
+        icon: target.icon ?? null,
+      },
+    }),
+  };
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DiscoveryItemResource
@@ -78,38 +229,31 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
    * Admin pin writes MUST resolve an active, readable target through the target Resource's normal
    * permission checks.
    */
-  private static async filterAccessibleTargets<
+  private static async resolveAccessibleTargets<
     T extends Pick<PinnedDiscoveryItemInput, "type" | "itemId">,
-  >(auth: Authenticator, items: T[]): Promise<T[]> {
-    const agentIds = items
-      .filter((item) => item.type === "agent")
-      .map((item) => item.itemId);
-    const skillIds = items
-      .filter((item) => item.type === "skill")
-      .map((item) => item.itemId);
+  >(
+    auth: Authenticator,
+    items: T[]
+  ): Promise<Array<AccessibleDiscoveryTarget<T>>> {
+    const indexedPins = items.map((pin, index) => ({ index, pin }));
+    const resolved = (
+      await Promise.all(
+        GROUP_PINNED_ITEM_TYPES.map((type) =>
+          discoveryTargets[type].resolve(
+            auth,
+            indexedPins.filter(({ pin }) => pin.type === type)
+          )
+        )
+      )
+    ).flat();
 
-    const [agents, skills] = await Promise.all([
-      AgentResource.fetchByIds(auth, agentIds),
-      SkillResource.fetchByIds(auth, skillIds, {
-        onlyActive: true,
-        permissionFiltering: "strict",
-        withFileAttachments: false,
-        withInstructions: false,
-        withTools: false,
-      }),
-    ]);
-    const resolvedAgentIds = new Set(
-      agents
-        .filter((agent) => agent.status === "active" && auth.can("read", agent))
-        .map((agent) => agent.sId)
-    );
-    const resolvedSkillIds = new Set(skills.map((skill) => skill.sId));
+    return resolved
+      .sort((a, b) => a.index - b.index)
+      .map(({ resolved: item }) => item);
+  }
 
-    return items.filter((item) =>
-      item.type === "agent"
-        ? resolvedAgentIds.has(item.itemId)
-        : resolvedSkillIds.has(item.itemId)
-    );
+  static toJSON(item: ResolvedDiscoveryItem): DiscoveryItemType {
+    return item.toJSON();
   }
 
   /**
@@ -119,13 +263,15 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
    */
   static async listPinnedForAuth(
     auth: Authenticator
-  ): Promise<DiscoveryItemResource[]> {
+  ): Promise<ResolvedDiscoveryItem[]> {
     const groupModelIds = auth.groupModelIds();
     const [items, globalGroupModelId] = await Promise.all([
       this.baseFetch(auth, { groupModelIds }),
       auth.getGlobalGroupModelId(),
     ]);
-    const rows = await this.filterAccessibleTargets(auth, items);
+    const rows = (await this.resolveAccessibleTargets(auth, items)).map(
+      (item) => item.withPin(item.pin)
+    );
     const orderedGroupModelIds = [
       ...(globalGroupModelId !== null &&
       groupModelIds.includes(globalGroupModelId)
@@ -141,9 +287,9 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
 
     return rows.sort(
       (a, b) =>
-        a.position - b.position ||
-        (groupRank.get(a.groupId) ?? Number.MAX_SAFE_INTEGER) -
-          (groupRank.get(b.groupId) ?? Number.MAX_SAFE_INTEGER)
+        a.pin.position - b.pin.position ||
+        (groupRank.get(a.pin.groupId) ?? Number.MAX_SAFE_INTEGER) -
+          (groupRank.get(b.pin.groupId) ?? Number.MAX_SAFE_INTEGER)
     );
   }
 
@@ -162,7 +308,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       groupModelId: ModelId;
       transaction?: Transaction;
     }
-  ): Promise<DiscoveryItemResource[]> {
+  ): Promise<ResolvedDiscoveryItem[]> {
     if (!auth.isAdmin() && !auth.groupModelIds().includes(groupModelId)) {
       return [];
     }
@@ -171,7 +317,9 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       groupModelIds: [groupModelId],
       transaction,
     });
-    return this.filterAccessibleTargets(auth, items);
+    return (await this.resolveAccessibleTargets(auth, items)).map((item) =>
+      item.withPin(item.pin)
+    );
   }
 
   static async deleteAllForItem(
@@ -221,7 +369,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     }
   ): Promise<
     Result<
-      DiscoveryItemResource,
+      ResolvedDiscoveryItem,
       DustError<"invalid_request_error" | "group_not_found" | "unauthorized">
     >
   > {
@@ -233,7 +381,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       return unauthorizedPinMutation();
     }
 
-    const [resolvedItem] = await this.filterAccessibleTargets(auth, [item]);
+    const [resolvedItem] = await this.resolveAccessibleTargets(auth, [item]);
     if (!resolvedItem) {
       return new Err(
         new DustError(
@@ -282,7 +430,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
         },
         { transaction: t }
       );
-      return new Ok(new this(this.model, row.get()));
+      return new Ok(resolvedItem.withPin(new this(this.model, row.get())));
     }, transaction);
   }
 
