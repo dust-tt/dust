@@ -4,7 +4,7 @@
 
 The default V4 theme is imported with `theme(inline)` so its values compile directly into utilities, avoiding repeated variable-color fallback rules across the broad safelist. Overriding default theme variables at runtime will not retheme those utilities. Viz's configured semantic colors still reference its live light/dark variables.
 
-`tailwind-v3-safelist.css` retains the 151,563 candidates from the previous V3 build because Frame code arrives at runtime. V4 generates the candidates it recognizes, together with utilities found in Viz's local components. This is not an exhaustive catalog of V4 utilities. Frame instructions continue to require predefined utilities and the `style` prop for exact values.
+`tailwind-v3-safelist.css` retains the 151,772 candidates from the previous V3 build because Frame code arrives at runtime. That includes the `sm:`, `md:`, and `lg:` expansions the V3 config safelisted for display and text-size utilities, which local components do not exercise. V4 generates the candidates it recognizes, together with utilities found in Viz's local components. This is not an exhaustive catalog of V4 utilities. Frame instructions continue to require predefined utilities and the `style` prop for exact values.
 
 Every production build compares the safelist with class selectors in the actual emitted CSS and writes `public/tailwind-coverage.json`. That generated report contains the missing classes, coverage counts, build ID, and stylesheet hashes. Run `npm run audit:tailwind --workspace viz` to regenerate it from an existing production build.
 
