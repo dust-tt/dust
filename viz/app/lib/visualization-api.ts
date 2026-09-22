@@ -1,8 +1,18 @@
-import type { UserIdentityState } from "@viz/app/types";
+import type {
+  UserIdentityState,
+  WriteFileParams,
+  WriteFileResult,
+} from "@viz/app/types";
 import type {
   SupportedEventType,
   SupportedMessage,
 } from "@viz/app/types/messages";
+
+export interface FileSnapshot {
+  file: File;
+  revision: string | null;
+  canWrite: boolean;
+}
 
 /**
  * Data API - handles data fetching operations.
@@ -23,6 +33,10 @@ export interface VisualizationDataAPI {
    * Fetch a file by ID.
    */
   fetchFile(fileId: string): Promise<File | null>;
+
+  readFile(path: string): Promise<FileSnapshot | null>;
+
+  writeFile(params: WriteFileParams): Promise<WriteFileResult>;
 
   /**
    * Fetch visualization code.

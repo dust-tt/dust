@@ -704,6 +704,13 @@ function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
 }
 
 export const USER_IDENTITY_RPC_TIMEOUT_MS = 5_000;
+export const FILE_RPC_TIMEOUT_MS = 30_000;
+
+/**
+ * @cc [owner:flvndvd,label:error-handling] frame-rpc-rejections
+ * This transport MAY reject with a host-provided error or an Error when a request
+ * times out. readFile and writeFile MUST time out so an older host cannot leave a save pending.
+ */
 
 export function makeSendCrossDocumentMessage({
   identifier,
@@ -751,6 +758,12 @@ export function makeSendCrossDocumentMessage({
           cleanup();
           reject(new Error("Frame host did not provide user identity."));
         }, USER_IDENTITY_RPC_TIMEOUT_MS);
+      }
+      if (command === "readFile" || command === "writeFile") {
+        timeoutId = window.setTimeout(() => {
+          cleanup();
+          reject(new Error("Frame host did not respond to the file request."));
+        }, FILE_RPC_TIMEOUT_MS);
       }
       window.parent?.postMessage(
         {

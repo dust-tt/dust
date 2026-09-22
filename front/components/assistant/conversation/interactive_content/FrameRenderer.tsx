@@ -491,6 +491,11 @@ export function FrameRenderer({
               conversationId={conversation?.sId ?? null}
               spaceId={frameSpaceId ?? undefined}
               framePath={resolvedFramePath}
+              framePackageRoot={
+                framePath
+                  ? framePath.slice(0, framePath.lastIndexOf("/"))
+                  : packageRoot
+              }
               frameId={renderMode === "v2" ? fileId : undefined}
               isInDrawer={true}
               isEditable={isEditable}

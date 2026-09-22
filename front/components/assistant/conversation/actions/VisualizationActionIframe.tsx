@@ -14,6 +14,7 @@ import {
   resolvePackageRelativeToScopedPath,
 } from "@app/lib/api/frames/package_file_ref_paths";
 import { clientFetch } from "@app/lib/egress/client";
+import { useFrameFiles } from "@app/lib/swr/frame_files";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { FrameFunctionReferenceScope } from "@app/types/api/frame_function_reference";
@@ -42,10 +43,7 @@ import {
 import { isAPIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import {
-  assertNever,
-  assertNeverAndIgnore,
-} from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -67,7 +65,7 @@ import type { SetStateAction } from "react";
 import {
   forwardRef,
   useCallback,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -453,6 +451,8 @@ function useVisualizationDataHandler({
   conversationId,
   createSandboxFunctionInvocation,
   getFileBlob,
+  readFile,
+  writeFile,
   onEditText,
   functionReferenceScope,
   setCodeDrawerOpened,
@@ -472,6 +472,8 @@ function useVisualizationDataHandler({
     Result<PostSandboxFunctionInvocationResponseBody, SandboxFunctionCallError>
   >;
   getFileBlob: (fileId: string) => Promise<Blob | null>;
+  readFile: ReturnType<typeof useFrameFiles>["readFile"];
+  writeFile: ReturnType<typeof useFrameFiles>["writeFile"];
   functionReferenceScope: FrameFunctionReferenceScope;
   onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
@@ -508,7 +510,7 @@ function useVisualizationDataHandler({
     [visualization.identifier]
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const listener = async (event: MessageEvent) => {
       const { data } = event;
 
@@ -622,6 +624,22 @@ function useVisualizationDataHandler({
           sendResponseToIframe(data, { fileBlob }, event.source);
           break;
 
+        case "readFile":
+          sendResponseToIframe(
+            data,
+            await readFile(data.params.path),
+            event.source
+          );
+          break;
+
+        case "writeFile":
+          sendResponseToIframe(
+            data,
+            await writeFile(data.params),
+            event.source
+          );
+          break;
+
         case "getCodeToExecute":
           if (code) {
             sendResponseToIframe(data, { code }, event.source);
@@ -672,7 +690,7 @@ function useVisualizationDataHandler({
         }
 
         default:
-          assertNever(data);
+          assertNeverAndIgnore(data);
       }
     };
 
@@ -684,6 +702,8 @@ function useVisualizationDataHandler({
     createSandboxFunctionInvocation,
     downloadFileFromBlob,
     getFileBlob,
+    readFile,
+    writeFile,
     onEditText,
     functionReferenceScope,
     setContentHeight,
@@ -762,6 +782,8 @@ export interface VisualizationActionIframeProps {
    * paths and (for legacy Pod Frames) bare function names.
    */
   framePath?: string | null;
+  /** Canonical package directory for revision-aware file access. */
+  framePackageRoot?: string | null;
   /** Stable identity of a Frames v2 resource. Omit for legacy Frames and raw visualizations. */
   frameId?: string;
   isEditable?: boolean;
@@ -932,6 +954,15 @@ export const VisualizationActionIframe = forwardRef<
 
   const isPublic = visualization.accessToken !== undefined;
 
+  const { readFile, writeFile } = useFrameFiles({
+    workspaceId,
+    packageRoot: props.framePackageRoot,
+    canWrite:
+      !isPublic &&
+      Boolean(props.frameId) &&
+      runtimeAccess.userIdentity.isAuthenticated,
+  });
+
   const getFileBlob = useCallback(
     async (fileId: string) => {
       let url: string;
@@ -1065,6 +1096,8 @@ export const VisualizationActionIframe = forwardRef<
     conversationId,
     createSandboxFunctionInvocation,
     getFileBlob,
+    readFile,
+    writeFile,
     onEditText,
     functionReferenceScope,
     setCodeDrawerOpened,

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {
+  FILE_RPC_TIMEOUT_MS,
   makeSendCrossDocumentMessage,
   USER_IDENTITY_RPC_TIMEOUT_MS,
 } from "@viz/app/components/VisualizationWrapper";
@@ -143,5 +144,30 @@ describe("makeSendCrossDocumentMessage", () => {
       message: "Function returned HTTP 503.",
       status: 503,
     });
+  });
+});
+
+describe("file RPC timeout", () => {
+  it("settles a write and removes its listener when the host does not answer", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(window, "postMessage").mockImplementation(() => undefined);
+    const removeListener = vi.spyOn(window, "removeEventListener");
+    const sendMessage = makeSendCrossDocumentMessage({
+      identifier: "frame",
+      allowedOrigins: [ALLOWED_ORIGIN],
+    });
+    const expectation = expect(
+      sendMessage("writeFile", {
+        path: "./notes.json",
+        content: "{}",
+        revision: '\"123\"',
+      })
+    ).rejects.toThrow("Frame host did not respond to the file request.");
+    await vi.advanceTimersByTimeAsync(FILE_RPC_TIMEOUT_MS);
+    await expectation;
+    expect(removeListener).toHaveBeenCalledWith(
+      "message",
+      expect.any(Function)
+    );
   });
 });

@@ -1,9 +1,14 @@
 import { normalizeSandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
-import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
+import type {
+  FileSnapshot,
+  VisualizationDataAPI,
+} from "@viz/app/lib/visualization-api";
 import type {
   CommandResultMap,
   VisualizationRPCCommand,
   VisualizationRPCRequestMap,
+  WriteFileParams,
+  WriteFileResult,
 } from "@viz/app/types";
 
 /**
@@ -73,6 +78,41 @@ export class RPCDataAPI implements VisualizationDataAPI {
     } catch (error) {
       console.error(`Failed to fetch file ${fileId} via RPC:`, error);
       return null;
+    }
+  }
+
+  async readFile(path: string): Promise<FileSnapshot | null> {
+    let result: CommandResultMap["readFile"];
+    try {
+      result = await this.sendMessage("readFile", { path });
+    } catch {
+      return null;
+    }
+
+    if (!result.fileBlob) {
+      return null;
+    }
+
+    const revision = result.revision ?? null;
+    return {
+      file: new File([result.fileBlob], path, { type: result.fileBlob.type }),
+      revision,
+      canWrite: result.canWrite === true && revision !== null,
+    };
+  }
+
+  async writeFile(params: WriteFileParams): Promise<WriteFileResult> {
+    try {
+      return await this.sendMessage("writeFile", params);
+    } catch {
+      return {
+        success: false,
+        error: {
+          code: "save_failed",
+          message:
+            "Could not confirm the save. Reload the file before trying again.",
+        },
+      };
     }
   }
 

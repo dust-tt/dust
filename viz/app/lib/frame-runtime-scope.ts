@@ -6,6 +6,7 @@ import {
 } from "@viz/app/lib/frame-function-hooks";
 import type { FrameRuntimeImportName } from "@viz/app/lib/frame-runtime-imports";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
+import type { WriteFileParams } from "@viz/app/types";
 import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
 import * as dustSlideshowV2 from "@viz/components/dust/slideshow/v2";
 import * as shadcn from "@viz/components/ui";
@@ -53,6 +54,12 @@ export function createFrameRuntimeImports({
       captureScreenshot,
       triggerUserFileDownload,
       useFile,
+      readFile: (path: string) => dataAPI.readFile(path),
+      writeFile: (
+        path: string,
+        content: string,
+        options: Pick<WriteFileParams, "revision" | "contentType">
+      ) => dataAPI.writeFile({ ...options, path, content }),
       useFrameFunction,
       useFrameFunctionMutation,
       // Previously published Frames still import these names.

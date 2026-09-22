@@ -1,6 +1,7 @@
 import type { CacheDataAPI } from "@viz/app/lib/data-apis/cache-data-api";
 import type { RPCDataAPI } from "@viz/app/lib/data-apis/rpc-data-api";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
+import type { WriteFileParams } from "@viz/app/types";
 
 /**
  * Data API for public frames viewed by an authenticated workspace member:
@@ -22,6 +23,14 @@ export class HybridDataAPI implements VisualizationDataAPI {
 
   async fetchFile(fileId: string): Promise<File | null> {
     return this.cache.fetchFile(fileId);
+  }
+
+  async readFile(path: string) {
+    return this.cache.readFile(path);
+  }
+
+  async writeFile(params: WriteFileParams) {
+    return this.cache.writeFile(params);
   }
 
   async fetchCode(): Promise<string | null> {
