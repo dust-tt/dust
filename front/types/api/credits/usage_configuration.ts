@@ -18,7 +18,8 @@ export type CreditUsageConfigurationBody = {
   autoSeatUpgradeAvailable: boolean;
   // Whether enterprise-plan workspaces show the "Top up" button on the Usage page.
   topUpEnabled: boolean;
-  // Whether the credit spend checkpoint gate is active for the workspace.
+  // Whether the credit spend checkpoint gate is active for the workspace. On
+  // unless an admin turns it off.
   creditSpendCheckpointEnabled: boolean;
 };
 

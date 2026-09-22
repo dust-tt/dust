@@ -46,8 +46,9 @@ export async function getUsageConfiguration(
       DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
     autoSeatUpgradeEnabled:
       config?.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
-    creditSpendCheckpointEnabled:
-      config?.creditSpendCheckpointThresholdAwuCredits != null,
+    creditSpendCheckpointEnabled: config
+      ? config.creditSpendCheckpointThresholdAwuCredits !== null
+      : DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED,
     autoSeatUpgradeAvailable: subscription
       ? passesBillingGate(subscription)
       : false,
@@ -62,14 +63,14 @@ export async function getUsageConfiguration(
   };
 }
 
+// The column defaults to the fixed threshold, so the gate is on until an admin turns it off.
+const DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED = true;
+
 // Admins can only flip the checkpoint gate on/off, not pick the threshold: `true` fills the
 // column with the fixed threshold constant, `false` clears it back to NULL (off).
 function creditSpendCheckpointThresholdFromToggle(
-  enabled: boolean | undefined
-): number | null | undefined {
-  if (enabled === undefined) {
-    return undefined;
-  }
+  enabled: boolean
+): number | null {
   return enabled ? CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS : null;
 }
 
@@ -92,9 +93,11 @@ async function setConfigurationToggles(
       requireUpgradeRequestReason: toggles.requireUpgradeRequestReason,
       autoSeatUpgradeEnabled: toggles.autoSeatUpgradeEnabled,
       creditSpendCheckpointThresholdAwuCredits:
-        creditSpendCheckpointThresholdFromToggle(
-          toggles.creditSpendCheckpointEnabled
-        ),
+        toggles.creditSpendCheckpointEnabled === undefined
+          ? undefined
+          : creditSpendCheckpointThresholdFromToggle(
+              toggles.creditSpendCheckpointEnabled
+            ),
     });
   }
 
@@ -116,8 +119,9 @@ async function setConfigurationToggles(
       toggles.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
     creditSpendCheckpointThresholdAwuCredits:
       creditSpendCheckpointThresholdFromToggle(
-        toggles.creditSpendCheckpointEnabled
-      ) ?? null,
+        toggles.creditSpendCheckpointEnabled ??
+          DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED
+      ),
   });
   if (createResult.isErr()) {
     return new Err(createResult.error);
