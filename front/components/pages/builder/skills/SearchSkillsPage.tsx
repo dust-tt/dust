@@ -1,3 +1,5 @@
+import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
+import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillSearchTable } from "@app/components/skills/SkillSearchTable";
 import {
@@ -9,13 +11,11 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSearchSkills } from "@app/lib/swr/skill_configurations";
-import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SkillSearchFilters } from "@app/types/api/skills";
 import {
   Button,
   EmptyCTA,
   Page,
-  Plus,
   SearchInput,
   Spinner,
   Tabs,
@@ -140,6 +140,7 @@ export function SearchSkillsPage() {
   const { hasPermission } = useWorkspacePermissions();
   const [skillId, setSkillId] = useHashParam("skillId");
   const [searchTerm, setSearchTerm] = useState("");
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Skills");
 
@@ -149,6 +150,7 @@ export function SearchSkillsPage() {
         <Page.Header
           title="Manage Skills"
           description="Reusable packages of instructions and tools that agents can share."
+          noTopPadding
         />
         <div className="flex items-center gap-2">
           <label htmlFor="skill-search" className="sr-only">
@@ -163,10 +165,9 @@ export function SearchSkillsPage() {
             className="flex-1"
           />
           {hasPermission("create", "skill") && (
-            <Button
-              label="Create skill"
-              icon={Plus}
-              href={getSkillBuilderRoute(owner.sId, "new")}
+            <CreateSkillButton
+              owner={owner}
+              onImport={() => setIsImportDialogOpen(true)}
             />
           )}
         </div>
@@ -188,6 +189,12 @@ export function SearchSkillsPage() {
           ))}
         </Tabs>
       </div>
+      {isImportDialogOpen && (
+        <ImportSkillsDialog
+          owner={owner}
+          onClose={() => setIsImportDialogOpen(false)}
+        />
+      )}
       <SkillDetailsSheet
         owner={owner}
         user={user}
