@@ -37,7 +37,7 @@ app.get(
     const { aId } = ctx.req.valid("param");
 
     const found = await AppResource.fetchById(auth, aId);
-    if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
+    if (!found || found.space.sId !== space.sId || !auth.can("read", found)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -62,13 +62,13 @@ app.post(
     const { aId } = ctx.req.valid("param");
 
     const found = await AppResource.fetchById(auth, aId);
-    if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
+    if (!found || found.space.sId !== space.sId || !auth.can("read", found)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: { type: "app_not_found", message: "The app was not found." },
       });
     }
-    if (!found.canWrite(auth)) {
+    if (!auth.can("write", found)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -104,13 +104,13 @@ app.delete(
     const { aId } = ctx.req.valid("param");
 
     const found = await AppResource.fetchById(auth, aId);
-    if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
+    if (!found || found.space.sId !== space.sId || !auth.can("read", found)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: { type: "app_not_found", message: "The app was not found." },
       });
     }
-    if (!found.canWrite(auth)) {
+    if (!auth.can("write", found)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
