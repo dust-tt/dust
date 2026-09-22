@@ -81,6 +81,7 @@ import {
 } from "@app/types/api/frame_storage";
 import { CoreAPI } from "@app/types/core/core_api";
 import type {
+  AllSupportedFileContentType,
   AuthorizedFileAccessAllowlist,
   AuthorizedFileRef,
   ComputedAuthorizedFileAccess,
@@ -161,6 +162,23 @@ export type ShareFileResponseBody = {
   sharedAt: number;
   shareUrl: string;
   viewerFiles: ShareFrameViewerFile[];
+};
+
+export type ConvertToFrameV2ManifestParams = {
+  /** Byte length of the `manifest.json` this row now points at. */
+  fileSize: number;
+  /** GCS mount path, not a scoped one: `w/<wId>/conversations/<cId>/files/Sales/manifest.json`. */
+  mountFilePath: string;
+};
+
+/** The row fields a Frames v2 migration replaces, kept so it can be rolled back. */
+export type LegacyFrameIdentity = {
+  contentType: AllSupportedFileContentType;
+  fileName: string;
+  fileSize: number;
+  /** GCS mount path: `w/<wId>/conversations/<cId>/files/Sales.tsx`. */
+  mountFilePath: string | null;
+  useCaseMetadata: FileUseCaseMetadata | null;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -841,6 +859,53 @@ export class FileResource extends BaseResource<FileModel> {
     } catch (error) {
       return new Err(normalizeError(error));
     }
+  }
+
+  /**
+   * Point a legacy Frame row at the `manifest.json` of its migrated Frames v2 package, keeping
+   * its `sId` so share links, allowlist rows and message references survive. Returns the fields
+   * it replaced, for {@link restoreLegacyFrameIdentity} if the migration does not complete.
+   *
+   * Every column this writes is one a natively registered Frames v2 manifest carries. The
+   * Frame's name is not among them: it is the folder holding the manifest, per the
+   * `frame-name-is-the-source-folder` contract.
+   */
+  async convertToFrameV2Manifest({
+    fileSize,
+    mountFilePath,
+  }: ConvertToFrameV2ManifestParams): Promise<LegacyFrameIdentity> {
+    const previous: LegacyFrameIdentity = {
+      contentType: this.contentType,
+      fileName: this.fileName,
+      fileSize: this.fileSize,
+      mountFilePath: this.mountFilePath,
+      useCaseMetadata: this.useCaseMetadata,
+    };
+
+    // frameBundleRootPath and frameEntryRelPath are what route rendering and live edits through
+    // the legacy bundle; a v2 Frame is served from its publication instead.
+    const {
+      frameBundleRootPath: _unusedRoot,
+      frameEntryRelPath: _unusedEntry,
+      ...carriedMetadata
+    } = this.useCaseMetadata ?? {};
+
+    await this.update({
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize,
+      mountFilePath,
+      useCaseMetadata: carriedMetadata,
+    });
+
+    return previous;
+  }
+
+  /** Undo {@link convertToFrameV2Manifest} so a half-done migration leaves a working v1 Frame. */
+  async restoreLegacyFrameIdentity(
+    previous: LegacyFrameIdentity
+  ): Promise<void> {
+    await this.update(previous);
   }
 
   /**
