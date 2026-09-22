@@ -44,7 +44,7 @@ const useUrlHandler = (
 ) => {
   const replaceUrl = useCallback(
     async (pendingUrl: URLState, node: DataSourceViewContentNode) => {
-      if (!editor?.commands) {
+      if (!editor || editor.isDestroyed) {
         return false;
       }
 
@@ -53,7 +53,7 @@ const useUrlHandler = (
       // We defer the execution using a microtask
       return new Promise<boolean>((resolve) => {
         setTimeout(() => {
-          if (!editor?.commands) {
+          if (!editor || editor.isDestroyed) {
             resolve(false);
             return;
           }

@@ -146,7 +146,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
 
   // Sync external changes to the editor content.
   useEffect(() => {
-    if (!editor || descriptionField.value === undefined) {
+    if (!editor || editor.isDestroyed || descriptionField.value === undefined) {
       return;
     }
 
@@ -164,7 +164,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
 
   // Apply/exit diff mode for description.
   useEffect(() => {
-    if (!editor) {
+    if (!editor || editor.isDestroyed) {
       return;
     }
 

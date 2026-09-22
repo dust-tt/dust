@@ -519,7 +519,7 @@ export function SkillBuilderInstructionsEditor({
   }, [attachedKnowledgeField.ref, editor, instructionsField.ref]);
 
   const handleOpenInsertMenu = useCallback(() => {
-    if (!editor) {
+    if (!editor || editor.isDestroyed) {
       return;
     }
 
@@ -581,13 +581,17 @@ export function SkillBuilderInstructionsEditor({
   // Accepting the ProseMirror suggestion means we don't need to manipulate the HTML by hand again
   // as we already did it to create the suggestion in ProseMirror.
   useEffect(() => {
-    if (!editor) {
+    if (!editor || editor.isDestroyed) {
       setAcceptInstructionEdits(null);
       return;
     }
 
     // Wrap in arrow to avoid React treating the function as a state updater.
     setAcceptInstructionEdits(() => (suggestionId: string) => {
+      if (editor.isDestroyed) {
+        return;
+      }
+
       // Accept each edit of this suggestion via the PM command.
       for (let i = 0; ; i++) {
         const editId = `${suggestionId}:${i}`;
@@ -614,6 +618,7 @@ export function SkillBuilderInstructionsEditor({
   useEffect(() => {
     if (
       !editor ||
+      editor.isDestroyed ||
       !isContentReady ||
       isDiffMode ||
       initializedAttachedKnowledgeEditorRef.current === editor
@@ -632,7 +637,13 @@ export function SkillBuilderInstructionsEditor({
   }, [editor, isContentReady, isDiffMode, resetField]);
 
   useEffect(() => {
-    if (!editor || !isContentReady || isDiffMode || isMCPServerViewsLoading) {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !isContentReady ||
+      isDiffMode ||
+      isMCPServerViewsLoading
+    ) {
       return;
     }
 
@@ -705,6 +716,10 @@ export function SkillBuilderInstructionsEditor({
     // Scroll the editor to the first edit of the selected suggestion.
     if (selectedSuggestionId) {
       requestAnimationFrame(() => {
+        if (editor.isDestroyed) {
+          return;
+        }
+
         const firstEdit = editor.view.dom.querySelector(
           `[data-suggestion-id^="${selectedSuggestionId}:"]`
         );
@@ -756,7 +771,12 @@ export function SkillBuilderInstructionsEditor({
 
   // Sync external changes to the editor content
   useEffect(() => {
-    if (!editor || isDiffMode || !instructionsHtmlField.value) {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      isDiffMode ||
+      !instructionsHtmlField.value
+    ) {
       return;
     }
 

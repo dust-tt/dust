@@ -241,7 +241,11 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
       },
 
       focusEnd() {
-        editor?.commands.focus("end");
+        if (!editor || editor.isDestroyed) {
+          return;
+        }
+
+        editor.commands.focus("end");
       },
 
       isEmpty() {
@@ -284,20 +288,32 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
       },
 
       blur() {
-        return editor?.commands.blur();
+        if (!editor || editor.isDestroyed) {
+          return;
+        }
+
+        return editor.commands.blur();
       },
 
       clearEditor() {
-        return editor?.commands.clearContent();
+        if (!editor || editor.isDestroyed) {
+          return;
+        }
+
+        return editor.commands.clearContent();
       },
 
       setLoading(loading: boolean) {
-        if (loading) {
-          editor?.view.dom.classList.add("loading-text");
-        } else {
-          editor?.view.dom.classList.remove("loading-text");
+        if (!editor || editor.isDestroyed) {
+          return;
         }
-        return editor?.setEditable(!loading);
+
+        if (loading) {
+          editor.view.dom.classList.add("loading-text");
+        } else {
+          editor.view.dom.classList.remove("loading-text");
+        }
+        return editor.setEditable(!loading);
       },
     };
   }, [editor, isMobileViewport]);
@@ -713,16 +729,24 @@ const useCustomEditor = ({
             event.preventDefault();
 
             const clearEditor = () => {
+              if (editor.isDestroyed) {
+                return;
+              }
+
               editor.commands.clearContent();
             };
 
             const setLoading = (loading: boolean) => {
-              if (loading) {
-                editor?.view.dom.classList.add("loading-text");
-              } else {
-                editor?.view.dom.classList.remove("loading-text");
+              if (editor.isDestroyed) {
+                return;
               }
-              return editor?.setEditable(!loading);
+
+              if (loading) {
+                editor.view.dom.classList.add("loading-text");
+              } else {
+                editor.view.dom.classList.remove("loading-text");
+              }
+              return editor.setEditable(!loading);
             };
 
             onEnterKeyDown(
