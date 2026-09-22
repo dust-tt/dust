@@ -6,6 +6,11 @@ import { getAgentConfigurationForDetails } from "@app/lib/api/assistant/configur
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Ok } from "@app/types/shared/result";
 
+/**
+ * @cc [owner:avervaet,label:mcp;architecture] plain-text-instructions-only
+ * MUST return an agent's instructions as plain text only, never as HTML or with `data-block-id`
+ * attributes.
+ */
 export async function getAgentDetails(
   { agentId }: { agentId: string },
   { auth }: ToolHandlerExtra

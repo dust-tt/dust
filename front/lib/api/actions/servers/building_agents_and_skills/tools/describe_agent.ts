@@ -27,6 +27,12 @@ export async function describeAgent(
   return new Ok(agent);
 }
 
+/**
+ * @cc [owner:avervaet,label:mcp;architecture] block-annotated-instructions
+ * When the agent's instructions are block-structured, MUST return them as HTML whose blocks
+ * carry a `data-block-id` attribute, required to target block-level instruction edits. Falls
+ * back to plain text only when no block-structured instructions exist.
+ */
 export async function describeAgentHandler(
   args: DescribeAgentArgs,
   { auth }: ToolHandlerExtra
