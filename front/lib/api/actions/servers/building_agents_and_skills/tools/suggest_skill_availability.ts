@@ -42,7 +42,7 @@ export async function suggestSkillAvailability(
 
   const skill = skillResult.value;
 
-  const validation = await validateSkillAvailabilityChange(auth, skill, {
+  const validation = validateSkillAvailabilityChange(auth, skill, {
     availability,
   });
   if (validation.isErr()) {

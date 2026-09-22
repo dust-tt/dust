@@ -45,9 +45,9 @@ function requireInteractiveUser(
   return new Ok(user);
 }
 
-async function requireCreateSkillPermission(
+function requireCreateSkillPermission(
   auth: Authenticator
-): Promise<Result<UserResource, MCPError>> {
+): Result<UserResource, MCPError> {
   const user = auth.user();
   if (!user) {
     return new Err(
@@ -55,7 +55,7 @@ async function requireCreateSkillPermission(
     );
   }
 
-  if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+  if (!auth.hasWorkspacePermission("create", "skill")) {
     return new Err(new MCPError("Creating skills is restricted."));
   }
 
@@ -242,7 +242,7 @@ export async function createSkill(
     userFacingDescription,
   }: CreateSkillArgs
 ): Promise<Result<SkillResource, MCPError>> {
-  const user = await requireCreateSkillPermission(auth);
+  const user = requireCreateSkillPermission(auth);
   if (user.isErr()) {
     return new Err(user.error);
   }

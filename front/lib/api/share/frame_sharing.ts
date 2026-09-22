@@ -28,11 +28,11 @@ export interface FrameSharingState {
   canGrantDomains: boolean;
 }
 
-async function canGrantFrameDomains(
+function canGrantFrameDomains(
   auth: Authenticator,
   { membersOnly }: { membersOnly: boolean }
-): Promise<boolean> {
-  return !membersOnly && (await auth.hasWorkspacePermission("invite", "frame"));
+): boolean {
+  return !membersOnly && auth.hasWorkspacePermission("invite", "frame");
 }
 
 async function frameRequiresMembership(
@@ -64,7 +64,7 @@ export async function listFrameSharing(
       }
     }
   }
-  const canGrantDomains = await canGrantFrameDomains(auth, { membersOnly });
+  const canGrantDomains = canGrantFrameDomains(auth, { membersOnly });
   return {
     grants,
     viewers,
@@ -85,7 +85,7 @@ export async function addFrameSharingGrants(
 ): Promise<Result<FrameSharingState, DustError>> {
   if (domains.length > 0) {
     const membersOnly = await frameRequiresMembership(auth, file);
-    const canGrantDomains = await canGrantFrameDomains(auth, { membersOnly });
+    const canGrantDomains = canGrantFrameDomains(auth, { membersOnly });
     if (!canGrantDomains) {
       return new Err(
         new DustError(
@@ -183,7 +183,7 @@ export async function checkFrameShareScopePermission(
       )
     );
   }
-  if (!(await auth.hasWorkspacePermission("publish", "frame"))) {
+  if (!auth.hasWorkspacePermission("publish", "frame")) {
     return new Err(
       new DustError(
         "unauthorized",
@@ -215,7 +215,7 @@ export async function checkFrameEmailGrantPermission(
   const canInviteExternal =
     !externalSharingDisabledByPolicy &&
     !externalSharingDisabledByFunctions &&
-    (await auth.hasWorkspacePermission("invite", "frame"));
+    auth.hasWorkspacePermission("invite", "frame");
   if (canInviteExternal) {
     return new Ok(undefined);
   }

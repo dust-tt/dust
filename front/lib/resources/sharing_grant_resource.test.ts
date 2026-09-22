@@ -76,9 +76,7 @@ describe("SharingGrantResource", () => {
       member.sId,
       workspace.sId
     );
-    expect(await memberAuth.hasWorkspacePermission("invite", "frame")).toBe(
-      false
-    );
+    expect(memberAuth.hasWorkspacePermission("invite", "frame")).toBe(false);
     const grant = await SharingGrantFactory.create(authenticator, file, {
       kind: "domain",
       value: "example.com",

@@ -43,15 +43,13 @@ describe("Authenticator.hasWorkspacePermission", () => {
 
   it("returns true for admins unconditionally (no grant needed)", async () => {
     expect(adminAuth.isAdmin()).toBe(true);
-    expect(await adminAuth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(
-      true
-    );
+    expect(adminAuth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(true);
   });
 
   it("returns false for a non-admin without any grant", async () => {
     const auth = await memberAuthInGroup();
     expect(auth.isAdmin()).toBe(false);
-    expect(await auth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(false);
+    expect(auth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(false);
   });
 
   it("returns true when one of the caller's groups holds the -1 grant", async () => {
@@ -62,9 +60,9 @@ describe("Authenticator.hasWorkspacePermission", () => {
     });
     const auth = await memberAuthInGroup(group);
 
-    expect(await auth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(true);
+    expect(auth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(true);
     // A different verb on the same type is not granted.
-    expect(await auth.hasWorkspacePermission("publish", "agent")).toBe(false);
+    expect(auth.hasWorkspacePermission("publish", "agent")).toBe(false);
   });
 
   it("returns true for everybody when the global group holds the grant", async () => {
@@ -80,7 +78,7 @@ describe("Authenticator.hasWorkspacePermission", () => {
     });
     const auth = await memberAuthInGroup();
 
-    expect(await auth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(true);
+    expect(auth.hasWorkspacePermission(VERB, RESOURCE_TYPE)).toBe(true);
   });
 
   it("matches a wildcard grant against any capability", async () => {
@@ -92,15 +90,15 @@ describe("Authenticator.hasWorkspacePermission", () => {
     });
     const auth = await memberAuthInGroup(group);
 
-    expect(await auth.hasWorkspacePermission("admin", "billing")).toBe(true);
-    expect(await auth.hasWorkspacePermission("admin", "security")).toBe(true);
+    expect(auth.hasWorkspacePermission("admin", "billing")).toBe(true);
+    expect(auth.hasWorkspacePermission("admin", "security")).toBe(true);
   });
 
   it("rejects an invalid capability query, even for admins", async () => {
     // `create` is not a valid grant type on `billing`; a wildcard grant must not satisfy it.
-    await expect(
-      adminAuth.hasWorkspacePermission("create", "billing")
-    ).rejects.toThrow(/not allowed/);
+    expect(() => adminAuth.hasWorkspacePermission("create", "billing")).toThrow(
+      /not allowed/
+    );
   });
 });
 
@@ -226,9 +224,7 @@ describe("Authenticator.fromJSON", () => {
     expect(await restored.getWorkspacePermissions()).toEqual(
       await auth.getWorkspacePermissions()
     );
-    expect(await restored.hasWorkspacePermission("publish", "agent")).toBe(
-      true
-    );
+    expect(restored.hasWorkspacePermission("publish", "agent")).toBe(true);
   });
 });
 

@@ -1389,9 +1389,9 @@ describe("AgentResource", () => {
       const before = await AgentResource.fetchById(authenticator, agent.sId);
       assert(before?.isFull());
       expect(authenticator.can("write", before)).toBe(true);
-      expect(
-        await authenticator.hasWorkspacePermission("publish", "agent")
-      ).toBe(false);
+      expect(authenticator.hasWorkspacePermission("publish", "agent")).toBe(
+        false
+      );
 
       const protectedTag = await TagResource.makeNew(authenticator, {
         name: "reserved",

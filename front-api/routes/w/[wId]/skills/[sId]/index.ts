@@ -232,7 +232,7 @@ app.patch(
 
     let availabilityChange: SkillAvailabilityChange | null = null;
     if (requestedAvailability !== undefined) {
-      const availabilityValidation = await validateSkillAvailabilityChange(
+      const availabilityValidation = validateSkillAvailabilityChange(
         auth,
         skill,
         { availability: requestedAvailability }

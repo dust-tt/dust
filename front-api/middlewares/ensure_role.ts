@@ -73,7 +73,7 @@ export const ensureHasWorkspacePermission = (
   createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
     const auth = ctx.get("auth");
 
-    if (!(await auth.hasWorkspacePermission(verb, resourceType))) {
+    if (!auth.hasWorkspacePermission(verb, resourceType)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

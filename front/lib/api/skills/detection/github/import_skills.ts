@@ -61,7 +61,7 @@ export async function importSkillsFromGitHub(
     onConflict?: "error" | "skip";
   }
 ): Promise<Result<ImportSkillsResult, ImportSkillsFromGitHubError>> {
-  if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+  if (!auth.hasWorkspacePermission("create", "skill")) {
     return new Err({
       type: "unauthorized",
       message: "Creating skills is restricted.",

@@ -217,7 +217,7 @@ app.get(
       await SkillResource.listFavoritesForCurrentUser(auth);
     const favoriteSkillIds = new Set(favoriteSkills.map((skill) => skill.sId));
 
-    const canCreateSkill = await auth.hasWorkspacePermission("create", "skill");
+    const canCreateSkill = auth.hasWorkspacePermission("create", "skill");
 
     // Skills with editors-only availability (unpublished) are only listed for members of
     // their editor group. Suggestions are the exception: they are created with an empty
@@ -384,7 +384,7 @@ app.post(
     if (
       requestedAvailability !== undefined &&
       requestedAvailability !== "editors" &&
-      !(await auth.hasWorkspacePermission("publish", "skill"))
+      !auth.hasWorkspacePermission("publish", "skill")
     ) {
       return apiError(ctx, {
         status_code: 403,
@@ -397,7 +397,7 @@ app.post(
     }
     if (
       requestedAvailability === "users_and_agents" &&
-      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
+      !auth.hasWorkspacePermission("make_discoverable", "skill")
     ) {
       return apiError(ctx, {
         status_code: 403,

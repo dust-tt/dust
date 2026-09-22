@@ -349,7 +349,7 @@ async function buildActivationContext(
     parts.push(`The user's workspace Role is: ${role}`);
   }
 
-  if (await auth.hasWorkspacePermission("create", "skill")) {
+  if (auth.hasWorkspacePermission("create", "skill")) {
     parts.push("The user can create Skills in this workspace.");
   }
 

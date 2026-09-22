@@ -33,7 +33,7 @@ const app = workspaceApp();
 async function checkAccess(ctx: Context) {
   const auth = ctx.get("auth");
 
-  if (!(await auth.hasWorkspacePermission("admin", "security"))) {
+  if (!auth.hasWorkspacePermission("admin", "security")) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {

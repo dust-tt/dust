@@ -35,13 +35,11 @@ export interface SkillAvailabilityChange {
  * reads the `auth` and `skill` passed in, so callers MUST pass a freshly fetched skill and
  * authenticator and re-run this before applying a previously recorded change.
  */
-export async function validateSkillAvailabilityChange(
+export function validateSkillAvailabilityChange(
   auth: Authenticator,
   skill: SkillResource,
   { availability }: { availability: SkillAvailability }
-): Promise<
-  Result<SkillAvailabilityChange | null, SkillAvailabilityChangeError>
-> {
+): Result<SkillAvailabilityChange | null, SkillAvailabilityChangeError> {
   if (!skill.canAdministrate(auth)) {
     return new Err(
       new SkillAvailabilityChangeError(
@@ -64,7 +62,7 @@ export async function validateSkillAvailabilityChange(
     return new Ok(null);
   }
 
-  if (!(await auth.hasWorkspacePermission("publish", "skill"))) {
+  if (!auth.hasWorkspacePermission("publish", "skill")) {
     return new Err(
       new SkillAvailabilityChangeError(
         "publish_denied",
@@ -78,7 +76,7 @@ export async function validateSkillAvailabilityChange(
     skill.availability === "users_and_agents";
   if (
     involvesAutoDiscoverable &&
-    !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
+    !auth.hasWorkspacePermission("make_discoverable", "skill")
   ) {
     return new Err(
       new SkillAvailabilityChangeError(
