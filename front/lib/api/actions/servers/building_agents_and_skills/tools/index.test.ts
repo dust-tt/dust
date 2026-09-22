@@ -1446,6 +1446,26 @@ describe("building_agents_and_skills tools", () => {
 
       expectMcpError(result, "already exists");
     });
+
+    it("rejects a name containing spaces", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const result = await suggestName(authenticator, {
+        agentId: agent.sId,
+        name: "Incident Helper",
+      });
+
+      expectMcpError(result, "cannot contain spaces");
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agent.sId,
+          { kind: "name" }
+        );
+      expect(suggestions).toHaveLength(0);
+    });
   });
 
   describe(DESCRIBE_AGENT_TOOL_NAME, () => {

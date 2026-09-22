@@ -56,6 +56,15 @@ async function validateAgentNameChange(
     );
   }
 
+  if (/\s/.test(trimmedName)) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Agent name cannot contain spaces."
+      )
+    );
+  }
+
   if (trimmedName === agent.name) {
     return new Err(
       new DustError(
