@@ -5,6 +5,7 @@ import {
 } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
+import { DiscoverContainer } from "@app/components/assistant/conversation/discover/DiscoverContainer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
@@ -158,6 +159,9 @@ export function ConversationContainerVirtuoso({
     : null;
 
   const { isAgentsSectionVisible } = useAgentsSectionVisibility();
+  const AgentsSection = hasFeature("discovery_homepage")
+    ? DiscoverContainer
+    : AgentBrowserContainer;
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -417,7 +421,7 @@ export function ConversationContainerVirtuoso({
             </div>
           )}
           {isAgentsSectionVisible && (
-            <AgentBrowserContainer
+            <AgentsSection
               onAgentConfigurationClick={(agent) => {
                 setSelectedSingleAgent(toRichAgentMentionType(agent));
               }}
