@@ -229,6 +229,7 @@ function renderAgentMessage({
         triggeringUser={null}
         isOnboardingConversation={false}
         handleSubmit={async () => new Ok(undefined)}
+        onAgentMessageRetry={() => {}}
       />
     </FilePreviewProvider>
   );
