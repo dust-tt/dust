@@ -93,6 +93,7 @@ vi.mock(import("@app/lib/swr/mcp_servers"), () => ({
 vi.mock(import("@app/lib/swr/skill_configurations"), () => ({
   useSearchSkills: () => ({
     skills: [],
+    resolvedSearchTerm: "",
     hasMore: false,
     nextCursor: null,
     isSkillsError: false,

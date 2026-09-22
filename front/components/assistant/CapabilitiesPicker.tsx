@@ -241,8 +241,6 @@ export function CapabilitiesPicker({
       CAPABILITIES_SWR_OPTIONS
     );
 
-  const normalizedSearchText = searchText.trim().toLowerCase();
-
   const { availableMCPServers, isAvailableMCPServersLoading } =
     useAvailableMCPServers({
       owner,
@@ -259,7 +257,7 @@ export function CapabilitiesPicker({
     });
   const {
     skills: searchSkills,
-    isSkillsLoading: isSearchSkillsLoading,
+    resolvedSearchTerm,
     isSkillsError,
   } = useSearchSkills({
     owner,
@@ -267,14 +265,17 @@ export function CapabilitiesPicker({
     limit: MAX_RENDERED_CAPABILITY_ITEMS,
     disabled: !useSkillSearch || !isOpen,
   });
+  const normalizedSearchText = (
+    useSkillSearch ? (resolvedSearchTerm ?? "") : searchText
+  )
+    .trim()
+    .toLowerCase();
   const skills: CapabilityPickerSkill[] = useSkillSearch
     ? searchSkills
     : listedSkills;
-  const isSkillsLoading = useSkillSearch
-    ? isSearchSkillsLoading
-    : isListedSkillsLoading;
-
-  const isSkillsDataReady = !isSkillsLoading || skills.length > 0;
+  const isSkillsDataReady = useSkillSearch
+    ? resolvedSearchTerm !== null || isSkillsError
+    : !isListedSkillsLoading;
   const isToolsDataReady =
     !isServerViewsLoading && (!isAdmin || !isAvailableMCPServersLoading);
 
