@@ -5,6 +5,7 @@ import type {
   SeededScenario,
   TestCase,
 } from "@app/tests/conversational-building-evals/lib/types";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { runInCommittedTransaction } from "@app/tests/utils/eval_workspace";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -121,6 +122,22 @@ export async function seedScenario(
       }
     }
 
+    const agentIdsByKey = new Map<string, string>();
+    for (const agent of testCase.workspaceSeed.agents ?? []) {
+      // The factory's create path has no instructions override; a second version carries them.
+      const created = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: agent.name,
+        description: agent.description,
+      });
+      await AgentConfigurationFactory.updateTestAgent(auth, created.sId, {
+        name: agent.name,
+        description: agent.description,
+        instructions: agent.instructionsHtml,
+        instructionsHtml: agent.instructionsHtml,
+      });
+      agentIdsByKey.set(agent.key, created.sId);
+    }
+
     const skillIdsByKey = new Map<string, string>();
     for (const seed of testCase.workspaceSeed.skills) {
       const skill = await SkillFactory.create(auth, {
@@ -143,6 +160,7 @@ export async function seedScenario(
       memberIdsByKey,
       toolIdsByKey,
       knowledgeByKey,
+      agentIdsByKey,
     };
   });
 }
