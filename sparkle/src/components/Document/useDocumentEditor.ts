@@ -9,8 +9,14 @@ import {
 } from "react";
 import { parseDocumentContent, serializeDocumentMarkdown } from "./content";
 import { DocumentInputValidation } from "./DocumentInputValidation";
+import { DocumentVisual } from "./DocumentVisual";
+import { DocumentVisualWithView } from "./DocumentVisualView";
 import { documentExtensions } from "./extensions";
 import type { DocumentProps, DocumentSaveResult } from "./types";
+
+const editorExtensions = documentExtensions.map((extension) =>
+  extension === DocumentVisual ? DocumentVisualWithView : extension
+);
 
 const SAVE_ERROR_MESSAGE =
   "Could not save. Your changes are still here. Try again.";
@@ -70,7 +76,7 @@ export const useDocumentEditor = ({
   }));
   const [inputError, setInputError] = useState<string | null>(null);
   const [extensions] = useState(() => [
-    ...documentExtensions,
+    ...editorExtensions,
     DocumentInputValidation.configure({ onRejected: setInputError }),
   ]);
   const [baseline, setBaseline] = useState<string | null>(null);

@@ -137,6 +137,8 @@ export {
   Document,
   type DocumentProps,
   type DocumentSaveResult,
+  type DocumentTheme,
+  type DocumentVisualReference,
 } from "./Document";
 export type {
   DropdownMenuFilterOption,

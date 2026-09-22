@@ -31,3 +31,14 @@ for (const [name, documentAPI] of Object.entries({ esm, commonJS })) {
     );
   });
 }
+
+for (const [name, documentAPI] of Object.entries({ esm, commonJS })) {
+  test(`${name} preserves named visuals and rejects executable attributes`, () => {
+    const content = { type: "doc", content: [{ type: "dustVisual", attrs: { name: "revenue" } }] };
+    const parsed = documentAPI.parseDocumentContent(JSON.stringify(content), "json");
+    assert.equal(parsed.ok, true);
+    assert.equal(documentAPI.serializeDocumentMarkdown(parsed.content), null);
+    const invalid = { type: "doc", content: [{ type: "dustVisual", attrs: { name: "revenue", code: "alert(1)" } }] };
+    assert.equal(documentAPI.parseDocumentContent(JSON.stringify(invalid), "json").ok, false);
+  });
+}

@@ -22,8 +22,8 @@ Cmd/Ctrl+S. Undoing back to saved content also clears the error without a reques
 Later edits are not acknowledged by an earlier save. Parent renders and changes
 to the save callback do not restart the debounce timer.
 
-`className` applies to the outer container. Typography and editor configuration
-remain controlled by Document. Initial content is captured at mount. Remount with
+`className` applies to the outer container. Formatting controls and editor configuration
+remain controlled by Document. Optional themes style the content. Initial content is captured at mount. Remount with
 a new key to open a different document. Invalid stored JSON disables editing and
 saving. The parser rejects unknown blocks, marks, fields and attributes instead
 of dropping them. The same schema validates paste and browser saves. Ordinary typing
@@ -78,3 +78,19 @@ Markdown output, source preservation, content validation.
 Both ESM and CommonJS consumers use the editor's schema and validation. A failed
 parse returns `{ ok: false, error }`. Markdown serialization returns `null` when
 the document cannot be represented without losing content or formatting.
+
+## Themes and named visuals
+
+`theme` accepts bounded document-wide font, color, spacing and width tokens. It
+styles the full canvas while editing controls retain Sparkle's appearance.
+Omitting it preserves the default Document presentation. Updating a theme does
+not remount the editor or save the document.
+
+A native JSON block `{ "type": "dustVisual", "attrs": { "name": "revenue" } }`
+resolves through `renderVisual({ name })`. Sparkle owns the atomic node and its
+selection and drag behavior. The trusted host supplies the React visual within
+its own execution environment. JSON cannot contain component code, arbitrary
+props or URLs. Missing renderers show a placeholder and preserve the reference.
+Markdown saves reject these blocks rather than silently discarding them.
+
+See `DocumentTheme.stories.tsx` for theme switching, validation and visual rendering.

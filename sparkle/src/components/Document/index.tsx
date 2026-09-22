@@ -4,19 +4,25 @@ import { cn } from "@sparkle/lib/utils";
 import { EditorContent } from "@tiptap/react";
 import React from "react";
 import { DocumentBlockMenu, useDocumentBlockMenu } from "./DocumentBlockMenu";
+import { DocumentCanvas } from "./DocumentCanvas";
 import { DocumentSaveStatus } from "./DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "./DocumentSelectionToolbar";
 import { DocumentSourcePreview } from "./DocumentSourcePreview";
+import { getDocumentThemeStyle } from "./DocumentTheme";
+import { DocumentVisualRendererContext } from "./DocumentVisualView";
 import type { DocumentProps } from "./types";
 import { useDocumentEditor } from "./useDocumentEditor";
 
+export type { DocumentTheme } from "./DocumentTheme";
+export type { DocumentVisualReference } from "./DocumentVisual";
 export type { DocumentProps, DocumentSaveResult } from "./types";
 
 const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 
 /**
  * @cc [owner:flvndvd,label:product] document-ui-owned-by-sparkle
- * Typography and formatting controls MUST remain fixed. Callers MUST NOT supply editor
+ * Document themes MAY style content through validated tokens. Formatting controls MUST
+ * remain fixed. Callers MUST NOT supply editor
  * instances, extensions, or toolbar configuration. Inline controls MUST require a nonempty
  * text selection. Block commands MUST require an editable document and a typed `/`.
  * className MUST apply only to the outer container.
@@ -33,10 +39,13 @@ export const Document = ({
   saveFormat = "json",
   className,
   readOnly = false,
+  theme,
+  renderVisual,
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
   onPendingChangesChange,
 }: DocumentProps) => {
+  const themeStyle = getDocumentThemeStyle(theme);
   const {
     editor,
     editable,
@@ -104,17 +113,28 @@ export const Document = ({
 
   return (
     <article
-      className={cn("@container", className)}
+      data-document-root=""
+      style={themeStyle}
+      className={cn(
+        "@container",
+        className,
+        themeStyle && "bg-[var(--document-background)]"
+      )}
       onKeyDownCapture={handleKeyDown}
     >
       <div
         className={cn(
-          "mx-auto max-w-[50rem] px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
+          "mx-auto max-w-[var(--document-width,50rem)] px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
           editable ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
         )}
       >
         {editable && (
           <DocumentSaveStatus
+            className={
+              themeStyle
+                ? "ml-auto w-fit rounded-lg bg-background px-3 py-1.5"
+                : undefined
+            }
             dirty={dirty}
             saving={saving}
             error={error}
@@ -136,7 +156,11 @@ export const Document = ({
             <DocumentBlockMenu editor={editor} menu={blockMenu} />
           </>
         )}
-        <EditorContent editor={editor} />
+        <DocumentVisualRendererContext.Provider value={renderVisual}>
+          <DocumentCanvas themed={themeStyle !== undefined}>
+            <EditorContent editor={editor} />
+          </DocumentCanvas>
+        </DocumentVisualRendererContext.Provider>
       </div>
     </article>
   );

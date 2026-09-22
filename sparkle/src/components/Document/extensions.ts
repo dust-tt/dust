@@ -11,7 +11,10 @@ import {
   DocumentOrderedList,
 } from "./DocumentNodes";
 
+import { DocumentVisual } from "./DocumentVisual";
+
 export const documentExtensions = [
+  DocumentVisual,
   DocumentAnchors,
   StarterKit.configure({
     heading: false,

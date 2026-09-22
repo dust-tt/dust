@@ -5,6 +5,7 @@ import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
 interface DocumentSaveStatusProps {
+  className?: string;
   dirty: boolean;
   saving: boolean;
   error: string | null;
@@ -13,6 +14,7 @@ interface DocumentSaveStatusProps {
 }
 
 export const DocumentSaveStatus = ({
+  className,
   dirty,
   saving,
   error,
@@ -21,7 +23,10 @@ export const DocumentSaveStatus = ({
 }: DocumentSaveStatusProps) => (
   <>
     <div
-      className="mb-6 flex min-h-6 items-center justify-end gap-2.5 text-muted-foreground copy-xs data-[state=error]:text-foreground print:hidden"
+      className={cn(
+        "mb-6 flex min-h-6 items-center justify-end gap-2.5 text-muted-foreground copy-xs data-[state=error]:text-foreground print:hidden",
+        className
+      )}
       data-state={
         error ? "error" : saving ? "saving" : dirty ? "pending" : "saved"
       }

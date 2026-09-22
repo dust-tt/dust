@@ -1,5 +1,6 @@
 import type { MarkType, Node, NodeType, Schema } from "@tiptap/pm/model";
 import { z } from "zod";
+import { DOCUMENT_MAX_VISUALS, DocumentVisual } from "./DocumentVisual";
 
 export const DOCUMENT_MAX_BYTES = 512 * 1024;
 const MAX_DOCUMENT_DEPTH = 64;
@@ -48,6 +49,7 @@ export const validateDocumentJSON = (
 ): { ok: true; node: Node } | { ok: false; error: string } => {
   const pending = [{ value, depth: 0 }];
   let count = 0;
+  let visuals = 0;
 
   while (pending.length > 0) {
     const entry = pending.pop();
@@ -70,6 +72,12 @@ export const validateDocumentJSON = (
     const node = parsed.data;
     if (!Object.hasOwn(schema.nodes, node.type)) {
       return { ok: false, error: `Unsupported block: ${node.type}.` };
+    }
+    if (node.type === DocumentVisual.name && ++visuals > DOCUMENT_MAX_VISUALS) {
+      return {
+        ok: false,
+        error: `A document can contain at most ${DOCUMENT_MAX_VISUALS} visuals.`,
+      };
     }
     if (entry.depth === 0 && node.type !== schema.topNodeType.name) {
       return { ok: false, error: "The document must start with a doc block." };
