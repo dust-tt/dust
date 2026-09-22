@@ -1,6 +1,7 @@
 import { SharedFramePage } from "@app/components/pages/share/SharedFramePage";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   frameError: null as unknown,
@@ -15,7 +16,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock(
   "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentContainer",
   () => ({
-    PublicInteractiveContentContainer: () => <div>frame content</div>,
+    PublicInteractiveContentContainer: () => {
+      const { isDark } = useTheme();
+      return <div data-theme={isDark ? "dark" : "light"}>frame content</div>;
+    },
   })
 );
 
@@ -118,8 +122,23 @@ vi.mock("react-cookie", () => ({
   useCookies: () => [{}],
 }));
 
+beforeEach(() => {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+  );
+});
+
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
+  localStorage.clear();
+  document.documentElement.classList.remove("dark");
+  document.body.classList.remove("bg-app-background");
   mocks.frameError = null;
   mocks.hasSession = false;
   mocks.isUserError = null;
@@ -190,6 +209,20 @@ describe("SharedFramePage", () => {
 
     expect(screen.getByText("frame content")).toBeDefined();
     expect(screen.queryByText("Sign in to open this Frame")).toBeNull();
+  });
+
+  it.each([
+    "light",
+    "dark",
+  ])("provides the saved %s theme to an anonymous viewer's Frame", (theme) => {
+    localStorage.setItem("theme", theme);
+
+    render(<SharedFramePage />);
+
+    expect(screen.getByText("frame content")).toHaveAttribute(
+      "data-theme",
+      theme
+    );
   });
 
   it("offers sign-in on the 404 a logged-out viewer gets from the metadata endpoint", () => {
