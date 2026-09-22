@@ -24,7 +24,6 @@ import {
   EmptyCTA,
   Page,
   SearchInput,
-  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -90,18 +89,6 @@ function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
     sortOrder,
   });
 
-  if (isSkillsLoading && skills.length === 0) {
-    return (
-      <div
-        className="flex min-h-64 items-center justify-center"
-        role="status"
-        aria-label="Loading skills"
-      >
-        <Spinner />
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-4">
       {isSkillsError && (
@@ -118,7 +105,9 @@ function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
         </div>
       )}
       {!isSkillsError &&
-      (skills.length > 0 || tablePagination.pageIndex > 0) ? (
+      (isSkillsLoading ||
+        skills.length > 0 ||
+        tablePagination.pageIndex > 0) ? (
         <SkillSearchTable
           owner={owner}
           skills={skills}
