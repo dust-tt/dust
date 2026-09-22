@@ -121,7 +121,7 @@ describe("SkillResource", () => {
         created_at: null,
         updated_at: null,
       });
-      expect(toSkillListItem(document).updatedAt).toBeNull();
+      expect(toSkillListItem(auth, document).updatedAt).toBeNull();
     });
   });
 

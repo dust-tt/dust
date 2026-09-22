@@ -104,11 +104,12 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
 
 /**
  * @cc [owner:aubin-tchoi,label:security] skill-list-item
- * Search listings contain indexed metadata, relationship IDs and editor display profiles, never full resources,
- * instructions, tool configurations, attachments, source or reinforcement data.
+ * Search listings contain indexed metadata, relationship IDs, editor display profiles and caller permissions.
+ * Never include full resources, instructions, tool configurations, attachments, source or reinforcement data.
  */
 export const SkillListItemSchema = z.object({
   sId: z.string(),
+  canAdministrate: z.boolean(),
   status: z.enum(SKILL_STATUSES),
   name: z.string(),
   userFacingDescription: z.string(),
