@@ -18,9 +18,12 @@ export const TOOL_OUTPUT_OFFLOAD_META_KEY = "tt.dust/offload";
 
 // The descriptor stored under TOOL_OUTPUT_OFFLOAD_META_KEY. This is a wire contract consumed
 // in-sandbox (`@dust/pod` carries its own copy of the shape): fields are append-only.
+// Agent-loop consumers rehydrate via the /files mount; sandbox function invocations keep
+// large outputs inline on the poll path and do not emit this descriptor.
 export interface ToolOutputOffloadDescriptor {
-  // Scoped path of the archived full content (e.g. "pod-{pId}/.tool_outputs/{slug}/{file}"),
-  // resolvable in-sandbox under the /files gcsfuse mount.
+  // Scoped path of the archived full content (e.g. "conversation-{cId}/.tool_outputs/{file}"
+  // or "pod-{pId}/.tool_outputs/{slug}/{file}"), resolvable in-sandbox under the /files
+  // gcsfuse mount when that mount is present.
   fullContentPath: string;
   totalBytes: number;
   contentType: string;

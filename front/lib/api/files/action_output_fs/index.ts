@@ -203,6 +203,10 @@ export async function writeToToolOutputsFolder(
  * Attempts to persist a tool output block to the run context's .tool_outputs folder via
  * DustFileSystem. Returns null if the block does not qualify for persistence.
  *
+ * Sandbox function invocations never offload here: Frame sandboxes do not mount
+ * `/files/pod-*`, so dsbx cannot rehydrate an archive written to the pod FS. Large outputs
+ * stay inline on the action output / poll path instead.
+ *
  * Call this as a side effect from processToolResults.
  */
 export async function persistToolOutput(
@@ -211,15 +215,16 @@ export async function persistToolOutput(
   block: CallToolResult["content"][number],
   { toolName, serverName }: { toolName: string; serverName: string }
 ): Promise<Result<PersistedToolOutput | null, Error>> {
-  if (runContext.contextType === "sandbox_function" && !runContext.pod) {
+  if (runContext.contextType === "sandbox_function") {
     logger.info(
       {
         actionId: runContext.action.sId,
         invocationId: runContext.invocation.sId,
         toolName,
         serverName,
+        hasPod: runContext.pod != null,
       },
-      "Sandbox function running for a Frame without a Pod, skipping persisting outputs."
+      "Sandbox function tool output kept inline; Frame sandboxes cannot rehydrate pod offloads."
     );
     return new Ok(null);
   }
