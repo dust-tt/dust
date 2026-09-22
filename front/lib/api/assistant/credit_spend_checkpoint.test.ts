@@ -96,7 +96,8 @@ describe("getCreditSpendCheckpointEnabled", () => {
     const createResult = await CreditUsageConfigurationResource.makeNew(auth, {
       defaultDiscountPercent: 0,
       usageCapCredits: null,
-      creditSpendCheckpointEnabled: true,
+      creditSpendCheckpointThresholdAwuCredits:
+        CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
     });
     expect(createResult.isOk()).toBe(true);
 
