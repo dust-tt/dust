@@ -2,14 +2,11 @@ import {
   hasCrossedCreditSpendCheckpoint,
   hasReachedCreditSpendCheckpoint,
   isExemptFromCreditSpendCheckpoint,
-  resolveDefaultCreditSpendCheckpointEnabled,
 } from "@app/lib/api/assistant/credit_spend_checkpoint";
 import { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
-import { CREDIT_PRICED_BUSINESS_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { PlanType } from "@app/types/plan";
 import { describe, expect, it } from "vitest";
 
 describe("isExemptFromCreditSpendCheckpoint", () => {
@@ -78,22 +75,6 @@ describe("hasReachedCreditSpendCheckpoint", () => {
     expect(
       hasReachedCreditSpendCheckpoint({ totalCostMicroUsd: thresholdMicroUsd })
     ).toBe(true);
-  });
-});
-
-describe("resolveDefaultCreditSpendCheckpointEnabled", () => {
-  it("is true when there is no plan", () => {
-    expect(resolveDefaultCreditSpendCheckpointEnabled(null)).toBe(true);
-  });
-
-  it("is false for a credit-priced plan", () => {
-    const plan = { code: CREDIT_PRICED_BUSINESS_PLAN_CODE } as PlanType;
-    expect(resolveDefaultCreditSpendCheckpointEnabled(plan)).toBe(false);
-  });
-
-  it("is true for a non-credit-priced plan", () => {
-    const plan = { code: "PRO_PLAN_SEAT_29" } as PlanType;
-    expect(resolveDefaultCreditSpendCheckpointEnabled(plan)).toBe(true);
   });
 });
 

@@ -1,4 +1,3 @@
-import { resolveDefaultCreditSpendCheckpointEnabled } from "@app/lib/api/assistant/credit_spend_checkpoint";
 import { passesBillingGate } from "@app/lib/api/credits/auto_seat_upgrade";
 import { syncMetronomeBalanceThresholdAlert } from "@app/lib/api/credits/balance_threshold_alert";
 import type { Authenticator } from "@app/lib/auth";
@@ -7,6 +6,7 @@ import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usag
 import {
   DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
   DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+  DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED,
   DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
   DEFAULT_TOP_UP_ENABLED,
   DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
@@ -48,7 +48,7 @@ export async function getUsageConfiguration(
       config?.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
     creditSpendCheckpointEnabled:
       config?.creditSpendCheckpointEnabled ??
-      resolveDefaultCreditSpendCheckpointEnabled(auth.plan()),
+      DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED,
     autoSeatUpgradeAvailable: subscription
       ? passesBillingGate(subscription)
       : false,
@@ -95,7 +95,9 @@ async function setConfigurationToggles(
       DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
     autoSeatUpgradeEnabled:
       toggles.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
-    creditSpendCheckpointEnabled: toggles.creditSpendCheckpointEnabled ?? null,
+    creditSpendCheckpointEnabled:
+      toggles.creditSpendCheckpointEnabled ??
+      DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED,
   });
   if (createResult.isErr()) {
     return new Err(createResult.error);

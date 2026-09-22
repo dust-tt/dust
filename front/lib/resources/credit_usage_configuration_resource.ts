@@ -131,7 +131,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       balanceThresholdAwuCredits: number | null;
       topUpEnabled: boolean;
       autoInvoiceFinalizationEnabled: boolean;
-      creditSpendCheckpointEnabled: boolean | null;
+      creditSpendCheckpointEnabled: boolean;
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {

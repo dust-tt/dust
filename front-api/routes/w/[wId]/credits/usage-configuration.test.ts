@@ -74,24 +74,6 @@ describe("/api/w/[wId]/credits/usage-configuration", () => {
     // The default mock workspace is on a free (non-Metronome) plan, so
     // auto-upgrade is not available — the UI disables the toggle.
     expect(configuration.autoSeatUpgradeAvailable).toBe(false);
-    // The default mock workspace is on a non-credit-priced plan, so the
-    // checkpoint gate defaults to enabled.
-    expect(configuration.creditSpendCheckpointEnabled).toBe(true);
-  });
-
-  it("GET defaults creditSpendCheckpointEnabled to false for a credit-priced plan", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "admin",
-      plan: "creditPriced",
-    });
-
-    const response = await honoApp.request(
-      usageConfigurationUrl(workspace.sId)
-    );
-
-    expect(response.status).toBe(200);
-    const { configuration } = await response.json();
     expect(configuration.creditSpendCheckpointEnabled).toBe(false);
   });
 
