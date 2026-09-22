@@ -199,6 +199,11 @@ export const ButtonsSwitchList = React.forwardRef<
         setIndicator((prev) => (isSameRect(prev, next) ? prev : next));
       };
       measure();
+      // jsdom (front unit tests) has no ResizeObserver; the initial measure
+      // above is enough there.
+      if (typeof ResizeObserver === "undefined") {
+        return;
+      }
       const observer = new ResizeObserver(measure);
       observer.observe(list);
       observer.observe(active);
