@@ -17,6 +17,7 @@ export const BUILDING_AGENTS_AND_SKILLS_SERVER_NAME =
   "building_agents_and_skills" as const;
 
 export const DESCRIBE_SKILL_TOOL_NAME = "describe_skill" as const;
+export const DESCRIBE_AGENT_TOOL_NAME = "describe_agent" as const;
 export const SUGGEST_SKILL_UPDATE_TOOL_NAME = "suggest_skill_update" as const;
 export const SUGGEST_SKILL_EDITORS_TOOL_NAME = "suggest_skill_editors" as const;
 export const SUGGEST_SKILL_DELETION_TOOL_NAME =
@@ -356,6 +357,23 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Describing skill",
       done: "Describe skill",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: DESCRIBE_AGENT_TOOL_NAME,
+    description:
+      "Get an agent's name, description, scope, model, skills, tools, and instructions as " +
+      "HTML whose blocks carry a data-block-id, required to target block-level instruction " +
+      "edits.",
+    schema: {
+      agentId: z.string().describe("The id of the agent to describe."),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Describing agent",
+      done: "Describe agent",
     },
     toolCostCategory: "basic",
     freeUsage: true,

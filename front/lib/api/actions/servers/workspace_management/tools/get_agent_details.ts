@@ -49,12 +49,6 @@ export async function getAgentDetails(
   const skills = await SkillResource.listByAgentConfiguration(auth, agent);
   const skillNames = skills.map((skill) => skill.name).join(", ");
 
-  const instructionsBlock = agent.instructionsHtml
-    ? "Instructions (full system prompt), as HTML whose blocks carry a data-block-id — " +
-      "required to target block-level instruction edits:\n" +
-      agent.instructionsHtml
-    : `Instructions (full system prompt):\n${agent.instructions ?? "(no instructions)"}`;
-
   return new Ok([
     {
       type: "text" as const,
@@ -62,7 +56,8 @@ export async function getAgentDetails(
         header +
         `- Skills: ${skillNames || "none"}\n` +
         `- Tools: ${toolNames || "none"}\n\n` +
-        instructionsBlock,
+        "Instructions (full system prompt):\n" +
+        `${agent.instructions ?? "(no instructions)"}`,
     },
   ]);
 }

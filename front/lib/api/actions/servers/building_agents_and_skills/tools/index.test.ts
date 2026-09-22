@@ -1,6 +1,7 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { MAX_PENDING_INSTRUCTIONS_SUGGESTIONS } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
 import {
+  DESCRIBE_AGENT_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
   SUGGEST_AGENT_CREATION_INPUT_SCHEMA,
   SUGGEST_AGENT_CREATION_TOOL_NAME,
@@ -1444,6 +1445,57 @@ describe("building_agents_and_skills tools", () => {
       });
 
       expectMcpError(result, "already exists");
+    });
+  });
+
+  describe(DESCRIBE_AGENT_TOOL_NAME, () => {
+    it("returns the agent with its block-structured instructions", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const created = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Described Agent", description: "Describes things." }
+      );
+      const agent = await AgentConfigurationFactory.updateTestAgent(
+        authenticator,
+        created.sId,
+        {
+          name: "Described Agent",
+          description: "Describes things.",
+          instructionsHtml:
+            '<div data-block-id="instructions-root">' +
+            '<p data-block-id="block1">Be helpful.</p></div>',
+        }
+      );
+
+      const result = await getTool(DESCRIBE_AGENT_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      expect(result.value[0].text).toContain(`Described Agent [${agent.sId}]`);
+      expect(result.value[0].text).toContain("Describes things.");
+      expect(result.value[0].text).toContain('data-block-id="block1"');
+      expect(result.value[0].text).toContain(
+        "required to target block-level instruction edits"
+      );
+    });
+
+    it("returns an MCPError for an unknown agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await getTool(DESCRIBE_AGENT_TOOL_NAME).handler(
+        { agentId: "unknown_agent" },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "not found");
     });
   });
 
