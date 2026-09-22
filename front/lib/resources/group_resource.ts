@@ -754,9 +754,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    const unreadableGroups = groups.filter(
-      (group) => !auth.can("read", group)
-    );
+    const unreadableGroups = groups.filter((group) => !auth.can("read", group));
     if (unreadableGroups.length > 0) {
       logger.error(
         {
