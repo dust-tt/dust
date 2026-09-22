@@ -15,7 +15,6 @@ import type {
   AgentNameSuggestionType,
   AgentSuggestionState,
 } from "@app/types/suggestions/agent_suggestion";
-import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { ActionCardState } from "@dust-tt/sparkle";
 import { ActionCardBlock, Avatar } from "@dust-tt/sparkle";
 
@@ -116,19 +115,10 @@ function getLabels(agentSuggestion: AgentActionCardSuggestionType): {
     }
 
     case "instructions": {
-      const isFullRewrite =
-        agentSuggestion.suggestion.targetBlockId ===
-        INSTRUCTIONS_ROOT_TARGET_BLOCK_ID;
       return {
-        title: isFullRewrite
-          ? "Rewrite agent instructions"
-          : "Update agent instructions",
-        acceptedTitle: isFullRewrite
-          ? "Instructions rewrite accepted"
-          : "Instructions update accepted",
-        rejectedTitle: isFullRewrite
-          ? "Instructions rewrite rejected"
-          : "Instructions update rejected",
+        title: "Update agent instructions",
+        acceptedTitle: "Instructions update accepted",
+        rejectedTitle: "Instructions update rejected",
         description: analysis ?? undefined,
       };
     }
