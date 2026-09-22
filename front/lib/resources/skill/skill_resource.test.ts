@@ -2506,10 +2506,7 @@ describe("SkillResource", () => {
 
       const byId = new Map(skills.map((s) => [s.sId, s]));
       expect(
-        testContext.authenticator.can(
-          "read",
-          byId.get(restrictedSkill.sId)!
-        )
+        testContext.authenticator.can("read", byId.get(restrictedSkill.sId)!)
       ).toBe(false);
       expect(
         testContext.authenticator.can("read", byId.get(readableSkill.sId)!)

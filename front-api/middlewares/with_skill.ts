@@ -4,7 +4,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import { createMiddleware } from "hono/factory";
 
 /**
- * Fetches `SkillResource` named by `:sId`, enforces `canAdministrate`, and
+ * Fetches `SkillResource` named by `:sId`, enforces `auth.can("admin", skill)`, and
  * stashes it on `ctx.var.skill`. Apply after `workspaceAuth` so
  * `ctx.get("auth")` is available.
  */

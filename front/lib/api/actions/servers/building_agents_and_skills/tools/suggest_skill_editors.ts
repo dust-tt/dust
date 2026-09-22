@@ -59,7 +59,7 @@ export async function suggestSkillEditors(
     );
   }
 
-  // `createSuggestionForSkill` only requires `canWrite`, which `canAdministrate` implies.
+  // `createSuggestionForSkill` rechecks the `admin` verb required by editor suggestions.
   const created = await SkillSuggestionResource.createSuggestionForSkill(
     auth,
     skill,

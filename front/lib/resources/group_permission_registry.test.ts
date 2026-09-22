@@ -208,7 +208,7 @@ describe("ROLE_REGISTRY invariants", () => {
 
   it("lets the skill editor role administrate its skill", () => {
     // A skill's editor group is also its administrator (archive / restore / manage editors, all
-    // gated by SkillResource.canAdministrate), so `editor` must confer `admin` at instance level —
+    // gated by the `admin` verb), so `editor` must confer `admin` at instance level —
     // otherwise editors lose those actions once group_permissions becomes the read source.
     expect(grantTypesForVerb("skill", "admin", "instance")).toContain("editor");
   });

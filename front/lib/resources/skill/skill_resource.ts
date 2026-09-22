@@ -808,10 +808,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * The skills of `skills` the caller can read. Two checks, both required: the caller must be able
-   * to read the skill itself (see `canRead`) and every space it requests. A missing/deleted
-   * requested space is treated as not readable (see `canReadRequestedSpaces`), so skills
-   * referencing one are dropped too. This is what the fetch path applies (see
-   * `SkillPermissionFilteringMode`).
+   * to read the skill itself and every space it requests. A missing/deleted requested space is
+   * treated as not readable (see `canReadRequestedSpaces`), so skills referencing one are dropped
+   * too. This is what the fetch path applies (see `SkillPermissionFilteringMode`).
    */
   private static async filterReadable(
     auth: Authenticator,
@@ -3504,7 +3503,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       userFacingDescription: string;
     }
   ): Promise<void> {
-    assert(auth.can("write", this), "User is not authorized to update this skill");
+    assert(
+      auth.can("write", this),
+      "User is not authorized to update this skill"
+    );
     SkillNameSchema.parse(name);
 
     const availabilityChanged =

@@ -58,6 +58,11 @@ const app = publicApiApp();
  *       500:
  *         description: Internal Server Error.
  */
+/**
+ * @cc [owner:philipperolet,label:api;security] public-skill-archive-permissions
+ * Archiving a skill through the public API MUST require `admin` on the skill. API keys additionally
+ * MUST have the workspace admin role; a user-role API key MUST NOT archive skills.
+ */
 app.delete(
   "/",
   validate("param", ParamsSchema),
@@ -79,7 +84,9 @@ app.delete(
       });
     }
 
-    if (!auth.can("admin", skill)) {
+    const canArchive =
+      auth.can("admin", skill) && (!auth.isKey() || auth.isAdmin());
+    if (!canArchive) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
