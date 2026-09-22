@@ -186,6 +186,7 @@ function changeForSuggestion(
     case "name":
       return new Ok({ type: "fields", fields: { name: data.suggestion.name } });
 
+    case "description":
     case "instructions":
     case "knowledge":
     case "skills":

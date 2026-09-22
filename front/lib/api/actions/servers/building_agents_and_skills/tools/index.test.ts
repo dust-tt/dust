@@ -4,6 +4,7 @@ import {
   SUGGEST_AGENT_CREATION_INPUT_SCHEMA,
   SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_AGENT_DELETION_TOOL_NAME,
+  SUGGEST_AGENT_DESCRIPTION_TOOL_NAME,
   SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME,
   SUGGEST_AGENT_NAME_TOOL_NAME,
   SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
@@ -48,6 +49,8 @@ const AGENT_CREATE_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=create agentId=(\S+)\}$/;
 const AGENT_DELETE_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=delete agentId=(\S+)\}$/;
+const AGENT_DESCRIPTION_SUGGESTION_DIRECTIVE_REGEX =
+  /^:agent_suggestion\[\]\{sId=(\S+) kind=description agentId=(\S+)\}$/;
 const AGENT_MODEL_SUGGESTION_DIRECTIVE_REGEX =
   /^:agent_suggestion\[\]\{sId=(\S+) kind=model agentId=(\S+)\}$/;
 const AGENT_NAME_SUGGESTION_DIRECTIVE_REGEX =
@@ -148,6 +151,17 @@ function extractAgentDeleteSuggestionDirective(text: string): {
   agentId: string;
 } {
   const match = AGENT_DELETE_SUGGESTION_DIRECTIVE_REGEX.exec(text);
+  if (!match) {
+    throw new Error(`Unexpected tool output: ${text}`);
+  }
+  return { suggestionId: match[1], agentId: match[2] };
+}
+
+function extractAgentDescriptionSuggestionDirective(text: string): {
+  suggestionId: string;
+  agentId: string;
+} {
+  const match = AGENT_DESCRIPTION_SUGGESTION_DIRECTIVE_REGEX.exec(text);
   if (!match) {
     throw new Error(`Unexpected tool output: ${text}`);
   }
@@ -976,6 +990,140 @@ describe("building_agents_and_skills tools", () => {
         makeExtra(authenticator)
       );
       expectMcpError(result, "active agents");
+    });
+  });
+
+  describe(SUGGEST_AGENT_DESCRIPTION_TOOL_NAME, () => {
+    const suggestDescription = async (
+      auth: Authenticator,
+      args: { agentId: string; description: string; analysis?: string }
+    ) =>
+      getTool(SUGGEST_AGENT_DESCRIPTION_TOOL_NAME).handler(
+        args,
+        makeExtra(auth)
+      );
+
+    it("records a pending suggestion with the description, without changing the agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { description: "Old description." }
+      );
+
+      const result = await suggestDescription(authenticator, {
+        agentId: agent.sId,
+        description: "Handles incident triage end to end.",
+        analysis: "The old description was too vague.",
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      const output = result.value[0];
+      if (output?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const { suggestionId, agentId } =
+        extractAgentDescriptionSuggestionDirective(output.text);
+      expect(agentId).toBe(agent.sId);
+
+      const suggestion = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?.toJSON()).toMatchObject({
+        kind: "description",
+        suggestion: { description: "Handles incident triage end to end." },
+        analysis: "The old description was too vague.",
+      });
+
+      // The agent itself is untouched.
+      const untouched = await getAgentConfiguration(authenticator, {
+        agentId: agent.sId,
+        variant: "light",
+      });
+      expect(untouched?.description).toBe("Old description.");
+    });
+
+    it("outdates every other pending description suggestion, leaving other kinds alone", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const deletion = await AgentSuggestionFactory.createDelete(
+        authenticator,
+        agent
+      );
+      const idOf = async (description: string) => {
+        const result = await suggestDescription(authenticator, {
+          agentId: agent.sId,
+          description,
+        });
+        if (result.isErr() || result.value[0]?.type !== "text") {
+          throw new Error("Expected the suggestion to be created.");
+        }
+        return extractAgentDescriptionSuggestionDirective(result.value[0].text)
+          .suggestionId;
+      };
+      const stateOf = async (suggestionId: string) =>
+        (await AgentSuggestionResource.fetchById(authenticator, suggestionId))
+          ?.state;
+
+      const firstId = await idOf("First description");
+      const secondId = await idOf("Second description");
+
+      expect(await stateOf(firstId)).toBe("outdated");
+      expect(await stateOf(secondId)).toBe("pending");
+      expect(await stateOf(deletion.sId)).toBe("pending");
+    });
+
+    it("rejects a caller who is not an editor, creating no row", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const outsider = await addMember(workspace);
+      const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        outsider.sId,
+        workspace.sId
+      );
+
+      const result = await suggestDescription(outsiderAuth, {
+        agentId: agent.sId,
+        description: "Hijacked description.",
+      });
+
+      expectMcpError(
+        result,
+        "Only editors of this agent can change its description"
+      );
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agent.sId,
+          { kind: "description" }
+        );
+      expect(suggestions).toHaveLength(0);
+    });
+
+    it("rejects an archived agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      await archiveAgentConfiguration(authenticator, agent.sId);
+
+      const result = await suggestDescription(authenticator, {
+        agentId: agent.sId,
+        description: "Revived description.",
+      });
+
+      expectMcpError(
+        result,
+        "Only active agents can have their description changed"
+      );
     });
   });
 

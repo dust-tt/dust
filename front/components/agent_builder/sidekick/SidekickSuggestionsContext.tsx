@@ -227,6 +227,7 @@ function SidekickSuggestionsProviderContent({
       switch (suggestion.kind) {
         case "create":
         case "delete":
+        case "description":
         case "instructions":
         case "name":
           return { ...suggestion, relations: null };

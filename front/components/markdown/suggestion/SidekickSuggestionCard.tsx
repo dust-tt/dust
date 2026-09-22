@@ -714,6 +714,8 @@ export function SidekickSuggestionCard({
       return <SubAgentSuggestionCard agentSuggestion={agentSuggestion} />;
     case "tools":
       return <ToolSuggestionCard agentSuggestion={agentSuggestion} />;
+    case "description":
+      return null;
     default:
       assertNeverAndIgnore(agentSuggestion);
       return null;
