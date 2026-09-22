@@ -1,6 +1,17 @@
-import { isAgentLoopStreamActive } from "@app/components/assistant/conversation/AgentLoopStreamContext";
+import {
+  AgentLoopStreamContext,
+  isAgentLoopStreamActive,
+  useRegisterAgentLoopStream,
+} from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import type { EventSourceConnectionState } from "@app/types/event_source";
-import { describe, expect, it } from "vitest";
+import { renderHook } from "@testing-library/react";
+import type { ReactNode } from "react";
+import { createElement } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("isAgentLoopStreamActive", () => {
   it.each<EventSourceConnectionState>([
@@ -18,5 +29,40 @@ describe("isAgentLoopStreamActive", () => {
     { kind: "terminal" },
   ])("treats $kind as inactive", (state) => {
     expect(isAgentLoopStreamActive(state)).toBe(false);
+  });
+});
+
+describe("useRegisterAgentLoopStream", () => {
+  it("registers a mounted stream until it stops or unmounts", () => {
+    const unregister = vi.fn();
+    const registerStream = vi.fn(() => unregister);
+    interface WrapperProps {
+      children: ReactNode;
+    }
+    const contextValue = {
+      conversationStreamIds: new Map(),
+      registerStream,
+    };
+    const wrapper = ({ children }: WrapperProps) =>
+      createElement(
+        AgentLoopStreamContext.Provider,
+        { value: contextValue },
+        children
+      );
+    const { rerender } = renderHook(
+      ({ enabled }) =>
+        useRegisterAgentLoopStream({
+          conversationId: "conversation-1",
+          enabled,
+          streamId: "message-1",
+        }),
+      { initialProps: { enabled: true }, wrapper }
+    );
+
+    expect(registerStream).toHaveBeenCalledWith("conversation-1", "message-1");
+
+    rerender({ enabled: false });
+
+    expect(unregister).toHaveBeenCalledOnce();
   });
 });

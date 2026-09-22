@@ -722,6 +722,68 @@ describe("EventSourceManager", () => {
     manager.releaseWorkspace("w_1");
   });
 
+  it("waits for a pending SSE factory before starting long polling", async () => {
+    let resolvePendingSource: ((source: FakeEventSource) => void) | undefined;
+    const sources: FakeEventSource[] = [];
+    const sourceFactory = vi.fn((url: string) => {
+      if (url === "/events/message-pending") {
+        return new Promise<FakeEventSource>((resolve) => {
+          resolvePendingSource = resolve;
+        });
+      }
+      const source = new FakeEventSource(url);
+      sources.push(source);
+      return Promise.resolve(source);
+    });
+    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const manager = new EventSourceManager(sourceFactory, () => 0, {
+      longPollFactory,
+      reconnectDelayBaseMs: 0,
+      reconnectDelayJitterMs: 0,
+    });
+    const subscribe = (streamId: string) =>
+      manager.subscribe({
+        streamId,
+        config: {
+          buildURL: () => `/events/${streamId}`,
+          buildLongPollURL: () => `/events/${streamId}/poll`,
+          replayBufferedEventsOnSubscribe: false,
+          restartKey: streamId,
+          workspaceId: "w_1",
+        },
+        subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+        keepAliveWithoutSubscribers: true,
+      });
+
+    subscribe("message-pending");
+    subscribe("message-failing");
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].onerror?.({ type: "error", target: sources[0] });
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    sources[1].onerror?.({ type: "error", target: sources[1] });
+
+    await vi.waitFor(() => expect(longPollFactory).toHaveBeenCalledOnce());
+    expect(longPollFactory).toHaveBeenCalledWith(
+      "/events/message-failing/poll",
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+
+    const pendingSource = new FakeEventSource("/events/message-pending");
+    resolvePendingSource?.(pendingSource);
+
+    await vi.waitFor(() => expect(longPollFactory).toHaveBeenCalledTimes(2));
+    expect(pendingSource.close).toHaveBeenCalledOnce();
+    expect(pendingSource.close.mock.invocationCallOrder[0]).toBeLessThan(
+      longPollFactory.mock.invocationCallOrder[1]
+    );
+    expect(longPollFactory).toHaveBeenLastCalledWith(
+      "/events/message-pending/poll",
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+
+    manager.releaseWorkspace("w_1");
+  });
+
   it("polls immediately when configured without degrading the browser session", async () => {
     const sources: FakeEventSource[] = [];
     const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));

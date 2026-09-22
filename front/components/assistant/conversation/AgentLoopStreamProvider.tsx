@@ -1,3 +1,4 @@
+import type { ConversationStreamIds } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import { AgentLoopStreamContext } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
@@ -9,7 +10,7 @@ import { eventSourceManager } from "@app/lib/client/event_source_manager";
 import { useOngoingAgentLoops } from "@app/lib/swr/ongoing_agent_loops";
 import type { OngoingAgentLoopType } from "@app/types/api/assistant/conversation/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface OngoingAgentLoopConnectionProps {
   owner: LightWorkspaceType;
@@ -93,6 +94,8 @@ export function AgentLoopStreamProvider({
   children,
   owner,
 }: AgentLoopStreamProviderProps) {
+  const [mountedStreamIds, setMountedStreamIds] =
+    useState<ConversationStreamIds>(() => new Map());
   const onRegistryRefresh = useCallback(
     (agentLoops: OngoingAgentLoopType[]) => {
       for (const { messageId } of agentLoops) {
@@ -105,16 +108,47 @@ export function AgentLoopStreamProvider({
     workspaceId: owner.sId,
     onSuccess: onRegistryRefresh,
   });
-  const conversationStreamIds = useMemo(
-    () =>
-      new Map(
-        ongoingAgentLoops.map(({ conversationId, messageId }) => [
-          conversationId,
-          `message-${messageId}`,
-        ])
-      ),
-    [ongoingAgentLoops]
+  const registerStream = useCallback(
+    (conversationId: string, streamId: string) => {
+      setMountedStreamIds((current) => {
+        const currentIds = current.get(conversationId);
+        if (currentIds?.has(streamId)) {
+          return current;
+        }
+        const next = new Map(current);
+        next.set(conversationId, new Set(currentIds).add(streamId));
+        return next;
+      });
+
+      return () => {
+        setMountedStreamIds((current) => {
+          const currentIds = current.get(conversationId);
+          if (!currentIds?.has(streamId)) {
+            return current;
+          }
+          const next = new Map(current);
+          const nextIds = new Set(currentIds);
+          nextIds.delete(streamId);
+          if (nextIds.size === 0) {
+            next.delete(conversationId);
+          } else {
+            next.set(conversationId, nextIds);
+          }
+          return next;
+        });
+      };
+    },
+    []
   );
+  const contextValue = useMemo(() => {
+    const conversationStreamIds = new Map(mountedStreamIds);
+    for (const { conversationId, messageId } of ongoingAgentLoops) {
+      const streamIds = new Set(conversationStreamIds.get(conversationId));
+      streamIds.add(`message-${messageId}`);
+      conversationStreamIds.set(conversationId, streamIds);
+    }
+    return { conversationStreamIds, registerStream };
+  }, [mountedStreamIds, ongoingAgentLoops, registerStream]);
 
   useEffect(
     () => () => eventSourceManager.releaseWorkspace(owner.sId),
@@ -122,7 +156,7 @@ export function AgentLoopStreamProvider({
   );
 
   return (
-    <AgentLoopStreamContext.Provider value={conversationStreamIds}>
+    <AgentLoopStreamContext.Provider value={contextValue}>
       {children}
       {ongoingAgentLoops.map(({ conversationId, messageId }) => (
         <OngoingAgentLoopConnection

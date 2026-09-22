@@ -610,6 +610,8 @@ export class EventSourceManager {
       ) {
         continue;
       }
+      const hasPendingFactory =
+        entry.state.kind === "connecting" && entry.transport === null;
       entry.generation++;
       this.stopTransport(streamId);
       if (entry.reconnectTimeout) {
@@ -617,7 +619,9 @@ export class EventSourceManager {
         entry.reconnectTimeout = null;
       }
       entry.reconnectAttempts = 0;
-      this.startLongPolling(streamId);
+      if (!hasPendingFactory) {
+        this.startLongPolling(streamId);
+      }
     }
   }
 
