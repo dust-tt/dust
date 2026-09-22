@@ -277,14 +277,14 @@ describe("addRateLimiterCount", () => {
     await closeRedisClients();
   });
 
-  it("stores a fractional credit amount as integer microCredits", async () => {
+  it("stores the microCredit amount verbatim", async () => {
     const key = `test:${crypto.randomUUID()}`;
     await expireTestKey(key);
 
     await addRateLimiterCount({
       key,
       timeframeSeconds: 60,
-      incrementBy: 2.5,
+      incrementByMicroCredits: 2_500_000,
       logger,
     });
 
@@ -303,18 +303,18 @@ describe("addRateLimiterCount", () => {
     await expireTestKey(key);
 
     // Reproduces the fair-use AWU bug: count is already at 9/10, and the message that just ran
-    // cost 2 credits. A limit-guarded `rateLimiter` write would silently drop this because
-    // 9 + 2 > 10; `addRateLimiterCount` must persist all of it regardless.
+    // cost 2.5 credits. A limit-guarded `rateLimiter` write would silently drop this because
+    // 9 + 2.5 > 10; `addRateLimiterCount` must persist all of it regardless.
     await addRateLimiterCount({
       key,
       timeframeSeconds: 60,
-      incrementBy: 9,
+      incrementByMicroCredits: 9_000_000,
       logger,
     });
     await addRateLimiterCount({
       key,
       timeframeSeconds: 60,
-      incrementBy: 2.5,
+      incrementByMicroCredits: 2_500_000,
       logger,
     });
 
@@ -339,7 +339,7 @@ describe("addRateLimiterCount", () => {
     await addRateLimiterCount({
       key,
       timeframeSeconds: 60,
-      incrementBy: 3,
+      incrementByMicroCredits: 3_000_000,
       logger,
     });
     await runOnRedis({ origin: "rate_limiter" }, async (redis) =>
