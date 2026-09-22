@@ -177,6 +177,14 @@ async function loadAnalyticsUser({
   };
 }
 
+/**
+ * @cc [owner:avervaet,label:backend] index-checkpoint-paused-messages
+ * A message paused at the credit spend checkpoint (status `"created"`,
+ * `creditSpendCheckpointStatus` `"paused"`) MUST NOT be skipped: it is loaded with `completedAt`
+ * defaulted to now, so its already-billed `costCredits` reaches the consumption analytics index
+ * instead of staying invisible until the checkpoint resolves. Any other non-terminal status still
+ * returns null.
+ */
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
   {
@@ -212,13 +220,23 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   if (!messageConversation) {
     throw new Error("Agent message conversation not found");
   }
+  const isPausedAtCreditSpendCheckpoint =
+    agentMessage.status === "created" &&
+    agentMessage.creditSpendCheckpointStatus === "paused";
   if (
     !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) ||
-    !isTerminalAgentMessageStatus(agentMessage.status)
+    (!isTerminalAgentMessageStatus(agentMessage.status) &&
+      !isPausedAtCreditSpendCheckpoint)
   ) {
     return null;
   }
-  if (!agentMessage.completedAt) {
+  // A message paused at the credit spend checkpoint has no completedAt yet: index a provisional
+  // snapshot as of now. It gets superseded once the checkpoint resolves and the message reaches a
+  // terminal status.
+  const completedAt =
+    agentMessage.completedAt ??
+    (isPausedAtCreditSpendCheckpoint ? new Date() : null);
+  if (!completedAt) {
     throw new Error("Settled agent message is missing completedAt");
   }
 
@@ -282,7 +300,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   const agentTagIds = await loadAgentTagIds(auth, agentMessage);
   const user = await loadAnalyticsUser({
     auth,
-    completedAt: agentMessage.completedAt,
+    completedAt,
     userId: triggeringUserMessage.userId,
   });
 
@@ -307,7 +325,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     agentMessageId,
     apiKeyName,
     billedCredits: agentMessage.costCredits,
-    completedAt: agentMessage.completedAt,
+    completedAt,
     contextOrigin: triggeringUserMessage.origin,
     conversationId: conversation.conversationId,
     dustRunIds,

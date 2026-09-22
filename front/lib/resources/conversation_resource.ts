@@ -47,6 +47,7 @@ import type {
   ConversationUrlAccessMode,
   ConversationVisibility,
   ConversationWithoutContentType,
+  CreditSpendCheckpointStatus,
   ParticipantActionType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
@@ -127,6 +128,7 @@ export type AgentMessageConsumptionAnalyticsContext = {
     agentConfigurationVersion: number;
     completedAt: Date | null;
     costCredits: number | null;
+    creditSpendCheckpointStatus: CreditSpendCheckpointStatus | null;
     agentMessageModelId: ModelId;
     modelResolutionMethod: ModelResolutionMethodType | null;
     resolvedModelId: string | null;
@@ -973,6 +975,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         agentConfigurationVersion: agentMessage.agentConfigurationVersion,
         completedAt: agentMessage.completedAt,
         costCredits: agentMessage.costCredits,
+        creditSpendCheckpointStatus: agentMessage.creditSpendCheckpointStatus,
         agentMessageModelId: agentMessage.id,
         modelResolutionMethod: agentMessage.modelResolutionMethod,
         resolvedModelId: agentMessage.resolvedModelId,

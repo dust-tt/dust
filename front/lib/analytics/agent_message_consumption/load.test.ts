@@ -496,4 +496,34 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
 
     expect(input).toBeNull();
   });
+
+  it("indexes a provisional snapshot while paused at the credit spend checkpoint", async () => {
+    const context = await setupSettledMessage();
+    await AgentMessageModel.update(
+      {
+        status: "created",
+        creditSpendCheckpointStatus: "paused",
+        completedAt: null,
+      },
+      {
+        where: {
+          id: context.agentMessage.agentMessageId!,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+
+    const before = new Date();
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input).not.toBeNull();
+    expect(input?.messageStatus).toEqual("created");
+    expect(input?.billedCredits).toEqual(5);
+    expect(input?.completedAt.getTime()).toBeGreaterThanOrEqual(
+      before.getTime()
+    );
+  });
 });

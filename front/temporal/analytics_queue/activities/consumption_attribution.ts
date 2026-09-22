@@ -36,7 +36,10 @@ export async function storeAgentMessageConsumptionAttributionForMessageActivity(
   await storeAgentMessageConsumptionAttribution(authType, message);
 }
 
-/** Builds and bulk-upserts every billed consumption unit for one settled agent message. */
+/**
+ * Builds and bulk-upserts every billed consumption unit for one agent message, whether it has
+ * settled or is paused at the credit spend checkpoint.
+ */
 export async function storeAgentMessageConsumptionAnalyticsActivity(
   authType: AuthenticatorType,
   { message }: { message: AgentMessageRef }
