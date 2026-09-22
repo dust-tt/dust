@@ -1,12 +1,14 @@
 import {
   getNavigateUpIndex,
   getVisibleNavigationEntries,
+  useKnowledgeBrowserNavigation,
 } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import {
   makeDataSourceViewFixture,
   makeSpaceFixture,
 } from "@app/tests/utils/content_node_test_fixtures";
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 const root: NavigationHistoryEntryType = { type: "root" };
@@ -56,5 +58,30 @@ describe("getVisibleNavigationEntries", () => {
         ({ index }) => index
       )
     ).toEqual([0, 1, 2, 3]);
+  });
+});
+
+describe("useKnowledgeBrowserNavigation", () => {
+  it("enters a lone space once and again after a reset", () => {
+    const spaces = [regular.space];
+    const { result } = renderHook(() =>
+      useKnowledgeBrowserNavigation({ spaces, enabled: true })
+    );
+    expect(result.current.navigationHistory.map((e) => e.type)).toEqual([
+      "root",
+      "space",
+    ]);
+
+    // Going back to the root by hand stays at the root.
+    act(() => result.current.navigateTo(0));
+    expect(result.current.navigationHistory.map((e) => e.type)).toEqual([
+      "root",
+    ]);
+
+    act(() => result.current.reset());
+    expect(result.current.navigationHistory.map((e) => e.type)).toEqual([
+      "root",
+      "space",
+    ]);
   });
 });

@@ -47,6 +47,8 @@ export function getVisibleNavigationEntries(
 
 // Navigation state for a knowledge browser, with the Agent Builder's shortcuts: a lone space is
 // entered directly and pods skip the category level since they only expose connected data.
+// `reset` returns to the root and lets the lone-space shortcut apply again, for a browser that
+// stays mounted between uses.
 export function useKnowledgeBrowserNavigation({
   spaces,
   enabled = true,
@@ -54,7 +56,7 @@ export function useKnowledgeBrowserNavigation({
   spaces: EnrichedSpaceType[];
   // When false the shortcuts stay idle so a hidden browser never fetches a space.
   enabled?: boolean;
-}): NavigationHistoryState & { navigateUp: () => void } {
+}): NavigationHistoryState & { navigateUp: () => void; reset: () => void } {
   const navigation = useNavigationHistory();
   const { navigationHistory, navigateTo, setSpaceEntry, setCategoryEntry } =
     navigation;
@@ -64,11 +66,18 @@ export function useKnowledgeBrowserNavigation({
   const autoEnteredSpaceId = useRef<string | null>(null);
   useEffect(() => {
     const loneSpace = spaces.length === 1 ? spaces[0] : null;
-    if (enabled && loneSpace && autoEnteredSpaceId.current !== loneSpace.sId) {
+    // Keyed on the history itself: a reset from the root yields a fresh array but the same entry.
+    const isRoot = navigationHistory.length === 1;
+    if (
+      enabled &&
+      isRoot &&
+      loneSpace &&
+      autoEnteredSpaceId.current !== loneSpace.sId
+    ) {
       autoEnteredSpaceId.current = loneSpace.sId;
       setSpaceEntry(loneSpace);
     }
-  }, [enabled, spaces, setSpaceEntry]);
+  }, [enabled, navigationHistory, spaces, setSpaceEntry]);
 
   useEffect(() => {
     if (
@@ -85,8 +94,13 @@ export function useKnowledgeBrowserNavigation({
     [navigateTo, navigationHistory]
   );
 
+  const reset = useCallback(() => {
+    autoEnteredSpaceId.current = null;
+    navigateTo(0);
+  }, [navigateTo]);
+
   return useMemo(
-    () => ({ ...navigation, navigateUp }),
-    [navigation, navigateUp]
+    () => ({ ...navigation, navigateUp, reset }),
+    [navigation, navigateUp, reset]
   );
 }

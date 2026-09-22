@@ -1,4 +1,10 @@
 import { DropdownAnchorTrigger } from "@app/components/assistant/conversation/input_bar/DropdownAnchorTrigger";
+import { InputBarKnowledgeBrowser } from "@app/components/assistant/conversation/input_bar/InputBarKnowledgeBrowser";
+import type { KnowledgeBrowserItem } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
+import { useBrowsableSpaces } from "@app/components/data_source_view/browser/useBrowsableSpaces";
+import { useKnowledgeBrowserItems } from "@app/components/data_source_view/browser/useKnowledgeBrowserItems";
+import { useKnowledgeBrowserNavigation } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
+import { navigateToKnowledgeBrowserItem } from "@app/components/editor/extensions/shared/slash_suggestion/knowledgeBrowserSlashCommands";
 import { getSingularFileCategoryLabelForContentType } from "@app/components/file_explorer/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
@@ -6,6 +12,7 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useToolFileUpload } from "@app/hooks/useToolFileUpload";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   getLocationForDataSourceViewContentNodeWithSpace,
@@ -299,17 +306,54 @@ export const InputBarAttachmentsPicker = ({
     [spaces]
   );
 
-  const spaceIds = useMemo(() => {
-    // We are having a conversation within a specific space, so we only allow datasources/tools from that space and the global space.
-    // This is a project v1 limitation.
-    if (spaceId) {
-      return spaces
-        .filter((s) => s.sId === spaceId || s.kind === "global")
-        .map((s) => s.sId);
-    } else {
-      return spaces.map((s) => s.sId);
-    }
-  }, [spaces, spaceId]);
+  // We are having a conversation within a specific space, so we only allow datasources/tools from
+  // that space and the global space. This is a project v1 limitation.
+  const scopedSpaces = useMemo(
+    () =>
+      spaceId
+        ? spaces.filter((s) => s.sId === spaceId || s.kind === "global")
+        : spaces,
+    [spaces, spaceId]
+  );
+  const spaceIds = useMemo(
+    () => scopedSpaces.map((s) => s.sId),
+    [scopedSpaces]
+  );
+
+  const { hasFeature } = useFeatureFlags();
+  const isBrowserEnabled = hasFeature("knowledge_browser");
+  // Browsing only runs while the menu is open; the navigation resets to the root on each open.
+  const isBrowsing = isBrowserEnabled && isOpen;
+  const { spaces: browsableSpaces, isLoading: isBrowsableSpacesLoading } =
+    useBrowsableSpaces({
+      owner,
+      spaces: scopedSpaces,
+      enabled: isBrowsing,
+    });
+  const navigation = useKnowledgeBrowserNavigation({
+    spaces: browsableSpaces,
+    enabled: isBrowsing,
+  });
+  const {
+    navigationHistory,
+    navigateTo,
+    navigateUp,
+    reset: resetBrowser,
+  } = navigation;
+  const canNavigateUp = navigationHistory.length > 1;
+  const browser = useKnowledgeBrowserItems({
+    owner,
+    spaces: browsableSpaces,
+    navigationHistory,
+    viewType: "all",
+  });
+  const handleBrowserNavigate = (item: KnowledgeBrowserItem) => {
+    navigateToKnowledgeBrowserItem(item, navigation);
+  };
+  const handleBrowserAttach = (node: DataSourceViewContentNode) => {
+    onNodeSelect(node);
+    setIsOpen(false);
+  };
 
   const projectId =
     spaceId && spacesMap?.[spaceId]?.kind === "project" ? spaceId : undefined;
@@ -543,6 +587,7 @@ export const InputBarAttachmentsPicker = ({
         onOpenChange?.(open);
         if (open) {
           setSearch("");
+          resetBrowser();
         }
       }}
     >
@@ -618,12 +663,22 @@ export const InputBarAttachmentsPicker = ({
               isLoading={showLoader}
               onKeyDown={(e) => {
                 if (e.key === "ArrowDown") {
-                  e.preventDefault();
                   const firstMenuItem =
                     itemsContainerRef.current?.querySelector(
                       '[role="menuitemcheckbox"]'
                     );
-                  (firstMenuItem as HTMLElement)?.focus();
+                  // Without a checkbox item the searchbar focuses the first row itself.
+                  if (firstMenuItem instanceof HTMLElement) {
+                    e.preventDefault();
+                    firstMenuItem.focus();
+                  }
+                } else if (
+                  e.key === "Backspace" &&
+                  search.length === 0 &&
+                  canNavigateUp
+                ) {
+                  e.preventDefault();
+                  navigateUp();
                 }
               }}
               button={
@@ -772,6 +827,18 @@ export const InputBarAttachmentsPicker = ({
               loader={<div />}
             />
           </div>
+        ) : isBrowserEnabled ? (
+          <InputBarKnowledgeBrowser
+            hasMore={browser.hasMore}
+            isLoading={isBrowsableSpacesLoading || browser.isLoading}
+            isLoadingMore={browser.isLoadingMore}
+            items={browser.items}
+            loadMore={browser.loadMore}
+            navigateTo={navigateTo}
+            navigationHistory={navigationHistory}
+            onAttachNode={handleBrowserAttach}
+            onNavigate={handleBrowserNavigate}
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
