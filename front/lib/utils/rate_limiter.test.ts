@@ -284,7 +284,7 @@ describe("addRateLimiterCount", () => {
     await addRateLimiterCount({
       key,
       timeframeSeconds: 60,
-      incrementByMicroCredits: 2_500_000,
+      incrementBy: 2_500_000,
       logger,
     });
 
@@ -308,13 +308,13 @@ describe("addRateLimiterCount", () => {
     await addRateLimiterCount({
       key,
       timeframeSeconds: 60,
-      incrementByMicroCredits: 9_000_000,
+      incrementBy: 9_000_000,
       logger,
     });
     await addRateLimiterCount({
       key,
       timeframeSeconds: 60,
-      incrementByMicroCredits: 2_500_000,
+      incrementBy: 2_500_000,
       logger,
     });
 
@@ -339,7 +339,7 @@ describe("addRateLimiterCount", () => {
     await addRateLimiterCount({
       key,
       timeframeSeconds: 60,
-      incrementByMicroCredits: 3_000_000,
+      incrementBy: 3_000_000,
       logger,
     });
     await runOnRedis({ origin: "rate_limiter" }, async (redis) =>

@@ -251,7 +251,7 @@ export async function computeAndStoreAgentMessageCredits(
       await addRateLimiterCount({
         key: fairUseKey,
         timeframeSeconds: fairUseTimeframeSeconds,
-        incrementByMicroCredits: deltaMicroCredits,
+        incrementBy: deltaMicroCredits,
         logger,
       });
 
