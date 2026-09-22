@@ -1619,6 +1619,25 @@ describe("publish agent capability", () => {
     });
   }
 
+  it("allows an admin to publish an agent", async () => {
+    const { authenticator, user } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { scope: "hidden" }
+    );
+
+    const result = await saveVersionWithScope(
+      authenticator,
+      agent,
+      user,
+      "visible"
+    );
+    assert(result.isOk());
+    expect(result.value.scope).toBe("visible");
+  });
+
   it("rejects publishing (hidden → visible) for an editor without the publish capability", async () => {
     const { workspace, authenticator: adminAuth } = await createResourceTest({
       role: "admin",
