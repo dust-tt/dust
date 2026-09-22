@@ -26,7 +26,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { ChangeEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 
-type FileBlobUploadState =
+export type FileBlobUploadState =
   | { isUploading: false; uploadProgress: null }
   | { isUploading: true; uploadProgress: number | null };
 
