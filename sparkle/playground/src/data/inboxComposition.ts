@@ -11,6 +11,12 @@ export const INBOX_COMPOSITION = {
   pending: { min: 1, max: 2 },
   unread: { min: 4, max: 12 },
   requests: { min: 2, max: 6 },
+  /**
+   * Work you run with an agent is one answer waiting, which the dot says by
+   * itself. Only a thread or two in an Inbox is a back-and-forth you let pile
+   * up, and those are the only rows that count out loud.
+   */
+  multiMessage: { min: 1, max: 2 },
 } as const;
 
 /**
@@ -39,8 +45,8 @@ const ACTIVE_SHARE_MAX = 0.4;
 const THINKING_MIN_MS = 60_000;
 const THINKING_MAX_MS = 180_000;
 
-/** What a row that has gone unread has to show for itself. */
-const UNREAD_COUNT_MAX = 4;
+/** The most a thread that did pile up has waiting in it. */
+const MULTI_MESSAGE_COUNT_MAX = 4;
 
 /**
  * A different Inbox on every visit, and the same one for as long as you stay:
@@ -112,12 +118,15 @@ export function getThinkingDurationMs(rowId: string): number {
 }
 
 /**
- * How much a row has waiting in it. It comes off the row's own id rather than
- * the draw, so replanning a list hands every row back the number it already
- * had instead of dealing from the top of the deck again.
+ * How much a thread that piled up has waiting in it — two at least, since one
+ * is what every other row has. It comes off the row's own id rather than the
+ * draw, so replanning a list hands the row back the number it already had
+ * instead of dealing from the top of the deck again.
  */
-function getUnreadCount(rowId: string): number {
-  return 1 + (hashRowId(`${rowId}:${SESSION_SEED}`) % UNREAD_COUNT_MAX);
+function getMultiMessageCount(rowId: string): number {
+  return (
+    2 + (hashRowId(`${rowId}:${SESSION_SEED}`) % (MULTI_MESSAGE_COUNT_MAX - 1))
+  );
 }
 
 /**
@@ -147,10 +156,11 @@ export function planInboxComposition(
   const assign = (ids: string[], state: ConversationWorkState) => {
     for (const id of ids) {
       states.set(id, state);
-      // A working row is counted too: it will have something to show the
-      // moment its agent is done, and it comes back unread.
+      // One message waiting, until the pass below hands a thread or two more
+      // than that. A working row is counted too: it will have something to
+      // show the moment its agent is done, and it comes back unread.
       if (state !== "pending") {
-        unreadCounts.set(id, getUnreadCount(id));
+        unreadCounts.set(id, 1);
       }
     }
   };
@@ -217,7 +227,7 @@ export function planInboxComposition(
         : row.fixedState;
     states.set(row.id, state);
     if (state !== "pending") {
-      unreadCounts.set(row.id, row.fixedUnreadCount ?? getUnreadCount(row.id));
+      unreadCounts.set(row.id, row.fixedUnreadCount ?? 1);
     }
   }
 
@@ -240,6 +250,26 @@ export function planInboxComposition(
   // Whatever one end of the week could not supply comes from the other, so the
   // Inbox still holds as many unread rows as it set out to.
   assign([...unread, ...draw(ids, unreadTarget - unread.length)], "unread");
+
+  // Which threads piled up, now that there is a list of rows to pick them
+  // from. Rows already carrying a number keep it and count against the
+  // target, and the rest are taken in hash order so a replan picks the same
+  // ones again.
+  const pileTarget = Math.max(
+    0,
+    between(random, INBOX_COMPOSITION.multiMessage) -
+      [...unreadCounts.values()].filter((count) => count > 1).length
+  );
+  const piled = [...unreadCounts.keys()]
+    // A thread only piles up once it has been answered and left: an agent
+    // still working has nothing waiting, and a spinner has nowhere to put a
+    // number anyway.
+    .filter((id) => unreadCounts.get(id) === 1 && states.get(id) === "unread")
+    .sort((a, b) => hashRowId(a) - hashRowId(b))
+    .slice(0, pileTarget);
+  for (const id of piled) {
+    unreadCounts.set(id, getMultiMessageCount(id));
+  }
 
   return { states, unreadCounts, visibleRequestIds };
 }

@@ -1,6 +1,6 @@
 import {
-  AlertCircle,
   Button,
+  Check,
   CheckDouble,
   Circle,
   Clock,
@@ -11,7 +11,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Eye,
   ListGroup,
   ListItemSection,
   MessageChatSquare,
@@ -113,10 +112,14 @@ type RowState = ConversationWorkState | "read";
  * row at once. Work still in flight is never among them.
  */
 const CLEAR_ACTIONS = [
-  { id: "read", label: "Clear all read" },
-  { id: "conversations", label: "Clear all conversations" },
-  { id: "requests", label: "Clear all requests" },
-  { id: "automated", label: "Clear all automated" },
+  { id: "read", label: "Clear all read", icon: Check },
+  {
+    id: "conversations",
+    label: "Clear all conversations",
+    icon: MessageChatSquare,
+  },
+  { id: "requests", label: "Clear all requests", icon: MessageQuestionCircle },
+  { id: "automated", label: "Clear all automated", icon: Zap },
 ] as const;
 
 /** The states you can narrow the list to, in the order work moves through. */
@@ -126,9 +129,10 @@ const ROW_STATE_OPTIONS: {
   icon: ComponentType<{ className?: string }>;
 }[] = [
   { value: "thinking", label: "Thinking", icon: Clock },
-  { value: "pending", label: "Pending", icon: AlertCircle },
+  // A row waiting on you is an agent that asked you something.
+  { value: "pending", label: "Pending", icon: MessageQuestionCircle },
   { value: "unread", label: "Unread", icon: Dot },
-  { value: "read", label: "Read", icon: Eye },
+  { value: "read", label: "Read", icon: Check },
 ];
 
 interface InboxAltViewProps {
@@ -603,35 +607,47 @@ export function InboxAltView({
   const visibleRows = useMemo(() => {
     const query = searchText.trim().toLowerCase();
 
-    return rows.filter((row) => {
-      if (!isInFlight(rowStates.get(row.id)) && hiddenRowIds.has(row.id)) {
-        return false;
-      }
-      if (hideRequests && row.kind === "request") {
-        return false;
-      }
-      if (
-        hideTriggered &&
-        row.kind === "conversation" &&
-        row.source.kind === "automated"
-      ) {
-        return false;
-      }
-      if (filter) {
-        const matchesFilter =
-          filter.kind === "type"
-            ? getRowTypeValue(row) === filter.value
-            : filter.kind === "status"
-              ? rowStates.get(row.id) === filter.value
-              : filter.kind === "agent"
-                ? getRowAgentIds(row).includes(filter.value)
-                : getRowPeopleIds(row).includes(filter.value);
-        if (!matchesFilter) {
-          return false;
-        }
-      }
-      return !query || getRowSearchText(row).includes(query);
-    });
+    return (
+      rows
+        .filter((row) => {
+          if (!isInFlight(rowStates.get(row.id)) && hiddenRowIds.has(row.id)) {
+            return false;
+          }
+          if (hideRequests && row.kind === "request") {
+            return false;
+          }
+          if (
+            hideTriggered &&
+            row.kind === "conversation" &&
+            row.source.kind === "automated"
+          ) {
+            return false;
+          }
+          if (filter) {
+            const matchesFilter =
+              filter.kind === "type"
+                ? getRowTypeValue(row) === filter.value
+                : filter.kind === "status"
+                  ? rowStates.get(row.id) === filter.value
+                  : filter.kind === "agent"
+                    ? getRowAgentIds(row).includes(filter.value)
+                    : getRowPeopleIds(row).includes(filter.value);
+            if (!matchesFilter) {
+              return false;
+            }
+          }
+          return !query || getRowSearchText(row).includes(query);
+        })
+        // An agent at work is what you came to watch, so it does not wait its
+        // turn in the chronology: work in flight leads, and the rest of the list
+        // stays newest first behind it.
+        .sort(
+          (a, b) =>
+            Number(rowStates.get(b.id) === "thinking") -
+              Number(rowStates.get(a.id) === "thinking") ||
+            b.date.getTime() - a.date.getTime()
+        )
+    );
   }, [
     filter,
     hiddenRowIds,
@@ -860,10 +876,11 @@ export function InboxAltView({
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {CLEAR_ACTIONS.map(({ id, label }) => (
+                {CLEAR_ACTIONS.map(({ id, label, icon }) => (
                   <DropdownMenuItem
                     key={id}
                     label={label}
+                    icon={icon}
                     disabled={clearable[id].length === 0}
                     onClick={() => clear(clearable[id])}
                   />
