@@ -1,11 +1,14 @@
 import { SkillSearchActionsMenu } from "@app/components/skills/SkillSearchActionsMenu";
-import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
-import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import {
+  SkillAvailabilityCell,
+  SkillEditorsCell,
+  SkillLastEditedCell,
+  SkillNameCell,
+} from "@app/components/skills/SkillTableCells";
+import { isDustProvidedSkill } from "@app/lib/skill";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Chip, DataTable, Tooltip } from "@dust-tt/sparkle";
+import { DataTable } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -35,45 +38,24 @@ export function SkillSearchTable({
       {
         id: "name",
         header: "Name",
-        cell: ({ row: { original: skill } }) => {
-          const SkillAvatar = getSkillAvatarIcon(skill);
-          return (
-            <DataTable.CellContent>
-              <button
-                type="button"
-                className="flex w-full min-w-0 items-center gap-2 py-3 text-left"
-              >
-                <SkillAvatar />
-                <div className="min-w-0 flex-1">
-                  <div className="heading-sm truncate text-foreground">
-                    {skill.name}
-                  </div>
-                  <div className="truncate text-sm text-muted-foreground">
-                    {skill.userFacingDescription}
-                  </div>
-                </div>
-              </button>
-            </DataTable.CellContent>
-          );
-        },
+        cell: ({ row: { original: skill } }) => (
+          <DataTable.CellContent>
+            <button type="button" className="w-full min-w-0 text-left">
+              <SkillNameCell
+                skill={skill}
+                description={skill.userFacingDescription}
+              />
+            </button>
+          </DataTable.CellContent>
+        ),
         meta: { className: "w-full" },
       },
       {
         id: "availability",
         header: "Availability",
-        cell: ({ row: { original: skill } }) => {
-          const display = SKILL_AVAILABILITY_DISPLAY[skill.availability];
-          return (
-            <DataTable.CellContent>
-              <Tooltip
-                label={display.tooltip}
-                trigger={
-                  <Chip size="xs" color={display.color} label={display.label} />
-                }
-              />
-            </DataTable.CellContent>
-          );
-        },
+        cell: ({ row: { original: skill } }) => (
+          <SkillAvailabilityCell availability={skill.availability} />
+        ),
         meta: { className: "w-40" },
       },
       {
@@ -94,36 +76,18 @@ export function SkillSearchTable({
       {
         id: "editors",
         header: "Editors",
-        cell: ({ row: { original: skill } }) => {
-          const items = isDustProvidedSkill(skill)
-            ? [{ name: "Dust", visual: DUST_AVATAR_URL, isRounded: false }]
-            : skill.editors.map((editor) => ({
-                name: editor.fullName,
-                visual: editor.image,
-                isRounded: true,
-              }));
-          return (
-            <DataTable.CellContent avatarStack={{ items, nbVisibleItems: 4 }} />
-          );
-        },
+        cell: ({ row: { original: skill } }) => (
+          <SkillEditorsCell
+            editors={isDustProvidedSkill(skill) ? null : skill.editors}
+          />
+        ),
         meta: { className: "w-32" },
       },
       {
         id: "updatedAt",
         header: "Last edited",
         cell: ({ row: { original: skill } }) => (
-          <DataTable.BasicCellContent
-            label={
-              skill.updatedAt === null
-                ? "-"
-                : formatTimestampToFriendlyDate(skill.updatedAt, "compact")
-            }
-            tooltip={
-              skill.updatedAt === null
-                ? undefined
-                : formatTimestampToFriendlyDate(skill.updatedAt, "long")
-            }
-          />
+          <SkillLastEditedCell updatedAt={skill.updatedAt} emptyLabel="-" />
         ),
         meta: { className: "w-32" },
       },
