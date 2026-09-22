@@ -187,6 +187,7 @@ export function AdvancedSettings() {
         side="top"
         disabled={false}
         showDegradations={false}
+        showAutoModelsHint={true}
         onSelectionChange={(newModelSelection) => {
           generationSettingsField.onChange({
             ...generationSettings,

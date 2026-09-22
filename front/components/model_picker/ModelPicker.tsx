@@ -15,6 +15,7 @@ import type {
   Selection,
 } from "@app/components/model_picker/modelPickerUtils";
 import {
+  AUTO_MODELS_HINT,
   buildModelSelection,
   buildTierSelection,
   getDegradedModelTooltip,
@@ -22,7 +23,7 @@ import {
   getModelTier,
   getModelWithReasoningEffortLabel,
   getReasoningEffortLabel,
-  getTierFallbackTooltip,
+  getTierFallbackMessage,
   getTierLockReason,
   isPremiumModel,
   isSameSelection,
@@ -87,6 +88,7 @@ export interface ModelPickerProps {
   // Degradation badges warn about picking a model to chat with right now; the
   // agent builder configures a durable default, so it turns them off.
   showDegradations?: boolean;
+  showAutoModelsHint?: boolean;
 }
 
 export function ModelPicker({
@@ -108,6 +110,7 @@ export function ModelPicker({
   openApiRef,
   trackingSurface,
   showDegradations = true,
+  showAutoModelsHint = false,
 }: ModelPickerProps) {
   const clientType = useClientType();
 
@@ -293,13 +296,17 @@ export function ModelPicker({
   const fallbackResolution = shownTier
     ? modelProps.streams?.[shownTier.metaModelId]
     : null;
-  const tierFallbackTooltip =
+  const tierFallbackMessage =
     shownTier &&
     fallbackResolution &&
     fallbackStreamIds.has(shownTier.metaModelId)
-      ? getTierFallbackTooltip(shownTier.name, fallbackResolution.displayName)
+      ? getTierFallbackMessage(shownTier.name, fallbackResolution.displayName)
       : null;
-  const degradationTooltip = degradedModelTooltip ?? tierFallbackTooltip;
+  const degradationTooltip = degradedModelTooltip ?? tierFallbackMessage;
+
+  // composer -> eventual fallback message. Agent builder -> fallback hint
+  const menuHint =
+    tierFallbackMessage ?? (showAutoModelsHint ? AUTO_MODELS_HINT : null);
 
   // Model name and reasoning effort read as one string for the tooltip and the
   // accessible name, but the visible trigger splits the effort into its own
@@ -363,6 +370,7 @@ export function ModelPicker({
         {...menuStateProps}
         side={side}
         selection={selection}
+        recommendationHint={menuHint}
         onSelectTier={onSelectTier}
         onSelectModel={onSelectModel}
         onChangeEffort={(_, effort) => onChangeEffort(effort)}

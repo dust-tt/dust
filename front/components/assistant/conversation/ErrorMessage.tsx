@@ -77,7 +77,7 @@ export function ErrorMessage({
     <ContentMessage
       title={
         retryTierName
-          ? `${failedProviderName} couldn't answer`
+          ? `${failedProviderName} did not respond in time`
           : `${error.metadata?.errorTitle ?? "Something went wrong"}`
       }
       variant={
@@ -88,7 +88,7 @@ export function ErrorMessage({
     >
       <div className="whitespace-normal break-words">
         {retryTierName
-          ? `This model didn't finish. Retry will use the ${retryTierName} model tier.`
+          ? `This model did not respond in time. Retry will use the ${retryTierName} model tier.`
           : error.message}
         {isContextWindowExceeded && (
           <>
