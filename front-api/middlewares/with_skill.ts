@@ -23,7 +23,7 @@ export const withSkill = createMiddleware<SkillCtx>(async (ctx, next) => {
     });
   }
 
-  if (!skill.canAdministrate(auth)) {
+  if (!auth.can("admin", skill)) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
