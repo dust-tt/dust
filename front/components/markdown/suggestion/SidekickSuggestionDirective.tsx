@@ -145,7 +145,9 @@ export function getSidekickSuggestionPlugin() {
 const CONVERSATION_AGENT_SUGGESTION_KINDS = [
   "create",
   "delete",
+  "description",
   "model",
+  "name",
 ] as const;
 
 type ConversationAgentSuggestionKind =

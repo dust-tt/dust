@@ -1,7 +1,7 @@
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import type { MessageStreamBatchEvent } from "@app/lib/api/assistant/pubsub";
 import type { Authenticator } from "@app/lib/auth";
-import { MessageModel } from "@app/lib/models/agent/conversation";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -122,10 +122,12 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events/p
       messagesCreatedAt: [new Date()],
     });
     const messageId = await getMessageIdByRank(auth, conversation.sId, 1);
-    const message = await MessageModel.findOne({
-      where: { sId: messageId, workspaceId: workspace.id },
-    });
-    if (!message?.agentMessageId) {
+    const message = await ConversationResource.getMessageByIdInConversation(
+      auth,
+      conversation,
+      messageId
+    );
+    if (message.isErr() || !message.value.agentMessageId) {
       throw new Error("Expected an agent message.");
     }
     vi.mocked(getMessagesEventsBatch).mockResolvedValue([]);
@@ -140,7 +142,7 @@ describe("GET /api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events/p
 
     await ConversationFactory.setAgentMessageStatus({
       workspace,
-      agentMessageModelId: message.agentMessageId,
+      agentMessageModelId: message.value.agentMessageId,
       status: "succeeded",
     });
 

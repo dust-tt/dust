@@ -1,6 +1,7 @@
 import { TOOL } from "@app/tests/conversational-building-evals/lib/tool-runner";
 import type {
   FinalToolCallAssertion,
+  SeededScenario,
   SkillUpdateEditKind,
   ToolCall,
 } from "@app/tests/conversational-building-evals/lib/types";
@@ -32,14 +33,54 @@ function hasEdit(
   }
 }
 
+function resolveSkillId(scenario: SeededScenario, skillKey: string): string {
+  const skillId = scenario.skillIdsByKey.get(skillKey);
+  if (!skillId) {
+    throw new Error(`Scenario references unknown skill key "${skillKey}"`);
+  }
+  return skillId;
+}
+
+function resolveMemberId(scenario: SeededScenario, memberKey: string): string {
+  const memberId = scenario.memberIdsByKey.get(memberKey);
+  if (!memberId) {
+    throw new Error(`Scenario references unknown member key "${memberKey}"`);
+  }
+  return memberId;
+}
+
+// Shared check for every skill-targeted suggestion: right tool, right skill.
+function checkSkillToolCall(
+  finalToolCall: ToolCall,
+  expectedToolName: string,
+  scenario: SeededScenario,
+  skillKey: string
+): AssertionResult {
+  if (finalToolCall.name !== expectedToolName) {
+    return {
+      success: false,
+      error: `Expected final tool call ${expectedToolName}, got ${finalToolCall.name}`,
+    };
+  }
+  const expectedSkillId = resolveSkillId(scenario, skillKey);
+  const skillId = finalToolCall.arguments.skillId;
+  if (skillId !== expectedSkillId) {
+    return {
+      success: false,
+      error: `Expected ${expectedToolName} on skill "${skillKey}" (${expectedSkillId}), got "${String(skillId)}"`,
+    };
+  }
+  return { success: true };
+}
+
 /**
  * Validates the run's final (last non-exploratory) tool call against the scenario expectation.
- * `skillIdsByKey` resolves the scenario's skill keys to the ids assigned at seed time.
+ * Skill and member keys are resolved to the ids assigned at seed time.
  */
 export function validateFinalToolCall(
   assertion: FinalToolCallAssertion,
   finalToolCall: ToolCall | null,
-  skillIdsByKey: Map<string, string>
+  scenario: SeededScenario
 ): AssertionResult {
   if (!finalToolCall) {
     return {
@@ -58,25 +99,16 @@ export function validateFinalToolCall(
       }
       return { success: true };
     }
+
     case "suggestSkillUpdate": {
-      if (finalToolCall.name !== TOOL.suggestSkillUpdate) {
-        return {
-          success: false,
-          error: `Expected final tool call ${TOOL.suggestSkillUpdate}, got ${finalToolCall.name}`,
-        };
-      }
-      const expectedSkillId = skillIdsByKey.get(assertion.skillKey);
-      if (!expectedSkillId) {
-        throw new Error(
-          `Scenario references unknown skill key "${assertion.skillKey}"`
-        );
-      }
-      const skillId = finalToolCall.arguments.skillId;
-      if (skillId !== expectedSkillId) {
-        return {
-          success: false,
-          error: `Expected ${TOOL.suggestSkillUpdate} on skill "${assertion.skillKey}" (${expectedSkillId}), got "${String(skillId)}"`,
-        };
+      const base = checkSkillToolCall(
+        finalToolCall,
+        TOOL.suggestSkillUpdate,
+        scenario,
+        assertion.skillKey
+      );
+      if (!base.success) {
+        return base;
       }
       const required: SkillUpdateEditKind[] = assertion.edits ?? [];
       const missing = required.filter(
@@ -100,6 +132,78 @@ export function validateFinalToolCall(
       }
       return { success: true };
     }
+
+    case "suggestSkillEditors": {
+      const base = checkSkillToolCall(
+        finalToolCall,
+        TOOL.suggestSkillEditors,
+        scenario,
+        assertion.skillKey
+      );
+      if (!base.success) {
+        return base;
+      }
+      const addUserIds = Array.isArray(finalToolCall.arguments.addUserIds)
+        ? finalToolCall.arguments.addUserIds.filter(isString)
+        : [];
+      const missing = (assertion.addMemberKeys ?? []).filter(
+        (key) => !addUserIds.includes(resolveMemberId(scenario, key))
+      );
+      if (missing.length > 0) {
+        return {
+          success: false,
+          error: `${TOOL.suggestSkillEditors} does not add member(s) ${missing.join(", ")}; addUserIds=${JSON.stringify(addUserIds)}`,
+        };
+      }
+      return { success: true };
+    }
+
+    case "suggestSkillDeletion":
+      return checkSkillToolCall(
+        finalToolCall,
+        TOOL.suggestSkillDeletion,
+        scenario,
+        assertion.skillKey
+      );
+
+    case "suggestSkillName":
+      return checkSkillToolCall(
+        finalToolCall,
+        TOOL.suggestSkillName,
+        scenario,
+        assertion.skillKey
+      );
+
+    case "suggestSkillAvailability": {
+      const base = checkSkillToolCall(
+        finalToolCall,
+        TOOL.suggestSkillAvailability,
+        scenario,
+        assertion.skillKey
+      );
+      if (!base.success) {
+        return base;
+      }
+      if (
+        assertion.availability !== undefined &&
+        finalToolCall.arguments.availability !== assertion.availability
+      ) {
+        return {
+          success: false,
+          error: `Expected availability "${assertion.availability}", got "${String(finalToolCall.arguments.availability)}"`,
+        };
+      }
+      return { success: true };
+    }
+
+    case "suggestSkillUserFacingDescription":
+      return checkSkillToolCall(
+        finalToolCall,
+        TOOL.suggestSkillUserFacingDescription,
+        scenario,
+        assertion.skillKey
+      );
+
     default:
       assertNever(assertion);
   }

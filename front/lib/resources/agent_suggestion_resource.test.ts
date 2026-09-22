@@ -277,6 +277,34 @@ describe("AgentSuggestionResource", () => {
     });
   });
 
+  describe("description suggestion", () => {
+    it("should create and fetch a description suggestion", async () => {
+      const suggestion = await AgentSuggestionFactory.createDescription(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: { description: "Handles incident triage end to end." },
+          analysis: "The old description was too vague",
+        }
+      );
+
+      expect(suggestion).toBeDefined();
+      expect(suggestion.kind).toBe("description");
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched).toBeDefined();
+
+      const json = fetched!.toJSON();
+      expect(json.kind).toBe("description");
+      expect(json.suggestion).toEqual({
+        description: "Handles incident triage end to end.",
+      });
+    });
+  });
+
   describe("bulkUpdateState", () => {
     it.each<"approved" | "rejected" | "outdated">([
       "approved",

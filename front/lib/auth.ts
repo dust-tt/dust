@@ -1570,10 +1570,6 @@ export class Authenticator {
     return this._globalGroupModelId;
   }
 
-  hasGroupByModelId(groupId: ModelId): boolean {
-    return this._groupModelIds.includes(groupId);
-  }
-
   /**
    * The verbs the caller holds on `(resourceType, resourceId)` from their governance grants alone
    * (folding in the type-wide (-1) grants). Caller-scoped and pre-resolved — resources fold this

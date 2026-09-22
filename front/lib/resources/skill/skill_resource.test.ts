@@ -70,6 +70,7 @@ describe("SkillResource", () => {
         editors: [user],
         lastEditedByUser: user,
         activeUsersCount: 4,
+        childSkillIds: [],
       });
 
       expect(document).toMatchObject({
@@ -101,6 +102,7 @@ describe("SkillResource", () => {
         editors: [user],
         lastEditedByUser: user,
         activeUsersCount: 4,
+        childSkillIds: [],
       });
 
       expect(document).toEqual({
@@ -116,12 +118,13 @@ describe("SkillResource", () => {
         editor_ids: [],
         requested_space_ids: [],
         mcp_server_view_ids: [],
+        child_skill_ids: [],
         active_users_count: null,
         favorite_count: 0,
         created_at: null,
         updated_at: null,
       });
-      expect(toSkillListItem(document).updatedAt).toBeNull();
+      expect(toSkillListItem(auth, document).updatedAt).toBeNull();
     });
   });
 

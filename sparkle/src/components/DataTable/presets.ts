@@ -77,7 +77,8 @@ export function getDataTableColumnPresets(
         meta?.type === "numeric" && "tabular-nums",
         meta?.type === "row-actions" && "w-12"
       ) || undefined,
-    sortable: meta?.type !== "row-actions",
+    // A column with no header text has nowhere to show a sort control.
+    sortable: meta?.type !== "row-actions" && column.columnDef.header !== "",
   };
 }
 

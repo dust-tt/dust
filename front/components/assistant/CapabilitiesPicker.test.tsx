@@ -91,12 +91,24 @@ vi.mock(import("@app/lib/swr/mcp_servers"), () => ({
 }));
 
 vi.mock(import("@app/lib/swr/skill_configurations"), () => ({
+  useSearchSkills: () => ({
+    skills: [],
+    resolvedSearchTerm: "",
+    hasMore: false,
+    nextCursor: null,
+    isSkillsError: false,
+    isSkillsLoading: false,
+  }),
   useSkills: () => ({
     skills: [],
     isSkillsError: false,
     isSkillsLoading: false,
     mutateSkills: vi.fn(async () => undefined),
   }),
+}));
+
+vi.mock(import("@app/lib/auth/AuthContext"), () => ({
+  useFeatureFlags: () => ({ featureFlags: [], hasFeature: () => false }),
 }));
 
 vi.mock(import("@app/lib/swr/useIsMobile"), () => ({

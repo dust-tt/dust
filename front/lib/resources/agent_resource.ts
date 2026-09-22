@@ -91,9 +91,9 @@ import uniq from "lodash/uniq";
 import type { Attributes, Transaction } from "sequelize";
 import { Op, UniqueConstraintError, ValidationError } from "sequelize";
 
-// Legacy `canEdit` also allows changing the editor set, so the author fallback mirrors the full
-// editor role rather than granting write alone.
-const AGENT_EDITOR_VERBS: GrantVerb[] = ["read", "write", "admin"];
+// A draft belongs to its current author until it is published. This is ownership, not an editor
+// grant: once the agent leaves draft status, only explicit grants confer editorship.
+const DRAFT_OWNER_VERBS: GrantVerb[] = ["read", "write", "admin"];
 
 // Agents in these statuses only exist inside the builder — behind its "try" button or before the
 // first save — and are never indexed.
@@ -332,8 +332,9 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  * The verbs a caller holds on an agent mean:
  * - `read`: seeing the agent's full configuration and using it. Mentioning or running an agent
  *   MUST require `read`. A custom agent grants it only when the agent is workspace-visible or the
- *   caller has editor access, and when the caller can read every space in `requestedSpaceIds` (see
- *   `agent-read-requires-space-read`).
+ *   caller has editor access, except that a draft's current author owns that draft (see
+ *   `draft-agent-owner`). It also requires the caller to read every space in `requestedSpaceIds`
+ *   (see `agent-read-requires-space-read`).
  * - `write`: editing the agent's definition: configuration versions, tags, model, skills, linked
  *   Slack channels, archiving and restoring.
  * - `admin`: managing the agent's editors, and — as the sole definition exceptions — changing the
@@ -355,11 +356,12 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
 /**
  * @cc [owner:philipperolet,label:security;product] agent-publish-capability
  * `publish` on the `agent` type means deciding whether an active agent is visible to the whole
- * workspace. Moving an active agent to scope `visible`, or an active visible agent to `hidden`,
- * MUST require the `publish` capability — resolved per-resource as `auth.can("publish", r)` for a
- * scope write (see `scope-change-requires-edit-and-publish`) — even for its editors. Editing an
- * agent without changing that, or changing the scope of a draft, pending or archived agent, MUST
- * NOT require it. Protected tags and linking Slack channels to an agent are gated by it too.
+ * workspace. Creating or activating a visible agent, or changing an active agent's scope, MUST
+ * require the `publish` capability — resolved per-resource as `auth.can("publish", r)` for a scope
+ * write (see `scope-change-requires-edit-and-publish`) — even for its editors. Draft and pending
+ * agents MUST remain hidden. An archived agent's scope MUST NOT change until restore; restoring it
+ * visible MUST require `publish`. Editing an agent without changing its workspace visibility MUST
+ * NOT require `publish`. Protected tags and linking Slack channels to an agent are gated by it too.
  */
 /**
  * @cc [owner:tdraier,label:security] agent-edit-requires-write
@@ -1346,6 +1348,14 @@ export class AgentResource
    * `requestedSpaceIds` is a core field carried by every variant, so the gate applies regardless of
    * `light`/`full`. Global agents have no requested spaces and are unaffected.
    */
+  /**
+   * @cc [owner:philipperolet,label:security;product] draft-agent-owner
+   * The current author of a draft custom agent owns that draft and holds `read`, `write`, and
+   * `admin` on it. As with explicit editor grants, `read` and `write` remain subject to
+   * `agent-read-requires-space-read`. Authorship alone MUST NOT grant any verb once the agent is
+   * active, archived, pending, or disabled; editorship on those agents comes only from explicit
+   * grants.
+   */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     if (this.scope === "global") {
       assert(isGlobalAgentId(this.sId));
@@ -1364,7 +1374,8 @@ export class AgentResource
       this.id,
       this.workspaceId
     );
-    const isAuthor =
+    const isDraftOwner =
+      this.status === "draft" &&
       auth.workspace()?.id === this.workspaceId &&
       auth.user()?.id === this.versionAuthorId;
     const roles =
@@ -1377,7 +1388,7 @@ export class AgentResource
         : roles;
 
     const verbs = new Set([
-      ...(isAuthor ? [...grants, ...AGENT_EDITOR_VERBS] : grants),
+      ...(isDraftOwner ? [...grants, ...DRAFT_OWNER_VERBS] : grants),
       ...verbsFromRoleGrants(auth, roleGrants, this.workspaceId),
     ]);
 
@@ -1616,6 +1627,7 @@ export class AgentResource
       update.scope !== undefined && update.scope !== this.scope
         ? update.scope
         : null;
+    const targetStatus = update.status ?? this.status;
 
     // An editor-set change needs no private content either — editors are a separate grant list.
     let editorsChange: UserType[] | null = null;
@@ -1731,8 +1743,15 @@ export class AgentResource
         return new Err(new Error("Protected tags cannot be added or removed."));
       }
     }
-    if (scopeChange && !this.canWriteScope(auth)) {
-      return new Err(new Error("You don't have permission to publish agents."));
+    if (scopeChange) {
+      if (this.status === "archived" || targetStatus !== "active") {
+        return new Err(new Error("Only active agents can change scope."));
+      }
+      if (!this.canWriteScope(auth)) {
+        return new Err(
+          new Error("You don't have permission to publish agents.")
+        );
+      }
     }
     if (editorsChange && !auth.can("admin", this)) {
       return new Err(
@@ -1786,13 +1805,10 @@ export class AgentResource
     return new Ok({ resource: updated ?? target, changed: true });
   }
 
-  // Whether `auth` may write this agent's scope. A scope change is a publish/unpublish only on an
-  // active agent, so it additionally requires `publish`; changing the scope of a draft, pending or
-  // archived agent is a plain edit (see `agent-publish-capability`) needing only `write`/`admin`.
+  // Whether `auth` may publish or unpublish this agent.
   private canWriteScope(auth: Authenticator): boolean {
     const canEdit = auth.can("write", this) || auth.can("admin", this);
-    const needsPublish = this.status === "active";
-    return canEdit && (!needsPublish || auth.can("publish", this));
+    return canEdit && auth.can("publish", this);
   }
 
   // Changes this agent's scope in place — no new version. A no-op when the scope is unchanged, so it
@@ -1801,13 +1817,12 @@ export class AgentResource
   // disables the triggers of non-editors.
   /**
    * @cc [owner:tdraier,label:security;product] scope-change-requires-edit-and-publish
-   * (Un)publishing an agent — changing its scope — requires `write` OR `admin` on the agent, plus
-   * `publish` when the agent is active (an active-agent scope change is exactly a publish/unpublish;
-   * a draft, pending or archived agent's scope change is a plain edit and does not need `publish` —
-   * see `agent-publish-capability`). All resolved per-resource via `auth.can`. This MUST be enforced
-   * wherever a scope is written (`updateScopeInPlace`, and `bulkUpdate` per agent): the scope of an
-   * agent the caller does not satisfy MUST NOT be written. `publish` is a workspace-wide capability
-   * that `getGovernanceGrantVerbs` folds into every instance's verbs, so it resolves per-resource via
+   * Changing an active agent's scope requires `write` OR `admin` on the agent, plus `publish`, all
+   * resolved per-resource via `auth.can`. A draft or pending agent MUST remain hidden, and an
+   * archived agent's scope MUST NOT be changed. This MUST be enforced wherever a scope is written
+   * (`updateScopeInPlace`, and `bulkUpdate` per agent): the scope of an agent the caller does not
+   * satisfy MUST NOT be written. `publish` is a workspace-wide capability that
+   * `getGovernanceGrantVerbs` folds into every instance's verbs, so it resolves per-resource via
    * `auth.can("publish", r)` (grant-backed, never role-derived).
    */
   /**
@@ -1822,6 +1837,9 @@ export class AgentResource
   ): Promise<Result<undefined, Error>> {
     if (this.scope === scope) {
       return new Ok(undefined);
+    }
+    if (this.status !== "active") {
+      return new Err(new Error("Only active agents can change scope."));
     }
     if (!this.canWriteScope(auth)) {
       return new Err(new Error("You don't have permission to publish agents."));
@@ -1925,6 +1943,9 @@ export class AgentResource
       throw new Error("Unexpected `auth` without `workspace`.");
     }
 
+    const persistedScope =
+      status === "draft" || status === "pending" ? "hidden" : scope;
+
     const inputValidation = await validateAgentSaveInputs({
       pictureUrl,
       model,
@@ -1936,7 +1957,7 @@ export class AgentResource
     const publishCheck = await assertPublishPermissionForScopeChange(auth, {
       agentConfigurationId,
       status,
-      scope,
+      scope: persistedScope,
       owner,
     });
     if (publishCheck.isErr()) {
@@ -1945,6 +1966,7 @@ export class AgentResource
 
     try {
       let template: TemplateResource | null = null;
+      let createdInitialEditorGrant = false;
       if (templateId) {
         template = await TemplateResource.fetchByExternalId(templateId);
       }
@@ -1974,7 +1996,7 @@ export class AgentResource
           instructionsHtml,
           model,
           status,
-          scope,
+          scope: persistedScope,
           pictureUrl,
           authorId,
           templateModelId: template?.id,
@@ -2015,6 +2037,7 @@ export class AgentResource
             auth,
             agentConfigurationInstance
           ).grantEditors(auth, { editors, transaction: t });
+          createdInitialEditorGrant = true;
         }
 
         // Create the MCP actions and skill associations in the same transaction as the
@@ -2050,6 +2073,11 @@ export class AgentResource
       // before it is converted to an `Err` (see `agent-save-atomic`).
       const agent = await withTransaction(performCreation);
 
+      if (createdInitialEditorGrant) {
+        // The initial grant was created after this authenticator's permission snapshot.
+        await auth.refresh();
+      }
+
       // The saved version becomes the agent's current version, so any cached resource is now stale
       // (a no-op for a brand-new agent from `makeNew`). The save above is a self-owned transaction,
       // already committed here, so invalidate immediately.
@@ -2081,7 +2109,7 @@ export class AgentResource
           context: getAuditLogContext(auth),
           metadata: {
             agent_name: resource.name,
-            scope: scope,
+            scope: persistedScope,
             model: `${model.providerId}/${model.modelId}`,
           },
         });

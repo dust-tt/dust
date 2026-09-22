@@ -9,7 +9,9 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   AgentCreateSuggestionType,
   AgentDeleteSuggestionType,
+  AgentDescriptionSuggestionType,
   AgentModelSuggestionType,
+  AgentNameSuggestionType,
   AgentSuggestionState,
 } from "@app/types/suggestions/agent_suggestion";
 import type { ActionCardState } from "@dust-tt/sparkle";
@@ -33,16 +35,92 @@ export function mapSuggestionStateToCardState(
   }
 }
 
+export type AgentActionCardSuggestionType =
+  | AgentCreateSuggestionType
+  | AgentDeleteSuggestionType
+  | AgentDescriptionSuggestionType
+  | AgentModelSuggestionType
+  | AgentNameSuggestionType;
+
 interface AgentSuggestionActionCardProps {
-  agentSuggestion:
-    | AgentCreateSuggestionType
-    | AgentDeleteSuggestionType
-    | AgentModelSuggestionType;
+  agentSuggestion: AgentActionCardSuggestionType;
   onAccept: () => void;
   onReject: () => void;
   /** Forces the busy/disabled visual, e.g. while an accept/reject request is in flight. */
   disabled?: boolean;
   pictureUrl?: string;
+}
+
+function getLabels(agentSuggestion: AgentActionCardSuggestionType): {
+  title: string;
+  acceptedTitle: string;
+  rejectedTitle: string;
+  description: string | undefined;
+} {
+  const { analysis } = agentSuggestion;
+
+  switch (agentSuggestion.kind) {
+    case "create": {
+      const { name, description } = agentSuggestion.suggestion;
+      return {
+        title: `Create "${name}" agent`,
+        acceptedTitle: `"${name}" agent creation accepted`,
+        rejectedTitle: `"${name}" agent creation rejected`,
+        description: analysis ?? description,
+      };
+    }
+
+    case "delete": {
+      const { name } = agentSuggestion.suggestion;
+      return {
+        title: `Delete "${name}" agent`,
+        acceptedTitle: `"${name}" agent deletion accepted`,
+        rejectedTitle: `"${name}" agent deletion rejected`,
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "description": {
+      const { description } = agentSuggestion.suggestion;
+      return {
+        title: `Change description to "${description}"`,
+        acceptedTitle: `Description change to "${description}" accepted`,
+        rejectedTitle: `Description change to "${description}" rejected`,
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "model": {
+      const modelName = getModelDisplayNameFromId(
+        agentSuggestion.suggestion.modelId
+      );
+      return {
+        title: `Change model to "${modelName}"`,
+        acceptedTitle: `Model change to "${modelName}" accepted`,
+        rejectedTitle: `Model change to "${modelName}" rejected`,
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "name": {
+      const { name } = agentSuggestion.suggestion;
+      return {
+        title: `Rename agent to "${name}"`,
+        acceptedTitle: `Rename to "${name}" accepted`,
+        rejectedTitle: `Rename to "${name}" rejected`,
+        description: analysis ?? undefined,
+      };
+    }
+
+    default:
+      assertNeverAndIgnore(agentSuggestion);
+      return {
+        title: "Agent suggestion",
+        acceptedTitle: "Agent suggestion accepted",
+        rejectedTitle: "Agent suggestion rejected",
+        description: undefined,
+      };
+  }
 }
 
 export function AgentSuggestionActionCard({
@@ -52,54 +130,12 @@ export function AgentSuggestionActionCard({
   disabled,
   pictureUrl,
 }: AgentSuggestionActionCardProps) {
-  const { state, analysis } = agentSuggestion;
+  const { state } = agentSuggestion;
   const cardState = disabled
     ? "disabled"
     : mapSuggestionStateToCardState(state);
 
-  let labels: {
-    title: string;
-    acceptedTitle: string;
-    rejectedTitle: string;
-    description?: string;
-  };
-  switch (agentSuggestion.kind) {
-    case "create": {
-      const { name, description } = agentSuggestion.suggestion;
-      labels = {
-        title: `Create "${name}" agent`,
-        acceptedTitle: `"${name}" agent creation accepted`,
-        rejectedTitle: `"${name}" agent creation rejected`,
-        description: analysis ?? description,
-      };
-      break;
-    }
-    case "delete": {
-      const { name } = agentSuggestion.suggestion;
-      labels = {
-        title: `Delete "${name}" agent`,
-        acceptedTitle: `"${name}" agent deletion accepted`,
-        rejectedTitle: `"${name}" agent deletion rejected`,
-        description: analysis ?? undefined,
-      };
-      break;
-    }
-    case "model": {
-      const modelName = getModelDisplayNameFromId(
-        agentSuggestion.suggestion.modelId
-      );
-      labels = {
-        title: `Change model to "${modelName}"`,
-        acceptedTitle: `Model change to "${modelName}" accepted`,
-        rejectedTitle: `Model change to "${modelName}" rejected`,
-        description: analysis ?? undefined,
-      };
-      break;
-    }
-    default:
-      assertNeverAndIgnore(agentSuggestion);
-      labels = { title: "", acceptedTitle: "", rejectedTitle: "" };
-  }
+  const labels = getLabels(agentSuggestion);
 
   return (
     <ActionCardBlock

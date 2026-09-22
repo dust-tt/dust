@@ -1,17 +1,32 @@
 import type { DatadogLogContext } from "@app/logger/logger";
-import type { EventSourcePolyfill } from "event-source-polyfill";
+import type {
+  EventSourcePolyfill,
+  Event as PolyfillEvent,
+} from "event-source-polyfill";
 
 export type EventSourceLike = Pick<
   EventSourcePolyfill,
-  "close" | "onerror" | "onmessage" | "onopen" | "readyState" | "url"
->;
+  "close" | "onerror" | "onmessage" | "readyState"
+> & {
+  addEventListener: (
+    type: string,
+    listener: (event: PolyfillEvent) => void
+  ) => void;
+};
 
 export type EventSourceFactory = (
   url: string,
   headers?: Record<string, string>
 ) => Promise<EventSourceLike>;
 
+export type LongPollFactory = (
+  url: string,
+  options: { headers?: Record<string, string>; signal: AbortSignal }
+) => Promise<string[]>;
+
 export type EventSourceManagerOptions = {
+  handshakeTimeoutMs?: number;
+  longPollFactory?: LongPollFactory;
   maxReconnectAttempts?: number;
   reconnectDelayBaseMs?: number;
   reconnectDelayJitterMs?: number;
@@ -21,6 +36,7 @@ export type EventSourceConnectionState =
   | { kind: "idle" }
   | { kind: "connecting"; attempt: number; startedAt: number }
   | { kind: "open"; openedAt: number }
+  | { kind: "long_polling"; startedAt: number }
   | {
       kind: "reconnecting";
       attempt: number;
@@ -30,8 +46,10 @@ export type EventSourceConnectionState =
   | { kind: "terminal" };
 
 export type ConnectionConfig = {
+  buildLongPollURL?: (lastEvent: string | null) => string | null;
   buildURL: (lastEvent: string | null) => string | null;
   headers?: Record<string, string>;
+  isPauseEvent?: (event: string) => boolean;
   isTerminalEvent?: (event: string) => boolean;
   replayBufferedEventsOnSubscribe: boolean;
   restartKey: string;
@@ -43,21 +61,4 @@ export type Subscriber = {
   onEvent: (event: string) => void;
   onStateChange: (state: EventSourceConnectionState) => void;
   onTerminalError?: (error: Error) => void;
-};
-
-export type ConnectionEntry = {
-  config: ConnectionConfig;
-  events: string[];
-  generation: number;
-  lastEvent: string | null;
-  lastEventAt: number | null;
-  lastResumeAtMs: number | null;
-  lastURL: string | null;
-  keepAliveWithoutSubscribers: boolean;
-  reconnectAttempts: number;
-  unsuccessfulResumes: number;
-  reconnectTimeout: ReturnType<typeof setTimeout> | null;
-  source: EventSourceLike | null;
-  state: EventSourceConnectionState;
-  subscribers: Set<Subscriber>;
 };

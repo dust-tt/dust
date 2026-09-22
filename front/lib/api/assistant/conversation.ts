@@ -45,6 +45,7 @@ import {
   MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeFairUseAwuCreditsRateLimitKeyForUser,
+  makeFairUseFixedWindowBounds,
   makeKeyCapRateLimitKey,
   makeMessageRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspaceActor,
@@ -126,6 +127,7 @@ import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
+  getFixedWindowCount,
   getTimeframeSecondsFromLiteral,
   getWeightedRateLimiterCount,
   rateLimiter,
@@ -3116,14 +3118,25 @@ async function isMessagesLimitReached(
     maxAwuCredits !== -1 &&
     !featureFlags.includes("disable_fair_use_awu_limit")
   ) {
-    const result = await getWeightedRateLimiterCount({
-      key: makeFairUseAwuCreditsRateLimitKeyForUser(
-        owner,
-        user.toJSON(),
-        maxAwuCreditsTimeframe
-      ),
-      timeframeSeconds: getTimeframeSecondsFromLiteral(maxAwuCreditsTimeframe),
-    });
+    const fairUseKey = makeFairUseAwuCreditsRateLimitKeyForUser(
+      owner,
+      user.toJSON(),
+      maxAwuCreditsTimeframe
+    );
+    // When `fixed_window_fair_use` is on, enforce over a fixed calendar week
+    // (Monday→Monday UTC) instead of the rolling window. Both branches return a
+    // microCredits total compared against the same scaled limit below.
+    const result = featureFlags.includes("fixed_window_fair_use")
+      ? await getFixedWindowCount({
+          key: fairUseKey,
+          bounds: makeFairUseFixedWindowBounds(maxAwuCreditsTimeframe),
+        })
+      : await getWeightedRateLimiterCount({
+          key: fairUseKey,
+          timeframeSeconds: getTimeframeSecondsFromLiteral(
+            maxAwuCreditsTimeframe
+          ),
+        });
 
     // The counter stores microCredits; scale the credit-denominated limit the
     // same way before comparing.

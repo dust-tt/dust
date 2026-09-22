@@ -1,5 +1,4 @@
 import { getRedisStreamClient } from "@app/lib/api/redis";
-import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import type {
   MaxAwuCreditsTimeframeType,
@@ -142,15 +141,12 @@ export async function rateLimiter({
 }
 
 /**
- * Unconditionally records `incrementBy` AWU credits against `key`, with no limit guard.
+ * Unconditionally records `incrementBy` against `key`, always persisting the entry (unlike
+ * `rateLimiter`, which drops the write when it would exceed the limit). Use it to record a cost that
+ * already happened; enforce beforehand with `getWeightedRateLimiterCount` + a limit check.
  *
- * `incrementBy` is a (possibly fractional) credit amount: it is converted to integer microCredits
- * and stored as a single sorted-set entry carrying the amount (`<microCredits>:<uuid>`), summed on
- * read by `getWeightedRateLimiterCount`. Unlike `rateLimiter`, which drops the write entirely when
- * count + incrementBy would exceed the limit, this always persists the entry. Use this for post-hoc
- * recording of a cost that already happened (e.g. AWU credits for a message that already ran) —
- * enforcement must happen beforehand via `getWeightedRateLimiterCount` + a limit check, not by
- * relying on this function to gatekeep.
+ * `incrementBy` is an integer amount in the caller's own unit, stored verbatim (`<amount>:<uuid>`)
+ * and summed on read. AWU callers pass microCredits (convert with `roundCreditsToMicroCredits`).
  */
 export async function addRateLimiterCount({
   key,
@@ -163,19 +159,14 @@ export async function addRateLimiterCount({
   incrementBy: number;
   logger: LoggerInterface;
 }): Promise<void> {
-  // Fail open on a non-positive/non-finite amount: recording runs on the
+  // Fail open on a non-positive/non-integer amount: recording runs on the
   // message-finalize path (including Temporal retries), so a bad increment must
   // never throw and break finalization — skip instead.
-  if (!Number.isFinite(incrementBy) || incrementBy <= 0) {
+  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
     return;
   }
   if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
     throw new Error("timeframeSeconds must be a positive integer.");
-  }
-
-  const microCredits = roundCreditsToMicroCredits(incrementBy);
-  if (microCredits <= 0) {
-    return;
   }
 
   const redisKey = makeRateLimiterKey(key);
@@ -191,7 +182,7 @@ export async function addRateLimiterCount({
     local now_ms = tonumber(t[1]) * 1000 + math.floor(tonumber(t[2]) / 1000)
 
     -- Always record unconditionally: no limit check, no dropped writes. A single
-    -- entry carries the amount (microCredits prefix + uuid for uniqueness); the
+    -- entry carries the amount (amount prefix + uuid for uniqueness); the
     -- reader sums the prefixes via getWeightedRateLimiterCount.
     redis.call('ZADD', key, now_ms, member)
 
@@ -201,7 +192,7 @@ export async function addRateLimiterCount({
 
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
-    const member = `${microCredits}:${uuidv4()}`;
+    const member = `${incrementBy}:${uuidv4()}`;
     await redis.eval(luaScript, {
       keys: [redisKey],
       arguments: [windowMs.toString(), member],
@@ -579,11 +570,18 @@ export function getTimeframeSecondsFromLiteral(
 }
 
 /**
- * Unconditionally records `incrementBy` units against a fixed-window counter
+ * Unconditionally records `incrementBy` against a fixed-window counter
  * identified by `bounds`. Unlike the rolling `addRateLimiterCount`, the key
  * encodes the current window (via `bounds.label`) and is a plain `INCRBY` with
  * `PEXPIREAT` set to `bounds.windowEndMs` — enforcement (reading the count and
  * comparing to a limit) happens beforehand via `getFixedWindowCount`, not here.
+ *
+ * `incrementBy` is a raw integer in caller-defined units, stored verbatim: the
+ * caller owns the unit and must read back with the same unit via
+ * `getFixedWindowCount` and compare against a limit in that unit (spend-cap and
+ * fair-use callers use microCredits). This differs from `addRateLimiterCount`,
+ * which takes a (possibly fractional) credit amount and converts to microCredits
+ * internally — do not pass credits here.
  */
 export async function addFixedWindowCount({
   key,

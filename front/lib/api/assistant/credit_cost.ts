@@ -1,7 +1,10 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
-import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
+import {
+  makeFairUseAwuCreditsRateLimitKeyForUser,
+  makeFairUseFixedWindowBounds,
+} from "@app/lib/api/assistant/rate_limits";
 import { maybeProactivelyAutoUpgradeSeatOnCapReached } from "@app/lib/api/credits/auto_seat_upgrade";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
@@ -29,7 +32,9 @@ import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { spendLimitCycleOverrideForAuth } from "@app/lib/spend_limits/cycle";
 import {
+  addFixedWindowCount,
   addRateLimiterCount,
+  getFixedWindowCount,
   getTimeframeSecondsFromLiteral,
   getWeightedRateLimiterUsage,
 } from "@app/lib/utils/rate_limiter";
@@ -208,31 +213,67 @@ export async function computeAndStoreAgentMessageCredits(
       user.toJSON(),
       assistantLimits.maxAwuCreditsTimeframe
     );
-    const fairUseTimeframeSeconds = getTimeframeSecondsFromLiteral(
-      assistantLimits.maxAwuCreditsTimeframe
-    );
-
-    await addRateLimiterCount({
-      key: fairUseKey,
-      timeframeSeconds: fairUseTimeframeSeconds,
-      incrementBy: recordedCostDelta,
-      logger,
-    });
-
-    // Only the message that crosses the cap emits: from here on the user is
-    // blocked upstream, and each retry emits `fair_use_limit_blocked` instead.
-    const usage = await getWeightedRateLimiterUsage({
-      key: fairUseKey,
-      timeframeSeconds: fairUseTimeframeSeconds,
-    });
     const limitMicroCredits = roundCreditsToMicroCredits(
       assistantLimits.maxAwuCredits
     );
+    const deltaMicroCredits = roundCreditsToMicroCredits(recordedCostDelta);
+
+    // Read back the post-write total (microCredits) to detect the message that
+    // crosses the cap. `burnDurationHours` is only meaningful for the rolling
+    // window, where entries carry timestamps; the fixed window has none.
+    let usedMicroCredits: number | null = null;
+    let burnDurationHours = 0;
+
+    if (featureFlags.includes("fixed_window_fair_use")) {
+      const bounds = makeFairUseFixedWindowBounds(
+        assistantLimits.maxAwuCreditsTimeframe
+      );
+      if (deltaMicroCredits > 0) {
+        await addFixedWindowCount({
+          key: fairUseKey,
+          bounds,
+          incrementBy: deltaMicroCredits,
+          logger,
+        });
+      }
+      const countResult = await getFixedWindowCount({
+        key: fairUseKey,
+        bounds,
+      });
+      if (countResult.isOk()) {
+        usedMicroCredits = countResult.value;
+      }
+    } else {
+      const fairUseTimeframeSeconds = getTimeframeSecondsFromLiteral(
+        assistantLimits.maxAwuCreditsTimeframe
+      );
+
+      await addRateLimiterCount({
+        key: fairUseKey,
+        timeframeSeconds: fairUseTimeframeSeconds,
+        incrementBy: deltaMicroCredits,
+        logger,
+      });
+
+      const usage = await getWeightedRateLimiterUsage({
+        key: fairUseKey,
+        timeframeSeconds: fairUseTimeframeSeconds,
+      });
+      if (usage.isOk()) {
+        usedMicroCredits = usage.value.count;
+        // How fast the window was burnt: low -> spike, not steady use.
+        burnDurationHours = usage.value.oldestTimestampMs
+          ? (Date.now() - usage.value.oldestTimestampMs) / (60 * 60 * 1000)
+          : 0;
+      }
+    }
+
+    // Only the message that crosses the cap emits: from here on the user is
+    // blocked upstream, and each retry emits `fair_use_limit_blocked` instead.
     if (
-      usage.isOk() &&
-      usage.value.count >= limitMicroCredits &&
-      usage.value.count - roundCreditsToMicroCredits(recordedCostDelta) <
-        limitMicroCredits
+      usedMicroCredits !== null &&
+      usedMicroCredits >= limitMicroCredits &&
+      usedMicroCredits - deltaMicroCredits < limitMicroCredits
     ) {
       PostHogServerSideTracking.trackEvent({
         distinctId: user.sId,
@@ -241,11 +282,8 @@ export async function computeAndStoreAgentMessageCredits(
         extra: {
           limit_credits: assistantLimits.maxAwuCredits,
           timeframe: assistantLimits.maxAwuCreditsTimeframe,
-          used_credits: microCreditsToCredits(usage.value.count),
-          // How fast the window was burnt: low -> spike, not steady use.
-          burn_duration_hours: usage.value.oldestTimestampMs
-            ? (Date.now() - usage.value.oldestTimestampMs) / (60 * 60 * 1000)
-            : 0,
+          used_credits: microCreditsToCredits(usedMicroCredits),
+          burn_duration_hours: burnDurationHours,
           origin: messageOrigin,
         },
       });

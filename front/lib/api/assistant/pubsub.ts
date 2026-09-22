@@ -244,7 +244,7 @@ export async function getMessagesEventsBatch({
       batchReady.resolve();
     },
     "message_events_long_poll",
-    { lastEventId }
+    { lastEventId, signal }
   );
 
   const onAbort = () => batchReady.resolve();

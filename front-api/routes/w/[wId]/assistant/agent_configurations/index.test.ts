@@ -419,6 +419,34 @@ describe("POST /api/w/:wId/assistant/agent_configurations - Skills with restrict
   });
 });
 
+describe("POST /api/w/:wId/assistant/agent_configurations - draft", () => {
+  it("keeps preview drafts hidden", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "POST",
+    });
+    await SpaceFactory.defaults(auth);
+
+    // Old browser tabs can still copy the form's visible scope into preview requests.
+    const response = await postAgent(workspace, {
+      assistant: {
+        ...TEST_AGENT_PARAMS,
+        name: "Preview Agent",
+        status: "draft",
+        scope: "visible",
+        editors: [{ sId: user.sId }],
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.agentConfiguration).toMatchObject({
+      status: "draft",
+      scope: "hidden",
+    });
+  });
+});
+
 describe("POST /api/w/:wId/assistant/agent_configurations - additionalRequestedSpaceIds", () => {
   it("should include additionalRequestedSpaceIds when creating agent", async () => {
     const { workspace, user, auth, globalGroup } =

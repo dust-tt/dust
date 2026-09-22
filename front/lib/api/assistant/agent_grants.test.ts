@@ -59,7 +59,7 @@ it("uses agent grants for list, manage and archived views", async () => {
   expect(archived.map((agent) => agent.sId)).toEqual([grantAgent.sId]);
 });
 
-it("keeps author access and admin redaction when grants are enabled", async () => {
+it("revokes active-agent author access and keeps admin redaction", async () => {
   const {
     authenticator: authorAuth,
     workspace,
@@ -86,7 +86,7 @@ it("keeps author access and admin redaction when grants are enabled", async () =
     agentId: agent.sId,
     variant: "light",
   });
-  expect([authorAgent?.canRead, authorAgent?.canEdit]).toEqual([true, true]);
+  expect([authorAgent?.canRead, authorAgent?.canEdit]).toEqual([false, false]);
   const admin = await UserFactory.basic();
   await MembershipFactory.associate(workspace, admin, { role: "admin" });
   const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(

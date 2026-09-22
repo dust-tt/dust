@@ -1,12 +1,16 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConfirmContext } from "@app/components/Confirm";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
+import type { RenameMountItem } from "@app/components/file_explorer/RenameFileDialog";
+import { RenameFileDialog } from "@app/components/file_explorer/RenameFileDialog";
 import type {
   FileEntry,
   FileExplorerEntry,
   FileExplorerMenuAction,
   FileExplorerPathEntry,
   FileExplorerVirtualScopeRoot,
+  FolderEntry,
+  FramePackageEntry,
 } from "@app/components/file_explorer/types";
 import { useFileExplorerDownload } from "@app/components/file_explorer/useFileExplorerDownload";
 import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
@@ -37,8 +41,32 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { Button, LayoutAlt02, Pin02, XClose } from "@dust-tt/sparkle";
 import { useCallback, useContext, useMemo, useState } from "react";
 
-function isFramePackageEntry(entry: FileExplorerEntry): boolean {
-  return entry.kind === "frame_package";
+/** The confirm copy for each deletable entry kind, or null for kinds that cannot be deleted. */
+export function getDeletePrompt(
+  entry: FileExplorerEntry
+): { title: string; message: string } | null {
+  switch (entry.kind) {
+    case "frame_package":
+      return {
+        title: "Delete Frame?",
+        message:
+          `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, ` +
+          "functions, databases and share links will be permanently removed. " +
+          "This action cannot be undone.",
+      };
+    case "folder":
+      return {
+        title: "Delete folder?",
+        message: `Are you sure you want to delete "${entry.name}" and all its contents? This action cannot be undone.`,
+      };
+    case "file":
+      return {
+        title: "Delete file?",
+        message: `Are you sure you want to delete "${entry.fileName}"? This action cannot be undone.`,
+      };
+    default:
+      return null;
+  }
 }
 
 interface ConversationFileExplorerProps {
@@ -212,24 +240,24 @@ export function ConversationFileExplorer({
     [openPanel]
   );
 
-  // Only Frame packages get a Delete item here (see `canDelete`); other conversation files stay
-  // non-deletable as before.
+  const [itemToRename, setItemToRename] = useState<RenameMountItem | null>(
+    null
+  );
+
   const onDelete = useCallback(
     async (entry: FileExplorerEntry) => {
-      if (entry.kind !== "frame_package") {
+      const prompt = getDeletePrompt(entry);
+      if (!prompt) {
         return;
       }
+
       const confirmed = await confirm({
-        title: "Delete Frame?",
-        message:
-          `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, ` +
-          "functions, databases and share links will be permanently removed. " +
-          "This action cannot be undone.",
+        ...prompt,
         validateLabel: "Delete",
         validateVariant: "warning",
       });
       if (confirmed) {
-        // The package entry carries the manifest path; deleting the manifest runs the
+        // A Frame package entry carries the manifest path, and deleting the manifest runs the
         // package-aware Frame deletion server-side.
         const result = await deleteFileByPath(entry.path);
         if (result.isOk()) {
@@ -238,6 +266,33 @@ export function ConversationFileExplorer({
       }
     },
     [confirm, deleteFileByPath, mutatePodFiles, mutateSandboxFiles]
+  );
+
+  // Files, folders and Frame packages all rename through the same canonical-path endpoint; a
+  // Frame renames as the folder holding its manifest.
+  const onRename = useCallback(
+    (entry: FileEntry | FolderEntry | FramePackageEntry) => {
+      if (entry.kind === "frame_package") {
+        setItemToRename({
+          kind: "frame",
+          path: entry.sourceFolderCanonicalPath,
+          name: entry.fileName,
+        });
+      } else if (entry.kind === "file") {
+        setItemToRename({
+          kind: "file",
+          path: entry.path,
+          name: entry.fileName,
+        });
+      } else {
+        setItemToRename({
+          kind: "folder",
+          path: entry.path,
+          name: entry.name,
+        });
+      }
+    },
+    []
   );
 
   return (
@@ -271,8 +326,8 @@ export function ConversationFileExplorer({
           }
           getFileUrl={getFileUrl}
           onCurrentFolderChange={setCurrentFolderPath}
-          onDelete={hasFeature("frames_v2") ? onDelete : undefined}
-          canDelete={isFramePackageEntry}
+          onDelete={onDelete}
+          onRename={onRename}
           onDownload={onDownload}
           onOpenInteractive={onOpenInteractive}
           onOpenInPanel={onOpenInPanel}
@@ -280,6 +335,16 @@ export function ConversationFileExplorer({
           virtualScopeRoots={virtualScopeRoots}
         />
       </div>
+
+      <RenameFileDialog
+        isOpen={itemToRename !== null}
+        onClose={() => setItemToRename(null)}
+        onRenamed={() => {
+          void Promise.all([mutateSandboxFiles(), mutatePodFiles()]);
+        }}
+        owner={owner}
+        item={itemToRename}
+      />
 
       {createFileTabDraft && (
         <EditPodFileTabDialog

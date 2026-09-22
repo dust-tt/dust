@@ -5,7 +5,12 @@ import {
   BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
   SUGGEST_AGENT_CREATION_TOOL_NAME,
+  SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
+  SUGGEST_SKILL_DELETION_TOOL_NAME,
+  SUGGEST_SKILL_EDITORS_TOOL_NAME,
+  SUGGEST_SKILL_NAME_TOOL_NAME,
   SUGGEST_SKILL_UPDATE_TOOL_NAME,
+  SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { TOOLS as BUILDING_TOOLS } from "@app/lib/api/actions/servers/building_agents_and_skills/tools";
 import { WORKSPACE_MANAGEMENT_SERVER_NAME } from "@app/lib/api/actions/servers/workspace_management/metadata";
@@ -25,6 +30,26 @@ export const TOOL = {
   suggestSkillUpdate: getPrefixedToolName(
     BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
     SUGGEST_SKILL_UPDATE_TOOL_NAME
+  ),
+  suggestSkillEditors: getPrefixedToolName(
+    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
+    SUGGEST_SKILL_EDITORS_TOOL_NAME
+  ),
+  suggestSkillDeletion: getPrefixedToolName(
+    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
+    SUGGEST_SKILL_DELETION_TOOL_NAME
+  ),
+  suggestSkillName: getPrefixedToolName(
+    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
+    SUGGEST_SKILL_NAME_TOOL_NAME
+  ),
+  suggestSkillAvailability: getPrefixedToolName(
+    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
+    SUGGEST_SKILL_AVAILABILITY_TOOL_NAME
+  ),
+  suggestSkillUserFacingDescription: getPrefixedToolName(
+    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
+    SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME
   ),
   suggestAgentCreation: getPrefixedToolName(
     BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,

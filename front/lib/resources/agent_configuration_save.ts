@@ -5,6 +5,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import {
   AgentConfigurationModel,
   AgentModel,
@@ -13,9 +14,11 @@ import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 // Type-only import (erased at runtime, so no import cycle with `agent_resource`): these helpers may
 // operate on an already-resolved `AgentResource` instance but never construct or statically call it.
 import type { AgentResource } from "@app/lib/resources/agent_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -68,27 +71,27 @@ export async function validateAgentSaveInputs({
   return new Ok(undefined);
 }
 
-// Resolves the current scope of an agent being re-saved, without opening the save transaction.
-// A new agent starts hidden, so saving it visible counts as publishing.
-async function getCurrentScope(
+// Resolves the current state of an agent being re-saved, without opening the save transaction.
+async function getCurrentState(
   agentConfigurationId: string | undefined,
   owner: LightWorkspaceType
-): Promise<AgentConfigurationScope> {
+): Promise<{ status: AgentStatus; scope: AgentConfigurationScope } | null> {
   if (!agentConfigurationId) {
-    return "hidden";
+    return null;
   }
   const existingAgent = await AgentConfigurationModel.findOne({
     where: { sId: agentConfigurationId, workspaceId: owner.id },
     order: [["version", "DESC"]],
-    attributes: ["scope"],
+    attributes: ["status", "scope"],
     limit: 1,
   });
-  return existingAgent?.scope ?? "hidden";
+  return existingAgent
+    ? { status: existingAgent.status, scope: existingAgent.scope }
+    : null;
 }
 
-// With only `hidden`/`visible` scopes for custom agents, a scope change on an active agent is exactly
-// a publish (→ visible) or unpublish (→ hidden), both of which need publish permission. Returns an
-// `Err` (not a throw): it runs before the save transaction is opened.
+// Publishing a new or non-active agent, or changing an active agent's scope, needs publish
+// permission. Returns an `Err` (not a throw): it runs before the save transaction is opened.
 export async function assertPublishPermissionForScopeChange(
   auth: Authenticator,
   {
@@ -106,8 +109,11 @@ export async function assertPublishPermissionForScopeChange(
   if (status !== "active") {
     return new Ok(undefined);
   }
-  const currentScope = await getCurrentScope(agentConfigurationId, owner);
-  if (currentScope !== scope) {
+  const current = await getCurrentState(agentConfigurationId, owner);
+  const isPublishing = current?.status !== "active" && scope === "visible";
+  const isChangingActiveScope =
+    current?.status === "active" && current.scope !== scope;
+  if (isPublishing || isChangingActiveScope) {
     const canPublish = await auth.hasWorkspacePermission("publish", "agent");
     if (!canPublish) {
       return new Err(new Error("You don't have permission to publish agents."));
@@ -429,6 +435,12 @@ export async function syncAgentTags(
 // unconditionally and does not require permission for an unchanged set; a real change requires
 // `admin` (see `agent-verbs`). Operates on the already-resolved `agentResource` (editors are
 // agent-level grants managed through it) but calls no `AgentResource` static.
+/**
+ * @cc [owner:philipperolet,label:security;product] editor-add-requires-membership
+ * Every editor added by this call (an editor in the new set who is not already one) MUST be an
+ * active member of the workspace; otherwise the change MUST fail with a `user_not_found`
+ * `DustError` before any editor grant is written.
+ */
 export async function syncAgentEditors(
   auth: Authenticator,
   {
@@ -449,6 +461,23 @@ export async function syncAgentEditors(
     return new Err(
       new Error("You don't have permission to change this agent's editors.")
     );
+  }
+
+  const addedEditorModelIds = editors
+    .filter((e) => !currentIds.has(e.id))
+    .map((e) => e.id);
+  if (addedEditorModelIds.length > 0) {
+    const addedUsers = await UserResource.fetchByModelIds(addedEditorModelIds);
+    const { total: activeMembershipCount } =
+      await MembershipResource.getActiveMemberships({
+        users: addedUsers,
+        workspace: auth.getNonNullableWorkspace(),
+      });
+    if (activeMembershipCount !== addedEditorModelIds.length) {
+      return new Err(
+        new DustError("user_not_found", "Editor is not a workspace member.")
+      );
+    }
   }
 
   const removedEditors = await withTransaction(async (t) => {

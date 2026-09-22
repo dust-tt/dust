@@ -58,7 +58,8 @@ describe("InstructionSuggestionExtension", () => {
   beforeEach(() => {
     editor = EditorFactory(
       [
-        InstructionBlockExtension,
+        // Exercise ProseMirror decorations without a React EditorContent host.
+        InstructionBlockExtension.extend({ addNodeView: () => null }),
         InstructionSuggestionExtension,
         BlockIdExtension,
         ListItemExtension,

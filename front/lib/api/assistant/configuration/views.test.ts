@@ -1,6 +1,8 @@
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -8,6 +10,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
+import assert from "assert";
 import { describe, expect, it } from "vitest";
 
 async function authenticatorForNewMember(
@@ -60,6 +63,45 @@ describe("getAgentConfigurationsForView, default ordering", () => {
     expect(agents.map((agent) => agent.sId)).toEqual(
       [agentA.sId, agentB.sId, agentC.sId].slice(0, limit)
     );
+  });
+});
+
+describe("getAgentConfigurationsForView, 'current_user' view", () => {
+  it("hides an authored hidden agent after its editor grant is removed", async () => {
+    const { authenticator, user } = await createResourceTest({ role: "user" });
+    const retainedAgent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Still editable", scope: "hidden" }
+    );
+    const revokedAgent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "No longer editable", scope: "hidden" }
+    );
+    const resource = AgentResource.fromAgentConfiguration(
+      authenticator,
+      revokedAgent
+    );
+    assert(resource.id !== null);
+
+    expect(
+      (
+        await GroupPermissionResource.revokeFromUser(authenticator, {
+          user: user.toJSON(),
+          resourceType: "agent",
+          resourceId: resource.id,
+          grantType: "editor",
+        })
+      ).isOk()
+    ).toBe(true);
+    await authenticator.refresh();
+
+    const agents = await getAgentConfigurationsForView({
+      auth: authenticator,
+      agentsGetView: "current_user",
+      variant: "light",
+    });
+
+    expect(agents.map((agent) => agent.sId)).toEqual([retainedAgent.sId]);
   });
 });
 

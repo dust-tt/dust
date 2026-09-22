@@ -186,7 +186,9 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       : {};
 
   const baseAgentsSequelizeQuery = {
-    limit,
+    // The current-user view is filtered by effective read permission after enrichment, so apply
+    // its limit only after that filtering to avoid dropping readable agents from the result.
+    limit: agentsGetView === "current_user" ? undefined : limit,
     order: sortStrategy.dbOrder,
     ...excludeAttributesFromSelect,
   };
@@ -374,9 +376,18 @@ async function fetchWorkspaceAgentConfigurationsForView(
     ? agentModels
     : await filterAgentsByRequestedSpaces(auth, agentModels);
 
-  return enrichAgentConfigurations(auth, allowedAgentModels, {
-    variant,
-  });
+  const agentConfigurations = await enrichAgentConfigurations(
+    auth,
+    allowedAgentModels,
+    {
+      variant,
+    }
+  );
+
+  // Authorship selects candidates for this legacy view, but does not itself grant access.
+  return agentsGetView === "current_user"
+    ? agentConfigurations.filter((agent) => agent.canRead)
+    : agentConfigurations;
 }
 
 type AgentConfigurationsForViewBaseArgs = {

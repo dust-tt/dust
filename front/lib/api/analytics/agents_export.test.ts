@@ -5,9 +5,9 @@ import {
   toAgentExportCsvRow,
 } from "@app/lib/api/analytics/agents_export";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
-import { updateAgentPermissions } from "@app/lib/api/assistant/configuration/agent";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -74,11 +74,21 @@ describe("fetchAgentExportRows", () => {
     });
 
     // Make B an editor through the production path so B receives the grant that confers `write`.
-    const addEditorResult = await updateAgentPermissions(authorAAuth, {
-      agent,
-      usersToAdd: [authorB.toJSON()],
-      usersToRemove: [],
-    });
+    const agentResourceToSeed = await AgentResource.fetchById(
+      authorAAuth,
+      agent.sId
+    );
+    if (!agentResourceToSeed) {
+      throw new Error("Agent not found");
+    }
+    const seedEditors =
+      (await agentResourceToSeed.listEditors(authorAAuth)) ?? [];
+    const addEditorResult = await agentResourceToSeed.updateConfiguration(
+      authorAAuth,
+      {
+        editors: [...seedEditors.map((u) => u.toJSON()), authorB.toJSON()],
+      }
+    );
     expect(addEditorResult.isOk()).toBe(true);
     if (addEditorResult.isErr()) {
       throw addEditorResult.error;

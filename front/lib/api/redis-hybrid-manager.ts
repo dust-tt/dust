@@ -251,8 +251,9 @@ class RedisHybridManager {
   }
 
   /**
-   * Subscribe to a channel for real-time updates
-   * and fetch history from the corresponding stream
+   * @cc [owner:id13,label:concurrency;performance] cancellable-subscription-setup
+   * When the supplied signal aborts, `subscribe` MUST remove its callback and release the Redis
+   * channel if no other subscriber uses it.
    */
   public async subscribe(
     channelName: string,
@@ -261,7 +262,12 @@ class RedisHybridManager {
     {
       lastEventId = null,
       skipHistory = false,
-    }: { lastEventId?: string | null; skipHistory?: boolean } = {}
+      signal,
+    }: {
+      lastEventId?: string | null;
+      skipHistory?: boolean;
+      signal?: AbortSignal;
+    } = {}
   ): Promise<{
     history: EventPayload[];
     unsubscribe: () => void;
@@ -283,13 +289,70 @@ class RedisHybridManager {
 
         const streamName = this.getStreamName(channelName);
         const pubSubChannelName = this.getPubSubChannelName(channelName);
+        let registeredCallback: EventCallback | null = null;
 
-        // Make sure the subscribers map is initialized
         const channelSetupStartMs = Date.now();
-        if (!this.subscribers.has(pubSubChannelName)) {
+        const needsSubscription = !this.subscribers.has(pubSubChannelName);
+        if (needsSubscription) {
           this.subscribers.set(pubSubChannelName, new Set());
-          // Subscribe to the channel if this is the first subscriber
-          await subscriptionClient.subscribe(pubSubChannelName, this.onMessage);
+        }
+
+        const unsubscribe = () => {
+          signal?.removeEventListener("abort", unsubscribe);
+          const subscribers = this.subscribers.get(pubSubChannelName);
+          if (!subscribers) {
+            return;
+          }
+
+          if (registeredCallback) {
+            if (registeredCallback === callback) {
+              callback("close");
+              this.activeSubscriptionCount--;
+              statsDMetrics.gauge(
+                "sse.active_subscriptions",
+                this.activeSubscriptionCount
+              );
+            }
+            subscribers.delete(registeredCallback);
+            registeredCallback = null;
+          }
+
+          if (subscribers.size === 0) {
+            this.subscribers.delete(pubSubChannelName);
+            void subscriptionClient
+              .unsubscribe(pubSubChannelName)
+              .catch((error) => {
+                logger.error(
+                  { error, channel: pubSubChannelName },
+                  "Error unsubscribing from channel"
+                );
+              });
+            logger.debug(
+              { pubSubChannelName, origin },
+              "Unsubscribed from Redis channel"
+            );
+          }
+        };
+
+        signal?.addEventListener("abort", unsubscribe, { once: true });
+        if (signal?.aborted) {
+          unsubscribe();
+          return { history: [], unsubscribe };
+        }
+        if (needsSubscription) {
+          try {
+            await subscriptionClient.subscribe(
+              pubSubChannelName,
+              this.onMessage
+            );
+          } catch (error) {
+            unsubscribe();
+            throw error;
+          }
+        }
+        if (signal?.aborted) {
+          unsubscribe();
+          return { history: [], unsubscribe };
         }
         const channelSetupDurationMs = Date.now() - channelSetupStartMs;
         statsDMetrics.distribution(
@@ -302,6 +365,7 @@ class RedisHybridManager {
         if (skipHistory) {
           // No history needed — just register the callback for real-time pub/sub events.
           this.subscribers.get(pubSubChannelName)!.add(callback);
+          registeredCallback = callback;
         } else {
           const eventsDuringHistoryFetch: EventPayload[] = [];
           const eventsDuringHistoryFetchCallback: EventCallback = (
@@ -316,15 +380,20 @@ class RedisHybridManager {
           this.subscribers
             .get(pubSubChannelName)!
             .add(eventsDuringHistoryFetchCallback);
+          registeredCallback = eventsDuringHistoryFetchCallback;
 
           const historyFetchStartMs = Date.now();
+          const historyResult = await this.getHistory(
+            streamClient,
+            streamName,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            lastEventId || "0-0"
+          );
+          if (signal?.aborted) {
+            return { history: [], unsubscribe };
+          }
           const { events: historyEvents, hasMore: historyHasMore } =
-            await this.getHistory(
-              streamClient,
-              streamName,
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              lastEventId || "0-0"
-            );
+            historyResult;
           const historyFetchDurationMs = Date.now() - historyFetchStartMs;
           statsDMetrics.distribution(
             "sse.subscribe.history_fetch_duration_ms",
@@ -338,6 +407,7 @@ class RedisHybridManager {
 
           // Immediately add the real callback to the subscribers map
           this.subscribers.get(pubSubChannelName)!.add(callback);
+          registeredCallback = callback;
 
           // Append the events during history fetch to the history, if any
           const dedupeStartMs = Date.now();
@@ -353,7 +423,9 @@ class RedisHybridManager {
               }
             }
             // Sort the history just in case
-            history.sort((a, b) => a.id.localeCompare(b.id));
+            history.sort((a, b) =>
+              a.id.localeCompare(b.id, undefined, { numeric: true })
+            );
           }
           const dedupeDurationMs = Date.now() - dedupeStartMs;
           statsDMetrics.distribution(
@@ -368,7 +440,6 @@ class RedisHybridManager {
           }
         }
 
-        // Track active subscription count for monitoring.
         this.activeSubscriptionCount++;
         statsDMetrics.gauge(
           "sse.active_subscriptions",
@@ -385,42 +456,7 @@ class RedisHybridManager {
 
         return {
           history,
-          unsubscribe: async () => {
-            const subscribers = this.subscribers.get(pubSubChannelName);
-            if (subscribers) {
-              callback("close");
-              subscribers.delete(callback);
-
-              // Track active subscription count for monitoring.
-              this.activeSubscriptionCount--;
-              statsDMetrics.gauge(
-                "sse.active_subscriptions",
-                this.activeSubscriptionCount
-              );
-
-              if (subscribers.size === 0) {
-                // No more subscribers for this channel
-                this.subscribers.delete(pubSubChannelName);
-                // Unsubscribe from the channel
-                if (this.subscriptionClient) {
-                  try {
-                    await this.subscriptionClient.unsubscribe(
-                      pubSubChannelName
-                    );
-                  } catch (error) {
-                    logger.error(
-                      { error, channel: pubSubChannelName },
-                      "Error unsubscribing from channel"
-                    );
-                  }
-                }
-                logger.debug(
-                  { pubSubChannelName: pubSubChannelName, origin },
-                  "Unsubscribed from Redis channel"
-                );
-              }
-            }
-          },
+          unsubscribe,
         };
       }
     ); // End tracer.trace("redis.hybrid.subscribe")

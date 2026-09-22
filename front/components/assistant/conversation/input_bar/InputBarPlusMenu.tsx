@@ -15,7 +15,7 @@ import type {
   ConversationWithoutContentType,
   SelectableConversationSpaceType,
 } from "@app/types/assistant/conversation";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
@@ -48,7 +48,9 @@ interface InputBarPlusMenuProps {
   hideCapabilities: boolean;
   hideAttachments: boolean;
   onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
-  onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
+  onSkillSelect: (
+    skill: Pick<SkillListItemType, "sId" | "name" | "icon">
+  ) => void;
   onSetupServer: (server: MCPServerType) => void;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;

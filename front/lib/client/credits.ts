@@ -4,6 +4,7 @@ import type {
 } from "@app/types/plan";
 import { TIMEFRAME_SECONDS } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 
 // Format a number of AWU credits for display (thousands separators, at most
@@ -101,6 +102,43 @@ export function formatMicroUsdCompact(microUsd: number): string {
   return `$${dollars.toLocaleString("en-US", {
     notation: "compact",
     maximumFractionDigits: 1,
+  })}`;
+}
+
+// Relative UTC day label for a reset/refill date: "today", "tomorrow", a
+// weekday within the week ("on Monday"), or the calendar date beyond that
+// ("on Oct 6"). Shared by the fair-use and premium-usage reset copy.
+export function formatRelativeResetDay(isoDate: string): string {
+  const resetAt = new Date(isoDate);
+  const now = new Date();
+  const resetDayMs = Date.UTC(
+    resetAt.getUTCFullYear(),
+    resetAt.getUTCMonth(),
+    resetAt.getUTCDate()
+  );
+  const currentDayMs = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate()
+  );
+  const delayDays = Math.round((resetDayMs - currentDayMs) / ONE_DAY_MS);
+
+  if (delayDays <= 0) {
+    return "today";
+  }
+  if (delayDays === 1) {
+    return "tomorrow";
+  }
+  if (delayDays < 7) {
+    return `on ${resetAt.toLocaleDateString("en-US", {
+      weekday: "long",
+      timeZone: "UTC",
+    })}`;
+  }
+  return `on ${resetAt.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
   })}`;
 }
 

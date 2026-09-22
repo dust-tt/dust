@@ -6,6 +6,7 @@ import {
 import { useEventSource } from "@app/hooks/useEventSource";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import { getAgentLoopEventId } from "@app/lib/client/agent_loop_stream";
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -206,12 +207,8 @@ export function useChildAgentStream({
       }
       const { conversationId, agentMessageId } = childStreamIds;
       const baseUrl = `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessageId}/events`;
-      let lastEventId = "";
-      if (lastEvent) {
-        const eventPayload: { eventId: string } = JSON.parse(lastEvent);
-        lastEventId = eventPayload.eventId;
-      }
-      return baseUrl + "?lastEventId=" + lastEventId;
+      const lastEventId = getAgentLoopEventId(lastEvent);
+      return baseUrl + "?lastEventId=" + encodeURIComponent(lastEventId);
     },
     [childStreamIds, owner.sId, disabled]
   );
@@ -225,6 +222,17 @@ export function useChildAgentStream({
     dispatch(eventPayload.data);
   }, []);
 
+  const buildLongPollURL = useCallback(
+    (lastEvent: string | null) => {
+      if (!childStreamIds || disabled) {
+        return null;
+      }
+      const { conversationId, agentMessageId } = childStreamIds;
+      return `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${agentMessageId}/events/poll?lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`;
+    },
+    [childStreamIds, disabled, owner.sId]
+  );
+
   const isStreamDone = state.status === "done" || state.status === "error";
 
   useEventSource(
@@ -233,6 +241,7 @@ export function useChildAgentStream({
     `child-agent-${childStreamIds?.agentMessageId}`,
     {
       workspaceId: owner.sId,
+      buildLongPollURL,
       isReadyToConsumeStream:
         childStreamIds !== null && !isStreamDone && !disabled,
     }

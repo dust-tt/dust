@@ -27,6 +27,7 @@ const SkillSearchSortSchema = z.array(
  * @cc [owner:aubin-tchoi,label:security;performance] indexed-skill-search-listings
  * Return only workspace-scoped or eligible code-defined indexed metadata using hydrated grants.
  * Result projection must not read the database; code-defined eligibility is resolved before the query.
+ * Administration permissions come from hydrated grants, not indexed editors; code-defined skills cannot be administrated.
  * Permission-bearing document changes are eventually consistent; full-skill
  * access remains separately authorized. Callers must authorize admin-only redaction upstream.
  * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
@@ -99,7 +100,7 @@ export async function searchSkills(
 
   return new Ok({
     skills: removeNulls(pageHits.map((hit) => hit._source)).map((document) =>
-      toSkillListItem(document)
+      toSkillListItem(auth, document)
     ),
     hasMore: hits.length > limit,
     nextCursor: nextCursor

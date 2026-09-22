@@ -3,6 +3,7 @@ import { CreditUsageCard } from "@app/components/app/CreditUsageCard";
 import {
   formatCredits,
   formatLimitTimeframe,
+  formatRelativeResetDay,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/client/credits";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
@@ -30,6 +31,9 @@ interface RollingWindowCreditUsageState extends CreditUsageStateBase {
   // window (day/week/month) - omitted for the "lifetime" free-seat case, which
   // never refills.
   refillSchedule?: { date: string; credits: number }[];
+  // When true the cap uses a fixed window instead of a rolling day count.
+  isFixedWindow?: boolean;
+  nextResetAt?: string | null;
 }
 
 export type CreditUsageState =
@@ -101,6 +105,9 @@ function getRollingWindowUsageDescription(
 ): string {
   if (state.timeframe === "lifetime") {
     return getLifetimeUsageDescription(state);
+  }
+  if (state.isFixedWindow && state.nextResetAt) {
+    return `Resets ${formatRelativeResetDay(state.nextResetAt)}`;
   }
   const windowDays =
     getTimeframeSecondsFromLiteral(state.timeframe) / (24 * 60 * 60);

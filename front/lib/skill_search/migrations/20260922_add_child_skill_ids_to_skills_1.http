@@ -1,0 +1,8 @@
+PUT /front.skills_1/_mapping
+{
+  "properties": {
+    "child_skill_ids": {
+      "type": "keyword"
+    }
+  }
+}

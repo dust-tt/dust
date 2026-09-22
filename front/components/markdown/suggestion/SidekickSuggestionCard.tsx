@@ -8,6 +8,7 @@ import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import {
   AgentSuggestionActionCard,
   mapSuggestionStateToCardState,
@@ -28,8 +29,6 @@ import type {
 import { defaultSelectionConfiguration } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
-  AgentCreateSuggestionType,
-  AgentDeleteSuggestionType,
   AgentInstructionsSuggestionType,
   AgentKnowledgeSuggestionWithRelationsType,
   AgentModelSuggestionWithRelationsType,
@@ -654,7 +653,7 @@ function KnowledgeSuggestionCard({
 }
 
 interface ConnectedAgentSuggestionActionCardProps {
-  agentSuggestion: AgentCreateSuggestionType | AgentDeleteSuggestionType;
+  agentSuggestion: AgentActionCardSuggestionType;
 }
 
 // Thin wiring so the shared card stays context-free: it pulls accept/reject from the sidekick's
@@ -666,9 +665,9 @@ function ConnectedAgentSuggestionActionCard({
   const { getValues } = useFormContext<AgentBuilderFormData>();
 
   const pictureUrl =
-    agentSuggestion.kind === "delete"
-      ? getValues("agentSettings.pictureUrl")
-      : undefined;
+    agentSuggestion.kind === "create"
+      ? undefined
+      : getValues("agentSettings.pictureUrl");
 
   return (
     <AgentSuggestionActionCard
@@ -693,6 +692,8 @@ export function SidekickSuggestionCard({
   switch (agentSuggestion.kind) {
     case "create":
     case "delete":
+    case "description":
+    case "name":
       return (
         <ConnectedAgentSuggestionActionCard agentSuggestion={agentSuggestion} />
       );

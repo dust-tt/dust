@@ -25,8 +25,11 @@ export const SUGGEST_AGENT_CREATION_TOOL_NAME =
   "suggest_agent_creation" as const;
 export const SUGGEST_AGENT_DELETION_TOOL_NAME =
   "suggest_agent_deletion" as const;
+export const SUGGEST_AGENT_DESCRIPTION_TOOL_NAME =
+  "suggest_agent_description" as const;
 export const SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME =
   "suggest_agent_model_change" as const;
+export const SUGGEST_AGENT_NAME_TOOL_NAME = "suggest_agent_name" as const;
 export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME =
   "suggest_skill_user_facing_description" as const;
 export const SUGGEST_SKILL_NAME_TOOL_NAME = "suggest_skill_name" as const;
@@ -164,6 +167,24 @@ export type SuggestAgentDeletionArgs = z.infer<
   typeof SUGGEST_AGENT_DELETION_INPUT_SCHEMA
 >;
 
+export const SUGGEST_AGENT_DESCRIPTION_DESCRIPTION =
+  "Suggest a new description for an existing agent.";
+
+export const SUGGEST_AGENT_DESCRIPTION_INPUT_SCHEMA = z.object({
+  agentId: z
+    .string()
+    .describe("The id of the agent to change the description for."),
+  description: z.string().min(1).describe("The new description."),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Why this description is better than the current one."),
+});
+
+export type SuggestAgentDescriptionArgs = z.infer<
+  typeof SUGGEST_AGENT_DESCRIPTION_INPUT_SCHEMA
+>;
+
 export const SUGGEST_AGENT_MODEL_CHANGE_DESCRIPTION =
   "Suggest changing the model, and optionally its reasoning effort, used by an existing agent " +
   "of this workspace. The change is not applied directly: it is recorded as a pending " +
@@ -187,6 +208,22 @@ export const SUGGEST_AGENT_MODEL_CHANGE_INPUT_SCHEMA = z.object({
 
 export type SuggestAgentModelChangeArgs = z.infer<
   typeof SUGGEST_AGENT_MODEL_CHANGE_INPUT_SCHEMA
+>;
+
+export const SUGGEST_AGENT_NAME_DESCRIPTION =
+  "Suggest a new name for an existing agent.";
+
+export const SUGGEST_AGENT_NAME_INPUT_SCHEMA = z.object({
+  agentId: z.string().describe("The id of the agent to rename."),
+  name: z.string().min(1).describe("The new name, without a leading '@'"),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Why this name is clearer than the current one."),
+});
+
+export type SuggestAgentNameArgs = z.infer<
+  typeof SUGGEST_AGENT_NAME_INPUT_SCHEMA
 >;
 
 export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_INPUT_SCHEMA = z.object({
@@ -362,6 +399,18 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     freeUsage: true,
   },
   {
+    name: SUGGEST_AGENT_DESCRIPTION_TOOL_NAME,
+    description: SUGGEST_AGENT_DESCRIPTION_DESCRIPTION,
+    schema: SUGGEST_AGENT_DESCRIPTION_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting agent description",
+      done: "Suggest agent description",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
     name: SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME,
     description: SUGGEST_AGENT_MODEL_CHANGE_DESCRIPTION,
     schema: SUGGEST_AGENT_MODEL_CHANGE_INPUT_SCHEMA.shape,
@@ -369,6 +418,18 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting agent model change",
       done: "Suggest agent model change",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_AGENT_NAME_TOOL_NAME,
+    description: SUGGEST_AGENT_NAME_DESCRIPTION,
+    schema: SUGGEST_AGENT_NAME_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting agent name",
+      done: "Suggest agent name",
     },
     toolCostCategory: "basic",
     freeUsage: true,

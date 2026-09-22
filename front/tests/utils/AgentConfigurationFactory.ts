@@ -41,7 +41,7 @@ export class AgentConfigurationFactory {
 
     const workspace = auth.getNonNullableWorkspace();
     // Some legacy tests use an auth without workspace membership. Such users cannot receive an
-    // editor grant, but authorId below still preserves attribution and the author fallback.
+    // editor grant, but authorId below still preserves attribution.
     const editors = Authenticator.isMember(auth.role()) ? [user.toJSON()] : [];
 
     // Internal auth only bypasses the create capability; explicit authorId keeps attribution.
@@ -78,9 +78,9 @@ export class AgentConfigurationFactory {
     await auth.refresh();
 
     // Re-read the full config: as the caller when they are a workspace member (so the returned
-    // verbs reflect the author), otherwise as the internal admin — legacy tests build agents with a
-    // non-member auth, which `getAgentConfigurations` rejects. `dangerouslySkipPermissionFiltering`
-    // lets tests build agents on spaces the caller cannot read.
+    // verbs reflect their editor grant), otherwise as the internal admin — legacy tests build agents
+    // with a non-member auth, which `getAgentConfigurations` rejects.
+    // `dangerouslySkipPermissionFiltering` lets tests build agents on spaces the caller cannot read.
     const readAuth = auth.isUser() ? auth : internalAuth;
     const config = await getAgentConfiguration(readAuth, {
       agentId: result.value.sId,

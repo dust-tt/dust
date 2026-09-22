@@ -11,7 +11,11 @@ import { useEventSource } from "@app/hooks/useEventSource";
 import type { AgentLoopToolNotificationEvent } from "@app/lib/actions/mcp";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import { isTerminalAgentLoopEvent } from "@app/lib/client/agent_loop_stream";
+import {
+  getAgentLoopEventId,
+  isTerminalAgentLoopEvent,
+  shouldPauseAgentLoopStream,
+} from "@app/lib/client/agent_loop_stream";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   InlineActivityStep,
@@ -162,7 +166,7 @@ export function appendThinkingStep(
   id: string,
   stepIndex: number
 ): InlineActivityStep[] {
-  if (steps.some((step) => step.id === id)) {
+  if (!cotContent.trim() || steps.some((step) => step.id === id)) {
     return steps;
   }
   for (let i = steps.length - 1; i >= 0; i--) {
@@ -186,9 +190,7 @@ function appendContentStep(
   id: string,
   stepIndex: number
 ): InlineActivityStep[] {
-  // Skip if already present — the id is event-derived, so a replay after a
-  // remount regenerates the same id instead of appending a duplicate.
-  if (steps.some((step) => step.id === id)) {
+  if (!textContent.trim() || steps.some((step) => step.id === id)) {
     return steps;
   }
   return [
@@ -343,17 +345,23 @@ export function useAgentMessageStream({
         return null;
       }
       const esURL = `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events`;
-      let lastEventId = "";
-      if (lastEvent) {
-        const eventPayload: {
-          eventId: string;
-        } = JSON.parse(lastEvent);
-        lastEventId = eventPayload.eventId;
+      const lastEventId = getAgentLoopEventId(lastEvent);
+      if (lastEventId) {
         // We have a lastEventId, so this is not a fresh mount
         isFreshMountWithContent.current = false;
       }
 
-      return esURL + "?lastEventId=" + lastEventId;
+      return esURL + "?lastEventId=" + encodeURIComponent(lastEventId);
+    },
+    [conversationId, sId, owner.sId]
+  );
+
+  const buildLongPollURL = useCallback(
+    (lastEvent: string | null) => {
+      if (isStreamTerminated.current) {
+        return null;
+      }
+      return `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events/poll?lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`;
     },
     [conversationId, sId, owner.sId]
   );
@@ -819,7 +827,9 @@ export function useAgentMessageStream({
     `message-${sId}`,
     {
       workspaceId: owner.sId,
+      buildLongPollURL,
       isReadyToConsumeStream: shouldStream,
+      isPauseEvent: shouldPauseAgentLoopStream,
       isTerminalEvent: isTerminalAgentLoopEvent,
       keepAliveOnUnmount: true,
       replayBufferedEventsOnMount: true,

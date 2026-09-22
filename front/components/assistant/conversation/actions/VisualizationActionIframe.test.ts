@@ -10,7 +10,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   clientFetch: vi.fn(),
+  isDark: false,
   logInfo: vi.fn(),
+}));
+
+vi.mock("@app/components/sparkle/ThemeContext", () => ({
+  useTheme: () => ({ isDark: mocks.isDark }),
 }));
 
 vi.mock("@app/logger/datadogLogger", () => ({
@@ -48,6 +53,7 @@ const scopedUserIdentity: ScopedWorkspaceUserIdentity = {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  mocks.isDark = false;
 });
 
 describe("getFrameRuntimeAccess", () => {
@@ -167,6 +173,40 @@ describe("getSandboxFunctionInvocationAccessError", () => {
 });
 
 describe("VisualizationActionIframe", () => {
+  it("passes the resolved Dust theme in the iframe URL and reloads on changes", () => {
+    mocks.isDark = true;
+    const props = {
+      agentConfigurationId: null,
+      canInvokeFunctions: true,
+      conversationId: null,
+      frameId: "fil_frame",
+      scopedUserIdentity,
+      viewer: null,
+      visualization: {
+        code: "export default function Frame() {}",
+        complete: true,
+        identifier: "viz-fil_frame",
+      },
+      vizUrl: "https://viz.dust.tt",
+      workspaceId: "w_current",
+    };
+    const { container, rerender } = render(
+      createElement(VisualizationActionIframe, props)
+    );
+    const iframe = container.querySelector("iframe");
+    if (!iframe) {
+      throw new Error("Expected the visualization iframe to be mounted.");
+    }
+    expect(new URL(iframe.src).searchParams.get("theme")).toBe("dark");
+
+    mocks.isDark = false;
+    rerender(createElement(VisualizationActionIframe, props));
+    expect(new URL(iframe.src).searchParams.get("theme")).toBe("light");
+    expect(new URL(iframe.src).searchParams.get("identifier")).toBe(
+      "viz-fil_frame"
+    );
+  });
+
   it("records missing styles only for the mounted Frame and accepts bounded messages", () => {
     const { container } = render(
       createElement(VisualizationActionIframe, {

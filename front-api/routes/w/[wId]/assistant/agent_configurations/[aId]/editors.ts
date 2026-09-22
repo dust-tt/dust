@@ -1,8 +1,8 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
-  getAgentConfiguration,
-  updateAgentPermissions,
-} from "@app/lib/api/assistant/configuration/agent";
-import { getAgentEditors } from "@app/lib/api/assistant/editors";
+  getAgentEditors,
+  updateAgentEditorsFromDelta,
+} from "@app/lib/api/assistant/editors";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -186,25 +186,17 @@ app.patch(
       }
     }
 
-    const updateRes = await updateAgentPermissions(auth, {
-      agent,
-      usersToAdd: usersToAdd.map((u) => u.toJSON()),
-      usersToRemove: usersToRemove.map((u) => u.toJSON()),
+    const updateRes = await updateAgentEditorsFromDelta(auth, agent, {
+      usersToAdd,
+      usersToRemove,
     });
 
     if (updateRes.isErr()) {
       switch (updateRes.error.code) {
-        case "unauthorized":
+        case "user_already_member":
+        case "user_not_member":
           return apiError(ctx, {
-            status_code: 401,
-            api_error: {
-              type: "workspace_auth_error",
-              message: "You are not authorized to update the agent editors.",
-            },
-          });
-        case "invalid_request_error":
-          return apiError(ctx, {
-            status_code: 400,
+            status_code: 409,
             api_error: {
               type: "invalid_request_error",
               message: updateRes.error.message,
@@ -215,24 +207,7 @@ app.patch(
             status_code: 404,
             api_error: {
               type: "user_not_found",
-              message: "The user was not found in the workspace.",
-            },
-          });
-        case "user_not_member":
-          return apiError(ctx, {
-            status_code: 409,
-            api_error: {
-              type: "invalid_request_error",
-              message: "The user is not a member of the agent editors group.",
-            },
-          });
-        case "user_already_member":
-          return apiError(ctx, {
-            status_code: 409,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "The user is already a member of the agent editors group.",
+              message: updateRes.error.message,
             },
           });
         case "internal_error":

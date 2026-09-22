@@ -2,10 +2,58 @@ import type { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import type { BulkAgentUpdateResult } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+
+/**
+ * Validates a model change against live state and resolves the model fields to write. Only models
+ * the caller could pick in the agent builder are accepted: this accounts for workspace availability
+ * (providers, feature flags, plan) and model tiers.
+ */
+export async function resolveAgentModelChange(
+  auth: Authenticator,
+  {
+    modelId,
+    reasoningEffort,
+  }: {
+    modelId: string;
+    reasoningEffort?: ReasoningEffort;
+  }
+): Promise<
+  Result<
+    Pick<
+      AgentModelConfigurationType,
+      "providerId" | "modelId" | "reasoningEffort"
+    >,
+    Error
+  >
+> {
+  const { models } = await getModelsForAuth(auth);
+  const model = models.find((m) => m.modelId === modelId);
+  if (!model || !model.isSelectable) {
+    return new Err(
+      new Error(`Model "${modelId}" is not available in this workspace.`)
+    );
+  }
+
+  const effort = reasoningEffort ?? model.defaultReasoningEffort;
+  if (!model.supportedReasoningEfforts[effort]) {
+    return new Err(
+      new Error(
+        `Model "${modelId}" does not support the "${effort}" reasoning effort.`
+      )
+    );
+  }
+
+  return new Ok({
+    providerId: model.providerId,
+    modelId: model.modelId,
+    reasoningEffort: effort,
+  });
+}
 
 /**
  * Sets the model of several agents at once. Like saving an agent from the builder with another model
@@ -38,23 +86,12 @@ export async function updateAgentConfigurationsModel(
     return new Ok({ updatedAgentIds: [], skippedAgentIds: [] });
   }
 
-  // Only models the caller could pick in the agent builder can be set: this accounts for
-  // workspace availability (providers, feature flags, plan) and model tiers.
-  const { models } = await getModelsForAuth(auth);
-  const model = models.find((m) => m.modelId === modelId);
-  if (!model || !model.isSelectable) {
-    return new Err(
-      new Error(`Model "${modelId}" is not available in this workspace.`)
-    );
-  }
-
-  const effort = reasoningEffort ?? model.defaultReasoningEffort;
-  if (!model.supportedReasoningEfforts[effort]) {
-    return new Err(
-      new Error(
-        `Model "${modelId}" does not support the "${effort}" reasoning effort.`
-      )
-    );
+  const modelRes = await resolveAgentModelChange(auth, {
+    modelId,
+    reasoningEffort,
+  });
+  if (modelRes.isErr()) {
+    return modelRes;
   }
 
   if (responseFormat) {
@@ -69,11 +106,16 @@ export async function updateAgentConfigurationsModel(
   // Only the model changes; `bulkUpdate` merges these fields into each agent's current model
   // (preserving e.g. its temperature) and creates a new version per agent. `responseFormat` is
   // included only when set, so an unspecified value leaves the current one untouched.
+  const {
+    providerId,
+    modelId: resolvedModelId,
+    reasoningEffort: resolvedReasoningEffort,
+  } = modelRes.value;
   const result = await AgentResource.bulkUpdate(auth, agentIds, {
     model: {
-      providerId: model.providerId,
-      modelId: model.modelId,
-      reasoningEffort: effort,
+      providerId,
+      modelId: resolvedModelId,
+      reasoningEffort: resolvedReasoningEffort,
       ...(responseFormat !== undefined ? { responseFormat } : {}),
     },
   });

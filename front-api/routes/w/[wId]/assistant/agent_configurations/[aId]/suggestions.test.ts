@@ -656,7 +656,7 @@ describe("PATCH with applyToAgent", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.message).toContain(
-      "Only an active agent"
+      "cannot be exported or updated"
     );
     const fetched = await AgentSuggestionResource.fetchById(
       auth,
@@ -689,6 +689,106 @@ describe("PATCH with applyToAgent", () => {
       variant: "light",
     });
     expect(placeholder?.status).toBe("pending");
+  });
+
+  it("renames the agent for a name suggestion, leaving its other fields alone", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const suggestion = await AgentSuggestionFactory.createName(auth, agent, {
+      suggestion: { name: "IncidentHelper" },
+    });
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const renamed = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "full",
+    });
+    expect(renamed).toMatchObject({
+      sId: agent.sId,
+      status: "active",
+      name: "IncidentHelper",
+      description: agent.description,
+      scope: agent.scope,
+      instructions: agent.instructions,
+      version: agent.version + 1,
+    });
+  });
+
+  it("changes the agent's description for a description suggestion, leaving other fields alone", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const suggestion = await AgentSuggestionFactory.createDescription(
+      auth,
+      agent,
+      {
+        suggestion: { description: "Handles incident triage end to end." },
+      }
+    );
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "full",
+    });
+    expect(updated).toMatchObject({
+      sId: agent.sId,
+      status: "active",
+      name: agent.name,
+      description: "Handles incident triage end to end.",
+      scope: agent.scope,
+      instructions: agent.instructions,
+      version: agent.version + 1,
+    });
+  });
+
+  it("applies a name and a description suggestion from the same batch as a single version", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const nameSuggestion = await AgentSuggestionFactory.createName(
+      auth,
+      agent,
+      { suggestion: { name: "IncidentHelper" } }
+    );
+    const descriptionSuggestion =
+      await AgentSuggestionFactory.createDescription(auth, agent, {
+        suggestion: { description: "Handles incident triage end to end." },
+      });
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [nameSuggestion.sId, descriptionSuggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "full",
+    });
+    expect(updated).toMatchObject({
+      sId: agent.sId,
+      status: "active",
+      name: "IncidentHelper",
+      description: "Handles incident triage end to end.",
+      scope: agent.scope,
+      instructions: agent.instructions,
+      // One batch, one version: both edits land in the same upgrade, not two.
+      version: agent.version + 1,
+    });
   });
 
   it("returns 400 for kinds that cannot be applied server-side", async () => {

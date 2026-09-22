@@ -52,6 +52,19 @@ const HOST_RERENDER_INTERVAL_MS = 100;
 const HOST_AUTOSAVE_DEBOUNCE_MS = 1_000;
 const UNDO_GROUP_PAUSE_MS = 600;
 
+const clickHeadingLink = async (link: HTMLElement) => {
+  const bounds = link.getBoundingClientRect();
+
+  await userEvent.pointer({
+    keys: "[MouseLeft]",
+    target: link,
+    coords: {
+      clientX: bounds.left + bounds.width / 2,
+      clientY: bounds.top + bounds.height / 2,
+    },
+  });
+};
+
 /** @summary The writing surface with headings, lists, and a quote. */
 export const DocumentPage: Story = {
   args: {
@@ -82,17 +95,9 @@ export const HeadingLinks: Story = {
     const scroll = spyOn(heading, "scrollIntoView");
     const href = window.location.href;
     const link = canvas.getByRole("link", { name: "Résumé Café" });
-    const bounds = link.getBoundingClientRect();
 
     try {
-      await userEvent.pointer({
-        keys: "[MouseLeft]",
-        target: link,
-        coords: {
-          clientX: bounds.left + bounds.width / 2,
-          clientY: bounds.top + bounds.height / 2,
-        },
-      });
+      await clickHeadingLink(link);
 
       await expect(window.open).not.toHaveBeenCalled();
       await expect(scroll).toHaveBeenCalledWith({
@@ -113,6 +118,48 @@ export const HeadingLinks: Story = {
 export const ReadOnlyHeadingLinks: Story = {
   ...HeadingLinks,
   args: { ...HeadingLinks.args, readOnly: true },
+};
+
+/** @summary Repeated headings and numbered titles receive distinct, reachable anchors. */
+export const CollidingHeadings: Story = {
+  args: {
+    initialContent:
+      "# Repeated headings\n\n[Numbered setup](#setup-1-1)\n\n## Setup\n\n## Setup\n\n## Setup-1\n\n## Setup-2\n\n## Setup",
+  },
+  beforeEach: HeadingLinks.beforeEach,
+  play: async ({ canvas, args }) => {
+    const headings = await canvas.findAllByRole("heading", { level: 2 });
+    await expect(headings.map((heading) => heading.id)).toEqual([
+      "setup",
+      "setup-1",
+      "setup-1-1",
+      "setup-2",
+      "setup-3",
+    ]);
+
+    const heading = canvas.getByRole("heading", { name: "Setup-1" });
+    const scroll = spyOn(heading, "scrollIntoView");
+    const href = window.location.href;
+
+    try {
+      await clickHeadingLink(
+        canvas.getByRole("link", { name: "Numbered setup" })
+      );
+
+      await expect(scroll).toHaveBeenCalled();
+      await expect(window.open).not.toHaveBeenCalled();
+      await expect(window.location.href).toBe(href);
+      await expect(args.onSave).not.toHaveBeenCalled();
+    } finally {
+      scroll.mockRestore();
+    }
+  },
+};
+
+/** @summary Colliding heading names remain uniquely addressable in read-only documents. */
+export const ReadOnlyCollidingHeadings: Story = {
+  ...CollidingHeadings,
+  args: { ...CollidingHeadings.args, readOnly: true },
 };
 
 /** @summary Insert blocks with slash commands and keyboard navigation. */

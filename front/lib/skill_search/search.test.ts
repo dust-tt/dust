@@ -363,8 +363,14 @@ describe("custom skill search", () => {
     if (change === "pod") {
       expect(after).toBeUndefined();
     } else {
-      // Skill fields are eventually consistent until the document is refreshed or deleted.
-      expect(after).toEqual(before);
+      // Skill fields are eventually consistent until the document is refreshed or deleted, but
+      // `canAdministrate` is derived from live grants and reflects the change immediately.
+      const { canAdministrate: beforeCanAdministrate, ...beforeRest } = before;
+      const { canAdministrate: afterCanAdministrate, ...afterRest } = after;
+      expect(afterRest).toEqual(beforeRest);
+      expect(afterCanAdministrate).toBe(
+        change === "archive" ? beforeCanAdministrate : false
+      );
       if (change === "delete") {
         await mockHits(auth, []);
         expect(await searchListings(auth)).toEqual([]);
@@ -465,8 +471,11 @@ describe("custom skill search", () => {
         archived.sId,
       ]);
       const listing = both[0];
-      expect(SkillListItemSchema.strict().parse(listing)).toEqual({
+      expect(
+        SkillListItemSchema.omit({ editors: true }).strict().parse(listing)
+      ).toEqual({
         sId: active.sId,
+        canAdministrate: true,
         status: "active",
         name: "Indexed name",
         userFacingDescription: "Indexed description",
@@ -525,12 +534,15 @@ describe("custom skill search", () => {
       const listings = result.value.skills;
       expect(listings).toEqual([
         {
-          ...toSkillListItem(global),
+          ...toSkillListItem(auth, global),
+          canAdministrate: false,
           editedBy: null,
           updatedAt: null,
         },
       ]);
-      expect(SkillListItemSchema.parse(listings[0]).updatedAt).toBeNull();
+      expect(
+        SkillListItemSchema.omit({ editors: true }).parse(listings[0]).updatedAt
+      ).toBeNull();
       expect(onQuery).not.toHaveBeenCalled();
     } finally {
       frontSequelize.removeHook("afterQuery", "global-skill-search-no-db");
@@ -559,9 +571,9 @@ describe("custom skill search", () => {
       searchTerm: "",
       permissionFiltering: "redact_unreadable",
     });
-    expect(SkillListItemSchema.strict().parse(redacted)).toEqual(
-      toSkillListItem(document)
-    );
+    expect(
+      SkillListItemSchema.omit({ editors: true }).strict().parse(redacted)
+    ).toEqual(toSkillListItem(auth, document));
     expect(
       mockSearch.mock.lastCall![0].query.bool.should[0].bool.filter
     ).toEqual([{ term: { workspace_id: workspace.sId } }]);
@@ -710,7 +722,7 @@ describe("custom skill search", () => {
 
     const lastSort = hits[Math.min(hitCount, 2) - 1]?.sort;
     expect(result.value).toEqual({
-      skills: hits.slice(0, 2).map((hit) => toSkillListItem(hit._source)),
+      skills: hits.slice(0, 2).map((hit) => toSkillListItem(auth, hit._source)),
       hasMore: hitCount > 2,
       nextCursor: lastSort
         ? Buffer.from(JSON.stringify(lastSort)).toString("base64url")

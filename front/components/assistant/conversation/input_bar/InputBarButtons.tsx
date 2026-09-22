@@ -28,7 +28,7 @@ import type {
 } from "@app/types/assistant/mentions";
 import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
@@ -74,7 +74,9 @@ interface InputBarButtonsProps {
     ((selection: Selection) => void) | null
   >;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
-  onSkillSelect: (skill: SkillWithoutInstructionsAndToolsType) => void;
+  onSkillSelect: (
+    skill: Pick<SkillListItemType, "sId" | "name" | "icon">
+  ) => void;
   owner: WorkspaceType;
   selectedAgent: RichAgentMention | null;
   selectedSpaceIds: string[];

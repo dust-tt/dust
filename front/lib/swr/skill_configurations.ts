@@ -220,21 +220,30 @@ export function useSearchSkills({
     limit,
     permissionFiltering,
   };
-  const skillsFetcher = (): Promise<SearchSkillsResponseBody> =>
-    fetcherWithBody([url, body, "POST"]);
+  const skillsFetcher = async () => {
+    const response: SearchSkillsResponseBody = await fetcherWithBody([
+      url,
+      body,
+      "POST",
+    ]);
+    return { ...response, searchTerm: debouncedSearchTerm };
+  };
 
   const { data, error, isLoading } = useSWRWithDefaults(
     [url, body],
     skillsFetcher,
     {
-      // Don't show the previous query's skills alongside tools matching the current query.
       disabled: disabled || isDebouncing,
-      keepPreviousData: false,
+      // Keep results visible while the next query debounces or loads, instead of
+      // flashing a loading placeholder on every keystroke.
+      keepPreviousData: true,
     }
   );
 
   return {
-    skills: data?.skills ?? emptyArray<SkillListItemType>(),
+    skills:
+      (disabled ? undefined : data?.skills) ?? emptyArray<SkillListItemType>(),
+    resolvedSearchTerm: disabled ? null : (data?.searchTerm ?? null),
     hasMore: data?.hasMore ?? false,
     nextCursor: data?.nextCursor ?? null,
     isSkillsError: !!error,

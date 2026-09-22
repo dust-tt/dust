@@ -59,9 +59,9 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_tags", ()
     const tagToRemove = await TagFactory.create(workspace, {
       name: "to-remove",
     });
-    await tagToAdd.addToAgent(auth, firstAgent);
-    await tagToRemove.addToAgent(auth, firstAgent);
-    await tagToRemove.addToAgent(auth, secondAgent);
+    await TagFactory.addToAgent(auth, tagToAdd, firstAgent);
+    await TagFactory.addToAgent(auth, tagToRemove, firstAgent);
+    await TagFactory.addToAgent(auth, tagToRemove, secondAgent);
 
     const response = await batchUpdateTags(workspace, {
       agentIds: [firstAgent.sId, secondAgent.sId],

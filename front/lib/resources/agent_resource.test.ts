@@ -589,7 +589,7 @@ describe("AgentResource", () => {
     ).toEqual([testContext.user.id]);
   });
 
-  it("applies author, admin, and editor permissions to custom agents", async () => {
+  it("applies admin and editor permissions to active custom agents", async () => {
     const resource = AgentResource.fromAgentConfiguration(
       testContext.authenticator,
       makeAgentConfiguration({ versionAuthorId: testContext.user.id })
@@ -618,7 +618,7 @@ describe("AgentResource", () => {
       testContext.authenticator.hasPermission("read", resource),
       testContext.authenticator.hasPermission("write", resource),
       testContext.authenticator.hasPermission("admin", resource),
-    ]).toEqual([true, true, true]);
+    ]).toEqual([false, false, false]);
     expect([
       otherAuth.hasPermission("read", resource),
       otherAuth.hasPermission("write", resource),
@@ -646,6 +646,22 @@ describe("AgentResource", () => {
       otherAuth.hasPermission("read", resource),
       otherAuth.hasPermission("write", resource),
       otherAuth.hasPermission("admin", resource),
+    ]).toEqual([true, true, true]);
+  });
+
+  it("grants draft ownership to the current author", () => {
+    const resource = AgentResource.fromAgentConfiguration(
+      testContext.authenticator,
+      makeAgentConfiguration({
+        status: "draft",
+        versionAuthorId: testContext.user.id,
+      })
+    );
+
+    expect([
+      testContext.authenticator.hasPermission("read", resource),
+      testContext.authenticator.hasPermission("write", resource),
+      testContext.authenticator.hasPermission("admin", resource),
     ]).toEqual([true, true, true]);
   });
 
@@ -1220,7 +1236,7 @@ describe("AgentResource", () => {
       const existingTag = await TagFactory.create(workspace, {
         name: "existing",
       });
-      await existingTag.addToAgent(authenticator, agent);
+      await TagFactory.addToAgent(authenticator, existingTag, agent);
 
       const newTag = await TagFactory.create(workspace, { name: "new" });
       const result = await AgentResource.bulkUpdate(
@@ -1251,7 +1267,7 @@ describe("AgentResource", () => {
       const agent =
         await AgentConfigurationFactory.createTestAgent(authenticator);
       const tag = await TagFactory.create(workspace, { name: "to-remove" });
-      await tag.addToAgent(authenticator, agent);
+      await TagFactory.addToAgent(authenticator, tag, agent);
 
       const result = await AgentResource.bulkUpdate(
         authenticator,
@@ -1278,7 +1294,7 @@ describe("AgentResource", () => {
       const agent =
         await AgentConfigurationFactory.createTestAgent(authenticator);
       const tag = await TagFactory.create(workspace, { name: "present" });
-      await tag.addToAgent(authenticator, agent);
+      await TagFactory.addToAgent(authenticator, tag, agent);
 
       // Adding the tag it already has leaves the set unchanged, so no new version is created.
       const result = await AgentResource.bulkUpdate(
