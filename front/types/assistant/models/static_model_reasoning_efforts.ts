@@ -214,6 +214,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: true,
     high: true,
   },
+  "claude-fable-5-1": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "claude-sonnet-5": {
     none: false,
     light: true,

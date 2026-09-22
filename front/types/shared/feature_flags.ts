@@ -106,7 +106,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   claude_fable_5_feature: {
     description:
-      "Access to Claude Fable 5 model (served through the EAP Anthropic key)",
+      "Access to Claude Fable 5 and Fable 5.1 models (served through the EAP Anthropic key)",
     stage: "dust_only",
     owner: "fontanierh",
   },

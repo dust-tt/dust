@@ -1,4 +1,5 @@
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
+import { AnthropicClaudeFableFiveDotOneGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_fable_five_dot_one_global_anthropic";
 import { AnthropicClaudeFableFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_fable_five_global_anthropic";
 import { AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_haiku_four_dot_five_eu_agent_platform";
 import { AnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_haiku_four_dot_five_global_anthropic";
@@ -111,6 +112,8 @@ export const STREAM_ENDPOINTS = {
     GoogleGeminiThreeDotOneProGlobalAgentPlatformStream,
   [AnthropicClaudeFableFiveGlobalAnthropicStream.id]:
     AnthropicClaudeFableFiveGlobalAnthropicStream,
+  [AnthropicClaudeFableFiveDotOneGlobalAnthropicStream.id]:
+    AnthropicClaudeFableFiveDotOneGlobalAnthropicStream,
   [AnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream.id]:
     AnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream,
   [AnthropicClaudeOpusFiveGlobalAnthropicStream.id]:
