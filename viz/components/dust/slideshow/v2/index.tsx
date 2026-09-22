@@ -1,6 +1,7 @@
 "use client";
 
 import { useVizContext } from "@viz/app/components/VizContext";
+import type { FrameTheme } from "@viz/components/dust/frame";
 import { SlideshowControls } from "@viz/components/dust/slideshow/SlideshowControls";
 import { SlideshowGrid } from "@viz/components/dust/slideshow/SlideshowGrid";
 import { cn } from "@viz/lib/utils";
@@ -122,31 +123,50 @@ function Navigation({
 interface SlideshowProps {
   children: React.ReactNode;
   className?: string;
+  theme?: FrameTheme;
 }
 
-export function Slideshow({ children, className }: SlideshowProps) {
+/**
+ * @cc [owner:flvndvd,label:product] slideshow-theme-scope
+ * A theme MUST apply to the existing slideshow root in interactive and PDF modes.
+ * Applying a theme MUST NOT add a wrapper or change the slideshow bounds.
+ * Omitting the theme MUST preserve the existing appearance.
+ */
+export function Slideshow({ children, className, theme }: SlideshowProps) {
   const { isPdfMode } = useVizContext();
   const slides = React.Children.toArray(children);
 
   if (isPdfMode) {
-    return <PdfSlideshow className={className}>{slides}</PdfSlideshow>;
+    return (
+      <PdfSlideshow className={className} theme={theme}>
+        {slides}
+      </PdfSlideshow>
+    );
   }
 
   return (
-    <InteractiveSlideshow className={className}>{slides}</InteractiveSlideshow>
+    <InteractiveSlideshow className={className} theme={theme}>
+      {slides}
+    </InteractiveSlideshow>
   );
 }
 
 // PDF mode: all slides stacked with page breaks
 
-interface PdfSlideshowProps {
+interface SlideshowContentProps extends SlideshowProps {
   children: React.ReactNode[];
-  className?: string;
 }
 
-function PdfSlideshow({ children, className }: PdfSlideshowProps) {
+function PdfSlideshow({ children, className, theme }: SlideshowContentProps) {
   return (
-    <div className={cn("w-full", className)}>
+    <div
+      className={cn(
+        "w-full",
+        theme && "bg-background font-sans text-foreground",
+        className
+      )}
+      style={theme}
+    >
       {children.map((slide, i) => (
         <div
           key={i}
@@ -162,15 +182,11 @@ function PdfSlideshow({ children, className }: PdfSlideshowProps) {
 
 // Interactive mode: one slide at a time with navigation
 
-interface InteractiveSlideshowProps {
-  children: React.ReactNode[];
-  className?: string;
-}
-
 function InteractiveSlideshow({
   children,
   className,
-}: InteractiveSlideshowProps) {
+  theme,
+}: SlideshowContentProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const slideshowRef = useRef<HTMLDivElement>(null);
 
@@ -191,8 +207,10 @@ function InteractiveSlideshow({
       ref={slideshowRef}
       className={cn(
         "relative h-screen w-full overflow-hidden [&:fullscreen]:bg-background",
+        theme && "bg-background font-sans text-foreground",
         className
       )}
+      style={theme}
       aria-label="Slideshow"
     >
       {children[activeIndex]}

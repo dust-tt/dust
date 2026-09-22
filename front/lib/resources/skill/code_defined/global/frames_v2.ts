@@ -44,7 +44,7 @@ cat > "$FRAME/manifest.json" <<'EOF'
 }
 EOF
 cat > "$FRAME/index.tsx" <<'EOF'
-export default function Frame() {
+export default function App() {
   return <main>...</main>;
 }
 EOF
@@ -66,67 +66,91 @@ and approved references. Choose the typography, color, density and bespoke visua
 the material. There is no preset catalog or fixed font list.
 
 Copy the attached \`skills/Create Frames/theme.ts\` into the Frame folder as \`theme.ts\`, then edit
-its values for this Frame. It is an editable source example, not a runtime theme API. Add or remove
-fields and custom CSS variables as needed. Font families, colors and lengths are ordinary CSS values.
-Use relative imports for theme and component source, not \`useFile\`.
+its values for this Frame. Pass \`theme\` to the content's root: \`FrameRoot\` from \`@dust/frame\` for
+pages and dashboards, or \`Slideshow\` from \`@dust/slideshow/v2\` for presentations. Both use the same
+theme file and scope the existing Tailwind variables to their contents. Author ordinary React and SVG
+using the existing classes. Omit \`theme\` to keep the host's light or dark appearance.
+Name the entry component \`App\` and import the root component rather than declaring it locally.
+
+For a page or dashboard:
 
 \`\`\`tsx
-import { tokens } from "./theme";
+import { FrameRoot } from "@dust/frame";
+import { theme } from "./theme";
 
-export default function Frame() {
+export default function App() {
   return (
-    <main
-      style={{
-        ...tokens,
-        background: "var(--frame-background)",
-        color: "var(--frame-foreground)",
-        fontFamily: "var(--frame-body-font)",
-        fontSize: "var(--frame-body-size)",
-        lineHeight: "var(--frame-line-height)",
-        padding: "var(--frame-page-padding)",
-      }}
-    >
-      <h1
-        style={{
-          fontFamily: "var(--frame-heading-font)",
-          fontSize: "var(--frame-heading-size)",
-        }}
+    <FrameRoot theme={theme} className="space-y-6 p-8">
+      <h1 className="font-serif text-4xl font-semibold">...</h1>
+      <svg
+        className="h-12 w-full"
+        viewBox="0 0 120 24"
+        role="img"
+        aria-label="Illustrative chart"
       >
-        ...
-      </h1>
-    </main>
+        <rect width="96" height="24" className="fill-primary" />
+      </svg>
+    </FrameRoot>
   );
 }
 \`\`\`
 
-Share these values across the Frame and its bespoke React, SVG and CSS. The example's \`tokens\`
-object installs \`--frame-*\` variables on the root, so descendants can use values such as
-\`var(--frame-accent)\`. Keep new shared values in the same file instead of inventing a separate
-palette or spacing system in each chart. Root styles also consume these variables, so overrides
-apply consistently. A section can extend the shared theme without changing the rest of the Frame:
+Use the existing semantic variables: \`--background\` and \`--foreground\`, \`--primary\` and
+\`--primary-foreground\`, \`--card\` and \`--card-foreground\`, \`--muted\` and \`--muted-foreground\`,
+\`--border\` and \`--radius\`. Set \`--font-sans\`, \`--font-serif\` or \`--font-mono\` for the corresponding
+font classes. Values are ordinary CSS strings. Fonts must be available in the browser or loaded by
+the Frame. Keep related foreground and background colors legible together.
+
+Keep shared values in \`theme.ts\` so custom visuals and components using those semantic classes
+follow the same direction. Extend the theme with normal object spreads. A nested FrameRoot inherits
+omitted variables and can override a section:
 
 \`\`\`tsx
-const detailTokens: typeof tokens = {
-  ...tokens,
-  "--frame-accent": "rebeccapurple",
-  "--frame-reading-width": "48rem",
-};
-
-<section style={{ ...detailTokens, maxWidth: "var(--frame-reading-width)" }}>
-  <h2 style={{ color: "var(--frame-accent)" }}>...</h2>
-</section>
+<FrameRoot
+  theme={{ "--primary": "rebeccapurple" }}
+  className="rounded-lg bg-card p-4 text-card-foreground"
+>
+  ...
+</FrameRoot>
 \`\`\`
+
+The theme does not choose heading sizes or add page padding. Use existing utilities for layout,
+spacing and typography. Setting a variable does not generate new Tailwind classes. Custom \`--*\`
+variables are also allowed, but your code must consume them explicitly through CSS or \`style\`.
+Components rendered in a portal outside the themed root do not inherit its scoped variables.
+
+Use relative imports for source and theme files, not \`useFile\`. The attached linter checks missing
+imports and type errors. Keep \`satisfies FrameTheme\` in the theme file to catch keys without a
+\`--\` prefix and values that are not strings or numbers. A misspelled semantic variable is still
+a valid custom variable, so inspect the rendered result to verify it takes effect.
 
 For a substantial Frame, keep \`direction.md\` beside the source. Record audience, purpose, visual
 premise, typography hierarchy, density, color logic, reference material and what later edits must
 preserve. Create bespoke visuals when they explain the material better than generic cards. Small
 Frames do not need empty files or wrappers merely to match a folder layout.
 
-Publish, then inspect the rendered Frame using the available browser or Frame screenshot tools.
-Review wide and narrow layouts, hierarchy, contrast, whitespace, cropping and the relationship
-between text and graphics. Identify the weakest section, revise it and inspect the result again.
-A successful build does not establish visual quality. Preserve approved direction on ordinary edits
-unless the user requests a redesign.
+## Slideshows
+
+For a presentation, use \`Slideshow\` from \`@dust/slideshow/v2\` as the root layout. It already
+fills the viewport and provides navigation. Put all content, including headers, footers and
+padding, inside \`Slide\` components. Do not add a page header, footer or padded container around
+the slideshow. Pass the theme directly to \`Slideshow\`, without a \`FrameRoot\` wrapper.
+
+\`\`\`tsx
+import { Slideshow, Slide } from "@dust/slideshow/v2";
+import { theme } from "./theme";
+
+export default function App() {
+  return (
+    <Slideshow theme={theme}>
+      <Slide>
+        <h1 className="font-serif text-4xl">...</h1>
+      </Slide>
+      <Slide>...</Slide>
+    </Slideshow>
+  );
+}
+\`\`\`
 
 ## Retrieve a Frame's share link
 

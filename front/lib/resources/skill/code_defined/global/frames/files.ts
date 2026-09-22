@@ -12,14 +12,18 @@ export const FRAME_SKILL_FILES: readonly CodeDefinedSkillFile[] = [
   { fileName: "tsconfig.json", contentType: "application/json" },
   { fileName: "oxlintrc.json", contentType: "application/json" },
   { fileName: "frame-rules.cjs", contentType: "text/javascript" },
-  { fileName: "theme.ts", contentType: "text/plain" },
-].map(({ fileName, contentType }) => ({
+  {
+    fileName: "theme.ts",
+    assetName: "theme.ts.txt",
+    contentType: "text/plain",
+  },
+].map(({ fileName, contentType, assetName = fileName }) => ({
   fileName,
   contentType,
   // Package resolution works in both source and bundled server entry points.
   content: readFileSync(
     require.resolve(
-      `@dust-tt/front/lib/resources/skill/code_defined/global/frames/assets/${fileName}`
+      `@dust-tt/front/lib/resources/skill/code_defined/global/frames/assets/${assetName}`
     ),
     "utf8"
   ),

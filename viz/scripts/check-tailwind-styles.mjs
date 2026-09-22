@@ -26,6 +26,11 @@ try {
       <div id="hidden" class="block" hidden></div>
       <div id="hover" class="bg-black hover:bg-blue-500" style="height:20px"></div>
       <div id="responsive" class="hidden md:block"></div>
+      <div style="--font-sans:Arial;--font-serif:Georgia;--font-mono:monospace">
+        <div id="theme-sans" class="font-sans">Sans</div>
+        <div id="theme-serif" class="font-serif">Serif</div>
+        <div id="theme-mono" class="font-mono">Mono</div>
+      </div>
       <div id="semantic" class="bg-background"></div>
       <div id="dark" class="bg-background dark:bg-stone-800/80"></div>`;
   });
@@ -40,6 +45,9 @@ try {
       return Array.from(context.getImageData(0, 0, 1, 1).data);
     };
     return {
+      fonts: ["theme-sans", "theme-serif", "theme-mono"].map(
+        (id) => style(id).fontFamily,
+      ),
       alpha: pixel("alpha"),
       removed: pixel("removed"),
       slide: {
@@ -64,6 +72,7 @@ try {
       semanticLightColor: style("semantic").backgroundColor,
     };
   });
+  assert.deepEqual(observations.fonts, ["Arial", "Georgia", "monospace"]);
   assert.deepEqual(observations.alpha, [0, 0, 0, 204]);
   assert.deepEqual(observations.removed, [0, 0, 0, 255]);
   assert.deepEqual(observations.slide, {

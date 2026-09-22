@@ -461,3 +461,53 @@ it("keeps grid controls and duplicate previews out of PDF exports", () => {
   expect(screen.getAllByText("First")).toHaveLength(1);
   expect(screen.getAllByText("Last")).toHaveLength(1);
 });
+
+it("applies a theme to the existing v2 root without adding a wrapper", () => {
+  const { container, rerender } = render(
+    <Slideshow theme={{ "--primary": "rebeccapurple" }}>
+      <Slide>First slide</Slide>
+    </Slideshow>
+  );
+  const slideshow = screen.getByLabelText("Slideshow", { selector: "div" });
+
+  expect(container.firstElementChild).toBe(slideshow);
+  expect(slideshow.style.getPropertyValue("--primary")).toBe("rebeccapurple");
+
+  rerender(
+    <Slideshow>
+      <Slide>First slide</Slide>
+    </Slideshow>
+  );
+
+  expect(container.firstElementChild).toBe(slideshow);
+  expect(slideshow.style.getPropertyValue("--primary")).toBe("");
+  expect(slideshow.classList.contains("bg-background")).toBe(false);
+});
+
+it("preserves the theme and page breaks in PDF mode", () => {
+  const { container } = render(
+    <VizContext.Provider value={{ isPdfMode: true, editText: null }}>
+      <Slideshow theme={{ "--primary": "rebeccapurple" }}>
+        <Slide>First slide</Slide>
+        <Slide>Last slide</Slide>
+      </Slideshow>
+    </VizContext.Provider>
+  );
+  const slideshow = container.firstElementChild;
+  expect(slideshow).toBeInstanceOf(HTMLElement);
+  if (!(slideshow instanceof HTMLElement)) {
+    return;
+  }
+
+  expect(slideshow.style.getPropertyValue("--primary")).toBe("rebeccapurple");
+  expect(slideshow.children).toHaveLength(2);
+  expect(slideshow.firstElementChild?.getAttribute("style")).toContain(
+    "break-after: page"
+  );
+  expect(slideshow.lastElementChild?.getAttribute("style")).toContain(
+    "break-after: auto"
+  );
+  expect(
+    screen.queryByRole("group", { name: "Slideshow controls" })
+  ).toBeNull();
+});
