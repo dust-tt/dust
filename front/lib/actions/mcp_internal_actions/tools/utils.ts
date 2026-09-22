@@ -370,7 +370,9 @@ export async function getAgentDataSourceConfigurations(
     Array.from(dataSourceViewIDs)
   );
 
-  if (dataSourceViews.some((dataSourceView) => !auth.can("read", dataSourceView))) {
+  if (
+    dataSourceViews.some((dataSourceView) => !auth.can("read", dataSourceView))
+  ) {
     return new Err(
       new MCPError(
         "Failed to fetch data source views, some views are not readable.",

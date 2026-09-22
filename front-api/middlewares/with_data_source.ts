@@ -19,7 +19,10 @@ function hasPermission(
   if (o.requireCanAdministrate && !auth.can("admin", ds)) {
     return false;
   }
-  if (o.requireCanReadOrAdministrate && !(auth.can("read", ds) || auth.can("admin", ds))) {
+  if (
+    o.requireCanReadOrAdministrate &&
+    !(auth.can("read", ds) || auth.can("admin", ds))
+  ) {
     return false;
   }
   if (o.requireCanRead && !auth.can("read", ds)) {

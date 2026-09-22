@@ -158,8 +158,8 @@ async function createAgentDataSourcesConfiguration(
     auth,
     dataSourceConfigurations.map((dsc) => dsc.dataSourceViewId)
   );
-  const dataSourceViews = allDataSourceViews.filter((dsv) =>
-    (auth.can("read", dsv) || auth.can("admin", dsv))
+  const dataSourceViews = allDataSourceViews.filter(
+    (dsv) => auth.can("read", dsv) || auth.can("admin", dsv)
   );
 
   const dataSourceViewsMap = dataSourceViews.reduce(
@@ -241,8 +241,8 @@ async function createTableDataSourceConfiguration(
     auth,
     tableConfigurations.map((tc) => tc.dataSourceViewId)
   );
-  const dataSourceViews = allDataSourceViews.filter((dsv) =>
-    (auth.can("read", dsv) || auth.can("admin", dsv))
+  const dataSourceViews = allDataSourceViews.filter(
+    (dsv) => auth.can("read", dsv) || auth.can("admin", dsv)
   );
 
   const dataSourceViewsMap = dataSourceViews.reduce(

@@ -312,7 +312,9 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       options
     );
 
-    return dataSourceViews.filter((dsv) => (auth.can("read", dsv) || auth.can("admin", dsv)));
+    return dataSourceViews.filter(
+      (dsv) => auth.can("read", dsv) || auth.can("admin", dsv)
+    );
   }
 
   static async listBySpace(
