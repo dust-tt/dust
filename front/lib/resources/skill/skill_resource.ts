@@ -5,6 +5,11 @@ import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { getEffectiveSpaceIdsForAgentRun } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
+import {
+  bucketsToArray,
+  SKILL_SEARCH_ALIAS_NAME,
+  withEs,
+} from "@app/lib/api/elasticsearch";
 import { SkillNameSchema } from "@app/lib/api/skills/schemas";
 import {
   filterUsersWithSharedMembership,
@@ -70,6 +75,13 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
 import type { SkillReference } from "@app/lib/skills/format";
 import {
+  buildSkillSearchQuery,
+  MAX_SKILL_SEARCH_FACET_VALUES,
+  MAX_SKILL_SEARCH_RESULTS,
+  MAX_SKILL_SEARCH_WINDOW,
+} from "@app/lib/skill_search/query";
+import { buildSkillDefaultSort } from "@app/lib/skill_search/ranking";
+import {
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
   renameSkillReferencesInContent,
@@ -87,6 +99,15 @@ import {
   launchIndexSkillSearchWorkflow,
 } from "@app/temporal/es_indexation/client";
 import type { DiscoverySkillType } from "@app/types/api/discovery";
+import type {
+  SkillSearchFacet,
+  SkillSearchFacetValues,
+  SkillSearchFilters,
+  SkillSearchPermissionFiltering,
+  SkillSearchSort,
+  SkillSearchSortOrder,
+  SkillSearchTermsFacet,
+} from "@app/types/api/skills";
 import type {
   AgentConfigurationWithoutModelType,
   LightAgentConfigurationType,
@@ -119,13 +140,15 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { removeNulls } from "@app/types/shared/utils/general";
+import { isNumber, removeNulls } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
 import groupBy from "lodash/groupBy";
 import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
+import pick from "lodash/pick";
 import range from "lodash/range";
 import uniq from "lodash/uniq";
 import type {
@@ -136,8 +159,38 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
+import { z } from "zod";
 
 const SKILL_SEARCH_INDEXATION_CONCURRENCY = 8;
+
+const SKILL_SEARCH_TERMS_FACET_FIELDS: Record<SkillSearchTermsFacet, string> = {
+  availability: "availability",
+  editors: "editor_ids",
+  childSkills: "child_skill_ids",
+  spaces: "requested_space_ids",
+  mcpServerViews: "mcp_server_view_ids",
+};
+
+type SkillSearchAggregations = Partial<
+  Record<SkillSearchTermsFacet, estypes.AggregationsStringTermsAggregate>
+> & { usage?: estypes.AggregationsStatsAggregate };
+
+function isTermsFacet(facet: SkillSearchFacet): facet is SkillSearchTermsFacet {
+  return facet !== "usage";
+}
+
+function buildFacetAggregation(
+  facet: SkillSearchFacet
+): estypes.AggregationsAggregationContainer {
+  return isTermsFacet(facet)
+    ? {
+        terms: {
+          field: SKILL_SEARCH_TERMS_FACET_FIELDS[facet],
+          size: MAX_SKILL_SEARCH_FACET_VALUES,
+        },
+      }
+    : { stats: { field: "active_users_count" } };
+}
 
 export type SkillMCPServerConfiguration = {
   view: MCPServerViewResource;
@@ -425,6 +478,184 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     this.codeDefinedSkillId = codeDefinedSkillId ?? null;
     this._mcpServerConfigurations = mcpServerConfigurations;
     this.version = version ?? null;
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:security;performance] indexed-skill-search-listings
+   * Return only workspace-scoped or eligible code-defined indexed metadata using hydrated grants.
+   * Result projection must not read the database; code-defined eligibility is resolved before the query.
+   * Administration permissions come from hydrated grants, not indexed editors; code-defined skills cannot be administrated.
+   * Permission-bearing document changes are eventually consistent; full-skill
+   * access remains separately authorized. Callers must authorize admin-only redaction upstream.
+   * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
+   * Preserve Elasticsearch hit order without exposing scores or readability flags in skill listings.
+   * Request _source and omit hits without source documents.
+   * Return at most limit skills, and the exact number of matching skills as total.
+   */
+
+  /**
+   * @cc [owner:aubin-tchoi,label:security;product] unified-search-pagination
+   * Custom and code-defined skills share one ES-ranked stream, paginated by offset so any page can
+   * be reached directly. `offset + limit` beyond the ES result window MUST fail with
+   * `offset_out_of_range` without querying. Every page applies hydrated grants to indexed
+   * requirements. Pagination reads the live index; concurrent index changes may cause skips or
+   * duplicates.
+   */
+  /**
+   * @cc [owner:tdraier,label:security] skill-search-facets
+   * Facet values MUST come from the same authorized query as the returned page (including the
+   * caller's filters), so they never reveal values held only by skills the caller cannot list.
+   * Terms facets return distinct values, at most MAX_SKILL_SEARCH_FACET_VALUES each, with the number
+   * of skills matching that query (every filter included) that hold each value. The `usage` facet
+   * returns the min and max `active_users_count` of those skills, null when none has one.
+   */
+  static async search(
+    auth: Authenticator,
+    {
+      limit = MAX_SKILL_SEARCH_RESULTS,
+      offset = 0,
+      sortBy,
+      sortOrder,
+      facets = [],
+      ...options
+    }: {
+      searchTerm: string;
+      facets?: SkillSearchFacet[];
+      filters?: SkillSearchFilters;
+      permissionFiltering?: SkillSearchPermissionFiltering;
+      limit?: number;
+      offset?: number;
+      sortBy?: SkillSearchSort;
+      sortOrder?: SkillSearchSortOrder;
+    }
+  ) {
+    if (offset + limit > MAX_SKILL_SEARCH_WINDOW) {
+      return new Err("offset_out_of_range" as const);
+    }
+
+    const codeDefinedSkillIds = await this.listAvailableCodeDefinedIds(auth);
+    const query = buildSkillSearchQuery(auth, {
+      ...options,
+      codeDefinedSkillIds,
+    });
+
+    const result = await withEs((client) =>
+      client.search<SkillSearchDocument, SkillSearchAggregations>({
+        index: SKILL_SEARCH_ALIAS_NAME,
+        _source: true,
+        query,
+        from: offset,
+        size: limit,
+        track_total_hits: true,
+        sort: buildSkillDefaultSort({ sortBy, sortOrder }),
+        ...(facets.length > 0
+          ? {
+              aggs: Object.fromEntries(
+                facets.map((facet) => [facet, buildFacetAggregation(facet)])
+              ),
+            }
+          : {}),
+      })
+    );
+    if (result.isErr()) {
+      return result;
+    }
+    const { hits, total } = result.value.hits;
+    const totalCount = isNumber(total) ? total : (total?.value ?? 0);
+    const { aggregations } = result.value;
+    const facetValues: SkillSearchFacetValues = Object.fromEntries(
+      facets.filter(isTermsFacet).map((facet) => [
+        facet,
+        bucketsToArray(aggregations?.[facet]?.buckets).map((bucket) => ({
+          value: String(bucket.key),
+          count: bucket.doc_count,
+        })),
+      ])
+    );
+    if (facets.includes("usage")) {
+      facetValues.usage = {
+        min: aggregations?.usage?.min ?? null,
+        max: aggregations?.usage?.max ?? null,
+      };
+    }
+
+    return new Ok({
+      skills: removeNulls(hits.map((hit) => hit._source)).map(
+        (document) => {
+          const skill = this.fromSearchDocument(auth, document);
+          const serializedSkill = skill.toJSON(auth);
+          return {
+            ...pick(serializedSkill, [
+              "sId",
+              "canAdministrate",
+              "status",
+              "name",
+              "userFacingDescription",
+              "icon",
+              "requestedSpaceIds",
+              "availability",
+            ]),
+            mcpServerViewIds: document.mcp_server_view_ids,
+            editorIds: document.editor_ids,
+            editedBy: document.last_edited_by_user_id,
+            activeUsersCount: document.active_users_count,
+            updatedAt:
+              document.updated_at === null ? null : serializedSkill.updatedAt,
+          };
+        }
+      ),
+      total: totalCount,
+      hasMore: offset + hits.length < totalCount,
+      facets: facetValues,
+    });
+  }
+
+  // Search snapshots stay inside the listing path. Fields absent from ES are not exposed.
+  private static fromSearchDocument(
+    auth: Authenticator,
+    document: SkillSearchDocument
+  ): SkillResource {
+    const isCodeDefined =
+      document.workspace_id === CODE_DEFINED_SKILLS_WORKSPACE_ID;
+
+    return new SkillResource(
+      this.model,
+      {
+        id: isCodeDefined
+          ? -1
+          : (getResourceIdFromSId(document.skill_id) ?? -1),
+        workspaceId: auth.getNonNullableWorkspace().id,
+        name: document.name,
+        status: document.status,
+        availability: document.availability,
+        userFacingDescription: document.description ?? "",
+        icon: document.icon,
+        requestedSpaceIds: removeNulls(
+          document.requested_space_ids.map(getResourceIdFromSId)
+        ),
+        createdAt: new Date(document.created_at ?? 0),
+        updatedAt: new Date(document.updated_at ?? 0),
+        favoriteCount: document.favorite_count,
+        editedBy: null,
+        agentFacingDescription: "",
+        instructions: "",
+        instructionsHtml: null,
+        manuallyRequestedSpaceIds: [],
+        source: null,
+        sourceMetadata: null,
+        reinforcement: "auto",
+        lastReinforcementAnalysisAt: null,
+        selfImprovementCostsCapMicroUsd: null,
+        selfImprovementCostsCapAwuCredits: null,
+        selfImprovementLock: false,
+      },
+      {
+        codeDefinedSkillId: isCodeDefined ? document.skill_id : undefined,
+        dataSourceConfigurations: [],
+        fileAttachments: [],
+        mcpServerConfigurations: [],
+      }
+    );
   }
 
   get sId(): string {

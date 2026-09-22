@@ -1,4 +1,3 @@
-import { searchSkills } from "@app/lib/api/skills/search";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -30,9 +29,9 @@ function facetCountsById(
  */
 export async function searchSkillListings(
   auth: Authenticator,
-  options: Parameters<typeof searchSkills>[1]
+  options: Parameters<typeof SkillResource.search>[1]
 ) {
-  const result = await searchSkills(auth, options);
+  const result = await SkillResource.search(auth, options);
   if (result.isErr()) {
     return result;
   }

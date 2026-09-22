@@ -1,6 +1,7 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -11,11 +12,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const searchSkills = vi.hoisted(() => vi.fn());
-
-vi.mock("@app/lib/api/skills/search", () => ({
-  searchSkills,
-}));
+const searchSkills = vi.spyOn(SkillResource, "search");
 
 async function setup(role: MembershipRoleType = "user") {
   const context = await createPrivateApiMockRequest({ role });
@@ -68,6 +65,7 @@ describe("POST /api/w/:wId/skills/search", () => {
             availability: "workspace_users",
             mcpServerViewIds: [],
             editorIds: [user.sId, user.sId, "missing-user"],
+            editedBy: null,
             activeUsersCount: null,
             updatedAt,
             icon: null,
@@ -117,6 +115,7 @@ describe("POST /api/w/:wId/skills/search", () => {
           availability: "workspace_users",
           mcpServerViewIds: [],
           editorIds: [user.sId, user.sId, "missing-user"],
+          editedBy: null,
           editors: [
             {
               sId: user.sId,

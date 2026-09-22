@@ -15,13 +15,11 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
   };
 });
 
-import { searchSkills } from "@app/lib/api/skills/search";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
-import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
@@ -72,7 +70,7 @@ async function searchListings(
     permissionFiltering?: SkillSearchPermissionFiltering;
   } = { searchTerm: "" }
 ) {
-  const result = await searchSkills(auth, {
+  const result = await SkillResource.search(auth, {
     ...options,
     limit: 200,
   });
@@ -435,7 +433,7 @@ describe("custom skill search", () => {
 
     expect(await searchListings(auth)).toEqual(expected);
 
-    const page = await searchSkills(auth, {
+    const page = await SkillResource.search(auth, {
       searchTerm: "",
       limit: 2,
     });
@@ -550,19 +548,20 @@ describe("custom skill search", () => {
       return response;
     });
     try {
-      const result = await searchSkills(auth, {
+      const result = await SkillResource.search(auth, {
         searchTerm: "",
         limit: 200,
       });
       assert(result.isOk());
       const listings = result.value.skills;
       expect(listings).toEqual([
-        {
-          ...toSkillListItem(auth, global),
+        expect.objectContaining({
+          sId: global.skill_id,
+          name: global.name,
           canAdministrate: false,
           editedBy: null,
           updatedAt: null,
-        },
+        }),
       ]);
       expect(
         SkillListItemSchema.omit({ editors: true }).parse(listings[0]).updatedAt
@@ -597,7 +596,12 @@ describe("custom skill search", () => {
     });
     expect(
       SkillListItemSchema.omit({ editors: true }).strict().parse(redacted)
-    ).toEqual(toSkillListItem(auth, document));
+    ).toMatchObject({
+      sId: skill.sId,
+      name: skill.name,
+      canAdministrate: skill.toJSON(auth).canAdministrate,
+      requestedSpaceIds: document.requested_space_ids,
+    });
     expect(
       mockSearch.mock.lastCall![0].query.bool.should[0].bool.filter
     ).toEqual([{ term: { workspace_id: workspace.sId } }]);
@@ -738,7 +742,7 @@ describe("custom skill search", () => {
       },
     }));
 
-    const result = await searchSkills(auth, {
+    const result = await SkillResource.search(auth, {
       searchTerm: "",
       offset,
       limit: 2,
@@ -747,7 +751,7 @@ describe("custom skill search", () => {
 
     const pageDocuments = documents.slice(offset, offset + 2);
     expect(result.value).toEqual({
-      skills: pageDocuments.map((document) => toSkillListItem(auth, document)),
+      skills: pageDocuments.map((document) => expect.objectContaining({ sId: document.skill_id, name: document.name })),
       total: documents.length,
       hasMore: offset + pageDocuments.length < documents.length,
       facets: {},

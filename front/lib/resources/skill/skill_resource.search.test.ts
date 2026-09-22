@@ -16,7 +16,6 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
   };
 });
 
-import { searchSkills } from "@app/lib/api/skills/search";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -34,7 +33,7 @@ import type { SkillSearchFilters } from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
 
-describe("searchSkills pagination", () => {
+describe("SkillResource.search pagination", () => {
   beforeEach(() => {
     mockSearch.mockReset();
   });
@@ -45,7 +44,7 @@ describe("searchSkills pagination", () => {
       hits: { hits: [], total: { value: 0, relation: "eq" } },
     });
 
-    const result = await searchSkills(auth, { searchTerm: "" });
+    const result = await SkillResource.search(auth, { searchTerm: "" });
     assert(result.isOk());
     expect(result.value).toEqual({
       skills: [],
@@ -65,11 +64,18 @@ describe("searchSkills pagination", () => {
   it("requests from/size/track_total_hits and returns total/hasMore", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     const skill = await SkillFactory.create(auth, { name: "ÉclairBot" });
-    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
+    const secondSkill = await SkillFactory.create(auth, { name: "ReportBot" });
+    const thirdSkill = await SkillFactory.create(auth, { name: "AlphaBot" });
+    const [document, secondDocument, thirdDocument] =
+      await SkillFactory.createSearchDocuments(auth, [
+        skill,
+        secondSkill,
+        thirdSkill,
+      ]);
     const hits = [
       { _source: document },
-      { _source: { ...document, skill_id: "second", name: "ReportBot" } },
-      { _source: { ...document, skill_id: "third", name: "AlphaBot" } },
+      { _source: secondDocument },
+      { _source: thirdDocument },
     ];
     mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
       hits: {
@@ -83,19 +89,19 @@ describe("searchSkills pagination", () => {
     const filters: SkillSearchFilters = { editedByMe: true };
     const options = { searchTerm: "bot", limit: 2, filters };
 
-    const first = await searchSkills(auth, options);
+    const first = await SkillResource.search(auth, options);
     assert(first.isOk());
     expect(first.value.skills.map((item) => item.sId)).toEqual([
       skill.sId,
-      "second",
+      secondSkill.sId,
     ]);
     expect(first.value.total).toBe(3);
     expect(first.value.hasMore).toBe(true);
 
     const nextOptions = { ...options, offset: 2 };
-    const second = await searchSkills(auth, nextOptions);
+    const second = await SkillResource.search(auth, nextOptions);
     assert(second.isOk());
-    expect(second.value.skills.map((item) => item.sId)).toEqual(["third"]);
+    expect(second.value.skills.map((item) => item.sId)).toEqual([thirdSkill.sId]);
     expect(second.value.total).toBe(3);
     expect(second.value.hasMore).toBe(false);
     expect(mockSearch).toHaveBeenCalledTimes(2);
@@ -114,7 +120,7 @@ describe("searchSkills pagination", () => {
     });
     expect(mockSearch.mock.calls[1][0]).not.toHaveProperty("search_after");
 
-    const retry = await searchSkills(auth, nextOptions);
+    const retry = await SkillResource.search(auth, nextOptions);
     assert(retry.isOk());
     expect(retry.value).toEqual(second.value);
   });
@@ -123,7 +129,7 @@ describe("searchSkills pagination", () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     mockSearch.mockResolvedValue({ hits: { hits: [], total: 7 } });
 
-    const result = await searchSkills(auth, { searchTerm: "", offset: 5 });
+    const result = await SkillResource.search(auth, { searchTerm: "", offset: 5 });
     assert(result.isOk());
     expect(result.value).toEqual({
       skills: [],
@@ -140,7 +146,7 @@ describe("searchSkills pagination", () => {
   ])("rejects out-of-range pagination %j before querying Elasticsearch", async (pagination) => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
 
-    const result = await searchSkills(auth, { searchTerm: "", ...pagination });
+    const result = await SkillResource.search(auth, { searchTerm: "", ...pagination });
 
     assert(result.isErr());
     expect(result.error).toBe("offset_out_of_range");
@@ -153,7 +159,7 @@ describe("searchSkills pagination", () => {
       hits: { hits: [], total: { value: 0, relation: "eq" } },
     });
 
-    const result = await searchSkills(auth, {
+    const result = await SkillResource.search(auth, {
       searchTerm: "",
       offset: MAX_SKILL_SEARCH_WINDOW - 10,
       limit: 10,
@@ -167,7 +173,7 @@ describe("searchSkills pagination", () => {
   });
 });
 
-describe("searchSkills filters and facets", () => {
+describe("SkillResource.search filters and facets", () => {
   beforeEach(() => {
     mockSearch.mockReset();
   });
@@ -176,7 +182,7 @@ describe("searchSkills filters and facets", () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     mockSearch.mockResolvedValue({ hits: { hits: [] } });
 
-    await searchSkills(auth, {
+    await SkillResource.search(auth, {
       searchTerm: "",
       filters: {
         editorIds: ["alice"],
@@ -209,7 +215,7 @@ describe("searchSkills filters and facets", () => {
       },
     });
 
-    const result = await searchSkills(auth, {
+    const result = await SkillResource.search(auth, {
       searchTerm: "",
       limit: 0,
       facets: ["availability", "editors", "mcpServerViews", "usage"],
@@ -252,7 +258,7 @@ describe("code-defined skill search", () => {
 
   it("applies registry restrictions and availability filters", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
-    const result = await searchSkills(auth, {
+    const result = await SkillResource.search(auth, {
       searchTerm: "",
       filters: { availability: ["users_and_agents"] },
     });
@@ -268,7 +274,7 @@ describe("code-defined skill search", () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     const expectedIds = await SkillResource.listAvailableCodeDefinedIds(auth);
 
-    const result = await searchSkills(auth, { searchTerm: "" });
+    const result = await SkillResource.search(auth, { searchTerm: "" });
 
     assert(result.isOk());
     expect(result.value.skills.map((skill) => skill.sId).sort()).toEqual(
@@ -288,7 +294,7 @@ describe("code-defined skill search", () => {
     await FeatureFlagFactory.basic(auth, "user_memory");
     await user.setMemoryEnabled(auth, true);
 
-    const enabled = await searchSkills(auth, { searchTerm: "" });
+    const enabled = await SkillResource.search(auth, { searchTerm: "" });
     assert(enabled.isOk());
     expect(enabled.value.skills.map((skill) => skill.sId)).toContain(
       "user_memory"
@@ -296,7 +302,7 @@ describe("code-defined skill search", () => {
 
     await user.setMemoryEnabled(auth, false);
 
-    const disabled = await searchSkills(auth, { searchTerm: "" });
+    const disabled = await SkillResource.search(auth, { searchTerm: "" });
     assert(disabled.isOk());
     expect(disabled.value.skills.map((skill) => skill.sId)).not.toContain(
       "user_memory"
@@ -309,7 +315,10 @@ describe("code-defined skill search", () => {
     { availability: ["editors"] },
   ])("excludes code-defined skills for %j", async (filters) => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
-    const result = await searchSkills(auth, { searchTerm: "", filters });
+    const result = await SkillResource.search(auth, {
+      searchTerm: "",
+      filters,
+    });
     assert(result.isOk());
     expect(result.value).toEqual({
       skills: [],
@@ -354,7 +363,7 @@ describe("code-defined skill search", () => {
     };
     const listViews = vi.spyOn(MCPServerViewResource, "listByMCPServers");
     try {
-      const result = await searchSkills(auth, options);
+      const result = await SkillResource.search(auth, options);
       assert(result.isOk());
       expect(result.value.skills.map((item) => item.sId)).toEqual([skill.sId]);
       expect(listViews).not.toHaveBeenCalled();
@@ -365,7 +374,7 @@ describe("code-defined skill search", () => {
     const { authenticator: otherAuth } = await createResourceTest({
       role: "admin",
     });
-    const denied = await searchSkills(otherAuth, options);
+    const denied = await SkillResource.search(otherAuth, options);
     assert(denied.isOk());
     expect(denied.value.skills).toEqual([]);
   });
@@ -373,7 +382,11 @@ describe("code-defined skill search", () => {
   it("uses the same autocomplete and offset pagination for a mixed ES page", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     const skill = await SkillFactory.create(auth, { name: "WeeklyDeepReport" });
-    const [custom] = await SkillFactory.createSearchDocuments(auth, [skill]);
+    const lastSkill = await SkillFactory.create(auth, { name: "Deep" });
+    const [custom, lastDocument] = await SkillFactory.createSearchDocuments(
+      auth,
+      [skill, lastSkill]
+    );
     const documents = SkillFactory.createCodeDefinedSearchDocuments();
     const global = documents.find(
       (document) => document.skill_id === "go-deep"
@@ -382,7 +395,7 @@ describe("code-defined skill search", () => {
     const hits = [
       { _source: custom },
       { _source: global },
-      { _source: { ...custom, skill_id: "last", name: "Deep" } },
+      { _source: lastDocument },
     ];
     mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
       hits: {
@@ -394,7 +407,10 @@ describe("code-defined skill search", () => {
       },
     }));
 
-    const page = await searchSkills(auth, { searchTerm: "deep", limit: 2 });
+    const page = await SkillResource.search(auth, {
+      searchTerm: "deep",
+      limit: 2,
+    });
     assert(page.isOk());
     expect(page.value.skills.map((item) => item.sId)).toEqual([
       skill.sId,
@@ -407,13 +423,13 @@ describe("code-defined skill search", () => {
       buildSkillNameAutocompleteQuery("deep"),
     ]);
 
-    const next = await searchSkills(auth, {
+    const next = await SkillResource.search(auth, {
       searchTerm: "deep",
       limit: 2,
       offset: 2,
     });
     assert(next.isOk());
-    expect(next.value.skills.map((item) => item.sId)).toEqual(["last"]);
+    expect(next.value.skills.map((item) => item.sId)).toEqual([lastSkill.sId]);
     expect(next.value.total).toBe(3);
     expect(next.value.hasMore).toBe(false);
     expect(mockSearch.mock.calls[1][0]).toMatchObject({ from: 2, size: 2 });

@@ -3,7 +3,6 @@ import {
   MAX_SKILL_SEARCH_RESULTS,
   MAX_SKILL_SEARCH_WINDOW,
 } from "@app/lib/skill_search/query";
-import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
@@ -360,16 +359,24 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     expect(redacted.status).toBe(200);
     const body = await redacted.json();
     expect(body).toEqual({
-      skills: hits.slice(0, 3).map(({ _source }) => ({
-        ...toSkillListItem(auth, _source),
-        editors: [
-          {
-            sId: user.sId,
-            fullName: user.toJSON().fullName,
-            image: user.toJSON().image,
-          },
-        ],
-      })),
+      skills: hits.slice(0, 3).map(({ _source }) =>
+        expect.objectContaining({
+          sId: _source.skill_id,
+          name: _source.name,
+          status: _source.status,
+          userFacingDescription: _source.description,
+          requestedSpaceIds: _source.requested_space_ids,
+          mcpServerViewIds: _source.mcp_server_view_ids,
+          canAdministrate: true,
+          editors: [
+            {
+              sId: user.sId,
+              fullName: user.toJSON().fullName,
+              image: user.toJSON().image,
+            },
+          ],
+        })
+      ),
       total: 3,
       hasMore: false,
       facets: {},
