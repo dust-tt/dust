@@ -35,8 +35,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   Icon,
+  InfoCircle,
   LinkWrapper,
   Lock01,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
 } from "@dust-tt/sparkle";
 
 interface ModelPickerContentProps {
@@ -98,21 +102,43 @@ export function ModelPickerContent({
       side={side}
     >
       {tiers.length > 0 && (
-        <DropdownMenuLabel label="Recommendations" className="text-sm" />
-      )}
-
-      {tiers.length > 0 && hint && (
-        <div className="px-2 pb-2 text-xs text-muted-foreground">
-          {hint}{" "}
-          <LinkWrapper
-            href={AUTO_MODELS_DOC_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs underline"
-          >
-            Learn more
-          </LinkWrapper>
-        </div>
+        <DropdownMenuLabel className="flex items-center gap-1 text-sm">
+          Model tier
+          {hint && (
+            <PopoverRoot>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  icon={InfoCircle}
+                  className="-my-1 text-muted-foreground"
+                  aria-label="About model tiers"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </PopoverTrigger>
+              {/* Not portalled: the menu is modal, so content rendered outside
+                  it is inert and a click in it dismisses the menu. */}
+              <PopoverContent
+                side="right"
+                align="start"
+                className="w-64 p-3"
+                mountPortal={false}
+              >
+                <div className="text-xs text-muted-foreground">
+                  {hint}{" "}
+                  <LinkWrapper
+                    href={AUTO_MODELS_DOC_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs underline"
+                  >
+                    Learn more
+                  </LinkWrapper>
+                </div>
+              </PopoverContent>
+            </PopoverRoot>
+          )}
+        </DropdownMenuLabel>
       )}
 
       {tiers.map((tier) => {

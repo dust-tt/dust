@@ -51,8 +51,8 @@ export const AUTO_MODELS_DOC_URL =
   "https://docs.dust.tt/docs/user-documentation/agents/model-selection#auto-models";
 
 export const AUTO_MODELS_HINT =
-  "Recommendations run the best available model and switch to another one " +
-  "when the preferred model is unstable.";
+  "Dust selects a model and automatically switches to another if the " +
+  "selected model is unstable.";
 
 export function getDegradedModelTooltip(displayName: string): string {
   return `${displayName} is unstable right now. You may want to select another model.`;
