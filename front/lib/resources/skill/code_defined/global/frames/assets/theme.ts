@@ -17,8 +17,7 @@ export const theme = {
   radius: "0.75rem",
 };
 
-export const tokens: CSSProperties &
-  Record<`--frame-${string}`, string | number> = {
+export const tokens: CSSProperties & Record<`--${string}`, string | number> = {
   "--frame-background": theme.background,
   "--frame-foreground": theme.foreground,
   "--frame-muted": theme.muted,

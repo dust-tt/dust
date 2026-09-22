@@ -71,22 +71,27 @@ fields and custom CSS variables as needed. Font families, colors and lengths are
 Use relative imports for theme and component source, not \`useFile\`.
 
 \`\`\`tsx
-import { theme, tokens } from "./theme";
+import { tokens } from "./theme";
 
 export default function Frame() {
   return (
     <main
       style={{
         ...tokens,
-        background: theme.background,
-        color: theme.foreground,
-        fontFamily: theme.bodyFont,
-        fontSize: theme.bodySize,
-        lineHeight: theme.lineHeight,
-        padding: theme.pagePadding,
+        background: "var(--frame-background)",
+        color: "var(--frame-foreground)",
+        fontFamily: "var(--frame-body-font)",
+        fontSize: "var(--frame-body-size)",
+        lineHeight: "var(--frame-line-height)",
+        padding: "var(--frame-page-padding)",
       }}
     >
-      <h1 style={{ fontFamily: theme.headingFont, fontSize: theme.headingSize }}>
+      <h1
+        style={{
+          fontFamily: "var(--frame-heading-font)",
+          fontSize: "var(--frame-heading-size)",
+        }}
+      >
         ...
       </h1>
     </main>
@@ -97,7 +102,20 @@ export default function Frame() {
 Share these values across the Frame and its bespoke React, SVG and CSS. The example's \`tokens\`
 object installs \`--frame-*\` variables on the root, so descendants can use values such as
 \`var(--frame-accent)\`. Keep new shared values in the same file instead of inventing a separate
-palette or spacing system in each chart. Changing the theme should update the whole composition.
+palette or spacing system in each chart. Root styles also consume these variables, so overrides
+apply consistently. A section can extend the shared theme without changing the rest of the Frame:
+
+\`\`\`tsx
+const detailTokens: typeof tokens = {
+  ...tokens,
+  "--frame-accent": "rebeccapurple",
+  "--frame-reading-width": "48rem",
+};
+
+<section style={{ ...detailTokens, maxWidth: "var(--frame-reading-width)" }}>
+  <h2 style={{ color: "var(--frame-accent)" }}>...</h2>
+</section>
+\`\`\`
 
 For a substantial Frame, keep \`direction.md\` beside the source. Record audience, purpose, visual
 premise, typography hierarchy, density, color logic, reference material and what later edits must
