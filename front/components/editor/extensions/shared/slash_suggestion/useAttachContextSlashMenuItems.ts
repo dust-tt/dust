@@ -7,7 +7,6 @@ import type {
   ContextSlashSearchSelection,
   ContextSlashSearchUseCase,
 } from "@app/components/editor/extensions/shared/slash_suggestion/contextSlashSearchTypes";
-import { getAttachContextSlashMenuLoadingMessage } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { getLocationForDataSourceViewContentNodeWithSpace } from "@app/lib/content_nodes";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -171,15 +170,12 @@ export function useAttachContextSlashMenuItems({
     ? "Type at least 2 characters to search"
     : "No results found";
 
-  const loadingMessage = getAttachContextSlashMenuLoadingMessage(includeFiles);
-
   return {
     emptyMessage,
     hasMinimalQuery,
     includeFiles,
     isLoading,
     items,
-    loadingMessage,
   };
 }
 
