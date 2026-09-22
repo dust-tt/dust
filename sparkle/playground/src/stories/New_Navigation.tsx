@@ -1885,7 +1885,6 @@ function NewNavigation() {
                   label="Starred"
                   type="collapse"
                   defaultOpen={true}
-                  visibleItems={5}
                 >
                   {starredSpaces.map(renderPodNavItem)}
                 </NavigationListCollapsibleSection>
@@ -1897,7 +1896,6 @@ function NewNavigation() {
                 label="Pods"
                 type="collapse"
                 defaultOpen={true}
-                visibleItems={4}
                 action={
                   <>
                     {unstarredSpaces.length > 0 && (
