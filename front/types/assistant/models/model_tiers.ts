@@ -170,6 +170,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "premium",
     high: "premium",
   },
+  "gpt-6-luna": {
+    none: "cost_efficient",
+    light: "cost_efficient",
+    medium: "balanced",
+    high: "balanced",
+  },
   "gpt-5.6-luna": {
     none: "cost_efficient",
     light: "cost_efficient",

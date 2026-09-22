@@ -40,6 +40,7 @@ import {
   GPT_5_6_TERRA_LONG_CONTEXT_MODEL_CONFIG,
   GPT_5_6_TERRA_MODEL_CONFIG,
   GPT_6_ASTRA_MODEL_CONFIG,
+  GPT_6_LUNA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import { SIMULATED_FAILURE_MODEL_CONFIG } from "@app/types/assistant/models/simulated_failure_model";
 import type { ModelConfig } from "@app/types/assistant/models/types";
@@ -54,6 +55,7 @@ export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   GPT_5_6_SOL_MODEL_CONFIG,
   GPT_5_6_TERRA_MODEL_CONFIG,
   GPT_5_6_TERRA_LONG_CONTEXT_MODEL_CONFIG,
+  GPT_6_LUNA_MODEL_CONFIG,
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_5_4_MINI_MODEL_CONFIG,
   GPT_5_4_NANO_MODEL_CONFIG,

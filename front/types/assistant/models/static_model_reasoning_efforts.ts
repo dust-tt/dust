@@ -100,6 +100,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: true,
     high: true,
   },
+  "gpt-6-luna": {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "gpt-5.6-luna": {
     none: true,
     light: true,
