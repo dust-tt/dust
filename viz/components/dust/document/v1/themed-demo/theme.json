@@ -1,0 +1,50 @@
+{
+  "Editorial": {
+    "bodyFont": "serif",
+    "headingFont": "serif",
+    "bodySize": 18,
+    "headingScale": 1.3,
+    "lineHeight": 1.8,
+    "paragraphSpacing": 20,
+    "readingWidth": 840,
+    "background": "#fbf8f0",
+    "foreground": "#302b24",
+    "muted": "#665d51",
+    "accent": "#8a452e",
+    "surface": "#f0e9dd",
+    "border": "#cbbfae",
+    "radius": 4
+  },
+  "Business": {
+    "bodyFont": "sans",
+    "headingFont": "sans",
+    "bodySize": 17,
+    "headingScale": 1.24,
+    "lineHeight": 1.7,
+    "paragraphSpacing": 16,
+    "readingWidth": 820,
+    "background": "#ffffff",
+    "foreground": "#202f3c",
+    "muted": "#526576",
+    "accent": "#245d85",
+    "surface": "#edf3f7",
+    "border": "#b8cad7",
+    "radius": 14
+  },
+  "Technical": {
+    "bodyFont": "sans",
+    "headingFont": "mono",
+    "bodySize": 16,
+    "headingScale": 1.2,
+    "lineHeight": 1.75,
+    "paragraphSpacing": 16,
+    "readingWidth": 900,
+    "background": "#101c27",
+    "foreground": "#edf4f8",
+    "muted": "#adc0ce",
+    "accent": "#85e2bc",
+    "surface": "#1a2c3b",
+    "border": "#405b6e",
+    "radius": 8
+  }
+}

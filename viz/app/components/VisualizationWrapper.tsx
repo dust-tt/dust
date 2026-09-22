@@ -25,6 +25,7 @@ import {
   type SupportedMessage,
   validateMessage,
 } from "@viz/app/types/messages";
+import { DocumentFilesProvider } from "@viz/components/dust/document/DocumentFilesProvider";
 import { toBlob, toSvg } from "html-to-image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
@@ -377,6 +378,7 @@ export function VisualizationWrapper({
   } = config;
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
   const [vizReady, setVizReady] = useState(false);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
@@ -645,7 +647,7 @@ export function VisualizationWrapper({
   return (
     <div
       className={`relative font-sans group/viz ${heightClass}`}
-      data-viz-ready={vizReady}
+      data-viz-ready={vizReady && !documentsLoading}
     >
       <TailwindDiagnostics identifier={identifier} />
       {shouldShowControls && (
@@ -675,7 +677,13 @@ export function VisualizationWrapper({
       )}
       <VizContext.Provider value={vizContextValue}>
         <FrameFunctionHooksProvider dataAPI={api.data}>
-          {isEditable ? <EditableFrame>{runner}</EditableFrame> : runner}
+          <DocumentFilesProvider
+            dataAPI={api.data}
+            readOnly={isPdfMode}
+            onLoadingChange={setDocumentsLoading}
+          >
+            {isEditable ? <EditableFrame>{runner}</EditableFrame> : runner}
+          </DocumentFilesProvider>
         </FrameFunctionHooksProvider>
       </VizContext.Provider>
     </div>
@@ -699,6 +707,8 @@ function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
     return origin === allowed;
   });
 }
+
+const DOCUMENT_RPC_TIMEOUT_MS = 30_000;
 
 export const USER_IDENTITY_RPC_TIMEOUT_MS = 5_000;
 
@@ -748,6 +758,20 @@ export function makeSendCrossDocumentMessage({
           cleanup();
           reject(new Error("Frame host did not provide user identity."));
         }, USER_IDENTITY_RPC_TIMEOUT_MS);
+      }
+      if (
+        command === "getDocument" ||
+        command === "saveDocument" ||
+        command === "setDocumentPendingChanges"
+      ) {
+        timeoutId = window.setTimeout(() => {
+          cleanup();
+          reject(
+            new Error(
+              "The Frame host did not respond. Your edits have not been confirmed as saved."
+            )
+          );
+        }, DOCUMENT_RPC_TIMEOUT_MS);
       }
       window.parent?.postMessage(
         {

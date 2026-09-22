@@ -189,6 +189,7 @@ interface ConversationSidePanelContextType {
   togglePanel: (params: OpenPanelParams) => void;
   // Pops back to the previous panel in the history, or collapses when the history is empty.
   closePanel: () => void;
+  setNavigationBlocked: (blocked: boolean) => void;
   // Removes panels of that type from the history, for content that no longer exists.
   removeFromPanelHistory: (type: ConversationSidePanelType) => void;
   onPanelClosed: () => void;
@@ -265,6 +266,13 @@ export function ConversationSidePanelProvider({
   const previousConversationIdRef = React.useRef(activeConversationId);
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
+  const navigationBlockedRef = React.useRef(false);
+  const [blockedPanel, setBlockedPanel] =
+    React.useState<OpenPanelParams | null>(null);
+  const setNavigationBlocked = useCallback((blocked: boolean) => {
+    navigationBlockedRef.current = blocked;
+    setBlockedPanel(blocked ? currentParamsRef.current : null);
+  }, []);
   const [hasConversation, setHasConversation] = React.useState(false);
   const [isPanelClosing, setIsPanelClosing] = React.useState(false);
   const [virtuosoMsg, setVirtuosoMsg] =
@@ -288,6 +296,10 @@ export function ConversationSidePanelProvider({
   // so you won't have content flickering. The whole side panel is gone at this point (X with
   // nothing underneath, divider drag, conversation switch), so the history goes with it.
   const onPanelClosed = useCallback(() => {
+    if (navigationBlockedRef.current) {
+      panelRef.current?.expand();
+      return;
+    }
     setIsPanelClosing(false);
     currentParamsRef.current = null;
     panelHistoryRef.current = [];
@@ -298,6 +310,9 @@ export function ConversationSidePanelProvider({
   // Collapse without touching the history.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const collapsePanel = useCallback(() => {
+    if (navigationBlockedRef.current) {
+      return;
+    }
     currentParamsRef.current = null;
     if (panelRef && panelRef.current) {
       // Only flag a real collapse: on an already collapsed panel no transition runs, so
@@ -334,6 +349,9 @@ export function ConversationSidePanelProvider({
   );
 
   const closePanel = useCallback(() => {
+    if (navigationBlockedRef.current) {
+      return;
+    }
     const history = panelHistoryRef.current;
     const previous = history[history.length - 1];
     if (previous) {
@@ -360,6 +378,9 @@ export function ConversationSidePanelProvider({
   // that is already closing reads as unselected, so re-selecting it reopens instead.
   const applyPanel = useCallback(
     (params: OpenPanelParams, { toggle }: { toggle: boolean }) => {
+      if (navigationBlockedRef.current) {
+        return;
+      }
       const current = isPanelClosing ? null : currentParamsRef.current;
       const isShown =
         current !== null &&
@@ -419,15 +440,27 @@ export function ConversationSidePanelProvider({
       previousConversationId &&
       previousConversationId !== activeConversationId
     ) {
+      setNavigationBlocked(false);
       // Exit full screen too, mirroring FrameRenderer's close button.
       setFullScreenHash(undefined);
       panelHistoryRef.current = [];
       collapsePanel();
     }
-  }, [activeConversationId, collapsePanel, setFullScreenHash]);
+  }, [
+    activeConversationId,
+    collapsePanel,
+    setFullScreenHash,
+    setNavigationBlocked,
+  ]);
 
   // Initialize panel state from URL hash parameters
   useEffect(() => {
+    const active = currentParamsRef.current;
+    if (navigationBlockedRef.current && active) {
+      setCurrentPanel(active.type);
+      setData(panelDataKey(active));
+      return;
+    }
     if (data && currentPanel) {
       setCurrentPanel(currentPanel);
       // Deep link or browser navigation: adopt the panel from the hash so it is the one we
@@ -451,33 +484,38 @@ export function ConversationSidePanelProvider({
     } else if (!data) {
       collapsePanel();
     }
-  }, [data, currentPanel, setCurrentPanel, collapsePanel]);
+  }, [data, currentPanel, setCurrentPanel, setData, collapsePanel]);
 
   const value = useMemo(
     () => ({
-      currentPanel: isSupportedPanelType(currentPanel)
-        ? currentPanel
-        : undefined,
+      currentPanel: blockedPanel
+        ? blockedPanel.type
+        : isSupportedPanelType(currentPanel)
+          ? currentPanel
+          : undefined,
       hasConversation,
       isPanelClosing,
       openPanel,
       togglePanel,
       closePanel,
+      setNavigationBlocked,
       removeFromPanelHistory,
       onPanelClosed,
       setPanelRef,
       panelRef,
       setVirtuosoMsg,
       virtuosoMsg,
-      data,
+      data: blockedPanel ? panelDataKey(blockedPanel) : data,
     }),
     [
       currentPanel,
+      blockedPanel,
       hasConversation,
       isPanelClosing,
       openPanel,
       togglePanel,
       closePanel,
+      setNavigationBlocked,
       removeFromPanelHistory,
       onPanelClosed,
       setPanelRef,

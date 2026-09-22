@@ -77,6 +77,7 @@ export function FrameRenderer({
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
   const [isLoading, setIsLoading] = useState(false);
+  const [documentPending, setDocumentPending] = useState(false);
   const isNavBarPrevOpenRef = useRef(isNavigationBarOpen);
   const prevPanelSizeRef = useRef(DEFAULT_FRAME_PANEL_SIZE);
 
@@ -120,7 +121,15 @@ export function FrameRenderer({
     return entry?.path ?? null;
   }, [fileId, projectFiles]);
 
-  const { closePanel, panelRef } = useConversationSidePanelContext();
+  const { closePanel, panelRef, setNavigationBlocked } =
+    useConversationSidePanelContext();
+  const onDocumentPendingChange = useCallback(
+    (pending: boolean) => {
+      setDocumentPending(pending);
+      setNavigationBlocked(pending);
+    },
+    [setNavigationBlocked]
+  );
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // The space to resolve `project/` file paths inside the viz.
@@ -239,6 +248,9 @@ export function FrameRenderer({
   };
 
   const onClosePanel = () => {
+    if (documentPending) {
+      return;
+    }
     if (panel && isFullScreen) {
       setFullScreenHash(undefined);
       restoreLayout();
@@ -248,12 +260,18 @@ export function FrameRenderer({
   };
 
   const reloadFile = async () => {
+    if (documentPending) {
+      return;
+    }
     setIsLoading(true);
     await mutateFileContent(`/api/w/${owner.sId}/files/${fileId}?action=view`);
     setIsLoading(false);
   };
 
   const onRevert = () => {
+    if (documentPending) {
+      return;
+    }
     void handleVisualizationRevert({
       fileId,
       agentConfigurationId: lastEditedByAgentConfigurationId ?? "",
@@ -388,7 +406,11 @@ export function FrameRenderer({
         <div className="flex w-full items-center justify-between">
           <Button
             icon={showCode ? Eye : Terminal}
-            onClick={() => setShowCode(!showCode)}
+            onClick={() => {
+              if (!documentPending) {
+                setShowCode((current) => !current);
+              }
+            }}
             tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
             variant="ghost"
           />
@@ -491,10 +513,12 @@ export function FrameRenderer({
               conversationId={conversation?.sId ?? null}
               spaceId={frameSpaceId ?? undefined}
               framePath={resolvedFramePath}
+              framePackageRoot={packageRoot}
               frameId={renderMode === "v2" ? fileId : undefined}
               isInDrawer={true}
               isEditable={isEditable}
               onEditText={isEditable ? handleEditText : undefined}
+              onDocumentPendingChange={onDocumentPendingChange}
               ref={iframeRef}
             />
             {conversation && (

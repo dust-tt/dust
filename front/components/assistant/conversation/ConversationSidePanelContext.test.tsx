@@ -283,3 +283,27 @@ describe("ConversationSidePanelProvider hash encoding", () => {
     expect(restored.result.current.currentPanel).toBeUndefined();
   });
 });
+
+describe("pending panel edits", () => {
+  it("preserves the active file through close, replace, collapse and hash changes", () => {
+    const { result } = renderSidePanel();
+    act(() =>
+      result.current.openPanel({
+        type: "file_preview",
+        kind: "path",
+        filePath: "conversation-abc/brief.dustdoc",
+      })
+    );
+    act(() => result.current.setNavigationBlocked(true));
+    act(() => result.current.closePanel());
+    act(() => result.current.openPanel({ type: "files" }));
+    act(() => result.current.togglePanel({ type: "credits" }));
+    act(() => result.current.onPanelClosed());
+    act(() => hash.set({ spt: "files", spid: "files" }));
+    expect(result.current.currentPanel).toBe("file_preview");
+    expect(result.current.data).toBe("conversation-abc/brief.dustdoc");
+    act(() => result.current.setNavigationBlocked(false));
+    act(() => result.current.openPanel({ type: "files" }));
+    expect(result.current.currentPanel).toBe("files");
+  });
+});

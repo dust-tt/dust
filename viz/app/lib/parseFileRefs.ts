@@ -23,6 +23,7 @@ const FRAME_PACKAGE_ASSET_EXTENSIONS = new Set([
   ".csv",
   ".tsv",
   ".json",
+  ".dustdoc",
   ".txt",
   ".md",
   ".markdown",

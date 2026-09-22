@@ -67,6 +67,7 @@ vi.mock(
       openPanel: vi.fn(),
       togglePanel: togglePanelMock,
       closePanel: vi.fn(),
+      setNavigationBlocked: vi.fn(),
       onPanelClosed: vi.fn(),
       setPanelRef: vi.fn(),
       panelRef: { current: null },

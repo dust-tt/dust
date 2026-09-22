@@ -1,5 +1,6 @@
 import { SandboxFunctionPersonalAuthCard } from "@app/components/actions/blocked/SandboxFunctionPersonalAuthCard";
 import { SandboxFunctionToolApprovalCard } from "@app/components/actions/blocked/SandboxFunctionToolApprovalCard";
+import { useDocumentNavigation } from "@app/components/documents/useDocumentNavigation";
 import { useVisualizationRetry } from "@app/hooks/conversations";
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -13,6 +14,7 @@ import {
   resolvePackageRelativeToScopedPath,
 } from "@app/lib/api/frames/package_file_ref_paths";
 import { clientFetch } from "@app/lib/egress/client";
+import { createFrameDocumentFiles } from "@app/lib/swr/frame_documents";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { FrameFunctionReferenceScope } from "@app/types/api/frame_function_reference";
@@ -29,6 +31,7 @@ import type {
   CallFunctionRequest,
   CommandResultMap,
   EditTextFn,
+  FrameDocumentFiles,
   ScopedWorkspaceUserIdentity,
   UserIdentityState,
   VisualizationRPCCommand,
@@ -41,10 +44,7 @@ import {
 import { isAPIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import {
-  assertNever,
-  assertNeverAndIgnore,
-} from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -452,6 +452,8 @@ function useVisualizationDataHandler({
   conversationId,
   createSandboxFunctionInvocation,
   getFileBlob,
+  documentFiles,
+  onDocumentPendingChange,
   onEditText,
   functionReferenceScope,
   setCodeDrawerOpened,
@@ -471,6 +473,8 @@ function useVisualizationDataHandler({
     Result<PostSandboxFunctionInvocationResponseBody, SandboxFunctionCallError>
   >;
   getFileBlob: (fileId: string) => Promise<Blob | null>;
+  documentFiles: FrameDocumentFiles;
+  onDocumentPendingChange: (pending: boolean) => void;
   functionReferenceScope: FrameFunctionReferenceScope;
   onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
@@ -621,6 +625,29 @@ function useVisualizationDataHandler({
           sendResponseToIframe(data, { fileBlob }, event.source);
           break;
 
+        case "getDocument":
+          sendResponseToIframe(
+            data,
+            await documentFiles.load(data.params.src),
+            event.source
+          );
+          break;
+
+        case "saveDocument":
+          sendResponseToIframe(
+            data,
+            await documentFiles.save(data.params),
+            event.source
+          );
+          break;
+
+        case "setDocumentPendingChanges":
+          if (visualization.accessToken === undefined) {
+            onDocumentPendingChange(data.params.pending);
+          }
+          sendResponseToIframe(data, undefined, event.source);
+          break;
+
         case "getCodeToExecute":
           if (code) {
             sendResponseToIframe(data, { code }, event.source);
@@ -671,7 +698,7 @@ function useVisualizationDataHandler({
         }
 
         default:
-          assertNever(data);
+          assertNeverAndIgnore(data);
       }
     };
 
@@ -683,12 +710,15 @@ function useVisualizationDataHandler({
     createSandboxFunctionInvocation,
     downloadFileFromBlob,
     getFileBlob,
+    documentFiles,
+    onDocumentPendingChange,
     onEditText,
     functionReferenceScope,
     setContentHeight,
     setErrorMessage,
     setCodeDrawerOpened,
     visualization.identifier,
+    visualization.accessToken,
     vizIframeRef,
     resolveUserIdentity,
     sendNotification,
@@ -761,11 +791,16 @@ export interface VisualizationActionIframeProps {
    * paths and (for legacy Pod Frames) bare function names.
    */
   framePath?: string | null;
+  /** Exact package directory from Frame permissions, required for document file access. */
+  framePackageRoot?: string | null;
   /** Stable identity of a Frames v2 resource. Omit for legacy Frames and raw visualizations. */
   frameId?: string;
+  /** Fit the reported content height within the existing preview limit. */
+  fitContent?: boolean;
   isEditable?: boolean;
   isInDrawer?: boolean;
   onEditText?: EditTextFn;
+  onDocumentPendingChange?: (pending: boolean) => void;
   scopedUserIdentity?: ScopedWorkspaceUserIdentity;
   spaceId?: string;
   viewer: FrameViewer | null;
@@ -774,6 +809,16 @@ export interface VisualizationActionIframeProps {
   workspaceId: string;
 }
 
+/**
+ * @cc [owner:flvndvd,label:product] frame-content-sizing
+ * Inline hosts using fitContent MUST follow the Frame's reported height up to the preview
+ * height limit, without a panel or loaded minimum height. Drawer sizing takes precedence.
+ */
+/**
+ * @cc [owner:flvndvd,label:security] shared-frame-file-rpc
+ * Hosts with a defined accessToken, including null, MUST reject file RPC reads without
+ * using the viewer's private credentials. Shared dependencies MUST use the shared cache.
+ */
 export const VisualizationActionIframe = forwardRef<
   HTMLIFrameElement,
   VisualizationActionIframeProps
@@ -895,6 +940,7 @@ export const VisualizationActionIframe = forwardRef<
     agentConfigurationId,
     canInvokeFunctions,
     conversationId,
+    fitContent = false,
     isEditable = false,
     isInDrawer = false,
     onEditText,
@@ -904,6 +950,7 @@ export const VisualizationActionIframe = forwardRef<
     visualization,
     workspaceId,
   } = props;
+  const usesPanelHeight = !isInDrawer && !fitContent;
 
   const blockedActionGroup = useMemo(
     () => nextBlockedActionGroup(blockedActions),
@@ -929,9 +976,35 @@ export const VisualizationActionIframe = forwardRef<
   );
 
   const isPublic = visualization.accessToken !== undefined;
+  const [, setDocumentPending, documentNavigationGuard] =
+    useDocumentNavigation();
+  const onDocumentPendingChange = useCallback(
+    (pending: boolean) => {
+      setDocumentPending(pending);
+      props.onDocumentPendingChange?.(pending);
+    },
+    [setDocumentPending, props.onDocumentPendingChange]
+  );
+  useEffect(
+    () => () => props.onDocumentPendingChange?.(false),
+    [props.onDocumentPendingChange]
+  );
+  const documentFiles = useMemo(
+    () =>
+      createFrameDocumentFiles({
+        workspaceId,
+        packageRoot: props.framePackageRoot,
+        isPublic,
+      }),
+    [workspaceId, props.framePackageRoot, isPublic]
+  );
 
   const getFileBlob = useCallback(
     async (fileId: string) => {
+      if (isPublic) {
+        return null;
+      }
+
       let url: string;
 
       if (fileId.startsWith("conversation-") || fileId.startsWith("pod-")) {
@@ -988,7 +1061,7 @@ export const VisualizationActionIframe = forwardRef<
         type: response.headers.get("Content-Type") ?? undefined,
       });
     },
-    [workspaceId, conversationId, spaceId, props.framePath]
+    [workspaceId, conversationId, spaceId, props.framePath, isPublic]
   );
 
   const createSandboxFunctionInvocation = useCallback(
@@ -1063,6 +1136,8 @@ export const VisualizationActionIframe = forwardRef<
     conversationId,
     createSandboxFunctionInvocation,
     getFileBlob,
+    documentFiles,
+    onDocumentPendingChange,
     onEditText,
     functionReferenceScope,
     setCodeDrawerOpened,
@@ -1125,6 +1200,7 @@ export const VisualizationActionIframe = forwardRef<
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
+      {documentNavigationGuard}
       {code && (
         <CodeDrawer
           isOpened={isCodeDrawerOpen}
@@ -1153,7 +1229,7 @@ export const VisualizationActionIframe = forwardRef<
       <div
         className={cn(
           "relative w-full overflow-hidden",
-          codeFullyGenerated && !isErrored && !isInDrawer && "min-h-96",
+          codeFullyGenerated && !isErrored && usesPanelHeight && "min-h-96",
           errorMessage && "h-full",
           isInDrawer && "h-full"
         )}
@@ -1171,7 +1247,8 @@ export const VisualizationActionIframe = forwardRef<
             <div
               className={cn(
                 "relative flex w-full shrink-0 items-center justify-center",
-                isInDrawer ? "h-full" : "h-panel"
+                isInDrawer && "h-full",
+                usesPanelHeight && "h-panel"
               )}
             >
               {codeFullyGenerated && !isErrored && (
@@ -1181,7 +1258,8 @@ export const VisualizationActionIframe = forwardRef<
                       ? { minHeight: "200px" }
                       : {
                           height: `${contentHeight}px`,
-                          minHeight: "96px",
+                          minHeight:
+                            fitContent && iframeLoaded ? undefined : "96px",
                         }
                   }
                   className={cn(
@@ -1193,7 +1271,7 @@ export const VisualizationActionIframe = forwardRef<
                     ref={combinedRef}
                     className={cn(
                       "h-full w-full",
-                      !errorMessage && !isInDrawer && "min-h-96"
+                      !errorMessage && usesPanelHeight && "min-h-96"
                     )}
                     src={vizUrl}
                     allowFullScreen
@@ -1206,7 +1284,8 @@ export const VisualizationActionIframe = forwardRef<
                 <div
                   className={cn(
                     "flex w-full items-center justify-center p-6",
-                    isInDrawer ? "h-full" : "h-panel"
+                    isInDrawer && "h-full",
+                    usesPanelHeight && "h-panel"
                   )}
                 >
                   <ContentMessage

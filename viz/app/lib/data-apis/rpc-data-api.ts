@@ -25,6 +25,15 @@ export class RPCDataAPI implements VisualizationDataAPI {
     this.sendMessage = sendMessage;
   }
 
+  documentFiles = {
+    load: (src: string) => this.sendMessage("getDocument", { src }),
+    save: (params: VisualizationRPCRequestMap["saveDocument"]) =>
+      this.sendMessage("saveDocument", params),
+  };
+
+  setDocumentPendingChanges = (pending: boolean) =>
+    this.sendMessage("setDocumentPendingChanges", { pending });
+
   async callFunction(functionId: string, input?: unknown): Promise<unknown> {
     try {
       return await this.sendMessage("callFunction", {

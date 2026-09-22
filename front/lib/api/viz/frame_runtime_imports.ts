@@ -9,6 +9,7 @@ export const FRAME_RUNTIME_IMPORT_NAMES = [
   "@viz/lib/utils",
   "lucide-react",
   "motion/react",
+  "@dust/document/v1",
   "@dust/slideshow/v1",
   "@dust/slideshow/v2",
   "@dust/react-hooks",

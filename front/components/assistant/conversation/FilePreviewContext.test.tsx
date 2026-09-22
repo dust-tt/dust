@@ -43,6 +43,7 @@ function withSidePanel(
           openPanel,
           togglePanel: vi.fn(),
           closePanel: vi.fn(),
+          setNavigationBlocked: vi.fn(),
           removeFromPanelHistory: vi.fn(),
           onPanelClosed: vi.fn(),
           setPanelRef: vi.fn(),

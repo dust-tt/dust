@@ -1,3 +1,4 @@
+import { DOCUMENT_MAX_BYTES } from "@app/types/documents";
 import { z } from "zod";
 
 // Best-effort event, intentionally outside the request/response RPC protocol so
@@ -8,6 +9,29 @@ export const TailwindMissingClassesMessageSchema = z.object({
   buildId: z.string().max(128),
   classNames: z.array(z.string().min(1).max(200)).min(1).max(50),
 });
+
+export interface FrameDocumentSnapshot {
+  source: string;
+  revision: string;
+  canEdit: boolean;
+}
+
+export type FrameDocumentResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: string };
+
+export interface SaveFrameDocumentParams {
+  src: string;
+  source: string;
+  revision: string;
+}
+
+export interface FrameDocumentFiles {
+  load: (src: string) => Promise<FrameDocumentResult<FrameDocumentSnapshot>>;
+  save: (
+    params: SaveFrameDocumentParams
+  ) => Promise<FrameDocumentResult<{ revision: string }>>;
+}
 
 // This defines the commands that the iframe can send to the host window.
 
@@ -168,6 +192,22 @@ const VisualizationRPCRequestSchema = z.union([
   DownloadFileRequestSchema,
   DisplayCodeRequestSchema,
   EditTextRequestSchema,
+  VisualizationRPCRequestBaseSchema.extend({
+    command: z.literal("getDocument"),
+    params: z.object({ src: z.string().min(1).max(1024) }),
+  }),
+  VisualizationRPCRequestBaseSchema.extend({
+    command: z.literal("saveDocument"),
+    params: z.object({
+      src: z.string().min(1).max(1024),
+      source: z.string().max(DOCUMENT_MAX_BYTES),
+      revision: z.string().regex(/^[0-9]+$/),
+    }),
+  }),
+  VisualizationRPCRequestBaseSchema.extend({
+    command: z.literal("setDocumentPendingChanges"),
+    params: z.object({ pending: z.boolean() }),
+  }),
 ]);
 
 // Derive types from Zod schemas.
@@ -182,6 +222,9 @@ export type VisualizationRPCRequestMap = {
   callFunction: CallFunctionParams;
   getUserIdentity: null;
   getFile: GetFileParams;
+  getDocument: { src: string };
+  saveDocument: SaveFrameDocumentParams;
+  setDocumentPendingChanges: { pending: boolean };
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
   setErrorMessage: SetErrorMessageParams;
@@ -196,6 +239,9 @@ export interface CommandResultMap {
   getUserIdentity: UserIdentityState;
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
+  getDocument: FrameDocumentResult<FrameDocumentSnapshot>;
+  saveDocument: FrameDocumentResult<{ revision: string }>;
+  setDocumentPendingChanges: void;
   downloadFileRequest: { blob: Blob; filename?: string };
   setContentHeight: void;
   setErrorMessage: void;

@@ -1,4 +1,4 @@
-import type { UserIdentityState } from "@viz/app/types";
+import type { FrameDocumentFiles, UserIdentityState } from "@viz/app/types";
 import type {
   SupportedEventType,
   SupportedMessage,
@@ -9,6 +9,8 @@ import type {
  * Implementation varies by wrapper (cache, RPC, etc.).
  */
 export interface VisualizationDataAPI {
+  documentFiles?: FrameDocumentFiles;
+  setDocumentPendingChanges?: (pending: boolean) => Promise<void>;
   /**
    * Call a sandbox function.
    */

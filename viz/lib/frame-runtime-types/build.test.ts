@@ -80,11 +80,13 @@ import { Check } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "utils";
 import { cn as currentCn } from "@viz/lib/utils";
+import { DocumentRoot } from "@dust/document/v1";
+const region = <DocumentRoot src="./intro.dustdoc" className="rounded-lg" />;
 import * as slideshowV1 from "@dust/slideshow/v1";
 import * as slideshowV2 from "@dust/slideshow/v2";
 import { captureScreenshot, triggerUserFileDownload, useFrameFunction, usePodFunction, SandboxFunctionCallError } from "@dust/react-hooks";
 const legacy: typeof useFrameFunction = usePodFunction;
-const child: ReactNode = "hello";
+const child: ReactNode = <span>Content</span>;
 const screenshot: Promise<void> = captureScreenshot();
 const download: Promise<void> = triggerUserFileDownload({ content: "hello" });
 let error: SandboxFunctionCallError | undefined;
@@ -98,6 +100,10 @@ export default function App() {
   });
 
   it.each([
+    [
+      'import { Document } from "@dust/document/v1"; export default () => <Document src="fil_example" />',
+      2305,
+    ],
     [
       'import { fakeThing } from "react"; export default () => <div>{fakeThing()}</div>',
       2305,

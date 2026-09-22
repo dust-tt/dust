@@ -1,0 +1,186 @@
+{
+  "format": "dust-document",
+  "formatVersion": 1,
+  "schemaVersion": 1,
+  "content": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 1
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "A clearer path to launch"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "PRODUCT FIELD NOTES / SEPTEMBER 2026"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "A small launch can answer a large question. The next release should help teams move from scattered requests to a shared decision, with enough context to act and enough room to revise."
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "The case for a smaller first step"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Start with a focused pilot."
+          },
+          {
+            "type": "text",
+            "text": " Choose a repeatable workflow, agree on the evidence that would change our minds, and make the next decision visible to everyone involved."
+          }
+        ]
+      },
+      {
+        "type": "blockquote",
+        "content": [
+          {
+            "type": "paragraph",
+            "content": [
+              {
+                "type": "text",
+                "text": "Make the decision clearer before making the experience bigger."
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Early signals"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "These illustrative figures show how the same visual can sit within the document. Select a quarter to inspect it. The chart is authored in the Frame, and follows the document\u2019s shared theme."
+          }
+        ]
+      },
+      {
+        "type": "dustVisual",
+        "attrs": {
+          "name": "revenue"
+        }
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "What we will learn"
+          }
+        ]
+      },
+      {
+        "type": "bulletList",
+        "content": [
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Can a team find the context behind a decision without asking around?"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Does the shared view shorten the time from a request to an agreed next step?"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "listItem",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Can the owner update the plan without rewriting the entire report?"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 2
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "Next decision"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Review the pilot after two weeks. Expand only when the team can point to a repeated improvement. Keep open questions as comments so the discussion stays beside the work."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -6,7 +6,11 @@ import { searchForWorkspaceRoot } from "vite";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 const config: StorybookConfig = {
-  stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
+  stories: [
+    "../src/**/*.mdx",
+    "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+    "../../viz/components/dust/document/v1/DocumentRoot.stories.tsx",
+  ],
 
   staticDirs: [
     { from: "../../front/public/static", to: "/static" },
@@ -28,6 +32,7 @@ const config: StorybookConfig = {
   viteFinal: async (viteConfig) => {
     return {
       ...viteConfig,
+      esbuild: { ...viteConfig.esbuild, jsx: "automatic" },
       server: {
         ...viteConfig.server,
         fs: {
@@ -50,6 +55,8 @@ const config: StorybookConfig = {
         alias: {
           ...(viteConfig.resolve?.alias ?? {}),
           "@sparkle": path.resolve(__dirname, "../src/"),
+          "@dust-tt/sparkle/dist/esm": path.resolve(__dirname, "../src"),
+          "@viz": path.resolve(__dirname, "../../viz"),
         },
       },
     };

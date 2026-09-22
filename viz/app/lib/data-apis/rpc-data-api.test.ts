@@ -1,9 +1,28 @@
 import { CacheDataAPI } from "@viz/app/lib/data-apis/cache-data-api";
+import { HybridDataAPI } from "@viz/app/lib/data-apis/hybrid-data-api";
 import { RPCDataAPI } from "@viz/app/lib/data-apis/rpc-data-api";
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import { describe, expect, it, vi } from "vitest";
 
 describe("sandbox function data APIs", () => {
+  it("reads shared dependencies only from the cache without private RPC fallback", async () => {
+    const sendMessage = vi.fn();
+    const cache = new CacheDataAPI([
+      {
+        fileId: "conversation-demo/shared.csv",
+        data: btoa("name,value\nTotal,42"),
+        mimeType: "text/csv",
+      },
+    ]);
+    const api = new HybridDataAPI(cache, new RPCDataAPI(sendMessage));
+
+    const sharedFile = await api.fetchFile("conversation-demo/shared.csv");
+    expect(await sharedFile?.text()).toBe("name,value\nTotal,42");
+    expect(sharedFile?.type).toBe("text/csv");
+    await expect(api.fetchFile("fil_private")).resolves.toBeNull();
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
   it("loads workspace-scoped identity over RPC", async () => {
     const sendMessage = vi.fn().mockResolvedValue({
       isAuthenticated: true,

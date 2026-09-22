@@ -121,11 +121,13 @@ describe("extractFileRefs", () => {
       const f = useFile(GAMES_CSV_PATH);
       const withDot = useFile("./report.csv");
       const bare = useFile("report.csv");
+      const region = <DocumentBlob src="./intro.dustdoc" />;
       return <Image fileId="./assets/logo.png" />;
     `;
     expect(extractFileRefs(code)).toEqual([
       { type: "frameRelative", relativePath: "data.csv" },
       { type: "frameRelative", relativePath: "report.csv" },
+      { type: "frameRelative", relativePath: "intro.dustdoc" },
       { type: "frameRelative", relativePath: "assets/logo.png" },
     ]);
   });
