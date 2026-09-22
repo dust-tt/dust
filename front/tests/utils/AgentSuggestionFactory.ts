@@ -24,6 +24,7 @@ export class AgentSuggestionFactory {
       suggestion: InstructionsSuggestionSchemaType;
       analysis: string | null;
       state: AgentSuggestionState;
+      source: AgentSuggestionSource;
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.createSuggestionForAgent(
@@ -39,6 +40,7 @@ export class AgentSuggestionFactory {
         analysis:
           overrides.analysis ?? "Improved instructions for better coding help",
         state: overrides.state ?? "pending",
+        source: overrides.source ?? "sidekick",
       }
     );
   }

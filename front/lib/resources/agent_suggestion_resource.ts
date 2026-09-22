@@ -94,12 +94,6 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     return new Map(resources.map((resource) => [resource.sId, resource]));
   }
 
-  /**
-   * @cc [owner:avervaet,label:product] explicit-suggestion-source
-   * Callers MUST pass `source` reflecting the surface that proposed the suggestion.
-   * The column's `sidekick` database default exists only to cover rows
-   * inserted before this contract, not as a fallback for new call sites.
-   */
   static async createSuggestionForAgent(
     auth: Authenticator,
     agentConfiguration: LightAgentConfigurationType,
@@ -108,6 +102,36 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       "workspaceId" | "agentConfigurationId"
     >
   ): Promise<AgentSuggestionResource> {
+    const [suggestion] = await this.createSuggestionsForAgent(
+      auth,
+      agentConfiguration,
+      [blob]
+    );
+    return suggestion;
+  }
+
+  /**
+   * @cc [owner:avervaet,label:product] explicit-suggestion-source
+   * Callers MUST pass `source` reflecting the surface that proposed each suggestion.
+   * The column's `sidekick` database default exists only to cover rows
+   * inserted before this contract, not as a fallback for new call sites.
+   */
+  /**
+   * Same as `createSuggestionForAgent`, batched: the agent's editor permissions are looked up
+   * once and every suggestion is inserted in a single query, instead of once per suggestion.
+   */
+  static async createSuggestionsForAgent(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType,
+    blobs: Omit<
+      CreationAttributes<AgentSuggestionModel>,
+      "workspaceId" | "agentConfigurationId"
+    >[]
+  ): Promise<AgentSuggestionResource[]> {
+    if (blobs.length === 0) {
+      return [];
+    }
+
     const owner = auth.getNonNullableWorkspace();
 
     // Look up the agent's editor permissions.
@@ -123,18 +147,23 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       throw new Error("User does not have permission to edit this agent");
     }
 
-    const suggestion = await AgentSuggestionModel.create({
-      ...blob,
-      agentConfigurationId: agentConfiguration.id,
-      workspaceId: owner.id,
-    });
+    const suggestions = await AgentSuggestionModel.bulkCreate(
+      blobs.map((blob) => ({
+        ...blob,
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId: owner.id,
+      }))
+    );
 
-    return new this(
-      AgentSuggestionModel,
-      suggestion.get(),
-      agentAccess,
-      agentConfiguration.sId,
-      null
+    return suggestions.map(
+      (suggestion) =>
+        new this(
+          AgentSuggestionModel,
+          suggestion.get(),
+          agentAccess,
+          agentConfiguration.sId,
+          null
+        )
     );
   }
 

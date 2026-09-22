@@ -1,6 +1,9 @@
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { DROID_AVATAR_URLS } from "@app/lib/agent_builder/avatars";
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  archiveAgentConfiguration,
+  getAgentConfiguration,
+} from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { resolveAgentModelChange } from "@app/lib/api/assistant/configuration/model_update";
@@ -12,6 +15,7 @@ import {
 } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
@@ -19,6 +23,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   CreateSuggestionType,
+  InstructionsSuggestionSchemaType,
   ModelSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import {
@@ -164,7 +169,8 @@ interface AgentFieldEdits {
 type AgentChange =
   | { type: "create"; create: CreateSuggestionType }
   | { type: "archive" }
-  | { type: "fields"; fields: AgentFieldEdits };
+  | { type: "fields"; fields: AgentFieldEdits }
+  | { type: "instructions"; instructions: InstructionsSuggestionSchemaType };
 
 function changeForSuggestion(
   suggestion: AgentSuggestionResource
@@ -193,6 +199,8 @@ function changeForSuggestion(
         fields: { description: data.suggestion.description },
       });
     case "instructions":
+      return new Ok({ type: "instructions", instructions: data.suggestion });
+
     case "knowledge":
     case "skills":
     case "sub_agent":
@@ -213,11 +221,13 @@ interface AgentBatchChanges {
   create?: CreateSuggestionType;
   archive?: true;
   fields: AgentFieldEdits;
+  instructions: InstructionsSuggestionSchemaType[];
 }
 
 /**
  * Folds what every accepted suggestion asks for into one set of changes, so a batch produces one
- * agent version.
+ * agent version. Instructions suggestions are block-targeted and independent of one another, so
+ * every one in the batch is kept, in order, rather than merged like the other fields.
  */
 function mergeAgentChanges(changes: AgentChange[]): AgentBatchChanges {
   return changes.reduce<AgentBatchChanges>(
@@ -228,8 +238,12 @@ function mergeAgentChanges(changes: AgentChange[]): AgentBatchChanges {
         next.type === "fields"
           ? { ...merged.fields, ...next.fields }
           : merged.fields,
+      instructions:
+        next.type === "instructions"
+          ? [...merged.instructions, next.instructions]
+          : merged.instructions,
     }),
-    { fields: {} }
+    { fields: {}, instructions: [] }
   );
 }
 
@@ -302,10 +316,85 @@ async function applyAgentFieldEdits(
   return new Ok(undefined);
 }
 
+interface PreparedInstructionsUpdate {
+  instructions: string;
+  instructionsHtml: string;
+}
+
+async function prepareInstructionsSuggestion(
+  auth: Authenticator,
+  agent: LightAgentConfigurationType,
+  edits: InstructionsSuggestionSchemaType[]
+): Promise<Result<PreparedInstructionsUpdate, ApplyAgentSuggestionsError>> {
+  if (agent.status !== "active") {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Only an active agent can have its instructions changed."
+      )
+    );
+  }
+
+  // Editor access is enforced by the route, matching the manual instructions-editing route. The
+  // full configuration is re-fetched because the light variant the route validated against does
+  // not carry `instructionsHtml`; edits are re-applied against its live content.
+  const fullAgent = await getAgentConfiguration(auth, {
+    agentId: agent.sId,
+    variant: "full",
+  });
+  if (!fullAgent || !fullAgent.instructionsHtml) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The agent this suggestion targets has no block-structured instructions."
+      )
+    );
+  }
+
+  const converted = applyInstructionEditsToHtml(
+    fullAgent.instructionsHtml,
+    edits.map(({ targetBlockId, content }) => ({ targetBlockId, content }))
+  );
+  if (converted.isErr()) {
+    return converted;
+  }
+
+  return new Ok(converted.value);
+}
+
+async function commitInstructionsSuggestion(
+  auth: Authenticator,
+  agent: LightAgentConfigurationType,
+  prepared: PreparedInstructionsUpdate
+): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
+  const result = await AgentResource.bulkUpdate(auth, [agent.sId], {
+    instructions: prepared.instructions,
+    instructionsHtml: prepared.instructionsHtml,
+  });
+  if (result.updatedAgentIds.length === 0) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The agent this suggestion targets could not be updated."
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
+
 /**
  * @cc [owner:matteotrab,label:product] one-version-per-batch
  * Applying a batch of accepted suggestions should write at most one new agent version: every field
  * a suggestion changes is merged into a single `createOrUpgradeAgentConfiguration` call.
+ */
+/**
+ * @cc [owner:avervaet,label:error-handling] model-and-instructions-apply-order
+ * When a batch contains both field edits (name/model) and `instructions` suggestions, every
+ * validation that can be performed without writing to the database (agent status, target-block
+ * resolution) MUST run before either kind writes to the database, and `instructions` MUST be
+ * written last. This bounds the failure window after the (non-transactional) field-edit write to
+ * the `instructions` database write itself, rather than to `instructions`-specific validation.
  */
 export async function applyAgentSuggestions(
   auth: Authenticator,
@@ -328,8 +417,23 @@ export async function applyAgentSuggestions(
     changes.push(change.value);
   }
 
-  const { create, archive, fields } = mergeAgentChanges(changes);
+  const { create, archive, fields, instructions } = mergeAgentChanges(changes);
   const hasFieldEdits = Object.keys(fields).length > 0;
+
+  // Instructions are validated (but not written) before the field edits are written, and only
+  // written once the field-edit write succeeds: see `model-and-instructions-apply-order` above.
+  let preparedInstructions: PreparedInstructionsUpdate | undefined;
+  if (instructions.length > 0) {
+    const prepared = await prepareInstructionsSuggestion(
+      auth,
+      agent,
+      instructions
+    );
+    if (prepared.isErr()) {
+      return prepared;
+    }
+    preparedInstructions = prepared.value;
+  }
 
   if (create) {
     const res = await applyCreateSuggestion(auth, agent, create);
@@ -340,6 +444,17 @@ export async function applyAgentSuggestions(
 
   if (hasFieldEdits) {
     const res = await applyAgentFieldEdits(auth, agent, fields);
+    if (res.isErr()) {
+      return res;
+    }
+  }
+
+  if (preparedInstructions) {
+    const res = await commitInstructionsSuggestion(
+      auth,
+      agent,
+      preparedInstructions
+    );
     if (res.isErr()) {
       return res;
     }

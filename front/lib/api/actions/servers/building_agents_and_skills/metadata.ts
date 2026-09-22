@@ -30,6 +30,8 @@ export const SUGGEST_AGENT_DESCRIPTION_TOOL_NAME =
 export const SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME =
   "suggest_agent_model_change" as const;
 export const SUGGEST_AGENT_NAME_TOOL_NAME = "suggest_agent_name" as const;
+export const SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME =
+  "suggest_agent_instructions_change" as const;
 export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME =
   "suggest_skill_user_facing_description" as const;
 export const SUGGEST_SKILL_NAME_TOOL_NAME = "suggest_skill_name" as const;
@@ -224,6 +226,34 @@ export const SUGGEST_AGENT_NAME_INPUT_SCHEMA = z.object({
 
 export type SuggestAgentNameArgs = z.infer<
   typeof SUGGEST_AGENT_NAME_INPUT_SCHEMA
+>;
+
+export const SUGGEST_AGENT_INSTRUCTIONS_CHANGE_DESCRIPTION =
+  "Suggest a change to an existing agent's instructions (prompt) of this workspace, using " +
+  "block-based targeting. The instructions HTML contains blocks with a data-block-id " +
+  "attribute; the edit targets one block by its id and provides the full replacement HTML " +
+  `for that block. Use "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" as targetBlockId for a full ` +
+  "rewrite. Call this tool once per block to change several blocks. The change is not " +
+  "applied directly: it is recorded as a pending suggestion that the agent's editors can " +
+  "review, accept, or reject. Only agents the caller can edit can be targeted.";
+
+export const SUGGEST_AGENT_INSTRUCTIONS_CHANGE_INPUT_SCHEMA = z.object({
+  agentId: z
+    .string()
+    .describe("The id of the agent whose instructions to change."),
+  instructionEdit: SkillInstructionEditItemSchema.describe(
+    "A block-targeted edit to the agent's instructions, targeting one block by its " +
+      `data-block-id. Use "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" as targetBlockId for a ` +
+      "full rewrite."
+  ),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Why this change improves the agent's instructions."),
+});
+
+export type SuggestAgentInstructionsChangeArgs = z.infer<
+  typeof SUGGEST_AGENT_INSTRUCTIONS_CHANGE_INPUT_SCHEMA
 >;
 
 export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_INPUT_SCHEMA = z.object({
@@ -430,6 +460,18 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting agent name",
       done: "Suggest agent name",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME,
+    description: SUGGEST_AGENT_INSTRUCTIONS_CHANGE_DESCRIPTION,
+    schema: SUGGEST_AGENT_INSTRUCTIONS_CHANGE_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting agent instructions change",
+      done: "Suggest agent instructions change",
     },
     toolCostCategory: "basic",
     freeUsage: true,

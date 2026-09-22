@@ -409,6 +409,34 @@ describe("workspace_management tools", () => {
       expect(text).toContain("No agent found");
       expect(text).not.toContain("Unpublished Agent");
     });
+
+    it("returns block-tagged instructions HTML when the agent has block-structured instructions", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const created = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Block Structured Agent" }
+      );
+      const agent = await AgentConfigurationFactory.updateTestAgent(
+        authenticator,
+        created.sId,
+        {
+          instructionsHtml:
+            '<div data-block-id="instructions-root">' +
+            '<p data-block-id="block1">Be helpful.</p></div>',
+        }
+      );
+
+      const text = await callTool(
+        "get_agent_details",
+        { agentId: agent.sId },
+        authenticator
+      );
+
+      expect(text).toContain('data-block-id="block1"');
+      expect(text).toContain(
+        "required to target block-level instruction edits"
+      );
+    });
   });
 
   describe("list_skills", () => {

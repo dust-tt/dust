@@ -3,13 +3,6 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { isToolWithKnowledge } from "@app/lib/actions/mcp_helper";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  MAX_PENDING_INSTRUCTIONS_SUGGESTIONS,
-  MAX_PENDING_KNOWLEDGE_SUGGESTIONS,
-  MAX_PENDING_SKILLS_SUGGESTIONS,
-  MAX_PENDING_SUB_AGENT_SUGGESTIONS,
-  MAX_PENDING_TOOLS_SUGGESTIONS,
-} from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
 import type {
   InstructionsSuggestionSchema,
   SkillsSuggestionSchema,
@@ -18,7 +11,8 @@ import type {
 import { AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
 import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
-import { pruneConflictingInstructionSuggestions } from "@app/lib/api/assistant/agent_suggestion_pruning";
+import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
+import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -78,65 +72,16 @@ import type {
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 import {
-  INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
   isKnowledgeSuggestion,
   isSkillsSuggestion,
   isSubAgentSuggestion,
   isToolsSuggestion,
 } from "@app/types/suggestions/agent_suggestion";
-import { JSDOM } from "jsdom";
 import type { z } from "zod";
 
-type LimitedSuggestionKind =
-  | "instructions"
-  | "tools"
-  | "sub_agent"
-  | "skills"
-  | "knowledge";
-
-function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
-  switch (kind) {
-    case "instructions":
-      return MAX_PENDING_INSTRUCTIONS_SUGGESTIONS;
-    case "tools":
-      return MAX_PENDING_TOOLS_SUGGESTIONS;
-    case "sub_agent":
-      return MAX_PENDING_SUB_AGENT_SUGGESTIONS;
-    case "skills":
-      return MAX_PENDING_SKILLS_SUGGESTIONS;
-    case "knowledge":
-      return MAX_PENDING_KNOWLEDGE_SUGGESTIONS;
-  }
-}
-
-function canAddPendingSuggestions({
-  kind,
-  newPendingCount,
-  currentPendingCount,
-}: {
-  kind: LimitedSuggestionKind;
-  newPendingCount: number;
-  currentPendingCount: number;
-}): { allowed: true } | { allowed: false; errorMessage: string } {
-  const maxAllowed = getMaxPendingSuggestions(kind);
-
-  const totalAfterAddition = currentPendingCount + newPendingCount;
-
-  if (totalAfterAddition > maxAllowed) {
-    const availableSlots = Math.max(0, maxAllowed - currentPendingCount);
-
-    return {
-      allowed: false,
-      errorMessage:
-        `Cannot add ${newPendingCount} new ${kind} suggestion(s): ` +
-        `this would exceed the limit of ${maxAllowed} pending ${kind} suggestions. ` +
-        `Currently ${currentPendingCount} pending, only ${availableSlots} slot(s) available. ` +
-        `Please mark some existing suggestions as outdated using update_suggestions_state before adding new ones.`,
-    };
-  }
-
-  return { allowed: true };
-}
+const UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT =
+  "Please mark some existing suggestions as outdated using update_suggestions_state before " +
+  "adding new ones.";
 
 /**
  * Finds and marks as outdated any existing pending suggestions that match the predicate.
@@ -168,14 +113,6 @@ async function markDuplicateSuggestionsAsOutdated(
 type InstructionSuggestionInput = z.infer<typeof InstructionsSuggestionSchema>;
 
 /**
- * Returns the number of top-level HTML elements in the given HTML string
- */
-function countTopLevelBlocks(html: string): number {
-  const dom = new JSDOM(`<body>${html}</body>`);
-  return dom.window.document.body.children.length;
-}
-
-/**
  * Shared logic for creating instruction suggestions. Used by both the
  * suggest_prompt_edits MCP handler and reinforced agent analysis.
  */
@@ -192,16 +129,6 @@ async function createInstructionSuggestions({
 }): Promise<
   Result<{ sId: string; kind: string; targetBlockId: string }[], string>
 > {
-  // Reject batches where multiple suggestions target the same block.
-  const targetBlockIds = suggestions.map((s) => s.targetBlockId);
-  const uniqueTargetBlockIds = new Set(targetBlockIds);
-  if (uniqueTargetBlockIds.size !== targetBlockIds.length) {
-    return new Err(
-      "Multiple suggestions target the same block ID. Use a single suggestion per block." +
-        `For full rewrites, target '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' instead.`
-    );
-  }
-
   // Check pending suggestion limit before proceeding.
   const pendingInstructions =
     await AgentSuggestionResource.listByAgentConfigurationId(
@@ -214,6 +141,7 @@ async function createInstructionSuggestions({
     kind: "instructions",
     newPendingCount: suggestions.length,
     currentPendingCount: pendingInstructions.length,
+    resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
   });
   if (!limitCheck.allowed) {
     return new Err(limitCheck.errorMessage);
@@ -230,54 +158,12 @@ async function createInstructionSuggestions({
     return new Err(`Agent configuration not found: ${agentConfigurationId}`);
   }
 
-  // Reject non-root suggestions that contain multiple top-level blocks.
-  for (const suggestion of suggestions) {
-    if (suggestion.targetBlockId !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID) {
-      const blockCount = countTopLevelBlocks(suggestion.content);
-      if (blockCount > 1) {
-        return new Err(
-          `Suggestion for block "${suggestion.targetBlockId}" contains ${blockCount} top-level elements but replace only supports 1. ` +
-            `Keep it within a single tag, or use targetBlockId '${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}' if the change requires multiple blocks.`
-        );
-      }
-    }
-  }
-
-  const createdSuggestions: {
-    sId: string;
-    kind: string;
-    targetBlockId: string;
-  }[] = [];
-
-  for (const suggestion of suggestions) {
-    const { analysis, ...suggestionData } = suggestion;
-    const created = await AgentSuggestionResource.createSuggestionForAgent(
-      auth,
-      agentConfiguration,
-      {
-        kind: "instructions",
-        suggestion: suggestionData,
-        analysis: analysis ?? null,
-        state: "pending",
-        source: "sidekick",
-        conversationId: conversation?.id ?? null,
-      }
-    );
-
-    createdSuggestions.push({
-      sId: created.sId,
-      kind: created.kind,
-      targetBlockId: suggestionData.targetBlockId,
-    });
-  }
-
-  await pruneConflictingInstructionSuggestions(
-    auth,
+  return createAgentInstructionSuggestions(auth, {
     agentConfiguration,
-    createdSuggestions
-  );
-
-  return new Ok(createdSuggestions);
+    edits: suggestions,
+    source: "sidekick",
+    conversation: conversation ?? null,
+  });
 }
 
 type ToolsSuggestionInput = z.infer<typeof ToolsSuggestionSchema> & {
@@ -385,6 +271,7 @@ async function createToolsSuggestions({
     kind: "tools",
     newPendingCount: suggestions.length,
     currentPendingCount: remainingPending.length,
+    resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
   });
   if (!limitCheck.allowed) {
     return new Err(limitCheck.errorMessage);
@@ -490,6 +377,7 @@ async function createSkillsSuggestions({
     kind: "skills",
     newPendingCount: suggestions.length,
     currentPendingCount: remainingPending.length,
+    resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
   });
   if (!limitCheck.allowed) {
     return new Err(limitCheck.errorMessage);
@@ -1018,6 +906,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       kind: "sub_agent",
       newPendingCount: 1,
       currentPendingCount: remainingPending.length,
+      resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
     });
     if (!limitCheck.allowed) {
       return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
@@ -1286,6 +1175,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       kind: "knowledge",
       newPendingCount: 1,
       currentPendingCount: remainingPending.length,
+      resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
     });
     if (!limitCheck.allowed) {
       return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));

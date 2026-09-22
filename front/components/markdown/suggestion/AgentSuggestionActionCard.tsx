@@ -10,6 +10,7 @@ import type {
   AgentCreateSuggestionType,
   AgentDeleteSuggestionType,
   AgentDescriptionSuggestionType,
+  AgentInstructionsSuggestionType,
   AgentModelSuggestionType,
   AgentNameSuggestionType,
   AgentSuggestionState,
@@ -40,7 +41,8 @@ export type AgentActionCardSuggestionType =
   | AgentDeleteSuggestionType
   | AgentDescriptionSuggestionType
   | AgentModelSuggestionType
-  | AgentNameSuggestionType;
+  | AgentNameSuggestionType
+  | AgentInstructionsSuggestionType;
 
 interface AgentSuggestionActionCardProps {
   agentSuggestion: AgentActionCardSuggestionType;
@@ -108,6 +110,15 @@ function getLabels(agentSuggestion: AgentActionCardSuggestionType): {
         title: `Rename agent to "${name}"`,
         acceptedTitle: `Rename to "${name}" accepted`,
         rejectedTitle: `Rename to "${name}" rejected`,
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "instructions": {
+      return {
+        title: "Update agent instructions",
+        acceptedTitle: "Instructions update accepted",
+        rejectedTitle: "Instructions update rejected",
         description: analysis ?? undefined,
       };
     }
