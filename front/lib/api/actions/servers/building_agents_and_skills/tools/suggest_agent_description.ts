@@ -8,10 +8,18 @@ import type { SuggestAgentDescriptionArgs } from "@app/lib/api/actions/servers/b
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import {
+  executeWithLockResult,
+  isLockAcquisitionTimeoutError,
+} from "@app/lib/lock";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+
+function getAgentDescriptionSuggestionLockName(agentId: string): string {
+  return `agent-suggestion:description:${agentId}`;
+}
 
 async function validateAgentDescriptionChange(
   agent: LightAgentConfigurationType,
@@ -83,26 +91,48 @@ export async function suggestAgentDescription(
     return new Err(new MCPError(validation.error.message));
   }
 
-  const conflicting = await AgentSuggestionResource.listByAgentConfigurationId(
-    auth,
-    agent.sId,
-    { states: ["pending"], kind: "description" }
-  );
-  await AgentSuggestionResource.bulkUpdateState(auth, conflicting, "outdated");
+  const result = await executeWithLockResult(
+    getAgentDescriptionSuggestionLockName(agent.sId),
+    async (): Promise<Result<AgentSuggestionResource, MCPError>> => {
+      const conflicting =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          auth,
+          agent.sId,
+          { states: ["pending"], kind: "description" }
+        );
+      await AgentSuggestionResource.bulkUpdateState(
+        auth,
+        conflicting,
+        "outdated"
+      );
 
-  const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
-    auth,
-    agent,
-    {
-      kind: "description",
-      suggestion: { description: validation.value.description },
-      analysis: analysis ?? null,
-      state: "pending",
-      conversationId: null,
-      source: "conversational",
+      const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
+        auth,
+        agent,
+        {
+          kind: "description",
+          suggestion: { description: validation.value.description },
+          analysis: analysis ?? null,
+          state: "pending",
+          conversationId: null,
+          source: "conversational",
+        }
+      );
+      return new Ok(suggestion);
     }
   );
-  return new Ok(suggestion);
+
+  if (result.isErr()) {
+    return isLockAcquisitionTimeoutError(result.error)
+      ? new Err(
+          new MCPError(
+            "Another description suggestion is being recorded, retry."
+          )
+        )
+      : new Err(result.error);
+  }
+
+  return result;
 }
 
 export async function suggestAgentDescriptionHandler(
