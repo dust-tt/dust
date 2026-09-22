@@ -14,7 +14,7 @@ interface WakeUpBannerProps {
   wakeUp: WakeUpType;
   owner: LightWorkspaceType;
   conversationId: string;
-  isOwner: boolean;
+  canDelete: boolean;
 }
 
 // TODO(wake-up): PR 7 will add an owner-only overflow DropdownMenu alongside
@@ -25,7 +25,7 @@ export const WakeUpBanner = ({
   wakeUp,
   owner,
   conversationId,
-  isOwner,
+  canDelete,
 }: WakeUpBannerProps) => {
   const { cancelWakeUp } = useCancelWakeUp({ owner, conversationId });
   const scheduleDescription = describeWakeUpSchedule(wakeUp);
@@ -52,7 +52,7 @@ export const WakeUpBanner = ({
         />
         <span className="shrink-0">{scheduleDescription}</span>
       </div>
-      {isOwner && (
+      {canDelete && (
         <ContentMessageAction
           icon={Trash04}
           variant="ghost"

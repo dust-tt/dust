@@ -631,12 +631,12 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           contextUsage={contextUsage}
         />
       )}
-      {!isCompactionInProgress && activeWakeUp && context.conversation && (
+      {activeWakeUp && context.conversation && (
         <WakeUpBanner
           wakeUp={activeWakeUp}
           owner={context.owner}
           conversationId={context.conversation.sId}
-          isOwner={isActiveWakeUpOwner}
+          canDelete={isActiveWakeUpOwner && !isCompactionInProgress}
         />
       )}
       <div
