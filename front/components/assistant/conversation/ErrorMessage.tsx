@@ -111,7 +111,7 @@ export function ErrorMessage({
           icon={RefreshCw02}
           label={
             retryTierName
-              ? `Retry with ${retryTierName}`
+              ? `Retry with ${retryTierName} model tier`
               : (retryLabel ?? "Retry")
           }
           onClick={() => void retry()}
