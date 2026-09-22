@@ -1,12 +1,12 @@
 import { passesBillingGate } from "@app/lib/api/credits/auto_seat_upgrade";
 import { syncMetronomeBalanceThresholdAlert } from "@app/lib/api/credits/balance_threshold_alert";
 import type { Authenticator } from "@app/lib/auth";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { isEnterprisePlanPrefix, isFreePlan } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import {
   DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
   DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
-  DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED,
   DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
   DEFAULT_TOP_UP_ENABLED,
   DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
@@ -47,8 +47,7 @@ export async function getUsageConfiguration(
     autoSeatUpgradeEnabled:
       config?.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
     creditSpendCheckpointEnabled:
-      config?.creditSpendCheckpointEnabled ??
-      DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED,
+      config?.creditSpendCheckpointThresholdAwuCredits != null,
     autoSeatUpgradeAvailable: subscription
       ? passesBillingGate(subscription)
       : false,
@@ -61,6 +60,17 @@ export async function getUsageConfiguration(
         ? (config?.topUpEnabled ?? DEFAULT_TOP_UP_ENABLED)
         : true),
   };
+}
+
+// Admins can only flip the checkpoint gate on/off, not pick the threshold: `true` fills the
+// column with the fixed threshold constant, `false` clears it back to NULL (off).
+function creditSpendCheckpointThresholdFromToggle(
+  enabled: boolean | undefined
+): number | null | undefined {
+  if (enabled === undefined) {
+    return undefined;
+  }
+  return enabled ? CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS : null;
 }
 
 async function setConfigurationToggles(
@@ -76,7 +86,16 @@ async function setConfigurationToggles(
   const config =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
   if (config) {
-    return config.updateConfiguration(auth, toggles);
+    return config.updateConfiguration(auth, {
+      allowMemberUpgradeRequests: toggles.allowMemberUpgradeRequests,
+      upgradeRequestEmailEnabled: toggles.upgradeRequestEmailEnabled,
+      requireUpgradeRequestReason: toggles.requireUpgradeRequestReason,
+      autoSeatUpgradeEnabled: toggles.autoSeatUpgradeEnabled,
+      creditSpendCheckpointThresholdAwuCredits:
+        creditSpendCheckpointThresholdFromToggle(
+          toggles.creditSpendCheckpointEnabled
+        ),
+    });
   }
 
   // No configuration row yet — create one carrying the requested toggles, with
@@ -95,9 +114,10 @@ async function setConfigurationToggles(
       DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
     autoSeatUpgradeEnabled:
       toggles.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
-    creditSpendCheckpointEnabled:
-      toggles.creditSpendCheckpointEnabled ??
-      DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED,
+    creditSpendCheckpointThresholdAwuCredits:
+      creditSpendCheckpointThresholdFromToggle(
+        toggles.creditSpendCheckpointEnabled
+      ) ?? null,
   });
   if (createResult.isErr()) {
     return new Err(createResult.error);
