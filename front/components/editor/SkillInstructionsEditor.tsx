@@ -108,6 +108,8 @@ interface UseSkillInstructionsEditorProps {
   content: string;
   enableSlashCommands?: boolean;
   htmlContent?: string;
+  // Static: omits the editing extensions and uses compact node views. Changing it recreates the
+  // editor, so toggle editability at runtime with `editor.setEditable` instead.
   isReadOnly: boolean;
   skillReferences?: SkillInstructionsSkillReferencesOptions;
   onUpdate?: (props: { editor: Editor; transaction: Transaction }) => void;
@@ -287,6 +289,7 @@ export function useSkillInstructionsEditor({
     initializedEditorRef.current = editor;
     // Use requestAnimationFrame to ensure DOM is ready before setting content
     // This fixes Safari crashes where docView is accessed before render
+    // Callers may also sync content themselves in the meantime; setting it twice is harmless.
     requestAnimationFrame(() => {
       if (editor.isDestroyed) {
         return;

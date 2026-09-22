@@ -61,7 +61,6 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
   ScrollArea,
-  Spinner,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useMemo, useState } from "react";
@@ -376,16 +375,6 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
       />
     </div>
   );
-
-  // Mounting the form locked and unlocking it once editors resolve flips the instructions
-  // editor's read-only state, which recreates the tiptap instance. Wait for editors instead.
-  if (skill && isEditorsLoading) {
-    return (
-      <div className="flex h-dvh items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
 
   return (
     <SkillBuilderFormContext.Provider value={form}>
