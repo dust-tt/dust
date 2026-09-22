@@ -264,6 +264,9 @@ async function applyAgentFieldEdits(
     nextModel = { ...nextModel, ...modelRes.value };
   }
 
+  // Some skills may not be readable by the caller because of their requested spaces,
+  // however in that case also the agent would be unreadable as it would request the
+  // same spaces.
   const res = await createOrUpgradeAgentConfiguration({
     auth,
     agentConfigurationId: agentConfiguration.sId,
