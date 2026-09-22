@@ -1,5 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { DataSourceNavigationView } from "@app/components/agent_builder/capabilities/knowledge/DataSourceNavigationView";
+import { DataSourceBrowserTable } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable";
 import { DataSourceSearchResults } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSearchResults";
 import { DataSourceSpaceSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
@@ -392,7 +392,7 @@ export const DataSourceBuilderSelector = ({
           error={hasError ? new Error("Search failed") : null}
         />
       ) : (
-        <DataSourceNavigationView viewType={viewType} />
+        <DataSourceBrowserTable viewType={viewType} />
       )}
     </div>
   );

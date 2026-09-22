@@ -647,9 +647,11 @@ Reviewer: If you see an inline object or array literal passed directly as a Cont
 value, require the author to memoize it.
 
 @cc [label:react] client-exhaustiveness-tolerates-new-values
-Frontend components must use `assertNeverAndIgnore` instead of `assertNever` in exhaustive switch
-statements. The server may introduce new enum values (e.g., new action types, connector types,
-event types) before the client is redeployed. Using `assertNever` would throw at runtime and crash
+Frontend code that branches on a value received from the API must use `assertNeverAndIgnore`
+instead of `assertNever` in exhaustive switch statements; a union the client creates itself (local
+reducer state, UI modes) keeps `assertNever`, per `exhaustive-union-branching`. The server may
+introduce new enum values (e.g., new action types, connector types, event types) before the client
+is redeployed. Using `assertNever` would throw at runtime and crash
 the app for all users. `assertNeverAndIgnore` provides the same compile-time exhaustiveness
 checking but silently ignores unknown values at runtime.
 
