@@ -18,8 +18,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import groupDetail from "./[groupId]";
-import discoveryPins from "./[groupId]/discovery/pins";
-import discoveryPin from "./[groupId]/discovery/pins/[position]";
 import grantedRole from "./[groupId]/granted_role";
 import grantedSeatType from "./[groupId]/granted_seat_type";
 import spendLimit from "./[groupId]/spend_limit";
@@ -132,8 +130,6 @@ app.post(
 );
 
 app.route("/:groupId/spend_limit", spendLimit);
-app.route("/:groupId/discovery/pins/:position", discoveryPin);
-app.route("/:groupId/discovery/pins", discoveryPins);
 app.route("/:groupId/granted_role", grantedRole);
 app.route("/:groupId/granted_seat_type", grantedSeatType);
 app.route("/:groupId", groupDetail);

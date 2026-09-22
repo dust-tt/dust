@@ -20,6 +20,7 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
@@ -420,6 +421,9 @@ describe("stable agent identities", () => {
       }
     );
     expect(replaceResult.isOk()).toBe(true);
+    expect(
+      await DiscoveryItemResource.listPinnedForAuth(authenticator)
+    ).toHaveLength(1);
 
     await hardDeleteAgentVersion(authenticator, secondVersion);
     expect(
@@ -432,9 +436,20 @@ describe("stable agent identities", () => {
         grantGroup.id,
       ])
     ).toHaveLength(1);
+    // The pin row stays until the identity is gone. The previous version was archived when it
+    // was superseded, so the user-facing list omits that inactive target.
+    expect(
+      await GroupPinnedItemModel.count({
+        where: {
+          workspaceId: workspace.id,
+          type: "agent",
+          itemId: firstVersion.sId,
+        },
+      })
+    ).toBe(1);
     expect(
       await DiscoveryItemResource.listPinnedForAuth(authenticator)
-    ).toHaveLength(1);
+    ).toEqual([]);
 
     await hardDeleteAgentVersion(authenticator, firstVersion);
     expect(
@@ -447,6 +462,15 @@ describe("stable agent identities", () => {
         grantGroup.id,
       ])
     ).toHaveLength(0);
+    expect(
+      await GroupPinnedItemModel.count({
+        where: {
+          workspaceId: workspace.id,
+          type: "agent",
+          itemId: firstVersion.sId,
+        },
+      })
+    ).toBe(0);
     expect(
       await DiscoveryItemResource.listPinnedForAuth(authenticator)
     ).toEqual([]);

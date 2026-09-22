@@ -7,6 +7,8 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+import discoveryPin from "./[position]";
+
 const ParamsSchema = z.object({
   groupId: z.string(),
 });
@@ -58,5 +60,7 @@ app.get(
     }
   }
 );
+
+app.route("/:position", discoveryPin);
 
 export default app;

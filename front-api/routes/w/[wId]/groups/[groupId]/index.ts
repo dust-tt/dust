@@ -14,6 +14,8 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+import discovery from "./discovery";
+
 const ParamsSchema = z.object({
   groupId: z.string(),
 });
@@ -284,5 +286,7 @@ app.delete(
     return ctx.json({ success: true });
   }
 );
+
+app.route("/discovery", discovery);
 
 export default app;
