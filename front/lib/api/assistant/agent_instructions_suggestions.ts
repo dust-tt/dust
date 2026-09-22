@@ -31,10 +31,8 @@ function countTopLevelBlocks(html: string): number {
 /**
  * @cc [owner:avervaet,label:mcp] caller-checks-pending-limit
  * `createAgentInstructionSuggestions` does NOT enforce a cap on how many `instructions`
- * suggestions accumulate for an agent: every caller MUST check the pending count against its own
- * limit (e.g. `MAX_PENDING_INSTRUCTIONS_SUGGESTIONS`) before calling, since the message for
- * exceeding it differs per surface (sidekick points the model at `update_suggestions_state`,
- * which does not exist in every calling context).
+ * suggestions accumulate for an agent: every caller MUST check the pending count with
+ * `canAddPendingSuggestions` (see its own contract) before calling.
  */
 /**
  * Validates, creates and prunes `instructions` suggestions. Shared by every surface that lets a

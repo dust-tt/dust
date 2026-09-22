@@ -3,13 +3,6 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { isToolWithKnowledge } from "@app/lib/actions/mcp_helper";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  MAX_PENDING_INSTRUCTIONS_SUGGESTIONS,
-  MAX_PENDING_KNOWLEDGE_SUGGESTIONS,
-  MAX_PENDING_SKILLS_SUGGESTIONS,
-  MAX_PENDING_SUB_AGENT_SUGGESTIONS,
-  MAX_PENDING_TOOLS_SUGGESTIONS,
-} from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
 import type {
   InstructionsSuggestionSchema,
   SkillsSuggestionSchema,
@@ -19,6 +12,7 @@ import { AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/serv
 import { getAgentConfigurationIdFromContext } from "@app/lib/api/actions/servers/agent_sidekick_helpers";
 import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
+import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -85,56 +79,9 @@ import {
 } from "@app/types/suggestions/agent_suggestion";
 import type { z } from "zod";
 
-type LimitedSuggestionKind =
-  | "instructions"
-  | "tools"
-  | "sub_agent"
-  | "skills"
-  | "knowledge";
-
-function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
-  switch (kind) {
-    case "instructions":
-      return MAX_PENDING_INSTRUCTIONS_SUGGESTIONS;
-    case "tools":
-      return MAX_PENDING_TOOLS_SUGGESTIONS;
-    case "sub_agent":
-      return MAX_PENDING_SUB_AGENT_SUGGESTIONS;
-    case "skills":
-      return MAX_PENDING_SKILLS_SUGGESTIONS;
-    case "knowledge":
-      return MAX_PENDING_KNOWLEDGE_SUGGESTIONS;
-  }
-}
-
-function canAddPendingSuggestions({
-  kind,
-  newPendingCount,
-  currentPendingCount,
-}: {
-  kind: LimitedSuggestionKind;
-  newPendingCount: number;
-  currentPendingCount: number;
-}): { allowed: true } | { allowed: false; errorMessage: string } {
-  const maxAllowed = getMaxPendingSuggestions(kind);
-
-  const totalAfterAddition = currentPendingCount + newPendingCount;
-
-  if (totalAfterAddition > maxAllowed) {
-    const availableSlots = Math.max(0, maxAllowed - currentPendingCount);
-
-    return {
-      allowed: false,
-      errorMessage:
-        `Cannot add ${newPendingCount} new ${kind} suggestion(s): ` +
-        `this would exceed the limit of ${maxAllowed} pending ${kind} suggestions. ` +
-        `Currently ${currentPendingCount} pending, only ${availableSlots} slot(s) available. ` +
-        `Please mark some existing suggestions as outdated using update_suggestions_state before adding new ones.`,
-    };
-  }
-
-  return { allowed: true };
-}
+const UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT =
+  "Please mark some existing suggestions as outdated using update_suggestions_state before " +
+  "adding new ones.";
 
 /**
  * Finds and marks as outdated any existing pending suggestions that match the predicate.
@@ -194,6 +141,7 @@ async function createInstructionSuggestions({
     kind: "instructions",
     newPendingCount: suggestions.length,
     currentPendingCount: pendingInstructions.length,
+    resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
   });
   if (!limitCheck.allowed) {
     return new Err(limitCheck.errorMessage);
@@ -323,6 +271,7 @@ async function createToolsSuggestions({
     kind: "tools",
     newPendingCount: suggestions.length,
     currentPendingCount: remainingPending.length,
+    resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
   });
   if (!limitCheck.allowed) {
     return new Err(limitCheck.errorMessage);
@@ -428,6 +377,7 @@ async function createSkillsSuggestions({
     kind: "skills",
     newPendingCount: suggestions.length,
     currentPendingCount: remainingPending.length,
+    resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
   });
   if (!limitCheck.allowed) {
     return new Err(limitCheck.errorMessage);
@@ -956,6 +906,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       kind: "sub_agent",
       newPendingCount: 1,
       currentPendingCount: remainingPending.length,
+      resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
     });
     if (!limitCheck.allowed) {
       return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
@@ -1224,6 +1175,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       kind: "knowledge",
       newPendingCount: 1,
       currentPendingCount: remainingPending.length,
+      resolutionHint: UPDATE_SUGGESTIONS_STATE_RESOLUTION_HINT,
     });
     if (!limitCheck.allowed) {
       return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));

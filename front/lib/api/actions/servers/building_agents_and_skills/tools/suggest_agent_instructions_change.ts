@@ -3,11 +3,11 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { MAX_PENDING_INSTRUCTIONS_SUGGESTIONS } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
 import { formatAgentSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import type { SuggestAgentInstructionsChangeArgs } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import type { CreatedInstructionSuggestion } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
+import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
@@ -72,18 +72,15 @@ export async function suggestAgentInstructionsChange(
     agent.sId,
     { states: ["pending"], kind: "instructions" }
   );
-  if (
-    pending.length + instructionEdits.length >
-    MAX_PENDING_INSTRUCTIONS_SUGGESTIONS
-  ) {
-    return new Err(
-      new MCPError(
-        `Cannot add ${instructionEdits.length} new instruction suggestion(s): this would ` +
-          `exceed the limit of ${MAX_PENDING_INSTRUCTIONS_SUGGESTIONS} pending instructions ` +
-          `suggestions for this agent (currently ${pending.length} pending). Reject or accept ` +
-          "some of the existing pending suggestions before adding new ones."
-      )
-    );
+  const limitCheck = canAddPendingSuggestions({
+    kind: "instructions",
+    newPendingCount: instructionEdits.length,
+    currentPendingCount: pending.length,
+    resolutionHint:
+      "Reject or accept some of the existing pending suggestions before adding new ones.",
+  });
+  if (!limitCheck.allowed) {
+    return new Err(new MCPError(limitCheck.errorMessage));
   }
 
   const result = await createAgentInstructionSuggestions(auth, {
