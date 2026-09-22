@@ -275,6 +275,10 @@ interface ConsumptionDailyChartProps {
  * @cc [owner:aubin-tchoi,label:product] category-visibility-preserves-legend
  * Hiding categories must preserve legend entries, order, and colors, even when all are hidden.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] category-visibility-preserves-credit-scale
+ * The credits axis must use all categories' totals, regardless of legend visibility.
+ */
 export function ConsumptionDailyChart({
   timeseries,
   isTimeseriesLoading,
@@ -422,6 +426,12 @@ export function ConsumptionDailyChart({
           }
         />
         <YAxis
+          dataKey={(datum: ConsumptionTimeseriesPoint) =>
+            Object.values(datum.values).reduce(
+              (sum, credits) => sum + credits,
+              0
+            )
+          }
           className="text-xs text-faint"
           tickLine={false}
           axisLine={false}
