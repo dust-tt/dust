@@ -127,14 +127,18 @@ export function useSkillBuilderSlashCommandCapabilities({
       status: "active",
       disabled: useSkillSearch,
     });
-  const { skills: searchSkills, isSkillsLoading: isSearchSkillsLoading } =
-    useSearchSkills({
-      owner,
-      searchTerm: query,
-      limit: MAX_RENDERED_CAPABILITY_ITEMS,
-      disabled: !useSkillSearch,
-    });
+  const {
+    skills: searchSkills,
+    resolvedSearchTerm,
+    isSkillsLoading: isSearchSkillsLoading,
+  } = useSearchSkills({
+    owner,
+    searchTerm: query,
+    limit: MAX_RENDERED_CAPABILITY_ITEMS,
+    disabled: !useSkillSearch,
+  });
   const skills = useSkillSearch ? searchSkills : listedSkills;
+  const capabilityQuery = useSkillSearch ? (resolvedSearchTerm ?? "") : query;
   const isSkillsLoading = useSkillSearch
     ? isSearchSkillsLoading
     : isListedSkillsLoading;
@@ -152,18 +156,19 @@ export function useSkillBuilderSlashCommandCapabilities({
     () =>
       buildCapabilitySlashCommandItems({
         excludeSkillId,
-        query,
+        query: capabilityQuery,
         skills,
         tools,
         useSearchRanking: useSkillSearch,
         toolFilter: (serverView) =>
           getMCPServerRequirements(serverView).noRequirement,
       }),
-    [excludeSkillId, query, skills, tools, useSkillSearch]
+    [capabilityQuery, excludeSkillId, skills, tools, useSkillSearch]
   );
 
   return {
     capabilityItems,
+    resolvedQuery: capabilityQuery,
     isLoading: isSkillsLoading || isSpacesLoading || isServerViewsLoading,
   };
 }

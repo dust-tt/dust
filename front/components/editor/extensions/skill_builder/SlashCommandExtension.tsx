@@ -99,17 +99,17 @@ const SkillBuilderSlashCommandDropdownInner = forwardRef<
       [editor, onClose, range, storage]
     );
 
-    const commandItems = useMemo(
-      () => filterSlashCommandItems(SLASH_COMMANDS, query),
-      [query]
-    );
-
-    const { capabilityItems, isLoading } =
+    const { capabilityItems, isLoading, resolvedQuery } =
       useSkillBuilderSlashCommandCapabilities({
         excludeSkillId: currentSkillIdRef?.current ?? null,
         owner,
         query,
       });
+
+    const commandItems = useMemo(
+      () => filterSlashCommandItems(SLASH_COMMANDS, resolvedQuery),
+      [resolvedQuery]
+    );
 
     const sections = useMemo(
       () =>
