@@ -159,7 +159,15 @@ describe("ToolNode", () => {
     });
 
     expect(toolNodes(editor)).toEqual([]);
-    expect(postProcessMarkdown(editor.getMarkdown())).toContain(markdown);
+    expect(postProcessMarkdown(editor.getText())).toBe(markdown);
+
+    const serialized = postProcessMarkdown(editor.getMarkdown());
+    editor.commands.setContent(preprocessMarkdownForEditor(serialized), {
+      contentType: "markdown",
+    });
+
+    expect(toolNodes(editor)).toEqual([]);
+    expect(postProcessMarkdown(editor.getText())).toBe(markdown);
   });
 
   it("round-trips stored HTML tool tags", () => {

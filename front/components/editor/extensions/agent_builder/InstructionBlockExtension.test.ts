@@ -70,7 +70,7 @@ hello
 
 </instructions>
 
-&nbsp;`);
+`);
   });
 
   it("should serialize instruction block with headings to markdown", () => {
@@ -113,7 +113,7 @@ hello
 
 </instructions>
 
-&nbsp;`);
+`);
   });
 
   it("should serialize instruction block with code blocks to markdown", () => {
@@ -168,8 +168,7 @@ code block
         "```\n" +
         "\n" +
         "</instructions>\n" +
-        "\n" +
-        "&nbsp;"
+        "\n"
     );
   });
 
@@ -198,14 +197,14 @@ code block
     const result = editor.getMarkdown();
     expect(result).toBe(`<instructions>
 
-&nbsp;
+
 
 </instructions>
 
-&nbsp;`);
+`);
   });
 
-  it("should serialize instruction block with mentions", () => {
+  it("should serialize literal mention text in an instruction block", () => {
     editor.commands.setContent(
       `
 <instructions>
@@ -245,11 +244,11 @@ code block
     const result = editor.getMarkdown();
     expect(result).toBe(`<instructions>
 
-:mention[agent-name]{sId=agent-123}
+:mention\\[agent-name\\]{sId=agent-123}
 
 </instructions>
 
-&nbsp;`);
+`);
   });
 
   it("should serialize instruction block with _", () => {
@@ -279,11 +278,11 @@ code block
     const result = editor.getMarkdown();
     expect(result).toBe(`<instructions_toto>
 
-&nbsp;
+
 
 </instructions_toto>
 
-&nbsp;`);
+`);
   });
 
   it("should serialize instruction block to markdown with paragraph then list", () => {
@@ -382,7 +381,7 @@ Toto:
 
 </instructions>
 
-&nbsp;`);
+`);
   });
 
   it("should not throw on tags with only whitespace content", () => {
@@ -470,7 +469,7 @@ This rule has no attributes
 
 </prompt>
 
-&nbsp;`);
+`);
   });
 
   it("loads attributed XML-like tags as text", () => {
