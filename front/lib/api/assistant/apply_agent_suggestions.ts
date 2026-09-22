@@ -417,8 +417,7 @@ export async function applyAgentSuggestions(
     changes.push(change.value);
   }
 
-  const { create, archive, fields, instructions } =
-    mergeAgentChanges(changes);
+  const { create, archive, fields, instructions } = mergeAgentChanges(changes);
   const hasFieldEdits = Object.keys(fields).length > 0;
 
   // Instructions are validated (but not written) before the field edits are written, and only
