@@ -229,10 +229,6 @@ export async function computeAndStoreAgentMessageCredits(
         assistantLimits.maxAwuCreditsTimeframe
       );
       if (deltaMicroCredits > 0) {
-        // `addFixedWindowCount` stores raw integer units, so we pass
-        // microCredits (matching `getFixedWindowCount` below and `limitMicroCredits`).
-        // This differs from `addRateLimiterCount` in the rolling branch, which
-        // takes a credit amount and converts to microCredits itself.
         await addFixedWindowCount({
           key: fairUseKey,
           bounds,
@@ -252,13 +248,10 @@ export async function computeAndStoreAgentMessageCredits(
         assistantLimits.maxAwuCreditsTimeframe
       );
 
-      // `addRateLimiterCount` takes a credit amount (converted to microCredits
-      // internally), so we pass the raw credit delta here — unlike the
-      // fixed-window branch above, which passes microCredits.
       await addRateLimiterCount({
         key: fairUseKey,
         timeframeSeconds: fairUseTimeframeSeconds,
-        incrementBy: recordedCostDelta,
+        incrementBy: deltaMicroCredits,
         logger,
       });
 

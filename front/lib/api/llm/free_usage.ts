@@ -107,7 +107,7 @@ export async function contributeFreeUsageCostForUser(
   await addRateLimiterCount({
     key: makeFreeUsageCostRateLimitKeyForUser(owner, userId),
     timeframeSeconds: FREE_USAGE_COST_WINDOW_SECONDS,
-    incrementBy: awuCredits,
+    incrementBy: roundCreditsToMicroCredits(awuCredits),
     logger,
   });
 }
