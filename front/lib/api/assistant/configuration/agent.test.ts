@@ -15,6 +15,7 @@ import {
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
+import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -383,7 +384,7 @@ describe("stable agent identities", () => {
   });
 
   it("deletes the identity and grants only after its last version is deleted", async () => {
-    const { authenticator, workspace } = await createResourceTest({
+    const { authenticator, globalGroup, workspace } = await createResourceTest({
       role: "admin",
     });
     const firstVersion =
@@ -411,6 +412,14 @@ describe("stable agent identities", () => {
     if (!grantGroup) {
       throw new Error("Agent editor grant was not created");
     }
+    const replaceResult = await DiscoveryItemResource.setPinnedForGroup(
+      authenticator,
+      {
+        groupId: globalGroup.id,
+        item: { type: "agent", itemId: firstVersion.sId, position: 0 },
+      }
+    );
+    expect(replaceResult.isOk()).toBe(true);
 
     await hardDeleteAgentVersion(authenticator, secondVersion);
     expect(
@@ -422,6 +431,9 @@ describe("stable agent identities", () => {
       await GroupResource.dangerouslyFetchByModelIds(authenticator, [
         grantGroup.id,
       ])
+    ).toHaveLength(1);
+    expect(
+      await DiscoveryItemResource.listPinnedForAuth(authenticator)
     ).toHaveLength(1);
 
     await hardDeleteAgentVersion(authenticator, firstVersion);
@@ -435,6 +447,9 @@ describe("stable agent identities", () => {
         grantGroup.id,
       ])
     ).toHaveLength(0);
+    expect(
+      await DiscoveryItemResource.listPinnedForAuth(authenticator)
+    ).toEqual([]);
   });
 });
 
@@ -1037,7 +1052,7 @@ describe("create agent capability", () => {
 
 describe("AgentResource.archive and AgentResource.restore", () => {
   it("keeps editor grants active while archiving and restoring", async () => {
-    const { authenticator, workspace } = await createResourceTest({
+    const { authenticator, globalGroup, workspace } = await createResourceTest({
       role: "admin",
     });
 
@@ -1074,11 +1089,23 @@ describe("AgentResource.archive and AgentResource.restore", () => {
       true
     );
 
+    const replaceResult = await DiscoveryItemResource.setPinnedForGroup(
+      authenticator,
+      {
+        groupId: globalGroup.id,
+        item: { type: "agent", itemId: agent.sId, position: 0 },
+      }
+    );
+    expect(replaceResult.isOk()).toBe(true);
+
     const archived = await (await AgentResource.fetchById(
       authenticator,
       agent.sId
     ))!.archive(authenticator);
     expect(archived).toEqual(new Ok(true));
+    expect(
+      await DiscoveryItemResource.listPinnedForAuth(authenticator)
+    ).toHaveLength(1);
 
     const membershipsAfterArchive = await GroupMembershipModel.findAll({
       where: {

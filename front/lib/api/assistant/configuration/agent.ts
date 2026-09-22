@@ -16,6 +16,7 @@ import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { invalidateAgentResourceCaches } from "@app/lib/resources/agent_resource_cache";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
+import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -570,6 +571,11 @@ export async function destroyAgentConfigurationRow(
     return { agentDeleted: false };
   }
 
+  await DiscoveryItemResource.deleteAllForItem(auth, {
+    type: "agent",
+    itemId: agent.sId,
+    transaction,
+  });
   await agent.destroyPermissionsAndGroups(auth, { transaction });
   await AgentModel.destroy({
     where: { sId: agent.sId, workspaceId },

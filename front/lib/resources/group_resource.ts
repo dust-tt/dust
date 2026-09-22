@@ -13,6 +13,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
+import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -2390,6 +2391,14 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
 
       await GroupPermissionModel.destroy({
+        where: {
+          groupId: this.id,
+          workspaceId: owner.id,
+        },
+        transaction,
+      });
+
+      await GroupPinnedItemModel.destroy({
         where: {
           groupId: this.id,
           workspaceId: owner.id,
