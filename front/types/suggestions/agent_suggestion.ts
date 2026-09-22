@@ -15,6 +15,7 @@ export const AGENT_SUGGESTION_KINDS = [
   "knowledge",
   "create",
   "delete",
+  "name",
 ] as const;
 
 export type AgentSuggestionKind = (typeof AGENT_SUGGESTION_KINDS)[number];
@@ -102,6 +103,10 @@ const DeleteSuggestionSchema = z.object({
   name: z.string().trim().min(1).describe("Name of the agent to delete."),
 });
 
+const NameSuggestionSchema = z.object({
+  name: z.string().trim().min(1),
+});
+
 const KNOWLEDGE_SUGGESTION_METHODS = ["search", "query_tables"] as const;
 const KnowledgeSuggestionSchema = z.object({
   action: z.enum(["add", "remove"]),
@@ -127,6 +132,7 @@ export type ModelSuggestionType = z.infer<typeof ModelSuggestionSchema>;
 export type KnowledgeSuggestionType = z.infer<typeof KnowledgeSuggestionSchema>;
 export type CreateSuggestionType = z.infer<typeof CreateSuggestionSchema>;
 export type DeleteSuggestionType = z.infer<typeof DeleteSuggestionSchema>;
+export type NameSuggestionType = z.infer<typeof NameSuggestionSchema>;
 
 export function isToolsSuggestion(data: unknown): data is ToolsSuggestionType {
   return ToolsSuggestionSchema.safeParse(data).success;
@@ -156,6 +162,7 @@ export type SuggestionPayload =
   | InstructionsSuggestionSchemaType
   | KnowledgeSuggestionType
   | ModelSuggestionType
+  | NameSuggestionType
   | SkillsSuggestionType
   | SubAgentSuggestionType
   | ToolsSuggestionType;
@@ -178,6 +185,7 @@ export const AgentSuggestionDataSchema = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("create"), suggestion: CreateSuggestionSchema }),
   z.object({ kind: z.literal("delete"), suggestion: DeleteSuggestionSchema }),
+  z.object({ kind: z.literal("name"), suggestion: NameSuggestionSchema }),
 ]);
 
 export type AgentSuggestionData = z.infer<typeof AgentSuggestionDataSchema>;
@@ -243,6 +251,11 @@ export type AgentDeleteSuggestionType = Extract<
   { kind: "delete" }
 >;
 
+export type AgentNameSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "name" }
+>;
+
 export interface ToolSuggestionRelations {
   tool: MCPServerViewType;
 }
@@ -289,4 +302,5 @@ export type AgentSuggestionWithRelationsType =
   | AgentKnowledgeSuggestionWithRelationsType
   | (AgentInstructionsSuggestionType & { relations: null })
   | (AgentCreateSuggestionType & { relations: null })
-  | (AgentDeleteSuggestionType & { relations: null });
+  | (AgentDeleteSuggestionType & { relations: null })
+  | (AgentNameSuggestionType & { relations: null });
