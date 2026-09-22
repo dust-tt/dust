@@ -274,7 +274,7 @@ export function CapabilitiesPicker({
     ? isSearchSkillsLoading
     : isListedSkillsLoading;
 
-  const isSkillsDataReady = !isSkillsLoading;
+  const isSkillsDataReady = !isSkillsLoading || skills.length > 0;
   const isToolsDataReady =
     !isServerViewsLoading && (!isAdmin || !isAvailableMCPServersLoading);
 
