@@ -70,6 +70,7 @@ import { DustOpenAIGptSixAstraGlobalOpenAIResponsesStream } from "@app/lib/llms/
 import { DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_simulated_failure_model_global_openai_responses";
 import { DustThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { DustXaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_five_global_xai";
+import { DustXaiGrokFourDotSevenGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_seven_global_xai";
 import { DustXaiGrokFourDotSixGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_six_global_xai";
 import { DustZAiGlmFiveDotThreeFlashGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks";
 import { DustZAiGlmFiveDotThreeGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/z_ai_glm_five_dot_three_global_fireworks";
@@ -238,6 +239,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustXaiGrokFourDotFiveGlobalXaiStream,
   [DustXaiGrokFourDotSixGlobalXaiStream.id]:
     DustXaiGrokFourDotSixGlobalXaiStream,
+  [DustXaiGrokFourDotSevenGlobalXaiStream.id]:
+    DustXaiGrokFourDotSevenGlobalXaiStream,
 } as const satisfies Record<StreamEndpointId, DustStreamEndpointConstructor>;
 
 export function getStreamEndpoints(

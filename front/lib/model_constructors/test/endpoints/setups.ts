@@ -74,6 +74,7 @@ import { OpenAIGptSixAstraGlobalOpenAIResponsesStream } from "@app/lib/model_con
 import { OpenAISimulatedFailureModelGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_simulated_failure_model_global_openai_responses";
 import { ThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { XaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_five_global_xai";
+import { XaiGrokFourDotSevenGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_seven_global_xai";
 import { XaiGrokFourDotSixGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_six_global_xai";
 import { ZAiGlmFiveDotThreeFlashGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks";
 import { ZAiGlmFiveDotThreeGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_global_fireworks";
@@ -148,6 +149,7 @@ import { OpenAIGptSixAstraGlobalOpenAIResponsesStreamSetup } from "@app/lib/mode
 import { OpenAISimulatedFailureModelGlobalOpenAIResponsesStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_simulated_failure_model_global_openai_responses.test";
 import { ThinkingMachinesInklingGlobalFireworksStreamSetup } from "@app/lib/model_constructors/test/endpoints/thinking_machines_inkling_global_fireworks.test";
 import { XaiGrokFourDotFiveGlobalXaiStreamSetup } from "@app/lib/model_constructors/test/endpoints/xai_grok_four_dot_five_global_xai.test";
+import { XaiGrokFourDotSevenGlobalXaiStreamSetup } from "@app/lib/model_constructors/test/endpoints/xai_grok_four_dot_seven_global_xai.test";
 import { XaiGrokFourDotSixGlobalXaiStreamSetup } from "@app/lib/model_constructors/test/endpoints/xai_grok_four_dot_six_global_xai.test";
 import { ZAiGlmFiveDotThreeFlashGlobalFireworksStreamSetup } from "@app/lib/model_constructors/test/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks.test";
 import { ZAiGlmFiveDotThreeGlobalFireworksStreamSetup } from "@app/lib/model_constructors/test/endpoints/z_ai_glm_five_dot_three_global_fireworks.test";
@@ -300,4 +302,6 @@ export const STREAM_ENDPOINT_SETUPS = {
   [XaiGrokFourDotFiveGlobalXaiStream.id]:
     XaiGrokFourDotFiveGlobalXaiStreamSetup,
   [XaiGrokFourDotSixGlobalXaiStream.id]: XaiGrokFourDotSixGlobalXaiStreamSetup,
+  [XaiGrokFourDotSevenGlobalXaiStream.id]:
+    XaiGrokFourDotSevenGlobalXaiStreamSetup,
 } satisfies Record<StreamEndpointId, StreamSetup>;

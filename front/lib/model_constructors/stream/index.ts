@@ -70,6 +70,7 @@ import { OpenAIGptSixAstraGlobalOpenAIResponsesStream } from "@app/lib/model_con
 import { OpenAISimulatedFailureModelGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_simulated_failure_model_global_openai_responses";
 import { ThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/thinking_machines_inkling_global_fireworks";
 import { XaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_five_global_xai";
+import { XaiGrokFourDotSevenGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_seven_global_xai";
 import { XaiGrokFourDotSixGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_six_global_xai";
 import { ZAiGlmFiveDotThreeFlashGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks";
 import { ZAiGlmFiveDotThreeGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_global_fireworks";
@@ -219,6 +220,7 @@ export const STREAM_ENDPOINTS = {
     OpenAIGptFiveGlobalOpenAIResponsesStream,
   [XaiGrokFourDotFiveGlobalXaiStream.id]: XaiGrokFourDotFiveGlobalXaiStream,
   [XaiGrokFourDotSixGlobalXaiStream.id]: XaiGrokFourDotSixGlobalXaiStream,
+  [XaiGrokFourDotSevenGlobalXaiStream.id]: XaiGrokFourDotSevenGlobalXaiStream,
 } as const satisfies Record<string, StreamEndpointConstructor>;
 
 export type StreamEndpointId = keyof typeof STREAM_ENDPOINTS;

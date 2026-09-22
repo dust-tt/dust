@@ -2,6 +2,7 @@ import type { ModelConfigurationType } from "./types";
 
 export const GROK_4_5_MODEL_ID = "grok-4.5" as const;
 export const GROK_4_6_MODEL_ID = "grok-4.6" as const;
+export const GROK_4_7_MODEL_ID = "grok-4.7" as const;
 
 // Deprecated. As of 19/05/26, legacy Grok model IDs point to grok-4.3,
 // including older IDs such as grok-3-mini-high.
@@ -119,7 +120,46 @@ export const GROK_4_6_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "xAI's Grok 4.6 flagship model for coding and long-running agentic work (256k context, reasoning, vision).",
+    "xAI's Grok 4.6 model for coding and long-running agentic work (256k context, reasoning, vision).",
+  shortDescription: "xAI's previous flagship model.",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "high",
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  // xAI lists only US clusters (us-east-1 and us-west-2) at launch:
+  // https://docs.x.ai/developers/models/grok-4.6 (2026-08-12).
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+
+// Specs verified 2026-09-22 against
+// https://docs.x.ai/developers/models/grok-4.7 and
+// https://docs.x.ai/developers/release-notes (500k native context, text and
+// image input, function calling, structured output, reasoning). Dust caps the
+// usable context at 256k and output at 64k, leaving a 192k prompt budget below
+// xAI's 200k long-context pricing threshold.
+export const GROK_4_7_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "xai",
+  modelId: GROK_4_7_MODEL_ID,
+  displayName: "Grok 4.7",
+  contextSize: 256_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "xAI's Grok 4.7 flagship model for coding and long-running agentic work (256k context, reasoning, vision).",
   shortDescription: "xAI's latest flagship model.",
   isLegacy: false,
   isLatest: true,
@@ -135,8 +175,8 @@ export const GROK_4_6_MODEL_CONFIG: ModelConfigurationType = {
   useNativeLightReasoning: true,
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  // xAI lists only US clusters (us-east-1 and us-west-2) at launch:
-  // https://docs.x.ai/developers/models/grok-4.6 (2026-08-12).
+  // xAI lists only US clusters (us-east-1, us-west-2 and us-central-1):
+  // https://docs.x.ai/developers/models/grok-4.7 (2026-09-22).
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,
