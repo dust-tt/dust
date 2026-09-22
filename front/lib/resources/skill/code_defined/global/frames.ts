@@ -25,7 +25,8 @@ export const framesSkill = {
     "used in various contexts: daily digests, data analytics, sales reports, and more. Consider " +
     "using when tsx or React code is shared or available in the conversation. " +
     "Frames used to be a tool, now deprecated. Use this skill when the Frames/interactive " +
-    "content tool is mentioned, and whenever asked to modify an existing Frame.",
+    "content tool is mentioned, and whenever asked to modify an existing Frame. " +
+    "With Frames v2, also create editable rich-text documents with themed layouts and interactive visuals.",
   // Edit-the-source-then-publish guidance requires the conversation file system, which exposes
   // the Frame's source by path. Legacy conversations (created before the file system defaulted
   // on) keep the retrieve and file-id edit flow. Without a conversation at hand, assume the
@@ -61,6 +62,6 @@ export const framesSkill = {
   // Frames v2 authoring runs entirely through the Computer.
   warmsConversationSandbox: (auth: Authenticator) =>
     hasFeatureFlag(auth, "frames_v2"),
-  version: 9,
+  version: 10,
   icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;

@@ -11,6 +11,7 @@
     "./types/*": "./types/*"
   },
   "scripts": {
+    "build:document-skill": "node scripts/build_document_skill.mjs",
     "build:migrate": "esbuild scripts/migrate.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/migrate.js --sourcemap",
     "build:temporal-bundles": "tsx scripts/temporal-build/build-temporal-bundles.ts",
     "build:workers": "tsx esbuild.worker.ts",

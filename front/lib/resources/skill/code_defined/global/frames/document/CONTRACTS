@@ -1,0 +1,5 @@
+@cc [owner:flvndvd,label:error-handling] document-checker-cli-errors
+The standalone check.ts CLI and its readSource helper MAY throw for invalid command arguments,
+invalid input, refused conversions and filesystem failures. The CLI entry point MUST catch those
+failures, print a diagnostic and exit nonzero. This exception does not apply to application parsers
+or skill definitions.

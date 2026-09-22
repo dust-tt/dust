@@ -1,0 +1,31 @@
+{
+  "format": "dust-document",
+  "formatVersion": 1,
+  "schemaVersion": 1,
+  "content": {
+    "type": "doc",
+    "content": [
+      {
+        "type": "heading",
+        "attrs": {
+          "level": 1
+        },
+        "content": [
+          {
+            "type": "text",
+            "text": "A shared working document"
+          }
+        ]
+      },
+      {
+        "type": "paragraph",
+        "content": [
+          {
+            "type": "text",
+            "text": "Replace this text with the brief, report or notes."
+          }
+        ]
+      }
+    ]
+  }
+}

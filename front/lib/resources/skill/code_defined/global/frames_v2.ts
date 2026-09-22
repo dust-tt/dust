@@ -1,6 +1,11 @@
 import { INTERACTIVE_CONTENT_AUTHORING_PROSE_V2 } from "@app/lib/api/actions/servers/interactive_content/instructions_v2";
 import { MAX_FRAME_DATABASE_COUNT } from "@app/types/api/frame_manifest";
 
+/**
+ * @cc [owner:flvndvd,label:product] frame-native-document-authoring
+ * Native document guidance MUST keep the Frame as the root, use ordinary package files
+ * and require the shared checker. It MUST NOT require a generated persistence function.
+ */
 export const FRAMES_V2_INSTRUCTIONS = `\
 # Frames v2
 
@@ -25,6 +30,7 @@ Decide whether the Frame is a throwaway visualization or an application with dur
 writing source. Chat apps, task lists, trackers, forms, CRUD apps, and anything users can change
 default to durable: declare the database plus the read and mutation functions in the
 manifest. Do not store durable application state in memory; use a Frame database.
+Editable documents use the file-backed DocumentRoot described below and do not need a database or functions.
 
 ## Create a Frame
 
@@ -53,6 +59,66 @@ separate commands when a step needs the previous one's output.
 Always pass canonical \`/files/conversation-<conversationId>/...\` or
 \`/files/pod-<podId>/...\` paths to \`dsbx frame\`. Do not pass the convenience aliases
 \`/files/conversation\` or \`/files/pod\`.
+
+## Editable documents
+
+Use \`DocumentRoot\` for briefs, reports and notes that users should edit directly. Keep the Frame
+as the root container and use one native \`.dustdoc\` file for the continuous document. No Frame
+function or database is needed to load or save it. The user and the agent edit the same file.
+Use ordinary filesystem operations to author it. Keep Markdown as Markdown when requested.
+
+Copy \`skills/Create Frames/document/example.dustdoc\` into the Frame folder as \`report.dustdoc\`
+and edit its rich-text JSON. Keep the envelope fields \`format: "dust-document"\`, \`formatVersion: 1\`,
+\`schemaVersion: 1\` and root \`content.type: "doc"\`. Supported blocks include paragraphs, headings
+1–6, lists, blockquotes, code blocks and horizontal rules. Text supports bold, italic, strike,
+code and safe links. Do not invent node types or attributes.
+
+\`\`\`tsx
+import { DocumentRoot } from "@dust/document/v1";
+
+export default function Frame() {
+  return <DocumentRoot src="./report.dustdoc" theme={{ bodyFont: "serif", accent: "#315b8c" }} />;
+}
+\`\`\`
+
+\`src\` must be a literal package-relative path ending in \`.dustdoc\`, such as \`./report.dustdoc\`.
+Content autosaves with a debounce. Shared views are read-only. A conflicting save retains the user's draft.
+Before an agent edit, read the current file, preserve existing content and apply a targeted change.
+Never replace the whole file from an earlier draft. Reopen the Frame to see external file edits.
+
+### Themes and visuals
+
+Pass a shared \`theme\` object, optionally imported from a local JSON file. Available fonts are
+\`sans\`, \`serif\` and \`mono\` for \`bodyFont\` and \`headingFont\`. Colors \`background\`, \`foreground\`,
+\`muted\`, \`accent\`, \`surface\` and \`border\` accept six-digit hex values. Numeric tokens are
+\`bodySize\` (14–22), \`headingScale\` (1.1–1.4), \`lineHeight\` (1.4–2), \`paragraphSpacing\` (8–32),
+\`readingWidth\` (480–1100) and \`radius\` (0–24). Keep text legible. Sparkle owns the editing controls.
+
+For a custom chart or interactive visual, write an ordinary React component in the Frame.
+Pass \`visuals={{ revenue: <RevenueChart /> }}\` to DocumentRoot and insert
+\`{ "type": "dustVisual", "attrs": { "name": "revenue" } }\` at the desired position in the
+native document's content array. The name must start with a letter, contain only letters,
+digits, \`_\` or \`-\`, and be at most 100 characters. At most 10 visual blocks are supported.
+Use names consistently. Missing visuals show a placeholder. Do not put JSX, scripts, arbitrary
+props or iframe URLs in document JSON. The visual can use \`--document-accent\`,
+\`--document-surface\`, \`--document-border\` and the other document theme CSS variables.
+
+### Validate and publish
+
+Run the bundled checker after every document edit, then lint and publish the Frame normally:
+
+\`\`\`bash
+node "/files/conversation-<conversationId>/skills/Create Frames/document/check.mjs" "$FRAME/report.dustdoc"
+\`\`\`
+
+The checker needs no package installation. It uses the same schema as the editor and Files API,
+never executes visual code and leaves invalid source untouched. Keep the file below 512 KiB.
+Fix validation failures before publishing. Deliver the Frame citation, not the raw JSON file.
+
+To start from prose, run \`check.mjs --from-markdown <source.md> <new-document.dustdoc>\`.
+To export supported prose, run \`check.mjs --to-markdown <document.dustdoc> <new-output.md>\`.
+Conversions refuse existing output files and unsupported content. Markdown export refuses
+visual blocks rather than dropping them. Comments and live collaboration are not supported yet.
 
 ## Register an existing Frame folder
 

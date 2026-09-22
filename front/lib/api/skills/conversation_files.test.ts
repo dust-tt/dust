@@ -84,7 +84,14 @@ describe("upsertSkillFilesToConversation", () => {
 
     assert(result.isOk());
     expect(result.value.loadedPaths).toEqual(
-      ["lint.sh", "tsconfig.json", "oxlintrc.json", "frame-rules.cjs"].map(
+      [
+        "lint.sh",
+        "tsconfig.json",
+        "oxlintrc.json",
+        "frame-rules.cjs",
+        "document/check.mjs",
+        "document/example.dustdoc",
+      ].map(
         (fileName) =>
           `conversation-${conversation.sId}/skills/Create Frames/${fileName}`
       )

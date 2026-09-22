@@ -58,3 +58,17 @@ In the sandbox the scoped Frame root comes from its `/files/…` path. For a loc
 `files.ts` reads the assets using package resolution, so it also works from bundled API
 and worker entry points. The worker image explicitly includes these files. The API image
 already copies the Front workspace. Publish enforcement remains a separate change.
+
+## Editable documents
+
+Create Frames v2 also attaches `document/check.mjs` and `document/example.dustdoc`. Use
+`DocumentRoot` from `@dust/document/v1` with a literal package-relative `src`. The Frame
+owns the presentation and named React visuals. The `.dustdoc` file owns the rich text.
+
+Run `node "skills/Create Frames/document/check.mjs" "$FRAME/report.dustdoc"` after
+editing content. The checker is standalone and uses the same parser as the editor and
+Files API. It never executes the Frame or modifies a checked file.
+
+Rebuild it with `npm run build:document-skill` in `front` after changing the schema.
+The Docker build regenerates it after building Sparkle. The existing worker asset copy
+includes the document subdirectory.

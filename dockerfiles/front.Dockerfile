@@ -37,6 +37,9 @@ COPY /front-spa .
 WORKDIR /app/front
 COPY /front .
 
+# Bundle the document checker from the editor schema before loading Frame skill assets.
+RUN npm run build:document-skill
+
 # Generate custom models TypeScript from JSON config (downloaded by CI)
 RUN npm run generate:custom-models
 
