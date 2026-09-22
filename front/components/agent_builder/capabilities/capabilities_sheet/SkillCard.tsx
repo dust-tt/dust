@@ -7,7 +7,10 @@ import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/
 import { ActionCard } from "@dust-tt/sparkle";
 
 interface SkillCardProps {
-  skill: SkillWithoutInstructionsAndToolsType;
+  skill: Pick<
+    SkillWithoutInstructionsAndToolsType,
+    "name" | "icon" | "userFacingDescription"
+  >;
   isSelected: boolean;
   onClick: () => void;
   onMoreInfoClick: () => void;
