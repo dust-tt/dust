@@ -245,6 +245,12 @@ describe("removePendingToolCallForAction", () => {
 });
 
 describe("appendThinkingStep", () => {
+  it("ignores whitespace-only thinking steps", () => {
+    const steps: InlineActivityStep[] = [];
+
+    expect(appendThinkingStep(steps, " \n ", "thinking-1", 0)).toBe(steps);
+  });
+
   it("appends a thinking step when none exists", () => {
     const steps: InlineActivityStep[] = [];
     expect(

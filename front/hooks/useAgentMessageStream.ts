@@ -166,7 +166,7 @@ export function appendThinkingStep(
   id: string,
   stepIndex: number
 ): InlineActivityStep[] {
-  if (steps.some((step) => step.id === id)) {
+  if (!cotContent.trim() || steps.some((step) => step.id === id)) {
     return steps;
   }
   for (let i = steps.length - 1; i >= 0; i--) {
@@ -190,9 +190,7 @@ function appendContentStep(
   id: string,
   stepIndex: number
 ): InlineActivityStep[] {
-  // Skip if already present — the id is event-derived, so a replay after a
-  // remount regenerates the same id instead of appending a duplicate.
-  if (steps.some((step) => step.id === id)) {
+  if (!textContent.trim() || steps.some((step) => step.id === id)) {
     return steps;
   }
   return [
