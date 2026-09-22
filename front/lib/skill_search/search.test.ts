@@ -363,8 +363,14 @@ describe("custom skill search", () => {
     if (change === "pod") {
       expect(after).toBeUndefined();
     } else {
-      // Skill fields are eventually consistent until the document is refreshed or deleted.
-      expect(after).toEqual(before);
+      // Skill fields are eventually consistent until the document is refreshed or deleted, but
+      // `canAdministrate` is derived from live grants and reflects the change immediately.
+      const { canAdministrate: beforeCanAdministrate, ...beforeRest } = before;
+      const { canAdministrate: afterCanAdministrate, ...afterRest } = after;
+      expect(afterRest).toEqual(beforeRest);
+      expect(afterCanAdministrate).toBe(
+        change === "archive" ? beforeCanAdministrate : false
+      );
       if (change === "delete") {
         await mockHits(auth, []);
         expect(await searchListings(auth)).toEqual([]);
