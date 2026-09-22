@@ -34,8 +34,7 @@ function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
  * surface that creates suggestions of a `LimitedSuggestionKind` MUST call this with the current
  * pending count for that agent and kind before creating them, or pending suggestions of that
  * kind can accumulate without bound. `resolutionHint` is caller-supplied because the remediation
- * differs per surface (e.g. sidekick points the model at `update_suggestions_state`, which does
- * not exist in every calling context).
+ * can differs per surface.
  */
 export function canAddPendingSuggestions({
   kind,

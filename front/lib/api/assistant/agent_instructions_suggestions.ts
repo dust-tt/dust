@@ -50,8 +50,6 @@ export async function createAgentInstructionSuggestions(
     agentConfiguration: AgentConfigurationType;
     edits: InstructionSuggestionEditInput[];
     source: AgentSuggestionSource;
-    // The conversation's internal model id (`ConversationResource["id"]`), matching the
-    // `agent_suggestions.conversationId` foreign key — not its `sId`.
     conversationId: number | null;
   }
 ): Promise<Result<CreatedInstructionSuggestion[], string>> {
