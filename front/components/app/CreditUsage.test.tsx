@@ -115,4 +115,32 @@ describe("CreditUsage", () => {
       screen.getByText("Resets on a rolling 7-day basis")
     ).toBeInTheDocument();
   });
+
+  it("renders a fixed-window reset date instead of a rolling label", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-26T10:00:00.000Z"));
+    try {
+      render(
+        <CreditUsage
+          state={{
+            kind: "rolling_window",
+            usedCredits: 2_000,
+            limitCredits: 20_000,
+            timeframe: "week",
+            usedPercentage: 10,
+            isFixedWindow: true,
+            nextResetAt: "2026-09-07T00:00:00.000Z",
+          }}
+          variant="profile_menu"
+        />
+      );
+
+      expect(screen.getByText("Resets on Sep 7")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Resets on a rolling 7-day basis")
+      ).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

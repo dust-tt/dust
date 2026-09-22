@@ -86,6 +86,8 @@ export function SidebarUserMenu({
             (fairUseAwuCreditsState.count / fairUseAwuCreditsState.limit) * 100
           ),
           refillSchedule: fairUseAwuCreditsState.refillSchedule,
+          isFixedWindow: fairUseAwuCreditsState.windowKind === "fixed",
+          nextResetAt: fairUseAwuCreditsState.nextResetAt,
         }
       : null;
   const creditUsageState =

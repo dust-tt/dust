@@ -71,6 +71,7 @@ export type FairUseAwuCreditsStatus = {
   nextResetAt?: string | null;
   // Optional for compatibility with clients deployed before the refill schedule was added.
   refillSchedule?: { date: string; credits: number }[];
+  windowKind?: "rolling" | "fixed";
 };
 
 const DEFAULT_FAIR_USE_AWU_CREDITS_STATUS: FairUseAwuCreditsStatus = {
@@ -218,7 +219,14 @@ export async function getFairUseAwuCreditsStatus({
         },
         "Failed to read fixed-window fair-use AWU credits usage status."
       );
-      return { limit, timeframe, count: 0, nextResetAt, refillSchedule: [] };
+      return {
+        limit,
+        timeframe,
+        count: 0,
+        nextResetAt,
+        refillSchedule: [],
+        windowKind: "fixed",
+      };
     }
     return {
       limit,
@@ -228,6 +236,7 @@ export async function getFairUseAwuCreditsStatus({
       // The fixed window resets all at once at `nextResetAt`; there is no
       // gradual per-entry refill to schedule.
       refillSchedule: [],
+      windowKind: "fixed",
     };
   }
 
@@ -286,6 +295,7 @@ export async function getFairUseAwuCreditsStatus({
           windowMs,
         })
       : [],
+    windowKind: "rolling",
   };
 }
 
