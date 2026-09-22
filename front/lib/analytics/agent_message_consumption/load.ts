@@ -297,12 +297,14 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     agentId: agentMessage.agentConfigurationId,
     parentAgentId: ancestorAgentIds.at(-1),
   });
-  const agentTagIds = await loadAgentTagIds(auth, agentMessage);
-  const user = await loadAnalyticsUser({
-    auth,
-    completedAt,
-    userId: triggeringUserMessage.userId,
-  });
+  const [agentTagIds, user] = await Promise.all([
+    loadAgentTagIds(auth, agentMessage),
+    loadAnalyticsUser({
+      auth,
+      completedAt,
+      userId: triggeringUserMessage.userId,
+    }),
+  ]);
 
   const resolvedModel = resolvedModelFromAgentMessageRow({
     resolvedModelId: agentMessage.resolvedModelId,
