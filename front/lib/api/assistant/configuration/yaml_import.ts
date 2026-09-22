@@ -166,7 +166,7 @@ async function importAgentConfiguration(
   yamlConfig: AgentYAMLConfig,
   agentConfigurationId?: string
 ): Promise<ImportResult> {
-  const canCreate = await auth.hasWorkspacePermission("create", "agent");
+  const canCreate = auth.hasWorkspacePermission("create", "agent");
   if (!canCreate) {
     return new Err({
       status_code: 400,

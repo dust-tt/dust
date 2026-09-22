@@ -1288,10 +1288,10 @@ export class Authenticator {
    * the synthetic admin role grants admins every capability by default, and everyone else derives
    * it from their type-wide `group_permissions` grants.
    */
-  async hasWorkspacePermission(
+  hasWorkspacePermission(
     verb: GrantVerb,
     resourceType: ConcreteResourceType
-  ): Promise<boolean> {
+  ): boolean {
     // Reject invalid capability queries (e.g. create/billing) up front so callers fail fast on a
     // programmer error rather than silently returning false.
     const grantTypes = grantTypesForVerb(resourceType, verb, "type");

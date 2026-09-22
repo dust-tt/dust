@@ -609,13 +609,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const owner = auth.getNonNullableWorkspace();
 
     assert(
-      await auth.hasWorkspacePermission("create", "skill"),
+      auth.hasWorkspacePermission("create", "skill"),
       "User is not authorized to create skills"
     );
 
     if (blob.availability === "users_and_agents") {
       assert(
-        await auth.hasWorkspacePermission("make_discoverable", "skill"),
+        auth.hasWorkspacePermission("make_discoverable", "skill"),
         "User is not authorized to create an auto-discoverable skill"
       );
     }
@@ -3538,7 +3538,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // permission — even for editors.
     if (availabilityChanged) {
       assert(
-        await auth.hasWorkspacePermission("publish", "skill"),
+        auth.hasWorkspacePermission("publish", "skill"),
         "User is not authorized to update this skill's availability"
       );
     }
@@ -3551,7 +3551,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         this.availability === "users_and_agents")
     ) {
       assert(
-        await auth.hasWorkspacePermission("make_discoverable", "skill"),
+        auth.hasWorkspacePermission("make_discoverable", "skill"),
         "User is not authorized to update this skill's availability"
       );
     }
@@ -3659,7 +3659,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     availability: SkillAvailability
   ): Promise<void> {
     assert(
-      await auth.hasWorkspacePermission("publish", "skill"),
+      auth.hasWorkspacePermission("publish", "skill"),
       "User is not authorized to update skill availability"
     );
 
@@ -3670,7 +3670,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       skills.some((skill) => skill.availability === "users_and_agents")
     ) {
       assert(
-        await auth.hasWorkspacePermission("make_discoverable", "skill"),
+        auth.hasWorkspacePermission("make_discoverable", "skill"),
         "User is not authorized to update this skill availability"
       );
     }

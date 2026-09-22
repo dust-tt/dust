@@ -1554,7 +1554,7 @@ export class AgentResource
     auth: Authenticator,
     params: SaveAgentConfigurationParams
   ): Promise<Result<AgentResource, Error>> {
-    if (!(await auth.hasWorkspacePermission("create", "agent"))) {
+    if (!auth.hasWorkspacePermission("create", "agent")) {
       return new Err(new Error("Creating agents is restricted."));
     }
 
@@ -1738,7 +1738,7 @@ export class AgentResource
       // (`syncAgentTags` re-checks it inside the transaction as defense in depth).
       if (
         protectedTagsChanged &&
-        !(await auth.hasWorkspacePermission("publish", "agent"))
+        !auth.hasWorkspacePermission("publish", "agent")
       ) {
         return new Err(new Error("Protected tags cannot be added or removed."));
       }

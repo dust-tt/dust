@@ -100,7 +100,7 @@ export class SkillFactory {
 
     const availability = overrides.availability ?? DEFAULT_SKILL_AVAILABILITY;
 
-    if (!(await auth.hasWorkspacePermission("create", "skill"))) {
+    if (!auth.hasWorkspacePermission("create", "skill")) {
       await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
         grantType: "create",
         resourceType: "skill",
@@ -112,7 +112,7 @@ export class SkillFactory {
     // can set up any availability.
     if (
       availability !== "editors" &&
-      !(await auth.hasWorkspacePermission("publish", "skill"))
+      !auth.hasWorkspacePermission("publish", "skill")
     ) {
       await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
         grantType: "publish",
@@ -125,7 +125,7 @@ export class SkillFactory {
     // admin governance is enabled; grant it so the factory can set up any availability.
     if (
       availability === "users_and_agents" &&
-      !(await auth.hasWorkspacePermission("make_discoverable", "skill"))
+      !auth.hasWorkspacePermission("make_discoverable", "skill")
     ) {
       await grantWorkspacePermission(auth.getNonNullableWorkspace(), user, {
         grantType: "make_discoverable",

@@ -62,7 +62,7 @@ async function applyCreateSuggestion(
     );
   }
 
-  if (!(await auth.hasWorkspacePermission("create", "agent"))) {
+  if (!auth.hasWorkspacePermission("create", "agent")) {
     return new Err(
       new DustError("invalid_request_error", "Creating agents is restricted.")
     );

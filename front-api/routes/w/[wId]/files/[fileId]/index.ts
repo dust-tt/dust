@@ -523,7 +523,7 @@ async function canWriteSkillFile(
   }
 
   const isFileAuthor = file.userId === auth.user()?.id;
-  return isFileAuthor && (await auth.hasWorkspacePermission("create", "skill"));
+  return isFileAuthor && auth.hasWorkspacePermission("create", "skill");
 }
 
 async function canReadSkillFile(

@@ -84,7 +84,7 @@ app.post(
       async () => {
         const auth = ctx.get("auth");
 
-        if (!(await auth.hasWorkspacePermission("admin", "billing"))) {
+        if (!auth.hasWorkspacePermission("admin", "billing")) {
           return apiError(ctx, {
             status_code: 403,
             api_error: {

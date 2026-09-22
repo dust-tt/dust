@@ -114,7 +114,7 @@ async function availableExecutionModes(
   return availableTriggerExecutionModes({
     isPlanCreditPriced: isCreditPricedPlan(auth.getNonNullablePlan()),
     hasLegacyTriggerLimits: await hasFeatureFlag(auth, "legacy_trigger_limits"),
-    canUseWorkspacePool: await auth.hasWorkspacePermission(
+    canUseWorkspacePool: auth.hasWorkspacePermission(
       "use_workspace_pool",
       "trigger"
     ),

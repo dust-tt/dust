@@ -17,7 +17,7 @@ app.get(
     // permission (IT & Security page).
     if (
       !auth.isManager() &&
-      !(await auth.hasWorkspacePermission("admin", "security"))
+      !auth.hasWorkspacePermission("admin", "security")
     ) {
       return apiError(ctx, {
         status_code: 403,

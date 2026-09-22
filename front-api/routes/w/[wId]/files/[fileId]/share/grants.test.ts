@@ -155,9 +155,7 @@ describe("sharing grants endpoint", () => {
     const grantId = grantCase === "email number" ? grant.id : grant.sId;
     const member = await createPrivateApiMockRequest({ workspace });
     expect(member.auth.can("read", space)).toBe(true);
-    expect(await member.auth.hasWorkspacePermission("invite", "frame")).toBe(
-      false
-    );
+    expect(member.auth.hasWorkspacePermission("invite", "frame")).toBe(false);
     const read = await getGrants(workspace, file.sId);
     expect(read.status).toBe(200);
     mockEmitAuditLogEvent.mockClear();

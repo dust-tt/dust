@@ -11,10 +11,7 @@ app.get("/", async (ctx): HandlerResult<GetSubscriptionPricingResponseBody> => {
 
   // Managers read pricing for the usage/members pages; billing-permission holders need it for the
   // subscription page.
-  if (
-    !auth.isManager() &&
-    !(await auth.hasWorkspacePermission("admin", "billing"))
-  ) {
+  if (!auth.isManager() && !auth.hasWorkspacePermission("admin", "billing")) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {

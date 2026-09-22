@@ -556,10 +556,9 @@ describe("PATCH with applyToAgent", () => {
     const suggestion = await AgentSuggestionFactory.createCreate(auth, agent);
 
     // The capability was held when the placeholder was created; simulate it being revoked since.
-    vi.spyOn(
-      Authenticator.prototype,
-      "hasWorkspacePermission"
-    ).mockResolvedValue(false);
+    vi.spyOn(Authenticator.prototype, "hasWorkspacePermission").mockReturnValue(
+      false
+    );
 
     const response = await patchSuggestions(workspace, agent.sId, {
       suggestionIds: [suggestion.sId],

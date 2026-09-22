@@ -467,7 +467,7 @@ export async function applySkillSuggestions(
   // `updateSkill` asserts the publish capabilities whenever it receives an availability, so one is
   // only passed on when a suggestion asked for it and the value actually changes.
   if (edits.availability !== undefined) {
-    const validation = await validateSkillAvailabilityChange(auth, skill, {
+    const validation = validateSkillAvailabilityChange(auth, skill, {
       availability: edits.availability,
     });
     if (validation.isErr()) {

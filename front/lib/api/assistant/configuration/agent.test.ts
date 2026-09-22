@@ -582,7 +582,7 @@ describe("saveAgentConfiguration with pending agent", () => {
       user.sId,
       workspace.sId
     );
-    expect(await authenticator.hasWorkspacePermission("publish", "agent")).toBe(
+    expect(authenticator.hasWorkspacePermission("publish", "agent")).toBe(
       false
     );
     const pending = await createPendingAgentConfiguration(authenticator);

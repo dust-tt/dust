@@ -78,7 +78,7 @@ app.get(
       case "write":
         // `write` is used for selection of default slack channel in the workspace agent builder,
         // so it is gated on the agent publishing permission.
-        if (!(await auth.hasWorkspacePermission("publish", "agent"))) {
+        if (!auth.hasWorkspacePermission("publish", "agent")) {
           return apiError(ctx, {
             status_code: 403,
             api_error: {

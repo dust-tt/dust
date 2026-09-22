@@ -104,7 +104,7 @@ app.patch(
     }
 
     if (
-      !(await auth.hasWorkspacePermission("publish", "agent")) &&
+      !auth.hasWorkspacePermission("publish", "agent") &&
       (tagsToAdd.some((tag) => tag.kind === "protected") ||
         tagsToRemove.some((tag) => tag.kind === "protected"))
     ) {

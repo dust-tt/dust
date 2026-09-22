@@ -77,7 +77,7 @@ const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
 export async function createPendingAgentConfiguration(
   auth: Authenticator
 ): Promise<Result<{ sId: string }, Error>> {
-  const canCreate = await auth.hasWorkspacePermission("create", "agent");
+  const canCreate = auth.hasWorkspacePermission("create", "agent");
   if (!canCreate) {
     return new Err(new Error("Creating agents is restricted."));
   }
@@ -676,7 +676,7 @@ export async function restoreAgentConfiguration(
 
   // Check publishing restrictions: restoring a visible agent is equivalent to publishing it.
   if (latestConfig.scope === "visible") {
-    const canPublish = await auth.hasWorkspacePermission("publish", "agent");
+    const canPublish = auth.hasWorkspacePermission("publish", "agent");
     if (!canPublish) {
       return new Err(
         new DustError("unauthorized", "Publishing agents is restricted.")

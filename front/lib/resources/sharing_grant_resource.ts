@@ -366,7 +366,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       auth.getNonNullableWorkspace().id === this.workspaceId,
       "Sharing grant workspace mismatch"
     );
-    const canInvite = await auth.hasWorkspacePermission("invite", "frame");
+    const canInvite = auth.hasWorkspacePermission("invite", "frame");
     if (!canInvite) {
       return new Err(
         new DustError(

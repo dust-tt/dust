@@ -20,6 +20,6 @@ describe("seedWorkspaceCapabilities", () => {
       user.sId,
       workspace.sId
     );
-    expect(await userAuth.hasWorkspacePermission("create", "agent")).toBe(true);
+    expect(userAuth.hasWorkspacePermission("create", "agent")).toBe(true);
   });
 });

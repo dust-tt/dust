@@ -114,7 +114,7 @@ export async function assertPublishPermissionForScopeChange(
   const isChangingActiveScope =
     current?.status === "active" && current.scope !== scope;
   if (isPublishing || isChangingActiveScope) {
-    const canPublish = await auth.hasWorkspacePermission("publish", "agent");
+    const canPublish = auth.hasWorkspacePermission("publish", "agent");
     if (!canPublish) {
       return new Err(new Error("You don't have permission to publish agents."));
     }
@@ -212,7 +212,7 @@ export async function resolveExistingAgentAndVersion(
   // didn't match a real row — the latter would otherwise let a caller bypass the capability check by
   // passing a nonexistent id and taking the "create new" branch below.
   if (!existingAgent) {
-    const canCreate = await auth.hasWorkspacePermission("create", "agent");
+    const canCreate = auth.hasWorkspacePermission("create", "agent");
     if (!canCreate) {
       throw new Error("Creating agents is restricted.");
     }
@@ -374,7 +374,7 @@ export async function syncAgentTags(
     transaction: Transaction;
   }
 ): Promise<void> {
-  const canManageProtectedTags = await auth.hasWorkspacePermission(
+  const canManageProtectedTags = auth.hasWorkspacePermission(
     "publish",
     "agent"
   );

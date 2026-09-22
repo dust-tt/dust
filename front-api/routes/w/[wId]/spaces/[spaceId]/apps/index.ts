@@ -61,7 +61,7 @@ app.post(
 
     if (
       !auth.can("write", space) ||
-      !(await auth.hasWorkspacePermission("admin", "dust_app"))
+      !auth.hasWorkspacePermission("admin", "dust_app")
     ) {
       return apiError(ctx, {
         status_code: 403,

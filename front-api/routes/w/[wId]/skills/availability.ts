@@ -34,7 +34,7 @@ app.patch(
     const { availability } = body;
     const skillIds = uniq(body.skillIds);
 
-    if (!(await auth.hasWorkspacePermission("publish", "skill"))) {
+    if (!auth.hasWorkspacePermission("publish", "skill")) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -44,7 +44,7 @@ app.patch(
       });
     }
 
-    const canMakeDiscoverable = await auth.hasWorkspacePermission(
+    const canMakeDiscoverable = auth.hasWorkspacePermission(
       "make_discoverable",
       "skill"
     );

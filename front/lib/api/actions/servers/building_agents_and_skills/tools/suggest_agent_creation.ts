@@ -35,7 +35,7 @@ export async function suggestAgentCreation(
     );
   }
 
-  if (!(await auth.hasWorkspacePermission("create", "agent"))) {
+  if (!auth.hasWorkspacePermission("create", "agent")) {
     return new Err(new MCPError("Creating agents is restricted."));
   }
 
