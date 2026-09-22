@@ -7,6 +7,13 @@ const RING_WIDTH_PX = 1.5;
 const RING_INSET_PX = RING_WIDTH_PX / 2;
 const RING_RADIUS_PX = BUTTON_HEIGHT_PX / 2 - RING_INSET_PX;
 
+// Filling tracks the wheel tick for tick; draining back to empty is a longer
+// eased release, so the two read as different gestures.
+const FILL_DURATION_MS = 80;
+const FILL_EASING = "linear";
+const DRAIN_DURATION_MS = 300;
+const DRAIN_EASING = "var(--ease-emphasized)";
+
 interface DiscoverButtonProps {
   onClick: () => void;
   progress: number;
@@ -15,15 +22,14 @@ interface DiscoverButtonProps {
 export function DiscoverButton({ onClick, progress }: DiscoverButtonProps) {
   const percent = Math.round(Math.min(1, Math.max(0, progress)) * 100);
   const isComplete = progress >= 1;
+  const isDraining = progress === 0;
+  const durationMs = isDraining ? DRAIN_DURATION_MS : FILL_DURATION_MS;
+  const easing = isDraining ? DRAIN_EASING : FILL_EASING;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="Discover Skills and agents"
-      aria-valuenow={percent}
-      aria-valuemin={0}
-      aria-valuemax={100}
       className={classNames(
         "group relative inline-flex h-9 items-center gap-2 rounded-full pl-3 pr-4",
         "border border-border bg-background text-foreground",
@@ -32,9 +38,8 @@ export function DiscoverButton({ onClick, progress }: DiscoverButtonProps) {
         "[@media(hover:hover)_and_(pointer:fine)]:hover:-translate-y-px",
         "[@media(hover:hover)_and_(pointer:fine)]:hover:shadow-[0px_2px_2px_-1px_rgba(0,0,0,0.06),0px_6px_10px_-4px_rgba(0,0,0,0.10)]",
         "active:translate-y-0 active:scale-[0.97] motion-reduce:active:scale-100",
-        isComplete
-          ? "border-highlight-200 bg-highlight-50 text-highlight-700 dark:border-highlight-800"
-          : ""
+        isComplete &&
+          "border-highlight-200 bg-highlight-50 text-highlight-700 dark:border-highlight-800"
       )}
     >
       {/* `pathLength` normalizes the rounded rect's perimeter to 100, so the
@@ -58,10 +63,7 @@ export function DiscoverButton({ onClick, progress }: DiscoverButtonProps) {
           strokeDasharray={100}
           strokeDashoffset={100 - percent}
           style={{
-            transition:
-              progress === 0
-                ? "stroke-dashoffset 300ms var(--ease-emphasized)"
-                : "stroke-dashoffset 80ms linear",
+            transition: `stroke-dashoffset ${durationMs}ms ${easing}`,
           }}
         />
       </svg>
@@ -74,9 +76,8 @@ export function DiscoverButton({ onClick, progress }: DiscoverButtonProps) {
         )}
         style={{
           rotate: `${progress * 90}deg`,
-          transitionDuration: progress === 0 ? "300ms" : "80ms",
-          transitionTimingFunction:
-            progress === 0 ? "var(--ease-emphasized)" : "linear",
+          transitionDuration: `${durationMs}ms`,
+          transitionTimingFunction: easing,
         }}
       >
         <Icon visual={Stars02} size="xs" />
@@ -86,9 +87,8 @@ export function DiscoverButton({ onClick, progress }: DiscoverButtonProps) {
           aria-hidden={isComplete}
           className={classNames(
             "col-start-1 row-start-1 transition-[opacity,translate,filter] duration-200 ease-emphasized motion-reduce:transition-opacity",
-            isComplete
-              ? "-translate-y-1 opacity-0 blur-[2px] motion-reduce:translate-y-0 motion-reduce:blur-none"
-              : ""
+            isComplete &&
+              "-translate-y-1 opacity-0 blur-[2px] motion-reduce:translate-y-0 motion-reduce:blur-none"
           )}
         >
           Discover Skills and agents
@@ -97,9 +97,8 @@ export function DiscoverButton({ onClick, progress }: DiscoverButtonProps) {
           aria-hidden={!isComplete}
           className={classNames(
             "col-start-1 row-start-1 transition-[opacity,translate,filter] duration-200 ease-emphasized motion-reduce:transition-opacity",
-            !isComplete
-              ? "translate-y-1 opacity-0 blur-[2px] motion-reduce:translate-y-0 motion-reduce:blur-none"
-              : ""
+            !isComplete &&
+              "translate-y-1 opacity-0 blur-[2px] motion-reduce:translate-y-0 motion-reduce:blur-none"
           )}
         >
           Opening Discover

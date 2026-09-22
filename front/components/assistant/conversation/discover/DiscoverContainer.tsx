@@ -3,7 +3,6 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Button,
-  SearchInput,
   Tabs,
   TabsContent,
   TabsList,
@@ -32,27 +31,15 @@ export const DiscoverContainer = forwardRef<
   DiscoverContainerProps
 >(function DiscoverContainer({ onAgentConfigurationClick, owner, user }, ref) {
   const [tab, setTab] = useState<DiscoverTab>("Discover");
-  const [search, setSearch] = useState("");
 
   return (
     <div
       ref={ref}
-      id="discover-container"
       className="flex min-h-panel w-full shrink-0 flex-col items-center pb-16 pt-10"
     >
       <Tabs value={tab} className="flex w-full max-w-4xl flex-col gap-12">
         <div className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <h1 className="heading-2xl text-foreground">Discover</h1>
-            <div className="w-full sm:w-80">
-              <SearchInput
-                name="discover-search"
-                placeholder="Search for agents or skills"
-                value={search}
-                onChange={setSearch}
-              />
-            </div>
-          </div>
+          <h1 className="heading-2xl text-foreground">Discover</h1>
           <TabsList>
             {DISCOVER_TABS.map((t) => (
               <TabsTrigger

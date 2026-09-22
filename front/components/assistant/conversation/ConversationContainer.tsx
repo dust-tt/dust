@@ -118,11 +118,12 @@ const chatWithEntranceStyle = heroEntranceStyle({
   delaySeconds: CHAT_WITH_ENTER_DELAY_SECONDS,
 });
 
+const DISCOVER_BUTTON_ENTER_DELAY_SECONDS = 0.42;
 const discoverButtonEntranceStyle = heroEntranceStyle({
   yPx: 8,
   blurPx: 3,
   durationSeconds: 0.28,
-  delaySeconds: 0.42,
+  delaySeconds: DISCOVER_BUTTON_ENTER_DELAY_SECONDS,
 });
 
 interface ConversationContainerProps {
