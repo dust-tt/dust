@@ -19,7 +19,6 @@ async function setup() {
   const auth = new Authenticator({
     user,
     role: "admin",
-    groupModelIds: [],
     workspace: workspaceResource,
     subscription: null,
     authMethod: "internal",

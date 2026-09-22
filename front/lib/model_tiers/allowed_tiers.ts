@@ -1,4 +1,4 @@
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { isModelTierOverrideGroupKind } from "@app/lib/model_tiers/group_kinds";
 import { resolveAllowedModelTiers } from "@app/lib/model_tiers/resolve_allowed";
@@ -559,28 +559,16 @@ async function loadUserOverrideTierGrants({
   return expandExplicitTierNames([...tierNames]);
 }
 
-// Group tier overrides are a per-user feature: a member inherits the highest tier granted to any
-// group they belong to. Membership is resolved live from the user rather than a cached auth field.
-// Agent-driven runs bypass this path entirely via getAgentAllowedTierNamesOverride.
+// Agent-driven runs bypass this via getAgentAllowedTierNamesOverride.
 /**
- * @cc [owner:Fraggle,label:security;product] models-tier-group-override-follows-user-membership
- * Group-based `models_tier` overrides apply only to a caller backed by a workspace-member user and
- * resolve from that user's live group membership. An authenticator with no backing user (API keys,
- * system, internal, poke) MUST receive no group override and fall back to the user/workspace tiers.
+ * @cc [owner:Fraggle,label:security;product] models-tier-group-override-follows-principal-groups
+ * Group `models_tier` overrides resolve from the caller's principal groups (a user's membership or
+ * an API key's groups). Auths with no principal (sandbox, internal/system) get no group override.
  */
-async function listUserModelTierOverrideGroupModelIds(
+async function listModelTierOverrideGroupModelIds(
   auth: Authenticator
 ): Promise<ModelId[]> {
-  const user = auth.user();
-  if (!user || !Authenticator.isMember(auth.role())) {
-    return [];
-  }
-
-  const { groupModelIds } =
-    await GroupResource.dangerouslyListUserGroupsForAuth({
-      user,
-      workspace: auth.getNonNullableWorkspace(),
-    });
+  const groupModelIds = await auth.listPrincipalGroupModelIds();
   if (groupModelIds.length === 0) {
     return [];
   }
@@ -652,7 +640,7 @@ export async function resolveAllowedTierNames(auth: Authenticator) {
             user,
           })
         : Promise.resolve([]),
-      listUserModelTierOverrideGroupModelIds(auth),
+      listModelTierOverrideGroupModelIds(auth),
     ]);
 
   const groupOverrideTierGrantsByGroupId =

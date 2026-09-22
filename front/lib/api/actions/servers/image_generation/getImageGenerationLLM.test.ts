@@ -88,7 +88,6 @@ function makeAuth(): Authenticator {
     workspace: null,
     user: null,
     role: "none",
-    groupModelIds: [],
     subscription,
     authMethod: "internal",
     permissions: GroupPermissions.empty(),
