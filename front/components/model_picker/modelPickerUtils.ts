@@ -2,7 +2,10 @@ import {
   getSupportedModelConfig,
   getSupportedModelConfigs,
 } from "@app/lib/llms/model_configurations";
-import { isPremiumOrAboveTier } from "@app/lib/model_tiers/tier_order";
+import {
+  isPremiumOrAboveTier,
+  isTierAtLeast,
+} from "@app/lib/model_tiers/tier_order";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionsType,
@@ -13,6 +16,7 @@ import {
   AUTO_COMPLEX_MODEL_ID,
   AUTO_FAST_MODEL_ID,
   AUTO_MODEL_ID,
+  AUTO_ULTRA_MODEL_ID,
   isModelStreamId,
 } from "@app/types/assistant/models/auto";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
@@ -48,6 +52,12 @@ const MODEL_TIER_LOCKED_TOOLTIP =
   "Your current model access doesn't include this option. " +
   "Contact your administrator to get access.";
 
+// Shown when a tier row's stream resolves below the tier it is named after,
+// because no model of that tier is available to the workspace.
+const TIER_UNAVAILABLE_TOOLTIP =
+  "No model of this tier is available in your workspace. " +
+  "Contact your administrator to get access.";
+
 export const AUTO_MODELS_DOC_URL =
   "https://docs.dust.tt/docs/user-documentation/agents/model-selection#auto-models";
 
@@ -73,12 +83,11 @@ const PINNED_MODEL_RETRY_ERROR_CATEGORIES = [
   "empty_content",
 ] as const;
 
-// A tier without a picker row maps to the closest row below it.
 const PICKER_TIER_BY_MODELS_TIER: Record<ModelsTierName, ModelTierId> = {
   cost_efficient: "fast",
   balanced: "standard",
   premium: "complex",
-  ultra: "complex",
+  ultra: "ultra",
 };
 
 /**
@@ -137,13 +146,14 @@ export function isModelHostedInRegion(
   return model.regionalAvailability[region] === true;
 }
 
-// The three primary picks of the model picker. Each tier is backed by a
+// The primary picks of the model picker. Each tier is backed by a
 // meta-model that is resolved to a concrete model at message-send time. Tier ids
 // keep the meta-model wording; `name` is what users see:
 //   - "Basic"     -> auto_fast (curated pool of small, cheap models)
 //   - "Standard"  -> auto       (Dust picks any available model — the old "Auto")
 //   - "Premium"   -> auto_complex  (curated pool of powerful models)
-export type ModelTierId = "fast" | "standard" | "complex";
+//   - "Ultra"     -> auto_ultra  (curated pool of frontier models)
+export type ModelTierId = "fast" | "standard" | "complex" | "ultra";
 
 export interface ModelTierDefinition {
   id: ModelTierId;
@@ -167,12 +177,18 @@ export const MODEL_TIERS: ModelTierDefinition[] = [
     metaModelId: AUTO_COMPLEX_MODEL_ID,
     name: "Premium",
   },
+  {
+    id: "ultra",
+    metaModelId: AUTO_ULTRA_MODEL_ID,
+    name: "Ultra",
+  },
 ];
 
 const TIER_BY_META_MODEL_ID: Record<ModelStreamIdType, ModelTierId> = {
   [AUTO_FAST_MODEL_ID]: "fast",
   [AUTO_MODEL_ID]: "standard",
   [AUTO_COMPLEX_MODEL_ID]: "complex",
+  [AUTO_ULTRA_MODEL_ID]: "ultra",
 };
 
 export function getModelTier(tierId: ModelTierId): ModelTierDefinition {
@@ -186,21 +202,60 @@ export function getModelTier(tierId: ModelTierId): ModelTierDefinition {
   );
 }
 
-const PREMIUM_MODEL_TIER_IDS: ModelTierId[] = ["complex"];
+const PREMIUM_MODEL_TIER_IDS: ModelTierId[] = ["complex", "ultra"];
 
-// A tier row is locked either because the workspace is on a legacy plan without
-// premium access, or because the stream's own model tier is above the member's
-// cap — the server refuses such a selection, so the picker must not offer it.
+function isStreamResolvedBelowItsTier(
+  streamId: ModelStreamIdType,
+  streams: ModelStreamResolutionsType | null
+): boolean {
+  const resolution = streams?.[streamId];
+  if (!resolution) {
+    return false;
+  }
+  const resolvedModel = getSupportedModelConfigs().find(
+    (config) =>
+      config.providerId === resolution.providerId &&
+      config.modelId === resolution.modelId
+  );
+  if (!resolvedModel) {
+    return false;
+  }
+  const streamTierName = getTierForModel(streamId, "none");
+  const resolvedTierName = getTierForModel(
+    resolvedModel.modelId,
+    resolution.reasoningEffort
+  );
+  return (
+    streamTierName !== null &&
+    resolvedTierName !== null &&
+    !isTierAtLeast(resolvedTierName, streamTierName)
+  );
+}
+
+// A tier row is locked because the workspace is on a legacy plan without
+// premium access, because the stream's own model tier is above the member's
+// cap — the server refuses such a selection, so the picker must not offer it —
+// or because no model of the tier is available to the workspace.
+/**
+ * @cc [owner:rfrenoy,label:product] tier-row-locked-below-resolution
+ * A tier row MUST be locked when its stream resolves to a model tiered below the stream's own
+ * tier, unless the stream is in `fallbackStreamIds` (a degradation fallback), in which case the
+ * row MUST stay selectable.
+ */
 export function getTierLockReason(
   tierId: ModelTierId,
   {
     lockPremiumEfforts,
     streamModels,
+    streams,
+    fallbackStreamIds,
   }: {
     lockPremiumEfforts: boolean;
     streamModels: EnabledModelConfigurationType[];
+    streams: ModelStreamResolutionsType | null;
+    fallbackStreamIds: ReadonlySet<string>;
   }
-): ModelLockReason | null {
+): TierLockReason | null {
   if (lockPremiumEfforts && PREMIUM_MODEL_TIER_IDS.includes(tierId)) {
     return "premium";
   }
@@ -215,6 +270,13 @@ export function getTierLockReason(
   // unlocked — the server refuses an out-of-tier stream at send time anyway.
   if (streamModel && !streamModel.isSelectable) {
     return "model_tier";
+  }
+
+  if (
+    !fallbackStreamIds.has(metaModelId) &&
+    isStreamResolvedBelowItsTier(metaModelId, streams)
+  ) {
+    return "below_tier";
   }
 
   return null;
@@ -326,6 +388,7 @@ export interface ModelPickerSelectionModel {
 }
 
 export type ModelLockReason = "premium" | "model_tier";
+export type TierLockReason = ModelLockReason | "below_tier";
 export type EffortUnavailabilityReason = "unsupported" | ModelLockReason;
 
 // One stop of the reasoning-effort slider. A null reason means it is available.
@@ -550,12 +613,14 @@ export function getModelLockReason(
   return lockPremiumEfforts ? "premium" : "model_tier";
 }
 
-export function getModelLockTooltip(reason: ModelLockReason): string {
+export function getModelLockTooltip(reason: TierLockReason): string {
   switch (reason) {
     case "premium":
       return PREMIUM_MODEL_LOCKED_TOOLTIP;
     case "model_tier":
       return MODEL_TIER_LOCKED_TOOLTIP;
+    case "below_tier":
+      return TIER_UNAVAILABLE_TOOLTIP;
     default:
       assertNeverAndIgnore(reason);
       return "";

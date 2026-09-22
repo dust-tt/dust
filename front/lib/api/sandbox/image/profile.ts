@@ -26,6 +26,7 @@ export function providerToProfile(
     case "auto":
     case "auto_fast":
     case "auto_complex":
+    case "auto_ultra":
       return "anthropic";
     default:
       assertNever(providerId);

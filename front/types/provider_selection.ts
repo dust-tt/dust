@@ -14,6 +14,7 @@ export const ALL_PROVIDERS_SELECTED: ProvidersSelection = {
   auto: true,
   auto_fast: true,
   auto_complex: true,
+  auto_ultra: true,
 };
 
 export const NO_PROVIDERS_SELECTED: ProvidersSelection = {
@@ -28,6 +29,7 @@ export const NO_PROVIDERS_SELECTED: ProvidersSelection = {
   auto: true,
   auto_fast: true,
   auto_complex: true,
+  auto_ultra: true,
 };
 
 export const PRETTIFIED_PROVIDER_NAMES: Record<ModelProviderIdType, string> = {
@@ -42,4 +44,5 @@ export const PRETTIFIED_PROVIDER_NAMES: Record<ModelProviderIdType, string> = {
   auto: "Auto",
   auto_fast: "Fast",
   auto_complex: "Complex",
+  auto_ultra: "Ultra",
 };

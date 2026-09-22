@@ -104,6 +104,7 @@ const PROVIDER_ID_TO_LAB: Record<ModelProviderIdType, Lab | null> = {
   auto: null,
   auto_fast: null,
   auto_complex: null,
+  auto_ultra: null,
 };
 
 const PROVIDER_ID_TO_HOST: Record<ModelProviderIdType, Host | null> = {
@@ -118,6 +119,7 @@ const PROVIDER_ID_TO_HOST: Record<ModelProviderIdType, Host | null> = {
   auto: null,
   auto_fast: null,
   auto_complex: null,
+  auto_ultra: null,
 };
 
 // Whitelisting is keyed on the legacy provider id, which conflates a model's

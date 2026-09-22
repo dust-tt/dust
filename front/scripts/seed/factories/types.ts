@@ -48,6 +48,7 @@ export type AgentAssetModel =
   | "basic"
   | "standard"
   | "premium"
+  | "ultra"
   | { providerId: ModelProviderIdType; modelId: ModelIdType };
 
 export interface UserAsset {

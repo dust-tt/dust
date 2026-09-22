@@ -64,6 +64,9 @@ const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
   auto_complex: {
     light: DustLogoSquare,
   },
+  auto_ultra: {
+    light: DustLogoSquare,
+  },
 };
 
 export const getModelProviderLogo = (

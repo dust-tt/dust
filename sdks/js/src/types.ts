@@ -26,6 +26,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "auto"
   | "auto_fast"
   | "auto_complex"
+  | "auto_ultra"
 >();
 
 export type KnownModelLLMId =
@@ -126,7 +127,8 @@ export type KnownModelLLMId =
   | "noop" // Noop
   | "auto" // Auto
   | "auto_fast" // Fast stream tier
-  | "auto_complex"; // Complex stream tier
+  | "auto_complex" // Complex stream tier
+  | "auto_ultra"; // Ultra stream tier
 
 // Cast to allow custom/unknown model IDs while preserving autocomplete.
 const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<

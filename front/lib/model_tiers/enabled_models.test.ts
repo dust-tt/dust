@@ -8,11 +8,13 @@ import {
   resolveStreamModelWithFallback,
   withModelSelectability,
 } from "@app/lib/model_tiers/enabled_models";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import {
   CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
+  CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
@@ -23,11 +25,16 @@ import {
   AUTO_COMPLEX_MODEL_CONFIG,
   AUTO_FAST_MODEL_CONFIG,
   AUTO_MODEL_CONFIG,
+  AUTO_ULTRA_MODEL_CONFIG,
   isModelStreamId,
   MODEL_STREAMS,
 } from "@app/types/assistant/models/auto";
+import { FIREWORKS_KIMI_K3_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
-import { GPT_5_6_LUNA_MODEL_ID } from "@app/types/assistant/models/openai";
+import {
+  GPT_5_6_LUNA_MODEL_ID,
+  GPT_6_ASTRA_MODEL_ID,
+} from "@app/types/assistant/models/openai";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -152,15 +159,30 @@ describe("withModelSelectability", () => {
         AUTO_FAST_MODEL_CONFIG,
         AUTO_MODEL_CONFIG,
         AUTO_COMPLEX_MODEL_CONFIG,
+        AUTO_ULTRA_MODEL_CONFIG,
       ],
     });
 
     // Under a balanced cap the Basic and Standard streams stay selectable, but
-    // the Premium stream is out of reach.
+    // the Premium and Ultra streams are out of reach.
     expect(models.map((m) => [m.modelId, m.isSelectable])).toEqual([
       [AUTO_FAST_MODEL_CONFIG.modelId, true],
       [AUTO_MODEL_CONFIG.modelId, true],
       [AUTO_COMPLEX_MODEL_CONFIG.modelId, false],
+      [AUTO_ULTRA_MODEL_CONFIG.modelId, false],
+    ]);
+  });
+
+  it("gates the Ultra stream above a premium cap", async () => {
+    const auth = await userAuthForTierCap("premium");
+
+    const models = await withModelSelectability(auth, {
+      models: [AUTO_COMPLEX_MODEL_CONFIG, AUTO_ULTRA_MODEL_CONFIG],
+    });
+
+    expect(models.map((m) => [m.modelId, m.isSelectable])).toEqual([
+      [AUTO_COMPLEX_MODEL_CONFIG.modelId, true],
+      [AUTO_ULTRA_MODEL_CONFIG.modelId, false],
     ]);
   });
 
@@ -214,13 +236,20 @@ describe("resolveStreamModel", () => {
     return Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId);
   }
 
+  function mustResolve<T>(resolution: T | null): T {
+    if (resolution === null) {
+      throw new Error("Expected the stream to resolve");
+    }
+    return resolution;
+  }
+
   async function resolveStreamForAuth(
     auth: Authenticator,
     streamId: ModelStreamIdType,
     degradedModelIds: ReadonlySet<string> = new Set()
   ) {
     const models = await getEnabledModelsForAuth(auth);
-    return resolveStreamModel(models, streamId, degradedModelIds);
+    return mustResolve(resolveStreamModel(models, streamId, degradedModelIds));
   }
 
   it("routes the Auto stream to its first available candidate + effort", async () => {
@@ -251,6 +280,59 @@ describe("resolveStreamModel", () => {
     expect(resolved.reasoningEffort).toBe("high");
   });
 
+  it("routes the Ultra stream to its first available candidate + effort", async () => {
+    // Fable needs its own flag, which this workspace lacks, so Astra leads.
+    const resolved = await resolveStreamForAuth(adminAuth, "auto_ultra");
+
+    expect(resolved.fromPool).toBe(true);
+    expect(resolved.model.modelId).toBe(GPT_6_ASTRA_MODEL_ID);
+    expect(resolved.reasoningEffort).toBe("high");
+  });
+
+  it("routes the Ultra stream to Fable once its flag is on", async () => {
+    await FeatureFlagFactory.basic(adminAuth, "claude_fable_5_feature");
+
+    const resolved = await resolveStreamForAuth(adminAuth, "auto_ultra");
+
+    expect(resolved.fromPool).toBe(true);
+    expect(resolved.model.modelId).toBe(CLAUDE_FABLE_5_MODEL_ID);
+    expect(resolved.reasoningEffort).toBe("high");
+  });
+
+  it("lands the Ultra stream on its Premium floor when no Ultra model is available", async () => {
+    const resolved = await resolveStreamForAuth(
+      adminAuth,
+      "auto_ultra",
+      new Set([GPT_6_ASTRA_MODEL_ID, CLAUDE_FABLE_5_MODEL_ID])
+    );
+
+    expect(resolved.fromPool).toBe(true);
+    expect(resolved.model.modelId).toBe(
+      CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG.modelId
+    );
+    expect(resolved.reasoningEffort).toBe("high");
+  });
+
+  it("never resolves a non-Ultra stream to an Ultra model nor to a stream", async () => {
+    const models = await getEnabledModelsForAuth(adminAuth);
+    // Only an Ultra model and the stream sentinels are selectable, so every
+    // other stream is out of candidates and must resolve to neither.
+    const ultraOnly = models.map((m) => ({
+      ...m,
+      isSelectable:
+        m.modelId === GPT_6_ASTRA_MODEL_ID || isModelStreamId(m.modelId),
+    }));
+
+    for (const streamId of ["auto", "auto_fast", "auto_complex"] as const) {
+      expect(resolveStreamModel(ultraOnly, streamId, new Set())).toBeNull();
+    }
+
+    const ultra = mustResolve(
+      resolveStreamModel(ultraOnly, "auto_ultra", new Set())
+    );
+    expect(ultra.model.modelId).toBe(GPT_6_ASTRA_MODEL_ID);
+  });
+
   it("keeps a Basic-tier candidate in the Premium stream for cost_efficient-capped users", async () => {
     const auth = await userAuthForTierCap("cost_efficient");
 
@@ -267,7 +349,12 @@ describe("resolveStreamModel", () => {
   });
 
   it("only ever resolves to a candidate declared in the stream", async () => {
-    for (const streamId of ["auto", "auto_fast", "auto_complex"] as const) {
+    for (const streamId of [
+      "auto",
+      "auto_fast",
+      "auto_complex",
+      "auto_ultra",
+    ] as const) {
       const resolved = await resolveStreamForAuth(adminAuth, streamId);
       const candidate = MODEL_STREAMS[streamId].find(
         (c) =>
@@ -278,17 +365,32 @@ describe("resolveStreamModel", () => {
     }
   });
 
-  it("falls back to a preferred large model when no candidate is available", async () => {
+  it("falls back to a selectable large model outside the pool before giving up", async () => {
     const models = await getEnabledModelsForAuth(adminAuth);
+    // Only Kimi K3 is selectable: it is in no pool, so the Premium stream
+    // falls back to it rather than to a model the member cannot run.
+    const kimiOnly = models.map((m) => ({
+      ...m,
+      isSelectable: m.modelId === FIREWORKS_KIMI_K3_MODEL_CONFIG.modelId,
+    }));
+    const resolved = mustResolve(
+      resolveStreamModel(kimiOnly, "auto_complex", new Set())
+    );
+
+    expect(resolved.fromPool).toBe(false);
+    expect(resolved.model.modelId).toBe(FIREWORKS_KIMI_K3_MODEL_CONFIG.modelId);
+  });
+
+  it("resolves to null when no selectable concrete model is left", async () => {
+    const models = await getEnabledModelsForAuth(adminAuth);
+    // Nothing is selectable, so the stream must not manufacture a model.
     const resolved = resolveStreamModel(
-      // Nothing is selectable, so no stream candidate can match.
       models.map((m) => ({ ...m, isSelectable: false })),
       "auto_complex",
       new Set()
     );
 
-    expect(resolved.fromPool).toBe(false);
-    expect(resolved.model.isSelectable).toBe(true);
+    expect(resolved).toBeNull();
   });
 
   it("skips a degraded candidate and takes the next one in the pool", async () => {
@@ -307,10 +409,12 @@ describe("resolveStreamModel", () => {
 
   it("reports an operational fallback when degradation changes the resolution", async () => {
     const models = await getEnabledModelsForAuth(adminAuth);
-    const resolved = resolveStreamModelWithFallback(
-      models,
-      "auto",
-      new Set([GPT_5_6_LUNA_MODEL_ID])
+    const resolved = mustResolve(
+      resolveStreamModelWithFallback(
+        models,
+        "auto",
+        new Set([GPT_5_6_LUNA_MODEL_ID])
+      )
     );
 
     expect(resolved.didFallback).toBe(true);
@@ -327,7 +431,9 @@ describe("resolveStreamModel", () => {
     ).toEqual(["auto", "auto_fast"]);
   });
 
-  it("does not report a fallback when the replacement is another stream", async () => {
+  it("resolves to null rather than a stream when only stream sentinels remain", async () => {
+    // Only Luna and the stream sentinels are selectable: once Luna is degraded
+    // there is no concrete model left, and a sentinel must not stand in.
     const models = (await getEnabledModelsForAuth(adminAuth)).map((model) => ({
       ...model,
       isSelectable:
@@ -340,19 +446,20 @@ describe("resolveStreamModel", () => {
       new Set([GPT_5_6_LUNA_MODEL_ID])
     );
 
-    expect(isModelStreamId(resolved.model.modelId)).toBe(true);
-    expect(resolved.didFallback).toBe(false);
+    expect(resolved).toBeNull();
     expect(
       getFallbackStreamIds(models, new Set([GPT_5_6_LUNA_MODEL_ID]))
-    ).toEqual([]);
+    ).not.toContain("auto");
   });
 
   it("does not report a fallback when degradation does not change the resolution", async () => {
     const models = await getEnabledModelsForAuth(adminAuth);
-    const resolved = resolveStreamModelWithFallback(
-      models,
-      "auto",
-      new Set([CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId])
+    const resolved = mustResolve(
+      resolveStreamModelWithFallback(
+        models,
+        "auto",
+        new Set([CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId])
+      )
     );
 
     expect(resolved.didFallback).toBe(false);
@@ -363,7 +470,7 @@ describe("resolveStreamModel", () => {
     const models = await getEnabledModelsForAuth(adminAuth);
     // Luna is the only selectable model, so it is both the stream's first
     // candidate and what the preferred-large-model fallback would land on --
-    // and it is degraded, so neither may pick it.
+    // and it is degraded, so neither may pick it: nothing is left to resolve.
     const resolved = resolveStreamModel(
       models.map((m) => ({
         ...m,
@@ -373,7 +480,6 @@ describe("resolveStreamModel", () => {
       new Set([GPT_5_6_LUNA_MODEL_ID])
     );
 
-    expect(resolved.fromPool).toBe(false);
-    expect(resolved.model.modelId).not.toBe(GPT_5_6_LUNA_MODEL_ID);
+    expect(resolved).toBeNull();
   });
 });

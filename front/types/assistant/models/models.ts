@@ -41,6 +41,8 @@ import {
   AUTO_FAST_MODEL_ID,
   AUTO_MODEL_CONFIG,
   AUTO_MODEL_ID,
+  AUTO_ULTRA_MODEL_CONFIG,
+  AUTO_ULTRA_MODEL_ID,
 } from "./auto";
 // Custom models (generated at build time from GCS, empty in dev).
 import {
@@ -284,6 +286,7 @@ export const STATIC_MODEL_IDS = [
   AUTO_MODEL_ID,
   AUTO_FAST_MODEL_ID,
   AUTO_COMPLEX_MODEL_ID,
+  AUTO_ULTRA_MODEL_ID,
 ] as const;
 
 // Type for static model IDs only (excludes custom models from GCS).
@@ -371,6 +374,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   AUTO_MODEL_CONFIG,
   AUTO_FAST_MODEL_CONFIG,
   AUTO_COMPLEX_MODEL_CONFIG,
+  AUTO_ULTRA_MODEL_CONFIG,
   // Custom models (generated at build time from GCS).
   ...CUSTOM_MODEL_CONFIGS,
 ];

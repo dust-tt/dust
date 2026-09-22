@@ -1,4 +1,5 @@
 import {
+  CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
@@ -14,7 +15,11 @@ import {
   MISTRAL_MEDIUM_3_5_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
 } from "./mistral";
-import { GPT_5_6_LUNA_MODEL_ID, GPT_5_6_SOL_MODEL_ID } from "./openai";
+import {
+  GPT_5_6_LUNA_MODEL_ID,
+  GPT_5_6_SOL_MODEL_ID,
+  GPT_6_ASTRA_MODEL_ID,
+} from "./openai";
 import { SIMULATED_FAILURE_MODEL_ID } from "./simulated_failure_model";
 import type {
   ModelConfigurationType,
@@ -29,11 +34,13 @@ import { GROK_3_MINI_MODEL_ID, GROK_4_6_MODEL_ID } from "./xai";
 export const AUTO_MODEL_ID = "auto" as const;
 export const AUTO_FAST_MODEL_ID = "auto_fast" as const;
 export const AUTO_COMPLEX_MODEL_ID = "auto_complex" as const;
+export const AUTO_ULTRA_MODEL_ID = "auto_ultra" as const;
 
 export const MODEL_STREAM_IDS = [
   AUTO_MODEL_ID,
   AUTO_FAST_MODEL_ID,
   AUTO_COMPLEX_MODEL_ID,
+  AUTO_ULTRA_MODEL_ID,
 ] as const;
 export type ModelStreamIdType = (typeof MODEL_STREAM_IDS)[number];
 
@@ -172,6 +179,31 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
         reasoningEffort: "light",
       },
     ],
+    // The only stream allowed to resolve to an Ultra model. Its Premium floor
+    // is what a retry lands on when no Ultra model is available.
+    [AUTO_ULTRA_MODEL_ID]: [
+      {
+        providerId: "anthropic",
+        modelId: CLAUDE_FABLE_5_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      {
+        providerId: "openai",
+        modelId: GPT_6_ASTRA_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      // Premium-tier floor
+      {
+        providerId: "anthropic",
+        modelId: CLAUDE_OPUS_5_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      {
+        providerId: "anthropic",
+        modelId: CLAUDE_OPUS_4_8_MODEL_ID,
+        reasoningEffort: "high",
+      },
+    ],
   };
 
 // All fields other than the ids are placeholders to satisfy
@@ -229,4 +261,10 @@ export const AUTO_COMPLEX_MODEL_CONFIG: ModelConfigurationType =
   makeMetaModelConfig(AUTO_COMPLEX_MODEL_ID, {
     displayName: "Premium",
     description: "Slower, most capable",
+  });
+
+export const AUTO_ULTRA_MODEL_CONFIG: ModelConfigurationType =
+  makeMetaModelConfig(AUTO_ULTRA_MODEL_ID, {
+    displayName: "Ultra",
+    description: "Frontier, highest cost",
   });

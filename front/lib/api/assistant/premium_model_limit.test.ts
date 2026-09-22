@@ -281,11 +281,13 @@ describe("applyPremiumModelFairUse", () => {
     expect(result.action).toBe("refuse");
   });
 
-  it("refuses rather than downgrading to an ultra-tier fallback", async () => {
+  it("refuses rather than downgrading to an ultra-tier model", async () => {
     mockGetFeatureFlags.mockResolvedValue([
       "enforce_premium_model_message_limit",
     ]);
     mockRateLimiter.mockResolvedValue(0);
+    // Only an Ultra model is enabled: neither downgrade stream may resolve to
+    // it, so there is no downgrade target.
     mockGetEnabledModels.mockResolvedValue(
       makeEnabledModels([
         {

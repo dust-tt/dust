@@ -116,8 +116,8 @@ export function DegradedModelsDialog({
           <DialogDescription>
             Flag the endpoints hit by a provider incident. A model is taken out
             of the auto streams for every workspace in this region as soon as
-            one of its endpoints is degraded: Basic, Standard and Premium skip
-            it and pick the next candidate in their pool instead.
+            one of its endpoints is degraded: Basic, Standard, Premium and Ultra
+            skip it and pick the next candidate in their pool instead.
           </DialogDescription>
           <DialogDescription>
             Nothing else changes. An agent configured on the model, and a user

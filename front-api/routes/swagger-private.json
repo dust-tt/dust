@@ -12036,9 +12036,10 @@
               "auto",
               "auto_fast",
               "auto_complex",
+              "auto_ultra",
               "fair_use_downgrade"
             ],
-            "description": "How resolvedModel was chosen - agent (configured model), user (per-message picker), auto/auto_fast/auto_complex (routed through a model stream), or fair_use_downgrade (premium allowance spent, ran the Standard stream instead). Null (legacy)."
+            "description": "How resolvedModel was chosen - agent (configured model), user (per-message picker), auto/auto_fast/auto_complex/auto_ultra (routed through a model stream), or fair_use_downgrade (premium allowance spent, ran the Standard stream instead). Null (legacy)."
           }
         }
       },
@@ -12237,9 +12238,10 @@
               "auto",
               "auto_fast",
               "auto_complex",
+              "auto_ultra",
               "fair_use_downgrade"
             ],
-            "description": "How resolvedModel was chosen - agent (configured model), user (per-message picker), auto/auto_fast/auto_complex (routed through a model stream), or fair_use_downgrade (premium allowance spent, ran the Standard stream instead). Null (legacy)."
+            "description": "How resolvedModel was chosen - agent (configured model), user (per-message picker), auto/auto_fast/auto_complex/auto_ultra (routed through a model stream), or fair_use_downgrade (premium allowance spent, ran the Standard stream instead). Null (legacy)."
           },
           "activitySteps": {
             "type": "array",

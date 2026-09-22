@@ -16,6 +16,7 @@ import {
   AUTO_FAST_MODEL_ID,
   AUTO_MODEL_CONFIG,
   AUTO_MODEL_ID,
+  AUTO_ULTRA_MODEL_ID,
   isModelStreamId,
   MODEL_STREAM_IDS,
   MODEL_STREAMS,
@@ -150,6 +151,13 @@ export function getDefaultModelFromEnabledModels(
   };
 }
 
+function isUltraTiered(
+  model: ModelConfigurationType,
+  reasoningEffort: ReasoningEffort
+): boolean {
+  return getTierForModel(model.modelId, reasoningEffort) === "ultra";
+}
+
 export interface StreamResolutionType {
   model: EnabledModelConfigurationType;
   reasoningEffort: ReasoningEffort;
@@ -168,13 +176,29 @@ export interface StreamResolutionWithFallbackType extends StreamResolutionType {
 // user's behalf, so routing around an ongoing provider incident is ours to do.
 // A definitive pick -- an agent configured on a concrete model, or a user
 // overriding the model from the picker -- is left alone and runs as usual.
+/**
+ * @cc [owner:rfrenoy,label:product] ultra-models-only-through-ultra-stream
+ * A stream other than `auto_ultra` MUST NOT resolve to a model tiered `ultra` at the resolved
+ * effort, neither from its candidate pool nor from its last-resort fallback.
+ */
+/**
+ * @cc [owner:rfrenoy,label:product] stream-resolves-to-concrete-model
+ * The resolved model MUST be a concrete model taken from `models` with `isSelectable` true: a
+ * stream meta-model MUST never be a candidate nor the last-resort fallback, and when no such
+ * candidate exists the resolution MUST be null rather than a model the caller may not run.
+ */
 export function resolveStreamModel(
   models: EnabledModelConfigurationType[],
   streamId: ModelStreamIdType,
   degradedModelIds: ReadonlySet<string>
-): StreamResolutionType {
+): StreamResolutionType | null {
+  const allowsUltraModels = streamId === AUTO_ULTRA_MODEL_ID;
   const candidateModels = models.filter(
-    (m) => m.isSelectable && !degradedModelIds.has(m.modelId)
+    (m) =>
+      m.isSelectable &&
+      !isModelStreamId(m.modelId) &&
+      !degradedModelIds.has(m.modelId) &&
+      (allowsUltraModels || !isUltraTiered(m, m.defaultReasoningEffort))
   );
 
   for (const candidate of MODEL_STREAMS[streamId]) {
@@ -184,20 +208,28 @@ export function resolveStreamModel(
         m.modelId === candidate.modelId &&
         m.supportedReasoningEfforts[candidate.reasoningEffort]
     );
-    if (model) {
-      return {
-        model,
-        reasoningEffort: candidate.reasoningEffort,
-        fromPool: true,
-      };
+    if (!model) {
+      continue;
     }
+    if (!allowsUltraModels && isUltraTiered(model, candidate.reasoningEffort)) {
+      continue;
+    }
+    return {
+      model,
+      reasoningEffort: candidate.reasoningEffort,
+      fromPool: true,
+    };
+  }
+
+  if (candidateModels.length === 0) {
+    return null;
   }
 
   // Still off the degraded ones: the last-resort fallback is as automatic a pick
   // as the pool walk itself.
   const fallback = pickPreferredLargeModel(candidateModels);
   return {
-    model: { ...fallback, isSelectable: true },
+    model: fallback,
     reasoningEffort: fallback.defaultReasoningEffort,
     fromPool: false,
   };
@@ -212,16 +244,18 @@ export function resolveStreamModelWithFallback(
   models: EnabledModelConfigurationType[],
   streamId: ModelStreamIdType,
   degradedModelIds: ReadonlySet<string>
-): StreamResolutionWithFallbackType {
+): StreamResolutionWithFallbackType | null {
   const nominalResolution = resolveStreamModel(models, streamId, new Set());
   const actualResolution = resolveStreamModel(
     models,
     streamId,
     degradedModelIds
   );
+  if (!nominalResolution || !actualResolution) {
+    return null;
+  }
   const didFallback =
     degradedModelIds.has(nominalResolution.model.modelId) &&
-    !isModelStreamId(actualResolution.model.modelId) &&
     (nominalResolution.model.providerId !== actualResolution.model.providerId ||
       nominalResolution.model.modelId !== actualResolution.model.modelId ||
       nominalResolution.reasoningEffort !== actualResolution.reasoningEffort);
@@ -236,12 +270,12 @@ function toStreamResolution(
   models: EnabledModelConfigurationType[],
   streamId: ModelStreamIdType,
   degradedModelIds: ReadonlySet<string>
-): ModelStreamResolutionType {
-  const { model, reasoningEffort } = resolveStreamModel(
-    models,
-    streamId,
-    degradedModelIds
-  );
+): ModelStreamResolutionType | null {
+  const resolution = resolveStreamModel(models, streamId, degradedModelIds);
+  if (!resolution) {
+    return null;
+  }
+  const { model, reasoningEffort } = resolution;
   return {
     providerId: model.providerId,
     modelId: model.modelId,
@@ -270,6 +304,11 @@ export function getStreamResolutions(
       AUTO_COMPLEX_MODEL_ID,
       degradedModelIds
     ),
+    [AUTO_ULTRA_MODEL_ID]: toStreamResolution(
+      models,
+      AUTO_ULTRA_MODEL_ID,
+      degradedModelIds
+    ),
   };
 }
 
@@ -280,7 +319,7 @@ export function getFallbackStreamIds(
   return MODEL_STREAM_IDS.filter(
     (streamId) =>
       resolveStreamModelWithFallback(models, streamId, degradedModelIds)
-        .didFallback
+        ?.didFallback === true
   );
 }
 

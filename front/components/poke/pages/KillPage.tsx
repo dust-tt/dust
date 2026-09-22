@@ -356,8 +356,8 @@ export function KillPage() {
                 </p>
 
                 <p className="text-xs leading-5 text-muted-foreground">
-                  The Basic, Standard and Premium streams skip a model as soon
-                  as one of its endpoints is degraded and pick the next
+                  The Basic, Standard, Premium and Ultra streams skip a model as
+                  soon as one of its endpoints is degraded and pick the next
                   candidate in their pool; agents and users pinned to it keep
                   running on it. Takes up to 60s to apply on each pod, as stream
                   resolution reads the degraded models from an in-process cache.

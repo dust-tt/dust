@@ -698,6 +698,11 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 0,
     cache_read_input_tokens: 0,
   },
+  auto_ultra: {
+    input: 0,
+    output: 0,
+    cache_read_input_tokens: 0,
+  },
 };
 
 const IMAGE_MODEL_PRICING: Record<string, PricingEntry> = {

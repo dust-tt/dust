@@ -49,7 +49,9 @@ export const PickModelSubMenuDropdown = forwardRef<
     const lockPremiumEfforts = !isCreditPricedPlan(subscription.plan);
     const { isDark } = useTheme();
 
-    const { models, streams, isModelsLoading } = useModels({ owner });
+    const { models, streams, fallbackStreamIds, isModelsLoading } = useModels({
+      owner,
+    });
 
     const getModelIcon = useMemo(() => {
       return (model: EnabledModelConfigurationType) =>
@@ -64,8 +66,16 @@ export const PickModelSubMenuDropdown = forwardRef<
           models,
           query,
           streams,
+          fallbackStreamIds,
         }),
-      [getModelIcon, lockPremiumEfforts, models, query, streams]
+      [
+        getModelIcon,
+        lockPremiumEfforts,
+        models,
+        query,
+        streams,
+        fallbackStreamIds,
+      ]
     );
 
     // Enter picks the first model at its initial effort, like the model picker does.

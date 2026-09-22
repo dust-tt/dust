@@ -257,6 +257,7 @@ const USERFACING_CLIENT_ID: Record<ModelProviderIdType, string> = {
   auto: "Auto",
   auto_fast: "Fast",
   auto_complex: "Complex",
+  auto_ultra: "Ultra",
 };
 
 /**

@@ -8,6 +8,7 @@ import {
   AUTO_COMPLEX_MODEL_ID,
   AUTO_FAST_MODEL_ID,
   AUTO_MODEL_ID,
+  AUTO_ULTRA_MODEL_ID,
 } from "@app/types/assistant/models/auto";
 
 import type {
@@ -51,6 +52,12 @@ function resolveModel(
       return {
         providerId: AUTO_COMPLEX_MODEL_ID,
         modelId: AUTO_COMPLEX_MODEL_ID,
+        reasoningEffort: "none",
+      };
+    case "ultra":
+      return {
+        providerId: AUTO_ULTRA_MODEL_ID,
+        modelId: AUTO_ULTRA_MODEL_ID,
         reasoningEffort: "none",
       };
     default:

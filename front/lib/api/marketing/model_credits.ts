@@ -35,6 +35,7 @@ const EXCLUDED_PROVIDER_IDS = new Set([
   "auto",
   "auto_fast",
   "auto_complex",
+  "auto_ultra",
 ]);
 
 export function buildPublicModelCredits(): PublicModelCredit[] {

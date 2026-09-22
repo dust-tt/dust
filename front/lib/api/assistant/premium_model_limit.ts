@@ -49,11 +49,11 @@ async function resolveDowngradeTarget(
   const degradedModelIds = getDegradedModelIds();
 
   for (const streamId of [AUTO_MODEL_ID, AUTO_FAST_MODEL_ID] as const) {
-    const { model, reasoningEffort } = resolveStreamModel(
-      models,
-      streamId,
-      degradedModelIds
-    );
+    const resolution = resolveStreamModel(models, streamId, degradedModelIds);
+    if (!resolution) {
+      continue;
+    }
+    const { model, reasoningEffort } = resolution;
     const tierName = getTierForModel(model.modelId, reasoningEffort);
 
     if (tierName && !isPremiumOrAboveTier(tierName)) {

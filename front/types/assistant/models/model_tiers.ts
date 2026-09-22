@@ -23,7 +23,7 @@ export function isModelsTierName(value: unknown): value is ModelsTierName {
 }
 
 // Single source of truth for how tiers are named to users. The same words name
-// the model-picker streams (`auto_fast`/`auto`/`auto_complex`) and the
+// the model-picker streams (`auto_fast`/`auto`/`auto_complex`/`auto_ultra`) and the
 // analytics usage filter, so a tier means the same thing everywhere.
 const MODELS_TIER_DISPLAY_NAMES: Record<ModelsTierName, string> = {
   cost_efficient: "Basic",
@@ -533,6 +533,9 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   },
   auto_complex: {
     none: "premium",
+  },
+  auto_ultra: {
+    none: "ultra",
   },
 } satisfies StaticModelTiersMap;
 

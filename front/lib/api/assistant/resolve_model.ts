@@ -112,16 +112,22 @@ export async function resolveModel(
       streamId,
       getDegradedModelIds()
     );
-    enabled = resolution.model;
 
-    if (resolution.fromPool) {
+    if (resolution?.fromPool) {
       streamEffort = resolution.reasoningEffort;
       modelResolutionMethod = streamId;
     }
     // Otherwise none of the stream's candidates were available and `enabled`
-    // comes from the generic preferred-large-model fallback, not from the
-    // stream: keep the original "user"/"agent" attribution so analytics don't
-    // credit the pick to e.g. "auto_complex", and honor the requested effort.
+    // comes from a preferred-large-model fallback, not from the stream: keep
+    // the original "user"/"agent" attribution so analytics don't credit the
+    // pick to e.g. "auto_complex", and honor the requested effort. With no
+    // enabled concrete model left at all, fall back to the workspace-enabled
+    // preferred large models exactly as a non-stream selection would.
+    enabled =
+      resolution?.model ??
+      selectEnabledModel(auth, PREFERRED_LARGE_MODEL_CONFIGS, {
+        featureFlags,
+      });
   }
 
   // Should never happen as we should at least fallback to our selection of PREFERRED_LARGE_MODEL_CONFIGS.

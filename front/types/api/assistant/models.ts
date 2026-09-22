@@ -16,9 +16,10 @@ export type ModelStreamResolutionType = {
   reasoningEffort: ReasoningEffort;
 };
 
+// Null when no enabled concrete model can back the stream for this caller.
 export type ModelStreamResolutionsType = Record<
   ModelStreamIdType,
-  ModelStreamResolutionType
+  ModelStreamResolutionType | null
 >;
 
 export type GetEnabledModelsResponseType = {
