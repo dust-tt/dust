@@ -168,7 +168,7 @@ makeScript(
       );
 
       if (execute) {
-        if (!group.canWrite(auth)) {
+        if (!auth.can("write", group)) {
           scriptLogger.error(
             { groupId: group.sId, groupName: group.name, workspaceId },
             "Unauthorized to add members to group, skipping"

@@ -754,7 +754,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    const unreadableGroups = groups.filter((group) => !group.canRead(auth));
+    const unreadableGroups = groups.filter(
+      (group) => !auth.can("read", group)
+    );
     if (unreadableGroups.length > 0) {
       logger.error(
         {
@@ -784,7 +786,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         workOSGroupId,
       },
     });
-    if (!group || !group.canRead(auth)) {
+    if (!group || !auth.can("read", group)) {
       return null;
     }
     return group;
@@ -883,7 +885,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         },
       },
     });
-    return groups.filter((group) => group.canRead(auth));
+    return groups.filter((group) => auth.can("read", group));
   }
 
   /**
@@ -984,7 +986,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   }): Promise<GroupResource[]> {
     const groups = await this.dangerouslyListAllUserGroupsInWorkspace(params);
 
-    return groups.filter((group) => group.canRead(params.auth));
+    return groups.filter((group) => params.auth.can("read", group));
   }
 
   /**
@@ -1057,7 +1059,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         kind: groupKinds,
       },
     });
-    const readableGroups = groups.filter((group) => group.canRead(auth));
+    const readableGroups = groups.filter((group) => auth.can("read", group));
     const nameByGroupId = new Map(readableGroups.map((g) => [g.id, g.name]));
 
     for (const m of memberships) {
@@ -2064,7 +2066,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     // Editing a regular_manual group (name/members) requires `write` on it
     // (workspace admins and managers).
-    if (!this.canWrite(auth)) {
+    if (!auth.can("write", this)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -2173,7 +2175,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     // Editing a regular_manual group (name/members) requires `write` on it
     // (workspace admins and managers).
-    if (!this.canWrite(auth)) {
+    if (!auth.can("write", this)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -2317,7 +2319,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     // Deleting a regular_manual group requires `admin` on it (workspace admins
     // and managers).
-    if (!this.canAdministrate(auth)) {
+    if (!auth.can("admin", this)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -2480,18 +2482,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Set(verbsFromRoleGrants(auth, roleGrants, this.workspaceId));
   }
 
-  canRead(auth: Authenticator): boolean {
-    return auth.hasPermission("read", this);
-  }
-
-  canWrite(auth: Authenticator): boolean {
-    return auth.hasPermission("write", this);
-  }
-
-  canAdministrate(auth: Authenticator): boolean {
-    return auth.hasPermission("admin", this);
-  }
-
   isSystem(): boolean {
     return this.kind === "system";
   }
@@ -2521,7 +2511,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * members UI, where managers cannot assign the admin role.
    *
    * Returns true when `auth` is allowed to change this group's membership given
-   * the role it grants. Callers must still enforce the base `canWrite` check.
+   * the role it grants. Callers must still enforce `auth.can("write", group)`.
    */
   canManageMembersGivenGrantedRole(auth: Authenticator): boolean {
     return this.grantedRole !== "admin" || auth.isAdmin();
@@ -2544,7 +2534,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
     });
 
-    return groups.filter((group) => group.canRead(auth));
+    return groups.filter((group) => auth.can("read", group));
   }
 
   /**
@@ -2897,7 +2887,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
     });
 
-    return groups.filter((group) => group.canRead(auth));
+    return groups.filter((group) => auth.can("read", group));
   }
 
   // The seat tier granted by a set of seat-granting groups: the highest tier per

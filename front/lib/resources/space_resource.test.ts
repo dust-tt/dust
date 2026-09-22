@@ -1298,7 +1298,7 @@ describe("SpaceResource", () => {
             projectSpace.sId
           );
 
-          expect(newProvisionedMemberGroup.canRead(editorAuth)).toBe(true);
+          expect(editorAuth.can("read", newProvisionedMemberGroup)).toBe(true);
 
           // Editor should be able to manage members through updatePermissions
           const result = await reloadedSpace!.updatePermissions(editorAuth, {
