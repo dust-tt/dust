@@ -4,6 +4,7 @@ export const DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON = false;
 export const DEFAULT_AUTO_SEAT_UPGRADE_ENABLED = false;
 export const DEFAULT_TOP_UP_ENABLED = false;
 export const DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED = true;
+export const DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED = true;
 
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { frontSequelize } from "@app/lib/resources/storage";
