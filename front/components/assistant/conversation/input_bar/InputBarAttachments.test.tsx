@@ -1,6 +1,7 @@
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type {
   FileBlob,
+  FileBlobUploadState,
   FileUploaderService,
 } from "@app/hooks/useFileUploaderService";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -47,15 +48,20 @@ const owner: LightWorkspaceType = {
 function makeFileBlob(overrides: Partial<FileBlob> = {}): FileBlob {
   const filename = overrides.filename ?? "report.pdf";
   const contentType = overrides.contentType ?? "application/pdf";
+  // `isUploading` and `uploadProgress` form a discriminated pair, so they are spread last as a
+  // unit: a partial override of one cannot leave the other incoherent.
+  const uploadState: FileBlobUploadState = overrides.isUploading
+    ? { isUploading: true, uploadProgress: overrides.uploadProgress ?? null }
+    : { isUploading: false, uploadProgress: null };
   return {
     contentType,
     file: new File(["content"], filename, { type: contentType }),
     filename,
     id: filename,
     fileId: `fil_${filename}`,
-    isUploading: false,
     size: 1024,
     ...overrides,
+    ...uploadState,
   };
 }
 
