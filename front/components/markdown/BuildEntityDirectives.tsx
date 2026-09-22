@@ -22,15 +22,17 @@ export const buildAgentDirective = createTextDirective(
   (name, { sId }) => ({ agentId: sId, agentName: name })
 );
 
+interface BuildSkillDirectiveBlockProps {
+  skillId: string;
+  icon?: string;
+  skillName: string;
+}
+
 export function BuildSkillDirectiveBlock({
   skillId,
   icon,
   skillName,
-}: {
-  skillId: string;
-  icon?: string;
-  skillName: string;
-}) {
+}: BuildSkillDirectiveBlockProps) {
   const { togglePanel } = useConversationSidePanelContext();
 
   return (
@@ -42,14 +44,16 @@ export function BuildSkillDirectiveBlock({
   );
 }
 
+interface BuildAgentDirectiveBlockProps {
+  agentId: string;
+  agentName: string;
+}
+
 export function getBuildAgentDirectivePlugin(owner: WorkspaceType) {
   const BuildAgentDirectiveBlock = ({
     agentId,
     agentName,
-  }: {
-    agentId: string;
-    agentName: string;
-  }) => (
+  }: BuildAgentDirectiveBlockProps) => (
     <MentionDisplay
       mention={{
         id: agentId,

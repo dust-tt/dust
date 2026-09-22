@@ -7,11 +7,15 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AgentMessageMarkdown } from "./AgentMessageMarkdown";
 
-// Agent mentions read the current user to highlight self-mentions, and their dropdown needs a
-// router; `@app/lib/platform` has no implementation outside a host app.
+interface LinkWrapperMockProps {
+  children: React.ReactNode;
+}
+
+// The agent mention dropdown needs a router, and `@app/lib/platform` has no implementation
+// outside a host app.
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({ push: vi.fn() }),
-  LinkWrapper: ({ children }: { children: React.ReactNode }) => children,
+  LinkWrapper: ({ children }: LinkWrapperMockProps) => children,
 }));
 
 // Agent mentions read the current user to highlight self-mentions.
