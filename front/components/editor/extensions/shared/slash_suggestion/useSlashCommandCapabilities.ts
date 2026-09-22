@@ -1,15 +1,17 @@
+import { MAX_RENDERED_CAPABILITY_ITEMS } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import {
   getMcpServerViewDisplayName,
   isToolWithKnowledge,
 } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
 import {
   useJITMCPServerViewsFromSpaces,
   useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
-import { useSkills } from "@app/lib/swr/skill_configurations";
+import { useSearchSkills, useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
@@ -115,14 +117,34 @@ export function useSkillBuilderSlashCommandCapabilities({
   owner: LightWorkspaceType;
   query: string;
 }) {
+  const { hasFeature } = useFeatureFlags();
+  const useSkillSearch = hasFeature("skills_search");
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: "all",
   });
-  const { skills, isSkillsLoading } = useSkills({
+  const { skills: listedSkills, isSkillsLoading: isListedSkillsLoading } =
+    useSkills({
+      owner,
+      status: "active",
+      disabled: useSkillSearch,
+    });
+  const {
+    skills: searchSkills,
+    resolvedSearchTerm,
+    isSkillsLoading: isSearchSkillsLoading,
+  } = useSearchSkills({
     owner,
-    status: "active",
+    searchTerm: query,
+    limit: MAX_RENDERED_CAPABILITY_ITEMS,
+    disabled: !useSkillSearch,
   });
+  const skills = useSkillSearch ? searchSkills : listedSkills;
+  // Use the displayed skills' query so tools and skills update together.
+  const capabilityQuery = useSkillSearch ? (resolvedSearchTerm ?? "") : query;
+  const isSkillsLoading = useSkillSearch
+    ? isSearchSkillsLoading
+    : isListedSkillsLoading;
   const { serverViews, isLoading: isServerViewsLoading } =
     useMCPServerViewsFromSpaces(owner, spaces, {
       includeRestrictedToSkills: true,
@@ -137,17 +159,19 @@ export function useSkillBuilderSlashCommandCapabilities({
     () =>
       buildCapabilitySlashCommandItems({
         excludeSkillId,
-        query,
+        query: capabilityQuery,
         skills,
         tools,
+        useSearchRanking: useSkillSearch,
         toolFilter: (serverView) =>
           getMCPServerRequirements(serverView).noRequirement,
       }),
-    [excludeSkillId, query, skills, tools]
+    [capabilityQuery, excludeSkillId, skills, tools, useSkillSearch]
   );
 
   return {
     capabilityItems,
+    resolvedQuery: capabilityQuery,
     isLoading: isSkillsLoading || isSpacesLoading || isServerViewsLoading,
   };
 }

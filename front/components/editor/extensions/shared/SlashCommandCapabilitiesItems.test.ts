@@ -381,6 +381,60 @@ describe("getToolSlashCommandItem", () => {
 });
 
 describe("buildCapabilitySlashCommandItems", () => {
+  it("reranks search results by autocomplete relevance", () => {
+    const result = buildCapabilitySlashCommandItems({
+      query: "guide",
+      useSearchRanking: true,
+      skills: [
+        skillSuggestion({ name: "Create detailed guide", sId: "a" }),
+        skillSuggestion({ name: "Create guide", sId: "b" }),
+      ],
+      tools: [],
+    });
+    expect(result.map((item) => item.id)).toEqual(["b", "a"]);
+  });
+
+  it("ranks skills and locally matched tools together", () => {
+    const result = buildCapabilitySlashCommandItems({
+      query: "guide",
+      useSearchRanking: true,
+      skills: [
+        skillSuggestion({ name: "Guide builder", sId: "prefix" }),
+        {
+          ...skillSuggestion({ name: "A guide", sId: "substring" }),
+          isFavorite: true,
+        },
+      ],
+      tools: [
+        toolSuggestion({ label: "Guide", sId: "tool" }),
+        toolSuggestion({ label: "Unrelated", sId: "unrelated-tool" }),
+      ],
+    });
+    expect(result.map((item) => item.id)).toEqual([
+      "tool",
+      "prefix",
+      "substring",
+    ]);
+  });
+
+  it("does not re-filter skills returned by the search server", () => {
+    const result = buildCapabilitySlashCommandItems({
+      query: "Deep Dive",
+      useSearchRanking: true,
+      skills: [
+        skillSuggestion({ name: "Deep Dive Assistant", sId: "custom" }),
+        skillSuggestion({ name: "Go Deep", sId: "go-deep" }),
+        skillSuggestion({ name: "Unrelated", sId: "unrelated" }),
+      ],
+      tools: [],
+    });
+    expect(result.map((item) => item.id)).toEqual([
+      "custom",
+      "go-deep",
+      "unrelated",
+    ]);
+  });
+
   it("matches a global skill by its configured search aliases", () => {
     const goDeep = skillSuggestion({
       name: "Go Deep",
