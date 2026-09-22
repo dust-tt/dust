@@ -3,6 +3,8 @@ import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
+import type { MigratedFrameV2 } from "@app/lib/api/frames/migrate_to_v2";
+import { migrateFrameToV2 } from "@app/lib/api/frames/migrate_to_v2";
 import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
 import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
@@ -19,6 +21,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import {
   FRAME_MANIFEST_FILE,
@@ -199,6 +202,23 @@ export async function publishFrameFromSource(
     });
   }
 
+  const upgraded = await upgradeLegacyFrameToV2(auth, {
+    conversation,
+    dustFs,
+    entryScopedPath: normalizedPath,
+    frame,
+    publishedByAgentConfigurationId,
+  });
+  if (upgraded) {
+    return new Ok({
+      kind: "v2",
+      frameId: upgraded.frame.sId,
+      sourcePath: normalizedPath,
+      publicationId: upgraded.published.publicationId,
+      created,
+    });
+  }
+
   const splitResult = splitFrameEntryScopedPath(normalizedPath);
   if (splitResult.isErr()) {
     return frameError("invalid_source", splitResult.error.message);
@@ -222,6 +242,70 @@ export async function publishFrameFromSource(
     sourcePath: normalizedPath,
     warnings: publication.value.warnings,
   });
+}
+
+export type UpgradeLegacyFrameToV2Params = {
+  conversation: ConversationWithoutContentType;
+  dustFs: DustFileSystem;
+  /** Scoped path of the legacy Frame's entry source file: `conversation-<cId>/Sales.tsx`. */
+  entryScopedPath: string;
+  frame: FileResource;
+  publishedByAgentConfigurationId?: string;
+};
+
+/**
+ * Turn a legacy Frame into a Frames v2 package and publish it. Returns null when the Frame stays
+ * on v1, which `lazy-frame-migration-never-fails-the-edit` makes the outcome of every failure;
+ * the caller then publishes it as v1 exactly as before.
+ *
+ * The source lock is held here rather than inside the v2 publication, so the package layout, the
+ * row flip and the publication cannot interleave with another source operation. It is not
+ * reentrant, hence the `WithSourceLockHeld` publisher.
+ */
+export async function upgradeLegacyFrameToV2(
+  auth: Authenticator,
+  {
+    conversation,
+    dustFs,
+    entryScopedPath,
+    frame,
+    publishedByAgentConfigurationId,
+  }: UpgradeLegacyFrameToV2Params
+): Promise<MigratedFrameV2<{ publicationId: string }> | null> {
+  const migrated = await withFrameSourceLock(frame.sId, () =>
+    migrateFrameToV2(auth, {
+      dustFs,
+      entryScopedPath,
+      frame,
+      publish: async (migratedFrame) => {
+        const manifestPath = migratedFrame.toScopedPath(auth);
+        if (!manifestPath) {
+          return new Err(
+            new Error(
+              `Migrated Frame '${migratedFrame.sId}' has no source path.`
+            )
+          );
+        }
+
+        return publishFrameV2FromSourceWithSourceLockHeld(auth, {
+          conversation,
+          frame: migratedFrame,
+          manifestPath,
+          publishedByAgentConfigurationId,
+        });
+      },
+    })
+  );
+  if (migrated.isErr()) {
+    logger.info(
+      { fileId: frame.sId, err: migrated.error },
+      "upgradeLegacyFrameToV2: Frame kept on v1"
+    );
+
+    return null;
+  }
+
+  return migrated.value;
 }
 
 async function resolveWritableFrameV2Source(
