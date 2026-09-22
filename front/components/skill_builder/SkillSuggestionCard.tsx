@@ -393,27 +393,28 @@ export function SkillSuggestionCard({
     </>
   );
 
+  const wrapperClassName = `rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300" : ""}`;
+
   if (suggestion.source === "conversational") {
     return (
-      <ConversationalSuggestionCard
-        title={suggestion.title ?? "Suggestion"}
-        analysis={suggestion.analysis}
-        onAccept={hasActions ? () => onAccept(suggestion) : undefined}
-        onReject={hasActions ? () => onDecline(suggestion) : undefined}
-        rejectLabel="Decline"
-        disabled={disabled}
-        isAccepting={isAccepting}
-        isDeclining={isDeclining}
-        collapsibleContent={details}
-      />
+      <div className={wrapperClassName} onClick={onSelect}>
+        <ConversationalSuggestionCard
+          title={suggestion.title ?? "Suggestion"}
+          analysis={suggestion.analysis}
+          onAccept={hasActions ? () => onAccept(suggestion) : undefined}
+          onReject={hasActions ? () => onDecline(suggestion) : undefined}
+          rejectLabel="Decline"
+          disabled={disabled}
+          isAccepting={isAccepting}
+          isDeclining={isDeclining}
+          collapsibleContent={details}
+        />
+      </div>
     );
   }
 
   return (
-    <div
-      className={`rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300" : ""}`}
-      onClick={onSelect}
-    >
+    <div className={wrapperClassName} onClick={onSelect}>
       <Card variant="primary" size="md" className="flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <span className="heading-base text-foreground">
