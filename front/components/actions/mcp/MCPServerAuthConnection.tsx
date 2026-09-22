@@ -316,6 +316,13 @@ function OAuthCredentialFields({
   onCredentialChange,
   serverId,
 }: OAuthCredentialFieldsProps) {
+  // Sparkle portals dropdown menus into the last open sheet by default
+  // (useSheetContainer). These fields render inside a Dialog stacked above the
+  // MCP server details Sheet, so the default would mount the menu behind the
+  // dialog overlay — invisible and unclickable. Portal to document.body instead.
+  const menuPortalContainer =
+    typeof document === "undefined" ? undefined : document.body;
+
   return (
     <>
       <ProviderSetupInstructions
@@ -378,7 +385,9 @@ function OAuthCredentialFields({
                       }
                     />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
+                  <DropdownMenuContent
+                    mountPortalContainer={menuPortalContainer}
+                  >
                     <DropdownMenuRadioGroup
                       value={
                         authCredentials?.[TOKEN_ENDPOINT_AUTH_METHOD_KEY] ??
