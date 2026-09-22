@@ -865,6 +865,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_pod_goal"
   | "fireworks_new_model_feature"
   | "frames_v2"
+  | "frames_v2_migration"
   | "google_sheets_tool"
   | "gpt_5_6_terra_long_context"
   | "http_client_tool"

@@ -39,6 +39,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "fontanierh",
   },
+  frames_v2_migration: {
+    description:
+      "Upgrade a legacy Frame to a Frames v2 package when it is published",
+    stage: "dust_only",
+    owner: "pmilliotte",
+  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",
