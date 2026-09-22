@@ -30,8 +30,11 @@ seed workspace (skills, admin member) from the scenario
    `describe_skill` returns their stored block HTML, `suggest_*` records real suggestions (rolled
    back with the per-test transaction).
 5. **Assertions**: the *final* tool call (last non-exploratory one, i.e. the last `suggest_*`)
-   must match `expectedFinalToolCall`, and the judge must score the run at or above
-   `PASS_THRESHOLD`.
+   must match `expectedFinalToolCall`, the response must mention the entity it acted on as
+   `:build_skill[Name]{sId=...}` / `:build_agent[Name]{sId=...}` (the directives that make the
+   name clickable), and the judge must score the run at or above `PASS_THRESHOLD`. A skill mention
+   is checked against the seeded skill id; `suggestAgentCreation` has no seeded agent, so its
+   mention is checked against the id the `:agent_suggestion[]` directive carries.
 
 ## Test case structure
 
@@ -53,7 +56,7 @@ edits inline the seeded tool ids and knowledge documents.
 ### Writing `judgeCriteria`
 
 The judge prompt already checks intent, suggestion content (right skill, existing block ids,
-preserved content, quality), tool usage and the closing message. Only add what is unique to the
+preserved content, quality), tool usage, the closing message and the entity mention. Only add what is unique to the
 scenario: the specific change that must appear, what must be left untouched, and "Score 0-1 if…"
 dealbreakers.
 

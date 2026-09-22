@@ -1,5 +1,11 @@
 import { actionCardDirective } from "@app/components/markdown/ActionCardDirective";
 import {
+  BuildSkillDirectiveBlock,
+  buildAgentDirective,
+  buildSkillDirective,
+  getBuildAgentDirectivePlugin,
+} from "@app/components/markdown/BuildEntityDirectives";
+import {
   CiteBlock,
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
@@ -81,6 +87,8 @@ export const AgentMessageMarkdown = ({
       dustimg: getImgPlugin(owner),
       file_preview: getFilePreviewPlugin(),
       instruction_block: InstructionBlock,
+      build_skill: BuildSkillDirectiveBlock,
+      build_agent: getBuildAgentDirectivePlugin(owner),
       skill_suggestion: getSkillSuggestionPlugin(owner),
       agent_suggestion: getConversationAgentSuggestionPlugin(owner),
       ...additionalMarkdownComponents,
@@ -100,6 +108,8 @@ export const AgentMessageMarkdown = ({
       toolDirective,
       quickReplyDirective,
       actionCardDirective,
+      buildSkillDirective,
+      buildAgentDirective,
       skillSuggestionDirective,
       sidekickSuggestionDirective,
       ...additionalMarkdownPlugins,

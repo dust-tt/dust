@@ -7,6 +7,22 @@ import { describe, expect, it, vi } from "vitest";
 
 import { AgentMessageMarkdown } from "./AgentMessageMarkdown";
 
+interface LinkWrapperMockProps {
+  children: React.ReactNode;
+}
+
+// The agent mention dropdown needs a router, and `@app/lib/platform` has no implementation
+// outside a host app.
+vi.mock("@app/lib/platform", () => ({
+  useAppRouter: () => ({ push: vi.fn() }),
+  LinkWrapper: ({ children }: LinkWrapperMockProps) => children,
+}));
+
+// Agent mentions read the current user to highlight self-mentions.
+vi.mock("@app/lib/auth/AuthContext", () => ({
+  useAuth: () => ({ user: { sId: "user_1", fullName: "Test User" } }),
+}));
+
 const mockOwner = LightWorkspaceFactory.build({
   sId: "test-workspace",
   role: "user",
@@ -14,8 +30,10 @@ const mockOwner = LightWorkspaceFactory.build({
 
 function renderWithPreviewProviders(children: React.ReactNode) {
   const openPanel = vi.fn();
+  const togglePanel = vi.fn();
   return {
     openPanel,
+    togglePanel,
     ...render(
       <ConversationSidePanelContext.Provider
         value={{
@@ -23,7 +41,7 @@ function renderWithPreviewProviders(children: React.ReactNode) {
           hasConversation: true,
           isPanelClosing: false,
           openPanel,
-          togglePanel: vi.fn(),
+          togglePanel,
           closePanel: vi.fn(),
           removeFromPanelHistory: vi.fn(),
           onPanelClosed: vi.fn(),
@@ -200,6 +218,39 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
 
       expect(container.textContent).toContain(title);
       expect(container.querySelector("a[href*='download=1']")).toBeNull();
+    });
+
+    it("renders build_skill directives as chips opening the skill side panel", async () => {
+      const { container, togglePanel } = renderWithPreviewProviders(
+        <AgentMessageMarkdown
+          owner={mockOwner}
+          content="I updated :build_skill[Meeting Recap]{sId=skill_123} for you."
+        />
+      );
+
+      expect(container.textContent).toContain("Meeting Recap");
+      expect(container.textContent).not.toContain(":build_skill[");
+
+      fireEvent.click(screen.getByText("Meeting Recap"));
+
+      await waitFor(() => {
+        expect(togglePanel).toHaveBeenCalledWith({
+          type: "skill",
+          skillId: "skill_123",
+        });
+      });
+    });
+
+    it("renders build_agent directives as agent mentions", () => {
+      const { container } = renderWithPreviewProviders(
+        <AgentMessageMarkdown
+          owner={mockOwner}
+          content="I renamed :build_agent[Scribe]{sId=agent_123} for you."
+        />
+      );
+
+      expect(container.textContent).toContain("@Scribe");
+      expect(container.textContent).not.toContain(":build_agent[");
     });
 
     it("renders blockquotes", () => {

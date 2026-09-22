@@ -12,7 +12,7 @@
         },
         "agent": {
           "sId": "ConvBuildingAMsg01",
-          "content": "I reviewed the **MeetingNotesFormatter** skill and I have two edits to propose.\n\nFirst, the action items step never asks for a due date. Here is an update to the instructions that adds one to each action item and asks the user when it is missing:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_INSTRUCTIONS_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nSecond, the agent-facing description only mentions meeting notes, so agents do not consider the skill for call transcripts or Slack threads. Here is a clearer description:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_DESCRIPTION_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nLet me know if you want me to adjust either of these before you accept them."
+          "content": "I reviewed the :build_skill[MeetingNotesFormatter]{sId=__MEETING_NOTES_SKILL_SID__} skill and I have two edits to propose.\n\nFirst, the action items step never asks for a due date. Here is an update to the instructions that adds one to each action item and asks the user when it is missing:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_INSTRUCTIONS_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nSecond, the agent-facing description only mentions meeting notes, so agents do not consider the skill for call transcripts or Slack threads. Here is a clearer description:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_DESCRIPTION_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nLet me know if you want me to adjust either of these before you accept them."
         }
       },
       {
@@ -22,7 +22,7 @@
         },
         "agent": {
           "sId": "ConvBuildingAMsg02",
-          "content": "Here is the editors change: it adds **Leila Organa** as an editor of the skill and removes **Luke Skyward**.\n\n:skill_suggestion[]{sId=__SKILL_EDITORS_SUGGESTION_SID__ kind=editors skillId=__MEETING_NOTES_SKILL_SID__}\n\nOnce accepted, Leila will be able to edit the skill's instructions and description, and Luke will no longer see it in his skills to maintain."
+          "content": "Here is the editors change on :build_skill[MeetingNotesFormatter]{sId=__MEETING_NOTES_SKILL_SID__}: it adds **Leila Organa** as an editor and removes **Luke Skyward**.\n\n:skill_suggestion[]{sId=__SKILL_EDITORS_SUGGESTION_SID__ kind=editors skillId=__MEETING_NOTES_SKILL_SID__}\n\nOnce accepted, Leila will be able to edit the skill's instructions and description, and Luke will no longer see it in his skills to maintain."
         }
       },
       {
@@ -32,7 +32,7 @@
         },
         "agent": {
           "sId": "ConvBuildingAMsg03",
-          "content": "Here are two more edits.\n\nFirst, when the notes mention a follow-up meeting, the skill can offer to schedule it with the **Team Calendar** tool using the attendees and date from the notes:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_TOOL_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nSecond, the skill can look acronyms up in the **Team Glossary** and expand them on first use in the summary:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_KNOWLEDGE_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nBoth edits keep the rest of the instructions unchanged."
+          "content": "Here are two more edits on :build_skill[MeetingNotesFormatter]{sId=__MEETING_NOTES_SKILL_SID__}.\n\nFirst, when the notes mention a follow-up meeting, the skill can offer to schedule it with the **Team Calendar** tool using the attendees and date from the notes:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_TOOL_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nSecond, the skill can look acronyms up in the **Team Glossary** and expand them on first use in the summary:\n\n:skill_suggestion[]{sId=__SKILL_EDIT_KNOWLEDGE_SUGGESTION_SID__ kind=edit skillId=__MEETING_NOTES_SKILL_SID__}\n\nBoth edits keep the rest of the instructions unchanged."
         }
       },
       {
@@ -42,7 +42,7 @@
         },
         "agent": {
           "sId": "ConvBuildingAMsg04",
-          "content": "Here is a clearer description for members browsing skills. It says what to paste in and what comes back:\n\n:skill_suggestion[]{sId=__SKILL_USER_FACING_DESCRIPTION_SUGGESTION_SID__ kind=user_facing_description skillId=__MEETING_NOTES_SKILL_SID__}\n\nThe agent-facing description from earlier stays as it is; this one is only shown to people."
+          "content": "Here is a clearer description of :build_skill[MeetingNotesFormatter]{sId=__MEETING_NOTES_SKILL_SID__} for members browsing skills. It says what to paste in and what comes back:\n\n:skill_suggestion[]{sId=__SKILL_USER_FACING_DESCRIPTION_SUGGESTION_SID__ kind=user_facing_description skillId=__MEETING_NOTES_SKILL_SID__}\n\nThe agent-facing description from earlier stays as it is; this one is only shown to people."
         }
       },
       {
@@ -52,7 +52,7 @@
         },
         "agent": {
           "sId": "ConvBuildingAMsg05",
-          "content": "Probably not. Here is a rename that matches what the skill does now:\n\n:skill_suggestion[]{sId=__SKILL_NAME_SUGGESTION_SID__ kind=name skillId=__MEETING_NOTES_SKILL_SID__}\n\nAgents referencing the skill by name in their instructions are updated automatically when the rename is accepted."
+          "content": "Probably not. Here is a rename of :build_skill[MeetingNotesFormatter]{sId=__MEETING_NOTES_SKILL_SID__} that matches what the skill does now:\n\n:skill_suggestion[]{sId=__SKILL_NAME_SUGGESTION_SID__ kind=name skillId=__MEETING_NOTES_SKILL_SID__}\n\nAgents referencing the skill by name in their instructions are updated automatically when the rename is accepted."
         }
       },
       {
@@ -62,7 +62,7 @@
         },
         "agent": {
           "sId": "ConvBuildingAMsg06",
-          "content": "Here is the proposal to delete the skill:\n\n:skill_suggestion[]{sId=__SKILL_DELETE_SUGGESTION_SID__ kind=delete skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting it archives the skill; it can be restored afterwards if you change your mind."
+          "content": "Here is the proposal to delete :build_skill[MeetingNotesFormatter]{sId=__MEETING_NOTES_SKILL_SID__}:\n\n:skill_suggestion[]{sId=__SKILL_DELETE_SUGGESTION_SID__ kind=delete skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting it archives the skill; it can be restored afterwards if you change your mind."
         }
       },
       {
@@ -72,7 +72,7 @@
         },
         "agent": {
           "sId": "ConvBuildingAMsg07",
-          "content": "Yes: the skill is currently available to members and agents, which lets agents pick it on their own. Making it available to members only keeps it in everyone's composer while agents stop discovering it:\n\n:skill_suggestion[]{sId=__SKILL_AVAILABILITY_SUGGESTION_SID__ kind=availability skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting this requires the permission to publish skills."
+          "content": "Yes: :build_skill[MeetingNotesFormatter]{sId=__MEETING_NOTES_SKILL_SID__} is currently available to members and agents, which lets agents pick it on their own. Making it available to members only keeps it in everyone's composer while agents stop discovering it:\n\n:skill_suggestion[]{sId=__SKILL_AVAILABILITY_SUGGESTION_SID__ kind=availability skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting this requires the permission to publish skills."
         }
       }
     ]

@@ -1,4 +1,7 @@
-import { validateFinalToolCall } from "@app/tests/conversational-building-evals/lib/assertions";
+import {
+  validateEntityMention,
+  validateFinalToolCall,
+} from "@app/tests/conversational-building-evals/lib/assertions";
 import {
   FILTER_CATEGORY,
   FILTER_SCENARIO,
@@ -162,6 +165,12 @@ describe
                 scenario
               );
 
+              const entityMentionResult = validateEntityMention(
+                testCase.expectedFinalToolCall,
+                responseText,
+                scenario
+              );
+
               const judgeResult = await evaluateWithJudge(
                 scenario,
                 testCase,
@@ -170,7 +179,10 @@ describe
               );
 
               const passedJudge = judgeResult.finalScore >= PASS_THRESHOLD;
-              const passed = passedJudge && finalToolCallResult.success;
+              const passed =
+                passedJudge &&
+                finalToolCallResult.success &&
+                entityMentionResult.success;
 
               evalResults.push({ testCase, execution, judgeResult, passed });
 
@@ -183,6 +195,11 @@ describe
               expect(
                 finalToolCallResult.success,
                 `${!finalToolCallResult.success ? finalToolCallResult.error : ""}${context}`
+              ).toBe(true);
+
+              expect(
+                entityMentionResult.success,
+                `${!entityMentionResult.success ? entityMentionResult.error : ""}${context}`
               ).toBe(true);
 
               expect(

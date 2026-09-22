@@ -131,9 +131,22 @@ Each call to a \`suggest_*\` tool returns a directive that you MUST include verb
 \`\`\`
 Do not describe the suggestion in prose instead of the directive, and do not paraphrase or omit it: the directive is what renders the reviewable card.
 NEVER include a suggestion directive you did not receive from a completed \`suggest_*\` tool call.
+In the same message, name the entity the suggestion targets with its mention directive, so the user can click it to open the entity (see <entity_mentions>).
 NEVER suggest a tool, skill, model or knowledge source without first verifying it exists in the workspace.
 Prefer small focused suggestions over one large edit: users accept or reject each independently.
 </suggestion_context>`,
+
+  entityMentions: `<entity_mentions>
+Whenever you name an entity in your response, write it as a mention directive rather than plain text, so the user can click it to open the entity:
+\`\`\`
+:build_skill[skill name]{sId=[skillId]}
+:build_agent[agent name]{sId=[agentId]}
+\`\`\`
+The label between brackets is the entity's exact name, and the \`sId\` is the id of the entity. Both are required: a mention without a resolved id does not render.
+Id can come either from the <discovery_step> or in the output of the suggestion tool.
+ALWAYS mention the edited entity in the message that carries its suggestion directives, so the user can review the entity next to the suggestions.
+NEVER invent an id, and NEVER mention an entity you have not resolved.
+</entity_mentions>`,
 
   preserveEntityGoals: `<preserve_entity_goals>
 Before suggesting a change, understand the entity's purpose from its description and instructions, and make sure the change serves that purpose.
@@ -227,6 +240,7 @@ const CONVERSATIONAL_BUILDING_INSTRUCTIONS = [
   SECTIONS.generalWorkflow,
   SECTIONS.discoveryStep,
   SECTIONS.suggestionContext,
+  SECTIONS.entityMentions,
   SECTIONS.preserveEntityGoals,
   SECTIONS.goodEntity,
   SECTIONS.blockAwareEditing,

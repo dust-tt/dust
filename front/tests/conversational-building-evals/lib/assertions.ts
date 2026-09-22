@@ -282,3 +282,61 @@ export function validateFinalToolCall(
       assertNever(assertion);
   }
 }
+
+// `:build_skill[Name]{sId=xxx}` / `:build_agent[Name]{sId=xxx}`, the directives that render the
+// entity as a clickable chip. Only the id matters here: the label is what the model wrote.
+const BUILD_SKILL_REGEX = /:build_skill\[[^\]]*\]\{[^}]*sId=([^}\s]+)/g;
+const BUILD_AGENT_REGEX = /:build_agent\[[^\]]*\]\{[^}]*sId=([^}\s]+)/g;
+// The agent a `suggest_agent_creation` card was recorded for, as the tool's directive spells it.
+const AGENT_SUGGESTION_REGEX = /:agent_suggestion\[\]\{[^}]*agentId=([^}\s]+)/g;
+
+function mentionedIds(responseText: string, regex: RegExp): string[] {
+  return [...responseText.matchAll(regex)].map((m) => m[1]);
+}
+
+/**
+ * The response must mention the entity it acted on with its mention directive, so the user can
+ * click it open next to the suggestion cards. A created agent has no seeded id, so its mention is
+ * checked against the id the `suggest_agent_creation` directive carries.
+ */
+export function validateEntityMention(
+  assertion: FinalToolCallAssertion,
+  responseText: string,
+  scenario: SeededScenario
+): AssertionResult {
+  if (assertion.type === "suggestAgentCreation") {
+    const [suggestedAgentId] = mentionedIds(
+      responseText,
+      AGENT_SUGGESTION_REGEX
+    );
+    if (!suggestedAgentId) {
+      return {
+        success: false,
+        error:
+          "Expected the response to carry an :agent_suggestion[] directive to check its mention against",
+      };
+    }
+    const mentioned = mentionedIds(responseText, BUILD_AGENT_REGEX);
+    if (!mentioned.includes(suggestedAgentId)) {
+      return {
+        success: false,
+        error:
+          `Expected the response to mention the created agent as ` +
+          `:build_agent[...]{sId=${suggestedAgentId}}; mentioned ids: ${JSON.stringify(mentioned)}`,
+      };
+    }
+    return { success: true };
+  }
+
+  const expectedSkillId = resolveSkillId(scenario, assertion.skillKey);
+  const mentioned = mentionedIds(responseText, BUILD_SKILL_REGEX);
+  if (!mentioned.includes(expectedSkillId)) {
+    return {
+      success: false,
+      error:
+        `Expected the response to mention skill "${assertion.skillKey}" as ` +
+        `:build_skill[...]{sId=${expectedSkillId}}; mentioned ids: ${JSON.stringify(mentioned)}`,
+    };
+  }
+  return { success: true };
+}
