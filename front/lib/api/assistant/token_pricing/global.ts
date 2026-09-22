@@ -391,26 +391,33 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     long_cache_creation_input_tokens: 2.0,
     cache_read_input_tokens: 0.1,
   },
+  // Mistral bills cached reads at 10% of standard input and publishes no
+  // cache-write rate: https://docs.mistral.ai/inference/pricing and
+  // https://docs.mistral.ai/studio/conversations/advanced/prompt-caching
+  // (verified 2026-09-22).
   "mistral-large-latest": {
     input: 2.0,
     output: 6.0,
+    cache_read_input_tokens: 0.2,
   },
   "mistral-medium": {
     input: 2.5,
     output: 7.5,
   },
-  // No cache pricing published by Mistral for medium 3.5 as of 2026-05-19.
   "mistral-medium-3-5": {
     input: 1.5,
     output: 7.5,
+    cache_read_input_tokens: 0.15,
   },
   "mistral-small-latest": {
     input: 0.9,
     output: 2.8,
+    cache_read_input_tokens: 0.09,
   },
   "codestral-latest": {
     input: 0.9,
     output: 2.8,
+    cache_read_input_tokens: 0.09,
   },
   // https://ai.google.dev/gemini-api/docs/pricing: 2/12 up to 200k input tokens,
   // 4/18 beyond that.

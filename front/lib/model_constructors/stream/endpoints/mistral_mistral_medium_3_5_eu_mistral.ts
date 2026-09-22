@@ -10,6 +10,7 @@ export class MistralMistralMedium35EuropeMistralStream extends WithMistralMedium
   static readonly tokenPricing = {
     standardInput: 1.65,
     standardOutput: 8.25,
+    cacheHit: 0.165,
   };
 
   // Inference runs in the EU; the endpoint remains usable from both US and EU.
