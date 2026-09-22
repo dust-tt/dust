@@ -1,3 +1,4 @@
+import { useIsAgentLoopStreaming } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatRelativeTime } from "@app/lib/utils/timestamps";
@@ -22,12 +23,13 @@ export function PodConversationListItem({
 }: PodConversationListItemProps) {
   const router = useAppRouter();
   const time = formatRelativeTime(conversation.updated);
+  const isAgentLoopStreaming = useIsAgentLoopStreaming(conversation.id);
   return (
     <>
       <ConversationListItem
         className="border-t-0 border-b-0 rounded-2xl hover:bg-hover"
         key={conversation.id}
-        textAnimation={conversation.isRunningAgentLoop ? "streaming" : "none"}
+        textAnimation={isAgentLoopStreaming ? "streaming" : "none"}
         conversation={{
           id: conversation.id,
           title: conversation.title,

@@ -77,7 +77,6 @@ export type PodTaskType = {
   conversationId: string | null;
   /** Same semantics as the left sidebar conversation row (see `getConversationDotStatus`). */
   conversationSidebarStatus: ConversationDotStatus | null;
-  conversationIsRunningAgentLoop: boolean | null;
   text: string;
   status: PodTaskStatus;
   doneAt: Date | null;

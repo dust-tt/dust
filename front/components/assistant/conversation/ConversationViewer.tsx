@@ -833,16 +833,6 @@ export const ConversationViewer = ({
               void mutateConversationParticipants(async (participants) =>
                 getUpdatedParticipantsFromEvent(participants, event)
               );
-
-              void mutateConversations(
-                (currentData: ConversationListItemType[] | undefined) =>
-                  currentData?.map((c) =>
-                    c.sId === conversationId
-                      ? { ...c, isRunningAgentLoop: true }
-                      : c
-                  ),
-                { revalidate: false }
-              );
             }
             break;
 
@@ -905,7 +895,6 @@ export const ConversationViewer = ({
                     ? {
                         ...c,
                         hasError: event.status === "error",
-                        isRunningAgentLoop: false,
                       }
                     : c
                 ),

@@ -1,3 +1,4 @@
+import { useIsAgentLoopStreaming } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
 import { useTaskInlineEdit } from "@app/components/assistant/conversation/space/conversations/project_tasks/useTaskInlineEdit";
 import { useTypingAnimation } from "@app/components/assistant/conversation/space/conversations/project_tasks/useTypingAnimation";
@@ -66,6 +67,9 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
   const canEdit = viewerUserId !== null && !isReadOnly;
   const conversationDotStatus: ConversationDotStatus =
     task.conversationSidebarStatus ?? "idle";
+  const isAgentLoopStreaming = useIsAgentLoopStreaming(
+    task.conversationId ?? ""
+  );
 
   const inlineEdit = useTaskInlineEdit({
     task,
@@ -167,7 +171,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
                       duration={16}
                       onComplete={typing.dismiss}
                     />
-                  ) : task.conversationIsRunningAgentLoop ? (
+                  ) : isAgentLoopStreaming ? (
                     <AnimatedText variant="muted">{displayText}</AnimatedText>
                   ) : (
                     displayText

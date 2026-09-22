@@ -135,7 +135,6 @@ describe("moveConversationToProject", () => {
       agentConfigurationId: agentConfig.sId,
       messagesCreatedAt: [],
     });
-
     // Create a project space and add the user as a member.
     const projectSpace = await SpaceFactory.project(workspace);
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
@@ -251,6 +250,11 @@ describe("moveConversationToProject", () => {
       agentConfigurationId: agentConfig.sId,
       messagesCreatedAt: [],
     });
+    await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig,
+    });
 
     const projectSpace = await SpaceFactory.project(workspace);
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
@@ -281,7 +285,7 @@ describe("moveConversationToProject", () => {
     await auth.refresh();
 
     const result = await moveConversationToProject(auth, {
-      conversation: { ...conversation, isRunningAgentLoop: true },
+      conversation,
       spaceId: projectSpace.sId,
     });
 
@@ -1472,7 +1476,6 @@ describe("toPodConversationListItem", () => {
       visual: agentConfig.pictureUrl,
       isRounded: false,
     });
-    expect(item.isRunningAgentLoop).toBe(false);
     expect(item.created).toBe(conversationResource.createdAt.getTime());
     expect(item.updated).toBe(conversationResource.updatedAt.getTime());
   });

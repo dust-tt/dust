@@ -1,6 +1,7 @@
 import { ActivationRunningBanner } from "@app/components/activation/ActivationRunningBanner";
 import { PreviouslyDoneRow } from "@app/components/activation/PreviouslyDoneRow";
 import { RecommendationItem } from "@app/components/activation/RecommendationItem";
+import { useOngoingAgentLoopConversationId } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import { usePodConversations } from "@app/hooks/conversations";
 import { useActivationRecommendations } from "@app/lib/swr/activation";
 import type { WorkspaceType } from "@app/types/user";
@@ -39,9 +40,13 @@ export function RecommendationSection({
     workspaceId: owner.sId,
     podId,
   });
+  const runningConversationId = useOngoingAgentLoopConversationId(
+    conversations.map((conversation) => conversation.id)
+  );
   const runningConversation =
-    conversations.find((conversation) => conversation.isRunningAgentLoop) ??
-    null;
+    conversations.find(
+      (conversation) => conversation.id === runningConversationId
+    ) ?? null;
 
   // `undefined` = untouched (default to first open, per the design); `null` =
   // user explicitly collapsed everything; string = a specific item is open.

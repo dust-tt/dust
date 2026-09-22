@@ -186,11 +186,6 @@ describe("pod_manager move_conversation", () => {
     } = await createConversationFromNestedAgent();
     const targetPod = await SpaceFactory.project(workspace, user.id);
     await auth.refresh();
-    await ConversationResource.setIsRunningAgentLoop(auth, {
-      conversation: parentConversation,
-      isRunningAgentLoop: true,
-    });
-
     const result = await getTool(tools, "move_conversation").handler(
       {
         destination: "pod",
@@ -239,12 +234,6 @@ describe("pod_manager move_conversation", () => {
       step: 1,
     });
     expect(shouldPublish).toBe(true);
-
-    const completedConversation = await ConversationResource.fetchById(
-      auth,
-      parentConversation.sId
-    );
-    expect(completedConversation?.isRunningAgentLoop).toBe(false);
   });
 
   it("still rejects another conversation whose agent loop is running", async () => {
@@ -255,11 +244,12 @@ describe("pod_manager move_conversation", () => {
       agentConfigurationId: agent.sId,
       messagesCreatedAt: [],
     });
-    await auth.refresh();
-    await ConversationResource.setIsRunningAgentLoop(auth, {
+    await ConversationFactory.createAgentMessage(auth, {
+      workspace,
       conversation: otherConversation,
-      isRunningAgentLoop: true,
+      agentConfig: agent,
     });
+    await auth.refresh();
 
     const result = await getTool(tools, "move_conversation").handler(
       {

@@ -84,18 +84,6 @@ export async function moveConversationToProject(
     >
   >
 > {
-  if (
-    conversation.isRunningAgentLoop &&
-    conversation.sId !== currentAgentConversationId
-  ) {
-    return new Err(
-      new DustError(
-        "conversation_agent_running",
-        "Wait for the agent to finish before moving this conversation."
-      )
-    );
-  }
-
   // The destination does not race with the conversation's own state, so it
   // can be validated before the lock as a fast fail.
   const project = await SpaceResource.fetchById(auth, spaceId);
@@ -137,6 +125,7 @@ export async function moveConversationToProject(
         Result<
           undefined,
           DustError<
+            | "conversation_agent_running"
             | "internal_error"
             | "invalid_request_error"
             | "space_not_found"
@@ -144,6 +133,18 @@ export async function moveConversationToProject(
           >
         >
       > => {
+        if (
+          freshConversation.sId !== currentAgentConversationId &&
+          (await freshConversation.getRunningAgentMessage(auth))
+        ) {
+          return new Err(
+            new DustError(
+              "conversation_agent_running",
+              "Wait for the agent to finish before moving this conversation."
+            )
+          );
+        }
+
         const sourceSpaceId = freshConversation.spaceSId;
         if (
           !sourceSpaceId &&
@@ -581,7 +582,6 @@ export async function toPodConversationListItem(
         description: firstUserMessage?.userMessage?.content ?? "",
         creator: avatars[0],
         avatars: uniqBy(avatars.slice(1).reverse(), "name"),
-        isRunningAgentLoop: conv.isRunningAgentLoop,
         isParticipant: convJSON.isParticipant,
       };
     })

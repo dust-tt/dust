@@ -1150,15 +1150,9 @@ describe("late terminal events after finalization", () => {
       status: "interrupted",
     });
     expect(result.applied).toBe(true);
-
-    // Simulate the promotion having started the next agent loop.
-    await ConversationResource.setIsRunningAgentLoop(auth, {
-      conversation,
-      isRunningAgentLoop: true,
-    });
   });
 
-  it("drops a late success event without mutating status or conversation flags", async () => {
+  it("drops a late success event without mutating status", async () => {
     const event: AgentMessageSuccessEvent = {
       type: "agent_message_success",
       created: Date.now(),
@@ -1181,14 +1175,6 @@ describe("late terminal events after finalization", () => {
       where: { id: agentMessage.agentMessageId, workspaceId: workspace.id },
     });
     expect(dbMessage?.status).toBe("interrupted");
-
-    // The next loop must still be marked as running.
-    const conversationResource = await ConversationResource.fetchById(
-      auth,
-      conversation.sId
-    );
-    expect(conversationResource).not.toBeNull();
-    expect(conversationResource!.isRunningAgentLoop).toBe(true);
   });
 
   it("drops a late error event without failing the message or the conversation", async () => {
@@ -1226,7 +1212,6 @@ describe("late terminal events after finalization", () => {
     );
     expect(conversationResource).not.toBeNull();
     expect(conversationResource!.hasError).toBe(false);
-    expect(conversationResource!.isRunningAgentLoop).toBe(true);
   });
 
   it("still applies the first terminal event normally", async () => {

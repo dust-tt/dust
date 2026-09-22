@@ -35,10 +35,6 @@ async function createRunningLoop() {
     parentMessageModelId: messageRow.id,
     rank: 1,
   });
-  await ConversationResource.setIsRunningAgentLoop(auth, {
-    conversation,
-    isRunningAgentLoop: true,
-  });
   const resource = await ConversationResource.fetchById(auth, conversation.sId);
   assert(resource);
   return {
@@ -87,14 +83,7 @@ describe("agent loop deletion cleanup", () => {
     assert(message.isOk());
     expect(message.value.agentMessage?.status).toBe("cancelled");
     expect(message.value.agentMessage?.completedAt).toBeInstanceOf(Date);
-    const updated = await ConversationResource.fetchById(
-      auth,
-      conversation.sId,
-      {
-        includeDeleted: true,
-      }
-    );
-    expect(updated?.isRunningAgentLoop).toBe(false);
+    expect(await conversation.getRunningAgentMessage(auth)).toBeNull();
   });
 
   it("preserves another running message and ignores repeated cleanup", async () => {
@@ -125,14 +114,6 @@ describe("agent loop deletion cleanup", () => {
     );
     assert(repeated.isOk());
     expect(repeated.value.agentMessage?.completedAt).toEqual(completedAt);
-    const updated = await ConversationResource.fetchById(
-      auth,
-      conversation.sId,
-      {
-        includeDeleted: true,
-      }
-    );
-    expect(updated?.isRunningAgentLoop).toBe(true);
     expect((await conversation.getRunningAgentMessage(auth))?.sId).toBe(
       nextMessage.sId
     );

@@ -2898,7 +2898,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         spaceId: c.space?.sId ?? null,
         depth: c.depth,
         metadata: c.metadata,
-        isRunningAgentLoop: c.isRunningAgentLoop,
         isParticipant: !!participation,
       };
     });
@@ -2960,7 +2959,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       spaceId: null,
       depth: c.depth,
       metadata: c.metadata,
-      isRunningAgentLoop: c.isRunningAgentLoop,
       isParticipant: false,
     }));
   }
@@ -3054,40 +3052,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(updated[0]);
   }
 
-  static async setIsRunningAgentLoop(
-    auth: Authenticator,
-    {
-      conversation,
-      isRunningAgentLoop,
-      transaction,
-    }: {
-      conversation: ConversationWithoutContentType;
-      isRunningAgentLoop: boolean;
-      transaction?: Transaction;
-    }
-  ) {
-    const updated = await ConversationModel.update(
-      { isRunningAgentLoop },
-      {
-        where: {
-          id: conversation.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-        // Do not update `updatedAt.
-        silent: true,
-        transaction,
-      }
-    );
-
-    return new Ok(updated[0]);
-  }
-
   /**
    * @cc [owner:philipperolet,label:backend;concurrency] cancel-unavailable-agent-message
    * After an agent loop loses access to its data, cancel only its workspace-scoped message
-   * version if still created; under the conversation lock, clear the running flag only if
-   * that transition applied and no current agent message is running. Return the cancellation
-   * timestamp when the transition applied, and null otherwise.
+   * version if still created. Return the cancellation timestamp when the transition applied, and
+   * null otherwise.
    */
   static async cancelUnavailableAgentMessage(
     auth: Authenticator,
@@ -3137,14 +3106,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       );
       if (updatedCount === 0) {
         return null;
-      }
-
-      if (!(await conversation.getRunningAgentMessage(auth, { transaction }))) {
-        await this.setIsRunningAgentLoop(auth, {
-          conversation: conversation.toJSON(),
-          isRunningAgentLoop: false,
-          transaction,
-        });
       }
 
       return completedAt;
@@ -5550,7 +5511,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       unread:
         this.userLastReadAt === null || this.updatedAt > this.userLastReadAt,
       updated: this.updatedAt.getTime(),
-      isRunningAgentLoop: this.isRunningAgentLoop,
       isParticipant: !!this.userParticipation,
     };
   }

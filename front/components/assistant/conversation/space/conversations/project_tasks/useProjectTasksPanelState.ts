@@ -479,7 +479,6 @@ export function usePodTasksPanelState({
                     markedAsDoneByAgentConfigurationId: null,
                     conversationId,
                     conversationSidebarStatus: "idle",
-                    conversationIsRunningAgentLoop: true,
                   }
                 : t
             ),
