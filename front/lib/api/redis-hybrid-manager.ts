@@ -291,12 +291,10 @@ class RedisHybridManager {
         const pubSubChannelName = this.getPubSubChannelName(channelName);
         let registeredCallback: EventCallback | null = null;
 
-        // Make sure the subscribers map is initialized
         const channelSetupStartMs = Date.now();
-        if (!this.subscribers.has(pubSubChannelName)) {
+        const needsSubscription = !this.subscribers.has(pubSubChannelName);
+        if (needsSubscription) {
           this.subscribers.set(pubSubChannelName, new Set());
-          // Subscribe to the channel if this is the first subscriber
-          await subscriptionClient.subscribe(pubSubChannelName, this.onMessage);
         }
 
         const unsubscribe = () => {
@@ -337,6 +335,21 @@ class RedisHybridManager {
         };
 
         signal?.addEventListener("abort", unsubscribe, { once: true });
+        if (signal?.aborted) {
+          unsubscribe();
+          return { history: [], unsubscribe };
+        }
+        if (needsSubscription) {
+          try {
+            await subscriptionClient.subscribe(
+              pubSubChannelName,
+              this.onMessage
+            );
+          } catch (error) {
+            unsubscribe();
+            throw error;
+          }
+        }
         if (signal?.aborted) {
           unsubscribe();
           return { history: [], unsubscribe };

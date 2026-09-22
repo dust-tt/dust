@@ -19,6 +19,7 @@ import type {
   MessageEvent as PolyfillMessageEvent,
 } from "event-source-polyfill";
 import { EventSourcePolyfill } from "event-source-polyfill";
+import { z } from "zod";
 
 const RECONNECT_DELAY_BASE_MS = 3000;
 const RECONNECT_DELAY_JITTER_MS = 5000;
@@ -30,6 +31,10 @@ const EMPTY_POLL_DELAY_JITTER_MS = 250;
 const HEARTBEAT_TIMEOUT_MS = 5 * 60 * 1000;
 const SSE_HANDSHAKE_TIMEOUT_MS = 2_500;
 const MIN_HEALTHY_SSE_LIFETIME_MS = 30_000;
+
+const LongPollResponseSchema = z.object({
+  events: z.array(z.string()),
+});
 
 type KeepAliveState = "inactive" | "active" | "paused";
 type BrowserSseHealth = "unknown" | "healthy" | "degraded";
@@ -98,17 +103,7 @@ async function createLongPoll(
   if (!response.ok) {
     throw new Error(`Long poll failed with status ${response.status}.`);
   }
-  const body: unknown = await response.json();
-  if (
-    typeof body !== "object" ||
-    body === null ||
-    !("events" in body) ||
-    !Array.isArray(body.events) ||
-    !body.events.every((event) => typeof event === "string")
-  ) {
-    throw new Error("Long poll returned an invalid response.");
-  }
-  return body.events;
+  return LongPollResponseSchema.parse(await response.json()).events;
 }
 
 /**
@@ -332,7 +327,7 @@ export class EventSourceManager {
     const hasPendingFactory =
       entry.state.kind === "connecting" && entry.transport === null;
     entry.generation++;
-    this.stopTransport(entry);
+    this.stopTransport(streamId);
     if (entry.reconnectTimeout) {
       clearTimeout(entry.reconnectTimeout);
       entry.reconnectTimeout = null;
@@ -405,12 +400,12 @@ export class EventSourceManager {
       if (!current) {
         return;
       }
-      if (generation === current.generation) {
+      if (current === entry && generation === current.generation) {
         this.handleSseDisconnect(streamId, {
           kind: "failure",
           failure: error,
         });
-      } else if (current.state.kind === "connecting") {
+      } else if (current === entry && current.state.kind === "connecting") {
         this.transition(streamId, { kind: "idle" });
         this.ensureConnected(streamId);
       }
@@ -422,9 +417,9 @@ export class EventSourceManager {
       source.close();
       return;
     }
-    if (generation !== current.generation) {
+    if (current !== entry || generation !== current.generation) {
       source.close();
-      if (current.state.kind === "connecting") {
+      if (current === entry && current.state.kind === "connecting") {
         this.transition(streamId, { kind: "idle" });
         this.ensureConnected(streamId);
       }
@@ -514,19 +509,19 @@ export class EventSourceManager {
       entry.transport?.kind === "sse"
         ? entry.transport.source.readyState
         : null;
-    this.stopTransport(entry);
+    this.stopTransport(streamId);
     if (outcome.kind === "failure") {
       entry.reconnectAttempts++;
       if (isPreHandshake) {
         this.consecutivePreHandshakeFailures++;
         if (this.consecutivePreHandshakeFailures >= 2) {
-          this.sseHealth = "degraded";
+          this.degradeSseHealth(streamId);
         }
       } else if (
         entry.config.buildLongPollURL &&
         entry.reconnectAttempts >= 2
       ) {
-        this.sseHealth = "degraded";
+        this.degradeSseHealth(streamId);
       }
       this.logVerbose(streamId, "sse_failure", { readyState });
 
@@ -568,6 +563,32 @@ export class EventSourceManager {
     );
   }
 
+  private degradeSseHealth(triggeringStreamId: string): void {
+    if (this.sseHealth === "degraded") {
+      return;
+    }
+    this.sseHealth = "degraded";
+    for (const [streamId, entry] of this.connections) {
+      if (
+        streamId === triggeringStreamId ||
+        !entry.config.buildLongPollURL ||
+        entry.state.kind === "failed" ||
+        entry.state.kind === "terminal" ||
+        entry.transport?.kind === "long_polling"
+      ) {
+        continue;
+      }
+      entry.generation++;
+      this.stopTransport(streamId);
+      if (entry.reconnectTimeout) {
+        clearTimeout(entry.reconnectTimeout);
+        entry.reconnectTimeout = null;
+      }
+      entry.reconnectAttempts = 0;
+      this.startLongPolling(streamId);
+    }
+  }
+
   private startLongPolling(streamId: string): void {
     const entry = this.connections.get(streamId);
     const buildURL = entry?.config.buildLongPollURL;
@@ -599,7 +620,7 @@ export class EventSourceManager {
           return;
         }
         if (events.length === 0) {
-          this.stopTransport(entry);
+          this.stopTransport(streamId);
           this.scheduleReconnect(
             streamId,
             "poll_retry",
@@ -627,7 +648,7 @@ export class EventSourceManager {
           readyState: null,
           failure,
         });
-        this.stopTransport(entry);
+        this.stopTransport(streamId);
         entry.reconnectAttempts++;
         if (entry.reconnectAttempts >= this.maxReconnectAttempts) {
           this.markFailed(
@@ -804,7 +825,11 @@ export class EventSourceManager {
     }
   }
 
-  private stopTransport(entry: ConnectionEntry): void {
+  private stopTransport(streamId: string): void {
+    const entry = this.connections.get(streamId);
+    if (!entry) {
+      return;
+    }
     const transport = entry.transport;
     entry.transport = null;
     if (transport?.kind === "sse") {
@@ -823,7 +848,7 @@ export class EventSourceManager {
       return;
     }
     entry.generation++;
-    this.stopTransport(entry);
+    this.stopTransport(streamId);
     entry.keepAliveState = "inactive";
     if (entry.reconnectTimeout) {
       clearTimeout(entry.reconnectTimeout);
@@ -870,15 +895,18 @@ export class EventSourceManager {
     if (!entry || !isSseVerbose()) {
       return;
     }
-    console.info("[Dust SSE]", {
-      event,
-      streamId,
-      workspaceId: entry.config.workspaceId,
-      state: entry.state.kind,
-      reconnectAttempts: entry.reconnectAttempts,
-      subscriberCount: entry.subscribers.size,
-      ...details,
-    });
+    datadogLogger.info(
+      {
+        event,
+        streamId,
+        workspaceId: entry.config.workspaceId,
+        state: entry.state.kind,
+        reconnectAttempts: entry.reconnectAttempts,
+        subscriberCount: entry.subscribers.size,
+        ...details,
+      },
+      "[Dust SSE]"
+    );
   }
 
   private destroy(streamId: string): void {
@@ -888,7 +916,7 @@ export class EventSourceManager {
     }
     this.logVerbose(streamId, "destroy");
     entry.generation++;
-    this.stopTransport(entry);
+    this.stopTransport(streamId);
     if (entry.reconnectTimeout) {
       clearTimeout(entry.reconnectTimeout);
     }

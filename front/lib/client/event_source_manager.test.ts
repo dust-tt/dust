@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const datadogLogger = vi.hoisted(() => ({
   error: vi.fn(),
+  info: vi.fn(),
   warn: vi.fn(),
 }));
 
@@ -104,6 +105,7 @@ function createBlockedStreamManager(options: EventSourceManagerOptions = {}) {
 describe("EventSourceManager", () => {
   beforeEach(() => {
     datadogLogger.error.mockReset();
+    datadogLogger.info.mockReset();
     datadogLogger.warn.mockReset();
   });
 
@@ -115,9 +117,6 @@ describe("EventSourceManager", () => {
 
   it("logs connection activity without event payloads when SSE logs are enabled", async () => {
     const sources: FakeEventSource[] = [];
-    const verboseLogs = vi
-      .spyOn(console, "info")
-      .mockImplementation(() => undefined);
     const manager = new EventSourceManager(async (url) => {
       const source = new FakeEventSource(url);
       sources.push(source);
@@ -143,31 +142,31 @@ describe("EventSourceManager", () => {
 
     await vi.waitFor(() => expect(sources).toHaveLength(1));
     sources[0].emitHandshake();
-    expect(verboseLogs).toHaveBeenCalledWith(
-      "[Dust SSE]",
+    expect(datadogLogger.info).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "sse_handshake",
         handshakeLatencyMs: expect.any(Number),
         streamId: "message-msg_debug",
-      })
+      }),
+      "[Dust SSE]"
     );
     sources[0].emitMessage("secret-payload");
-    expect(verboseLogs).toHaveBeenCalledWith(
-      "[Dust SSE]",
+    expect(datadogLogger.info).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "event_received",
         eventLength: "secret-payload".length,
         streamId: "message-msg_debug",
-      })
+      }),
+      "[Dust SSE]"
     );
-    expect(JSON.stringify(verboseLogs.mock.calls)).not.toMatch(
+    expect(JSON.stringify(datadogLogger.info.mock.calls)).not.toMatch(
       /secret-payload|secret-query|secret-header/
     );
 
     setSseVerbose(false);
-    verboseLogs.mockClear();
+    datadogLogger.info.mockClear();
     sources[0].emitMessage("another-event");
-    expect(verboseLogs).not.toHaveBeenCalled();
+    expect(datadogLogger.info).not.toHaveBeenCalled();
 
     manager.releaseWorkspace("w_1");
   });
@@ -299,6 +298,44 @@ describe("EventSourceManager", () => {
     resolveFactories[1](new FakeEventSource("/events/second"));
     unsubscribeFirst();
     unsubscribeSecond();
+  });
+
+  it("rejects a pending source from a destroyed entry after remount", async () => {
+    const resolveFactories: Array<(source: FakeEventSource) => void> = [];
+    const sourceFactory = vi.fn(
+      () =>
+        new Promise<FakeEventSource>((resolve) => {
+          resolveFactories.push(resolve);
+        })
+    );
+    const manager = new EventSourceManager(sourceFactory);
+    const subscribe = () =>
+      manager.subscribe({
+        streamId: "conversation-conv_pending",
+        config: {
+          buildURL: () => "/events",
+          replayBufferedEventsOnSubscribe: false,
+          restartKey: "conversation-conv_pending",
+          workspaceId: "w_1",
+        },
+        subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+        keepAliveWithoutSubscribers: false,
+      });
+
+    const unsubscribeFirst = subscribe();
+    unsubscribeFirst();
+    const unsubscribeSecond = subscribe();
+    expect(sourceFactory).toHaveBeenCalledTimes(2);
+
+    const staleSource = new FakeEventSource("/events");
+    resolveFactories[0](staleSource);
+    await vi.waitFor(() => expect(staleSource.close).toHaveBeenCalledOnce());
+
+    const currentSource = new FakeEventSource("/events");
+    resolveFactories[1](currentSource);
+    await vi.waitFor(() => expect(currentSource.close).not.toHaveBeenCalled());
+    unsubscribeSecond();
+    expect(currentSource.close).toHaveBeenCalledOnce();
   });
 
   it("does not replay events for ordinary subscriber-owned streams", async () => {
@@ -582,6 +619,59 @@ describe("EventSourceManager", () => {
     expect(states.at(-1)?.kind).toBe("long_polling");
     expect(sources).toHaveLength(2);
 
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("moves existing fallback-capable streams to long polling", async () => {
+    const sources: FakeEventSource[] = [];
+    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const manager = new EventSourceManager(
+      async (url) => {
+        const source = new FakeEventSource(url);
+        sources.push(source);
+        return source;
+      },
+      () => 0,
+      {
+        longPollFactory,
+        reconnectDelayBaseMs: 0,
+        reconnectDelayJitterMs: 0,
+      }
+    );
+    const subscribe = (streamId: string) =>
+      manager.subscribe({
+        streamId,
+        config: {
+          buildURL: () => `/events/${streamId}`,
+          buildLongPollURL: () => `/events/${streamId}/poll`,
+          replayBufferedEventsOnSubscribe: false,
+          restartKey: streamId,
+          workspaceId: "w_1",
+        },
+        subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+        keepAliveWithoutSubscribers: true,
+      });
+
+    subscribe("message-existing");
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].emitHandshake();
+
+    subscribe("message-failing");
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    sources[1].onerror?.({ type: "error", target: sources[1] });
+    await vi.waitFor(() => expect(sources).toHaveLength(3));
+    sources[2].onerror?.({ type: "error", target: sources[2] });
+
+    await vi.waitFor(() => expect(longPollFactory).toHaveBeenCalledTimes(2));
+    expect(sources[0].close).toHaveBeenCalledOnce();
+    expect(longPollFactory).toHaveBeenCalledWith(
+      "/events/message-existing/poll",
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(longPollFactory).toHaveBeenCalledWith(
+      "/events/message-failing/poll",
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
     manager.releaseWorkspace("w_1");
   });
 
