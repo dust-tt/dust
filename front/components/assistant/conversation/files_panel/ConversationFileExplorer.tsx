@@ -41,6 +41,34 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { Button, LayoutAlt02, Pin02, XClose } from "@dust-tt/sparkle";
 import { useCallback, useContext, useMemo, useState } from "react";
 
+/** The confirm copy for each deletable entry kind, or null for kinds that cannot be deleted. */
+export function getDeletePrompt(
+  entry: FileExplorerEntry
+): { title: string; message: string } | null {
+  switch (entry.kind) {
+    case "frame_package":
+      return {
+        title: "Delete Frame?",
+        message:
+          `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, ` +
+          "functions, databases and share links will be permanently removed. " +
+          "This action cannot be undone.",
+      };
+    case "folder":
+      return {
+        title: "Delete folder?",
+        message: `Are you sure you want to delete "${entry.name}" and all its contents? This action cannot be undone.`,
+      };
+    case "file":
+      return {
+        title: "Delete file?",
+        message: `Are you sure you want to delete "${entry.fileName}"? This action cannot be undone.`,
+      };
+    default:
+      return null;
+  }
+}
+
 interface ConversationFileExplorerProps {
   conversation: ConversationWithoutContentType;
   owner: LightWorkspaceType;
@@ -212,28 +240,24 @@ export function ConversationFileExplorer({
     [openPanel]
   );
 
-  // Only Frame packages get a Delete item here (see `canDelete`); other conversation files stay
-  // non-deletable as before.
   const [itemToRename, setItemToRename] = useState<RenameMountItem | null>(
     null
   );
 
   const onDelete = useCallback(
     async (entry: FileExplorerEntry) => {
-      if (entry.kind !== "frame_package") {
+      const prompt = getDeletePrompt(entry);
+      if (!prompt) {
         return;
       }
+
       const confirmed = await confirm({
-        title: "Delete Frame?",
-        message:
-          `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, ` +
-          "functions, databases and share links will be permanently removed. " +
-          "This action cannot be undone.",
+        ...prompt,
         validateLabel: "Delete",
         validateVariant: "warning",
       });
       if (confirmed) {
-        // The package entry carries the manifest path; deleting the manifest runs the
+        // A Frame package entry carries the manifest path, and deleting the manifest runs the
         // package-aware Frame deletion server-side.
         const result = await deleteFileByPath(entry.path);
         if (result.isOk()) {
