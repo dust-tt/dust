@@ -36,6 +36,7 @@ import { microCreditsToCredits } from "@app/lib/credits/units";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { WeightedRateLimiterEntry } from "@app/lib/utils/rate_limiter";
 import {
   getFixedWindowCount,
@@ -327,8 +328,9 @@ export async function getFairUseAwuCreditsUsedCountsByUser({
 
   if (useFixedWindow) {
     const bounds = makeFairUseFixedWindowBounds(timeframe);
-    const entries = await Promise.all(
-      Array.from(keyByUserId, async ([sId, key]) => {
+    const entries = await concurrentExecutor(
+      [...keyByUserId],
+      async ([sId, key]) => {
         const countResult = await getFixedWindowCount({ key, bounds });
         return [
           sId,
@@ -337,7 +339,8 @@ export async function getFairUseAwuCreditsUsedCountsByUser({
             limit
           ),
         ] as const;
-      })
+      },
+      { concurrency: 8 }
     );
     return new Map(entries);
   }
