@@ -154,6 +154,7 @@ async function applyDeleteSuggestion(
 interface AgentFieldEdits {
   name?: string;
   model?: ModelSuggestionType;
+  description?: string;
 }
 
 /**
@@ -187,6 +188,10 @@ function changeForSuggestion(
       return new Ok({ type: "fields", fields: { name: data.suggestion.name } });
 
     case "description":
+      return new Ok({
+        type: "fields",
+        fields: { description: data.suggestion.description },
+      });
     case "instructions":
     case "knowledge":
     case "skills":
@@ -237,7 +242,7 @@ function mergeAgentChanges(changes: AgentChange[]): AgentBatchChanges {
 async function applyAgentFieldEdits(
   auth: Authenticator,
   agent: LightAgentConfigurationType,
-  { name, model }: AgentFieldEdits
+  { name, model, description }: AgentFieldEdits
 ): Promise<Result<undefined, ApplyAgentSuggestionsError>> {
   const contextRes = await getAgentConfigurationContext(auth, agent.sId, {
     requireEditorGroup: true,
@@ -273,7 +278,7 @@ async function applyAgentFieldEdits(
     agentConfigurationId: agentConfiguration.sId,
     assistant: {
       name: name ?? agentConfiguration.name,
-      description: agentConfiguration.description,
+      description: description ?? agentConfiguration.description,
       instructions: agentConfiguration.instructions,
       instructionsHtml: agentConfiguration.instructionsHtml,
       pictureUrl: agentConfiguration.pictureUrl,
