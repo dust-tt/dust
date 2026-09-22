@@ -1,7 +1,10 @@
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
-import { SkillSearchTable } from "@app/components/skills/SkillSearchTable";
+import {
+  SKILL_SEARCH_NAME_COLUMN_WIDTH,
+  SkillSearchTable,
+} from "@app/components/skills/SkillSearchTable";
 import {
   useSetContentWidth,
   useSetPageTitle,
@@ -37,17 +40,13 @@ const SEARCH_TABS = [
   { id: "archived", label: "Archived", filters: { status: ["archived"] } },
 ] satisfies { id: string; label: string; filters: SkillSearchFilters }[];
 
-interface SkillSearchResultsProps {
+interface SkillsListProps {
   searchTerm: string;
   filters: SkillSearchFilters;
   onSelect: (skillId: string) => void;
 }
 
-function SkillSearchResults({
-  searchTerm,
-  filters,
-  onSelect,
-}: SkillSearchResultsProps) {
+function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
   const owner = useWorkspace();
   const {
     cursorPagination,
@@ -148,11 +147,21 @@ export function SearchSkillsPage() {
     <>
       <div className="flex w-full flex-col gap-6 pb-4">
         <Page.Header
-          title="Manage Skills"
+          title={
+            <div className="flex w-full flex-wrap items-center justify-between gap-4">
+              <Page.H>Manage Skills</Page.H>
+              {hasPermission("create", "skill") && (
+                <CreateSkillButton
+                  owner={owner}
+                  onImport={() => setIsImportDialogOpen(true)}
+                />
+              )}
+            </div>
+          }
           description="Reusable packages of instructions and tools that agents can share."
           noTopPadding
         />
-        <div className="flex items-center gap-2">
+        <div className={`${SKILL_SEARCH_NAME_COLUMN_WIDTH} px-2`}>
           <label htmlFor="skill-search" className="sr-only">
             Search skills
           </label>
@@ -162,14 +171,8 @@ export function SearchSkillsPage() {
             placeholder="Search skills by name"
             value={searchTerm}
             onChange={setSearchTerm}
-            className="flex-1"
+            className="w-full"
           />
-          {hasPermission("create", "skill") && (
-            <CreateSkillButton
-              owner={owner}
-              onImport={() => setIsImportDialogOpen(true)}
-            />
-          )}
         </div>
         <Tabs defaultValue="all">
           <TabsList>
@@ -179,7 +182,7 @@ export function SearchSkillsPage() {
           </TabsList>
           {SEARCH_TABS.map((tab) => (
             <TabsContent key={tab.id} value={tab.id}>
-              <SkillSearchResults
+              <SkillsList
                 key={owner.sId}
                 searchTerm={searchTerm}
                 filters={tab.filters}
