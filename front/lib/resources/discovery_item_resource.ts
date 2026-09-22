@@ -1,6 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { GroupPinnedItemType } from "@app/lib/resources/storage/models/group_pinned_items";
 import {
   GROUP_PINNED_ITEM_TYPES,
@@ -67,6 +69,50 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
   }
 
   /**
+   * @cc [owner:frankaloia,label:security;product] pinned-discovery-item-access
+   * User-facing pin reads MUST resolve targets through the target Resource with strict caller
+   * permissions and omit missing, inactive, or unreadable targets.
+   */
+  /**
+   * @cc [owner:frankaloia,label:security;product] pinned-discovery-item-admin-target
+   * Admin pin writes MUST resolve an active, readable target through the target Resource's normal
+   * permission checks.
+   */
+  private static async filterAccessibleTargets<
+    T extends Pick<PinnedDiscoveryItemInput, "type" | "itemId">,
+  >(auth: Authenticator, items: T[]): Promise<T[]> {
+    const agentIds = items
+      .filter((item) => item.type === "agent")
+      .map((item) => item.itemId);
+    const skillIds = items
+      .filter((item) => item.type === "skill")
+      .map((item) => item.itemId);
+
+    const [agents, skills] = await Promise.all([
+      AgentResource.fetchByIds(auth, agentIds),
+      SkillResource.fetchByIds(auth, skillIds, {
+        onlyActive: true,
+        permissionFiltering: "strict",
+        withFileAttachments: false,
+        withInstructions: false,
+        withTools: false,
+      }),
+    ]);
+    const resolvedAgentIds = new Set(
+      agents
+        .filter((agent) => agent.status === "active" && auth.can("read", agent))
+        .map((agent) => agent.sId)
+    );
+    const resolvedSkillIds = new Set(skills.map((skill) => skill.sId));
+
+    return items.filter((item) =>
+      item.type === "agent"
+        ? resolvedAgentIds.has(item.itemId)
+        : resolvedSkillIds.has(item.itemId)
+    );
+  }
+
+  /**
    * @cc [owner:frankaloia,label:security;product] pinned-items-auth-groups
    * A caller only sees pins for groups in its authenticated group snapshot. Within each position,
    * the workspace-global group's pin comes first.
@@ -75,10 +121,11 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     auth: Authenticator
   ): Promise<DiscoveryItemResource[]> {
     const groupModelIds = auth.groupModelIds();
-    const [rows, globalGroupModelId] = await Promise.all([
+    const [items, globalGroupModelId] = await Promise.all([
       this.baseFetch(auth, { groupModelIds }),
       auth.getGlobalGroupModelId(),
     ]);
+    const rows = await this.filterAccessibleTargets(auth, items);
     const orderedGroupModelIds = [
       ...(globalGroupModelId !== null &&
       groupModelIds.includes(globalGroupModelId)
@@ -103,7 +150,8 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
   /**
    * @cc [owner:frankaloia,label:security] pinned-items-group-read
    * A regular user can list pins for a group only when that group is in its authenticated group
-   * snapshot. Workspace managers and admins can list pins for any group in their workspace.
+   * snapshot. Workspace admins can list pins for any group in their workspace. Target visibility
+   * always follows the target Resource's normal permissions.
    */
   static async listPinnedForGroup(
     auth: Authenticator,
@@ -115,14 +163,15 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       transaction?: Transaction;
     }
   ): Promise<DiscoveryItemResource[]> {
-    if (!auth.isManager() && !auth.groupModelIds().includes(groupModelId)) {
+    if (!auth.isAdmin() && !auth.groupModelIds().includes(groupModelId)) {
       return [];
     }
 
-    return this.baseFetch(auth, {
+    const items = await this.baseFetch(auth, {
       groupModelIds: [groupModelId],
       transaction,
     });
+    return this.filterAccessibleTargets(auth, items);
   }
 
   static async deleteAllForItem(
@@ -180,8 +229,18 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     if (validation.isErr()) {
       return validation;
     }
-    if (!auth.isManager()) {
+    if (!auth.isAdmin()) {
       return unauthorizedPinMutation();
+    }
+
+    const [resolvedItem] = await this.filterAccessibleTargets(auth, [item]);
+    if (!resolvedItem) {
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          "Pinned discovery items must reference an active agent or skill in this workspace."
+        )
+      );
     }
 
     const workspaceModelId = auth.getNonNullableWorkspace().id;
@@ -244,7 +303,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     if (!isPinnedPosition(position)) {
       return invalidPositionError();
     }
-    if (!auth.isManager()) {
+    if (!auth.isAdmin()) {
       return unauthorizedPinMutation();
     }
 
@@ -264,6 +323,10 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
+    if (!auth.isAdmin()) {
+      return unauthorizedPinMutation();
+    }
+
     await this.model.destroy({
       where: {
         id: this.id,
@@ -316,7 +379,7 @@ function unauthorizedPinMutation(): Err<DustError<"unauthorized">> {
   return new Err(
     new DustError(
       "unauthorized",
-      "Only workspace managers and admins can manage pinned discovery items."
+      "Only workspace admins can manage pinned discovery items."
     )
   );
 }

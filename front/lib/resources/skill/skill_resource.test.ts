@@ -1657,7 +1657,7 @@ describe("SkillResource", () => {
       expect(archiveCount).toBe(1);
       expect(
         await DiscoveryItemResource.listPinnedForAuth(testContext.authenticator)
-      ).toHaveLength(1);
+      ).toHaveLength(0);
 
       // Archiving leaves the memberships alone: an archived skill keeps its editors, both on the
       // in-memory resource and on a freshly fetched one.

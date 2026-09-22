@@ -34,7 +34,6 @@ import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -55,6 +54,7 @@ import type {
   SkillHydrationOptions,
 } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   getResourceIdFromSId,
@@ -4337,9 +4337,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-        await DiscoveryItemResource.deleteAllForItem(auth, {
-          type: "skill",
-          itemId: this.sId,
+        await GroupPinnedItemModel.destroy({
+          where: {
+            workspaceId: workspace.id,
+            type: "skill",
+            itemId: this.sId,
+          },
           transaction,
         });
 

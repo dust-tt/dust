@@ -1105,7 +1105,7 @@ describe("AgentResource.archive and AgentResource.restore", () => {
     expect(archived).toEqual(new Ok(true));
     expect(
       await DiscoveryItemResource.listPinnedForAuth(authenticator)
-    ).toHaveLength(1);
+    ).toHaveLength(0);
 
     const membershipsAfterArchive = await GroupMembershipModel.findAll({
       where: {
