@@ -5,6 +5,7 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { TestWorkspacePlan } from "@app/tests/utils/WorkspaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
@@ -72,8 +73,11 @@ vi.mock("@app/types/assistant/models/custom_models.generated", async () => {
   };
 });
 
-async function createAuthenticatorWithFlags(flags: WhitelistableFeature[]) {
-  const { authenticator } = await createResourceTest({ role: "admin" });
+async function createAuthenticatorWithFlags(
+  flags: WhitelistableFeature[],
+  { plan }: { plan?: TestWorkspacePlan } = {}
+) {
+  const { authenticator } = await createResourceTest({ role: "admin", plan });
 
   for (const flag of flags) {
     await FeatureFlagFactory.basic(authenticator, flag);
@@ -343,10 +347,11 @@ describe("getGlobalAgents OpenAI Dust agents", () => {
   });
 
   it("resolves Sol and Luna variants with light, medium, and high reasoning", async () => {
-    const auth = await createAuthenticatorWithFlags([
-      "claude_4_5_opus_feature",
-      "dust_internal_global_agents",
-    ]);
+    const auth = await createAuthenticatorWithFlags(
+      ["dust_internal_global_agents"],
+      // Sol is premium: entitlement now comes from the plan.
+      { plan: "creditPriced" }
+    );
 
     const agents = await getGlobalAgents(
       auth,

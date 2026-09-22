@@ -12,6 +12,7 @@ import {
   GPT_5_6_TERRA_LONG_CONTEXT,
   GPT_6_ASTRA,
   GPT_6_LUNA,
+  GPT_6_SOL,
 } from "@app/lib/model_constructors/types/models";
 
 const MODELS_WITH_CONCISE_REASONING_SUMMARIES: ReadonlySet<Model> = new Set([
@@ -26,6 +27,7 @@ const MODELS_WITH_CONCISE_REASONING_SUMMARIES: ReadonlySet<Model> = new Set([
   GPT_5_6_TERRA_LONG_CONTEXT,
   GPT_5_6_LUNA,
   GPT_6_LUNA,
+  GPT_6_SOL,
 ]);
 
 export function openAIReasoningSummaryForModel(

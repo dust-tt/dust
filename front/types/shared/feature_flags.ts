@@ -104,12 +104,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "fontanierh",
   },
-  claude_4_5_opus_feature: {
-    description:
-      "Access to Claude Opus and GPT 5.6 Sol models in the agent builder",
-    stage: "self_serve",
-    owner: "fontanierh",
-  },
   claude_fable_5_feature: {
     description:
       "Access to Claude Fable family of models (served through the EAP Anthropic key)",

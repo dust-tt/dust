@@ -13,6 +13,7 @@ const enterpriseWorkspace: WorkspaceConfig = {
   ],
   isEnterprise: true,
   isCreditPriced: false,
+  isAdvancedModels: false,
 };
 
 // A representative non-enterprise workspace with no flags.
@@ -20,6 +21,7 @@ const freeWorkspace: WorkspaceConfig = {
   featureFlags: [],
   isEnterprise: false,
   isCreditPriced: false,
+  isAdvancedModels: false,
 };
 
 describe("matchesWhere", () => {
@@ -362,6 +364,7 @@ describe("matchesWhere", () => {
         featureFlags: ["use_vertex_for_supported_models"],
         isEnterprise: false,
         isCreditPriced: false,
+        isAdvancedModels: false,
       };
       expect(matchesWhere(enterpriseFlagOnly, gatedEndpointFilter)).toBe(false);
     });
@@ -371,6 +374,7 @@ describe("matchesWhere", () => {
         featureFlags: ["anthropic_vertex_fallback"],
         isEnterprise: true,
         isCreditPriced: false,
+        isAdvancedModels: false,
       };
       expect(matchesWhere(enterpriseNoFlag, gatedEndpointFilter)).toBe(false);
     });

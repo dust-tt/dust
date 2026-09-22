@@ -42,6 +42,7 @@ export async function selectPreferredEndpointForWorkspace<
       featureFlags,
       isEnterprise: isEnterpriseOrDust(plan),
       isCreditPriced: isCreditPricedPlanPrefix(plan.code),
+      isAdvancedModels: plan.hasAdvancedModelAccess,
     },
     {
       and: [getWorkspaceFilter(auth), filter],
