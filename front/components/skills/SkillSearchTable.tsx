@@ -12,6 +12,10 @@ import { DataTable } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 
+// Leave room for Usage and Actions, then Editors/Last edited at sm and Availability at md.
+export const SKILL_SEARCH_NAME_COLUMN_WIDTH =
+  "w-[calc(100%-9.5rem)] sm:w-[calc(100%-25.5rem)] md:w-[calc(100%-35.5rem)]";
+
 interface SkillSearchTableProps {
   owner: LightWorkspaceType;
   skills: SkillListItemType[];
@@ -48,7 +52,7 @@ export function SkillSearchTable({
             </button>
           </DataTable.CellContent>
         ),
-        meta: { className: "w-full" },
+        meta: { className: SKILL_SEARCH_NAME_COLUMN_WIDTH },
       },
       {
         id: "availability",
