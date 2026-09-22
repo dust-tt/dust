@@ -129,29 +129,6 @@ premise, typography hierarchy, density, color logic, reference material and what
 preserve. Create bespoke visuals when they explain the material better than generic cards. Small
 Frames do not need empty files or wrappers merely to match a folder layout.
 
-## Slideshows
-
-For a presentation, use \`Slideshow\` from \`@dust/slideshow/v2\` as the root layout. It already
-fills the viewport and provides navigation. Put all content, including headers, footers and
-padding, inside \`Slide\` components. Do not add a page header, footer or padded container around
-the slideshow. Pass the theme directly to \`Slideshow\`, without a \`FrameRoot\` wrapper.
-
-\`\`\`tsx
-import { Slideshow, Slide } from "@dust/slideshow/v2";
-import { theme } from "./theme";
-
-export default function App() {
-  return (
-    <Slideshow theme={theme}>
-      <Slide>
-        <h1 className="font-serif text-4xl">...</h1>
-      </Slide>
-      <Slide>...</Slide>
-    </Slideshow>
-  );
-}
-\`\`\`
-
 ## Retrieve a Frame's share link
 
 Frame sharing and use rights are configured by the user in the Dust UI. Agents must not change
