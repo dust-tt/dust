@@ -79,8 +79,9 @@ Agents:
 Server-side: `PATCH /w/:wId/assistant/agent_configurations/:aId/suggestions` with
 `applyToAgent: true` calls `applyAgentSuggestions`
 (`front/lib/api/assistant/apply_agent_suggestions.ts`) before `bulkUpdateState`. The route
-enforces `approved`, `agent.canEdit` and `pending`. Only `create` is applied today: it turns the
-`pending` placeholder into an active, hidden agent. Sidekick kinds are still patched into the
+enforces `approved`, `agent.canEdit` and `pending`. Only the conversational kinds are applied
+today: `create` turns the `pending` placeholder into an active, hidden agent, `delete` archives the
+agent, and `name` re-saves it with only its name changed. Sidekick kinds are still patched into the
 builder form client-side and are rejected by `applyAgentSuggestions`.
 
 - Add a `case "<kind>"` in `applyAgentSuggestions`.
