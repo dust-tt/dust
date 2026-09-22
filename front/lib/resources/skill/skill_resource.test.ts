@@ -129,16 +129,26 @@ describe("SkillResource", () => {
   });
 
   describe("permissions", () => {
-    it("allows any API key to write and administrate skills, regardless of role", async () => {
+    it("grants the API-key verb exception only to admin keys", async () => {
       const skill = await SkillFactory.create(testContext.authenticator);
-      // Keys have no editor-group assignment mechanism, so even the least-privileged key
-      // role ("user") must be allowed here — there is no role distinction left to gate on.
-      const key = await KeyFactory.readOnly(testContext.globalGroup);
+      const adminKey = await KeyFactory.admin(testContext.globalGroup);
+      const userKey = await KeyFactory.readOnly(testContext.globalGroup);
 
-      const auth = await Authenticator.fromKey(key, testContext.workspace.sId);
+      const adminAuth = await Authenticator.fromKey(
+        adminKey,
+        testContext.workspace.sId
+      );
+      const userAuth = await Authenticator.fromKey(
+        userKey,
+        testContext.workspace.sId
+      );
 
-      expect(auth.can("write", skill)).toBe(true);
-      expect(auth.can("admin", skill)).toBe(true);
+      expect(adminAuth.can("read", skill)).toBe(true);
+      expect(adminAuth.can("write", skill)).toBe(true);
+      expect(adminAuth.can("admin", skill)).toBe(true);
+      expect(userAuth.can("read", skill)).toBe(true);
+      expect(userAuth.can("write", skill)).toBe(false);
+      expect(userAuth.can("admin", skill)).toBe(false);
     });
   });
 

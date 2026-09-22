@@ -319,9 +319,9 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
  * An admin may explicitly fetch a skill it cannot read through the redaction path. That path may
  * expose public metadata such as its name and descriptions, but MUST hide instructions, tools and
  * files. The admin override above may expose them in full.
- * API keys retain their legacy exception: they hold all three verbs on every skill because they
- * cannot receive skill grants. For user callers, global (code-defined) skills are `read`-only for
- * every workspace member.
+ * Admin-role API keys hold all three verbs on every skill. Other API keys follow the same grant
+ * and role rules as user callers. For user callers and non-admin API keys, global (code-defined)
+ * skills are `read`-only for every workspace member.
  */
 /**
  * @cc [owner:fabiencelier,label:security;product] skill-create-capability
@@ -2512,7 +2512,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     { id, workspaceId }: { id: ModelId; workspaceId: ModelId }
   ): boolean {
-    if (auth.isKey()) {
+    if (auth.isKey() && auth.isAdmin()) {
       return true;
     }
 
@@ -2525,12 +2525,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * held by the regular_auto group (see `grantToUser`).
    */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
-    // API keys cannot receive a skill's editor grant, so they keep the legacy access to every
-    // existing skill. Skill creation is separately gated by the workspace `create` capability.
+    // Admin API keys cannot receive a skill's editor grant, so the API-key exception grants them
+    // every verb on existing skills. Skill creation is separately gated by the workspace `create`
+    // capability.
     // Global skills carry no row, so there is no grant to look up (and their synthetic `id` of -1
     // is the type-wide sentinel, which would resolve the workspace-wide capability grants instead).
     let allowedVerbs: Set<GrantVerb>;
-    if (auth.isKey()) {
+    if (auth.isKey() && auth.isAdmin()) {
       allowedVerbs = new Set(["read", "write", "admin"]);
     } else if (this.codeDefinedSkillId) {
       allowedVerbs = new Set(
@@ -2567,8 +2568,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     skill: SkillConfigurationModel
   ): boolean {
-    // API keys hold no skill grant, so any key reads any skill.
-    if (auth.isKey()) {
+    // Keep this pre-hydration check aligned with the admin-key exception in `getAllowedVerbs`.
+    if (auth.isKey() && auth.isAdmin()) {
       return true;
     }
 
