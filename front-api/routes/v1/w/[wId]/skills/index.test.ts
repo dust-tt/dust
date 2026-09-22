@@ -533,6 +533,43 @@ describe("POST /api/v1/w/[wId]/skills", () => {
     );
   });
 
+  it("rejects editors before importing with a non-admin API key", async () => {
+    const { key, workspace } = await createPublicApiMockRequest();
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+    await GroupPermissionResource.setForEverybody(adminAuth, {
+      grantType: "create",
+      resourceType: "skill",
+    });
+    const auth = await Authenticator.fromKey(key, workspace.sId);
+    const editor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, editor, { role: "user" });
+
+    const result = await importSkillsFromFiles(auth, {
+      uploadedFiles: [
+        await makeSkillZipFile({
+          name: "Unauthorized Editors Import",
+          instructions: "Should never be imported.",
+        }),
+      ],
+      source: "api",
+      onConflict: "error",
+      editors: [editor.email],
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toBe(
+        "User is not authorized to update skill editors."
+      );
+    }
+    expect(
+      await SkillResource.fetchByName(auth, "Unauthorized Editors Import")
+    ).toBeNull();
+  });
+
   it("rejects the import for a key without the create/skill capability", async () => {
     const { auth, workspace } = await createPublicApiMockRequest({
       role: "user",
