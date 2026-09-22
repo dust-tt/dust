@@ -66,7 +66,12 @@ export function SkillSearchActionsMenu({
             onSelect: () => onSelect(skillId),
             onArchive:
               !isSkillError && skill?.canAdministrate
-                ? () => setIsArchiveDialogOpen(true)
+                ? () => {
+                    setIsOpen(false);
+                    requestAnimationFrame(() => {
+                      setIsArchiveDialogOpen(true);
+                    });
+                  }
                 : undefined,
           }),
         ]}
