@@ -4,6 +4,7 @@ import { ConversationSidePanelHeader } from "@app/components/assistant/conversat
 import { DEFAULT_FRAME_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
+import { FrameBetaChip } from "@app/components/assistant/conversation/interactive_content/frame/FrameBetaChip";
 import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
@@ -180,12 +181,16 @@ export function FrameRenderer({
     disabled: renderMode !== "v2" || !showCode,
   });
 
-  const { isFrameAuthor, packageRoot, isFramePermissionsLoading } =
-    useFramePermissions({
-      owner,
-      frameId: fileId,
-      disabled: renderMode !== "v2" || !conversation,
-    });
+  const {
+    isFrameAuthor,
+    packageRoot,
+    hasFrameFunctions,
+    isFramePermissionsLoading,
+  } = useFramePermissions({
+    owner,
+    frameId: fileId,
+    disabled: renderMode !== "v2" || !conversation,
+  });
   const resolvedFramePath = framePath ?? packageRoot;
   // useFile("./…") resolves against framePath on first fetch and never retries. Wait until
   // permissions (packageRoot) have loaded so the iframe does not mount with a null root.
@@ -386,12 +391,15 @@ export function FrameRenderer({
     <div className="flex h-panel flex-col">
       <ConversationSidePanelHeader onClose={onClosePanel}>
         <div className="flex w-full items-center justify-between">
-          <Button
-            icon={showCode ? Eye : Terminal}
-            onClick={() => setShowCode(!showCode)}
-            tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
-            variant="ghost"
-          />
+          <div className="flex items-center gap-2">
+            <Button
+              icon={showCode ? Eye : Terminal}
+              onClick={() => setShowCode(!showCode)}
+              tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
+              variant="ghost"
+            />
+            {hasFrameFunctions && <FrameBetaChip />}
+          </div>
           <div className="flex items-center">
             <ExportContentDropdown
               iframeRef={iframeRef}

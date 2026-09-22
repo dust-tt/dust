@@ -81,6 +81,7 @@ export function PublicFrameRenderer({
     isPodMember,
     isPodEditor,
     framePath,
+    hasFrameFunctions,
   } = usePublicFrame({
     shareToken,
   });
@@ -141,6 +142,7 @@ export function PublicFrameRenderer({
           projectUrl={projectUrl}
           logoUrl={logoUrl}
           showSignUpCta={showSignUpCta}
+          hasFrameFunctions={hasFrameFunctions}
         />
       )}
 

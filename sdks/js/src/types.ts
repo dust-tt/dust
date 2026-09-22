@@ -3409,6 +3409,9 @@ export const PublicFrameResponseBodySchema = z.object({
   // server-side. Absent means false.
   isPodMember: z.boolean().optional(),
   isPodEditor: z.boolean().optional(),
+  // Whether the Frame's active publication declares functions, so the share page can mark it as
+  // beta. Absent means false.
+  hasFunctions: z.boolean().optional(),
 });
 
 export type PublicFrameResponseBodyType = z.infer<

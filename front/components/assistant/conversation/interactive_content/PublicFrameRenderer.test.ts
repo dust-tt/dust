@@ -4,6 +4,7 @@ import {
 } from "@app/components/assistant/conversation/interactive_content/PublicFrameRenderer";
 import type { ScopedWorkspaceUserIdentity } from "@app/types/assistant/visualization";
 import { cleanup, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => ({
     scopedUserIdentity?: ScopedWorkspaceUserIdentity;
     viewer: unknown;
   } | null,
+  hasFrameFunctions: false,
   isAuthenticatedMember: true,
   isPodEditor: false,
   isPodMember: false,
@@ -36,6 +38,12 @@ vi.mock(
   })
 );
 
+// The header renders through the platform link abstraction, which throws unless a consumer
+// aliases it; only the share page's own chrome is under test here.
+vi.mock("@app/lib/platform", () => ({
+  LinkWrapper: ({ children }: { children: ReactNode }) => children,
+}));
+
 vi.mock("@app/lib/cookies", () => ({
   DUST_HAS_SESSION: "dust-session",
   hasSessionIndicator: () => true,
@@ -51,6 +59,7 @@ vi.mock("@app/lib/swr/frames", () => ({
     isAuthenticatedMember: mocks.isAuthenticatedMember,
     isPodMember: mocks.isPodMember,
     isPodEditor: mocks.isPodEditor,
+    hasFrameFunctions: mocks.hasFrameFunctions,
   }),
 }));
 
@@ -77,6 +86,7 @@ const user = {
 afterEach(() => {
   cleanup();
   mocks.iframeProps = null;
+  mocks.hasFrameFunctions = false;
   mocks.isAuthenticatedMember = true;
   mocks.isPodEditor = false;
   mocks.isPodMember = false;
@@ -173,6 +183,39 @@ describe("PublicFrameRenderer", () => {
         user: expect.objectContaining({ sId: "usr_123" }),
       },
     });
+  });
+
+  it("marks a shared Frame declaring functions as beta", () => {
+    mocks.hasFrameFunctions = true;
+    mocks.isUserLoading = false;
+
+    render(
+      createElement(PublicFrameRenderer, {
+        fileId: "file_123",
+        shareToken: "share-token",
+        title: "Frame",
+        workspaceId: "w_current",
+        vizUrl: "https://viz.dust.tt",
+      })
+    );
+
+    expect(screen.getByText("Beta")).not.toBeNull();
+  });
+
+  it("does not mark a shared Frame without functions as beta", () => {
+    mocks.isUserLoading = false;
+
+    render(
+      createElement(PublicFrameRenderer, {
+        fileId: "file_123",
+        shareToken: "share-token",
+        title: "Frame",
+        workspaceId: "w_current",
+        vizUrl: "https://viz.dust.tt",
+      })
+    );
+
+    expect(screen.queryByText("Beta")).toBeNull();
   });
 
   it("disables function calls without a member identity", () => {

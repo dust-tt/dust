@@ -683,6 +683,23 @@ describe("GET /api/v1/public/frames/[token]", () => {
       const response = await requestFrame(token);
 
       expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual(
+        expect.objectContaining({ hasFunctions: true })
+      );
+    });
+
+    it("reports no function for a Frame v2 declaring none", async () => {
+      const { token } = await createFrameV2WithoutFunction(
+        "workspace_and_emails"
+      );
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(auth);
+
+      const response = await requestFrame(token);
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual(
+        expect.objectContaining({ hasFunctions: false })
+      );
     });
 
     it("stays public for a Frame v2 declaring no function", async () => {

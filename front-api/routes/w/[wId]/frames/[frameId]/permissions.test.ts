@@ -1,7 +1,9 @@
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { getConversationFilesBasePath } from "@app/types/mount_path";
@@ -39,6 +41,7 @@ describe("GET /api/w/:wId/frames/:frameId/permissions", () => {
     await expect(response.json()).resolves.toEqual({
       isFrameAuthor: true,
       packageRoot: `conversation-${conversation.sId}/Admin`,
+      hasFunctions: false,
     });
   });
 
@@ -63,7 +66,26 @@ describe("GET /api/w/:wId/frames/:frameId/permissions", () => {
     await expect(response.json()).resolves.toEqual({
       isFrameAuthor: false,
       packageRoot: null,
+      hasFunctions: false,
     });
+  });
+
+  it("reports the functions declared by the Frame's active publication", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+    const space = await SpaceFactory.project(workspace);
+    const { frame } = await createTestFrameFunction(auth, { space });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/frames/${frame.sId}/permissions`
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual(
+      expect.objectContaining({ hasFunctions: true })
+    );
   });
 
   it("does not expose the permissions contract for a legacy Frame", async () => {
