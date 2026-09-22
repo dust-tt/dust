@@ -265,6 +265,7 @@ export function CapabilitiesPicker({
     limit: MAX_RENDERED_CAPABILITY_ITEMS,
     disabled: !useSkillSearch || !isOpen,
   });
+  // Use the displayed skills' query so tools and skills update together.
   const normalizedSearchText = (
     useSkillSearch ? (resolvedSearchTerm ?? "") : searchText
   )
