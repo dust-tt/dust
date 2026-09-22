@@ -75,8 +75,10 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     auth: Authenticator
   ): Promise<DiscoveryItemResource[]> {
     const groupModelIds = auth.groupModelIds();
-    const rows = await this.baseFetch(auth, { groupModelIds });
-    const globalGroupModelId = await auth.getGlobalGroupModelId();
+    const [rows, globalGroupModelId] = await Promise.all([
+      this.baseFetch(auth, { groupModelIds }),
+      auth.getGlobalGroupModelId(),
+    ]);
     const orderedGroupModelIds = [
       ...(globalGroupModelId !== null &&
       groupModelIds.includes(globalGroupModelId)
