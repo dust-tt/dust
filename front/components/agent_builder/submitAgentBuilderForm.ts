@@ -449,7 +449,7 @@ export async function submitAgentBuilderForm({
       instructionsHtml: formData.instructionsHtml ?? null,
       pictureUrl: pictureUrlToUse,
       status: isDraft ? "draft" : "active",
-      scope: formData.agentSettings.scope,
+      scope: isDraft ? "hidden" : formData.agentSettings.scope,
       model: {
         modelId: formData.generationSettings.modelSettings.modelId,
         providerId: formData.generationSettings.modelSettings.providerId,

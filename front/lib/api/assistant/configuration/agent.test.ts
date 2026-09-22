@@ -536,6 +536,99 @@ describe("saveAgentConfiguration with pending agent", () => {
     ).toEqual([user.sId]);
   });
 
+  it("rejects changing a pending agent's scope", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const pending = await createPendingAgentConfiguration(authenticator);
+    assert(pending.isOk());
+    const resource = await AgentResource.fetchById(
+      authenticator,
+      pending.value.sId
+    );
+    assert(resource?.isFull());
+
+    const result = await resource.updateConfiguration(authenticator, {
+      scope: "visible",
+    });
+
+    assert(result.isErr());
+    expect(result.error.message).toBe("Only active agents can change scope.");
+    const row = await AgentConfigurationModel.findOne({
+      where: { sId: pending.value.sId, workspaceId: workspace.id },
+    });
+    expect(row?.scope).toBe("hidden");
+  });
+
+  it("requires publish to activate a legacy visible pending agent", async () => {
+    const { authenticator: adminAuth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const group = await GroupFactory.regularAuto(
+      workspace,
+      "pending-agent-creators"
+    );
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group,
+      grantType: "create",
+      resourceType: "agent",
+    });
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    const internalAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await GroupFactory.withMembers(internalAuth, group, [user]);
+    const authenticator = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    expect(await authenticator.hasWorkspacePermission("publish", "agent")).toBe(
+      false
+    );
+    const pending = await createPendingAgentConfiguration(authenticator);
+    assert(pending.isOk());
+
+    // Simulate a pending agent made visible before non-active scopes were restricted.
+    await AgentConfigurationModel.update(
+      { scope: "visible" },
+      {
+        where: { sId: pending.value.sId, workspaceId: workspace.id },
+      }
+    );
+    await AgentResource.invalidateCache(workspace.id, pending.value.sId);
+
+    const result = await saveAgentConfiguration(authenticator, {
+      name: "My New Agent",
+      description: "A test agent",
+      instructions: "Test instructions",
+      instructionsHtml: null,
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "active",
+      scope: "visible",
+      model: {
+        providerId: "anthropic",
+        modelId: "claude-sonnet-4-5-20250929",
+        temperature: 0.5,
+      },
+      agentConfigurationId: pending.value.sId,
+      templateId: null,
+      requestedSpaceIds: [],
+      tags: [],
+      editors: [user.toJSON()],
+      authorId: user.id,
+    });
+
+    assert(result.isErr());
+    expect(result.error.message).toBe(
+      "You don't have permission to publish agents."
+    );
+    const row = await AgentConfigurationModel.findOne({
+      where: { sId: pending.value.sId, workspaceId: workspace.id },
+    });
+    expect(row).toMatchObject({ status: "pending", scope: "visible" });
+  });
+
   it("returns an error when agentConfigurationId does not exist", async () => {
     const { authenticator, user } = await createResourceTest({
       role: "admin",
@@ -1028,6 +1121,33 @@ describe("archiveAgentConfiguration and restoreAgentConfiguration", () => {
         "Agent configuration is not archived"
       );
     }
+  });
+
+  it("does not combine restoring an archived agent with a scope change", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { scope: "visible" }
+    );
+    expect(await archiveAgentConfiguration(authenticator, agent.sId)).toBe(
+      true
+    );
+    const archived = await AgentResource.fetchById(authenticator, agent.sId);
+    assert(archived?.isFull());
+
+    const result = await archived.updateConfiguration(authenticator, {
+      status: "active",
+      scope: "hidden",
+    });
+
+    assert(result.isErr());
+    expect(result.error.message).toBe("Only active agents can change scope.");
+    const row = await AgentConfigurationModel.findOne({
+      where: { sId: agent.sId, workspaceId: workspace.id },
+    });
+    expect(row).toMatchObject({ status: "archived", scope: "visible" });
   });
 
   it("cancels scheduled wake-ups when archiving", async () => {

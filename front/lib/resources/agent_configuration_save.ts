@@ -68,27 +68,27 @@ export async function validateAgentSaveInputs({
   return new Ok(undefined);
 }
 
-// Resolves the current scope of an agent being re-saved, without opening the save transaction.
-// A new agent starts hidden, so saving it visible counts as publishing.
-async function getCurrentScope(
+// Resolves the current state of an agent being re-saved, without opening the save transaction.
+async function getCurrentState(
   agentConfigurationId: string | undefined,
   owner: LightWorkspaceType
-): Promise<AgentConfigurationScope> {
+): Promise<{ status: AgentStatus; scope: AgentConfigurationScope } | null> {
   if (!agentConfigurationId) {
-    return "hidden";
+    return null;
   }
   const existingAgent = await AgentConfigurationModel.findOne({
     where: { sId: agentConfigurationId, workspaceId: owner.id },
     order: [["version", "DESC"]],
-    attributes: ["scope"],
+    attributes: ["status", "scope"],
     limit: 1,
   });
-  return existingAgent?.scope ?? "hidden";
+  return existingAgent
+    ? { status: existingAgent.status, scope: existingAgent.scope }
+    : null;
 }
 
-// With only `hidden`/`visible` scopes for custom agents, a scope change on an active agent is exactly
-// a publish (→ visible) or unpublish (→ hidden), both of which need publish permission. Returns an
-// `Err` (not a throw): it runs before the save transaction is opened.
+// Publishing a new or non-active agent, or changing an active agent's scope, needs publish
+// permission. Returns an `Err` (not a throw): it runs before the save transaction is opened.
 export async function assertPublishPermissionForScopeChange(
   auth: Authenticator,
   {
@@ -106,8 +106,11 @@ export async function assertPublishPermissionForScopeChange(
   if (status !== "active") {
     return new Ok(undefined);
   }
-  const currentScope = await getCurrentScope(agentConfigurationId, owner);
-  if (currentScope !== scope) {
+  const current = await getCurrentState(agentConfigurationId, owner);
+  const isPublishing = current?.status !== "active" && scope === "visible";
+  const isChangingActiveScope =
+    current?.status === "active" && current.scope !== scope;
+  if (isPublishing || isChangingActiveScope) {
     const canPublish = await auth.hasWorkspacePermission("publish", "agent");
     if (!canPublish) {
       return new Err(new Error("You don't have permission to publish agents."));
