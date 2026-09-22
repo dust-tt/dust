@@ -381,13 +381,10 @@ const InputBarContainer = ({
   const [showSpacesPicker, setShowSpacesPicker] = useState(false);
   // Every open/close of the picker must go through this handler so the overlay
   // tracker stays in sync; do not call setShowSpacesPicker directly.
-  const handleSpacesPickerOpenChange = useCallback(
-    (open: boolean) => {
-      setShowSpacesPicker(open);
-      setOverlayOpen("spaces-picker", open);
-    },
-    [setOverlayOpen]
-  );
+  const handleSpacesPickerOpenChange = (open: boolean) => {
+    setShowSpacesPicker(open);
+    setOverlayOpen("spaces-picker", open);
+  };
   const inputBarButtonsRef = useRef<HTMLDivElement>(null);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const isWidthConstrained = useIsWidthConstrained();
