@@ -157,17 +157,12 @@ export const ButtonsSwitchList = React.forwardRef<
       [selected, handleChange, size, disabled]
     );
 
+    // Own the DOM ref for measuring and expose it to the forwarded one without
+    // mutating the parameter (see ComposerInput).
     const listRef = React.useRef<HTMLDivElement | null>(null);
-    const setRefs = React.useCallback(
-      (node: HTMLDivElement | null) => {
-        listRef.current = node;
-        if (typeof ref === "function") {
-          ref(node);
-        } else if (ref) {
-          ref.current = node;
-        }
-      },
-      [ref]
+    React.useImperativeHandle<HTMLDivElement | null, HTMLDivElement | null>(
+      ref,
+      () => listRef.current
     );
 
     // Position the indicator under the selected option by measuring the DOM:
@@ -212,7 +207,7 @@ export const ButtonsSwitchList = React.forwardRef<
 
     return (
       <div
-        ref={setRefs}
+        ref={listRef}
         role="tablist"
         aria-orientation="horizontal"
         className={cn(listStyles({ fullWidth, size }), className)}
