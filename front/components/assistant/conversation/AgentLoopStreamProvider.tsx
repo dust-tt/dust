@@ -75,7 +75,7 @@ interface AgentLoopStreamProviderProps {
  * Keeps SSE connections alive for user-launched agent loops when their conversation UI is not
  * mounted. Temporal workflows maintain the Redis registry that backs the polling endpoint.
  *
- * Redis registry --> 10 s API poll --> headless stream subscriber
+ * Redis registry --> adaptive poll --> headless stream subscriber
  *                                           |
  *                           SSE + handshake | long poll fallback
  *                                           v
@@ -83,7 +83,8 @@ interface AgentLoopStreamProviderProps {
  *
  * The provider creates one headless subscriber per registered message. The global manager shares
  * that stream with the conversation UI and replays buffered events when the UI mounts. Registry
- * polling keeps the subscribers in sync, and a terminal event refreshes it immediately.
+ * polling keeps the subscribers in sync, and a terminal event refreshes it immediately. Polling
+ * runs every 10 seconds while loops are active and backs off to 120 seconds when none remain.
  */
 /**
  * @cc [owner:id13,label:concurrency;reliability] ongoing-loop-retry-after-refresh
