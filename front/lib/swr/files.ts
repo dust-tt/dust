@@ -57,7 +57,7 @@ export const getFilePathViewUrl = (
 
 /** Relative API path for fetching file text content (for use with clientFetch / useFileContentByUrl). */
 export function getFilePathContentApiPath(
-  owner: LightWorkspaceType,
+  owner: Pick<LightWorkspaceType, "sId">,
   canonicalPath: string
 ): string {
   const encoded = canonicalPath.split("/").map(encodeURIComponent).join("/");

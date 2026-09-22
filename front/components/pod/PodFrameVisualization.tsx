@@ -12,7 +12,7 @@ interface PodFrameVisualizationProps {
   isPodMember?: boolean;
   /** Stable FileResource identity for Frame v2; omitted for legacy Frames. */
   frameId?: string;
-  /** Scoped path of the Frame, so one inside an app folder can call its functions by bare name. */
+  /** Canonical path of the Frame file or manifest. */
   framePath?: string | null;
 }
 
@@ -46,6 +46,9 @@ export function PodFrameVisualization({
       conversationId={null}
       spaceId={spaceId}
       framePath={framePath}
+      framePackageRoot={
+        framePath ? framePath.slice(0, framePath.lastIndexOf("/")) : null
+      }
       frameId={frameId}
       isInDrawer={true}
       isPodEditor={isPodEditor}

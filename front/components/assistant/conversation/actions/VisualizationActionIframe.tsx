@@ -8,12 +8,8 @@ import type {
   SandboxFunctionMCPApproveExecutionEvent,
   SandboxFunctionToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
-import {
-  isFramePackageRelativePath,
-  parseFramePackageRelativePath,
-  resolvePackageRelativeToScopedPath,
-} from "@app/lib/api/frames/package_file_ref_paths";
 import { clientFetch } from "@app/lib/egress/client";
+import { useFrameFiles } from "@app/lib/swr/frame_files";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { FrameFunctionReferenceScope } from "@app/types/api/frame_function_reference";
@@ -42,10 +38,7 @@ import {
 import { isAPIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import {
-  assertNever,
-  assertNeverAndIgnore,
-} from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -67,7 +60,7 @@ import type { SetStateAction } from "react";
 import {
   forwardRef,
   useCallback,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -452,7 +445,8 @@ function nextBlockedActionGroup(
 function useVisualizationDataHandler({
   conversationId,
   createSandboxFunctionInvocation,
-  getFileBlob,
+  readFile,
+  writeFile,
   onEditText,
   functionReferenceScope,
   setCodeDrawerOpened,
@@ -471,7 +465,8 @@ function useVisualizationDataHandler({
   ) => Promise<
     Result<PostSandboxFunctionInvocationResponseBody, SandboxFunctionCallError>
   >;
-  getFileBlob: (fileId: string) => Promise<Blob | null>;
+  readFile: ReturnType<typeof useFrameFiles>["readFile"];
+  writeFile: ReturnType<typeof useFrameFiles>["writeFile"];
   functionReferenceScope: FrameFunctionReferenceScope;
   onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
@@ -508,7 +503,7 @@ function useVisualizationDataHandler({
     [visualization.identifier]
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const listener = async (event: MessageEvent) => {
       const { data } = event;
 
@@ -617,9 +612,19 @@ function useVisualizationDataHandler({
           break;
 
         case "getFile":
-          const fileBlob = await getFileBlob(data.params.fileId);
+          sendResponseToIframe(
+            data,
+            await readFile(data.params.fileId),
+            event.source
+          );
+          break;
 
-          sendResponseToIframe(data, { fileBlob }, event.source);
+        case "writeFile":
+          sendResponseToIframe(
+            data,
+            await writeFile(data.params),
+            event.source
+          );
           break;
 
         case "getCodeToExecute":
@@ -672,7 +677,7 @@ function useVisualizationDataHandler({
         }
 
         default:
-          assertNever(data);
+          assertNeverAndIgnore(data);
       }
     };
 
@@ -683,7 +688,8 @@ function useVisualizationDataHandler({
     conversationId,
     createSandboxFunctionInvocation,
     downloadFileFromBlob,
-    getFileBlob,
+    readFile,
+    writeFile,
     onEditText,
     functionReferenceScope,
     setContentHeight,
@@ -728,30 +734,6 @@ function CodeDrawer({
   );
 }
 
-/**
- * Derive the Frame package root from a host-provided path. Hosts may pass either:
- * - a package directory (`conversation-…/MyFrame` from permissions.packageRoot), or
- * - an entry/manifest file under that directory (`…/manifest.json`, `…/App.tsx`).
- */
-function resolveFramePackageRoot(
-  framePath: string | null | undefined
-): string | null {
-  if (!framePath) {
-    return null;
-  }
-  const normalized = framePath.replace(/\/+$/, "");
-  if (!normalized.includes("/")) {
-    return null;
-  }
-  const base = normalized.slice(normalized.lastIndexOf("/") + 1);
-  const looksLikeEntryFile =
-    base === "manifest.json" || /\.[A-Za-z0-9]+$/.test(base);
-  if (looksLikeEntryFile) {
-    return normalized.slice(0, normalized.lastIndexOf("/")) || null;
-  }
-  return normalized;
-}
-
 export interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
   canInvokeFunctions: boolean;
@@ -762,6 +744,8 @@ export interface VisualizationActionIframeProps {
    * paths and (for legacy Pod Frames) bare function names.
    */
   framePath?: string | null;
+  /** Canonical package directory for revision-aware file access. */
+  framePackageRoot?: string | null;
   /** Stable identity of a Frames v2 resource. Omit for legacy Frames and raw visualizations. */
   frameId?: string;
   isEditable?: boolean;
@@ -932,66 +916,17 @@ export const VisualizationActionIframe = forwardRef<
 
   const isPublic = visualization.accessToken !== undefined;
 
-  const getFileBlob = useCallback(
-    async (fileId: string) => {
-      let url: string;
-
-      if (fileId.startsWith("conversation-") || fileId.startsWith("pod-")) {
-        // Canonical scoped paths — the global endpoint resolves auth from the prefix.
-        const encodedPath = fileId.split("/").map(encodeURIComponent).join("/");
-        url = `/api/w/${workspaceId}/files/path/${encodedPath}`;
-      } else if (fileId.startsWith("conversation/")) {
-        // Legacy path: normalize to canonical using context conversationId.
-        if (!conversationId) {
-          return null;
-        }
-        const rel = fileId.slice("conversation/".length);
-        url = `/api/w/${workspaceId}/files/path/conversation-${conversationId}/${rel}`;
-      } else if (fileId.startsWith("pod/") || fileId.startsWith("project/")) {
-        // Legacy paths: normalize to canonical using context spaceId.
-        if (!spaceId) {
-          return null;
-        }
-        const rel = fileId.startsWith("pod/")
-          ? fileId.slice("pod/".length)
-          : fileId.slice("project/".length);
-        url = `/api/w/${workspaceId}/files/path/pod-${spaceId}/${rel}`;
-      } else if (isFramePackageRelativePath(fileId)) {
-        // Frames v2 package-relative useFile("./data.csv") — resolve against the Frame folder.
-        const packageRoot = resolveFramePackageRoot(props.framePath);
-        const relativePath = parseFramePackageRelativePath(fileId);
-        if (!packageRoot || !relativePath) {
-          return null;
-        }
-        const canonicalPath = resolvePackageRelativeToScopedPath({
-          relativePath,
-          frameRoot: packageRoot,
-        });
-        if (!canonicalPath) {
-          return null;
-        }
-        const encodedPath = canonicalPath
-          .split("/")
-          .map(encodeURIComponent)
-          .join("/");
-        url = `/api/w/${workspaceId}/files/path/${encodedPath}`;
-      } else {
-        url = `/api/w/${workspaceId}/files/${fileId}?action=view`;
-      }
-
-      const response = await clientFetch(url);
-      if (!response.ok) {
-        return null;
-      }
-
-      const resBuffer = await response.arrayBuffer();
-
-      return new Blob([resBuffer], {
-        type: response.headers.get("Content-Type") ?? undefined,
-      });
-    },
-    [workspaceId, conversationId, spaceId, props.framePath]
-  );
+  const { readFile, writeFile } = useFrameFiles({
+    workspaceId,
+    conversationId,
+    spaceId,
+    framePath: props.framePath,
+    packageRoot: props.framePackageRoot,
+    canWrite:
+      !isPublic &&
+      Boolean(props.frameId) &&
+      runtimeAccess.userIdentity.isAuthenticated,
+  });
 
   const createSandboxFunctionInvocation = useCallback(
     async (
@@ -1064,7 +999,8 @@ export const VisualizationActionIframe = forwardRef<
   useVisualizationDataHandler({
     conversationId,
     createSandboxFunctionInvocation,
-    getFileBlob,
+    readFile,
+    writeFile,
     onEditText,
     functionReferenceScope,
     setCodeDrawerOpened,

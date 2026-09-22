@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 describe("PodFrameVisualization", () => {
-  it("passes the stable Frame v2 identity to the iframe host", () => {
+  it("passes the Frame identity and package directory to the iframe host", () => {
     render(
       <PodFrameVisualization
         owner={{ sId: "w_current" } as LightWorkspaceType}
@@ -40,7 +40,10 @@ describe("PodFrameVisualization", () => {
     );
 
     expect(mocks.iframe).toHaveBeenCalledWith(
-      expect.objectContaining({ frameId: "fil_frame" })
+      expect.objectContaining({
+        frameId: "fil_frame",
+        framePackageRoot: "pod-spc_pod/Admin",
+      })
     );
   });
 });
