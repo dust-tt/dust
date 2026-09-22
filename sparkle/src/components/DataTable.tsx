@@ -190,7 +190,8 @@ export function getDataTableColumnPresets(
         meta?.type === "numeric" && "tabular-nums",
         meta?.type === "row-actions" && "w-12"
       ) || undefined,
-    sortable: meta?.type !== "row-actions",
+    // A column with no header text has nowhere to show a sort control.
+    sortable: meta?.type !== "row-actions" && column.columnDef.header !== "",
   };
 }
 
@@ -684,7 +685,9 @@ function renderHeaderContent<TData>(
   return (
     <div
       className={cn(
-        "flex items-center gap-1 whitespace-nowrap",
+        // Clip on the wrapper rather than in a span so headers that size
+        // themselves (e.g. a centered select-all checkbox) still fill the cell.
+        "flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap",
         headerAlign !== "left" && ALIGN_JUSTIFY_CLASS[headerAlign]
       )}
     >
@@ -1180,14 +1183,14 @@ DataTable.Head = function Head({
       type="button"
       onClick={onSort}
       className={cn(
-        "heading-sm flex w-full cursor-pointer items-center gap-1 whitespace-nowrap rounded-xs capitalize text-foreground",
+        "heading-sm flex w-full min-w-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-xs capitalize text-foreground",
         "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         "active:scale-[0.985] motion-reduce:active:scale-100",
         ALIGN_JUSTIFY_CLASS[presets.headerAlign]
       )}
     >
-      {children}
-      <Icon visual={getSortIcon(sorted)} size="xs" />
+      <span className="min-w-0 truncate">{children}</span>
+      <Icon visual={getSortIcon(sorted)} size="xs" className="shrink-0" />
     </button>
   ) : (
     children

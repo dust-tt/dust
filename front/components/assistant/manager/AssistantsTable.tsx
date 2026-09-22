@@ -507,7 +507,7 @@ const getTableColumns = ({
         />
       ),
       meta: {
-        className: "hidden @sm:w-16 @sm:table-cell",
+        className: "hidden @sm:w-24 @sm:table-cell",
         tooltip: "Messages in the last 30 days",
       },
     },
@@ -532,7 +532,7 @@ const getTableColumns = ({
         }
       },
       meta: {
-        className: "hidden @lg:w-20 @lg:table-cell",
+        className: "hidden @lg:w-28 @lg:table-cell",
         tooltip: "Active users in the last 30 days",
       },
     },
@@ -558,6 +558,7 @@ const getTableColumns = ({
     {
       header: "",
       accessorKey: "actions",
+      enableSorting: false,
       cell: (info: CellContext<RowData, number>) => {
         if (info.row.original.scope === "global") {
           return (
