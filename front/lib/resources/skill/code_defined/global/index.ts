@@ -9,6 +9,7 @@ import { pdfSkill } from "@app/lib/resources/skill/code_defined/global/pdf";
 import { pptxSkill } from "@app/lib/resources/skill/code_defined/global/pptx";
 import { projectsSkill } from "@app/lib/resources/skill/code_defined/global/projects";
 import { sandboxSkill } from "@app/lib/resources/skill/code_defined/global/sandbox";
+import { sheetToFrameSkill } from "@app/lib/resources/skill/code_defined/global/sheet_to_frame";
 import { skillAuthoringSkill } from "@app/lib/resources/skill/code_defined/global/skill_authoring";
 import { supportSkill } from "@app/lib/resources/skill/code_defined/global/support";
 import { workspaceAnalyticsSkill } from "@app/lib/resources/skill/code_defined/global/workspace_analytics";
@@ -27,6 +28,7 @@ export const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   pptxSkill,
   projectsSkill,
   sandboxSkill,
+  sheetToFrameSkill,
   skillAuthoringSkill,
   supportSkill,
   workspaceAnalyticsSkill,
