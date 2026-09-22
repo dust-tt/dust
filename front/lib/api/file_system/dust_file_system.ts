@@ -1097,7 +1097,6 @@ export class DustFileSystem {
    *
    * conversation-{cId}/file.txt → w/{wId}/conversations/{cId}/files/file.txt
    * pod-{pId}/dir/data.csv      → w/{wId}/pods/{pId}/files/dir/data.csv
-   * user-{uId}/notes.json      → w/{wId}/users/{uId}/files/notes.json
    *
    * Returns `null` for unrecognised prefixes or paths that have no file component
    * (bare mount roots like `conversation-{cId}`).
@@ -1122,15 +1121,6 @@ export class DustFileSystem {
         return null;
       }
       return `w/${workspaceId}/pods/${rest.slice(0, slash)}/files/${rest.slice(slash + 1)}`;
-    }
-
-    if (scopedPath.startsWith(SCOPED_PREFIX_USER)) {
-      const rest = scopedPath.slice(SCOPED_PREFIX_USER.length);
-      const slash = rest.indexOf("/");
-      if (slash < 0 || slash === rest.length - 1) {
-        return null;
-      }
-      return `w/${workspaceId}/users/${rest.slice(0, slash)}/files/${rest.slice(slash + 1)}`;
     }
 
     return null;

@@ -850,38 +850,6 @@ describe("conditional updates through Files paths", () => {
     expect(reopened.headers.get("ETag")).toBe(savedEtag);
   });
 
-  it("supports conditional updates in the authenticated user's GCS mount", async () => {
-    const { workspace, user } = await createPrivateApiMockRequest({
-      role: "user",
-    });
-    const path = `user-${user.sId}/notes.json`;
-    const mountPath = `w/${workspace.sId}/users/${user.sId}/files/notes.json`;
-    fileStorageMock.setObject(mountPath, "{}");
-
-    const loaded = await request(workspace, path);
-    expect(loaded.status).toBe(200);
-    expect(loaded.headers.get(DUST_FILE_CAN_WRITE_HEADER)).toBe("true");
-    const etag = loaded.headers.get("ETag");
-    assert(etag);
-
-    const saved = await request(workspace, path, {
-      method: "PUT",
-      headers: { "If-Match": etag },
-      body: '{"updated":true}',
-    });
-    expect(saved.status).toBe(200);
-    expect(saved.headers.get("ETag")).not.toBe(etag);
-    expect(fileStorageMock.getObject(mountPath)).toBe('{"updated":true}');
-
-    const stale = await request(workspace, path, {
-      method: "PUT",
-      headers: { "If-Match": etag },
-      body: "{}",
-    });
-    expect(stale.status).toBe(412);
-    expect(fileStorageMock.getObject(mountPath)).toBe('{"updated":true}');
-  });
-
   it("allows only one competing write for the same revision", async () => {
     const { workspace, path, mountPath, etag } = await setupRevisionedFile();
     const edits = ['{"writer":1}', '{"writer":2}'];
