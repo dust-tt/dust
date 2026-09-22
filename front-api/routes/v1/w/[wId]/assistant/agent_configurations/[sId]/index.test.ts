@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -202,6 +203,27 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
       }
     );
     expect(patchResponse.status).toBe(role === "admin" ? 200 : 403);
+  });
+
+  it.each([
+    "draft",
+    "pending",
+  ] as const)("keeps a legacy visible %s private from regular keys", async (status) => {
+    const { workspace, key, auth } = await setupTest("user");
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: `Legacy ${status}`,
+      scope: "visible",
+    });
+    await AgentConfigurationModel.update(
+      { status },
+      { where: { id: agent.id } }
+    );
+
+    const response = await getAgentConfiguration(workspace, key, agent.sId);
+    const data = await response.json();
+
+    expect(response.status, JSON.stringify(data)).toBe(403);
+    expect(data.error.type).toBe("workspace_auth_error");
   });
 
   it("does not report global or archived agents as editable with an admin key", async () => {

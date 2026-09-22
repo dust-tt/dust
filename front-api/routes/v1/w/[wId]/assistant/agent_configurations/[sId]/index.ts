@@ -312,12 +312,16 @@ app.get(
       });
     }
 
-    if (agentConfiguration.scope === "hidden" && !auth.isAdmin()) {
+    const isUnpublished =
+      agentConfiguration.scope === "hidden" ||
+      agentConfiguration.status === "draft" ||
+      agentConfiguration.status === "pending";
+    if ((!agentConfiguration.canRead || isUnpublished) && !auth.isAdmin()) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message: "Only admins can access unpublished agents.",
+          message: "Only admins can access this agent.",
         },
       });
     }
