@@ -66,13 +66,20 @@ export async function moveHandler(
     }
   }
 
-  if (statResult.value === null) {
-    return new Err(
-      new MCPError(`Source file not found: \`${source}\`.`, { tracked: false })
-    );
+  // GCS holds no directory objects, so a folder always stats as null. Fall back to a listing to
+  // tell a missing path from a directory: a Frames v2 package is a directory, and moving one is
+  // how it gets renamed.
+  let mimeType: string | null = null;
+  if (statResult.value) {
+    mimeType = stripMimeParameters(statResult.value.contentType);
+  } else {
+    const listResult = await dustFs.list(source, { maxFiles: 1 });
+    if (listResult.isErr() || listResult.value.length === 0) {
+      return new Err(
+        new MCPError(`Source not found: \`${source}\`.`, { tracked: false })
+      );
+    }
   }
-
-  const mimeType = stripMimeParameters(statResult.value.contentType);
 
   const moveResult = await moveCanonicalFile(auth, dustFs, source, dest);
   if (moveResult.isErr()) {
@@ -102,17 +109,18 @@ export async function moveHandler(
   > = [
     {
       type: "text",
-      text:
-        `Moved \`${source}\` to \`${dest}\`. ` +
-        getFilePreviewDirectiveInstruction({
-          contentType: mimeType,
-          path: dest,
-          title: dest.split("/").pop() ?? dest,
-        }),
+      text: mimeType
+        ? `Moved \`${source}\` to \`${dest}\`. ` +
+          getFilePreviewDirectiveInstruction({
+            contentType: mimeType,
+            path: dest,
+            title: dest.split("/").pop() ?? dest,
+          })
+        : `Moved \`${source}\` to \`${dest}\`.`,
     },
   ];
 
-  if (isAllSupportedFileContentType(mimeType)) {
+  if (mimeType && isAllSupportedFileContentType(mimeType)) {
     const destFileName = dest.split("/").pop() ?? dest;
     items.push({
       type: "resource",

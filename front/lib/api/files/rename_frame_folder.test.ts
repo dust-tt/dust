@@ -17,7 +17,10 @@ vi.mock("@app/lib/lock", async (importActual) => ({
 }));
 
 import { DustFileSystem } from "@app/lib/api/file_system";
-import { renameCanonicalFile } from "@app/lib/api/files/file_system_ops";
+import {
+  moveCanonicalFile,
+  renameCanonicalFile,
+} from "@app/lib/api/files/file_system_ops";
 import { setupFrameSourceStorageTest } from "@app/lib/api/frames/source_storage.test_utils";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -140,5 +143,84 @@ describe("renameCanonicalFile on a Frames v2 package folder", () => {
     assert(renamed.isOk(), renamed.isErr() ? renamed.error.message : undefined);
     // No Frame lives here, so no Frame lock or audit event is taken out.
     expect(emitMovedAuditLog).not.toHaveBeenCalled();
+  });
+});
+
+describe("moveCanonicalFile on a Frames v2 package folder", () => {
+  it("relocates the Frame, keeping its identity and publication", async () => {
+    const c = await setupFrameSourceStorageTest();
+    mockStorageCopies();
+    const fsResult = await DustFileSystem.forAgentLoop(c.auth, {
+      conversation: c.conversation,
+      scopedPaths: [c.sourceDirectoryPath],
+    });
+    assert(fsResult.isOk());
+    const dest = `conversation-${c.conversation.sId}/Archive/Health`;
+
+    const moved = await moveCanonicalFile(
+      c.auth,
+      fsResult.value,
+      c.sourceDirectoryPath,
+      dest
+    );
+
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    const reloaded = await FileResource.fetchById(c.auth, c.frame.sId);
+    assert(reloaded);
+    // A move across directories renames the Frame too: the folder is the name.
+    expect(reloaded.toScopedPath(c.auth)).toBe(
+      `${dest}/${FRAME_MANIFEST_FILE}`
+    );
+    expect(reloaded.useCaseMetadata?.activePublicationId).toBe("publication-1");
+  });
+
+  it("trims the destination folder, so the bound cannot be slipped by whitespace", async () => {
+    const c = await setupFrameSourceStorageTest();
+    mockStorageCopies();
+    const fsResult = await DustFileSystem.forAgentLoop(c.auth, {
+      conversation: c.conversation,
+      scopedPaths: [c.sourceDirectoryPath],
+    });
+    assert(fsResult.isOk());
+    // Validation trims, so a trailing space would otherwise pass a 128-character check and
+    // persist a 129-character Frame name.
+    const padded = "a".repeat(128);
+
+    const moved = await moveCanonicalFile(
+      c.auth,
+      fsResult.value,
+      c.sourceDirectoryPath,
+      `conversation-${c.conversation.sId}/${padded} `
+    );
+
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    const reloaded = await FileResource.fetchById(c.auth, c.frame.sId);
+    expect(reloaded?.toScopedPath(c.auth)).toBe(
+      `conversation-${c.conversation.sId}/${padded}/${FRAME_MANIFEST_FILE}`
+    );
+  });
+
+  it("rejects a destination folder that is not a valid Frame name", async () => {
+    const c = await setupFrameSourceStorageTest();
+    mockStorageCopies();
+    const fsResult = await DustFileSystem.forAgentLoop(c.auth, {
+      conversation: c.conversation,
+      scopedPaths: [c.sourceDirectoryPath],
+    });
+    assert(fsResult.isOk());
+
+    const moved = await moveCanonicalFile(
+      c.auth,
+      fsResult.value,
+      c.sourceDirectoryPath,
+      `conversation-${c.conversation.sId}/${"a".repeat(200)}`
+    );
+
+    assert(moved.isErr());
+    expect(moved.error.code).toBe("invalid_path");
+    const reloaded = await FileResource.fetchById(c.auth, c.frame.sId);
+    expect(reloaded?.toScopedPath(c.auth)).toBe(
+      `conversation-${c.conversation.sId}/Status/${FRAME_MANIFEST_FILE}`
+    );
   });
 });
