@@ -684,11 +684,13 @@ function renderHeaderContent<TData>(
   return (
     <div
       className={cn(
-        "flex min-w-0 items-center gap-1 whitespace-nowrap",
+        // Clip on the wrapper rather than in a span so headers that size
+        // themselves (e.g. a centered select-all checkbox) still fill the cell.
+        "flex min-w-0 items-center gap-1 overflow-hidden whitespace-nowrap",
         headerAlign !== "left" && ALIGN_JUSTIFY_CLASS[headerAlign]
       )}
     >
-      <span className="min-w-0 truncate">{content}</span>
+      {content}
     </div>
   );
 }
