@@ -101,8 +101,6 @@ export const ROLE_REGISTRY: Record<
     publish: { verbs: ["publish"], levels: ["type"] },
   },
   skill: {
-    // The workspace global group holds this instance role on `skill:-1`, making every skill
-    // readable. The same role can also be granted on a specific skill.
     reader: { verbs: ["read"], levels: ["instance"] },
     editor: { verbs: ["read", "write", "admin"], levels: ["instance"] },
     create: { verbs: ["create"], levels: ["type"] },
