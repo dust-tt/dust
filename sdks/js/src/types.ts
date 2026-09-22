@@ -918,6 +918,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_fair_use_awu_limit"
   | "fixed_window_fair_use"
   | "remote_db_query_identity_labels"
+  | "discovery_homepage"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
