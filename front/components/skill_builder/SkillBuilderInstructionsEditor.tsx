@@ -756,7 +756,12 @@ export function SkillBuilderInstructionsEditor({
 
   // Sync external changes to the editor content
   useEffect(() => {
-    if (!editor || isDiffMode || !instructionsHtmlField.value) {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      isDiffMode ||
+      !instructionsHtmlField.value
+    ) {
       return;
     }
 
