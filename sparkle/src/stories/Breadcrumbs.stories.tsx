@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import React from "react";
 import { fn } from "storybook/test";
 
 import {
@@ -14,7 +15,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `Displays the user's location within a hierarchy as a trail of clickable segments. Driven by an **items** array, where each item has a \`label\` and optional \`icon\`, \`href\`, or \`onClick\`. Choose a **size** (\`xs\` or \`sm\`); long trails automatically collapse middle segments into an ellipsis menu and truncate overflowing labels.
+        component: `Displays the user's location within a hierarchy as a trail of clickable segments. Driven by an **items** array, where each item has a \`label\` and optional \`icon\`, \`href\`, or \`onClick\`. Choose a **size** (\`xs\` or \`sm\`); long trails automatically collapse middle segments into an ellipsis menu and truncate overflowing labels, and **collapseIntermediates** renders each middle segment as its own linked ellipsis for narrow containers.
 
 **When to use**
 - To show and navigate the path to the current page within a nested structure (spaces, folders, data sources).
@@ -72,6 +73,35 @@ export const EllipsisCollapse: Story = {
       { label: "Board deck" },
     ],
   },
+};
+
+/**
+ * For narrow containers such as a menu, `collapseIntermediates` renders every
+ * level between the root and the current location as its own linked ellipsis,
+ * full name on hover, so depth stays visible and each level is one click away.
+ * A long current label truncates rather than overflowing the container.
+ * @summary Narrow trail with one linked ellipsis per intermediate level.
+ */
+export const CollapsedIntermediates: Story = {
+  args: {
+    size: "xs",
+    collapseIntermediates: true,
+    items: [
+      { label: "All", onClick: fn() },
+      { label: "Series C", onClick: fn(), icon: Building04 },
+      { label: "Connected Data", onClick: fn() },
+      { label: "Engineering", onClick: fn(), icon: Folder },
+      { label: "Runbooks", onClick: fn(), icon: Folder },
+      { label: "Incident response playbook" },
+    ],
+  },
+  decorators: [
+    (Story) => (
+      <div className="w-80 rounded-lg border border-border p-2">
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 /**
