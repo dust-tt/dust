@@ -2,6 +2,7 @@ import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/K
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SkillDescriptionReadOnlyEditor } from "@app/components/editor/SkillDescriptionEditor";
+import { DiscoverableSkillsList } from "@app/components/skills/DiscoverableSkillsList";
 import { RedactedSkillMessage } from "@app/components/skills/RedactedSkillMessage";
 import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
 import {
@@ -13,7 +14,6 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
-import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type {
   SkillRelations,
@@ -49,15 +49,6 @@ export function SkillInfoTab({
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
 
   const showDiscoverableSkills = skill.sId === "discover_skills";
-
-  const { skills: discoverableSkills, isSkillsLoading: isDiscoverableLoading } =
-    useSkills({
-      owner,
-      status: "active",
-      availability: "users_and_agents",
-      disabled: !showDiscoverableSkills,
-    });
-
   const shouldLoadSpaces = skill.requestedSpaceIds.length > 0;
   const { spaces: spacesFromHook, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
@@ -238,33 +229,7 @@ export function SkillInfoTab({
       )}
 
       {showDiscoverableSkills && (
-        <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground">Discoverable Skills</div>
-          {isDiscoverableLoading ? (
-            <div className="flex flex-row items-center gap-2">
-              <Spinner size="xs" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {discoverableSkills.map((s) => {
-                const SkillAvatar = getSkillAvatarIcon(s);
-                return (
-                  <Tooltip
-                    key={s.sId}
-                    label={s.userFacingDescription}
-                    trigger={
-                      <div className="flex flex-row items-center gap-2">
-                        <SkillAvatar size="xs" />
-                        <div className="truncate">{s.name}</div>
-                      </div>
-                    }
-                    tooltipTriggerAsChild
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <DiscoverableSkillsList key={owner.sId} owner={owner} />
       )}
 
       {shouldLoadSpaces ? (
