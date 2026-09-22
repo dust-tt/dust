@@ -228,6 +228,8 @@ export function useSearchSkills({
     skillsFetcher,
     {
       disabled: disabled || isDebouncing,
+      // Keep results visible while the next query debounces or loads, instead of
+      // flashing a loading placeholder on every keystroke.
       keepPreviousData: true,
     }
   );
