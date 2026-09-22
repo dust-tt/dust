@@ -1,6 +1,5 @@
 import {
   buildConsumptionScopeQuery,
-  CARDINALITY_PRECISION_THRESHOLD,
   COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
 } from "@app/lib/api/analytics/consumption/scope";
@@ -21,8 +20,9 @@ export const DISCOVERY_TRENDING_WINDOW_DAYS = 7;
 
 // Intentionally querying more than required so callers can
 // apply current-viewer permissions before limiting it.
-const TRENDING_CANDIDATES_PER_TYPE = 25;
-const DISCOVERY_TRENDING_CACHE_TTL_MS = 5 * 60 * 1000;
+const TRENDING_CANDIDATES_PER_TYPE = 100;
+const TRENDING_CARDINALITY_PRECISION_THRESHOLD = 1_000;
+const DISCOVERY_TRENDING_CACHE_TTL_MS = 60 * 60 * 1000;
 const DISCOVERY_TRENDING_ALGORITHM_VERSION = "v1";
 
 type ActiveUsersAggregation = {
@@ -31,18 +31,30 @@ type ActiveUsersAggregation = {
   };
 };
 
-type TrendingBucket = {
+type CandidateSelectionBucket = {
   key?: string;
+};
+
+type CandidateMetricsBucket = {
   current?: ActiveUsersAggregation;
   previous?: ActiveUsersAggregation;
 };
 
-type TrendingAggregations = {
+type CandidateSelectionAggregations = {
   agents?: {
-    buckets?: TrendingBucket[];
+    buckets?: Array<CandidateSelectionBucket | null>;
   };
   skills?: {
-    buckets?: TrendingBucket[];
+    buckets?: Array<CandidateSelectionBucket | null>;
+  };
+};
+
+type CandidateMetricsAggregations = {
+  agents?: {
+    buckets?: Record<string, CandidateMetricsBucket | null>;
+  };
+  skills?: {
+    buckets?: Record<string, CandidateMetricsBucket | null>;
   };
 };
 
@@ -71,15 +83,31 @@ function periodAggregation(
       users: {
         cardinality: {
           field: CONSUMPTION_DIMENSION_FIELDS.user,
-          precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+          precision_threshold: TRENDING_CARDINALITY_PRECISION_THRESHOLD,
         },
       },
     },
   };
 }
 
-function resourceAggregation(
+function candidateSelectionAggregation(
+  field: string
+): estypes.AggregationsAggregationContainer {
+  // This is intentionally a heuristic shortlist: shard-local terms truncation can omit a globally
+  // popular resource. That tradeoff keeps candidate selection bounded; the metrics query below
+  // recomputes distinct-user growth across all shards for every selected candidate.
+  return {
+    terms: {
+      field,
+      size: TRENDING_CANDIDATES_PER_TYPE,
+      order: { _count: "desc" },
+    },
+  };
+}
+
+function candidateMetricsAggregation(
   field: string,
+  resourceIds: string[],
   {
     previousStart,
     currentStart,
@@ -91,10 +119,13 @@ function resourceAggregation(
   }
 ): estypes.AggregationsAggregationContainer {
   return {
-    terms: {
-      field,
-      size: TRENDING_CANDIDATES_PER_TYPE,
-      order: { _count: "desc" },
+    filters: {
+      filters: Object.fromEntries(
+        resourceIds.map((resourceId) => [
+          resourceId,
+          { term: { [field]: resourceId } },
+        ])
+      ),
     },
     aggs: {
       current: periodAggregation(currentStart, end),
@@ -112,22 +143,40 @@ function incompleteTrendingSnapshot() {
   );
 }
 
-function candidatesFromBuckets(
+function candidateIdsFromBuckets(
+  buckets: Array<CandidateSelectionBucket | null>
+): Result<string[], ElasticsearchError> {
+  const resourceIds: string[] = [];
+
+  for (const bucket of buckets) {
+    const resourceId = bucket?.key;
+    if (!isString(resourceId)) {
+      return incompleteTrendingSnapshot();
+    }
+    resourceIds.push(resourceId);
+  }
+
+  return new Ok([...new Set(resourceIds)]);
+}
+
+function candidatesFromMetrics(
   dimension: SearchUsageDimension,
-  buckets: TrendingBucket[]
+  resourceIds: string[],
+  buckets: Record<string, CandidateMetricsBucket | null> | undefined
 ): Result<DiscoveryTrendingCandidate[], ElasticsearchError> {
   const candidates: DiscoveryTrendingCandidate[] = [];
 
-  for (const bucket of buckets) {
-    const resourceId = bucket.key;
-    const currentUsers = bucket.current?.users?.value;
-    const previousUsers = bucket.previous?.users?.value;
+  for (const resourceId of resourceIds) {
+    const bucket = buckets?.[resourceId];
+    const currentUsers = bucket?.current?.users?.value;
+    const previousUsers = bucket?.previous?.users?.value;
     if (
-      !isString(resourceId) ||
       !isNumber(currentUsers) ||
       !Number.isFinite(currentUsers) ||
+      currentUsers < 0 ||
       !isNumber(previousUsers) ||
-      !Number.isFinite(previousUsers)
+      !Number.isFinite(previousUsers) ||
+      previousUsers < 0
     ) {
       return incompleteTrendingSnapshot();
     }
@@ -160,55 +209,133 @@ async function fetchDiscoveryTrendingCandidatesUncached(
     previousStart.getUTCDate() - DISCOVERY_TRENDING_WINDOW_DAYS
   );
 
-  const query = buildConsumptionScopeQuery({
+  const commonFilters: estypes.QueryDslQueryContainer[] = [
+    { terms: { context_origin: USER_USAGE_ORIGINS } },
+    { exists: { field: CONSUMPTION_DIMENSION_FIELDS.user } },
+  ];
+  const selectionQuery = buildConsumptionScopeQuery({
     auth,
-    startDate: previousStart.toISOString(),
+    startDate: currentStart.toISOString(),
     endDate: end.toISOString(),
-    extraFilters: [
-      { terms: { context_origin: USER_USAGE_ORIGINS } },
-      { exists: { field: CONSUMPTION_DIMENSION_FIELDS.user } },
-    ],
+    extraFilters: commonFilters,
   });
-  const result = await searchConsumptionAnalytics<never, TrendingAggregations>(
-    query,
-    {
-      size: 0,
-      track_total_hits: false,
-      allow_partial_search_results: false,
-      aggregations: {
-        agents: resourceAggregation(CONSUMPTION_DIMENSION_FIELDS.agent, {
-          previousStart,
-          currentStart,
-          end,
-        }),
-        skills: resourceAggregation(CONSUMPTION_DIMENSION_FIELDS.skill, {
-          previousStart,
-          currentStart,
-          end,
-        }),
-      },
-    }
-  );
-  if (result.isErr()) {
-    return result;
+  const selectionResult = await searchConsumptionAnalytics<
+    never,
+    CandidateSelectionAggregations
+  >(selectionQuery, {
+    size: 0,
+    track_total_hits: false,
+    allow_partial_search_results: false,
+    aggregations: {
+      agents: candidateSelectionAggregation(CONSUMPTION_DIMENSION_FIELDS.agent),
+      skills: candidateSelectionAggregation(CONSUMPTION_DIMENSION_FIELDS.skill),
+    },
+  });
+  if (selectionResult.isErr()) {
+    return selectionResult;
   }
 
-  const agents = result.value.aggregations?.agents?.buckets;
-  const skills = result.value.aggregations?.skills?.buckets;
+  const agentBuckets = selectionResult.value.aggregations?.agents?.buckets;
+  const skillBuckets = selectionResult.value.aggregations?.skills?.buckets;
   if (
-    result.value.timed_out ||
-    (result.value._shards?.failed ?? 0) > 0 ||
-    !Array.isArray(agents) ||
-    !Array.isArray(skills)
+    selectionResult.value.timed_out ||
+    (selectionResult.value._shards?.failed ?? 0) > 0 ||
+    !Array.isArray(agentBuckets) ||
+    !Array.isArray(skillBuckets)
   ) {
     return incompleteTrendingSnapshot();
   }
 
-  const agentCandidates = candidatesFromBuckets("agent", agents);
+  const agentIdsResult = candidateIdsFromBuckets(agentBuckets);
+  if (agentIdsResult.isErr()) {
+    return agentIdsResult;
+  }
+  const skillIdsResult = candidateIdsFromBuckets(skillBuckets);
+  if (skillIdsResult.isErr()) {
+    return skillIdsResult;
+  }
+
+  const agentIds = agentIdsResult.value;
+  const skillIds = skillIdsResult.value;
+  if (agentIds.length === 0 && skillIds.length === 0) {
+    return new Ok([]);
+  }
+
+  const candidateFilters: estypes.QueryDslQueryContainer[] = [];
+  if (agentIds.length > 0) {
+    candidateFilters.push({
+      terms: { [CONSUMPTION_DIMENSION_FIELDS.agent]: agentIds },
+    });
+  }
+  if (skillIds.length > 0) {
+    candidateFilters.push({
+      terms: { [CONSUMPTION_DIMENSION_FIELDS.skill]: skillIds },
+    });
+  }
+
+  const metricsQuery = buildConsumptionScopeQuery({
+    auth,
+    startDate: previousStart.toISOString(),
+    endDate: end.toISOString(),
+    extraFilters: [
+      ...commonFilters,
+      {
+        bool: {
+          should: candidateFilters,
+          minimum_should_match: 1,
+        },
+      },
+    ],
+  });
+  const aggregations: Record<string, estypes.AggregationsAggregationContainer> =
+    {};
+  if (agentIds.length > 0) {
+    aggregations.agents = candidateMetricsAggregation(
+      CONSUMPTION_DIMENSION_FIELDS.agent,
+      agentIds,
+      { previousStart, currentStart, end }
+    );
+  }
+  if (skillIds.length > 0) {
+    aggregations.skills = candidateMetricsAggregation(
+      CONSUMPTION_DIMENSION_FIELDS.skill,
+      skillIds,
+      { previousStart, currentStart, end }
+    );
+  }
+
+  const metricsResult = await searchConsumptionAnalytics<
+    never,
+    CandidateMetricsAggregations
+  >(metricsQuery, {
+    size: 0,
+    track_total_hits: false,
+    allow_partial_search_results: false,
+    aggregations,
+  });
+  if (metricsResult.isErr()) {
+    return metricsResult;
+  }
+  if (
+    metricsResult.value.timed_out ||
+    (metricsResult.value._shards?.failed ?? 0) > 0
+  ) {
+    return incompleteTrendingSnapshot();
+  }
+
+  const agentCandidates = candidatesFromMetrics(
+    "agent",
+    agentIds,
+    metricsResult.value.aggregations?.agents?.buckets
+  );
   if (agentCandidates.isErr()) {
     return agentCandidates;
   }
-  const skillCandidates = candidatesFromBuckets("skill", skills);
+  const skillCandidates = candidatesFromMetrics(
+    "skill",
+    skillIds,
+    metricsResult.value.aggregations?.skills?.buckets
+  );
   if (skillCandidates.isErr()) {
     return skillCandidates;
   }
@@ -244,8 +371,9 @@ const fetchCachedDiscoveryTrendingCandidates = cacheWithRedisResult(
 /**
  * @cc [owner:frankaloia,label:product;backend;performance;error-handling] discovery-trending-candidates
  * Candidates MUST compare approximate distinct attributed human users in the last rolling seven
- * days against the preceding seven days, from one bounded agent-and-skill query evaluated when its
- * five-minute workspace cache is populated.
+ * days against the preceding seven days. A bounded query MUST select the most-used agent and skill
+ * candidates from the current seven-day window, then one filtered query MUST compute their metrics
+ * across all shards when the one-hour workspace cache is populated.
  * A timed-out, partial, or malformed response MUST return an error rather than treating missing data
  * as zero. Results MUST have positive growth, ordered by growth, current users, type, then id, and
  * cached without viewer-specific permission filtering.
