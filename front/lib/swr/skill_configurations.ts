@@ -19,6 +19,7 @@ import type {
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
   SkillSearchSort,
+  SkillSearchSortOrder,
 } from "@app/types/api/skills";
 import type { ImportSkillsResponseBody } from "@app/types/api/skills/detection/github/import_skills";
 import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
@@ -193,6 +194,7 @@ export function useSearchSkills({
   cursor,
   limit,
   sortBy,
+  sortOrder,
   permissionFiltering,
   filters,
   disabled,
@@ -202,6 +204,7 @@ export function useSearchSkills({
   cursor?: string | null;
   limit?: number;
   sortBy?: SkillSearchSort;
+  sortOrder?: SkillSearchSortOrder;
   permissionFiltering?: SkillSearchPermissionFiltering;
   filters?: SkillSearchFilters;
   disabled?: boolean;
@@ -224,6 +227,7 @@ export function useSearchSkills({
     cursor,
     limit,
     sortBy,
+    sortOrder,
     permissionFiltering,
   };
   const skillsFetcher = async () => {

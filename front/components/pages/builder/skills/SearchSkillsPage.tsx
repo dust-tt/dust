@@ -14,7 +14,11 @@ import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSearchSkills } from "@app/lib/swr/skill_configurations";
-import type { SkillSearchFilters } from "@app/types/api/skills";
+import type {
+  SkillSearchFilters,
+  SkillSearchSort,
+  SkillSearchSortOrder,
+} from "@app/types/api/skills";
 import {
   Button,
   EmptyCTA,
@@ -54,10 +58,18 @@ function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
     handlePaginationChange,
     resetPagination,
   } = useCursorPaginationForDataTable(SKILL_SEARCH_PAGE_SIZE);
-  const [previousSearchTerm, setPreviousSearchTerm] = useState(searchTerm);
+  const [selectedSort, setSelectedSort] = useState<{
+    sortBy: Exclude<SkillSearchSort, "relevance">;
+    sortOrder: SkillSearchSortOrder;
+  } | null>(null);
+  const sortBy =
+    selectedSort?.sortBy ?? (searchTerm.trim() ? "relevance" : "usage");
+  const sortOrder = selectedSort?.sortOrder;
+  const queryKey = JSON.stringify({ searchTerm, filters, sortBy, sortOrder });
+  const [previousQueryKey, setPreviousQueryKey] = useState(queryKey);
 
-  if (searchTerm !== previousSearchTerm) {
-    setPreviousSearchTerm(searchTerm);
+  if (queryKey !== previousQueryKey) {
+    setPreviousQueryKey(queryKey);
     resetPagination();
   }
 
@@ -74,7 +86,8 @@ function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
     filters,
     cursor: cursorPagination.cursor,
     limit: SKILL_SEARCH_PAGE_SIZE,
-    sortBy: searchTerm.trim() ? "relevance" : "usage",
+    sortBy,
+    sortOrder,
   });
 
   if (isSkillsLoading && skills.length === 0) {
@@ -118,6 +131,26 @@ function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
             }
           }}
           hasMore={hasMore}
+          sorting={
+            sortBy === "relevance"
+              ? []
+              : [{ id: sortBy, desc: sortOrder !== "asc" }]
+          }
+          setSorting={([sort]) => {
+            switch (sort?.id) {
+              case "name":
+              case "usage":
+              case "updatedAt":
+                setSelectedSort({
+                  sortBy: sort.id,
+                  sortOrder: sort.desc ? "desc" : "asc",
+                });
+                break;
+              default:
+                setSelectedSort(null);
+            }
+          }}
+          isLoading={isSkillsLoading}
         />
       ) : !isSkillsError ? (
         <EmptyCTA

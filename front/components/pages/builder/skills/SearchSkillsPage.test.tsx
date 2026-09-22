@@ -155,6 +155,125 @@ async function setup({
 }
 
 describe("search-backed Manage Skills", () => {
+  it("sorts Name, Usage and Last edited in both directions without reordering the server page", async () => {
+    const { skill, search, fetcherWithBody, mount } = await setup();
+    search.mockResolvedValue({
+      skills: [
+        { ...skill, name: "Zebra" },
+        { ...skill, sId: "other-skill", name: "Alpha" },
+      ],
+      hasMore: false,
+      nextCursor: null,
+    });
+    mount();
+    await screen.findByRole("button", { name: /Zebra/ });
+    expect(screen.getByRole("columnheader", { name: "Usage" })).toHaveAttribute(
+      "aria-sort",
+      "descending"
+    );
+
+    for (const { label, sortBy, orders } of [
+      { label: "Name", sortBy: "name", orders: ["asc", "desc"] },
+      { label: "Usage", sortBy: "usage", orders: ["desc", "asc"] },
+      { label: "Last edited", sortBy: "updatedAt", orders: ["desc", "asc"] },
+    ]) {
+      for (const sortOrder of orders) {
+        await userEvent.click(screen.getByRole("button", { name: label }));
+        await waitFor(() =>
+          expect(fetcherWithBody).toHaveBeenLastCalledWith([
+            expect.any(String),
+            expect.objectContaining({ sortBy, sortOrder, cursor: null }),
+            "POST",
+          ])
+        );
+        expect(
+          screen.getByRole("columnheader", { name: label })
+        ).toHaveAttribute(
+          "aria-sort",
+          sortOrder === "asc" ? "ascending" : "descending"
+        );
+        expect(screen.getAllByRole("row")[1]).toHaveTextContent("Zebra");
+      }
+    }
+  });
+
+  it("resets pagination when sorting, keeps existing results while loading, and can return to relevance", async () => {
+    const { skill, search, fetcherWithBody, mount } = await setup();
+    search.mockResolvedValueOnce({
+      skills: [skill],
+      hasMore: true,
+      nextCursor: "next-page",
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    search.mockResolvedValue({
+      skills: [{ ...skill, name: "Second page" }],
+      hasMore: false,
+      nextCursor: null,
+    });
+    const [, nextButton] = screen
+      .getAllByRole("button", { name: "" })
+      .slice(-2);
+    await userEvent.click(nextButton);
+    await screen.findByRole("button", { name: /Second page/ });
+
+    const pending = Promise.withResolvers<SearchSkillsResponseBody>();
+    search.mockReturnValueOnce(pending.promise);
+    await userEvent.click(screen.getByRole("button", { name: "Name" }));
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        expect.objectContaining({
+          sortBy: "name",
+          sortOrder: "asc",
+          cursor: null,
+        }),
+        "POST",
+      ])
+    );
+    expect(
+      screen.getByRole("button", { name: /Second page/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("status", { name: "Loading skills" })
+    ).not.toBeInTheDocument();
+    search.mockResolvedValue({
+      skills: [skill],
+      hasMore: false,
+      nextCursor: null,
+    });
+    await act(async () => {
+      pending.resolve({ skills: [skill], hasMore: false, nextCursor: null });
+    });
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    await userEvent.type(screen.getByLabelText("Search skills"), "report");
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        expect.objectContaining({
+          query: "report",
+          sortBy: "name",
+          sortOrder: "asc",
+        }),
+        "POST",
+      ])
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Name" }));
+    await userEvent.click(screen.getByRole("button", { name: "Name" }));
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        expect.objectContaining({
+          query: "report",
+          sortBy: "relevance",
+          cursor: null,
+        }),
+        "POST",
+      ])
+    );
+  });
+
   it("loads All by usage and fetches full details only when selected", async () => {
     const { skill, context, fetcherWithBody, fetcher, mount } = await setup();
     const { rerender } = mount();
