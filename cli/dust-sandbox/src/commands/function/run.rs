@@ -20,7 +20,8 @@ const DUST_RUNNER_TIMINGS_MS_KEY: &str = "_dustTimingsMs";
 ///
 /// Fast path (warm enabled): ensure this publication's worker is ready, then
 /// one unix-socket round trip. Durable path (warm off): cold Bun spawn, with
-/// an optional local archive / sha cache so resolve skips gcsfuse.
+/// an optional local archive / sha cache so resolve never touches individual
+/// gcsfuse-backed function objects.
 ///
 /// The result is always a protocol v3 envelope on stdout, exit 0, including for
 /// runner `ok:false` and for failures that keep the function from being spawned
@@ -77,8 +78,8 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
     }
     let warm_attempt_ms = warm_started.elapsed().as_millis() as u64;
 
-    // Cold path: sha cache (filled by the archive/ensure step) or legacy
-    // gcsfuse readdir of DUST_FUNCTIONS_DIR.
+    // Cold path: sha cache (filled by the archive/ensure step) or resolve by
+    // name inside the local extract. No gcsfuse readdir of individual files.
     let stamped_sha256 = stamped_bundle_sha256(&input);
     let resolve_started = Instant::now();
     let (resolved, resolve_kind) = match stamped_sha256
@@ -87,7 +88,7 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
         .and_then(warm::cached_bundle_path)
     {
         Some(cached) => (Ok(cached), ResolveKind::Cache),
-        None => (resolve_existing(name), ResolveKind::Gcsfuse),
+        None => (resolve_existing(name), ResolveKind::Extract),
     };
     let resolve_ms = resolve_started.elapsed().as_millis() as u64;
 
@@ -98,7 +99,7 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
             (spawned, Some(handler))
         }
         // resolve_existing already emitted the `{error}` line; the message
-        // (bad name, unset dir, missing or ambiguous bundle) propagates.
+        // (bad name, unset dir, missing archive or bundle) propagates.
         Err(e) => (Err(e), None),
     };
     let child_ms = child_started.elapsed().as_millis() as u64;
@@ -106,8 +107,8 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
 
     if let Some(handler) = &handler {
         // Cache the bundle this run just read so the next cold run of this
-        // publish skips gcsfuse. No-op when the run already came from the
-        // cache. Best-effort; never affects this run's outcome.
+        // publish skips the extract readdir. No-op when the run already came
+        // from the cache. Best-effort; never affects this run's outcome.
         if let Some(sha256) = stamped_sha256.as_deref() {
             warm::populate_bundle_cache(handler, sha256);
         }

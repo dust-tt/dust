@@ -190,27 +190,16 @@ const SANDBOX_DATABASE_MAX_SIZE_BYTES = 1024 * 1024 * 1024;
  * is still sent because the shim reads it, and dropping a name from the ABI needs a runner-first
  * rollout for no gain.
  */
-export function sandboxDatabaseExecEnvVars({
-  framePublicationDescriptorPath, // TODO (frames v2) - remove this once we have published the new build.
-}: {
-  framePublicationDescriptorPath?: string;
-} = {}): {
+export function sandboxDatabaseExecEnvVars(): {
   DUST_POD_DATABASES_DIR: string;
   DUST_POD_DATABASE_MAX_SIZE_BYTES: string;
   DUST_POD_DATABASE_PREFIX: string;
-  DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH?: string;
 } {
   return {
     DUST_POD_DATABASES_DIR: SANDBOX_STATE_DATABASES_DIR,
     DUST_POD_DATABASE_MAX_SIZE_BYTES: String(SANDBOX_DATABASE_MAX_SIZE_BYTES),
     // Empty means unprefixed, which is what the shim reads an absent value as.
     DUST_POD_DATABASE_PREFIX: "",
-    ...(framePublicationDescriptorPath
-      ? {
-          DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH:
-            framePublicationDescriptorPath,
-        }
-      : {}),
   };
 }
 

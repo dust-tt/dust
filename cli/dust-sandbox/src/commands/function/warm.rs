@@ -510,17 +510,20 @@ export default {{
         let home = tempfile::tempdir().expect("home tempdir");
         std::env::set_var("HOME", home.path());
 
-        // Publication layout: .../<publication_id>/functions/<slug>.ts
+        // Publication layout: .../<publication_id>/functions/ + sibling functions.tar
         let pub_root = tempfile::tempdir().expect("publication tempdir");
-        let functions_dir = pub_root.path().join("pub-test").join("functions");
+        let pub_dir = pub_root.path().join("pub-test");
+        let functions_dir = pub_dir.join("functions");
         std::fs::create_dir_all(&functions_dir).expect("mkdir functions");
-        std::fs::write(functions_dir.join("greet.ts"), HELLO_FIXTURE).expect("fixture");
-        std::fs::write(
-            functions_dir.join("greet-environment.ts"),
-            environment_fixture(),
-        )
-        .expect("environment fixture");
-        std::fs::write(functions_dir.join("greet-aux.ts"), HELLO_FIXTURE).expect("sibling fixture");
+        let environment_src = environment_fixture();
+        super::super::archive::write_test_functions_tar(
+            &pub_dir,
+            &[
+                ("greet.ts", HELLO_FIXTURE),
+                ("greet-environment.ts", &environment_src),
+                ("greet-aux.ts", HELLO_FIXTURE),
+            ],
+        );
 
         std::env::set_var("DUST_FUNCTIONS_DIR", &functions_dir);
         std::env::set_var(WARM_ENABLED_ENV, "1");

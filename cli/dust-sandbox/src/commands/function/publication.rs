@@ -5,9 +5,8 @@
 //! locally, starts the worker, and waits until every slug is imported. Later
 //! invokes pay only the socket round trip.
 //!
-//! GCS rule: when `functions.tar` exists, at most one fuse touch (the tar).
-//! Local ready / extract skips the mount entirely. Legacy publications without
-//! a tar still read from gcsfuse once at ensure time.
+//! GCS rule: at most one fuse touch (`functions.tar`). Local ready / extract
+//! skips the mount entirely.
 //!
 //! Lock rule: `flock` on a local lockfile so a crash releases the lock. Waiters
 //! bound their wait and fail open (return `None`) rather than wedge the Frame.
@@ -23,8 +22,7 @@ use std::time::{Duration, Instant};
 use tokio::process::Command;
 
 use super::archive;
-use super::is_valid_name;
-use super::warm::{self, ensure_trusted_warm_dir};
+use super::warm::ensure_trusted_warm_dir;
 use super::RUNNER_JS;
 
 const SANDBOX_TOKEN_ENV: &str = "DUST_SANDBOX_TOKEN";
@@ -33,7 +31,6 @@ const POD_USER_IDENTITY_ENV: &str = "DUST_POD_USER_IDENTITY";
 const READY_MARKER: &str = "ready";
 const LOCK_FILE: &str = "lock";
 const SOCKET_NAME: &str = "worker.sock";
-const BUNDLES_DIR: &str = "bundles";
 
 /// Bound on waiting for another process's ensure (or our own spawn) to write
 /// the ready marker. Past this we fail open so the Frame never wedges.
@@ -132,7 +129,7 @@ pub async fn ensure_publication_worker() -> Option<PathBuf> {
             if paths.ready.is_file() && is_listening(&paths.socket) {
                 return Some(paths.socket);
             }
-            let result = seed_under_lock(&functions_dir, &publication_id, &paths).await;
+            let result = seed_under_lock(&functions_dir, &paths).await;
             // Lock released when lock_file drops.
             drop(lock_file);
             result
@@ -177,11 +174,7 @@ async fn wait_until_ready(paths: &PublicationPaths, budget: Duration) -> Option<
     None
 }
 
-async fn seed_under_lock(
-    functions_dir: &Path,
-    publication_id: &str,
-    paths: &PublicationPaths,
-) -> Option<PathBuf> {
+async fn seed_under_lock(functions_dir: &Path, paths: &PublicationPaths) -> Option<PathBuf> {
     // Clear a half-finished prior attempt before we start.
     let _ = std::fs::remove_file(&paths.ready);
     if !is_listening(&paths.socket) {
@@ -192,58 +185,9 @@ async fn seed_under_lock(
         return wait_until_ready(paths, ENSURE_WAIT).await;
     }
 
-    let bundles_dir = materialize_local_bundles(functions_dir, publication_id, paths)?;
+    let bundles_dir = archive::ensure_functions_archive_extracted(functions_dir)?;
     spawn_publication_worker(&bundles_dir, paths)?;
     wait_until_ready(paths, ENSURE_WAIT).await
-}
-
-/// Local directory the worker serves from — never the gcsfuse mount after
-/// this returns (archive extract or a one-shot legacy copy).
-fn materialize_local_bundles(
-    functions_dir: &Path,
-    publication_id: &str,
-    paths: &PublicationPaths,
-) -> Option<PathBuf> {
-    // Archive-first: local extract or one tar read from the mount.
-    if let Some(extract_dir) = archive::ensure_functions_archive_extracted(functions_dir) {
-        return Some(extract_dir);
-    }
-
-    // Legacy: copy every slug off gcsfuse into a local bundles dir once.
-    let dest = paths.dir.join(BUNDLES_DIR);
-    let _ = std::fs::remove_dir_all(&dest);
-    mkdir_700(&dest)?;
-    copy_legacy_functions(functions_dir, &dest)?;
-    warm::populate_bundle_caches_from_dir(&dest);
-    let _ = publication_id; // kept for call-site clarity / future markers
-    Some(dest)
-}
-
-fn copy_legacy_functions(src: &Path, dest: &Path) -> Option<()> {
-    let entries = std::fs::read_dir(src).ok()?;
-    let mut copied = 0usize;
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if !path.is_file() {
-            continue;
-        }
-        let name = path.file_name()?.to_str()?;
-        if name.starts_with('.') {
-            continue;
-        }
-        let stem = path.file_stem()?.to_str()?;
-        if !is_valid_name(stem) {
-            continue;
-        }
-        let target = dest.join(name);
-        std::fs::copy(&path, &target).ok()?;
-        copied += 1;
-    }
-    if copied == 0 {
-        None
-    } else {
-        Some(())
-    }
 }
 
 fn spawn_publication_worker(bundles_dir: &Path, paths: &PublicationPaths) -> Option<()> {

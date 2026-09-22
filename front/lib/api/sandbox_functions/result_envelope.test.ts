@@ -276,7 +276,7 @@ describe("extractResultEnvelopeTimings", () => {
           runnerKind: "cold",
           warmAttempt: 12,
           resolve: 4200,
-          resolveKind: "gcsfuse",
+          resolveKind: "extract",
           child: 2700,
           import: 2400,
           handler: 15,
@@ -289,12 +289,23 @@ describe("extractResultEnvelopeTimings", () => {
       runnerKind: "cold",
       warmAttempt: 12,
       resolve: 4200,
-      resolveKind: "gcsfuse",
+      resolveKind: "extract",
       child: 2700,
       import: 2400,
       handler: 15,
       futureField: "ignored",
     });
+  });
+
+  it("still accepts legacy gcsfuse resolveKind", () => {
+    expect(
+      extractResultEnvelopeTimings({
+        protocolVersion: 3,
+        delivery: "stdout",
+        outcome: { ok: true, output: 1 },
+        timingsMs: { resolveKind: "gcsfuse" },
+      })
+    ).toEqual({ resolveKind: "gcsfuse" });
   });
 
   it("still accepts legacy runnerKind-only timings", () => {
