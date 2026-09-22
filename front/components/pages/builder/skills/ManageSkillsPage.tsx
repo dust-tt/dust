@@ -68,7 +68,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export function ManageSkillsPage() {
   const { hasFeature } = useFeatureFlags();
-  return hasFeature("skills_search") ? (
+  return hasFeature("skills_search") &&
+    hasFeature("skills_search_manage_page") ? (
     <SearchSkillsPage />
   ) : (
     <LegacyManageSkillsPage />

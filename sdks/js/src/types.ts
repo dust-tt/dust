@@ -912,6 +912,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "user_memory"
   | "similar_agents_check"
   | "skills_search"
+  | "skills_search_manage_page"
   | "enforce_premium_model_message_limit"
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"

@@ -43,7 +43,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function setup({ enabled = true } = {}) {
+async function setup({ searchEnabled = true, pageEnabled = true } = {}) {
   const { authenticator, user } = await createResourceTest({ role: "admin" });
   const resource = await SkillFactory.create(authenticator, {
     name: "Weekly report",
@@ -64,11 +64,17 @@ async function setup({ enabled = true } = {}) {
     subscription: authenticator.getNonNullableSubscription(),
     isAdmin: true,
     isManager: false,
-    featureFlags: enabled ? ["skills_search"] : [],
+    featureFlags: [],
     vizUrl: "http://localhost",
     providersHealth: null,
     workspacePermissions: await authenticator.getWorkspacePermissions(),
   };
+  if (searchEnabled) {
+    context.featureFlags.push("skills_search");
+  }
+  if (pageEnabled) {
+    context.featureFlags.push("skills_search_manage_page");
+  }
   const search = vi
     .fn<() => Promise<SearchSkillsResponseBody>>()
     .mockResolvedValue({
@@ -303,8 +309,12 @@ describe("search-backed Manage Skills", () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
-  it("keeps the legacy page when the flag is disabled", async () => {
-    const { fetcherWithBody, fetcher, mount } = await setup({ enabled: false });
+  it.each([
+    { searchEnabled: false, pageEnabled: false },
+    { searchEnabled: true, pageEnabled: false },
+    { searchEnabled: false, pageEnabled: true },
+  ])("keeps the legacy page with searchEnabled=$searchEnabled and pageEnabled=$pageEnabled", async (flags) => {
+    const { fetcherWithBody, fetcher, mount } = await setup(flags);
     mount();
     await waitFor(() => expect(fetcher).toHaveBeenCalled());
     expect(screen.queryByRole("tab", { name: "All" })).not.toBeInTheDocument();
