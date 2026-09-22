@@ -8,6 +8,7 @@ import type {
   ModelTierId,
 } from "@app/components/model_picker/modelPickerUtils";
 import {
+  AUTO_MODELS_DOC_URL,
   getModelLockTooltip,
   getTierLockReason,
   getTierResolvedModelLabel,
@@ -34,6 +35,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   Icon,
+  LinkWrapper,
   Lock01,
 } from "@dust-tt/sparkle";
 
@@ -48,6 +50,7 @@ interface ModelPickerContentProps {
   makerGroups: MakerGroup[];
   streamModels: EnabledModelConfigurationType[];
   streams: ModelStreamResolutionsType | null;
+  recommendationHint?: string | null;
   isMakersExpanded: boolean;
   onToggleMakers: () => void;
   expandedMakerId: ModelMakerIdType | null;
@@ -78,6 +81,7 @@ export function ModelPickerContent({
   makerGroups,
   streamModels,
   streams,
+  recommendationHint: hint,
   isMakersExpanded,
   onToggleMakers,
   expandedMakerId,
@@ -95,6 +99,20 @@ export function ModelPickerContent({
     >
       {tiers.length > 0 && (
         <DropdownMenuLabel label="Recommendations" className="text-sm" />
+      )}
+
+      {tiers.length > 0 && hint && (
+        <div className="px-2 pb-2 text-xs text-muted-foreground">
+          {hint}{" "}
+          <LinkWrapper
+            href={AUTO_MODELS_DOC_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs underline"
+          >
+            Learn more
+          </LinkWrapper>
+        </div>
       )}
 
       {tiers.map((tier) => {
