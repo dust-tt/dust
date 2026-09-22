@@ -4,7 +4,6 @@ export const DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON = false;
 export const DEFAULT_AUTO_SEAT_UPGRADE_ENABLED = false;
 export const DEFAULT_TOP_UP_ENABLED = false;
 export const DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED = true;
-export const DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED = false;
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
@@ -61,10 +60,13 @@ import type { CreationOptional } from "sequelize";
  * - autoInvoiceFinalizationEnabled: When false, `cleanAndFinalizeMetronomeDraftInvoice`
  *   skips the Stripe finalization step and leaves the invoice as a cleaned draft
  *   for manual review. Defaults to true (finalization is automatic).
- * - creditSpendCheckpointEnabled: Whether the credit spend checkpoint gate
- *   (agent loop pausing for the user to confirm continuing once a message's
- *   spend crosses a threshold) is active for the workspace. Defaults to
- *   false.
+ * - creditSpendCheckpointThresholdAwuCredits: Whether the credit spend
+ *   checkpoint gate (agent loop pausing for the user to confirm continuing
+ *   once a message's spend crosses a threshold) is active for the workspace,
+ *   and at what threshold. NULL means the gate is off. A non-NULL value turns
+ *   the gate on and is the threshold, in AWU credits; admins can only turn
+ *   the gate on or off (see `CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS`),
+ *   not choose the value.
  *
  * The Metronome balance-threshold alert id (used by the webhook to match the
  * firing alert) is NOT stored here: it is a Metronome-generated value resolved
@@ -85,7 +87,7 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare balanceThresholdAwuCredits: number | null;
   declare topUpEnabled: CreationOptional<boolean>;
   declare autoInvoiceFinalizationEnabled: CreationOptional<boolean>;
-  declare creditSpendCheckpointEnabled: CreationOptional<boolean>;
+  declare creditSpendCheckpointThresholdAwuCredits: number | null;
 }
 
 CreditUsageConfigurationModel.init(
@@ -173,10 +175,10 @@ CreditUsageConfigurationModel.init(
       allowNull: false,
       defaultValue: DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED,
     },
-    creditSpendCheckpointEnabled: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED,
+    creditSpendCheckpointThresholdAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
