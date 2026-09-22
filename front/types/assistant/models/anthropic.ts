@@ -511,7 +511,7 @@ export const CLAUDE_FABLE_5_1_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     medium: true,
     high: true,
   },
-  defaultReasoningEffort: "medium",
+  defaultReasoningEffort: "high",
   useNativeLightReasoning: true,
   // Same tokenizer as Fable 5 (the one introduced with Opus 4.7): ~555k
   // words/1M tokens vs ~750k for anthropic_base. Ratio: 750/555 ≈ 1.35,
