@@ -648,14 +648,14 @@ export const PEOPLE: Record<string, TeamMember> = {
     name: "Shannon Tse",
     title: "Talent Operations",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0A9NU7M4N7-582536f88a8d-512",
-    linkedIn: null,
+    linkedIn: "https://www.linkedin.com/in/shannontse/",
     github: "",
   },
   romaindillet: {
     name: "Romain Dillet",
     title: "Editorial & Comms",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0B7V77CCC9-d3de9b675142-512",
-    linkedIn: "https://www.linkedin.com/in/shannontse/",
+    linkedIn: "https://www.linkedin.com/in/romaindillet/",
     github: "",
   },
   reneepark: {
