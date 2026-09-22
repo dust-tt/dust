@@ -194,6 +194,7 @@ export const AdminTriggersList = ({
         id: "by",
         accessorKey: "webhookSourceView.editedByUser",
         header: "By",
+        enableSorting: false,
         cell: (info) => {
           const editedByUser =
             info.row.original.webhookSource.systemView?.editedByUser;
@@ -207,7 +208,7 @@ export const AdminTriggersList = ({
           );
         },
         meta: {
-          className: "w-10",
+          className: "w-14",
         },
       },
       {
