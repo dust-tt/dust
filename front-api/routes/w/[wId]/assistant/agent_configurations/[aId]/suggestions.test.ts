@@ -656,7 +656,7 @@ describe("PATCH with applyToAgent", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.message).toContain(
-      "Only an active agent"
+      "cannot be exported or updated"
     );
     const fetched = await AgentSuggestionResource.fetchById(
       auth,
