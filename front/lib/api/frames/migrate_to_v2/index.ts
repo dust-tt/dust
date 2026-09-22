@@ -60,7 +60,9 @@ const DECLINED = new Ok(null);
  * publication fails. Only a successful publication removes the original sources.
  *
  * `publish` is injected because only the caller can reach the Frame's conversation, which the v2
- * publication path requires.
+ * publication path requires. What this produces is held to a native create by the
+ * `frame-v2-creation-and-migration-agree` contract on
+ * {@link registerFrameV2FromSourceUsingFileSystem}.
  */
 async function runFrameV2Migration<T>(
   auth: Authenticator,

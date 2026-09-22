@@ -46,6 +46,21 @@ export type RegisterFrameV2FromSourceError =
   | DustFileSystemError
   | FramePublicationError;
 
+/**
+ * @cc [owner:pmilliotte,label:product] frame-v2-creation-and-migration-agree
+ * A Frame registered here and a legacy Frame upgraded by `migrateFrameToV2` MUST be
+ * indistinguishable once published. Both the package this adopts at `manifestPath` (a
+ * `manifest.json` in a folder of its own, beside the sources it names, every file stored under
+ * the content type the canonical write path gives it) and every column this writes on the row
+ * (content type, file name, file size, use case, use case metadata, status, share row, file
+ * system node) MUST match what the migration produces from the same sources. Only a Frame's own
+ * history may differ: `id`, `sId`, `userId`, the timestamps, and `version`, which counts the
+ * content revisions a migrated Frame already had as v1. The entry's stored content type is
+ * exempt on the one path `migrated-frame-entry-is-stored-as-source` allows it to go stale, a
+ * failed rewrite after a successful publication. A change to either here MUST be mirrored in
+ * `migrateFrameToV2`, otherwise a migrated Frame is listed, opened or served differently from
+ * a created one. Enforced by `migrate_to_v2/parity.test.ts`.
+ */
 /** Register a Frames v2 manifest through an already authorized GCS filesystem. */
 export async function registerFrameV2FromSourceUsingFileSystem(
   auth: Authenticator,
