@@ -83,7 +83,7 @@ app.get(
 
     if (
       !appResource ||
-      !appResource.canRead(auth) ||
+      !auth.can("read", appResource) ||
       appResource.space.sId !== space.sId
     ) {
       return apiError(ctx, {

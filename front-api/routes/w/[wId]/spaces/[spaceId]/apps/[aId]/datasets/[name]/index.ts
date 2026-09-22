@@ -64,7 +64,7 @@ async function loadAppAndDataset(ctx: Context): Promise<
     });
   }
 
-  if (!appResource.canRead(auth)) {
+  if (!auth.can("read", appResource)) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
@@ -134,7 +134,7 @@ app.post(
     const { appResource, dataset, name } = loaded;
     const auth = ctx.get("auth");
 
-    if (!appResource.canWrite(auth)) {
+    if (!auth.can("write", appResource)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -247,7 +247,7 @@ app.delete(
     const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
 
-    if (!appResource.canWrite(auth)) {
+    if (!auth.can("write", appResource)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

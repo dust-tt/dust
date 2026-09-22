@@ -55,7 +55,7 @@ async function loadApp(
     });
   }
 
-  if (!appResource.canWrite(auth)) {
+  if (!auth.can("write", appResource)) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {

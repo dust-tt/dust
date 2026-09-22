@@ -75,7 +75,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
     });
 
     // This is what enforces the accessibility to an app.
-    return apps.filter((app) => auth.isAdmin() || app.canRead(auth));
+    return apps.filter((app) => auth.isAdmin() || auth.can("read", app));
   }
 
   static async fetchByIds(
@@ -235,7 +235,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
       savedRun?: string;
     }
   ) {
-    assert(this.canWrite(auth), "Unauthorized write attempt");
+    assert(auth.can("write", this), "Unauthorized write attempt");
     await this.update({
       savedSpecification,
       savedConfig,
@@ -253,7 +253,7 @@ export class AppResource extends ResourceWithSpace<AppModel> {
       description: string | null;
     }
   ) {
-    assert(this.canWrite(auth), "Unauthorized write attempt");
+    assert(auth.can("write", this), "Unauthorized write attempt");
     await this.update({
       name,
       description,

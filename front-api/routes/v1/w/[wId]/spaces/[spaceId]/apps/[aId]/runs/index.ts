@@ -181,7 +181,7 @@ app.post(
       });
     }
 
-    if (!appResource.canRead(auth)) {
+    if (!auth.can("read", appResource)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
