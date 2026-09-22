@@ -23,6 +23,7 @@ export const CLAUDE_OPUS_4_6 = "claude-opus-4-6" as const;
 export const CLAUDE_OPUS_4_7 = "claude-opus-4-7" as const;
 export const CLAUDE_OPUS_4_8 = "claude-opus-4-8" as const;
 export const CLAUDE_OPUS_5 = "claude-opus-5" as const;
+export const CLAUDE_OPUS_5_5 = "claude-opus-5-5" as const;
 export const CLAUDE_HAIKU_4_5 = "claude-haiku-4-5-20251001" as const;
 
 export const GEMINI_3_1_PRO = "gemini-3.1-pro-preview" as const;
@@ -85,6 +86,7 @@ export const MODELS = [
   CLAUDE_OPUS_4_7,
   CLAUDE_OPUS_4_8,
   CLAUDE_OPUS_5,
+  CLAUDE_OPUS_5_5,
   CLAUDE_HAIKU_4_5,
   GEMINI_3_1_PRO,
   GEMINI_3_5_FLASH,
@@ -124,6 +126,7 @@ export function isModel(value: string): value is Model {
 export const ORDERED_LARGE_MODELS = [
   CLAUDE_FABLE_5_1,
   CLAUDE_FABLE_5,
+  CLAUDE_OPUS_5_5,
   CLAUDE_OPUS_5,
   CLAUDE_OPUS_4_8,
   CLAUDE_OPUS_4_7,

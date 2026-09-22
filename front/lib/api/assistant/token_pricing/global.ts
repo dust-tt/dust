@@ -298,6 +298,15 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     long_cache_creation_input_tokens: 10.0,
     cache_read_input_tokens: 0.5,
   },
+  // https://platform.claude.com/docs/en/about-claude/pricing (2026-09-22).
+  // Cache reads are 0.05x base input on Opus 5.5, not the usual 0.1x.
+  "claude-opus-5-5": {
+    input: 4.0,
+    output: 20.0,
+    cache_creation_input_tokens: 5.0,
+    long_cache_creation_input_tokens: 8.0,
+    cache_read_input_tokens: 0.2,
+  },
   // https://platform.claude.com/docs/en/about-claude/models/overview
   "claude-fable-5": {
     input: 10.0,
