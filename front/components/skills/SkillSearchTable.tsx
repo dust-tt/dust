@@ -45,10 +45,7 @@ export function SkillSearchTable({
         cell: ({ row: { original: skill } }) => (
           <DataTable.CellContent>
             <button type="button" className="w-full min-w-0 text-left">
-              <SkillNameCell
-                skill={skill}
-                description={skill.userFacingDescription}
-              />
+              <SkillNameCell skill={skill} />
             </button>
           </DataTable.CellContent>
         ),
