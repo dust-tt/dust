@@ -28,10 +28,12 @@ const useButtonsSwitch = () => {
   return ctx;
 };
 
+// Borderless translucent track: a light gray tint on light, a slightly
+// stronger tint on dark so the pill still reads against the darker page.
 const listStyles = cva(
   cn(
-    "inline-flex items-center gap-1",
-    "box-border bg-background border border-border-dark"
+    "relative inline-flex items-center gap-1",
+    "box-border bg-foreground/[0.06] dark:bg-foreground/[0.08]"
   ),
   {
     variants: {
@@ -51,6 +53,48 @@ const listStyles = cva(
     },
   }
 );
+
+// The selected segment's surface: a single pill that translates between options
+// instead of each option painting its own background, so a selection change reads
+// as movement. On-screen movement, so ease-in-out; 200ms matches SliderToggle.
+// Only transform/width/height animate (the indicator is an absolutely positioned
+// leaf, so its width/height changes do not relayout siblings).
+const indicatorStyles = cva(
+  cn(
+    "pointer-events-none absolute left-0 top-0",
+    "bg-background dark:bg-stone-750",
+    "shadow-[0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.06)]",
+    "transition-[transform,width,height] duration-200 ease-in-out",
+    "motion-reduce:transition-none"
+  ),
+  {
+    // Mirrors Button's per-size radius so the pill hugs the option it sits under.
+    variants: {
+      size: {
+        xs: "rounded-[9px]",
+        sm: "rounded-xl",
+        md: "rounded-[15px]",
+      },
+    },
+    defaultVariants: {
+      size: "sm",
+    },
+  }
+);
+
+type IndicatorRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+const isSameRect = (a: IndicatorRect | null, b: IndicatorRect) =>
+  a !== null &&
+  a.x === b.x &&
+  a.y === b.y &&
+  a.width === b.width &&
+  a.height === b.height;
 
 export interface ButtonsSwitchListProps
   extends React.HTMLAttributes<HTMLDivElement>,
@@ -113,14 +157,75 @@ export const ButtonsSwitchList = React.forwardRef<
       [selected, handleChange, size, disabled]
     );
 
+    const listRef = React.useRef<HTMLDivElement | null>(null);
+    const setRefs = React.useCallback(
+      (node: HTMLDivElement | null) => {
+        listRef.current = node;
+        if (typeof ref === "function") {
+          ref(node);
+        } else if (ref) {
+          ref.current = node;
+        }
+      },
+      [ref]
+    );
+
+    // Position the indicator under the selected option by measuring the DOM:
+    // offsets are relative to the list (its offsetParent, via `relative`).
+    // Re-measured on selection change and whenever the list or the selected
+    // option resizes (font load, label change, fullWidth reflow).
+    const [indicator, setIndicator] = React.useState<IndicatorRect | null>(
+      null
+    );
+    React.useLayoutEffect(() => {
+      const list = listRef.current;
+      const active =
+        selected === undefined
+          ? null
+          : list?.querySelector<HTMLElement>(
+              '[role="tab"][aria-selected="true"]'
+            );
+      if (!list || !active) {
+        setIndicator(null);
+        return;
+      }
+      const measure = () => {
+        const next: IndicatorRect = {
+          x: active.offsetLeft,
+          y: active.offsetTop,
+          width: active.offsetWidth,
+          height: active.offsetHeight,
+        };
+        setIndicator((prev) => (isSameRect(prev, next) ? prev : next));
+      };
+      measure();
+      const observer = new ResizeObserver(measure);
+      observer.observe(list);
+      observer.observe(active);
+      return () => observer.disconnect();
+    }, [selected]);
+
     return (
       <div
-        ref={ref}
+        ref={setRefs}
         role="tablist"
         aria-orientation="horizontal"
         className={cn(listStyles({ fullWidth, size }), className)}
         {...props}
       >
+        {/* First in DOM so the (positioned) options paint above it without z-index.
+            Mounted only once measured, so it never slides in from the origin. */}
+        {indicator && (
+          <div
+            aria-hidden
+            className={indicatorStyles({ size })}
+            style={{
+              transform: `translate(${indicator.x}px, ${indicator.y}px)`,
+              width: indicator.width,
+              height: indicator.height,
+            }}
+          />
+        )}
         <ButtonsSwitchContext.Provider value={context}>
           {children}
         </ButtonsSwitchContext.Provider>
@@ -129,6 +234,10 @@ export const ButtonsSwitchList = React.forwardRef<
   }
 );
 ButtonsSwitchList.displayName = "ButtonsSwitchList";
+
+// Options paint no surface of their own (the list's indicator does); their text
+// color swap shares the indicator's timing so pill and label move as one unit.
+const optionStyles = "duration-200 ease-in-out";
 
 interface ButtonsSwitchProps
   extends Omit<React.ComponentProps<typeof Button>, "size" | "variant"> {
@@ -171,10 +280,13 @@ export const ButtonsSwitch = React.forwardRef<
       role="tab"
       aria-selected={isActive}
       size={size}
-      variant={isActive ? "outline" : "ghost"}
+      // Inactive: ghost-secondary gives muted text. Active: ghost gives
+      // foreground text. Both keep a transparent background; the selected
+      // surface is the list's sliding indicator underneath.
+      variant={isActive ? "ghost" : "ghost-secondary"}
       label={label}
       icon={icon}
-      className={cn(!isActive && "border border-transparent", className)}
+      className={cn(optionStyles, className)}
       disabled={isDisabled}
       onClick={handleClick}
       {...props}
