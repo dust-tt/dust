@@ -207,6 +207,7 @@ export function useSearchSkills({
   disabled?: boolean;
 }) {
   const { fetcherWithBody } = useFetcher();
+  const { mutate: globalMutate } = useSWRConfig();
   const query = searchTerm.slice(0, SEARCH_SKILLS_QUERY_MAX_LENGTH);
   const { debouncedValue: debouncedSearchTerm, setValue: setSearchTerm } =
     useDebounce(query, { delay: SEARCH_SKILLS_DEBOUNCE_MS });
@@ -245,6 +246,12 @@ export function useSearchSkills({
     }
   );
 
+  // Search filters and cursors are in the body, so refresh every search key for this workspace.
+  const mutateRegardlessOfQueryParams = useCallback(
+    () => globalMutate((key) => Array.isArray(key) && key[0] === url),
+    [globalMutate, url]
+  );
+
   return {
     skills:
       (disabled ? undefined : data?.skills) ?? emptyArray<SkillListItemType>(),
@@ -254,21 +261,8 @@ export function useSearchSkills({
     isSkillsError: !!error,
     isSkillsLoading: !disabled && (isDebouncing || isLoading),
     mutate,
+    mutateRegardlessOfQueryParams,
   };
-}
-
-function useMutateSkillSearch(owner: LightWorkspaceType) {
-  const { mutate } = useSWRConfig();
-
-  // Search filters and cursors are in the body, so refresh every search key for this workspace.
-  return useCallback(
-    () =>
-      mutate(
-        (key) =>
-          Array.isArray(key) && key[0] === `/api/w/${owner.sId}/skills/search`
-      ),
-    [mutate, owner.sId]
-  );
 }
 
 export function useSkillsWithRelations({
@@ -413,7 +407,11 @@ export function useArchiveSkill({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const mutateSkillSearch = useMutateSkillSearch(owner);
+  const { mutateRegardlessOfQueryParams: mutateSkillSearch } = useSearchSkills({
+    owner,
+    searchTerm: "",
+    disabled: true,
+  });
 
   const { mutateSkillsWithRelations: mutateArchivedSkills } =
     useSkillsWithRelations({
@@ -656,7 +654,11 @@ export function useRestoreSkill({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const mutateSkillSearch = useMutateSkillSearch(owner);
+  const { mutateRegardlessOfQueryParams: mutateSkillSearch } = useSearchSkills({
+    owner,
+    searchTerm: "",
+    disabled: true,
+  });
 
   const { mutateSkillsWithRelations: mutateArchivedSkills } =
     useSkillsWithRelations({
@@ -879,7 +881,11 @@ function notifyImportResult(
 export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const mutateSkillSearch = useMutateSkillSearch(owner);
+  const { mutateRegardlessOfQueryParams: mutateSkillSearch } = useSearchSkills({
+    owner,
+    searchTerm: "",
+    disabled: true,
+  });
 
   const [isImporting, setIsImporting] = useState(false);
   const { mutateSkillsWithRelations: mutateActiveSkills } =
