@@ -36,6 +36,16 @@ describe("assertValidGrant", () => {
       ).not.toThrow();
     });
 
+    it.each([
+      { grantType: "reader", resourceType: "space" },
+      { grantType: "editor", resourceType: "agent" },
+      { grantType: "use", resourceType: "models_tier" },
+    ] as const)("instance role $grantType on all $resourceType instances", (role) => {
+      expect(() =>
+        assertValidGrant({ ...role, resourceId: WHOLE_TYPE_RESOURCE_ID })
+      ).not.toThrow();
+    });
+
     it("type-level capability (publish) with -1", () => {
       expect(() =>
         assertValidGrant({
@@ -138,16 +148,6 @@ describe("assertValidGrant", () => {
       ).toThrow(/positive resourceId/);
     });
 
-    it("type-wide grant on models_tier", () => {
-      expect(() =>
-        assertValidGrant({
-          grantType: "use",
-          resourceType: "models_tier",
-          resourceId: WHOLE_TYPE_RESOURCE_ID,
-        })
-      ).toThrow(/cannot be granted type-wide/);
-    });
-
     it("instance-level publish on an agent (publish is type-level)", () => {
       expect(() =>
         assertValidGrant({
@@ -156,26 +156,6 @@ describe("assertValidGrant", () => {
           resourceId: 5,
         })
       ).toThrow(/type-level/);
-    });
-
-    it("type-wide editor on an agent (editor is instance-only)", () => {
-      expect(() =>
-        assertValidGrant({
-          grantType: "editor",
-          resourceType: "agent",
-          resourceId: WHOLE_TYPE_RESOURCE_ID,
-        })
-      ).toThrow(/cannot be granted type-wide/);
-    });
-
-    it("type-wide grant on a space (space roles are instance-only)", () => {
-      expect(() =>
-        assertValidGrant({
-          grantType: "reader",
-          resourceType: "space",
-          resourceId: WHOLE_TYPE_RESOURCE_ID,
-        })
-      ).toThrow(/cannot be granted type-wide/);
     });
   });
 });

@@ -44,8 +44,8 @@ import assert from "assert";
 
 export type ConcreteGrantType = Exclude<GrantType, "*">;
 
-// A grant applies either to a specific resource instance (resourceId > 0) or to the whole type
-// (resourceId = -1). A role declares the levels at which it can be granted.
+// Levels describe what a role acts on, independently of a grant's scope. Every role can be granted
+// over the whole type (resourceId = -1); only instance roles accept a specific resourceId > 0.
 export type GrantLevel = "instance" | "type";
 
 interface RoleDefinition {
@@ -139,6 +139,11 @@ interface GrantSpec {
 
 // Throws when the (grantType, resourceType, resourceId) combination is not representable in the
 // governance model. Fail-fast: callers pass programmatic values, not user input.
+/**
+ * @cc [owner:philipperolet,label:security;backend] grant-scope
+ * Every role defined for a resource type MUST accept resourceId = -1. A positive resourceId MUST
+ * require an instance-level role. Wildcards on either axis MUST require resourceId = -1.
+ */
 export function assertValidGrant({
   grantType,
   resourceType,
@@ -161,10 +166,6 @@ export function assertValidGrant({
 
   // Type-wide grant (all resources of the type / an instance-less domain).
   if (resourceId === WHOLE_TYPE_RESOURCE_ID) {
-    assert(
-      role.levels.includes("type"),
-      `Grant type "${grantType}" cannot be granted type-wide on "${resourceType}".`
-    );
     return;
   }
 
