@@ -1,9 +1,9 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
-import { CapabilitiesPickerItemsList } from "@app/components/assistant/CapabilitiesPicker";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { ManagePodGroupsPanel } from "@app/components/pod/settings/ManagePodGroupsPanel";
+import { PodDefaultSkillPicker } from "@app/components/pod/settings/PodDefaultSkillPicker";
 import { PodGroupMembersTable } from "@app/components/pod/settings/PodGroupMembersTable";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
 import { PodNetworkSection } from "@app/components/pod/settings/PodNetworkSection";
@@ -45,18 +45,12 @@ import {
   ChevronDown,
   ContentMessage,
   cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Globe01,
   Icon,
   InfoCircle,
   Input,
   ScrollArea,
   SearchInput,
-  ShapesPlus,
   SliderToggle,
   TextArea,
   Tooltip,
@@ -189,14 +183,11 @@ export function PodSettingsTab({
     owner,
     status: "active",
   });
-  const [skillSearchText, setSkillSearchText] = useState("");
-  const [isSkillPickerOpen, setIsSkillPickerOpen] = useState(false);
 
   const defaultSkillIds = useMemo(
     () => podMetadata?.defaultSkillIds ?? [],
     [podMetadata]
   );
-  const selectedDefaultSkillIdSet = new Set(defaultSkillIds);
   // Resolve the stored ids to skills the current user can see. Ids that no longer resolve
   // (archived / out of scope) are not rendered; saving the current
   // selection then drops them.
@@ -205,19 +196,6 @@ export function PodSettingsTab({
     const skill = skillById.get(skillId);
     return skill ? [skill] : [];
   });
-  const normalizedSkillSearch = skillSearchText.trim().toLowerCase();
-  const addableSkills = skills
-    .filter(
-      (skill) =>
-        !selectedDefaultSkillIdSet.has(skill.sId) &&
-        (normalizedSkillSearch.length === 0 ||
-          skill.name.toLowerCase().includes(normalizedSkillSearch) ||
-          (skill.userFacingDescription ?? "")
-            .toLowerCase()
-            .includes(normalizedSkillSearch))
-    )
-    .sort((a, b) => a.name.localeCompare(b.name));
-
   const addDefaultSkill = useCallback(
     async (skillId: string) => {
       await doUpdateMetadata({
@@ -234,23 +212,6 @@ export function PodSettingsTab({
       });
     },
     [doUpdateMetadata, defaultSkillIds]
-  );
-
-  // Memoized so the (memoized) DropdownMenuContent doesn't re-render on every
-  // parent render from a fresh JSX prop. Only changes when the search text does.
-  const skillPickerDropdownHeaders = useMemo(
-    () => (
-      <>
-        <DropdownMenuSearchbar
-          name="search-default-skills"
-          placeholder="Search skills"
-          value={skillSearchText}
-          onChange={setSkillSearchText}
-        />
-        <DropdownMenuSeparator />
-      </>
-    ),
-    [skillSearchText]
   );
 
   // Trigger pill for the default agent, mirroring the conversations input bar:
@@ -624,65 +585,16 @@ export function PodSettingsTab({
               </div>
             ))}
             {isPodEditor && (
-              <DropdownMenu
-                open={isSkillPickerOpen}
-                onOpenChange={(open) => {
-                  setIsSkillPickerOpen(open);
-                  if (open) {
-                    setSkillSearchText("");
-                  }
-                }}
-              >
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Add a default skill"
-                    className={cn(
-                      DEFAULT_PILL_BASE_CLASSNAME,
-                      DEFAULT_PILL_INTERACTIVE_CLASSNAME
-                    )}
-                  >
-                    <Icon visual={ShapesPlus} size="xs" />
-                    <span className="grow truncate">Add skill</span>
-                    <Icon
-                      visual={ChevronDown}
-                      size="xs"
-                      className="-mr-1 text-faint"
-                    />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-80"
-                  align="start"
-                  dropdownHeaders={skillPickerDropdownHeaders}
-                >
-                  <CapabilitiesPickerItemsList
-                    emptyMessage={
-                      normalizedSkillSearch.length > 0
-                        ? "No skills found"
-                        : "No more skills to add"
-                    }
-                    items={addableSkills.map((skill) => {
-                      const SkillAvatar = getSkillAvatarIcon(skill);
-
-                      return {
-                        kind: "skill" as const,
-                        skill,
-                        id: `pod-default-skills-picker-${skill.sId}`,
-                        icon: <SkillAvatar size="xs" />,
-                        label: skill.name,
-                        sortName: skill.name.toLowerCase(),
-                        description: skill.userFacingDescription ?? undefined,
-                      };
-                    })}
-                    onItemSelect={(item) => {
-                      if (item.kind === "skill") {
-                        void addDefaultSkill(item.skill.sId);
-                      }
-                    }}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <PodDefaultSkillPicker
+                owner={owner}
+                skills={skills}
+                selectedSkillIds={defaultSkillIds}
+                onSelect={(skillId) => void addDefaultSkill(skillId)}
+                triggerClassName={cn(
+                  DEFAULT_PILL_BASE_CLASSNAME,
+                  DEFAULT_PILL_INTERACTIVE_CLASSNAME
+                )}
+              />
             )}
             {!isPodEditor && selectedDefaultSkills.length === 0 && (
               <p className="text-sm text-muted-foreground">
