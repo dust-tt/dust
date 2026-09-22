@@ -98,6 +98,8 @@ vi.mock(import("@app/lib/swr/skill_configurations"), () => ({
     nextCursor: null,
     isSkillsError: false,
     isSkillsLoading: false,
+    mutate: vi.fn(async () => undefined),
+    mutateRegardlessOfQueryParams: vi.fn(async () => []),
   }),
   useSkills: () => ({
     skills: [],
