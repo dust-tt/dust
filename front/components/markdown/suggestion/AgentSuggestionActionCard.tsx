@@ -3,6 +3,7 @@
  * instructions editor, so they can be rendered from a plain conversation message.
  */
 
+import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getModelDisplayNameFromId } from "@app/types/assistant/models/models";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -147,6 +148,21 @@ export function AgentSuggestionActionCard({
     : mapSuggestionStateToCardState(state);
 
   const labels = getLabels(agentSuggestion);
+
+  if (agentSuggestion.source === "conversational" && state === "pending") {
+    return (
+      <ConversationalSuggestionCard
+        title={labels.title}
+        analysis={labels.description}
+        visual={
+          pictureUrl ? <Avatar visual={pictureUrl} size="sm" /> : undefined
+        }
+        onAccept={onAccept}
+        onReject={onReject}
+        disabled={disabled}
+      />
+    );
+  }
 
   return (
     <ActionCardBlock

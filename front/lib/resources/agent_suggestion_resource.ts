@@ -430,6 +430,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       agentConfigurationId: this.agentConfigurationId,
       analysis: this.analysis,
       state: this.state,
+      source: this.source,
       conversationId: this._conversationId,
       ...suggestionData,
     };
