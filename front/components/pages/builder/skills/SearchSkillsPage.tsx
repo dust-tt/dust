@@ -211,18 +211,19 @@ export function SearchSkillsPage() {
           />
         </div>
         <Tabs defaultValue="all">
-          <div className="flex items-center justify-between gap-4">
-            <TabsList>
-              {SEARCH_TABS.map((tab) => (
-                <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
-              ))}
-            </TabsList>
-            <SkillFilterPanel
-              owner={owner}
-              filter={filter}
-              onFilterChange={setFilter}
-            />
-          </div>
+          <TabsList>
+            {SEARCH_TABS.map((tab) => (
+              <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
+            ))}
+            <div className="grow" />
+            <div className="flex items-center">
+              <SkillFilterPanel
+                owner={owner}
+                filter={filter}
+                onFilterChange={setFilter}
+              />
+            </div>
+          </TabsList>
           <FilterSummaryChips
             summaries={getFilterSummaries(
               filter,
