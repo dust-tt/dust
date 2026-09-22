@@ -13,6 +13,11 @@ import type { WhereOptions } from "sequelize";
  * @param deferredEvents Array of events to publish
  * @returns true if the workflow should pause (wait for external action), false if it can continue
  */
+/**
+ * @cc [owner:id13,label:concurrency;reliability] final-deferred-blocking-marker
+ * The final deferred approval, authentication, or question event MUST set
+ * isLastBlockingEventForStep. Earlier deferred blocking events MUST clear it.
+ */
 export async function publishDeferredEventsActivity(
   deferredEvents: DeferredEvent[]
 ): Promise<boolean> {
@@ -72,6 +77,7 @@ export async function publishDeferredEventsActivity(
       case "tool_approve_execution":
         eventToPublish = {
           ...event,
+          isLastBlockingEventForStep: isLastEvent,
           metadata: {
             ...event.metadata,
             // Override the message id to root the event to the right channel.

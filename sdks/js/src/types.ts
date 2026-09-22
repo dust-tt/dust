@@ -864,6 +864,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "gpt_5_6_terra_long_context"
   | "http_client_tool"
   | "index_private_slack_channel"
+  | "knowledge_browser"
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
   | "legacy_dust_apps"
@@ -923,7 +924,7 @@ export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
 const WorkspaceSegmentationSchema =
   FlexibleEnumSchema<"interesting">().nullable();
 
-const RoleSchema = z.enum(["admin", "manager", "builder", "user", "none"]);
+const RoleSchema = z.enum(["admin", "manager", "user", "none"]);
 
 const LightWorkspaceSchema = z.object({
   id: ModelIdSchema,

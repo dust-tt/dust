@@ -98,7 +98,7 @@ export function getFramePublicationsMountPoint(frameId: string): string {
   return `/frames/${frameId}/publications`;
 }
 
-/** Exact immutable function directory selected for one Frame invocation. */
+/** Locator for `$DUST_FUNCTIONS_DIR`: sibling `functions.tar` is the published payload. */
 export function getFramePublicationFunctionsMountPoint({
   frameId,
   publicationId,

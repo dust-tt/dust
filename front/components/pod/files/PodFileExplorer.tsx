@@ -10,6 +10,7 @@ import type {
   FileExplorerEntry,
   FileExplorerMenuAction,
   FolderEntry,
+  FramePackageEntry,
 } from "@app/components/file_explorer/types";
 import { useFileExplorerDownload } from "@app/components/file_explorer/useFileExplorerDownload";
 import { joinMountRelativePath } from "@app/components/file_explorer/utils";
@@ -21,6 +22,7 @@ import {
   ARCHIVE_FILE_EXTENSION,
   partitionArchiveFiles,
 } from "@app/components/pod/files/podArchiveUpload";
+import type { RenameMountItem } from "@app/components/pod/files/RenameFileDialog";
 import { RenameFileDialog } from "@app/components/pod/files/RenameFileDialog";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -40,6 +42,7 @@ import {
   useMovePodFile,
   usePodContextAttachments,
   usePodFiles,
+  usePodMetadata,
   useRemovePodContextContentNodes,
 } from "@app/lib/swr/pods";
 import { useSpaceDataSourceViews, useSpaces } from "@app/lib/swr/spaces";
@@ -263,17 +266,20 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
   const [currentFolderPath, setCurrentFolderPath] = useFolderPathUrlState();
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
-  const [itemToRename, setItemToRename] = useState<
-    | { kind: "file"; path: string; name: string }
-    | { kind: "folder"; path: string; name: string }
-    | null
-  >(null);
+  const [itemToRename, setItemToRename] = useState<RenameMountItem | null>(
+    null
+  );
   const [activeOverlay, setActiveOverlay] = useState<
     "companyData" | "noCompanyData" | null
   >(null);
 
   const isArchived = !!pod.archivedAt;
   const isEditor = pod.isEditor;
+  const { mutatePodMetadata } = usePodMetadata({
+    workspaceId: owner.sId,
+    podId: pod.sId,
+    disabled: true,
+  });
   const { togglePin, isPinned } = usePinPodBanner({
     owner,
     podId: pod.sId,
@@ -626,22 +632,32 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     ]
   );
 
-  const onRename = useCallback((entry: FileEntry | FolderEntry) => {
-    if (entry.kind === "file") {
-      setItemToRename({
-        kind: "file",
-        path: entry.path,
-        name: entry.fileName,
-      });
-    } else {
-      setItemToRename({
-        kind: "folder",
-        path: entry.path,
-        name: entry.name,
-      });
-    }
-    setShowRenameDialog(true);
-  }, []);
+  const onRename = useCallback(
+    (entry: FileEntry | FolderEntry | FramePackageEntry) => {
+      if (entry.kind === "frame_package") {
+        // A Frame package's card is labelled by its source folder, which is its name.
+        setItemToRename({
+          kind: "frame",
+          path: entry.sourceFolderCanonicalPath,
+          name: entry.fileName,
+        });
+      } else if (entry.kind === "file") {
+        setItemToRename({
+          kind: "file",
+          path: entry.path,
+          name: entry.fileName,
+        });
+      } else {
+        setItemToRename({
+          kind: "folder",
+          path: entry.path,
+          name: entry.name,
+        });
+      }
+      setShowRenameDialog(true);
+    },
+    []
+  );
 
   const onMoveFile = useCallback(
     async (entry: FileEntry, parentRelativePath: string) => {
@@ -846,7 +862,11 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       <RenameFileDialog
         isOpen={showRenameDialog}
         onClose={() => setShowRenameDialog(false)}
-        onRenamed={() => void refreshPodFiles()}
+        onRenamed={() => {
+          void refreshPodFiles();
+          // Renaming a Frame moves the Pod's pin and tabs onto the new path.
+          void mutatePodMetadata();
+        }}
         owner={owner}
         podId={pod.sId}
         item={itemToRename}

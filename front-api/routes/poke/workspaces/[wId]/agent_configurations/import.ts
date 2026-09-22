@@ -35,7 +35,7 @@ app.post(
       });
     }
 
-    return ctx.json({ assistant: result.value });
+    return ctx.json({ assistant: result.value.agentConfiguration });
   }
 );
 

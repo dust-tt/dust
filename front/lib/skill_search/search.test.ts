@@ -58,7 +58,7 @@ async function mockHits(
         )
         .map((document) => ({
           _source: document,
-          sort: [1, document.skill_id],
+          sort: [1, document.active_users_count, document.skill_id],
         })),
     },
   }));
@@ -91,7 +91,7 @@ describe("custom skill search", () => {
       globalSpace,
       conversationsSpace,
     } = await createResourceTest({ role: "user" });
-    const query = buildSkillSearchQuery(auth, { searchTerm: "report b" });
+    const query = buildSkillSearchQuery(auth, { searchTerm: "  report b  " });
     expect(query).toEqual({
       bool: {
         must: [
@@ -101,6 +101,7 @@ describe("custom skill search", () => {
               type: "bool_prefix",
               operator: "and",
               fields: [
+                "name.keyword",
                 "name.autocomplete",
                 "name.autocomplete._2gram",
                 "name.autocomplete_preserved",
@@ -185,7 +186,7 @@ describe("custom skill search", () => {
   });
 
   it.each(
-    (["user", "builder", "manager", "admin"] as const).flatMap((role) =>
+    (["user", "manager", "admin"] as const).flatMap((role) =>
       (["active", "archived"] as const).map((status) => ({ role, status }))
     )
   )("enforces every space/pod/availability/editor combination for $role / $status", async ({
@@ -393,11 +394,11 @@ describe("custom skill search", () => {
     const expected = await searchListings(auth);
     const hits = documents.map((document) => ({
       _source: document,
-      sort: [1, document.skill_id],
+      sort: [1, document.active_users_count, document.skill_id],
     }));
     mockSearch.mockResolvedValue({
       hits: {
-        hits: [hits[0], { sort: [1, "missing-skill"] }, hits[1]],
+        hits: [hits[0], { sort: [1, 0, "missing-skill"] }, hits[1]],
       },
     });
 
@@ -411,7 +412,7 @@ describe("custom skill search", () => {
     expect(page.value).toEqual({
       skills: [expected[0]],
       hasMore: true,
-      nextCursor: Buffer.from(JSON.stringify([1, "missing-skill"])).toString(
+      nextCursor: Buffer.from(JSON.stringify([1, 0, "missing-skill"])).toString(
         "base64url"
       ),
     });
@@ -464,7 +465,9 @@ describe("custom skill search", () => {
         archived.sId,
       ]);
       const listing = both[0];
-      expect(SkillListItemSchema.strict().parse(listing)).toEqual({
+      expect(
+        SkillListItemSchema.omit({ editors: true }).strict().parse(listing)
+      ).toEqual({
         sId: active.sId,
         status: "active",
         name: "Indexed name",
@@ -529,7 +532,9 @@ describe("custom skill search", () => {
           updatedAt: null,
         },
       ]);
-      expect(SkillListItemSchema.parse(listings[0]).updatedAt).toBeNull();
+      expect(
+        SkillListItemSchema.omit({ editors: true }).parse(listings[0]).updatedAt
+      ).toBeNull();
       expect(onQuery).not.toHaveBeenCalled();
     } finally {
       frontSequelize.removeHook("afterQuery", "global-skill-search-no-db");
@@ -558,9 +563,9 @@ describe("custom skill search", () => {
       searchTerm: "",
       permissionFiltering: "redact_unreadable",
     });
-    expect(SkillListItemSchema.strict().parse(redacted)).toEqual(
-      toSkillListItem(document)
-    );
+    expect(
+      SkillListItemSchema.omit({ editors: true }).strict().parse(redacted)
+    ).toEqual(toSkillListItem(document));
     expect(
       mockSearch.mock.lastCall![0].query.bool.should[0].bool.filter
     ).toEqual([{ term: { workspace_id: workspace.sId } }]);
@@ -694,13 +699,13 @@ describe("custom skill search", () => {
     const documents = await SkillFactory.createSearchDocuments(auth, skills);
     const hits = documents.slice(0, hitCount).map((document, index) => ({
       _source: document,
-      sort: [3 - index, document.skill_id],
+      sort: [3 - index, document.active_users_count, document.skill_id],
     }));
     mockSearch.mockResolvedValue({ hits: { hits } });
 
     const result = await searchSkills(auth, {
       searchTerm: "",
-      cursor: Buffer.from(JSON.stringify([4, "previous-id"])).toString(
+      cursor: Buffer.from(JSON.stringify([4, 10, "previous-id"])).toString(
         "base64url"
       ),
       limit: 2,
@@ -718,7 +723,12 @@ describe("custom skill search", () => {
     expect(mockSearch).toHaveBeenCalledOnce();
     expect(mockSearch.mock.lastCall![0]).toMatchObject({
       size: 3,
-      search_after: [4, "previous-id"],
+      sort: [
+        { _score: { order: "desc" } },
+        { active_users_count: { order: "desc", missing: "_last" } },
+        { skill_id: { order: "asc" } },
+      ],
+      search_after: [4, 10, "previous-id"],
     });
   });
 });

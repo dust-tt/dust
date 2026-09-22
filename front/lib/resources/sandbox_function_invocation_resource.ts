@@ -223,9 +223,8 @@ function dustAPIBaseUrlForSandbox(): string {
 }
 
 function buildSandboxFunctionRunCommand(slug: string): string {
-  // dsbx resolves `function run <slug>` as `${DUST_FUNCTIONS_DIR}/<slug>.ts`, which is the
-  // read-only mount of the pod's published bundles. Results always come back on the exec's own
-  // stdout.
+  // dsbx resolves `function run <slug>` from `$DUST_FUNCTIONS_DIR` (typically via
+  // the sibling `functions.tar`); results always come back on the exec's own stdout.
   return `${DSBX_BIN_PATH} function run --result-delivery stdout -- ${shellEscape(slug)}`;
 }
 

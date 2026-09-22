@@ -5,8 +5,13 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { getFrameV2NameFromManifestPath } from "@app/types/api/frame_manifest";
 import type { PodFileTab } from "@app/types/pod_file_tab";
-import { normalizeTabsOrder, sortPodFileTabs } from "@app/types/pod_file_tab";
+import {
+  normalizeTabsOrder,
+  seedPodFileTabTitle,
+  sortPodFileTabs,
+} from "@app/types/pod_file_tab";
 import type { PodMetadataType } from "@app/types/project_metadata";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -189,6 +194,49 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     transaction?: Transaction
   ) {
     await this.update({ frameTabs, tabsOrder }, transaction);
+  }
+
+  /**
+   * Repoint the pin, tabs and tab order at a moved Frame. A tab title still equal to the one
+   * seeding would produce follows the move; one the user edited is left alone.
+   */
+  async renameFramePath(
+    oldFramePath: string,
+    newFramePath: string,
+    transaction?: Transaction
+  ): Promise<void> {
+    // A Frame tab is seeded from the Frame's name, which is the folder holding its manifest.
+    const seededTitleFor = (framePath: string) => {
+      const frameName = getFrameV2NameFromManifestPath(framePath);
+      return frameName === null ? null : seedPodFileTabTitle(frameName);
+    };
+    const seededTitle = seededTitleFor(oldFramePath);
+    const frameTabs = (this.frameTabs ?? []).map((tab) =>
+      tab.path === oldFramePath
+        ? {
+            ...tab,
+            path: newFramePath,
+            title:
+              seededTitle !== null && tab.title === seededTitle
+                ? (seededTitleFor(newFramePath) ?? tab.title)
+                : tab.title,
+          }
+        : tab
+    );
+
+    await this.update(
+      {
+        pinnedFramePath:
+          this.pinnedFramePath === oldFramePath
+            ? newFramePath
+            : this.pinnedFramePath,
+        frameTabs,
+        tabsOrder: (this.tabsOrder ?? []).map((entry) =>
+          entry === oldFramePath ? newFramePath : entry
+        ),
+      },
+      transaction
+    );
   }
 
   async removeFramePath(

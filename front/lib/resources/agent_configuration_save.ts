@@ -1,12 +1,22 @@
 import { isSelfHostedImageWithValidContentType } from "@app/lib/api/assistant/configuration/agent_image";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+// Type-only import (erased at runtime, so no import cycle with `agent_resource`): these helpers may
+// operate on an already-resolved `AgentResource` instance but never construct or statically call it.
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TagResource } from "@app/lib/resources/tags_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationScope,
@@ -20,13 +30,16 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { TagType } from "@app/types/tag";
-import type { LightWorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import assert from "assert";
 import type { Transaction } from "sequelize";
 
-// Model-level helpers for `AgentResource._saveConfiguration`. Each runs against the models directly
-// and, when called inside the save transaction, throws on failure so the whole save rolls back (see
-// the `agent-save-atomic` contract). They deliberately do NOT import `AgentResource` — the
-// resource-coupled steps (current-version pointer, editor group) stay in `_saveConfiguration`.
+// Helpers for `AgentResource`'s save paths, kept out of the resource file to bound its size. Most
+// run against the models directly and, when called inside the save transaction, throw on failure so
+// the whole save rolls back (see `agent-save-atomic`). A few (e.g. `syncAgentEditors`) operate on an
+// already-resolved `AgentResource` passed in, via a TYPE-ONLY import (erased at runtime, so no import
+// cycle) — they never construct one or call its statics. Steps that need `AgentResource` statics
+// (current-version pointer, cache invalidation, `updateScopeInPlace`) stay in the resource file.
 
 // Validates the request-shaped inputs that do not touch the database. Returns an `Err` (not a throw)
 // because it runs before the save transaction is opened.
@@ -407,4 +420,103 @@ export async function syncAgentTags(
       );
     }
   }
+}
+
+// Replaces an agent's editor set in place — no new version: grants the incoming editors and revokes
+// every current editor omitted from the set (see `complete-editor-set-replaces-grants`), then
+// disables the triggers of removed editors when the agent is hidden (see
+// `hide-disables-non-editor-triggers`). A no-op when the set is unchanged, so it is safe to call
+// unconditionally and does not require permission for an unchanged set; a real change requires
+// `admin` (see `agent-verbs`). Operates on the already-resolved `agentResource` (editors are
+// agent-level grants managed through it) but calls no `AgentResource` static.
+export async function syncAgentEditors(
+  auth: Authenticator,
+  {
+    agentResource,
+    editors,
+  }: { agentResource: AgentResource; editors: UserType[] }
+): Promise<Result<undefined, Error>> {
+  const currentEditors = (await agentResource.listEditors(auth)) ?? [];
+  const currentIds = new Set(currentEditors.map((e) => e.id));
+  const nextIds = new Set(editors.map((e) => e.id));
+  const changed =
+    currentIds.size !== nextIds.size ||
+    [...nextIds].some((id) => !currentIds.has(id));
+  if (!changed) {
+    return new Ok(undefined);
+  }
+  if (!auth.can("admin", agentResource)) {
+    return new Err(
+      new Error("You don't have permission to change this agent's editors.")
+    );
+  }
+
+  const removedEditors = await withTransaction(async (t) => {
+    await agentResource.grantEditors(auth, { editors, transaction: t });
+    const editorsBeforeRevoke = await agentResource.listEditors(auth, {
+      transaction: t,
+    });
+    assert(editorsBeforeRevoke !== null);
+    const editorModelIds = new Set(editors.map((e) => e.id));
+    const removed = editorsBeforeRevoke
+      .filter((editor) => !editorModelIds.has(editor.id))
+      .map((editor) => editor.toJSON());
+    await agentResource.revokeEditors(auth, {
+      editors: removed,
+      transaction: t,
+    });
+    return removed;
+  });
+
+  // Editors get access to the agent's private data (prompt, skills, knowledge), so the change is
+  // audited as soon as it commits — this in-place path skips `_saveConfiguration`, whose own audit
+  // event would otherwise cover it (see `audit-security-sensitive-mutations`). `actor_added_self`
+  // flags an admin granting themselves that access.
+  const addedEditors = editors.filter((e) => !currentIds.has(e.id));
+  const actorUserId = auth.user()?.sId;
+  void emitAuditLogEvent({
+    auth,
+    action: "agent.editors_updated",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("agent", agentResource),
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      agent_name: agentResource.name,
+      scope: agentResource.scope,
+      added_editor_ids: addedEditors.map((u) => u.sId).join(","),
+      removed_editor_ids: removedEditors.map((u) => u.sId).join(","),
+      actor_added_self: String(
+        actorUserId !== undefined &&
+          addedEditors.some((u) => u.sId === actorUserId)
+      ),
+    },
+  });
+
+  if (removedEditors.length > 0 && agentResource.scope === "hidden") {
+    const triggersToDisableRes =
+      await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
+        agentConfigurationId: agentResource.sId,
+        editorIds: removedEditors.map((editor) => editor.id),
+      });
+    if (triggersToDisableRes.isOk()) {
+      for (const trigger of triggersToDisableRes.value) {
+        const disableResult = await trigger.disable(auth);
+        if (disableResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              agentConfigurationId: agentResource.sId,
+              triggerId: trigger.sId,
+              error: disableResult.error,
+            },
+            `Failed to disable trigger ${trigger.sId} when removing editor from agent ${agentResource.sId}`
+          );
+        }
+      }
+    }
+  }
+
+  return new Ok(undefined);
 }

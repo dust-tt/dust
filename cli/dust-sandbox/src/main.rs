@@ -145,9 +145,8 @@ async fn run() -> anyhow::Result<()> {
             } => commands::cmd_frame_call(&target, &function_name, input.as_deref()).await?,
             commands::frame::FrameCommand::Create {
                 directory,
-                name,
                 description,
-            } => commands::cmd_frame_create(&directory, name.as_deref(), &description).await?,
+            } => commands::cmd_frame_create(&directory, &description).await?,
             commands::frame::FrameCommand::Register { manifest } => {
                 commands::cmd_frame_register(&manifest).await?
             }

@@ -218,7 +218,10 @@ export function getIdsFromSId(sId: string): Result<
     return new Err(new Error("Invalid resource prefix in string Id"));
   }
 
-  if (sIdWithoutPrefix.length < RESOURCE_S_ID_MIN_LENGTH) {
+  if (
+    sIdWithoutPrefix === undefined ||
+    sIdWithoutPrefix.length < RESOURCE_S_ID_MIN_LENGTH
+  ) {
     return new Err(new Error("Invalid string Id length"));
   }
 

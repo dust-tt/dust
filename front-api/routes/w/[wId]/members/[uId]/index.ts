@@ -199,8 +199,6 @@ app.post(
         }
       }
     } else {
-      // The deprecated `builder` role can no longer be assigned; it is granted only through the
-      // `dust-builders` provisioning group.
       const roleParse = AssignableRoleSchema.safeParse(body.role);
       if (!roleParse.success) {
         return apiError(ctx, {

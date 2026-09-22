@@ -1,12 +1,10 @@
+import { MANAGED_SSE_HANDSHAKE_EVENT } from "@app/types/sse";
 import { setSSEHeaders } from "@front-api/middlewares/streaming";
 import type { Context } from "hono";
 import { stream } from "hono/streaming";
 import { z } from "zod";
 
-// Written before consuming the event iterator so response bytes hit the wire
-// before any Redis subscribe / history fetch in the iterator. SSE comments are
-// ignored by clients per spec.
-const SSE_OPEN_COMMENT = ": connected\n\n";
+const SSE_HANDSHAKE = `event: ${MANAGED_SSE_HANDSHAKE_EVENT}\ndata: {}\n\n`;
 
 // Standard SSE resume parameter shared by every streaming route. An absent or
 // empty `lastEventId` (clients reconnecting without a prior event send `?lastEventId=`)
@@ -31,6 +29,11 @@ type StreamEventsParams<TIn> = {
   writeDoneSentinel?: boolean;
 };
 
+/**
+ * @cc [owner:id13,label:api;architecture] managed-sse-handshake
+ * `streamEvents` MUST write the managed SSE handshake before it starts consuming the event
+ * iterator so clients can verify that streaming response bytes reach the browser.
+ */
 export function streamEvents<TIn>(params: StreamEventsParams<TIn>) {
   setSSEHeaders(params.ctx);
 
@@ -38,7 +41,7 @@ export function streamEvents<TIn>(params: StreamEventsParams<TIn>) {
     const controller = new AbortController();
     s.onAbort(() => controller.abort());
 
-    await s.write(SSE_OPEN_COMMENT);
+    await s.write(SSE_HANDSHAKE);
 
     for await (const event of params.iterator(controller.signal)) {
       const out: unknown = params.transform

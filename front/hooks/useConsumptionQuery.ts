@@ -55,7 +55,11 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
 // body instead of a query string, since it can select more values than fit
 // in a URL. The filter changes on every checkbox toggle, so requests are
 // debounced and a superseded request is aborted before it can race a fresher
-// one into the cache.
+// one into the cache. Requests are not aborted on unmount: a widget that
+// remounts with the same cache key (e.g. the page remounts when a resize
+// crosses the mobile breakpoint) is deduped by SWR onto the in-flight
+// request, so aborting it would store an error on the shared key. A late
+// response is harmless, SWR writes it under the key it was fetched for.
 export function useConsumptionQuery<TBody extends object, TResponse>({
   url,
   body,
@@ -69,9 +73,6 @@ export function useConsumptionQuery<TBody extends object, TResponse>({
   const { cache } = useSWRConfig();
   const requestControllerRef = useRef<AbortController | null>(null);
   const previousCacheKeyRef = useRef<string | null>(null);
-  const unmountAbortTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
 
   const bodyKey = JSON.stringify(body);
   const { debouncedValue: debouncedBodyKey, isDebouncing } = useDebouncedValue(
@@ -110,30 +111,6 @@ export function useConsumptionQuery<TBody extends object, TResponse>({
     }
     previousCacheKeyRef.current = cacheKey;
   }, [cache, cacheKey]);
-
-  // Cancels the in-flight request on a real unmount, e.g. when the user
-  // switches period/filter fast enough to tear this widget down mid-request:
-  // without this, a slow response could still land after the fact and
-  // overwrite the cache with data for a view the user already left.
-  // Deferred so StrictMode's dev-only mount -> cleanup -> mount replay can
-  // cancel the timeout first instead of aborting the request before it
-  // reaches the network. Without this, local dev (StrictMode) breaks every
-  // request; prod is unaffected. Recreating the controller per-effect (as a
-  // plain fetch-in-effect would) isn't an option: SWR treats this request as
-  // already cached for the replay's second mount, so it would never fire a
-  // second one to replace the one we just aborted.
-  useEffect(() => {
-    if (unmountAbortTimeoutRef.current !== null) {
-      clearTimeout(unmountAbortTimeoutRef.current);
-      unmountAbortTimeoutRef.current = null;
-    }
-
-    return () => {
-      unmountAbortTimeoutRef.current = setTimeout(() => {
-        requestControllerRef.current?.abort();
-      }, 0);
-    };
-  }, []);
 
   const { data, error, isLoading, isValidating, mutate } = useSWRWithDefaults(
     cacheKey,

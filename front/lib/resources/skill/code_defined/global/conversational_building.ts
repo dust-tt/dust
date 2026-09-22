@@ -1,5 +1,27 @@
-import { BUILDING_AGENTS_AND_SKILLS_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import { WORKSPACE_MANAGEMENT_SERVER_NAME } from "@app/lib/api/actions/servers/workspace_management/metadata";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
+  DESCRIBE_SKILL_TOOL_NAME,
+  SUGGEST_AGENT_CREATION_TOOL_NAME,
+  SUGGEST_AGENT_DELETION_TOOL_NAME,
+  SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME,
+  SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
+  SUGGEST_SKILL_DELETION_TOOL_NAME,
+  SUGGEST_SKILL_EDITORS_TOOL_NAME,
+  SUGGEST_SKILL_NAME_TOOL_NAME,
+  SUGGEST_SKILL_UPDATE_TOOL_NAME,
+  SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
+} from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
+import {
+  GET_AGENT_DETAILS_TOOL_NAME,
+  GET_TOOL_DETAILS_TOOL_NAME,
+  LIST_AGENTS_TOOL_NAME,
+  LIST_SKILLS_TOOL_NAME,
+  LIST_TOOLS_TOOL_NAME,
+  LIST_WORKSPACE_MEMBERS_TOOL_NAME,
+  SEARCH_KNOWLEDGE_TOOL_NAME,
+  WORKSPACE_MANAGEMENT_SERVER_NAME,
+} from "@app/lib/api/actions/servers/workspace_management/metadata";
 import {
   bestPracticesSection,
   blockAwareEditingSection,
@@ -26,6 +48,14 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_define
 
 const NOUN = "entity";
 const EDIT_TOOLS = "`suggest_prompt_edits` / `suggest_skill_update`";
+
+function managementToolName(toolName: string): string {
+  return getPrefixedToolName(WORKSPACE_MANAGEMENT_SERVER_NAME, toolName);
+}
+
+function buildingToolName(toolName: string): string {
+  return getPrefixedToolName(BUILDING_AGENTS_AND_SKILLS_SERVER_NAME, toolName);
+}
 
 const SECTIONS = {
   primaryGoal: `<primary_goal>
@@ -76,14 +106,14 @@ Refer to <workflow_visualization> when the user asks for a diagram of an entity 
 
   discoveryStep: `<discovery_step>
 Tools operate on entity ids, not names. Use these tools to get up-to-date information:
-- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_agents\`: find all agents and resolve a name to an id.
-- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_skills\`: find all skills and resolve a name to an id.
-- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.get_agent_details\`: an agent's full configuration (instructions, model, skills, tools, knowledge).
-- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_tools\`: find the tools that can be equipped on agents and skills and resolve a name to an id.
-- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.get_tool_details\`: a tool's description and the functions it exposes with their parameters. Use it before referencing a tool in a suggestion.
-- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.search_knowledge\`: without a query, the knowledge sources (data source views) of the workspace; with a query, the sources and document nodes matching it. Use it before referencing knowledge in a suggestion (see <knowledge_guidance> and <knowledge_nodes>).
-- \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.list_workspace_members\`: information about members (pass \`userIds\` to look up specific people, e.g. to change a skill's editors).
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.describe_skill\`: a custom skill's name, settings, and instructions as HTML whose blocks carry a \`data-block-id\`. Call it to get any info about a skill before acting on it; the block ids are required to target edits.
+- \`${managementToolName(LIST_AGENTS_TOOL_NAME)}\`: find all agents and resolve a name to an id.
+- \`${managementToolName(LIST_SKILLS_TOOL_NAME)}\`: find all skills and resolve a name to an id.
+- \`${managementToolName(GET_AGENT_DETAILS_TOOL_NAME)}\`: an agent's full configuration (instructions, model, skills, tools, knowledge).
+- \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`: find the tools that can be equipped on agents and skills and resolve a name to an id.
+- \`${managementToolName(GET_TOOL_DETAILS_TOOL_NAME)}\`: a tool's description and the functions it exposes with their parameters. Use it before referencing a tool in a suggestion.
+- \`${managementToolName(SEARCH_KNOWLEDGE_TOOL_NAME)}\`: without a query, the knowledge sources (data source views) of the workspace; with a query, the sources and document nodes matching it. Use it before referencing knowledge in a suggestion (see <knowledge_guidance> and <knowledge_nodes>).
+- \`${managementToolName(LIST_WORKSPACE_MEMBERS_TOOL_NAME)}\`: information about members (pass \`userIds\` to look up specific people, e.g. to change a skill's editors).
+- \`${buildingToolName(DESCRIBE_SKILL_TOOL_NAME)}\`: a custom skill's name, settings, and instructions as HTML whose blocks carry a \`data-block-id\`. Call it to get any info about a skill before acting on it; the block ids are required to target edits.
 
 When editing an entity, repeat the discovery on EVERY turn of the conversation before suggesting anything.
 The user may have accepted, rejected or edited suggestions between two turns, so any configuration retrieved earlier may be outdated.
@@ -123,7 +153,7 @@ ${CONTRADICTORY_INFORMATION_SECTION}
   blockAwareEditing: blockAwareEditingSection({
     noun: NOUN,
     editTool: EDIT_TOOLS,
-    blocksSource: `Skill instructions with their block ids come from \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.describe_skill\`; agent instructions come from \`${WORKSPACE_MANAGEMENT_SERVER_NAME}.get_agent_details\`.`,
+    blocksSource: `Skill instructions with their block ids come from \`${buildingToolName(DESCRIBE_SKILL_TOOL_NAME)}\`; agent instructions come from \`${managementToolName(GET_AGENT_DETAILS_TOOL_NAME)}\`.`,
     grouping: "grouped",
   }),
 
@@ -167,16 +197,17 @@ ${skillAgentFacingDescriptionGuidanceBody({ evidenceOnly: false })}
 Discovery (see <discovery_step>)
 
 Skill suggestions:
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_update\`: instruction edits (block-targeted, see <block_aware_editing>) and/or an agent-facing description replacement for one skill. Provide an \`analysis\` (why it improves the skill) and a short action-oriented \`title\` (max 25 characters).
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_editors\`: add or remove editors of a skill by user id. A change that would leave the skill without any editor is refused.
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_user_facing_description\`: replace the user-facing description of a skill, the short text members read when browsing skills.
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_name\`: rename a skill. A name already carried by another active skill of the workspace is refused.
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_deletion\`: propose deleting an existing custom skill by \`skillId\`.
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_skill_availability\`: change who a skill is available to (\`editors\`, \`workspace_users\` or \`users_and_agents\`). Requires the workspace permission to publish skills.
+- \`${buildingToolName(SUGGEST_SKILL_UPDATE_TOOL_NAME)}\`: instruction edits (block-targeted, see <block_aware_editing>) and/or an agent-facing description replacement for one skill. Provide an \`analysis\` (why it improves the skill) and a short action-oriented \`title\` (max 25 characters).
+- \`${buildingToolName(SUGGEST_SKILL_EDITORS_TOOL_NAME)}\`: add or remove editors of a skill by user id. A change that would leave the skill without any editor is refused.
+- \`${buildingToolName(SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME)}\`: replace the user-facing description of a skill, the short text members read when browsing skills.
+- \`${buildingToolName(SUGGEST_SKILL_NAME_TOOL_NAME)}\`: rename a skill. A name already carried by another active skill of the workspace is refused.
+- \`${buildingToolName(SUGGEST_SKILL_DELETION_TOOL_NAME)}\`: propose deleting an existing custom skill by \`skillId\`.
+- \`${buildingToolName(SUGGEST_SKILL_AVAILABILITY_TOOL_NAME)}\`: change who a skill is available to (\`editors\`, \`workspace_users\` or \`users_and_agents\`). Requires the workspace permission to publish skills.
 
 Agent suggestions:
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_creation\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`.
-- \`${BUILDING_AGENTS_AND_SKILLS_SERVER_NAME}.suggest_agent_deletion\`: propose deleting an existing agent by \`agentId\`
+- \`${buildingToolName(SUGGEST_AGENT_CREATION_TOOL_NAME)}\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`.
+- \`${buildingToolName(SUGGEST_AGENT_DELETION_TOOL_NAME)}\`: propose deleting an existing agent by \`agentId\`
+- \`${buildingToolName(SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME)}\`: propose changing an existing agent's model, by \`agentId\`, \`modelId\` and an optional \`reasoningEffort\`.
 </tools>`,
 
   responseStyle: responseStyleSection({ noun: NOUN, editTool: EDIT_TOOLS }),

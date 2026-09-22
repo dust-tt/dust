@@ -4,7 +4,6 @@ import {
   getFrameDatabaseReplicasBasePath,
   getFramePersistentFilesBasePath,
   getFramePublicationDescriptorPath,
-  getFramePublicationFunctionBundlePath,
   getFramePublicationFunctionsArchivePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
@@ -24,14 +23,6 @@ describe("Frames v2 GCS paths", () => {
     );
     expect(getFramePublicationUiBundlePath(IDS)).toBe(
       "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/ui/bundle.js"
-    );
-    expect(
-      getFramePublicationFunctionBundlePath({
-        ...IDS,
-        functionName: "add-task",
-      })
-    ).toBe(
-      "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions/add-task.ts"
     );
     expect(getFramePublicationFunctionsArchivePath(IDS)).toBe(
       "w/w_123/frames/fil_456/publications/b8c2b796-534a-4ad2-a5ad-071da692ca0b/functions.tar"
@@ -62,11 +53,11 @@ describe("Frames v2 GCS paths", () => {
       getFrameBasePath({ workspaceId: "../other", frameId: IDS.frameId })
     ).toThrow("Invalid workspaceId");
     expect(() =>
-      getFramePublicationFunctionBundlePath({
+      getFramePublicationFunctionsArchivePath({
         ...IDS,
-        functionName: "../other",
+        publicationId: "../other",
       })
-    ).toThrow("Invalid functionName");
+    ).toThrow("Invalid publicationId");
     expect(() =>
       getFrameDatabaseReplicaBasePath({
         workspaceId: IDS.workspaceId,

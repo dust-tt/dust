@@ -1,6 +1,7 @@
 import { Avatar } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
 import { Checkbox } from "@sparkle/components/Checkbox";
+import { type CHIP_COLORS, Chip } from "@sparkle/components/Chip";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -33,6 +34,7 @@ import {
   Clipboard,
   ClipboardCheck,
   DotsHorizontal,
+  Minus,
 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import {
@@ -44,8 +46,10 @@ import {
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  type Header,
   type PaginationState,
   type Row,
+  type RowData,
   type RowSelectionState,
   type SortingState,
   type Updater,
@@ -53,15 +57,67 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import React, {
+  type ComponentType,
+  createContext,
   type ReactNode,
+  useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { breakpoints, useWindowSize } from "./WindowUtility";
 
-const cellHeight = "h-12";
+export const DATA_TABLE_DENSITIES = ["compact", "default", "relaxed"] as const;
+export type DataTableDensity = (typeof DATA_TABLE_DENSITIES)[number];
+
+/** Row height per density, in px. `default` is the historical 48px row. */
+export const DATA_TABLE_ROW_HEIGHT_PX: Record<DataTableDensity, number> = {
+  compact: 40,
+  default: 48,
+  relaxed: 64,
+};
+
+const DENSITY_ROW_HEIGHT_CLASS: Record<DataTableDensity, string> = {
+  compact: "h-10",
+  default: "h-12",
+  relaxed: "h-16",
+};
+
+// Header rows are as tall as body rows.
+export const DATA_TABLE_HEADER_HEIGHT_PX = DATA_TABLE_ROW_HEIGHT_PX;
+
+const DENSITY_HEADER_HEIGHT_CLASS = DENSITY_ROW_HEIGHT_CLASS;
+
+// Column minimum (124px) when the table scrolls horizontally, so columns do
+// not collapse to unreadable widths.
+const SCROLL_COLUMN_MIN_WIDTH_CLASS = "min-w-31";
+
+interface DataTableLayout {
+  density: DataTableDensity;
+  /** True when the table scrolls horizontally and columns need a minimum width. */
+  enforceColumnMinWidth: boolean;
+}
+
+const DEFAULT_DATA_TABLE_LAYOUT: DataTableLayout = {
+  density: "default",
+  enforceColumnMinWidth: false,
+};
+
+// Lets the cell helpers (Cell, BasicCellContent, CellContent) follow the table's
+// density and scroll layout without every call site threading props through
+// its column defs.
+const DataTableLayoutContext = createContext<DataTableLayout>(
+  DEFAULT_DATA_TABLE_LAYOUT
+);
+
+function useDataTableLayout() {
+  return useContext(DataTableLayoutContext);
+}
+
+type ColumnAlign = "left" | "right" | "center";
+type ColumnType = "text" | "numeric" | "row-actions" | "status";
 
 declare module "@tanstack/react-table" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -69,7 +125,83 @@ declare module "@tanstack/react-table" {
     className?: string;
     tooltip?: string;
     sizeRatio?: number;
-    headerAlign?: "left" | "right" | "center";
+    /** Header text alignment. Overrides the alignment derived from `type` for the header only. */
+    headerAlign?: ColumnAlign;
+    /**
+     * Column preset. `numeric`: right-aligned tabular figures, no wrapping.
+     * `row-actions`: fixed 48px, centered, never sortable (the "..." menu column).
+     * `status`: no wrapping.
+     */
+    type?: ColumnType;
+    /** Render this column's body cells as `<th scope="row">` for screen readers. */
+    rowHeader?: boolean;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface TableMeta<TData extends RowData> {
+    /** Human-readable row label used to name selection checkboxes. */
+    getRowLabel?: (row: TData) => string;
+  }
+}
+
+interface ColumnPresets {
+  align: ColumnAlign;
+  headerAlign: ColumnAlign;
+  cellClassName?: string;
+  headerClassName?: string;
+  sortable: boolean;
+}
+
+export const ALIGN_TEXT_CLASS: Record<ColumnAlign, string> = {
+  left: "text-left",
+  right: "text-right",
+  center: "text-center",
+};
+
+export const ALIGN_JUSTIFY_CLASS: Record<ColumnAlign, string> = {
+  left: "justify-start",
+  right: "justify-end",
+  center: "justify-center",
+};
+
+/** Resolves alignment, sizing and sortability from a column's `meta.type`. */
+export function getDataTableColumnPresets(
+  column: Column<any> // eslint-disable-line @typescript-eslint/no-explicit-any
+): ColumnPresets {
+  const meta = column.columnDef.meta;
+  const align: ColumnAlign =
+    meta?.type === "numeric"
+      ? "right"
+      : meta?.type === "row-actions"
+        ? "center"
+        : "left";
+
+  return {
+    align,
+    headerAlign: meta?.headerAlign ?? align,
+    cellClassName:
+      cn(
+        meta?.type === "numeric" && "tabular-nums whitespace-nowrap",
+        meta?.type === "status" && "whitespace-nowrap",
+        meta?.type === "row-actions" && "w-12"
+      ) || undefined,
+    headerClassName:
+      cn(
+        meta?.type === "numeric" && "tabular-nums",
+        meta?.type === "row-actions" && "w-12"
+      ) || undefined,
+    sortable: meta?.type !== "row-actions",
+  };
+}
+
+function getSortIcon(sorted: false | "asc" | "desc") {
+  switch (sorted) {
+    case "asc":
+      return ArrowUp;
+    case "desc":
+      return ArrowDown;
+    default:
+      return ChevronSelectorVertical;
   }
 }
 
@@ -148,6 +280,20 @@ interface DataTableProps<TData extends TBaseData> {
   /** Omit the default bottom divider on tbody rows (e.g. dense custom lists). */
   hideRowDivider?: boolean;
   disableRowClickSelection?: boolean;
+  /** Row height scale: 40px compact, 48px default, 64px relaxed. Cell helpers and the skeleton follow it. */
+  density?: DataTableDensity;
+  /** Dims the current rows in place while new data loads, keeping header, filter and pagination usable. */
+  isLoading?: boolean;
+  /** Rendered as a single full-width row when there are no rows to show. */
+  emptyState?: ReactNode;
+  /** Human-readable label per row, used to name the selection checkbox ("Select {label}"). */
+  getRowLabel?: (row: TData) => string;
+  /** Keeps the header visible while the body scrolls. Needs `maxHeight` to have an effect. */
+  stickyHeader?: boolean;
+  /** Max-height class for the scroll container (e.g. "max-h-96"); the body scrolls vertically past it. */
+  maxHeight?: string;
+  /** Lets wide tables scroll horizontally instead of squeezing columns; each column gets a 124px minimum. */
+  horizontalScroll?: boolean;
 }
 
 const ROW_REVEAL_DURATION_MS = 300;
@@ -271,6 +417,13 @@ export function DataTable<TData extends TBaseData>({
   enableSortingRemoval = true,
   hideRowDivider = false,
   disableRowClickSelection = false,
+  density = "default",
+  isLoading = false,
+  emptyState,
+  getRowLabel,
+  stickyHeader = false,
+  maxHeight,
+  horizontalScroll = false,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -343,6 +496,7 @@ export function DataTable<TData extends TBaseData>({
     enableRowSelection,
     enableMultiRowSelection,
     getRowId,
+    ...(getRowLabel && { meta: { getRowLabel } }),
   });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: table is recreated every render, adding it would cause infinite re-runs
@@ -360,145 +514,196 @@ export function DataTable<TData extends TBaseData>({
     !!onLoadMore && !pagination
   );
 
-  return (
-    <div className={cn("flex flex-col gap-2", className, widthClassName)}>
-      <DataTable.Root containerRef={rowRevealRef}>
-        <DataTable.Header>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <DataTable.Row key={headerGroup.id} widthClassName={widthClassName}>
-              {headerGroup.headers.map((header) => {
-                const breakpoint = columnsBreakpoints[header.id];
-                if (
-                  !windowSize.width ||
-                  !shouldRenderColumn(windowSize.width, breakpoint)
-                ) {
-                  return null;
-                }
-                return (
-                  <DataTable.Head
-                    column={header.column}
-                    key={header.id}
-                    onClick={
-                      header.column.getCanSort()
-                        ? header.column.getToggleSortingHandler()
-                        : undefined
-                    }
-                    className={cn(
-                      header.column.getCanSort() && "cursor-pointer"
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "flex items-center space-x-1 whitespace-nowrap",
-                        header.column.columnDef.meta?.headerAlign === "right"
-                          ? "justify-end"
-                          : header.column.columnDef.meta?.headerAlign ===
-                              "center"
-                            ? "justify-center"
-                            : undefined
-                      )}
-                    >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                      {header.column.getCanSort() && (
-                        <Icon
-                          visual={
-                            header.column.getIsSorted() === "asc"
-                              ? ArrowUp
-                              : header.column.getIsSorted() === "desc"
-                                ? ArrowDown
-                                : ChevronSelectorVertical
-                          }
-                          size="xs"
-                          className="ml-1"
-                        />
-                      )}
-                    </div>
-                  </DataTable.Head>
-                );
-              })}
-            </DataTable.Row>
-          ))}
-        </DataTable.Header>
-        <DataTable.Body>
-          {rows.map((row) => {
-            const handleRowClick = () => {
-              if (enableRowSelection && row.getCanSelect()) {
-                row.toggleSelected(!enableMultiRowSelection ? true : undefined);
-              }
-              row.original.onClick?.();
-            };
+  const isColumnVisible = (columnId: string) =>
+    !!windowSize.width &&
+    shouldRenderColumn(windowSize.width, columnsBreakpoints[columnId]);
 
-            return (
+  const visibleColumnCount = table
+    .getVisibleLeafColumns()
+    .filter((column) => isColumnVisible(column.id)).length;
+
+  const layout = useMemo<DataTableLayout>(
+    () => ({ density, enforceColumnMinWidth: horizontalScroll }),
+    [density, horizontalScroll]
+  );
+
+  return (
+    <DataTableLayoutContext.Provider value={layout}>
+      <div className={cn("flex flex-col gap-2", className, widthClassName)}>
+        <DataTable.Root
+          containerRef={rowRevealRef}
+          containerClassName={cn(
+            horizontalScroll && "overflow-x-auto",
+            maxHeight && "overflow-y-auto",
+            maxHeight
+          )}
+          // Auto layout lets the table outgrow its container; fixed layout
+          // would always share the width and never overflow.
+          className={cn(horizontalScroll && "w-max min-w-full table-auto")}
+        >
+          <DataTable.Header
+            className={cn(
+              // Borders do not stick with border-collapse, so the divider is a shadow.
+              stickyHeader &&
+                "sticky top-0 z-20 bg-background shadow-[inset_0_-1px_0_var(--color-separator)]"
+            )}
+          >
+            {table.getHeaderGroups().map((headerGroup) => (
               <DataTable.Row
+                key={headerGroup.id}
                 widthClassName={widthClassName}
-                key={row.id}
-                hideBottomBorder={hideRowDivider}
-                onClick={
-                  enableRowSelection && !disableRowClickSelection
-                    ? handleRowClick
-                    : row.original.onClick
-                }
-                onDoubleClick={row.original.onDoubleClick}
-                rowData={row.original}
-                {...(enableRowSelection && {
-                  "data-selected": row.getIsSelected(),
-                })}
               >
-                {row.getVisibleCells().map((cell) => {
-                  const breakpoint = columnsBreakpoints[cell.column.id];
-                  if (
-                    !windowSize.width ||
-                    !shouldRenderColumn(windowSize.width, breakpoint)
-                  ) {
+                {headerGroup.headers.map((header) => {
+                  if (!isColumnVisible(header.id)) {
                     return null;
                   }
+                  const canSort =
+                    header.column.getCanSort() &&
+                    getDataTableColumnPresets(header.column).sortable;
                   return (
-                    <DataTable.Cell column={cell.column} key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </DataTable.Cell>
+                    <DataTable.Head
+                      column={header.column}
+                      key={header.id}
+                      onSort={
+                        canSort
+                          ? header.column.getToggleSortingHandler()
+                          : undefined
+                      }
+                    >
+                      {renderHeaderContent(header, canSort)}
+                    </DataTable.Head>
                   );
                 })}
               </DataTable.Row>
-            );
-          })}
-        </DataTable.Body>
-      </DataTable.Root>
-      {pagination && (
-        <div className="p-1">
-          <Pagination
-            size="xs"
-            pagination={table.getState().pagination}
-            setPagination={table.setPagination}
-            rowCount={table.getRowCount()}
-            rowCountIsCapped={rowCountIsCapped}
-            disablePaginationNumbers={disablePaginationNumbers}
-          />
-        </div>
+            ))}
+          </DataTable.Header>
+          <DataTable.Body
+            aria-busy={isLoading || undefined}
+            className={cn(
+              isLoading &&
+                "pointer-events-none opacity-50 transition-opacity duration-enter ease-enter motion-reduce:transition-none"
+            )}
+          >
+            {rows.map((row) => {
+              const handleRowClick = () => {
+                if (enableRowSelection && row.getCanSelect()) {
+                  row.toggleSelected(
+                    !enableMultiRowSelection ? true : undefined
+                  );
+                }
+                row.original.onClick?.();
+              };
+
+              return (
+                <DataTable.Row
+                  widthClassName={widthClassName}
+                  key={row.id}
+                  hideBottomBorder={hideRowDivider}
+                  onClick={
+                    enableRowSelection && !disableRowClickSelection
+                      ? handleRowClick
+                      : row.original.onClick
+                  }
+                  onDoubleClick={row.original.onDoubleClick}
+                  rowData={row.original}
+                  {...(enableRowSelection && {
+                    "data-selected": row.getIsSelected(),
+                  })}
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    if (!isColumnVisible(cell.column.id)) {
+                      return null;
+                    }
+                    return (
+                      <DataTable.Cell column={cell.column} key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </DataTable.Cell>
+                    );
+                  })}
+                </DataTable.Row>
+              );
+            })}
+            {rows.length === 0 && emptyState !== undefined && (
+              <tr>
+                <td
+                  colSpan={Math.max(visibleColumnCount, 1)}
+                  className="px-2 py-8 text-center text-sm text-muted-foreground"
+                >
+                  {emptyState}
+                </td>
+              </tr>
+            )}
+          </DataTable.Body>
+        </DataTable.Root>
+        {pagination && (
+          <div className="p-1">
+            <Pagination
+              size="xs"
+              pagination={table.getState().pagination}
+              setPagination={table.setPagination}
+              rowCount={table.getRowCount()}
+              rowCountIsCapped={rowCountIsCapped}
+              disablePaginationNumbers={disablePaginationNumbers}
+            />
+          </div>
+        )}
+        {!pagination && onLoadMore && (
+          <div className="p-1">
+            <LoadMore
+              onLoadMore={onLoadMore}
+              onShowLess={onShowLess}
+              isLoading={isLoadingMore}
+              rowCount={data.length}
+              totalRowCount={totalRowCount}
+              totalRowCountIsCapped={rowCountIsCapped}
+            />
+          </div>
+        )}
+      </div>
+    </DataTableLayoutContext.Provider>
+  );
+}
+
+// Sortable headers get their content straight into Head's sort button; other
+// headers keep the historical flex wrapper so existing layouts do not move.
+function renderHeaderContent<TData>(
+  header: Header<TData, unknown>,
+  canSort: boolean
+) {
+  const content = flexRender(
+    header.column.columnDef.header,
+    header.getContext()
+  );
+  if (canSort) {
+    return content;
+  }
+  const { headerAlign } = getDataTableColumnPresets(header.column);
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-1 whitespace-nowrap",
+        headerAlign !== "left" && ALIGN_JUSTIFY_CLASS[headerAlign]
       )}
-      {!pagination && onLoadMore && (
-        <div className="p-1">
-          <LoadMore
-            onLoadMore={onLoadMore}
-            onShowLess={onShowLess}
-            isLoading={isLoadingMore}
-            rowCount={data.length}
-            totalRowCount={totalRowCount}
-            totalRowCountIsCapped={rowCountIsCapped}
-          />
-        </div>
-      )}
+    >
+      {content}
     </div>
   );
 }
 
 export interface ScrollableDataTableProps<TData extends TBaseData>
-  extends Omit<DataTableProps<TData>, "onLoadMore" | "isLoadingMore"> {
+  extends Omit<
+    DataTableProps<TData>,
+    | "onLoadMore"
+    | "isLoadingMore"
+    | "isLoading"
+    | "emptyState"
+    | "stickyHeader"
+    | "maxHeight"
+    | "horizontalScroll"
+  > {
   /** Height of the scroll container: a max-height class name, true to fill the parent (flex-1), or unset for the default max-h-100. */
   maxHeight?: string | boolean;
   /** Called when the user scrolls near the bottom — use it for infinite loading. */
@@ -509,8 +714,6 @@ export interface ScrollableDataTableProps<TData extends TBaseData>
   containerRef?: React.Ref<HTMLDivElement>;
 }
 
-// cellHeight in pixels
-const COLUMN_HEIGHT = 48;
 const MIN_COLUMN_WIDTH = 40;
 
 /**
@@ -540,6 +743,8 @@ export function ScrollableDataTable<TData extends TBaseData>({
   containerRef,
   hideRowDivider = false,
   disableRowClickSelection = false,
+  density = "default",
+  getRowLabel,
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -624,6 +829,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
     enableRowSelection,
     enableMultiRowSelection,
     getRowId,
+    ...(getRowLabel && { meta: { getRowLabel } }),
   });
 
   useEffect(() => {
@@ -670,7 +876,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => COLUMN_HEIGHT,
+    estimateSize: () => DATA_TABLE_ROW_HEIGHT_PX[density],
   });
 
   // Intersection observer for infinite loading
@@ -719,124 +925,36 @@ export function ScrollableDataTable<TData extends TBaseData>({
     return () => observer.disconnect();
   }, []);
 
+  const layout = useMemo<DataTableLayout>(
+    () => ({ ...DEFAULT_DATA_TABLE_LAYOUT, density }),
+    [density]
+  );
+
   return (
-    <div
-      className={cn(
-        "relative overflow-y-auto overflow-x-hidden",
-        className,
-        widthClassName,
-        maxHeight === true
-          ? "flex-1"
-          : typeof maxHeight === "string"
-            ? maxHeight
-            : "max-h-100"
-      )}
-      ref={setRef}
-    >
-      <div className="relative">
-        <DataTable.Root className="w-full table-fixed">
-          <DataTable.Header className="sticky top-0 z-20 bg-background shadow-sm">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <DataTable.Row
-                key={headerGroup.id}
-                widthClassName={widthClassName}
-              >
-                {headerGroup.headers.map((header) => {
-                  const breakpoint = columnsBreakpoints[header.id];
-                  if (
-                    !windowSize.width ||
-                    !shouldRenderColumn(windowSize.width, breakpoint)
-                  ) {
-                    return null;
-                  }
-
-                  return (
-                    <DataTable.Head
-                      column={header.column}
-                      key={header.id}
-                      onClick={
-                        isSorting && header.column.getCanSort()
-                          ? header.column.getToggleSortingHandler()
-                          : undefined
-                      }
-                      className={cn(
-                        "max-w-0",
-                        header.column.getCanSort() &&
-                          isSorting &&
-                          "cursor-pointer"
-                      )}
-                      style={{
-                        width: columnSizing[header.id],
-                        minWidth: columnSizing[header.id],
-                      }}
-                    >
-                      <div className="flex w-full items-center space-x-1 whitespace-nowrap">
-                        <span className="truncate">
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                        </span>
-                        {isSorting && header.column.getCanSort() && (
-                          <Icon
-                            visual={
-                              header.column.getIsSorted() === "asc"
-                                ? ArrowUp
-                                : header.column.getIsSorted() === "desc"
-                                  ? ArrowDown
-                                  : ChevronSelectorVertical
-                            }
-                            size="xs"
-                            className="ml-1"
-                          />
-                        )}
-                      </div>
-                    </DataTable.Head>
-                  );
-                })}
-              </DataTable.Row>
-            ))}
-          </DataTable.Header>
-          <DataTable.Body
-            className="relative w-full"
-            style={{
-              height: `${rowVirtualizer.getTotalSize()}px`,
-            }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const row = rows[virtualRow.index];
-              const handleRowClick = () => {
-                if (enableRowSelection && row.getCanSelect()) {
-                  row.toggleSelected(
-                    !enableMultiRowSelection ? true : undefined
-                  );
-                }
-                row.original.onClick?.();
-              };
-
-              return (
+    <DataTableLayoutContext.Provider value={layout}>
+      <div
+        className={cn(
+          "relative overflow-y-auto overflow-x-hidden",
+          className,
+          widthClassName,
+          maxHeight === true
+            ? "flex-1"
+            : typeof maxHeight === "string"
+              ? maxHeight
+              : "max-h-100"
+        )}
+        ref={setRef}
+      >
+        <div className="relative">
+          <DataTable.Root className="w-full table-fixed">
+            <DataTable.Header className="sticky top-0 z-20 bg-background shadow-sm">
+              {table.getHeaderGroups().map((headerGroup) => (
                 <DataTable.Row
-                  key={row.id}
-                  id={row.id}
+                  key={headerGroup.id}
                   widthClassName={widthClassName}
-                  hideBottomBorder={hideRowDivider}
-                  onClick={
-                    enableRowSelection && !disableRowClickSelection
-                      ? handleRowClick
-                      : row.original.onClick
-                  }
-                  onDoubleClick={row.original.onDoubleClick}
-                  rowData={row.original}
-                  className="absolute w-full"
-                  {...(enableRowSelection && {
-                    "data-selected": row.getIsSelected(),
-                  })}
-                  style={{
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
                 >
-                  {row.getVisibleCells().map((cell) => {
-                    const breakpoint = columnsBreakpoints[cell.column.id];
+                  {headerGroup.headers.map((header) => {
+                    const breakpoint = columnsBreakpoints[header.id];
                     if (
                       !windowSize.width ||
                       !shouldRenderColumn(windowSize.width, breakpoint)
@@ -844,55 +962,143 @@ export function ScrollableDataTable<TData extends TBaseData>({
                       return null;
                     }
 
+                    const canSort =
+                      isSorting &&
+                      header.column.getCanSort() &&
+                      getDataTableColumnPresets(header.column).sortable;
+                    const headerContent = (
+                      <span className="truncate">
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                      </span>
+                    );
                     return (
-                      <DataTable.Cell
-                        column={cell.column}
-                        key={cell.id}
-                        id={cell.id}
+                      <DataTable.Head
+                        column={header.column}
+                        key={header.id}
+                        onSort={
+                          canSort
+                            ? header.column.getToggleSortingHandler()
+                            : undefined
+                        }
                         className="max-w-0"
                         style={{
-                          width: columnSizing[cell.column.id],
-                          minWidth: columnSizing[cell.column.id],
+                          width: columnSizing[header.id],
+                          minWidth: columnSizing[header.id],
                         }}
                       >
-                        <div className="flex items-center space-x-1">
-                          <span className="truncate">
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </span>
-                        </div>
-                      </DataTable.Cell>
+                        {canSort ? (
+                          headerContent
+                        ) : (
+                          <div className="flex w-full items-center gap-1 whitespace-nowrap">
+                            {headerContent}
+                          </div>
+                        )}
+                      </DataTable.Head>
                     );
                   })}
                 </DataTable.Row>
-              );
-            })}
-          </DataTable.Body>
-        </DataTable.Root>
-        {/*sentinel div used for the intersection observer*/}
-        <div ref={loadMoreRef} className="absolute bottom-0 h-1 w-full" />
-        <div ref={scrollSentinelRef} className="h-px" />
-      </div>
+              ))}
+            </DataTable.Header>
+            <DataTable.Body
+              className="relative w-full"
+              style={{
+                height: `${rowVirtualizer.getTotalSize()}px`,
+              }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const row = rows[virtualRow.index];
+                const handleRowClick = () => {
+                  if (enableRowSelection && row.getCanSelect()) {
+                    row.toggleSelected(
+                      !enableMultiRowSelection ? true : undefined
+                    );
+                  }
+                  row.original.onClick?.();
+                };
 
-      <div
-        className={cn(
-          "pointer-events-none sticky -bottom-px left-0 right-0 -mt-10 h-10 bg-linear-to-t",
-          "from-background via-background/60 to-transparent transition-opacity duration-300",
-          canScrollDown ? "opacity-100" : "opacity-0"
-        )}
-      />
+                return (
+                  <DataTable.Row
+                    key={row.id}
+                    id={row.id}
+                    widthClassName={widthClassName}
+                    hideBottomBorder={hideRowDivider}
+                    onClick={
+                      enableRowSelection && !disableRowClickSelection
+                        ? handleRowClick
+                        : row.original.onClick
+                    }
+                    onDoubleClick={row.original.onDoubleClick}
+                    rowData={row.original}
+                    className="absolute w-full"
+                    {...(enableRowSelection && {
+                      "data-selected": row.getIsSelected(),
+                    })}
+                    style={{
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const breakpoint = columnsBreakpoints[cell.column.id];
+                      if (
+                        !windowSize.width ||
+                        !shouldRenderColumn(windowSize.width, breakpoint)
+                      ) {
+                        return null;
+                      }
 
-      {isLoading && (
-        <div className="sticky bottom-0 left-0 right-0 flex justify-center bg-background/80 py-2 backdrop-blur-sm">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Spinner size="xs" />
-            <span>Loading more data...</span>
-          </div>
+                      return (
+                        <DataTable.Cell
+                          column={cell.column}
+                          key={cell.id}
+                          id={cell.id}
+                          className="max-w-0"
+                          style={{
+                            width: columnSizing[cell.column.id],
+                            minWidth: columnSizing[cell.column.id],
+                          }}
+                        >
+                          <div className="flex items-center space-x-1">
+                            <span className="truncate">
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </span>
+                          </div>
+                        </DataTable.Cell>
+                      );
+                    })}
+                  </DataTable.Row>
+                );
+              })}
+            </DataTable.Body>
+          </DataTable.Root>
+          {/*sentinel div used for the intersection observer*/}
+          <div ref={loadMoreRef} className="absolute bottom-0 h-1 w-full" />
+          <div ref={scrollSentinelRef} className="h-px" />
         </div>
-      )}
-    </div>
+
+        <div
+          className={cn(
+            "pointer-events-none sticky -bottom-px left-0 right-0 -mt-10 h-10 bg-linear-to-t",
+            "from-background via-background/60 to-transparent transition-opacity duration-300",
+            canScrollDown ? "opacity-100" : "opacity-0"
+          )}
+        />
+
+        {isLoading && (
+          <div className="sticky bottom-0 left-0 right-0 flex justify-center bg-background/80 py-2 backdrop-blur-sm">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Spinner size="xs" />
+              <span>Loading more data...</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </DataTableLayoutContext.Provider>
   );
 }
 
@@ -949,34 +1155,79 @@ DataTable.Header = function Header({
 interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   children?: ReactNode;
   column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  /**
+   * Makes the header a sort toggle: children render inside a full-width button
+   * with the sort icon, and the cell exposes `aria-sort`. Prefer this over
+   * `onClick` on the cell so keyboard users can sort.
+   */
+  onSort?: React.MouseEventHandler<HTMLButtonElement>;
 }
 
-/** Header cell (th) with alignment and optional tooltip from the column meta. */
+/** Header cell (th) with alignment, optional tooltip, and optional sort button from the column meta. */
 DataTable.Head = function Head({
   children,
   className,
   column,
+  onSort,
   ...props
 }: HeadProps) {
+  const layout = useDataTableLayout();
+  const presets = getDataTableColumnPresets(column);
+  const sorted = column.getIsSorted();
+
+  const content = onSort ? (
+    <button
+      type="button"
+      onClick={onSort}
+      className={cn(
+        "heading-sm flex w-full cursor-pointer items-center gap-1 whitespace-nowrap rounded-xs capitalize text-foreground",
+        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
+        "active:scale-[0.985] motion-reduce:active:scale-100",
+        ALIGN_JUSTIFY_CLASS[presets.headerAlign]
+      )}
+    >
+      {children}
+      <Icon visual={getSortIcon(sorted)} size="xs" />
+    </button>
+  ) : (
+    children
+  );
+
   return (
     <th
+      scope="col"
+      aria-sort={
+        onSort
+          ? sorted === "asc"
+            ? "ascending"
+            : sorted === "desc"
+              ? "descending"
+              : "none"
+          : undefined
+      }
       className={cn(
-        "heading-xs py-2 px-2 capitalize",
-        column.columnDef.meta?.headerAlign === "right"
-          ? "text-right"
-          : column.columnDef.meta?.headerAlign === "center"
-            ? "text-center"
-            : "text-left",
+        "heading-sm px-2 capitalize",
+        DENSITY_HEADER_HEIGHT_CLASS[layout.density],
+        ALIGN_TEXT_CLASS[presets.headerAlign],
         "text-foreground",
+        layout.enforceColumnMinWidth &&
+          presets.sortable &&
+          SCROLL_COLUMN_MIN_WIDTH_CLASS,
+        presets.headerClassName,
         column.columnDef.meta?.className,
         className
       )}
       {...props}
     >
       {column.columnDef.meta?.tooltip ? (
-        <Tooltip label={column.columnDef.meta.tooltip} trigger={children} />
+        <Tooltip
+          label={column.columnDef.meta.tooltip}
+          trigger={content}
+          // The sort button must be the trigger itself, not nested in one.
+          tooltipTriggerAsChild={onSort !== undefined}
+        />
       ) : (
-        children
+        content
       )}
     </th>
   );
@@ -1283,25 +1534,50 @@ interface CellProps extends React.HTMLAttributes<HTMLTableCellElement> {
   column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
-/** Body cell (td) with truncation and column meta styling. */
+/** Body cell (td, or th scope="row" with meta.rowHeader) with truncation, density height and column meta styling. */
 DataTable.Cell = function Cell({
   children,
   className,
   column,
   ...props
 }: CellProps) {
+  const layout = useDataTableLayout();
+  const presets = getDataTableColumnPresets(column);
+  const isRowHeader = column.columnDef.meta?.rowHeader === true;
+  const Tag = isRowHeader ? "th" : "td";
+
   return (
-    <td
+    <Tag
+      scope={isRowHeader ? "row" : undefined}
       className={cn(
-        cellHeight,
+        DENSITY_ROW_HEIGHT_CLASS[layout.density],
         "truncate px-2",
+        isRowHeader && "text-left font-normal",
+        layout.enforceColumnMinWidth &&
+          presets.sortable &&
+          SCROLL_COLUMN_MIN_WIDTH_CLASS,
+        presets.cellClassName,
+        presets.align !== "left" && ALIGN_TEXT_CLASS[presets.align],
         column.columnDef.meta?.className,
         className
       )}
       {...props}
     >
-      {children}
-    </td>
+      {presets.align === "left" ? (
+        children
+      ) : (
+        // Cell helpers render flex rows, which ignore text-align; a flex
+        // wrapper pushes them along the main axis instead.
+        <div
+          className={cn(
+            "flex items-center",
+            ALIGN_JUSTIFY_CLASS[presets.align]
+          )}
+        >
+          {children}
+        </div>
+      )}
+    </Tag>
   );
 };
 
@@ -1319,9 +1595,13 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
     items: { name: string; visual?: string | React.ReactNode }[];
     nbVisibleItems?: number;
   };
+  /** Second line under the main text. Only rendered at `relaxed` density, where the row has room for it. */
+  secondaryLine?: ReactNode;
+  /** Content pinned to the end of the cell (a chip, a small button). */
+  trailing?: ReactNode;
 }
 
-/** Standard cell layout with optional avatar, avatar stack, icon, and trailing description. */
+/** Standard cell layout with optional avatar, avatar stack, icon, inline description, secondary line and trailing slot. */
 DataTable.CellContent = function CellContent({
   children,
   className,
@@ -1334,8 +1614,34 @@ DataTable.CellContent = function CellContent({
   grow = false,
   disabled,
   avatarStack,
+  secondaryLine,
+  trailing,
   ...props
 }: CellContentProps) {
+  const { density } = useDataTableLayout();
+  const avatarSize = density === "relaxed" ? "sm" : "xs";
+  const showSecondaryLine =
+    secondaryLine !== undefined && density === "relaxed";
+
+  const primaryLine = (
+    <>
+      <div
+        className={cn(
+          grow ? "flex-grow" : "",
+          "truncate text-sm",
+          "text-foreground"
+        )}
+      >
+        {children}
+      </div>
+      {description && (
+        <span className={cn("pl-2 text-sm", "text-muted-foreground")}>
+          {description}
+        </span>
+      )}
+    </>
+  );
+
   return (
     <div
       className={cn(
@@ -1352,7 +1658,7 @@ DataTable.CellContent = function CellContent({
           trigger={
             <Avatar
               visual={avatarUrl}
-              size="xs"
+              size={avatarSize}
               className="mr-2"
               isRounded={roundedAvatar ?? false}
             />
@@ -1363,7 +1669,7 @@ DataTable.CellContent = function CellContent({
       {avatarUrl && !avatarTooltipLabel && (
         <Avatar
           visual={avatarUrl}
-          size="xs"
+          size={avatarSize}
           className="mr-2"
           isRounded={roundedAvatar ?? false}
         />
@@ -1372,7 +1678,7 @@ DataTable.CellContent = function CellContent({
         <Avatar.Stack
           avatars={avatarStack.items}
           nbVisibleItems={avatarStack.nbVisibleItems}
-          size="xs"
+          size={avatarSize}
         />
       )}
       {icon && (
@@ -1382,27 +1688,33 @@ DataTable.CellContent = function CellContent({
           className={cn("mr-2 text-foreground", iconClassName)}
         />
       )}
-      <div
-        className={cn(
-          "flex shrink truncate items-center",
-          grow ? "flex-grow" : ""
-        )}
-      >
+      {showSecondaryLine ? (
         <div
           className={cn(
-            grow ? "flex-grow" : "",
-            "truncate text-sm",
-            "text-foreground"
+            "flex min-w-0 shrink flex-col truncate",
+            grow ? "flex-grow" : ""
           )}
         >
-          {children}
+          <div className="flex items-center truncate">{primaryLine}</div>
+          <div className="truncate text-xs text-muted-foreground">
+            {secondaryLine}
+          </div>
         </div>
-        {description && (
-          <span className={cn("pl-2 text-sm", "text-muted-foreground")}>
-            {description}
-          </span>
-        )}
-      </div>
+      ) : (
+        <div
+          className={cn(
+            "flex shrink truncate items-center",
+            grow ? "flex-grow" : ""
+          )}
+        >
+          {primaryLine}
+        </div>
+      )}
+      {trailing !== undefined && (
+        <div className="ml-auto flex shrink-0 items-center pl-2">
+          {trailing}
+        </div>
+      )}
     </div>
   );
 };
@@ -1424,6 +1736,8 @@ DataTable.BasicCellContent = function BasicCellContent({
   ...props
 }: BasicCellContentProps) {
   const [isCopied, copyToClipboard] = useCopyToClipboard();
+  const { density } = useDataTableLayout();
+  const cellHeight = DENSITY_ROW_HEIGHT_CLASS[density];
 
   const handleCopy = async () => {
     const textToUse = textToCopy ?? String(label);
@@ -1501,6 +1815,176 @@ DataTable.BasicCellContent = function BasicCellContent({
   );
 };
 
+type ChipColorType = (typeof CHIP_COLORS)[number];
+
+interface NumericCellContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** The number to display; `null`/`undefined` show `placeholder`. */
+  value: number | null | undefined;
+  /** BCP 47 locale for digit grouping and decimals. Defaults to the browser locale. */
+  locale?: string;
+  /** Fixed number of fraction digits. Keep it constant within a column. */
+  precision?: number;
+  /** Currency symbol or unit, concatenated to the number (e.g. "$" prefix, "%" or " kb" suffix). */
+  unit?: string;
+  /** Where `unit` goes. Defaults to "suffix". */
+  unitPosition?: "prefix" | "suffix";
+  /** Shown for missing values. Prefer a word ("Pending") over a dash. */
+  placeholder?: string;
+  /** Direction arrow shown after the number. Colour follows `upIsPositive`; the arrow always shows. */
+  trend?: "up" | "down" | "flat";
+  /** Whether an upward trend is good (sales) rather than bad (costs). Defaults to true. */
+  upIsPositive?: boolean;
+  tooltip?: string;
+  disabled?: boolean;
+}
+
+function formatNumericValue(
+  value: number,
+  locale: string | undefined,
+  precision: number | undefined
+) {
+  return value.toLocaleString(
+    locale,
+    precision === undefined
+      ? undefined
+      : { minimumFractionDigits: precision, maximumFractionDigits: precision }
+  );
+}
+
+const TREND_LABEL: Record<
+  NonNullable<NumericCellContentProps["trend"]>,
+  string
+> = {
+  up: "Trending up",
+  down: "Trending down",
+  flat: "No change",
+};
+
+/**
+ * Right-aligned number in tabular figures, with optional unit and trend arrow.
+ * Pair it with a `meta.type: "numeric"` column so the header aligns too.
+ */
+DataTable.NumericCellContent = function NumericCellContent({
+  value,
+  locale,
+  precision,
+  unit,
+  unitPosition = "suffix",
+  placeholder = "-",
+  trend,
+  upIsPositive = true,
+  tooltip,
+  disabled,
+  className,
+  ...props
+}: NumericCellContentProps) {
+  const { density } = useDataTableLayout();
+
+  const formatted =
+    value === null || value === undefined
+      ? placeholder
+      : unit === undefined
+        ? formatNumericValue(value, locale, precision)
+        : unitPosition === "prefix"
+          ? `${unit}${formatNumericValue(value, locale, precision)}`
+          : `${formatNumericValue(value, locale, precision)}${unit}`;
+
+  const trendIsPositive =
+    trend === "up" ? upIsPositive : trend === "down" ? !upIsPositive : null;
+
+  const content = (
+    <div
+      className={cn(
+        DENSITY_ROW_HEIGHT_CLASS[density],
+        "flex items-center justify-end gap-1 text-sm tabular-nums whitespace-nowrap",
+        "text-foreground",
+        disabled && "cursor-not-allowed opacity-50",
+        className
+      )}
+      aria-disabled={disabled || undefined}
+      {...props}
+    >
+      <span className="truncate">{formatted}</span>
+      {trend && (
+        <span
+          role="img"
+          aria-label={TREND_LABEL[trend]}
+          className={cn(
+            "flex items-center",
+            trendIsPositive === true && "text-success-800",
+            trendIsPositive === false && "text-warning-800",
+            trendIsPositive === null && "text-muted-foreground"
+          )}
+        >
+          <Icon
+            visual={
+              trend === "up" ? ArrowUp : trend === "down" ? ArrowDown : Minus
+            }
+            size="xs"
+          />
+        </span>
+      )}
+    </div>
+  );
+
+  return tooltip ? (
+    <Tooltip tooltipTriggerAsChild trigger={content} label={tooltip} />
+  ) : (
+    content
+  );
+};
+
+interface StatusCellContentProps {
+  /** Short status word, kept in sentence case for screen readers ("Active", "Paused"). */
+  label: string;
+  /** Chip colour; pair a colour with the label, never rely on colour alone. */
+  color?: ChipColorType;
+  icon?: ComponentType;
+  /** Shimmer for transient states (e.g. "Syncing"). */
+  isBusy?: boolean;
+  tooltip?: string;
+  className?: string;
+}
+
+/**
+ * Status as a mini Chip so it matches chips elsewhere in the product. Pair it
+ * with a `meta.type: "status"` column to keep the label on one line.
+ */
+DataTable.StatusCellContent = function StatusCellContent({
+  label,
+  color = "primary",
+  icon,
+  isBusy,
+  tooltip,
+  className,
+}: StatusCellContentProps) {
+  const { density } = useDataTableLayout();
+
+  const content = (
+    <div
+      className={cn(
+        DENSITY_ROW_HEIGHT_CLASS[density],
+        "flex items-center",
+        className
+      )}
+    >
+      <Chip
+        size="mini"
+        color={color}
+        label={label}
+        icon={icon}
+        isBusy={isBusy}
+      />
+    </div>
+  );
+
+  return tooltip ? (
+    <Tooltip tooltipTriggerAsChild trigger={content} label={tooltip} />
+  ) : (
+    content
+  );
+};
+
 interface CellContentWithCopyProps {
   children: React.ReactNode;
   textToCopy?: string;
@@ -1558,6 +2042,14 @@ interface SelectionColumnOptions {
   hideSelectAll?: boolean;
 }
 
+function getSelectionLabel<TData>(
+  getRowLabel: ((row: TData) => string) | undefined,
+  row: Row<TData>
+) {
+  const label = getRowLabel?.(row.original);
+  return label ? `Select ${label}` : "Select row";
+}
+
 /** Builds a checkbox column for multi-row selection, with an optional select-all header. */
 export function createSelectionColumn<TData>({
   hideSelectAll = false,
@@ -1569,6 +2061,7 @@ export function createSelectionColumn<TData>({
     header: ({ table }) =>
       !hideSelectAll ? (
         <Checkbox
+          aria-label="Select all rows"
           checked={
             table.getIsAllRowsSelected()
               ? true
@@ -1584,9 +2077,10 @@ export function createSelectionColumn<TData>({
           }}
         />
       ) : null,
-    cell: ({ row }) => (
+    cell: ({ row, table }) => (
       <div className="flex h-full w-full items-center">
         <Checkbox
+          aria-label={getSelectionLabel(table.options.meta?.getRowLabel, row)}
           checked={row.getIsSelected()}
           disabled={!row.getCanSelect()}
           onCheckedChange={(state) => {
@@ -1599,7 +2093,7 @@ export function createSelectionColumn<TData>({
       </div>
     ),
     meta: {
-      className: "w-10",
+      className: "w-10 min-w-10",
     },
   };
 }
@@ -1611,7 +2105,7 @@ export function createRadioSelectionColumn<TData>(): ColumnDef<TData> {
     enableSorting: false,
     enableHiding: false,
     header: () => null,
-    cell: ({ row }) => (
+    cell: ({ row, table }) => (
       <div className="flex h-full w-full items-center">
         <div
           className={cn(
@@ -1620,6 +2114,7 @@ export function createRadioSelectionColumn<TData>(): ColumnDef<TData> {
             !row.getCanSelect() && "cursor-not-allowed opacity-50"
           )}
           aria-checked={row.getIsSelected()}
+          aria-label={getSelectionLabel(table.options.meta?.getRowLabel, row)}
           role="radio"
         >
           {row.getIsSelected() && <div className={radioIndicatorStyles()} />}
@@ -1627,7 +2122,7 @@ export function createRadioSelectionColumn<TData>(): ColumnDef<TData> {
       </div>
     ),
     meta: {
-      className: "w-10",
+      className: "w-10 min-w-10",
     },
   };
 }

@@ -44,6 +44,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
+import { launchDeleteAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -637,6 +638,7 @@ export async function archiveAgentConfiguration(
   if (updated[0] > 0) {
     // The agent no longer has an active version, so drop its cached AgentResource.
     await AgentResource.invalidateCache(owner.id, agentConfigurationId);
+    await AgentResource.launchSearchIndexation(auth, [agentConfigurationId]);
   }
 
   const affectedCount = updated[0];
@@ -715,6 +717,7 @@ export async function restoreAgentConfiguration(
   if (updated[0] > 0) {
     // The restored version is active again, so the cached AgentResource is now stale.
     await AgentResource.invalidateCache(owner.id, agentConfigurationId);
+    await AgentResource.launchSearchIndexation(auth, [agentConfigurationId]);
   }
 
   // Re-enable triggers.
@@ -845,6 +848,7 @@ export async function cleanupAgentScopedResourcesForHardDeletion(
  * moved to the highest remaining version, or the agent is deleted with its grants when no row
  * remains. The row's satellites (tools, tags, skills, editor links, suggestions) must be gone
  * already.
+ * Returns whether the agent's identity row is deleted,
  */
 export async function destroyAgentConfigurationRow(
   auth: Authenticator,
@@ -853,7 +857,7 @@ export async function destroyAgentConfigurationRow(
     configurationId,
   }: { agent: AgentResource; configurationId: ModelId },
   transaction: Transaction
-): Promise<void> {
+): Promise<{ agentDeleted: boolean }> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   await AgentConfigurationModel.destroy({
@@ -886,13 +890,34 @@ export async function destroyAgentConfigurationRow(
     await agent.setCurrentConfiguration(auth, remainingConfiguration, {
       transaction,
     });
-    return;
+    return { agentDeleted: false };
   }
 
   await agent.destroyPermissionsAndGroups(auth, { transaction });
   await AgentModel.destroy({
     where: { sId: agent.sId, workspaceId },
     transaction,
+  });
+
+  return { agentDeleted: true };
+}
+
+/**
+ * Reflects a destroyed configuration row in the search index: an agent whose last version is gone
+ * leaves the index, any other one is reindexed under its new current version.
+ */
+export async function syncAgentSearchAfterRowDestroyed(
+  auth: Authenticator,
+  { agent, agentDeleted }: { agent: AgentResource; agentDeleted: boolean }
+): Promise<Result<undefined, Error>> {
+  if (!agentDeleted) {
+    await AgentResource.launchSearchIndexation(auth, [agent.sId]);
+    return new Ok(undefined);
+  }
+
+  return launchDeleteAgentSearchWorkflow({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    agentId: agent.sId,
   });
 }
 
@@ -901,11 +926,11 @@ export async function destroyAgentConfigurationRow(
 export async function unsafeHardDeleteAgentConfiguration(
   auth: Authenticator,
   agentResource: AgentResource
-): Promise<void> {
+): Promise<Result<undefined, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().id;
   const configurationModelId = agentResource.agentConfigurationModelId;
 
-  await withTransaction(async (t) => {
+  const { agentDeleted } = await withTransaction(async (t) => {
     // Clean up MCP server configurations and their children first
     const mcpConfigs = await AgentMCPServerConfigurationModel.findAll({
       where: {
@@ -967,11 +992,16 @@ export async function unsafeHardDeleteAgentConfiguration(
       transaction: t,
     });
 
-    await destroyAgentConfigurationRow(
+    return destroyAgentConfigurationRow(
       auth,
       { agent: agentResource, configurationId: configurationModelId },
       t
     );
+  });
+
+  return syncAgentSearchAfterRowDestroyed(auth, {
+    agent: agentResource,
+    agentDeleted,
   });
 }
 
@@ -1217,6 +1247,8 @@ export async function updateAgentPermissions(
       },
     });
 
+    await AgentResource.launchSearchIndexation(auth, [agent.sId]);
+
     // If the agent is hidden and editors were removed, disable their triggers.
     // Removed editors can no longer access the hidden agent, so their triggers would fail.
     if (usersToRemove.length > 0 && agent.scope === "hidden") {
@@ -1288,12 +1320,15 @@ export async function updateAgentConfigurationsScope(
   }
 
   // Authorization for the scope write — the `publish` capability plus `write`/`admin` on each agent
-  // — is enforced inside `AgentResource.bulkUpdateScope` (see the `scope-change-requires-edit-and-
-  // publish` contract), which skips any agent the caller is not allowed to (un)publish.
-  await AgentResource.bulkUpdateScope(
+  // — is enforced inside `AgentResource.bulkUpdate` -> `updateScopeInPlace` (see the
+  // `scope-change-requires-edit-and-publish` contract), which skips any agent the caller is not
+  // allowed to (un)publish.
+  await AgentResource.bulkUpdate(
     auth,
     editableAgents.map((a) => a.sId),
-    scope
+    {
+      scope,
+    }
   );
 
   return new Ok(undefined);

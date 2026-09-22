@@ -335,7 +335,7 @@ describe("GET /api/w/:wId/skills/:sId", () => {
 
   it("returns 404 for a skill built on a space a non-admin cannot read", async () => {
     const { workspace } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
     });
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId

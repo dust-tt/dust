@@ -21,6 +21,11 @@ export class FrameSourceMoveError extends Error {
   }
 }
 
+export const moveError = (
+  code: FrameSourceMoveError["code"],
+  message: string
+) => new Err(new FrameSourceMoveError(code, message));
+
 export type FrameSourceMovePaths = {
   auditEvent: {
     parentRelativePath: string;

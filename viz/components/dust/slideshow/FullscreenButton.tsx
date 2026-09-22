@@ -1,10 +1,12 @@
+import Maximize01 from "@dust-tt/sparkle/dist/esm/icons/v2-stroke/Maximize01";
+import Minimize01 from "@dust-tt/sparkle/dist/esm/icons/v2-stroke/Minimize01";
 import {
   SLIDESHOW_BUTTON_CLASS_NAME,
   SLIDESHOW_ICON_CLASS_NAME,
 } from "@viz/components/dust/slideshow/styles";
 import { Button } from "@viz/components/ui/button";
 import { cn } from "@viz/lib/utils";
-import { LoaderCircle, Maximize, Minimize } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { type RefObject, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -63,7 +65,11 @@ export function FullscreenButton({ containerRef }: FullscreenButtonProps) {
   };
 
   const label = isFullscreen ? "Exit fullscreen" : "Enter fullscreen";
-  const Icon = isPending ? LoaderCircle : isFullscreen ? Minimize : Maximize;
+  const Icon = isPending
+    ? LoaderCircle
+    : isFullscreen
+      ? Minimize01
+      : Maximize01;
 
   return (
     <>

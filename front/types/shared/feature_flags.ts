@@ -53,7 +53,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
-    stage: "self_serve",
+    stage: "dust_only",
     owner: "pmilliotte",
   },
   audit_logs: {
@@ -447,6 +447,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Use agent-message consumption items for Metronome, costCredits, and usage counters. Requires agent_message_consumption_writes.",
     stage: "dust_only",
     owner: "id13",
+  },
+  knowledge_browser: {
+    description:
+      "Browse spaces and folders from the knowledge pickers of the composer and skill builder instead of searching only",
+    stage: "dust_only",
+    owner: "smb2268",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

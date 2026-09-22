@@ -53,7 +53,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     await FeatureFlagFactory.basic(auth, "skills_search");
     const skill = await SkillFactory.create(auth);
     const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
-    const sort = [42, skill.sId];
+    const sort = sortBy === "usage" ? [42, skill.sId] : [1, 42, skill.sId];
     mockSearch.mockResolvedValue({
       hits: { hits: [{ _source: document, sort }] },
     });
@@ -70,9 +70,8 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     expect(mockSearch.mock.calls[1][0]).toMatchObject({
       search_after: sort,
       sort: [
-        sortBy === "usage"
-          ? { active_users_count: { order: "desc", missing: "_last" } }
-          : { _score: { order: "desc" } },
+        ...(sortBy === "relevance" ? [{ _score: { order: "desc" } }] : []),
+        { active_users_count: { order: "desc", missing: "_last" } },
         { skill_id: { order: "asc" } },
       ],
     });
@@ -163,7 +162,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     assert(foreignDocument);
 
     // Set the HTTP session to this workspace after creating the foreign fixture.
-    const { auth, workspace } = await createPrivateApiMockRequest({
+    const { auth, workspace, user } = await createPrivateApiMockRequest({
       role: "admin",
     });
     await FeatureFlagFactory.basic(auth, "skills_search");
@@ -235,7 +234,16 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     expect(redacted.status).toBe(200);
     const body = await redacted.json();
     expect(body).toEqual({
-      skills: hits.slice(0, 3).map(({ _source }) => toSkillListItem(_source)),
+      skills: hits.slice(0, 3).map(({ _source }) => ({
+        ...toSkillListItem(_source),
+        editors: [
+          {
+            sId: user.sId,
+            fullName: user.toJSON().fullName,
+            image: user.toJSON().image,
+          },
+        ],
+      })),
       hasMore: false,
       nextCursor: Buffer.from(JSON.stringify(hits[2].sort)).toString(
         "base64url"
@@ -247,7 +255,6 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
       expect(hit).not.toHaveProperty("instructionsHtml");
       expect(hit).not.toHaveProperty("tools");
       expect(hit).not.toHaveProperty("fileAttachments");
-      expect(hit).not.toHaveProperty("editors");
       expect(hit).not.toHaveProperty("editor_ids");
       expect(hit).not.toHaveProperty("editor_group_ids");
       expect(hit).not.toHaveProperty("mcp_server_view_ids");

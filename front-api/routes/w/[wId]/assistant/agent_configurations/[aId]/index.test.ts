@@ -10,8 +10,10 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -283,6 +285,103 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - pending agent"
   });
 });
 
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - updated", () => {
+  it("reports updated false on a no-op save and true on a real change", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "PATCH",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    // Re-send the exact current configuration: nothing changes, so no new version is created.
+    const unchangedBody = {
+      assistant: {
+        name: agent.name,
+        description: agent.description,
+        instructions: agent.instructions,
+        pictureUrl: agent.pictureUrl,
+        status: "active",
+        scope: agent.scope,
+        model: {
+          providerId: agent.model.providerId,
+          modelId: agent.model.modelId,
+          temperature: agent.model.temperature,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+      },
+    };
+
+    const noopResponse = await patch(workspace, agent.sId, unchangedBody);
+    expect(noopResponse.status).toBe(200);
+    const noopData = await noopResponse.json();
+    expect(noopData.updated).toBe(false);
+    expect(noopData.agentConfiguration.version).toBe(agent.version);
+
+    // Change the instructions: a new version is created.
+    const changedResponse = await patch(workspace, agent.sId, {
+      assistant: {
+        ...unchangedBody.assistant,
+        instructions: "A genuinely new set of instructions",
+      },
+    });
+    expect(changedResponse.status).toBe(200);
+    const changedData = await changedResponse.json();
+    expect(changedData.updated).toBe(true);
+    expect(changedData.agentConfiguration.version).toBeGreaterThan(
+      agent.version
+    );
+  });
+
+  it("reports updated true for an in-place editor change with no new version", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "PATCH",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    // Add a second editor to the workspace so the editor set can actually change.
+    const newEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, newEditor, { role: "user" });
+
+    // Same configuration, only the editor set grows: applied in place, so `updated` is true but the
+    // version does not move.
+    const response = await patch(workspace, agent.sId, {
+      assistant: {
+        name: agent.name,
+        description: agent.description,
+        instructions: agent.instructions,
+        pictureUrl: agent.pictureUrl,
+        status: "active",
+        scope: agent.scope,
+        model: {
+          providerId: agent.model.providerId,
+          modelId: agent.model.modelId,
+          temperature: agent.model.temperature,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }, { sId: newEditor.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+      },
+    });
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.updated).toBe(true);
+    expect(data.agentConfiguration.version).toBe(agent.version);
+  });
+});
+
 function get(workspace: { sId: string }, aId: string) {
   return honoApp.request(
     `/api/w/${workspace.sId}/assistant/agent_configurations/${aId}`,
@@ -350,7 +449,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
 
   it("keeps returning not found to a non-admin for an unpublished agent", async () => {
     const { workspace } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
       method: "GET",
     });
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
@@ -373,7 +472,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
 
   it("keeps returning not found to a non-admin for an agent built on a space they cannot read", async () => {
     const { workspace } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
       method: "GET",
     });
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(

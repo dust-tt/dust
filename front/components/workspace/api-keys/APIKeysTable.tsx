@@ -133,7 +133,6 @@ const formatKeyScope = (role: RoleType): string => {
     case "user":
       return "Read-only";
     case "manager":
-    case "builder":
       return "Read & write";
     case "admin":
       return "Admin";

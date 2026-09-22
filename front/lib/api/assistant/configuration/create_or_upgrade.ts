@@ -2,15 +2,16 @@ import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { resolveAgentRequestedSpaces } from "@app/lib/api/assistant/configuration/requested_spaces";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
@@ -28,6 +29,22 @@ import uniq from "lodash/uniq";
  * agentConfigurationId is created. Otherwise a brand-new agent configuration
  * is created. In both cases the new agent configuration is returned.
  */
+/**
+ * @cc [owner:rfrenoy,label:security;product] requested-spaces-readable-by-caller
+ * Unless `dangerouslySkipPermissionFiltering` is set, the call MUST return an `Err` and persist
+ * nothing when any space of the new version's `requestedSpaceIds` (collected from the actions'
+ * MCP server views, data source views, Dust apps and Pods, from the skills, and from
+ * `additionalRequestedSpaceIds`) is not readable by `auth` (`auth.can("read", space)`), through
+ * `resolveAgentRequestedSpaces`. Agent visibility is gated on the same predicate, so a
+ * version saved through a space the caller cannot read would lock the caller out of the agent.
+ */
+/**
+ * @cc [owner:rfrenoy,label:security;product] dust-apps-readable-by-caller
+ * Unless `dangerouslySkipPermissionFiltering` is set, the call MUST return an `Err` and persist
+ * nothing when an action's `dustAppConfiguration.appId` does not resolve to a Dust app readable by
+ * `auth`. `AppResource` fetchers drop unreadable apps, so without this check such an app would add
+ * no space requirement and its id would still be persisted on the action.
+ */
 export async function createOrUpgradeAgentConfiguration({
   auth,
   assistant,
@@ -44,7 +61,12 @@ export async function createOrUpgradeAgentConfiguration({
   // updates): without it those spaces are rejected and those skills silently dropped, which would
   // unrestrict the agent and strip its skills. It grants no access to what the spaces protect.
   dangerouslySkipPermissionFiltering?: boolean;
-}): Promise<Result<AgentConfigurationType, Error>> {
+}): Promise<
+  Result<
+    { agentConfiguration: AgentConfigurationType; changed: boolean },
+    Error
+  >
+> {
   const skillsOnlyViews = await MCPServerViewResource.fetchByIds(
     auth,
     assistant.actions.map((action) => action.mcpServerViewId),
@@ -108,6 +130,24 @@ export async function createOrUpgradeAgentConfiguration({
     );
   }
 
+  if (!dangerouslySkipPermissionFiltering) {
+    const dustAppIds = uniq(
+      removeNulls(actions.map((action) => action.dustAppConfiguration?.appId))
+    );
+    const dustApps = await AppResource.fetchByIds(auth, dustAppIds);
+    const foundDustAppIds = new Set(dustApps.map((app) => app.sId));
+    const inaccessibleDustAppIds = dustAppIds.filter(
+      (appId) => !foundDustAppIds.has(appId)
+    );
+    if (inaccessibleDustAppIds.length > 0) {
+      return new Err(
+        new Error(
+          `User does not have access to the following Dust apps: ${inaccessibleDustAppIds.join(", ")}`
+        )
+      );
+    }
+  }
+
   const requirements = await getAgentConfigurationRequirementsFromCapabilities(
     auth,
     {
@@ -116,45 +156,29 @@ export async function createOrUpgradeAgentConfiguration({
     }
   );
 
-  let allRequestedSpaceIds = requirements.requestedSpaceIds;
-
-  // Collect additional requestedSpaceIds
-  if (
-    assistant.additionalRequestedSpaceIds &&
-    assistant.additionalRequestedSpaceIds.length > 0
-  ) {
-    const additionalSpaces = await SpaceResource.fetchByIds(
-      auth,
-      assistant.additionalRequestedSpaceIds
-    );
-
-    // Validate that all requested spaces were found and user can read them
-    if (!dangerouslySkipPermissionFiltering) {
-      const readableSpaceIds = new Set(
-        additionalSpaces
-          .filter((space) => auth.can("read", space))
-          .map((s) => s.sId)
-      );
-      const inaccessibleSpaces = assistant.additionalRequestedSpaceIds.filter(
-        (sId) => !readableSpaceIds.has(sId)
-      );
-      if (inaccessibleSpaces.length > 0) {
-        return new Err(
-          new Error(
-            `User does not have access to the following spaces: ${inaccessibleSpaces.join(", ")}`
-          )
-        );
-      }
-    }
-
-    const additionalSpaceModelIds = removeNulls(
-      additionalSpaces.map((s) => getResourceIdFromSId(s.sId))
-    );
-
-    allRequestedSpaceIds = uniq(
-      allRequestedSpaceIds.concat(additionalSpaceModelIds)
-    );
+  // Pods are referenced by sId: resolving them here reports a malformed or unknown id instead of
+  // dropping it when the requirements are computed.
+  const podIds = removeNulls(
+    actions.map((action) => action.dustProject?.projectId ?? null)
+  );
+  const capabilitySpaces = await SpaceResource.fetchByModelIds(
+    auth,
+    requirements.requestedSpaceIds
+  );
+  const requestedSpacesRes = await resolveAgentRequestedSpaces(auth, {
+    capabilitySpaces,
+    requestedSpaceIds: [
+      ...(assistant.additionalRequestedSpaceIds ?? []),
+      ...podIds,
+    ],
+    dangerouslySkipPermissionFiltering,
+  });
+  if (requestedSpacesRes.isErr()) {
+    return requestedSpacesRes;
   }
+  const allRequestedSpaceIds = requestedSpacesRes.value.map(
+    (space) => space.id
+  );
 
   const resolvedAuthorId = authorId ?? auth.user()?.id;
   if (!resolvedAuthorId) {
@@ -240,33 +264,35 @@ export async function createOrUpgradeAgentConfiguration({
     skills: skillsToAdd,
   };
 
-  let agentConfigurationRes: Result<AgentResource, Error>;
+  let savedResource: AgentResource;
+  // Whether the save actually persisted a change. A brand-new agent always does; an update may be a
+  // no-op (incoming configuration identical to the current version, and no scope/editor change).
+  let changed: boolean;
   if (agentConfigurationId) {
     const agentResource = await AgentResource.fetchById(
       auth,
       agentConfigurationId
     );
-    // A caller who cannot edit an agent cannot save a new version of it (`updateConfiguration`
-    // re-checks). Editors may hold `write` without `read` (e.g. an admin API key on a hidden agent,
-    // see `admin-key-agent-write`), so gate on `write`, not `read`. The exception is the admin batch
-    // re-save (`dangerouslySkipPermissionFiltering`), which resaves agents built on spaces the admin
-    // cannot read as-is; `fetchById` returns those (light).
-    if (
-      !agentResource ||
-      (!dangerouslySkipPermissionFiltering && !auth.can("write", agentResource))
-    ) {
+    // `updateConfiguration` gates each kind of change on its own permission (definition -> `write`,
+    // model -> `write`/`admin`, scope -> publish + `write`/`admin`, editors -> `admin`; see
+    // `agent-edit-in-place`), so we only confirm the agent exists here. `fetchById` returns null when
+    // the caller holds no verb at all, which also hides a hidden agent's existence.
+    if (!agentResource) {
       return new Err(new Error("Agent configuration not found."));
     }
-    agentConfigurationRes = await agentResource.updateConfiguration(
-      auth,
-      saveParams
-    );
+    const updateRes = await agentResource.updateConfiguration(auth, saveParams);
+    if (updateRes.isErr()) {
+      return updateRes;
+    }
+    savedResource = updateRes.value.resource;
+    changed = updateRes.value.changed;
   } else {
-    agentConfigurationRes = await AgentResource.makeNew(auth, saveParams);
-  }
-
-  if (agentConfigurationRes.isErr()) {
-    return agentConfigurationRes;
+    const makeNewRes = await AgentResource.makeNew(auth, saveParams);
+    if (makeNewRes.isErr()) {
+      return makeNewRes;
+    }
+    savedResource = makeNewRes.value;
+    changed = true;
   }
 
   // The save (configuration row + actions + skills) is atomic (see `agent-save-atomic`), so a
@@ -275,7 +301,7 @@ export async function createOrUpgradeAgentConfiguration({
   // hidden agent) — to build the `AgentConfigurationType` response, including the actions just
   // created.
   const savedConfig = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationRes.value.sId,
+    agentId: savedResource.sId,
     variant: "full",
     dangerouslySkipPermissionFiltering: true,
   });
@@ -298,5 +324,5 @@ export async function createOrUpgradeAgentConfiguration({
     });
   }
 
-  return new Ok(savedConfig);
+  return new Ok({ agentConfiguration: savedConfig, changed });
 }

@@ -24,6 +24,8 @@ import {
 import {
   createRadioSelectionColumn,
   createSelectionColumn,
+  DATA_TABLE_DENSITIES,
+  DataTableDensity,
   MenuItem,
 } from "@sparkle/components/DataTable";
 import { Folder } from "@sparkle/icons/v2-stroke";
@@ -35,22 +37,333 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `A tabular data display built on TanStack Table. Columns are defined with \`columns\` (\`ColumnDef\`) and rendered with cell helpers like **DataTable.CellContent**, **DataTable.BasicCellContent**, and **DataTable.MoreButton**. Supports text **filter**, client- or server-side **sorting**, **pagination**, and **row selection** (multi via \`createSelectionColumn\`, single via \`createRadioSelectionColumn\`). For large or infinite datasets, use **ScrollableDataTable**, which virtualizes rows and supports \`onLoadMore\`.
+        component: `A tabular data display built on TanStack Table. Columns are defined with \`columns\` (\`ColumnDef\`) and rendered with cell helpers: **DataTable.CellContent** (avatar, icon, description, \`secondaryLine\`, \`trailing\`), **DataTable.BasicCellContent**, **DataTable.NumericCellContent**, **DataTable.StatusCellContent**, and **DataTable.MoreButton**. Supports text **filter**, client- or server-side **sorting**, **pagination** or **load more**, and **row selection** (multi via \`createSelectionColumn\`, single via \`createRadioSelectionColumn\`). For large or infinite datasets, use **ScrollableDataTable**, which virtualizes rows and supports \`onLoadMore\`.
+
+**Layout and states**
+- \`density\` sets the row scale: \`compact\` (40px), \`default\` (48px), \`relaxed\` (64px, unlocks a second line in cells). Headers match the row height.
+- \`meta.type\` presets a column: \`numeric\` right-aligns in tabular figures, \`status\` keeps chips on one line, \`row-actions\` fixes a 48px unsortable column. \`meta.headerAlign\` overrides the header alignment; \`meta.rowHeader\` marks the row's name cell for screen readers.
+- \`isLoading\` dims rows in place during a refetch; \`emptyState\` fills the body when there are no rows.
+- \`stickyHeader\` + \`maxHeight\` keep headers visible while the body scrolls; \`horizontalScroll\` lets wide tables scroll instead of squeezing.
 
 **When to use**
 - To list structured records (data sources, members, files) with sorting, filtering, or selection.
 - For very long or paginated server-side datasets, reach for **ScrollableDataTable**.
 
 **Guidelines**
-- Set \`getRowId\` when using row selection so selection state stays stable across re-renders.
-- Use \`columnsBreakpoints\` and per-column \`meta.className\` to progressively hide columns on narrow widths.
-- Prefer the provided cell components over custom cells to keep avatars, icons, and truncation consistent.`,
+- Set \`getRowId\` (and \`getRowLabel\`) when using row selection so selection state stays stable and checkboxes are named.
+- Use \`columnsBreakpoints\` and per-column \`meta.className\` to progressively hide columns on narrow widths, or \`horizontalScroll\` to scroll them instead.
+- Prefer the provided cell components over custom cells to keep avatars, icons, numbers and truncation consistent.`,
       },
     },
   },
 } satisfies Meta<typeof DataTable>;
 
 export default meta;
+
+interface OverviewRow {
+  name: string;
+  owner: string;
+  avatarUrl: string;
+  status: "active" | "paused" | "error";
+  runs: number;
+  costCents: number;
+  costTrend: "up" | "down" | "flat";
+  lastRun: string;
+  lastRunLabel: string;
+  menuItems?: MenuItem[];
+}
+
+const OVERVIEW_STATUS: Record<
+  OverviewRow["status"],
+  { label: string; color: "success" | "primary" | "warning" }
+> = {
+  active: { label: "Active", color: "success" },
+  paused: { label: "Paused", color: "primary" },
+  error: { label: "Needs attention", color: "warning" },
+};
+
+const overviewMenuItems: MenuItem[] = [
+  { kind: "item", label: "Edit", onClick: fn() },
+  { kind: "item", label: "Duplicate", onClick: fn() },
+  {
+    kind: "submenu",
+    label: "Move to space",
+    items: [
+      { id: "sales", name: "Sales" },
+      { id: "support", name: "Support" },
+      { id: "people", name: "People" },
+    ],
+    onSelect: fn(),
+  },
+  { kind: "item", label: "Archive", onClick: fn(), variant: "warning" },
+];
+
+const overviewRows: OverviewRow[] = (
+  [
+    {
+      name: "Sales assistant",
+      owner: "Maya Patel",
+      avatarUrl: "https://avatars.githubusercontent.com/u/13?s=200&v=4",
+      status: "active",
+      runs: 12840,
+      costCents: 41250,
+      costTrend: "up",
+      lastRun: "September 17, 2026 at 9:12:04 AM",
+      lastRunLabel: "Today",
+    },
+    {
+      name: "Support triage",
+      owner: "Noah Garcia",
+      avatarUrl: "https://avatars.githubusercontent.com/u/14?s=200&v=4",
+      status: "active",
+      runs: 3391,
+      costCents: 9820,
+      costTrend: "down",
+      lastRun: "September 17, 2026 at 8:40:51 AM",
+      lastRunLabel: "Today",
+    },
+    {
+      name: "Weekly digest",
+      owner: "Olivia Martinez",
+      avatarUrl: "https://avatars.githubusercontent.com/u/15?s=200&v=4",
+      status: "paused",
+      runs: 52,
+      costCents: 1204,
+      costTrend: "flat",
+      lastRun: "September 8, 2026 at 7:00:00 AM",
+      lastRunLabel: "Sep 8",
+    },
+    {
+      name: "Onboarding coach",
+      owner: "Paul Kim",
+      avatarUrl: "https://avatars.githubusercontent.com/u/16?s=200&v=4",
+      status: "active",
+      runs: 987,
+      costCents: 15075,
+      costTrend: "up",
+      lastRun: "September 16, 2026 at 6:21:37 PM",
+      lastRunLabel: "Yesterday",
+    },
+    {
+      name: "Invoice matcher",
+      owner: "Quinn White",
+      avatarUrl: "https://avatars.githubusercontent.com/u/17?s=200&v=4",
+      status: "error",
+      runs: 2210,
+      costCents: 30410,
+      costTrend: "up",
+      lastRun: "September 15, 2026 at 11:03:19 PM",
+      lastRunLabel: "Sep 15",
+    },
+    {
+      name: "Release notes writer",
+      owner: "Rachel Green",
+      avatarUrl: "https://avatars.githubusercontent.com/u/18?s=200&v=4",
+      status: "active",
+      runs: 418,
+      costCents: 6390,
+      costTrend: "down",
+      lastRun: "September 14, 2026 at 4:45:00 PM",
+      lastRunLabel: "Sep 14",
+    },
+    {
+      name: "Churn radar",
+      owner: "Sam Johnson",
+      avatarUrl: "https://avatars.githubusercontent.com/u/19?s=200&v=4",
+      status: "paused",
+      runs: 76,
+      costCents: 2380,
+      costTrend: "flat",
+      lastRun: "August 30, 2026 at 10:00:00 AM",
+      lastRunLabel: "Aug 30",
+    },
+  ] satisfies Omit<OverviewRow, "menuItems">[]
+).map((row) => ({ ...row, menuItems: overviewMenuItems }));
+
+const overviewColumns: ColumnDef<OverviewRow>[] = [
+  {
+    accessorKey: "name",
+    id: "name",
+    header: "Agent",
+    sortingFn: "text",
+    meta: { className: "w-full", rowHeader: true, tooltip: "Agent name" },
+    cell: (info) => (
+      <DataTable.CellContent
+        avatarUrl={info.row.original.avatarUrl}
+        avatarTooltipLabel={info.row.original.owner}
+        roundedAvatar
+        secondaryLine={`Owned by ${info.row.original.owner}`}
+      >
+        {info.row.original.name}
+      </DataTable.CellContent>
+    ),
+  },
+  {
+    accessorKey: "status",
+    id: "status",
+    header: "Status",
+    meta: { type: "status", className: "w-36" },
+    cell: (info) => {
+      const status = OVERVIEW_STATUS[info.row.original.status];
+      return (
+        <DataTable.StatusCellContent
+          label={status.label}
+          color={status.color}
+        />
+      );
+    },
+  },
+  {
+    accessorKey: "runs",
+    id: "runs",
+    header: "Runs",
+    meta: { type: "numeric", className: "w-24" },
+    cell: (info) => (
+      <DataTable.NumericCellContent
+        value={info.row.original.runs}
+        locale="en-US"
+      />
+    ),
+  },
+  {
+    accessorKey: "costCents",
+    id: "cost",
+    header: "Cost",
+    meta: { type: "numeric", className: "w-32" },
+    cell: (info) => (
+      <DataTable.NumericCellContent
+        value={info.row.original.costCents / 100}
+        locale="en-US"
+        precision={2}
+        unit="$"
+        unitPosition="prefix"
+        trend={info.row.original.costTrend}
+        upIsPositive={false}
+      />
+    ),
+  },
+  {
+    accessorKey: "lastRun",
+    id: "lastRun",
+    header: "Last run",
+    enableSorting: false,
+    meta: { className: "w-28" },
+    cell: (info) => (
+      <DataTable.BasicCellContent
+        label={info.row.original.lastRunLabel}
+        tooltip={info.row.original.lastRun}
+        textToCopy={info.row.original.lastRun}
+      />
+    ),
+  },
+  {
+    id: "actions",
+    header: "",
+    meta: { type: "row-actions" },
+    cell: (info) => (
+      <DataTable.MoreButton menuItems={info.row.original.menuItems} />
+    ),
+  },
+];
+
+interface OverviewArgs {
+  data: OverviewRow[];
+  columns: ColumnDef<OverviewRow>[];
+  density: DataTableDensity;
+  isLoading: boolean;
+  enableRowSelection: boolean;
+  hideRowDivider: boolean;
+  stickyHeader: boolean;
+  maxHeight?: string;
+  horizontalScroll: boolean;
+  pageSize: number;
+}
+
+function OverviewTable({
+  data,
+  columns,
+  enableRowSelection,
+  pageSize,
+  ...tableProps
+}: OverviewArgs) {
+  const [filter, setFilter] = useState("");
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "runs", desc: true },
+  ]);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize,
+  });
+
+  const allColumns = useMemo(
+    () =>
+      enableRowSelection
+        ? [createSelectionColumn<OverviewRow>(), ...columns]
+        : columns,
+    [columns, enableRowSelection]
+  );
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Input
+        name="filter"
+        placeholder="Filter agents"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <DataTable
+        {...tableProps}
+        data={data}
+        columns={allColumns}
+        filter={filter}
+        filterColumn="name"
+        sorting={sorting}
+        setSorting={setSorting}
+        pagination={pagination}
+        setPagination={setPagination}
+        enableRowSelection={enableRowSelection}
+        rowSelection={rowSelection}
+        setRowSelection={setRowSelection}
+        getRowId={(row) => row.name}
+        getRowLabel={(row) => row.name}
+        emptyState={`No agent matches "${filter}".`}
+      />
+    </div>
+  );
+}
+
+/**
+ * The full component in one place: rich name cells with avatar tooltips and
+ * (at relaxed density) a secondary line, a status chip column, numeric columns
+ * in tabular figures with a trend arrow, a copyable date with a tooltip, and a
+ * row action menu with a submenu. Wired to a filter, client-side sorting,
+ * pagination and optional row selection. Use the controls to try densities,
+ * the in-place loading state, a sticky header, or horizontal scrolling.
+ * @summary Every DataTable feature on one table, driven by controls.
+ */
+export const Overview: StoryObj<OverviewArgs> = {
+  args: {
+    data: overviewRows,
+    columns: overviewColumns,
+    density: "default",
+    isLoading: false,
+    enableRowSelection: true,
+    hideRowDivider: false,
+    stickyHeader: false,
+    maxHeight: undefined,
+    horizontalScroll: false,
+    pageSize: 5,
+  },
+  argTypes: {
+    density: { control: "select", options: DATA_TABLE_DENSITIES },
+    maxHeight: { control: "text" },
+    pageSize: { control: { type: "number", min: 1, max: 10 } },
+    data: { control: false },
+    columns: { control: false },
+  },
+  render: (args) => <OverviewTable {...args} />,
+};
 
 interface LastUpdatedTooltipProps {
   data: Pick<Data, "lastUpdated" | "onClick">[];
@@ -977,6 +1290,376 @@ export const WithAvatarStack = () => {
         filter={filter}
         filterColumn="name"
         columns={avatarStackColumns}
+      />
+    </div>
+  );
+};
+
+const densityColumns: ColumnDef<Data>[] = columns.filter(
+  (column) => column.id !== "actions"
+);
+
+/**
+ * The same table at the three row densities. `default` is the historical
+ * 48px row; `compact` tightens admin lists to 40px and `relaxed` opens rows to
+ * 64px with 32px avatars. The height also drives `DataTableSkeleton`.
+ * @summary Compact, default and relaxed row heights side by side.
+ */
+export const Densities = () => {
+  return (
+    <div className="flex flex-col gap-8">
+      {(["compact", "default", "relaxed"] as const).map((density) => (
+        <div key={density} className="flex flex-col gap-2">
+          <div className="heading-sm capitalize">{density}</div>
+          <DataTable
+            data={data.slice(0, 4)}
+            columns={densityColumns}
+            density={density}
+          />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+interface UsageRow {
+  agent: string;
+  runs: number;
+  costCents: number;
+  costTrend: "up" | "down" | "flat";
+  status: "active" | "paused";
+  owner: string;
+  menuItems?: MenuItem[];
+}
+
+const usageRows: UsageRow[] = [
+  {
+    agent: "Sales assistant",
+    runs: 12840,
+    costCents: 41250,
+    costTrend: "up",
+    status: "active",
+    owner: "Maya Patel",
+  },
+  {
+    agent: "Support triage",
+    runs: 3391,
+    costCents: 9820,
+    costTrend: "down",
+    status: "active",
+    owner: "Noah Garcia",
+  },
+  {
+    agent: "Weekly digest",
+    runs: 52,
+    costCents: 1204,
+    costTrend: "flat",
+    status: "paused",
+    owner: "Olivia Martinez",
+  },
+  {
+    agent: "Onboarding coach",
+    runs: 987,
+    costCents: 15075,
+    costTrend: "up",
+    status: "active",
+    owner: "Paul Kim",
+  },
+];
+
+const usageColumns: ColumnDef<UsageRow>[] = [
+  {
+    accessorKey: "agent",
+    id: "agent",
+    header: "Agent",
+    meta: { className: "w-full", rowHeader: true },
+    cell: (info) => (
+      <DataTable.CellContent>{info.row.original.agent}</DataTable.CellContent>
+    ),
+  },
+  {
+    accessorKey: "status",
+    id: "status",
+    header: "Status",
+    meta: { type: "status", className: "w-24" },
+    cell: (info) => (
+      <DataTable.StatusCellContent
+        label={info.row.original.status === "active" ? "Active" : "Paused"}
+        color={info.row.original.status === "active" ? "success" : "primary"}
+      />
+    ),
+  },
+  {
+    accessorKey: "runs",
+    id: "runs",
+    header: "Runs",
+    meta: { type: "numeric", className: "w-28" },
+    cell: (info) => (
+      <DataTable.NumericCellContent
+        value={info.row.original.runs}
+        locale="en-US"
+      />
+    ),
+  },
+  {
+    accessorKey: "costCents",
+    id: "cost",
+    header: "Cost",
+    meta: { type: "numeric", className: "w-32" },
+    cell: (info) => (
+      <DataTable.NumericCellContent
+        value={info.row.original.costCents / 100}
+        locale="en-US"
+        precision={2}
+        unit="$"
+        unitPosition="prefix"
+        trend={info.row.original.costTrend}
+        upIsPositive={false}
+      />
+    ),
+  },
+  {
+    id: "actions",
+    header: "",
+    meta: { type: "row-actions" },
+    cell: () => (
+      <DataTable.MoreButton
+        menuItems={[{ kind: "item", label: "Open", onClick: fn() }]}
+      />
+    ),
+  },
+];
+
+/**
+ * Column presets from `meta.type` paired with their cell helpers: `numeric`
+ * right-aligns header and cells, and `NumericCellContent` formats the value
+ * with a unit and a trend arrow whose colour is paired with the arrow, never
+ * alone; `status` keeps `StatusCellContent` chips on one line; `row-actions`
+ * fixes the overflow-menu column at 48px and makes it unsortable. `meta.rowHeader`
+ * renders the agent cells as row headers for screen readers.
+ * @summary Numeric, status and row-actions column presets with their cell helpers.
+ */
+export const ColumnTypes = () => {
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "runs", desc: true },
+  ]);
+  return (
+    <DataTable
+      data={usageRows}
+      columns={usageColumns}
+      sorting={sorting}
+      setSorting={setSorting}
+      getRowLabel={(row) => row.agent}
+    />
+  );
+};
+
+/**
+ * With no rows, `emptyState` renders once below the header so the filter and
+ * sort controls stay in place. Type in the filter to see the row appear.
+ * @summary Header stays put while the body explains the empty result.
+ */
+export const EmptyState = () => {
+  const [filter, setFilter] = useState("zzz");
+  return (
+    <div className="flex flex-col gap-2">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <DataTable
+        data={usageRows}
+        columns={usageColumns}
+        filter={filter}
+        filterColumn="agent"
+        emptyState={`No agent matches "${filter}".`}
+      />
+    </div>
+  );
+};
+
+/**
+ * `isLoading` dims the current rows in place and blocks pointer events while
+ * a refetch runs, instead of swapping the table for a skeleton. Toggle it to
+ * compare; the header and sorting stay interactive.
+ * @summary Rows dim in place during a refetch.
+ */
+export const Loading = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  return (
+    <div className="flex flex-col gap-4">
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={isLoading}
+          onChange={(e) => setIsLoading(e.target.checked)}
+        />
+        isLoading
+      </label>
+      <DataTable
+        data={usageRows}
+        columns={usageColumns}
+        isLoading={isLoading}
+      />
+    </div>
+  );
+};
+
+const relaxedColumns: ColumnDef<UsageRow>[] = [
+  {
+    accessorKey: "agent",
+    id: "agent",
+    header: "Agent",
+    meta: { className: "w-full" },
+    cell: (info) => (
+      <DataTable.CellContent
+        avatarUrl="https://avatars.githubusercontent.com/u/1?s=200&v=4"
+        secondaryLine={`Owned by ${info.row.original.owner}`}
+        trailing={
+          <DataTable.StatusCellContent
+            label={info.row.original.status === "active" ? "Active" : "Paused"}
+            color={
+              info.row.original.status === "active" ? "success" : "primary"
+            }
+          />
+        }
+      >
+        {info.row.original.agent}
+      </DataTable.CellContent>
+    ),
+  },
+  ...usageColumns.filter(
+    (column) => column.id === "runs" || column.id === "cost"
+  ),
+];
+
+/**
+ * At `relaxed` density `CellContent` gains a `secondaryLine` under the main
+ * text and a 32px avatar; `trailing` pins content to the end of the cell. The
+ * same columns at `default` density hide the secondary line, so a table can
+ * switch density without changing its column definitions.
+ * @summary Two-line cells with a trailing chip at relaxed density.
+ */
+export const RelaxedSecondaryLine = () => {
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-2">
+        <div className="heading-sm">Relaxed</div>
+        <DataTable
+          data={usageRows}
+          columns={relaxedColumns}
+          density="relaxed"
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <div className="heading-sm">Default (secondary line hidden)</div>
+        <DataTable data={usageRows} columns={relaxedColumns} />
+      </div>
+    </div>
+  );
+};
+
+const manyUsageRows: UsageRow[] = Array.from({ length: 40 }, (_, index) => {
+  const base = usageRows[index % usageRows.length];
+  return {
+    ...base,
+    agent: `${base.agent} ${index + 1}`,
+    runs: base.runs + index * 37,
+    costCents: base.costCents + index * 815,
+  };
+});
+
+/**
+ * `stickyHeader` with a `maxHeight` class keeps the column headers in view
+ * while the body scrolls, without virtualizing rows or giving up pagination
+ * and filtering the way ScrollableDataTable does.
+ * @summary Header stays visible while the body scrolls.
+ */
+export const StickyHeader = () => {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  return (
+    <DataTable
+      data={manyUsageRows}
+      columns={usageColumns}
+      sorting={sorting}
+      setSorting={setSorting}
+      stickyHeader
+      maxHeight="max-h-80"
+    />
+  );
+};
+
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
+
+const wideColumns: ColumnDef<UsageRow>[] = [
+  {
+    accessorKey: "agent",
+    id: "agent",
+    header: "Agent",
+    meta: { rowHeader: true, className: "w-56 min-w-56" },
+    cell: (info) => (
+      <DataTable.CellContent>{info.row.original.agent}</DataTable.CellContent>
+    ),
+  },
+  {
+    accessorKey: "status",
+    id: "status",
+    header: "Status",
+    meta: { type: "status" },
+    cell: (info) => (
+      <DataTable.StatusCellContent
+        label={info.row.original.status === "active" ? "Active" : "Paused"}
+        color={info.row.original.status === "active" ? "success" : "primary"}
+      />
+    ),
+  },
+  ...MONTHS.map(
+    (month, monthIndex): ColumnDef<UsageRow> => ({
+      id: month.toLowerCase(),
+      header: month,
+      accessorFn: (row) => Math.round(row.runs * (0.6 + monthIndex * 0.05)),
+      meta: { type: "numeric" },
+      cell: (info) => (
+        <DataTable.NumericCellContent
+          value={info.getValue<number>()}
+          locale="en-US"
+        />
+      ),
+    })
+  ),
+];
+
+/**
+ * Wide tables can scroll horizontally instead of hiding or squeezing columns:
+ * `horizontalScroll` gives every column a 124px minimum and lets the table
+ * outgrow its container. Combine with `stickyHeader` for a spreadsheet-like
+ * grid.
+ * @summary Horizontal scroll for a wide table.
+ */
+export const WideTableHorizontalScroll = () => {
+  return (
+    <div className="max-w-3xl">
+      <DataTable
+        data={manyUsageRows.slice(0, 12)}
+        columns={wideColumns}
+        horizontalScroll
+        stickyHeader
+        maxHeight="max-h-96"
       />
     </div>
   );

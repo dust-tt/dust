@@ -4,7 +4,10 @@ import {
   toDataSourceListItem,
 } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import { ConfirmContext } from "@app/components/Confirm";
-import { buildSpaceItems } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
+import {
+  buildSpaceItems,
+  KNOWLEDGE_BROWSER_GROUP_LABELS,
+} from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { EnrichedSpaceType } from "@app/types/space";
 import { useCallback, useContext, useMemo } from "react";
@@ -55,7 +58,7 @@ export function DataSourceSpaceSelector({
   return (
     <div className="flex h-full flex-col">
       <div className="heading-sm bg-muted-background p-2 text-foreground">
-        From spaces:
+        {KNOWLEDGE_BROWSER_GROUP_LABELS.spaces}:
       </div>
       <DataSourceList
         items={spaceItems}
@@ -65,7 +68,7 @@ export function DataSourceSpaceSelector({
       {projectItems.length > 0 && (
         <>
           <div className="heading-sm bg-muted-background p-2 text-foreground">
-            From Pods:
+            {KNOWLEDGE_BROWSER_GROUP_LABELS.pods}:
           </div>
           <DataSourceList
             items={projectItems}

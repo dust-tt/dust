@@ -8,6 +8,7 @@ import {
 import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
+import { UserSchema } from "@app/types/user";
 import { z } from "zod";
 
 export type {
@@ -103,7 +104,7 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
 
 /**
  * @cc [owner:aubin-tchoi,label:security] skill-list-item
- * Search listings contain indexed metadata and relationship IDs, never full resources,
+ * Search listings contain indexed metadata, relationship IDs and editor display profiles, never full resources,
  * instructions, tool configurations, attachments, source or reinforcement data.
  */
 export const SkillListItemSchema = z.object({
@@ -115,6 +116,7 @@ export const SkillListItemSchema = z.object({
   requestedSpaceIds: z.array(z.string()),
   mcpServerViewIds: z.array(z.string()),
   editorIds: z.array(z.string()),
+  editors: z.array(UserSchema.pick({ sId: true, fullName: true, image: true })),
   editedBy: z.string().nullable(),
   availability: z.enum(SKILL_AVAILABILITIES),
   activeUsersCount: z.number().nullable(),

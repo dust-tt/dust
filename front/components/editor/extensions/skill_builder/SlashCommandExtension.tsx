@@ -292,7 +292,16 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
       () =>
       ({ chain }: { chain: () => ChainedCommands }) => {
         storage.hasBeenFocused = true;
-        return chain().focus().insertContent("/").run();
+        // The suggestion plugin only activates a "/" preceded by a space or at
+        // the start of a text block
+        const { nodeBefore } = editor.state.selection.$from;
+        const needsLeadingSpace =
+          nodeBefore !== null &&
+          (!nodeBefore.isText || !(nodeBefore.text ?? "").endsWith(" "));
+        return chain()
+          .focus()
+          .insertContent(needsLeadingSpace ? " /" : "/")
+          .run();
       },
     openAttachKnowledgeSlashCommand:
       () =>

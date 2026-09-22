@@ -301,7 +301,6 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
   { role: "admin", permissions: ["read"] },
   { role: "manager", permissions: ["read"] },
   { role: "user", permissions: ["read"] },
-  { role: "builder", permissions: ["read"] },
 ];
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -4547,7 +4546,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
-  static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
+  static async deleteAllForWorkspace(
+    auth: Authenticator
+  ): Promise<Result<undefined, Error>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     await AgentSkillModel.destroy({
@@ -4631,7 +4632,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await this.model.destroy({
       where: { workspaceId },
     });
-    await launchDeleteWorkspaceSkillSearchWorkflow({
+    return launchDeleteWorkspaceSkillSearchWorkflow({
       workspaceId: auth.getNonNullableWorkspace().sId,
     });
   }

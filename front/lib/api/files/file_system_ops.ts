@@ -6,12 +6,19 @@
 
 import type { DustFileSystem } from "@app/lib/api/file_system";
 import { decodeBuffer } from "@app/lib/api/files/utils";
+import type { MoveFrameV2SourceError } from "@app/lib/api/frames/move_source";
+import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import {
+  FRAME_MANIFEST_FILE,
+  validateFrameV2Name,
+} from "@app/types/api/frame_manifest";
+import {
   DustFileSystemError,
+  isDustFileSystemError,
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
 } from "@app/types/file_system";
@@ -26,6 +33,7 @@ import {
 import { DocumentRenderer } from "@app/types/shared/document_renderer";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import path from "path";
 import type { Readable } from "stream";
 
@@ -282,6 +290,82 @@ function inferDestMountInfo(
  *
  * Returns the same result shape as `DustFileSystem.rename()`.
  */
+/**
+ * @cc [owner:davidebbo,label:product;backend] frame-folder-rename-goes-through-the-frame-move
+ * Renaming the source folder of a registered Frames v2 package MUST go through the Frame move.
+ * The package's `FileResource` is the manifest inside the folder, not the folder itself, so the
+ * generic path would rename the bytes and strand the registration, its publications and the Pod
+ * references that address it.
+ *
+ * Returns null when `scopedPath` is not a registered Frame's source folder, leaving the caller to
+ * perform an ordinary rename.
+ */
+function toDustFileSystemError(
+  error: MoveFrameV2SourceError
+): DustFileSystemError {
+  if (isDustFileSystemError(error)) {
+    return error;
+  }
+
+  const { code } = error;
+  switch (code) {
+    case "conflict":
+      return new DustFileSystemError("already_exists", error.message);
+    case "invalid_source":
+      return new DustFileSystemError("invalid_path", error.message);
+    case "commit_failed":
+    case "copy_failed":
+      return new DustFileSystemError("internal", error.message);
+    default:
+      assertNever(code);
+  }
+}
+
+async function renameFrameV2PackageFolder(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  { scopedPath, newFileName }: { scopedPath: string; newFileName: string }
+): Promise<Result<
+  { dest: string; sourceDeletionFailed: boolean },
+  DustFileSystemError
+> | null> {
+  const manifestPath = path.posix.join(scopedPath, FRAME_MANIFEST_FILE);
+  const manifestMountPath = dustFs.toMountFilePath(manifestPath);
+  if (!manifestMountPath) {
+    return null;
+  }
+
+  const [frame] = await FileResource.fetchByMountFilePaths(auth, [
+    manifestMountPath,
+  ]);
+  if (!frame?.isFrameV2) {
+    return null;
+  }
+
+  const validated = validateFrameV2Name(newFileName);
+  if (validated.isErr()) {
+    return new Err(new DustFileSystemError("invalid_path", validated.error));
+  }
+
+  const destinationDirectoryPath = path.posix.join(
+    path.posix.dirname(scopedPath),
+    validated.value
+  );
+  const moved = await moveFrameV2Source(auth, {
+    dustFs,
+    destinationDirectoryPath,
+    sourceDirectoryPath: scopedPath,
+  });
+  if (moved.isErr()) {
+    return new Err(toDustFileSystemError(moved.error));
+  }
+
+  return new Ok({
+    dest: destinationDirectoryPath,
+    sourceDeletionFailed: moved.value.sourceDeletionFailed,
+  });
+}
+
 export async function renameCanonicalFile(
   auth: Authenticator,
   dustFs: DustFileSystem,
@@ -290,6 +374,17 @@ export async function renameCanonicalFile(
 ): Promise<
   Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
 > {
+  // A Frames v2 package is a folder whose registered resource is the manifest inside it, so a
+  // plain folder rename would move the bytes and leave that resource pointing at nothing. The
+  // Frame move owns the locks, the registration checks and the Pod tab repoint.
+  const frameRename = await renameFrameV2PackageFolder(auth, dustFs, {
+    scopedPath,
+    newFileName,
+  });
+  if (frameRename) {
+    return frameRename;
+  }
+
   const linkedFileResource = await fetchLinkedFileResource(
     auth,
     dustFs,

@@ -116,6 +116,9 @@ export class AgentConfigurationFactory {
       "Agent configuration not found"
     );
 
+    // A partial update: `scope` is intentionally omitted so the agent keeps its current scope (this
+    // helper updates the definition/editors, it does not (un)publish — which would need the `publish`
+    // capability the test caller may not hold).
     const result = await agentResource.updateConfiguration(auth, {
       name: overrides.name ?? "Test Agent",
       description: overrides.description ?? "Test Agent Description",
@@ -123,7 +126,6 @@ export class AgentConfigurationFactory {
       instructionsHtml: overrides.instructionsHtml ?? null,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
       status: "active",
-      scope: "visible",
       model: {
         providerId: "openai",
         modelId: "gpt-5-mini",
@@ -134,6 +136,10 @@ export class AgentConfigurationFactory {
       editors: [user.toJSON()],
       authorId: user.id,
       requestedSpaceIds: overrides.requestedSpaceIds ?? [],
+      // Explicitly clear tools/skills: `updateConfiguration` is a partial merge (an omitted field
+      // keeps its current value), and this helper's contract is to produce a bare updated version.
+      actions: [],
+      skills: [],
     });
 
     if (result.isErr()) {
@@ -141,7 +147,7 @@ export class AgentConfigurationFactory {
     }
 
     return {
-      ...result.value.toJSON(),
+      ...result.value.resource.toJSON(),
       tags: [],
       userFavorite: false,
       instructionsHtml: overrides.instructionsHtml ?? null,

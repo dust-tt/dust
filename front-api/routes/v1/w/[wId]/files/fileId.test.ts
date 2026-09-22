@@ -165,8 +165,7 @@ describe("POST /api/v1/w/[wId]/files/[fileId]", () => {
     });
   });
 
-  it("should return 403 without builder permissions on non-conversation files", async () => {
-    // Use a read-only (user-role) key which doesn't have builder permissions
+  it("should allow a system key to modify non-conversation files", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       systemKey: true,
     });
@@ -175,18 +174,13 @@ describe("POST /api/v1/w/[wId]/files/[fileId]", () => {
       useCaseMetadata: { spaceId: "test-space-id" },
     });
 
-    // System keys always have builder permissions in real auth, so use a
-    // non-system key for this test. Non-system keys first fail the use-case
-    // check though, so this scenario (non-builder + non-conversation + system
-    // key) cannot actually happen with real auth. Verify the system key can
-    // modify instead.
     const response = await request(workspace, key, "test_file_id", {
       method: "POST",
     });
     expect(response.status).toBe(200);
   });
 
-  it("should allow non-builder to modify conversation files", async () => {
+  it("should allow a user key to modify conversation files", async () => {
     const { workspace, key } = await createPublicApiMockRequest();
     setupMockFile(workspace, { useCase: "conversation" });
 
@@ -233,9 +227,7 @@ describe("DELETE /api/v1/w/[wId]/files/[fileId]", () => {
     });
   });
 
-  it("should allow system key to delete non-conversation files (system keys have builder permissions)", async () => {
-    // System keys always have builder permissions in real auth, so they can
-    // delete any file type.
+  it("should allow a system key to delete non-conversation files", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       systemKey: true,
     });
@@ -251,7 +243,7 @@ describe("DELETE /api/v1/w/[wId]/files/[fileId]", () => {
     expect(mockDelete).toHaveBeenCalledTimes(1);
   });
 
-  it("should allow non-builder to delete conversation files", async () => {
+  it("should allow a user key to delete conversation files", async () => {
     const { workspace, key } = await createPublicApiMockRequest();
     setupMockFile(workspace, { useCase: "conversation" });
 

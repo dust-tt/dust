@@ -142,10 +142,18 @@ export function getSidekickSuggestionPlugin() {
   return SidekickSuggestionPlugin;
 }
 
-const CONVERSATION_AGENT_SUGGESTION_KINDS = ["create", "delete"] as const;
+const CONVERSATION_AGENT_SUGGESTION_KINDS = [
+  "create",
+  "delete",
+  "model",
+] as const;
 
 type ConversationAgentSuggestionKind =
   (typeof CONVERSATION_AGENT_SUGGESTION_KINDS)[number];
+
+// `create` targets a not-yet-created placeholder agent, so there is no configuration to fetch.
+const DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS: ConversationAgentSuggestionKind[] =
+  ["create"];
 
 function isConversationAgentSuggestionKind(
   kind: AgentSuggestionKind
@@ -184,7 +192,7 @@ function ConversationAgentSuggestion({
   const { agentConfiguration } = useAgentConfiguration({
     workspaceId: owner.sId,
     agentConfigurationId: agentId,
-    disabled: kind !== "delete",
+    disabled: DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS.includes(kind),
   });
 
   if (isSuggestionsLoading) {

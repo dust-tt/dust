@@ -7,6 +7,8 @@ import {
 } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
@@ -16,10 +18,12 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import assert from "assert";
+import type { JSONSchema7 } from "json-schema";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const AGENT_MODEL_ID = 42;
@@ -647,7 +651,7 @@ describe("AgentResource", () => {
 
   it.each([
     "admin",
-    "builder",
+    "user",
   ] as const)("applies the %s API-key write policy only to workspace custom agents", async (role) => {
     const { auth } = await createPublicApiMockRequest({ role });
     const configuration = makeAgentConfiguration({
@@ -1029,7 +1033,7 @@ describe("AgentResource", () => {
     });
   });
 
-  describe("bulkUpdateModel", () => {
+  describe("bulkUpdate (model)", () => {
     it("saves a new version with the new model, keeping the agent's tools and author", async () => {
       const { authenticator, globalSpace } = testContext;
 
@@ -1068,10 +1072,16 @@ describe("AgentResource", () => {
       ).get(before.agentConfigurationModelId);
       expect(toolsBefore).toHaveLength(1);
 
-      const result = await AgentResource.bulkUpdateModel(
+      const result = await AgentResource.bulkUpdate(
         authenticator,
         [agent.sId],
-        { providerId: "openai", modelId: "gpt-5", reasoningEffort: "medium" }
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5",
+            reasoningEffort: "medium",
+          },
+        }
       );
 
       expect(result).toEqual({
@@ -1098,6 +1108,62 @@ describe("AgentResource", () => {
       expect(toolsAfter).toHaveLength(1);
     });
 
+    it("does not create a new version when the model is unchanged", async () => {
+      const { authenticator } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            temperature: 0.7,
+          },
+        }
+      );
+
+      // First change bumps the version and pins the reasoning effort.
+      const first = await AgentResource.bulkUpdate(authenticator, [agent.sId], {
+        model: {
+          providerId: "openai",
+          modelId: "gpt-5",
+          reasoningEffort: "medium",
+        },
+      });
+      expect(first.updatedAgentIds).toEqual([agent.sId]);
+
+      const afterFirst = await AgentResource.fetchById(
+        authenticator,
+        agent.sId
+      );
+      assert(afterFirst?.isFull());
+      expect(afterFirst.content.version).toBe(agent.version + 1);
+
+      // Re-applying the exact same model is a no-op: no new version is created.
+      const second = await AgentResource.bulkUpdate(
+        authenticator,
+        [agent.sId],
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5",
+            reasoningEffort: "medium",
+          },
+        }
+      );
+      expect(second).toEqual({
+        updatedAgentIds: [agent.sId],
+        skippedAgentIds: [],
+      });
+
+      const afterSecond = await AgentResource.fetchById(
+        authenticator,
+        agent.sId
+      );
+      assert(afterSecond?.isFull());
+      expect(afterSecond.content.version).toBe(afterFirst.content.version);
+    });
+
     it("skips archived agents and reports them", async () => {
       const { authenticator } = testContext;
 
@@ -1113,16 +1179,430 @@ describe("AgentResource", () => {
       );
       await archiveAgentConfiguration(authenticator, agent.sId);
 
-      const result = await AgentResource.bulkUpdateModel(
+      const result = await AgentResource.bulkUpdate(
         authenticator,
         [agent.sId],
-        { providerId: "openai", modelId: "gpt-5", reasoningEffort: "medium" }
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5",
+            reasoningEffort: "medium",
+          },
+        }
       );
 
       expect(result).toEqual({
         updatedAgentIds: [],
         skippedAgentIds: [agent.sId],
       });
+    });
+  });
+
+  describe("bulkUpdate (tags)", () => {
+    async function currentTagIds(
+      auth: Authenticator,
+      agentId: string
+    ): Promise<string[]> {
+      const agent = await AgentResource.fetchById(auth, agentId);
+      assert(agent);
+      const tags = await TagResource.listForAgent(
+        auth,
+        agent.agentConfigurationModelId
+      );
+      return tags.map((tag) => tag.sId).sort();
+    }
+
+    it("adds a tag as a new version, keeping the agent's existing tags", async () => {
+      const { authenticator, workspace } = testContext;
+
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const existingTag = await TagFactory.create(workspace, {
+        name: "existing",
+      });
+      await existingTag.addToAgent(authenticator, agent);
+
+      const newTag = await TagFactory.create(workspace, { name: "new" });
+      const result = await AgentResource.bulkUpdate(
+        authenticator,
+        [agent.sId],
+        {
+          addTags: [newTag],
+        }
+      );
+
+      expect(result).toEqual({
+        updatedAgentIds: [agent.sId],
+        skippedAgentIds: [],
+      });
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      // A new version was created and both tags are attached to it.
+      expect(after.content.version).toBe(agent.version + 1);
+      expect(await currentTagIds(authenticator, agent.sId)).toEqual(
+        [existingTag.sId, newTag.sId].sort()
+      );
+    });
+
+    it("removes a tag as a new version", async () => {
+      const { authenticator, workspace } = testContext;
+
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const tag = await TagFactory.create(workspace, { name: "to-remove" });
+      await tag.addToAgent(authenticator, agent);
+
+      const result = await AgentResource.bulkUpdate(
+        authenticator,
+        [agent.sId],
+        {
+          removeTags: [tag],
+        }
+      );
+
+      expect(result).toEqual({
+        updatedAgentIds: [agent.sId],
+        skippedAgentIds: [],
+      });
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(agent.version + 1);
+      expect(await currentTagIds(authenticator, agent.sId)).toEqual([]);
+    });
+
+    it("does not create a new version when the tag is already present", async () => {
+      const { authenticator, workspace } = testContext;
+
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const tag = await TagFactory.create(workspace, { name: "present" });
+      await tag.addToAgent(authenticator, agent);
+
+      // Adding the tag it already has leaves the set unchanged, so no new version is created.
+      const result = await AgentResource.bulkUpdate(
+        authenticator,
+        [agent.sId],
+        {
+          addTags: [tag],
+        }
+      );
+      expect(result.updatedAgentIds).toEqual([agent.sId]);
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(agent.version);
+    });
+
+    it("lets a workspace admin who is not an editor tag an agent", async () => {
+      const { authenticator, workspace } = testContext;
+
+      // The agent is authored (and edited) by the regular test user, so the admin below holds
+      // `admin` but not `write` on it.
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const adminUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+      const before = await AgentResource.fetchById(adminAuth, agent.sId);
+      assert(before);
+      expect(adminAuth.can("write", before)).toBe(false);
+      expect(adminAuth.can("admin", before)).toBe(true);
+
+      const tag = await TagFactory.create(workspace, { name: "governance" });
+      const result = await AgentResource.bulkUpdate(adminAuth, [agent.sId], {
+        addTags: [tag],
+      });
+
+      expect(result).toEqual({
+        updatedAgentIds: [agent.sId],
+        skippedAgentIds: [],
+      });
+      expect(await currentTagIds(authenticator, agent.sId)).toEqual([tag.sId]);
+    });
+
+    it("rejects a tags change from a member who is neither an editor nor a workspace admin", async () => {
+      const { authenticator, workspace } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "visible" }
+      );
+
+      // A plain member: can read the visible agent, but holds neither `write` (not an editor) nor
+      // the workspace admin role, so it may not create a version by tagging it.
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        member.sId,
+        workspace.sId
+      );
+      const before = await AgentResource.fetchById(memberAuth, agent.sId);
+      assert(before);
+      expect(memberAuth.can("write", before)).toBe(false);
+      expect(memberAuth.isAdmin()).toBe(false);
+
+      const tag = await TagFactory.create(workspace, { name: "governance" });
+      const res = await before.updateConfiguration(memberAuth, {
+        addTags: [tag],
+      });
+      assert(res.isErr());
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(agent.version);
+      expect(await currentTagIds(authenticator, agent.sId)).toEqual([]);
+    });
+
+    it("rejects adding a protected tag without publish, leaving editors untouched", async () => {
+      const { authenticator, workspace } = testContext;
+
+      // The author holds `write` and `admin` on its own agent, but as a regular member lacks the
+      // workspace `publish` capability that protected tags require.
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "visible" }
+      );
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      expect(authenticator.can("write", before)).toBe(true);
+      expect(
+        await authenticator.hasWorkspacePermission("publish", "agent")
+      ).toBe(false);
+
+      const protectedTag = await TagResource.makeNew(authenticator, {
+        name: "reserved",
+        kind: "protected",
+      });
+      const newEditor = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, newEditor, { role: "user" });
+      const baseParams = await before.buildResaveParams(authenticator);
+
+      // The protected-tag permission is checked before any mutation, so the editor change bundled in
+      // the same save is not applied and no new version is created.
+      const res = await before.updateConfiguration(authenticator, {
+        addTags: [protectedTag],
+        editors: [...baseParams.editors, newEditor.toJSON()],
+      });
+      assert(res.isErr());
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(agent.version);
+      expect(await currentTagIds(authenticator, agent.sId)).toEqual([]);
+      const editorIds = (await after.listEditors(authenticator))?.map(
+        (editor) => editor.id
+      );
+      expect(editorIds).not.toContain(newEditor.id);
+    });
+  });
+
+  describe("save no-op comparison of tool configuration", () => {
+    it("creates a new version when a tool's JSON schema changes under an identity-named property", async () => {
+      const { authenticator, globalSpace } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        {
+          model: {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            temperature: 0.7,
+          },
+        }
+      );
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const mcpServerView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        globalSpace
+      );
+      const mcpConfig = await AgentMCPServerConfigurationFactory.create(
+        authenticator,
+        globalSpace,
+        {
+          agent,
+          mcpServerView,
+        }
+      );
+      // A tool input schema whose own property is literally named `id` — an identity key the
+      // comparison strips structurally. Content under it must still register as a change.
+      const oldSchema: JSONSchema7 = {
+        type: "object",
+        properties: { id: { type: "string", description: "old" } },
+      };
+      const newSchema: JSONSchema7 = {
+        type: "object",
+        properties: { id: { type: "string", description: "new" } },
+      };
+      await mcpConfig.update({ jsonSchema: oldSchema });
+
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(authenticator);
+      assert(baseParams.actions);
+
+      // Re-saving the exact same configuration is a no-op: the JSON schema does not spuriously diff.
+      const noop = await before.updateConfiguration(authenticator, baseParams);
+      assert(noop.isOk());
+      const afterNoop = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(afterNoop?.isFull());
+      expect(afterNoop.content.version).toBe(before.content.version);
+
+      // Editing the schema under the `id` property is a real change and MUST create a new version,
+      // rather than being masked by the identity-key drop and silently skipped.
+      const editedParams = {
+        ...baseParams,
+        actions: baseParams.actions.map((action) => ({
+          ...action,
+          jsonSchema: newSchema,
+        })),
+      };
+      const edited = await before.updateConfiguration(
+        authenticator,
+        editedParams
+      );
+      assert(edited.isOk());
+      const afterEdit = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(afterEdit?.isFull());
+      expect(afterEdit.content.version).toBe(before.content.version + 1);
+    });
+  });
+
+  describe("in-place scope and editor edits", () => {
+    it("applies an editor-set change in place without creating a new version", async () => {
+      const { authenticator, workspace } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "visible" }
+      );
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(authenticator);
+
+      const newEditor = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, newEditor, { role: "user" });
+
+      const res = await before.updateConfiguration(authenticator, {
+        ...baseParams,
+        editors: [...baseParams.editors, newEditor.toJSON()],
+      });
+      assert(res.isOk());
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      // No new version was created for an editor-only change.
+      expect(after.content.version).toBe(before.content.version);
+      const editorIds = (await after.listEditors(authenticator))?.map(
+        (e) => e.id
+      );
+      expect(editorIds).toContain(newEditor.id);
+    });
+
+    it("creates a new version when a definition field changes, preserving scope", async () => {
+      const { authenticator } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "visible" }
+      );
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(authenticator);
+
+      const res = await before.updateConfiguration(authenticator, {
+        ...baseParams,
+        description: "A brand new description",
+      });
+      assert(res.isOk());
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(before.content.version + 1);
+      expect(after.description).toBe("A brand new description");
+      expect(after.scope).toBe("visible");
+    });
+
+    it("applies a scope change to the new version when a definition field also changed", async () => {
+      const { user, workspace } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { scope: "visible" }
+      );
+
+      // Grant the workspace the `publish` capability so the author can (un)publish, then re-resolve
+      // the authenticator to pick up the new grant.
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      const globalGroup =
+        await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+      assert(globalGroup.isOk());
+      await GroupPermissionResource.grantTypeWide(adminAuth, {
+        group: globalGroup.value,
+        grantType: "publish",
+        resourceType: "agent",
+      });
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      const before = await AgentResource.fetchById(auth, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(auth);
+
+      // A definition change bumps the version (archiving the old row); the scope change must land on
+      // that NEW active version, not on the now-archived row it was read from.
+      const res = await before.updateConfiguration(auth, {
+        ...baseParams,
+        description: "A brand new description",
+        scope: "hidden",
+      });
+      assert(res.isOk());
+
+      const after = await AgentResource.fetchById(auth, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(before.content.version + 1);
+      expect(after.description).toBe("A brand new description");
+      expect(after.scope).toBe("hidden");
+    });
+
+    it("rejects a scope change without publish and creates no version even if a definition field also changed", async () => {
+      const { authenticator } = testContext;
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "visible" }
+      );
+      const before = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(before?.isFull());
+      const baseParams = await before.buildResaveParams(authenticator);
+
+      // A regular editor holds `write`/`admin` on the agent but not the workspace `publish`
+      // capability, so it cannot change the scope — and the permission is checked before anything is
+      // written, so the definition change is not persisted either.
+      const res = await before.updateConfiguration(authenticator, {
+        ...baseParams,
+        description: "Should not be saved",
+        scope: "hidden",
+      });
+      assert(res.isErr());
+
+      const after = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(after?.isFull());
+      expect(after.content.version).toBe(before.content.version);
+      expect(after.scope).toBe("visible");
+      expect(after.description).toBe(before.description);
     });
   });
 });

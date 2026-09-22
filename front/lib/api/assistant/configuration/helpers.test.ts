@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 describe("toAgentConfigurationsWithSkills", () => {
   it("serializes the skills attached to each agent", async () => {
-    const { authenticator } = await createResourceTest({ role: "builder" });
+    const { authenticator } = await createResourceTest({ role: "manager" });
 
     const [withSkill, withoutSkill] = await Promise.all([
       AgentConfigurationFactory.createTestAgent(authenticator, {
@@ -42,7 +42,7 @@ describe("toAgentConfigurationsWithSkills", () => {
   });
 
   it("serializes the code-defined skills a global agent declares", async () => {
-    const { authenticator } = await createResourceTest({ role: "builder" });
+    const { authenticator } = await createResourceTest({ role: "manager" });
 
     // Global agents hold no agent-skill row: they name their skills in code, and carry those
     // ids on every variant of their configuration.
@@ -65,7 +65,7 @@ describe("toAgentConfigurationsWithSkills", () => {
   });
 
   it("serializes no skills for an agent whose details were redacted", async () => {
-    const { authenticator } = await createResourceTest({ role: "builder" });
+    const { authenticator } = await createResourceTest({ role: "manager" });
 
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,

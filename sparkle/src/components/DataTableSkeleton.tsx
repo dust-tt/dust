@@ -1,3 +1,11 @@
+import {
+  ALIGN_JUSTIFY_CLASS,
+  ALIGN_TEXT_CLASS,
+  DATA_TABLE_HEADER_HEIGHT_PX,
+  DATA_TABLE_ROW_HEIGHT_PX,
+  type DataTableDensity,
+  getDataTableColumnPresets,
+} from "@sparkle/components/DataTable";
 import { Icon } from "@sparkle/components/Icon";
 import { ChevronSelectorVertical } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
@@ -34,8 +42,10 @@ export interface DataTableSkeletonProps<
   SkeletonCell: ComponentType<DataTableSkeletonCellProps<NoInfer<TColumnId>>>;
   /** Number of placeholder rows. Defaults to 10. */
   rowCount?: number;
-  /** Row height in pixels; match the loaded table. Defaults to 48. */
+  /** Row height in pixels; match the loaded table. Defaults to the `density` height (48). */
   rowHeight?: number;
+  /** Density of the loaded table; sets the row height unless `rowHeight` is given. */
+  density?: DataTableDensity;
 }
 
 /**
@@ -54,7 +64,8 @@ export function DataTableSkeleton<
   columns,
   SkeletonCell,
   rowCount = 10,
-  rowHeight = 48,
+  density = "default",
+  rowHeight = DATA_TABLE_ROW_HEIGHT_PX[density],
 }: DataTableSkeletonProps<TData, TValue, TColumnId>) {
   const table = useReactTable({
     data: [],
@@ -71,37 +82,38 @@ export function DataTableSkeleton<
       >
         <thead>
           <tr className="border-b border-separator">
-            {table.getFlatHeaders().map((header) => (
-              <th
-                key={header.id}
-                className={cn(
-                  "heading-xs px-2 py-2 text-left capitalize text-foreground",
-                  header.column.columnDef.meta?.className
-                )}
-              >
-                <div
+            {table.getFlatHeaders().map((header) => {
+              const presets = getDataTableColumnPresets(header.column);
+              return (
+                <th
+                  key={header.id}
+                  scope="col"
+                  style={{ height: DATA_TABLE_HEADER_HEIGHT_PX[density] }}
                   className={cn(
-                    "flex items-center space-x-1 whitespace-nowrap",
-                    header.column.columnDef.meta?.headerAlign === "right" &&
-                      "justify-end",
-                    header.column.columnDef.meta?.headerAlign === "center" &&
-                      "justify-center"
+                    "heading-sm px-2 capitalize text-foreground",
+                    ALIGN_TEXT_CLASS[presets.headerAlign],
+                    presets.headerClassName,
+                    header.column.columnDef.meta?.className
                   )}
                 >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext()
-                  )}
-                  {header.column.getCanSort() && (
-                    <Icon
-                      visual={ChevronSelectorVertical}
-                      size="xs"
-                      className="ml-1"
-                    />
-                  )}
-                </div>
-              </th>
-            ))}
+                  <div
+                    className={cn(
+                      "flex items-center gap-1 whitespace-nowrap",
+                      presets.headerAlign !== "left" &&
+                        ALIGN_JUSTIFY_CLASS[presets.headerAlign]
+                    )}
+                  >
+                    {flexRender(
+                      header.column.columnDef.header,
+                      header.getContext()
+                    )}
+                    {header.column.getCanSort() && presets.sortable && (
+                      <Icon visual={ChevronSelectorVertical} size="xs" />
+                    )}
+                  </div>
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody aria-hidden="true">
@@ -110,7 +122,11 @@ export function DataTableSkeleton<
               {table.getAllLeafColumns().map((column) => (
                 <td
                   key={column.id}
-                  className={cn("px-2", column.columnDef.meta?.className)}
+                  className={cn(
+                    "px-2",
+                    getDataTableColumnPresets(column).cellClassName,
+                    column.columnDef.meta?.className
+                  )}
                   style={{ height: rowHeight }}
                 >
                   <SkeletonCell
