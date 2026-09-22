@@ -150,7 +150,7 @@ describe("storeAgentAnalyticsActivity - agent_tag_ids", () => {
     const tag = await TagFactory.create(auth.getNonNullableWorkspace(), {
       name: "post-sales",
     });
-    await tag.addToAgent(auth, agent);
+    await TagFactory.addToAgent(auth, tag, agent);
 
     const seeded = await seedMessages(auth, {
       agentConfigurationId: agent.sId,
@@ -173,8 +173,8 @@ describe("storeAgentAnalyticsActivity - agent_tag_ids", () => {
     const workspace = auth.getNonNullableWorkspace();
     const tagA = await TagFactory.create(workspace, { name: "post-sales" });
     const tagB = await TagFactory.create(workspace, { name: "help-center" });
-    await tagA.addToAgent(auth, agent);
-    await tagB.addToAgent(auth, agent);
+    await TagFactory.addToAgent(auth, tagA, agent);
+    await TagFactory.addToAgent(auth, tagB, agent);
 
     const seeded = await seedMessages(auth, {
       agentConfigurationId: agent.sId,
@@ -229,7 +229,7 @@ describe("storeAgentAnalyticsActivity - agent_tag_ids", () => {
     const tag = await TagFactory.create(auth.getNonNullableWorkspace(), {
       name: "post-sales",
     });
-    await tag.addToAgent(auth, agent);
+    await TagFactory.addToAgent(auth, tag, agent);
 
     // Bump to v1, which is created without tags.
     const updated = await AgentConfigurationFactory.updateTestAgent(

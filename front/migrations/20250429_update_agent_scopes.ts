@@ -3,6 +3,7 @@ import type { Logger } from "@app/logger/logger";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
@@ -84,7 +85,11 @@ const migrateWorkspace = async (
           "Adding company tag to agent"
         );
         if (execute) {
-          await companyTag.addToAgent(auth, agentConfig);
+          await TagAgentModel.create({
+            workspaceId: workspace.id,
+            tagId: companyTag.id,
+            agentConfigurationId: agentConfig.id,
+          });
         }
       }
     }

@@ -5,6 +5,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import {
   AgentConfigurationModel,
   AgentModel,
@@ -13,9 +14,11 @@ import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 // Type-only import (erased at runtime, so no import cycle with `agent_resource`): these helpers may
 // operate on an already-resolved `AgentResource` instance but never construct or statically call it.
 import type { AgentResource } from "@app/lib/resources/agent_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -429,6 +432,12 @@ export async function syncAgentTags(
 // unconditionally and does not require permission for an unchanged set; a real change requires
 // `admin` (see `agent-verbs`). Operates on the already-resolved `agentResource` (editors are
 // agent-level grants managed through it) but calls no `AgentResource` static.
+/**
+ * @cc [owner:philipperolet,label:security;product] editor-add-requires-membership
+ * Every editor added by this call (an editor in the new set who is not already one) MUST be an
+ * active member of the workspace; otherwise the change MUST fail with a `user_not_found`
+ * `DustError` before any editor grant is written.
+ */
 export async function syncAgentEditors(
   auth: Authenticator,
   {
@@ -449,6 +458,23 @@ export async function syncAgentEditors(
     return new Err(
       new Error("You don't have permission to change this agent's editors.")
     );
+  }
+
+  const addedEditorModelIds = editors
+    .filter((e) => !currentIds.has(e.id))
+    .map((e) => e.id);
+  if (addedEditorModelIds.length > 0) {
+    const addedUsers = await UserResource.fetchByModelIds(addedEditorModelIds);
+    const { total: activeMembershipCount } =
+      await MembershipResource.getActiveMemberships({
+        users: addedUsers,
+        workspace: auth.getNonNullableWorkspace(),
+      });
+    if (activeMembershipCount !== addedEditorModelIds.length) {
+      return new Err(
+        new DustError("user_not_found", "Editor is not a workspace member.")
+      );
+    }
   }
 
   const removedEditors = await withTransaction(async (t) => {

@@ -1,7 +1,4 @@
-import {
-  archiveAgentConfiguration,
-  updateAgentPermissions,
-} from "@app/lib/api/assistant/configuration/agent";
+import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
@@ -309,11 +306,22 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
       agentOwner.sId,
       workspace.sId
     );
-    const updateRes = await updateAgentPermissions(agentOwnerAuth, {
-      agent,
-      usersToAdd: [editorToRemove.toJSON()],
-      usersToRemove: [],
-    });
+    const agentResourceToSeed = await AgentResource.fetchById(
+      agentOwnerAuth,
+      agent.sId
+    );
+    assert(agentResourceToSeed);
+    const seedEditors =
+      (await agentResourceToSeed.listEditors(agentOwnerAuth)) ?? [];
+    const updateRes = await agentResourceToSeed.updateConfiguration(
+      agentOwnerAuth,
+      {
+        editors: [
+          ...seedEditors.map((u) => u.toJSON()),
+          editorToRemove.toJSON(),
+        ],
+      }
+    );
     if (updateRes.isErr()) {
       throw updateRes.error;
     }
@@ -389,11 +397,22 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
       requestUser.sId,
       workspace.sId
     );
-    const updateRes = await updateAgentPermissions(agentOwnerAuth, {
-      agent,
-      usersToAdd: [editorToRemove.toJSON()],
-      usersToRemove: [],
-    });
+    const agentResourceToSeed = await AgentResource.fetchById(
+      agentOwnerAuth,
+      agent.sId
+    );
+    assert(agentResourceToSeed);
+    const seedEditors =
+      (await agentResourceToSeed.listEditors(agentOwnerAuth)) ?? [];
+    const updateRes = await agentResourceToSeed.updateConfiguration(
+      agentOwnerAuth,
+      {
+        editors: [
+          ...seedEditors.map((u) => u.toJSON()),
+          editorToRemove.toJSON(),
+        ],
+      }
+    );
     if (updateRes.isErr()) {
       throw updateRes.error;
     }
