@@ -36,7 +36,7 @@ const MAX_DISPLAYED_SKILLS = 5;
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const { isOpen, close } = useCommandPalette();
   const { hasFeature } = useFeatureFlags();
-  const useSkillSearch = hasFeature("skills_search");
+  const isSkillsSearchEnabled = hasFeature("skills_search");
   const router = useAppRouter();
 
   // Dialog state.
@@ -61,7 +61,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const { skills, isSkillsLoading: isListedSkillsLoading } = useSkills({
     owner,
-    disabled: !isOpen || useSkillSearch,
+    disabled: !isOpen || isSkillsSearchEnabled,
     status: "active",
   });
   const {
@@ -72,9 +72,9 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     owner,
     searchTerm: searchQuery.trim(),
     limit: MAX_DISPLAYED_SKILLS,
-    disabled: !isOpen || !useSkillSearch,
+    disabled: !isOpen || !isSkillsSearchEnabled,
   });
-  const isSkillsLoading = useSkillSearch
+  const isSkillsLoading = isSkillsSearchEnabled
     ? isSearchSkillsLoading
     : isListedSkillsLoading;
 
@@ -152,12 +152,12 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     () => ({
       filteredAgents: allFilteredAgents.slice(0, MAX_DISPLAYED_AGENTS),
       filteredPods: allFilteredPods.slice(0, MAX_DISPLAYED_PODS),
-      filteredSkills: useSkillSearch
+      filteredSkills: isSkillsSearchEnabled
         ? searchSkills
         : allFilteredSkills.slice(0, MAX_DISPLAYED_SKILLS),
       hasMoreAgents: allFilteredAgents.length > MAX_DISPLAYED_AGENTS,
       hasMorePods: allFilteredPods.length > MAX_DISPLAYED_PODS,
-      hasMoreSkills: useSkillSearch
+      hasMoreSkills: isSkillsSearchEnabled
         ? hasMoreSearchSkills
         : allFilteredSkills.length > MAX_DISPLAYED_SKILLS,
     }),
@@ -165,7 +165,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
       allFilteredAgents,
       allFilteredPods,
       allFilteredSkills,
-      useSkillSearch,
+      isSkillsSearchEnabled,
       searchSkills,
       hasMoreSearchSkills,
     ]

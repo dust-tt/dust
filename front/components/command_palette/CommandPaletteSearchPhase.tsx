@@ -145,7 +145,7 @@ export function CommandPaletteSearchPhase({
           value={searchQuery}
           onChange={onSearchQueryChange}
           onKeyDown={handleKeyDown}
-          isLoading={isLoading && flatItems.length === 0}
+          isLoading={isLoading}
         />
       </div>
       <div className="flex max-h-125 flex-col gap-2 overflow-y-auto p-1.5">
