@@ -26,6 +26,7 @@ export const CLAUDE_OPUS_4_7_MODEL_ID = "claude-opus-4-7" as const;
 export const CLAUDE_OPUS_4_8_MODEL_ID = "claude-opus-4-8" as const;
 export const CLAUDE_OPUS_5_MODEL_ID = "claude-opus-5" as const;
 export const CLAUDE_FABLE_5_MODEL_ID = "claude-fable-5" as const;
+export const CLAUDE_FABLE_5_1_MODEL_ID = "claude-fable-5-1" as const;
 export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
 export const CLAUDE_SONNET_5_MODEL_ID = "claude-sonnet-5" as const;
 
@@ -473,6 +474,62 @@ export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   // Served from a separate Anthropic workspace (EAP) whose org has the 30-day
   // data retention Fable 5 requires; the Dust-managed org does not, and returns
   // 400 `model_not_available` for this model.
+  useEapKey: true,
+  disablePrefill: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+// Specs verified 2026-09-22 against
+// https://platform.claude.com/docs/en/models/fable-5-1/overview (1M native
+// context, 128k max output, adaptive thinking always on, default effort
+// `high`, text and image input). Dust caps context at 250k and output at 64k.
+export const CLAUDE_FABLE_5_1_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_FABLE_5_1_MODEL_ID,
+  displayName: "Claude Fable 5.1",
+  contextSize: 250_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Anthropic's Claude Fable 5.1 model, their most intelligent model, for demanding reasoning and long-horizon agentic work (250k context).",
+  shortDescription: "Anthropic's most powerful model.",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  // Like Fable 5, Fable 5.1 rejects an explicit `thinking: {type: "disabled"}`
+  // (400), so "none" is unsupported and "light" relies on native light
+  // reasoning (adaptive thinking with low effort) instead of disabling
+  // thinking.
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "high",
+  useNativeLightReasoning: true,
+  // Same tokenizer as Fable 5 (the one introduced with Opus 4.7): ~555k
+  // words/1M tokens vs ~750k for anthropic_base. Ratio: 750/555 ≈ 1.35,
+  // applied on top of the base 1.3 adjustment → 1.3 × 1.35 ≈ 1.75.
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT * 1.35,
+  supportsPromptCaching: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  customThinkingType: "auto",
+  availableIfOneOf: {
+    featureFlag: "claude_fable_5_feature",
+  },
+  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
+  fallbackModels: [CLAUDE_OPUS_4_8_MODEL_ID],
+  // Fable 5.1 carries the same 30-day data retention requirement as Fable 5
+  // and is not available under zero data retention, so it is served from the
+  // separate Anthropic workspace (EAP) whose org has that retention.
   useEapKey: true,
   disablePrefill: true,
   regionalAvailability: {

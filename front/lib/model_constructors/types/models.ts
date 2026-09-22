@@ -16,6 +16,7 @@ export const GPT_5_NANO = "gpt-5-nano" as const;
 export const CLAUDE_SONNET_4_6 = "claude-sonnet-4-6" as const;
 export const CLAUDE_SONNET_5 = "claude-sonnet-5" as const;
 export const CLAUDE_FABLE_5 = "claude-fable-5" as const;
+export const CLAUDE_FABLE_5_1 = "claude-fable-5-1" as const;
 export const CLAUDE_OPUS_4_6 = "claude-opus-4-6" as const;
 export const CLAUDE_OPUS_4_7 = "claude-opus-4-7" as const;
 export const CLAUDE_OPUS_4_8 = "claude-opus-4-8" as const;
@@ -75,6 +76,7 @@ export const MODELS = [
   CLAUDE_SONNET_4_6,
   CLAUDE_SONNET_5,
   CLAUDE_FABLE_5,
+  CLAUDE_FABLE_5_1,
   CLAUDE_OPUS_4_6,
   CLAUDE_OPUS_4_7,
   CLAUDE_OPUS_4_8,
@@ -116,6 +118,7 @@ export function isModel(value: string): value is Model {
 }
 
 export const ORDERED_LARGE_MODELS = [
+  CLAUDE_FABLE_5_1,
   CLAUDE_FABLE_5,
   CLAUDE_OPUS_5,
   CLAUDE_OPUS_4_8,

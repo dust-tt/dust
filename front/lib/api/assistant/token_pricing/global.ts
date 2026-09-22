@@ -274,6 +274,16 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     long_cache_creation_input_tokens: 20.0,
     cache_read_input_tokens: 1.0,
   },
+  // https://platform.claude.com/docs/en/about-claude/pricing (2026-09-22).
+  // Same rates as Fable 5 except cache reads, which are 0.025x base input on
+  // Fable 5.1 instead of the usual 0.1x.
+  "claude-fable-5-1": {
+    input: 10.0,
+    output: 50.0,
+    cache_creation_input_tokens: 12.5,
+    long_cache_creation_input_tokens: 20.0,
+    cache_read_input_tokens: 0.25,
+  },
   "claude-sonnet-4-6": {
     input: 3.0,
     output: 15.0,
