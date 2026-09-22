@@ -16,12 +16,12 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export interface SuggestAgentInstructionsChangeResult {
   agentConfigurationId: string;
-  suggestions: CreatedInstructionSuggestion[];
+  suggestion: CreatedInstructionSuggestion;
 }
 
 export async function suggestAgentInstructionsChange(
   auth: Authenticator,
-  { agentId, instructionEdits, analysis }: SuggestAgentInstructionsChangeArgs
+  { agentId, instructionEdit, analysis }: SuggestAgentInstructionsChangeArgs
 ): Promise<Result<SuggestAgentInstructionsChangeResult, MCPError>> {
   if (!auth.user()) {
     return new Err(
@@ -69,7 +69,7 @@ export async function suggestAgentInstructionsChange(
   );
   const limitCheck = canAddPendingSuggestions({
     kind: "instructions",
-    newPendingCount: instructionEdits.length,
+    newPendingCount: 1,
     currentPendingCount: pending.length,
     resolutionHint:
       "Reject or accept some of the existing pending suggestions before adding new ones.",
@@ -80,7 +80,7 @@ export async function suggestAgentInstructionsChange(
 
   const result = await createAgentInstructionSuggestions(auth, {
     agentConfiguration: agent,
-    edits: instructionEdits.map((edit) => ({ ...edit, analysis })),
+    edits: [{ ...instructionEdit, analysis }],
     source: "conversational",
     conversation: null,
   });
@@ -90,7 +90,7 @@ export async function suggestAgentInstructionsChange(
 
   return new Ok({
     agentConfigurationId: agent.sId,
-    suggestions: result.value,
+    suggestion: result.value[0],
   });
 }
 
@@ -103,19 +103,17 @@ export async function suggestAgentInstructionsChangeHandler(
     return result;
   }
 
-  const { agentConfigurationId, suggestions } = result.value;
-  const directives = suggestions.map((suggestion) =>
-    formatAgentSuggestionDirective({
-      sId: suggestion.sId,
-      kind: suggestion.kind,
-      _agentConfigurationId: agentConfigurationId,
-    })
-  );
+  const { agentConfigurationId, suggestion } = result.value;
+  const directive = formatAgentSuggestionDirective({
+    sId: suggestion.sId,
+    kind: suggestion.kind,
+    _agentConfigurationId: agentConfigurationId,
+  });
 
   return new Ok([
     {
       type: "text" as const,
-      text: directives.join("\n\n"),
+      text: directive,
     },
   ]);
 }

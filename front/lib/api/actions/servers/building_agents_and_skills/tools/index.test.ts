@@ -1472,13 +1472,11 @@ describe("building_agents_and_skills tools", () => {
       ).handler(
         {
           agentId: agent.sId,
-          instructionEdits: [
-            {
-              targetBlockId: "block1",
-              type: "replace",
-              content: "<p>You are a concise, helpful assistant.</p>",
-            },
-          ],
+          instructionEdit: {
+            targetBlockId: "block1",
+            type: "replace",
+            content: "<p>You are a concise, helpful assistant.</p>",
+          },
           analysis: "Makes the assistant more concise.",
         },
         makeExtra(authenticator)
@@ -1518,13 +1516,11 @@ describe("building_agents_and_skills tools", () => {
       ).handler(
         {
           agentId: agent.sId,
-          instructionEdits: [
-            {
-              targetBlockId: "block1",
-              type: "replace",
-              content: "<p>You are a friendly assistant.</p>",
-            },
-          ],
+          instructionEdit: {
+            targetBlockId: "block1",
+            type: "replace",
+            content: "<p>You are a friendly assistant.</p>",
+          },
         },
         makeExtra(authenticator)
       );
@@ -1551,9 +1547,11 @@ describe("building_agents_and_skills tools", () => {
       ).handler(
         {
           agentId: agent.sId,
-          instructionEdits: [
-            { targetBlockId: "block1", type: "replace", content: "<p>Hi.</p>" },
-          ],
+          instructionEdit: {
+            targetBlockId: "block1",
+            type: "replace",
+            content: "<p>Hi.</p>",
+          },
         },
         makeExtra(nonInteractiveAuth)
       );
@@ -1568,9 +1566,11 @@ describe("building_agents_and_skills tools", () => {
       ).handler(
         {
           agentId: "unknown_agent",
-          instructionEdits: [
-            { targetBlockId: "block1", type: "replace", content: "<p>Hi.</p>" },
-          ],
+          instructionEdit: {
+            targetBlockId: "block1",
+            type: "replace",
+            content: "<p>Hi.</p>",
+          },
         },
         makeExtra(authenticator)
       );
@@ -1593,9 +1593,11 @@ describe("building_agents_and_skills tools", () => {
       ).handler(
         {
           agentId: agent.sId,
-          instructionEdits: [
-            { targetBlockId: "block1", type: "replace", content: "<p>Hi.</p>" },
-          ],
+          instructionEdit: {
+            targetBlockId: "block1",
+            type: "replace",
+            content: "<p>Hi.</p>",
+          },
         },
         makeExtra(otherAuth)
       );
@@ -1612,9 +1614,11 @@ describe("building_agents_and_skills tools", () => {
       ).handler(
         {
           agentId: agent.sId,
-          instructionEdits: [
-            { targetBlockId: "block1", type: "replace", content: "<p>Hi.</p>" },
-          ],
+          instructionEdit: {
+            targetBlockId: "block1",
+            type: "replace",
+            content: "<p>Hi.</p>",
+          },
         },
         makeExtra(authenticator)
       );
@@ -1631,32 +1635,15 @@ describe("building_agents_and_skills tools", () => {
       ).handler(
         {
           agentId: agent.sId,
-          instructionEdits: [
-            { targetBlockId: "block1", type: "replace", content: "<p>Hi.</p>" },
-          ],
+          instructionEdit: {
+            targetBlockId: "block1",
+            type: "replace",
+            content: "<p>Hi.</p>",
+          },
         },
         makeExtra(authenticator)
       );
       expectMcpError(result, "no block-structured instructions");
-    });
-
-    it("returns an MCPError when multiple edits target the same block", async () => {
-      const { authenticator } = await createResourceTest({ role: "user" });
-      const agent = await createBlockStructuredAgent(authenticator);
-
-      const result = await getTool(
-        SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
-      ).handler(
-        {
-          agentId: agent.sId,
-          instructionEdits: [
-            { targetBlockId: "block1", type: "replace", content: "<p>A.</p>" },
-            { targetBlockId: "block1", type: "replace", content: "<p>B.</p>" },
-          ],
-        },
-        makeExtra(authenticator)
-      );
-      expectMcpError(result, "same block ID");
     });
 
     it("returns an MCPError when exceeding the pending suggestions limit", async () => {
@@ -1680,9 +1667,11 @@ describe("building_agents_and_skills tools", () => {
       ).handler(
         {
           agentId: agent.sId,
-          instructionEdits: [
-            { targetBlockId: "block1", type: "replace", content: "<p>A.</p>" },
-          ],
+          instructionEdit: {
+            targetBlockId: "block1",
+            type: "replace",
+            content: "<p>A.</p>",
+          },
         },
         makeExtra(authenticator)
       );

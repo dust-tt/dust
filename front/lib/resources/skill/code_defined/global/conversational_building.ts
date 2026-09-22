@@ -214,7 +214,7 @@ Agent suggestions:
 - \`${buildingToolName(SUGGEST_AGENT_DESCRIPTION_TOOL_NAME)}\`: propose a new description for an existing agent.
 - \`${buildingToolName(SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME)}\`: propose changing an existing agent's model, by \`agentId\`, \`modelId\` and an optional \`reasoningEffort\`.
 - \`${buildingToolName(SUGGEST_AGENT_NAME_TOOL_NAME)}\`: rename an agent.
-- \`${buildingToolName(SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME)}\`: propose block-targeted instruction edits (see <block_aware_editing>) for an existing agent, by \`agentId\` and \`instructionEdits\`.
+- \`${buildingToolName(SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME)}\`: propose a block-targeted instruction edit (see <block_aware_editing>) for an existing agent, by \`agentId\` and \`instructionEdit\`. Call it once per block to change several blocks.
 </tools>`,
 
   responseStyle: responseStyleSection({ noun: NOUN, editTool: EDIT_TOOLS }),

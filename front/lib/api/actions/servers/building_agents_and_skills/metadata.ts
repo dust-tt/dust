@@ -231,25 +231,21 @@ export type SuggestAgentNameArgs = z.infer<
 export const SUGGEST_AGENT_INSTRUCTIONS_CHANGE_DESCRIPTION =
   "Suggest a change to an existing agent's instructions (prompt) of this workspace, using " +
   "block-based targeting. The instructions HTML contains blocks with a data-block-id " +
-  "attribute; each edit targets one block by its id and provides the full replacement HTML " +
+  "attribute; the edit targets one block by its id and provides the full replacement HTML " +
   `for that block. Use "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" as targetBlockId for a full ` +
-  "rewrite. The change is not applied directly: it is recorded as pending suggestion(s) that " +
-  "the agent's editors can review, accept, or reject. Only agents the caller can edit can be " +
-  "targeted.";
+  "rewrite. Call this tool once per block to change several blocks. The change is not " +
+  "applied directly: it is recorded as a pending suggestion that the agent's editors can " +
+  "review, accept, or reject. Only agents the caller can edit can be targeted.";
 
 export const SUGGEST_AGENT_INSTRUCTIONS_CHANGE_INPUT_SCHEMA = z.object({
   agentId: z
     .string()
     .describe("The id of the agent whose instructions to change."),
-  instructionEdits: z
-    .array(SkillInstructionEditItemSchema)
-    .min(1)
-    .max(MAX_INSTRUCTION_EDITS)
-    .describe(
-      `Block-targeted edits to the agent's instructions, at most ${MAX_INSTRUCTION_EDITS}. ` +
-        "Each item targets one block by its data-block-id; a block id must appear at most " +
-        `once. Use "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" as targetBlockId for a full rewrite.`
-    ),
+  instructionEdit: SkillInstructionEditItemSchema.describe(
+    "A block-targeted edit to the agent's instructions, targeting one block by its " +
+      `data-block-id. Use "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" as targetBlockId for a ` +
+      "full rewrite."
+  ),
   analysis: z
     .string()
     .optional()
