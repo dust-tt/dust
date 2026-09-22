@@ -213,7 +213,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
       },
     });
 
-    return views.filter((view) => (auth.can("read", view) || auth.can("admin", view)));
+    return views.filter(
+      (view) => auth.can("read", view) || auth.can("admin", view)
+    );
   }
 
   static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
@@ -224,7 +226,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
         },
       },
     }).then((views) =>
-      views.filter((view) => (auth.can("read", view) || auth.can("admin", view)))
+      views.filter((view) => auth.can("read", view) || auth.can("admin", view))
     );
 
     return views ?? [];
@@ -295,7 +297,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     return this.baseFetch(auth, {
       where: { webhookSourceId },
     }).then((views) =>
-      views.filter((view) => (auth.can("read", view) || auth.can("admin", view)))
+      views.filter((view) => auth.can("read", view) || auth.can("admin", view))
     );
   }
 
@@ -309,7 +311,9 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     const views = await this.baseFetch(auth, {
       where: { webhookSourceId: { [Op.in]: webhookSourceIds } },
     });
-    return views.filter((view) => (auth.can("read", view) || auth.can("admin", view)));
+    return views.filter(
+      (view) => auth.can("read", view) || auth.can("admin", view)
+    );
   }
 
   /**

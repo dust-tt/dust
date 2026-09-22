@@ -935,7 +935,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
     // Permission parity with listBySpaces: the read-or-admin pre-filter on fetched
     // spaces becomes a post-filter on the space hydrated by baseFetchWithAuthorization.
-    return views.filter((view) => (auth.can("read", view) || auth.can("admin", view)));
+    return views.filter(
+      (view) => auth.can("read", view) || auth.can("admin", view)
+    );
   }
 
   static async listBySpace(
