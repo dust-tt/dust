@@ -82,14 +82,18 @@ export function useInputBarSlashCommandCapabilities({
       disabled: useSkillSearch,
       swrOptions: CAPABILITIES_SWR_OPTIONS,
     });
-  const { skills: searchSkills, isSkillsLoading: isSearchSkillsLoading } =
-    useSearchSkills({
-      owner,
-      searchTerm: query,
-      limit: MAX_RENDERED_CAPABILITY_ITEMS,
-      disabled: !useSkillSearch,
-    });
+  const {
+    skills: searchSkills,
+    resolvedSearchTerm,
+    isSkillsLoading: isSearchSkillsLoading,
+  } = useSearchSkills({
+    owner,
+    searchTerm: query,
+    limit: MAX_RENDERED_CAPABILITY_ITEMS,
+    disabled: !useSkillSearch,
+  });
   const skills = useSkillSearch ? searchSkills : listedSkills;
+  const capabilityQuery = useSkillSearch ? (resolvedSearchTerm ?? "") : query;
   const isSkillsLoading = useSkillSearch
     ? isSearchSkillsLoading
     : isListedSkillsLoading;
@@ -106,16 +110,17 @@ export function useInputBarSlashCommandCapabilities({
     () =>
       buildCapabilitySlashCommandItems({
         excludeSkillId,
-        query,
+        query: capabilityQuery,
         useSearchRanking: useSkillSearch,
         skills,
         tools: serverViews,
       }),
-    [excludeSkillId, query, serverViews, skills, useSkillSearch]
+    [capabilityQuery, excludeSkillId, serverViews, skills, useSkillSearch]
   );
 
   return {
     capabilityItems,
+    resolvedQuery: capabilityQuery,
     // Every workspace has at least one global skill and one tool, so stop loading
     // as soon as either source returns a matching capability.
     isLoading:
