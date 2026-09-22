@@ -16,6 +16,8 @@ import type {
   ModelStreamResolutionsType,
 } from "@app/types/api/assistant/models";
 import {
+  CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
+  CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
@@ -63,6 +65,20 @@ describe("getPinnedModelRetryTier", () => {
       ).toBe("fast");
     });
   }
+
+  it("offers the Premium row for an ultra-tier pinned model", () => {
+    expect(
+      getPinnedModelRetryTier({
+        failedModel: {
+          providerId: "anthropic",
+          modelId: CLAUDE_FABLE_5_MODEL_ID,
+          reasoningEffort: "high",
+        },
+        modelResolutionMethod: "user",
+        errorCategory: "provider_internal_error",
+      })
+    ).toBe("complex");
+  });
 
   it("offers the tier for an agent-configured pinned model", () => {
     expect(
@@ -154,6 +170,15 @@ describe("modelPickerUtils premium gating", () => {
       });
     });
 
+    it("locks every effort of an ultra-tier model when gated", () => {
+      const stops = getEffortStops(CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG, GATED);
+      expect(unavailabilityReasonByEffort(stops)).toEqual({
+        light: "premium",
+        medium: "premium",
+        high: "premium",
+      });
+    });
+
     it("locks every premium effort of a mid-tier reasoning model", () => {
       // Gemini 2.5 Pro: light=balanced, medium=premium, high=premium.
       const stops = getEffortStops(GEMINI_2_5_PRO_MODEL_CONFIG, GATED);
@@ -210,6 +235,9 @@ describe("modelPickerUtils premium gating", () => {
   describe("isPremiumModel", () => {
     it("locks a whole-premium reasoning model when gated", () => {
       expect(isPremiumModel(CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG, GATED)).toBe(
+        true
+      );
+      expect(isPremiumModel(CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG, GATED)).toBe(
         true
       );
     });

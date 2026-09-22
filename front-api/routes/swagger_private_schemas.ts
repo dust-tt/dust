@@ -40,7 +40,7 @@
  *           description: Model maker, for known model facets.
  *         tier:
  *           type: string
- *           enum: [cost_efficient, balanced, premium]
+ *           enum: [cost_efficient, balanced, premium, ultra]
  *           description: Default reasoning-effort tier, for known model facets.
  *     PrivateUser:
  *       type: object

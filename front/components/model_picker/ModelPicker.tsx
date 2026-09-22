@@ -26,6 +26,7 @@ import {
   getTierFallbackMessage,
   getTierLockReason,
   isPremiumModel,
+  isPremiumOrAboveTier,
   isSameSelection,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
@@ -247,7 +248,7 @@ export function ModelPicker({
     const { model } = shown.display;
     if (
       lockPremiumEfforts &&
-      getTierForModel(model.modelId, effort) === "premium"
+      isPremiumOrAboveTier(getTierForModel(model.modelId, effort))
     ) {
       return;
     }

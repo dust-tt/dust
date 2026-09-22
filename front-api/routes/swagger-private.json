@@ -11235,7 +11235,8 @@
             "enum": [
               "cost_efficient",
               "balanced",
-              "premium"
+              "premium",
+              "ultra"
             ],
             "description": "Default reasoning-effort tier, for known model facets."
           }
