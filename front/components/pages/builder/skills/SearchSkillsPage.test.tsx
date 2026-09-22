@@ -55,7 +55,7 @@ async function setup({ searchEnabled = true, pageEnabled = true } = {}) {
   ]);
   const { sId, fullName, image } = user.toJSON();
   const skill = {
-    ...toSkillListItem(document),
+    ...toSkillListItem(authenticator, document),
     editors: [{ sId, fullName, image }],
   };
   const context: AuthContextValue = {
