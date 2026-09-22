@@ -375,8 +375,7 @@ export function ConversationContainerVirtuoso({
           // clips at the scroller edge; max-w compensates so the card
           // still measures exactly --container-conversation when wide.
           "md:w-full md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1 md:pb-4",
-          // The discovery home is exactly one panel tall, with the Discover
-          // page below it; a sticky composer would ride along on the way down.
+          // A sticky composer would ride along on the way down to Discover.
           isDiscoveryHomepage ? "" : "sticky bottom-0 z-20"
         )}
         style={shouldReduceMotion ? undefined : composerEntranceStyle}

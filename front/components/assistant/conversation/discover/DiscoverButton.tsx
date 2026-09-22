@@ -7,8 +7,8 @@ const RING_WIDTH_PX = 1.5;
 const RING_INSET_PX = RING_WIDTH_PX / 2;
 const RING_RADIUS_PX = BUTTON_HEIGHT_PX / 2 - RING_INSET_PX;
 
-// Filling tracks the wheel tick for tick; draining back to empty is a longer
-// eased release, so the two read as different gestures.
+// Filling tracks the wheel tick for tick, draining is a longer eased release, so the two
+// read as different gestures.
 const FILL_DURATION_MS = 80;
 const FILL_EASING = "linear";
 const DRAIN_DURATION_MS = 300;

@@ -1,23 +1,20 @@
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// Accumulated wheel delta that closes the ring.
 const FILL_DISTANCE_PX = 900;
 const FILL_IDLE_RESET_MS = 700;
 // Fallback for browsers without `scrollend`, and for a scroll that never
 // starts because Discover is already in view.
 const TRANSITION_FALLBACK_MS = 800;
 
-// `transition` keeps the scroller locked while the smooth scroll to the
-// Discover page plays, so a trailing wheel tick cannot interrupt it midway.
+// `transition` swallows wheel ticks so they cannot interrupt the smooth scroll midway.
 type DiscoverStage = "home" | "transition" | "discover";
 
 interface UseDiscoverScrollParams {
   isFillEnabled: boolean;
 }
 
-// Wheeling a nested scrollable, a long draft in the composer for instance, is reading rather
-// than intent to leave the home page.
+// Wheeling a long draft in the composer is reading, not intent to leave the home page.
 function isOverScrollableRegion(
   target: EventTarget | null,
   boundary: HTMLElement
@@ -38,9 +35,8 @@ function isOverScrollableRegion(
 }
 
 export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
-  // The scroller only exists on the new-conversation route, so it comes and
-  // goes while this hook stays mounted. Held as state, not a ref, so the
-  // listeners below rebind to whichever node is currently on screen.
+  // State rather than a ref: the scroller comes and goes with the new-conversation route,
+  // and the listeners below have to rebind to whichever node is on screen.
   const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
   const discoverRef = useRef<HTMLDivElement>(null);
   const [stage, setStage] = useState<DiscoverStage>("home");
@@ -49,10 +45,8 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
   const idleTimerRef = useRef<number | null>(null);
   const endTransitionRef = useRef<(() => void) | null>(null);
 
-  // Locking the scroller is what keeps the home stage in place: a wheel, a page down or a
-  // space bar then does nothing, rather than moving and being snapped back. Radix rewrites
-  // the viewport's inline overflow on every scroll-state change, so the lock has to outrank
-  // it.
+  // Radix rewrites the viewport's inline overflow on every scroll-state change, so the lock
+  // has to outrank it.
   useEffect(() => {
     if (!scroller) {
       return;
@@ -68,13 +62,11 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
     };
   }, [isFillEnabled, scroller, stage]);
 
-  // No scroller on mobile: the button still has to move the page, so everything below the
-  // scrollIntoView is optional.
+  // No scroller on mobile, where the button still has to move the page.
   const goToDiscover = useCallback(() => {
     endTransitionRef.current?.();
 
-    // Hold the ring at full while the page travels, so completing it reads
-    // as the cause of the move; it resets once Discover has landed.
+    // Hold the ring at full while the page travels, so completing it reads as the cause.
     fillRef.current = 1;
     setFillProgress(1);
     setStage("transition");
@@ -103,8 +95,7 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
 
   useEffect(() => () => endTransitionRef.current?.(), []);
 
-  // A fresh scroller is a fresh home page: whatever stage the previous visit
-  // ended on, this one starts at the top with an empty ring.
+  // A fresh scroller is a fresh home page.
   useEffect(() => {
     endTransitionRef.current?.();
     if (!scroller) {
@@ -115,8 +106,6 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
     fillRef.current = 0;
   }, [scroller]);
 
-  // Wheel intent on the home stage fills the button; during the transition it is swallowed
-  // so the animation completes.
   useEffect(() => {
     if (!scroller || !isFillEnabled) {
       return;
@@ -169,8 +158,6 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
     };
   }, [goToDiscover, isFillEnabled, scroller, stage]);
 
-  // On the discover stage, scrolling back to the very top hands control back to the home
-  // stage.
   useEffect(() => {
     if (!scroller || !isFillEnabled) {
       return;
