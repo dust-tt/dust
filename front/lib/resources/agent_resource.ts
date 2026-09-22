@@ -331,10 +331,10 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  * @cc [owner:philipperolet,label:security;product] agent-verbs
  * The verbs a caller holds on an agent mean:
  * - `read`: seeing the agent's full configuration and using it. Mentioning or running an agent
- *   MUST require `read`. A custom agent grants it only when the agent is workspace-visible or the
- *   caller has editor access, except that a draft's current author owns that draft (see
- *   `draft-agent-owner`). It also requires the caller to read every space in `requestedSpaceIds`
- *   (see `agent-read-requires-space-read`).
+ *   MUST require `read`. A custom agent grants workspace-wide read only when it is active with
+ *   scope `visible`; otherwise the caller needs editor access, except that a draft's current author
+ *   owns that draft (see `draft-agent-owner`). The caller must also be able to read every space in
+ *   `requestedSpaceIds` (see `agent-read-requires-space-read`).
  * - `write`: editing the agent's definition: configuration versions, tags, model, skills, linked
  *   Slack channels, archiving and restoring.
  * - `admin`: managing the agent's editors, and — as the sole definition exceptions — changing the
@@ -359,9 +359,10 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  * workspace. Creating or activating a visible agent, or changing an active agent's scope, MUST
  * require the `publish` capability — resolved per-resource as `auth.can("publish", r)` for a scope
  * write (see `scope-change-requires-edit-and-publish`) — even for its editors. Draft and pending
- * agents MUST remain hidden. An archived agent's scope MUST NOT change until restore; restoring it
- * visible MUST require `publish`. Editing an agent without changing its workspace visibility MUST
- * NOT require `publish`. Protected tags and linking Slack channels to an agent are gated by it too.
+ * agents MUST be persisted and authorized as hidden. An archived agent's scope MUST remain stored
+ * but MUST NOT grant workspace visibility until restore; restoring a stored visible scope MUST
+ * require `publish`. Editing an agent without changing its workspace visibility MUST NOT require
+ * `publish`. Protected tags and linking Slack channels to an agent are gated by it too.
  */
 /**
  * @cc [owner:tdraier,label:security] agent-edit-requires-write
@@ -1379,7 +1380,7 @@ export class AgentResource
       auth.workspace()?.id === this.workspaceId &&
       auth.user()?.id === this.versionAuthorId;
     const roles =
-      this.scope === "visible"
+      this.status === "active" && this.scope === "visible"
         ? VISIBLE_AGENT_ROLE_GRANTS
         : HIDDEN_AGENT_ROLE_GRANTS;
     const roleGrants: RoleGrant[] =

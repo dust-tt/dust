@@ -745,6 +745,31 @@ describe("AgentResource", () => {
     expect(otherAuth.hasPermission("admin", resource)).toBe(false);
   });
 
+  it.each([
+    "draft",
+    "pending",
+    "archived",
+  ] as const)("does not grant workspace read to a visible %s agent", async (status) => {
+    const resource = AgentResource.fromAgentConfiguration(
+      testContext.authenticator,
+      makeAgentConfiguration({
+        status,
+        scope: "visible",
+        versionAuthorId: testContext.user.id,
+      })
+    );
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, otherUser, {
+      role: "user",
+    });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      testContext.workspace.sId
+    );
+
+    expect(otherAuth.hasPermission("read", resource)).toBe(false);
+  });
+
   it("hides an agent whose requested space the caller cannot read", async () => {
     const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(
