@@ -1497,6 +1497,39 @@ describe("building_agents_and_skills tools", () => {
 
       expectMcpError(result, "not found");
     });
+
+    it("redacts instructions, skills and tools for an admin who cannot read the agent", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const owner = await addMember(workspace);
+      const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        owner.sId,
+        workspace.sId
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(ownerAuth, {
+        name: "Hidden Agent",
+        scope: "hidden",
+      });
+
+      const result = await getTool(DESCRIBE_AGENT_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      expect(result.value[0].text).toContain("Hidden Agent");
+      expect(result.value[0].text).toContain(
+        "Instructions, skills and tools are private"
+      );
+      expect(result.value[0].text).not.toContain("Test Instructions");
+    });
   });
 
   describe(SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME, () => {

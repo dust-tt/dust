@@ -3,7 +3,7 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationForDetails } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -16,11 +16,8 @@ export async function describeAgent(
   auth: Authenticator,
   { agentId }: DescribeAgentArgs
 ): Promise<Result<AgentConfigurationType, MCPError>> {
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "full",
-  });
-  if (!agent || (!agent.canRead && !auth.isAdmin())) {
+  const agent = await getAgentConfigurationForDetails(auth, { agentId });
+  if (!agent) {
     return new Err(new MCPError("Agent not found."));
   }
 
@@ -28,10 +25,11 @@ export async function describeAgent(
 }
 
 /**
- * @cc [owner:avervaet,label:mcp;architecture] block-annotated-instructions
- * When the agent's instructions are block-structured, MUST return them as HTML whose blocks
- * carry a `data-block-id` attribute, required to target block-level instruction edits. Falls
- * back to plain text only when no block-structured instructions exist.
+ * @cc [owner:avervaet,label:mcp;security] private-agent-instructions-not-exposed
+ * MUST NOT expose an agent's instructions, tools or skills to a caller without `read` on that
+ * agent, whatever their role. Redaction comes exclusively from `getAgentConfigurationForDetails`;
+ * this handler MUST check the returned `canRead` before reading `instructions`,
+ * `instructionsHtml` or `actions`.
  */
 export async function describeAgentHandler(
   args: DescribeAgentArgs,
@@ -43,7 +41,26 @@ export async function describeAgentHandler(
   }
 
   const agent = result.value;
+  const header =
+    `Agent ${agent.name} [${agent.sId}]\n` +
+    `- Description: ${agent.description}\n` +
+    `- Scope: ${agent.scope}\n` +
+    `- Model: ${agent.model.providerId}/${agent.model.modelId}\n`;
+
+  if (!agent.canRead) {
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          header +
+          "\nInstructions, skills and tools are private: you are not an editor of this agent, " +
+          "or not a member of every space it requires. This cannot be overridden from this tool.",
+      },
+    ]);
+  }
+
   const toolNames = agent.actions.map((action) => action.name).join(", ");
+  // Only reached for an agent the caller can read, so its skills are not private.
   const skills = await SkillResource.listByAgentConfiguration(auth, agent);
   const skillNames = skills.map((skill) => skill.name).join(", ");
 
@@ -53,19 +70,14 @@ export async function describeAgentHandler(
       agent.instructionsHtml
     : `Instructions (full system prompt):\n${agent.instructions ?? "(no instructions)"}`;
 
-  const text =
-    `Agent ${agent.name} [${agent.sId}]\n` +
-    `- Description: ${agent.description}\n` +
-    `- Scope: ${agent.scope}\n` +
-    `- Model: ${agent.model.providerId}/${agent.model.modelId}\n` +
-    `- Skills: ${skillNames || "none"}\n` +
-    `- Tools: ${toolNames || "none"}\n\n` +
-    instructionsBlock;
-
   return new Ok([
     {
       type: "text" as const,
-      text,
+      text:
+        header +
+        `- Skills: ${skillNames || "none"}\n` +
+        `- Tools: ${toolNames || "none"}\n\n` +
+        instructionsBlock,
     },
   ]);
 }
