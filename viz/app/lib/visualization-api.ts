@@ -30,7 +30,7 @@ export interface VisualizationDataAPI {
   getUserIdentity(): Promise<UserIdentityState>;
 
   /**
-   * Fetch a file and its revision through the shared file transport.
+   * Fetch a file and its revision, or null if unavailable.
    */
   fetchFile(fileId: string): Promise<FrameFile | null>;
 

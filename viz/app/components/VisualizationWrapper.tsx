@@ -283,22 +283,27 @@ export function useVisualizationAPI(
  * @cc [owner:flvndvd,label:api] use-file-result
  * useFile MUST return the native File or null, without exposing revision metadata.
  */
+/**
+ * @cc [owner:flvndvd,label:concurrency] use-file-request-lifetime
+ * A request from a cleaned-up effect MUST NOT update the hook's state.
+ */
 export function useFile(fileId: string, dataAPI: VisualizationDataAPI) {
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
-    const fetch = async () => {
-      try {
-        const fetchedFile = await dataAPI.fetchFile(fileId);
-        setFile(fetchedFile?.file ?? null);
-      } catch (_err) {
-        setFile(null);
-      }
-    };
+    let ignore = false;
 
     if (fileId) {
-      fetch();
+      void dataAPI.fetchFile(fileId).then((frameFile) => {
+        if (!ignore) {
+          setFile(frameFile?.file ?? null);
+        }
+      });
     }
+
+    return () => {
+      ignore = true;
+    };
   }, [dataAPI, fileId]);
 
   return file;
