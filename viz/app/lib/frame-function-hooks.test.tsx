@@ -371,6 +371,8 @@ describe("useFrameFunctionMutation", () => {
     );
 
     expect(callFunction).not.toHaveBeenCalled();
+    expect(result.current.isMutating).toBe(false);
+    expect(result.current.isLoading).toBe(false);
 
     let firstPromise: Promise<unknown> | undefined;
     let secondPromise: Promise<unknown> | undefined;
@@ -378,6 +380,8 @@ describe("useFrameFunctionMutation", () => {
       firstPromise = result.current.trigger({ body: "First" });
       secondPromise = result.current.trigger({ body: "Second" });
     });
+    expect(result.current.isMutating).toBe(true);
+    expect(result.current.isLoading).toBe(true);
     expect(callFunction).toHaveBeenCalledTimes(2);
     expect(callFunction).toHaveBeenNthCalledWith(1, "post-comment", {
       body: "First",

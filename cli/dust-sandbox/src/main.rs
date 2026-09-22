@@ -143,18 +143,8 @@ async fn run() -> anyhow::Result<()> {
                 function_name,
                 input,
             } => commands::cmd_frame_call(&target, &function_name, input.as_deref()).await?,
-            commands::frame::FrameCommand::Create {
-                directory,
-                description,
-            } => commands::cmd_frame_create(&directory, &description).await?,
-            commands::frame::FrameCommand::Register { manifest } => {
-                commands::cmd_frame_register(&manifest).await?
-            }
             commands::frame::FrameCommand::ShareLink { directory } => {
                 commands::cmd_frame_share_link(&directory).await?
-            }
-            commands::frame::FrameCommand::Validate { manifest } => {
-                commands::cmd_frame_validate(&manifest).await?
             }
             commands::frame::FrameCommand::Publish { source } => {
                 commands::cmd_frame_publish(&source).await?
@@ -588,29 +578,6 @@ mod tests {
                 );
             }
             Commands::Frame { .. } => panic!("expected publish"),
-            _ => panic!("expected frame"),
-        }
-    }
-
-    #[test]
-    fn frame_validate_parses() {
-        let cli = Cli::try_parse_from([
-            "dsbx",
-            "frame",
-            "validate",
-            "/files/pod-vlt_123/Status/manifest.json",
-        ])
-        .expect("parse");
-        match cli.command {
-            Commands::Frame {
-                command: commands::frame::FrameCommand::Validate { manifest },
-            } => {
-                assert_eq!(
-                    manifest,
-                    std::path::PathBuf::from("/files/pod-vlt_123/Status/manifest.json")
-                );
-            }
-            Commands::Frame { .. } => panic!("expected validate"),
             _ => panic!("expected frame"),
         }
     }

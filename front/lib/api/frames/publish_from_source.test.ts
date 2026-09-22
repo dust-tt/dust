@@ -98,6 +98,60 @@ beforeEach(() => {
 });
 
 describe("publishFrameFromSource", () => {
+  it("registers and publishes a v2 Frame that has no prior identity", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+    });
+    const sourceDirectoryPath = `conversation-${conversation.sId}/Status`;
+    const manifestPath = `${sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const gcsSourceDirectoryPath = `${getConversationFilesBasePath({
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+    })}Status`;
+    const sourceByPath = new Map([
+      [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
+      [`${gcsSourceDirectoryPath}/index.tsx`, uiSource],
+    ]);
+    fileStorageMock.setFilesByPrefix((prefix) =>
+      prefix === `${gcsSourceDirectoryPath}/`
+        ? [...sourceByPath.entries()].map(([name, content]) => ({
+            name,
+            metadata: {
+              contentType: name.endsWith(".tsx")
+                ? "text/typescript"
+                : frameV2ContentType,
+              size: String(Buffer.byteLength(content)),
+            },
+          }))
+        : null
+    );
+    fileStorageMock.setFileContent(
+      (filePath) => sourceByPath.get(filePath) ?? null
+    );
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    expect(result.value).toMatchObject({
+      kind: "v2",
+      sourcePath: manifestPath,
+      created: true,
+    });
+    const frame = await FileResource.fetchById(auth, result.value.frameId);
+    expect(frame?.isFrameV2).toBe(true);
+    expect(frame?.useCaseMetadata?.activePublicationId).toBe(
+      result.value.kind === "v2" ? result.value.publicationId : undefined
+    );
+  });
+
   it("rejects a Frame outside the signed conversation scope", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",

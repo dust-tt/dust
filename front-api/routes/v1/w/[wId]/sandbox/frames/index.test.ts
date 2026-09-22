@@ -49,36 +49,6 @@ function requestFramePublish(
   });
 }
 
-function requestFrameRegister(
-  workspaceId: string,
-  token: string,
-  manifestPath: string
-) {
-  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/register`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${token}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({ manifestPath }),
-  });
-}
-
-function requestFrameValidate(
-  workspaceId: string,
-  token: string,
-  manifestPath: string
-) {
-  return honoApp.request(`/api/v1/w/${workspaceId}/sandbox/frames/validate`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${token}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({ manifestPath }),
-  });
-}
-
 function requestFrameShare(
   workspaceId: string,
   token: string,
@@ -181,26 +151,37 @@ beforeEach(() => {
 });
 
 describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
-  it("registers one stable Frame identity", async () => {
+  it("publishes an unregistered v2 Frame by minting identity on first publish", async () => {
     const context = await setup({ registered: false });
 
-    const firstResponse = await requestFrameRegister(
+    const response = await requestFramePublish(
       context.workspace.sId,
       context.token,
       context.manifestPath
     );
-    expect(firstResponse.status).toBe(200);
-    const first = await firstResponse.json();
-    expect(first.created).toBe(true);
+    expect(response.status).toBe(200);
+    const published = await response.json();
+    expect(published.created).toBe(true);
+    expect(published.publicationId).toBeTypeOf("string");
+    expect(published.frameId).toMatch(/^fil_/);
 
-    const secondResponse = await requestFrameRegister(
+    const frame = await FileResource.fetchById(context.auth, published.frameId);
+    expect(frame?.useCaseMetadata?.activePublicationId).toBe(
+      published.publicationId
+    );
+
+    const republish = await requestFramePublish(
       context.workspace.sId,
       context.token,
       context.manifestPath
     );
-    expect(secondResponse.status).toBe(200);
-    const second = await secondResponse.json();
-    expect(second).toMatchObject({ frameId: first.frameId, created: false });
+    expect(republish.status).toBe(200);
+    const republished = await republish.json();
+    expect(republished).toMatchObject({
+      frameId: published.frameId,
+      created: false,
+    });
+    expect(republished.publicationId).not.toBe(published.publicationId);
   });
 
   it("publishes a registered Frame through the sandbox token", async () => {
@@ -215,53 +196,13 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     expect(response.status).toBe(200);
     const published = await response.json();
     expect(published.frameId).toBe(context.frame.sId);
+    expect(published.created).toBe(false);
     expect(published.publicationId).toBeTypeOf("string");
 
     const frame = await FileResource.fetchById(context.auth, published.frameId);
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(
       published.publicationId
     );
-  });
-
-  it("validates a registered Frame without activating a publication", async () => {
-    const context = await setup();
-    assert(context.frame);
-
-    const response = await requestFrameValidate(
-      context.workspace.sId,
-      context.token,
-      context.manifestPath
-    );
-
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      frameId: context.frame.sId,
-      manifestPath: context.manifestPath,
-    });
-    expect(
-      (await FileResource.fetchById(context.auth, context.frame.sId))
-        ?.useCaseMetadata?.activePublicationId
-    ).toBeUndefined();
-    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
-  });
-
-  it("does not validate a legacy Frame through the v2-only command", async () => {
-    const context = await setupLegacyFrame();
-
-    const response = await requestFrameValidate(
-      context.workspace.sId,
-      context.token,
-      context.sourcePath
-    );
-
-    expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toMatchObject({
-      error: {
-        message:
-          "Pre-publish validation is only available for Frames v2 manifests.",
-      },
-    });
-    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
   it("returns the existing Frame share link without changing use rights", async () => {
@@ -408,11 +349,11 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     );
   });
 
-  it("rejects an unregistered manifest path", async () => {
+  it("rejects an unregistered non-manifest path", async () => {
     const context = await setup();
     const unregisteredPath = context.manifestPath.replace(
-      "/Status/",
-      "/Other/"
+      `/${FRAME_MANIFEST_FILE}`,
+      "/Other.tsx"
     );
 
     const response = await requestFramePublish(

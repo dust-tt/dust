@@ -14,9 +14,7 @@ import { z } from "zod";
 import frameById from "./[frameId]";
 import call from "./call";
 import callById from "./call_by_id";
-import register from "./register";
 import share from "./share";
-import validateFrame from "./validate";
 
 const FramePublishRequestSchema = z.object({
   manifestPath: z.string().min(1),
@@ -26,6 +24,7 @@ type FramePublishResponse = {
   frameId: string;
   manifestPath: string;
   publicationId?: string;
+  created?: boolean;
   warnings?: ValidationWarning[];
 };
 
@@ -35,9 +34,7 @@ const app = sandboxApp();
 app.use("*", sandboxAuth({ allowedTokenKinds: ["action"] }));
 app.route("/call", call);
 app.route("/:frameId/call", callById);
-app.route("/register", register);
 app.route("/share", share);
-app.route("/validate", validateFrame);
 
 /**
  * @ignoreswagger
@@ -114,6 +111,7 @@ app.post(
             frameId: publication.value.frameId,
             manifestPath: publication.value.sourcePath,
             publicationId: publication.value.publicationId,
+            created: publication.value.created,
           },
           200
         );

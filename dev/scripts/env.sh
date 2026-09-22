@@ -161,4 +161,12 @@ apply_local_overrides() {
     # direct E2B egress so dsbx can reach the ngrok URL.
     export SBX_DEV_UNRESTRICTED_EGRESS="${SBX_DEV_UNRESTRICTED_EGRESS:-true}"
   fi
+
+  # Viz tunnel so sandboxes can fetch frame-runtime from local viz (:3007).
+  # Overrides VIZ_PUBLIC_URL only; NEXT_PUBLIC_VIZ_URL stays localhost for the SPA.
+  SBX_DEV_VIZ_URL_FILE="${SBX_DEV_VIZ_URL_FILE:-${DUST_INFRA_LOG_DIR:-/tmp/dust-infra}/sbx-dev-viz-url}"
+  if [ -f "${SBX_DEV_VIZ_URL_FILE}" ]; then
+    export VIZ_PUBLIC_URL="$(tr -d '\n' <"${SBX_DEV_VIZ_URL_FILE}")"
+    export SBX_DEV_UNRESTRICTED_EGRESS="${SBX_DEV_UNRESTRICTED_EGRESS:-true}"
+  fi
 }

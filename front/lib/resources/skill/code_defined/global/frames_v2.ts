@@ -9,11 +9,11 @@ the \`dsbx frame\` CLI for their lifecycle.
 
 ## Frames v2 vs legacy Frames
 
-- A Frames v2 source is a package-like folder anchored by \`manifest.json\`. The registered
+- A Frames v2 source is a package-like folder anchored by \`manifest.json\`. The published
   manifest is the canonical Frame resource; its folder contains the UI source, assets, and
   function source. The manifest declares one UI entry point (\`index.tsx\` by default) and every
   server function. Publishing snapshots the whole folder, builds every declared function, and
-  atomically activates the publication.
+  atomically activates the publication. The first publish also assigns the Frame's stable identity.
 - A legacy (v1) Frame is anchored by a single \`.tsx\` entry file. Publishing resolves that entry
   file and its local imports, then updates the existing Frame through the legacy bundle pipeline.
 - \`dsbx frame publish\` supports both formats. Edit and publish an existing legacy Frame in place;
@@ -28,12 +28,21 @@ manifest. Do not store durable application state in memory; use a Frame database
 
 ## Create a Frame
 
-Every Computer command is a round trip of several seconds. When possible, create, write, and
-publish a new Frame in one Computer command:
+Every Computer command is a round trip of several seconds. When possible, write the real source
+and publish a new Frame in one Computer command. There is no scaffold step: create the folder,
+write \`manifest.json\` and \`index.tsx\` (plus any functions or databases), lint, then publish.
+The first \`dsbx frame publish\` mints the Frame's stable identity from the manifest path and
+activates the publication.
 
 \`\`\`bash
 FRAME=/files/conversation-<conversationId>/<frame-folder>
-dsbx frame create "$FRAME" &&
+mkdir -p "$FRAME" &&
+cat > "$FRAME/manifest.json" <<'EOF'
+{
+  "version": 1,
+  "description": "..."
+}
+EOF
 cat > "$FRAME/index.tsx" <<'EOF'
 export default function Frame() {
   return <main>...</main>;
@@ -43,29 +52,14 @@ bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME
 dsbx frame publish "$FRAME/manifest.json"
 \`\`\`
 
-In a Pod, create it under \`/files/pod-<podId>/...\` instead. \`dsbx frame create\` scaffolds a
-placeholder \`manifest.json\` and \`index.tsx\`, names the Frame after the folder, and assigns its
-stable identity. Do not
-read the scaffolded files back: overwrite \`index.tsx\` with the real component and, when the
-Frame declares any, write the manifest, function, and database files in the same command. Only use
-separate commands when a step needs the previous one's output.
+In a Pod, write it under \`/files/pod-<podId>/...\` instead. The folder name is the Frame's name.
+Only use separate Computer commands when a step needs the previous one's output.
 
 Always pass canonical \`/files/conversation-<conversationId>/...\` or
 \`/files/pod-<podId>/...\` paths to \`dsbx frame\`. Do not pass the convenience aliases
 \`/files/conversation\` or \`/files/pod\`.
 
-## Register an existing Frame folder
-
-When \`manifest.json\` and its source folder already exist but do not have a Frame identity, run:
-
-\`\`\`bash
-dsbx frame register /files/<scope>/<frame-folder>/manifest.json
-\`\`\`
-
-Registration validates the manifest and assigns its stable Frame identity. Repeating the command
-for the same manifest path returns the same Frame. Registration does not publish the source.
-
-## Retrieve a registered Frame's share link
+## Retrieve a Frame's share link
 
 Frame sharing and use rights are configured by the user in the Dust UI. Agents must not change
 the share scope or grant access to recipients. The CLI can only retrieve an existing share link:
@@ -383,30 +377,50 @@ Design contracts around UI interactions rather than database tables:
 
 Use \`useFrameFunction\` for idempotent reads. It caches identical calls, deduplicates in-flight calls,
 and keeps previous data while revalidating. Pass \`null\` instead of a function name to disable it.
+\`data\` is typed as \`unknown\`: the UI cannot see the function's Zod \`output\` schema. Narrow or cast
+it to the shape you declared in \`schema.output\` before reading fields — never access
+\`result.data.someField\` directly or TypeScript will fail lint and publish.
 
 \`\`\`tsx
 import { useFrameFunction } from "@dust/react-hooks";
 
+type CommentList = { comments: { id: number; body: string }[] };
+
 const comments = useFrameFunction("list-comments", { threadId });
+const payload = comments.data as CommentList | undefined;
+const items = payload?.comments ?? [];
 \`\`\`
 
 Use \`useFrameFunctionMutation\` for writes and other side effects. It runs only when \`trigger\` is
-called, is not deduplicated, and does not infer which query caches it affects:
+called, is not deduplicated, and does not infer which query caches it affects. While a mutation is
+in flight, \`isMutating\` is true (\`isLoading\` is an alias of the same flag). \`trigger\`'s return
+value is also \`unknown\`: cast it the same way when you pass it into \`mutate\`.
 
 \`\`\`tsx
 import { useFrameFunction, useFrameFunctionMutation } from "@dust/react-hooks";
 
+type CommentList = { comments: { id: number; body: string }[] };
+
 const comments = useFrameFunction("list-comments", { threadId });
 const postComment = useFrameFunctionMutation("post-comment");
+const payload = comments.data as CommentList | undefined;
+const items = payload?.comments ?? [];
 
 async function handleAddComment(body: string) {
-  const updatedComments = await postComment.trigger({ threadId, body });
+  if (postComment.isMutating) {
+    return;
+  }
+  const updatedComments = (await postComment.trigger({
+    threadId,
+    body,
+  })) as CommentList;
   await comments.mutate(updatedComments, { revalidate: false });
 }
 \`\`\`
 
 Trigger mutations from a button or another supported interaction, not HTML form submission. Render
-loading, empty, and error states for every call. Function failures are
+loading (\`isLoading\` on reads, \`isMutating\` / \`isLoading\` on mutations), empty, and error states
+for every call. Function failures are
 \`SandboxFunctionCallError\` instances with \`message\`, optional HTTP \`status\`, and an open-string
 \`code\`; handle known codes and provide a generic fallback.
 
@@ -452,18 +466,11 @@ Publishing runs the manifest, UI, function-build, database-contract and Tailwind
 If any fails, no partial publication
 becomes active: fix the reported error and rerun. Tailwind arbitrary values such as \`h-[600px]\`
 are errors, not warnings: use predefined classes or the \`style\` prop. Run the attached linter
-before publishing to check in-package file paths and function names. Do not run \`dsbx frame validate\`
-immediately before publishing: it repeats the same server build.
+before publishing to check in-package file paths and function names. For a brand-new folder,
+publish also assigns the Frame identity; republishing the same path updates that Frame in place.
 
-To run the same checks without storing or activating a publication or reconciling Frame-owned
-databases, for example while the active publication must keep working, use:
-
-\`\`\`bash
-dsbx frame validate /files/<scope>/<frame-folder>/manifest.json
-\`\`\`
-
-Use these commands instead of \`bun build\` or an ad hoc regex scan: those do not use the Frame
-build context and report unrelated or noisy failures.
+Use \`dsbx frame publish\` instead of \`bun build\` or an ad hoc regex scan: those do not use the
+Frame build context and report unrelated or noisy failures.
 
 After a successful publish, call \`conversation_side_panel.open_frame\` exactly once with \`path\`
 set to the same canonical \`/files/...\` manifest path. This opens the Frame for the user and adds
@@ -491,7 +498,7 @@ The only interactive-content MCP tool available under Frames v2 is
 Use the Computer and CLI for all other Frame operations. Use \`dsbx frame --help\` as the authority
 for available operations.
 
-Do not use \`mv\` or \`cp\` on a registered Frame folder: move and clone are not supported in this
+Do not use \`mv\` or \`cp\` on a Frame folder: move and clone are not supported in this
 initial scope.
 
 ## Editing

@@ -2,13 +2,11 @@ import path from "node:path";
 
 import { DustFileSystem } from "@app/lib/api/file_system";
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
-import {
-  buildAndPublishFramePublication,
-  validateFramePublication,
-} from "@app/lib/api/frames/build_and_publish";
+import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
 import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
 import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
+import { registerFrameV2FromSourceUsingFileSystem } from "@app/lib/api/frames/register_from_source";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import {
@@ -71,12 +69,8 @@ export type PublishFrameFromSourceResult =
       frameId: string;
       sourcePath: string;
       publicationId: string;
+      created: boolean;
     };
-
-export type ValidateFrameFromSourceResult = {
-  frameId: string;
-  sourcePath: string;
-};
 
 async function resolveFrameFromSource(
   auth: Authenticator,
@@ -89,7 +83,12 @@ async function resolveFrameFromSource(
   }
 ): Promise<
   Result<
-    { dustFs: DustFileSystem; frame: FileResource; normalizedPath: string },
+    {
+      dustFs: DustFileSystem;
+      frame: FileResource;
+      normalizedPath: string;
+      created: boolean;
+    },
     DustFileSystemError | FramePublicationError
   >
 > {
@@ -120,14 +119,43 @@ async function resolveFrameFromSource(
     );
   }
 
-  const [frame] = await FileResource.fetchByMountFilePaths(auth, [
+  const [existing] = await FileResource.fetchByMountFilePaths(auth, [
     mountFilePath,
   ]);
-  if (!frame || (!frame.isFrameV2 && !frame.isInteractiveContent)) {
+  if (existing?.isFrameV2 || existing?.isInteractiveContent) {
+    return new Ok({
+      dustFs,
+      frame: existing,
+      normalizedPath,
+      created: false,
+    });
+  }
+  if (existing) {
+    return frameError(
+      "invalid_source",
+      "A non-Frame file is already registered at this path."
+    );
+  }
+
+  // First publish of a v2 package: mint identity from the on-disk manifest, then publish.
+  if (path.posix.basename(normalizedPath) !== FRAME_MANIFEST_FILE) {
     return frameError("invalid_source", `No Frame found at ${normalizedPath}.`);
   }
 
-  return new Ok({ dustFs, frame, normalizedPath });
+  const registered = await registerFrameV2FromSourceUsingFileSystem(auth, {
+    dustFs,
+    manifestPath: normalizedPath,
+  });
+  if (registered.isErr()) {
+    return registered;
+  }
+
+  return new Ok({
+    dustFs,
+    frame: registered.value.frame,
+    normalizedPath,
+    created: registered.value.created,
+  });
 }
 
 export async function publishFrameFromSource(
@@ -149,7 +177,7 @@ export async function publishFrameFromSource(
   if (resolved.isErr()) {
     return resolved;
   }
-  const { dustFs, frame, normalizedPath } = resolved.value;
+  const { dustFs, frame, normalizedPath, created } = resolved.value;
 
   if (frame.isFrameV2) {
     const publication = await publishFrameV2FromSource(auth, {
@@ -167,6 +195,7 @@ export async function publishFrameFromSource(
       frameId: frame.sId,
       sourcePath: normalizedPath,
       publicationId: publication.value.publicationId,
+      created,
     });
   }
 
@@ -192,46 +221,6 @@ export async function publishFrameFromSource(
     frameId: frame.sId,
     sourcePath: normalizedPath,
     warnings: publication.value.warnings,
-  });
-}
-
-export async function validateFrameFromSource(
-  auth: Authenticator,
-  {
-    conversation,
-    sourcePath,
-  }: {
-    conversation: ConversationWithoutContentType;
-    sourcePath: string;
-  }
-): Promise<Result<ValidateFrameFromSourceResult, PublishFrameFromSourceError>> {
-  const resolved = await resolveFrameFromSource(auth, {
-    conversation,
-    sourcePath,
-  });
-  if (resolved.isErr()) {
-    return resolved;
-  }
-  const { frame, normalizedPath } = resolved.value;
-  if (!frame.isFrameV2) {
-    return frameError(
-      "invalid_frame",
-      "Pre-publish validation is only available for Frames v2 manifests."
-    );
-  }
-
-  const validation = await validateFrameV2FromSource(auth, {
-    conversation,
-    frame,
-    manifestPath: normalizedPath,
-  });
-  if (validation.isErr()) {
-    return validation;
-  }
-
-  return new Ok({
-    frameId: frame.sId,
-    sourcePath: normalizedPath,
   });
 }
 
@@ -645,56 +634,4 @@ export async function editFrameV2TextAtSource(
   }
 
   return publication;
-}
-
-export async function validateFrameV2FromSource(
-  auth: Authenticator,
-  {
-    conversation,
-    frame,
-    manifestPath,
-  }: {
-    conversation: ConversationWithoutContentType;
-    frame: FileResource;
-    manifestPath: string;
-  }
-): Promise<Result<undefined, FramePublicationError | SandboxFunctionError>> {
-  if (!frame.isFrameV2) {
-    return frameError(
-      "invalid_frame",
-      `File '${frame.sId}' is not a Frames v2 manifest.`
-    );
-  }
-
-  const validation = await withFrameSourceLock(frame.sId, async () => {
-    const freshFrame = await frame.fetchFreshFrameV2(auth);
-    if (!freshFrame) {
-      return frameError(
-        "invalid_frame",
-        `Frame '${frame.sId}' no longer exists.`
-      );
-    }
-
-    const source = await readFrameV2SourceWithSourceLockHeld(auth, {
-      frame: freshFrame,
-      manifestPath,
-    });
-    if (source.isErr()) {
-      return source;
-    }
-
-    return validateFramePublication(auth, {
-      conversation,
-      manifest: source.value.manifest,
-      sourceFiles: source.value.sourceFiles,
-    });
-  });
-  if (validation.isErr()) {
-    if (isLockAcquisitionTimeoutError(validation.error)) {
-      return new Err(frameSourceConflictError());
-    }
-    return new Err(validation.error);
-  }
-
-  return validation;
 }
