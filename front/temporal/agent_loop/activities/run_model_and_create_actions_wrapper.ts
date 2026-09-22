@@ -396,7 +396,7 @@ async function _runModelAndCreateActionsActivity({
  * Whether the agent loop must pause here for the user to confirm continuing. Reads the agent
  * message's checkpoint status only when the cheap, in-memory checks (exemption, root message,
  * pre-step spend) don't already rule it out; the workspace's checkpoint gate setting is
- * consulted only the first time that status is found unset (see the contract above).
+ * consulted only the first time that status is found unset.
  */
 export async function getCreditSpendCheckpointCrossed(
   auth: Authenticator,
