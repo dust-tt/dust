@@ -24,8 +24,18 @@ to the save callback do not restart the debounce timer.
 
 `className` applies to the outer container. Typography and editor configuration
 remain controlled by Document. Initial content is captured at mount. Remount with
-a new key to open a different document. Invalid stored JSON disables editing.
+a new key to open a different document. Invalid stored JSON disables editing and
+saving. The parser rejects unknown blocks, marks, fields and attributes instead
+of dropping them. The same schema validates browser saves. Sources are limited to
+512 KiB, 10,000 nodes and 64 levels of nesting.
+Link destinations support HTTP, HTTPS, mailto, tel and relative URLs. Link styling,
+targets and opener isolation belong to Document, including after an HTML paste.
 Navigation protection and synchronization with external changes belong to the host.
+
+`onPendingChangesChange(pending)` reports whether the editor has unsaved changes or
+a save in flight. Hosts can use it to protect a draft before navigating away. Save
+completion acknowledges only the submitted content, and an unmounted editor does
+not notify its former host.
 
 For a Markdown file, the host supplies persistence for the string it receives:
 
@@ -52,10 +62,42 @@ Markdown save, the same check prevents a conversion from changing the draft's
 content or formatting. Conversion failures preserve the draft and never call
 `onSave`. These checks use the existing TipTap Markdown parser and serializer.
 
-File access, version checks, and synchronization with agent edits belong to the
-eventual host integration.
+File access, version checks, and synchronization with agent edits belong to the host.
 
-Stories and interaction tests live in `src/stories/Document.stories.tsx` and
-`src/stories/DocumentMarkdown.stories.tsx`. They cover formatting, block commands,
-autosave, errors, concurrent edits, read-only content, themes, layout, Markdown
-output, and source preservation.
+Stories and interaction tests live in `src/stories/Document.stories.tsx`,
+`src/stories/DocumentMarkdown.stories.tsx`, `src/stories/DocumentFrames.stories.tsx`
+and `src/stories/DocumentValidation.stories.tsx`. They cover formatting, block
+commands, autosave, errors, concurrent edits, read-only content, themes, layout,
+Markdown output, source preservation, Frame interactions and content validation.
+
+## Parsing outside React
+
+`@dust-tt/sparkle/document` exports `parseDocumentContent` and
+`serializeDocumentMarkdown` without importing React components or requiring a DOM.
+Both ESM and CommonJS consumers use the editor's schema and validation. A failed
+parse returns `{ ok: false, error }`. Markdown serialization returns `null` when
+the document cannot be represented without losing content or formatting.
+
+## Embedded Frames
+
+Native JSON can contain an atomic `dustFrame` block:
+
+```json
+{
+  "type": "dustFrame",
+  "attrs": {
+    "src": "conversation-example/chart/index.tsx",
+    "title": "Revenue by quarter"
+  }
+}
+```
+
+`src` is a canonical Files path without the sandbox's `/files/` prefix. Only
+conversation and Pod references are supported. Remote iframe URLs, executable
+content and sandbox options are rejected. The optional title is presentation only.
+
+A trusted application supplies `renderFrame(reference)` to resolve access and render
+its existing Frame host. Without that callback, Document shows a placeholder and
+preserves the block. Document read-only access controls document editing, while the
+host applies the referenced Frame's own permissions. Markdown export rejects a
+Frame-containing document to avoid silently discarding interactive content.
