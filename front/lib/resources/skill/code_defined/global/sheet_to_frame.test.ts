@@ -24,7 +24,19 @@ describe("sheetToFrameSkill", () => {
     expect(instructions).toContain(ENABLE_SKILL_TOOL);
     expect(instructions).toContain(framesSkill.name);
     expect(instructions).toContain("Before reading the sheet");
-    expect(instructions).toContain("does not restate them");
+    // The authoring, linting and publishing mechanics are versioned in the Frames skill. Restating
+    // any of them here is how the two drift apart.
+    for (const mechanic of [
+      "dsbx frame create",
+      "dsbx frame publish",
+      "dsbx frame validate",
+      "manifest.json",
+      "uiEntryPoint",
+      "useFrameFunction",
+      "lint.sh",
+    ]) {
+      expect(instructions).not.toContain(mechanic);
+    }
     // The Frame tooling and the linter ship with the Frames skill; duplicating its servers here
     // would hand out the tools without the instructions.
     expect(sheetToFrameSkill.mcpServers).toEqual([]);
