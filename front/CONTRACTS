@@ -408,6 +408,10 @@ Every state-changing operation on a security-sensitive resource must emit an aud
 - Never `await` the emit call; always fire-and-forget with `void`
 - Audit log failures must never break the main operation (the emit functions handle this internally)
 
+Short-lived CLI scripts that terminate the process immediately after their worker returns are the
+exception: after the mutation commits, they MUST await the emit call so the process cannot drop the
+event. The emit helpers catch their own failures, so awaiting them does not fail the mutation.
+
 @cc [label:audit-logging;security] audit-human-actors
 Always prefer the real human actor over `system` for audit events.
 
@@ -694,4 +698,3 @@ usage still costs out.
 
 Reviewer: for a new image model, check the pricing entry exists and its numbers match the linked
 provider page.
-

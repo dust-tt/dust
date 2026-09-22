@@ -195,7 +195,10 @@ async function restoreAuthor(
   });
 
   if (restored) {
-    void emitAuditLogEvent({
+    // Unlike the long-running app, makeScript exits the process as soon as its worker returns. Wait
+    // for this post-commit attempt so the process cannot terminate it partway through. The audit
+    // helper catches its own errors, so a WorkOS failure cannot fail or roll back the repair.
+    await emitAuditLogEvent({
       auth,
       action: "agent.editors_updated",
       targets: [
@@ -232,8 +235,8 @@ async function restoreAuthor(
 /**
  * @cc [owner:philipperolet,label:migration;security] concurrent-editor-repair-safety
  * Each repair MUST acquire the live editor-grant lock and recheck eligibility before granting the
- * author. Every committed grant MUST schedule an `agent.editors_updated` event, and reruns MUST not
- * add another grant.
+ * author. Before the script returns, every committed grant MUST complete an
+ * `agent.editors_updated` emission attempt. Reruns MUST not add another grant.
  */
 export async function restoreEditorlessAgentAuthors({
   execute,
