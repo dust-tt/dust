@@ -8,6 +8,7 @@ import { FrameFunctionHooksProvider } from "@viz/app/lib/frame-function-hooks";
 import { createFrameRuntimeImports } from "@viz/app/lib/frame-runtime-scope";
 import { extractFileRefs, type FileRef } from "@viz/app/lib/parseFileRefs";
 import { transformEditableText } from "@viz/app/lib/transformEditableText";
+import { useVisualizationTheme } from "@viz/app/lib/use-visualization-theme";
 import type {
   VisualizationAPI,
   VisualizationConfig,
@@ -388,6 +389,8 @@ export function VisualizationWrapper({
     addEventListener,
   } = api.ui;
 
+  useVisualizationTheme(isPdfMode);
+
   const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
 
   const { ref } = useResizeDetector({
@@ -653,21 +656,21 @@ export function VisualizationWrapper({
           <button
             onClick={() => handleScreenshotDownload()}
             title="Download screenshot"
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-background"
           >
             Png
           </button>
           <button
             onClick={handleSVGDownload}
             title="Download SVG"
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-background"
           >
             Svg
           </button>
           <button
             title="Show code"
             onClick={handleDisplayCode}
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-background"
           >
             Code
           </button>
