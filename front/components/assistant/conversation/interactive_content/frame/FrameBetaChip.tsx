@@ -1,4 +1,4 @@
-import { Chip } from "@dust-tt/sparkle";
+import { Chip, Tooltip } from "@dust-tt/sparkle";
 
 const FRAMES_BETA_URL =
   "https://app.dust.tt/share/frame/c5d83f0e-4825-4c6f-b33a-6841b1490d19";
@@ -9,13 +9,20 @@ const FRAMES_BETA_URL =
  */
 export function FrameBetaChip() {
   return (
-    <Chip
-      size="mini"
-      label="Beta"
-      className="shrink-0"
-      href={FRAMES_BETA_URL}
-      target="_blank"
-      rel="noopener noreferrer"
+    <Tooltip
+      label="Click for more info on this beta"
+      tooltipTriggerAsChild
+      trigger={
+        <span className="inline-flex shrink-0 items-center">
+          <Chip
+            size="mini"
+            label="Beta"
+            href={FRAMES_BETA_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          />
+        </span>
+      }
     />
   );
 }

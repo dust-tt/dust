@@ -1,7 +1,7 @@
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { cleanup, render, screen } from "@testing-library/react";
-import type { PropsWithChildren } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -104,6 +104,8 @@ vi.mock("@dust-tt/sparkle", async () => {
     SheetHeader: Container,
     SheetTitle: Container,
     Spinner: Empty,
+    Tooltip: ({ trigger }: { trigger: ReactNode }) =>
+      createElement("div", null, trigger),
     XClose: Empty,
     cn: (...classes: Array<string | false | null | undefined>) =>
       classes.filter(Boolean).join(" "),
