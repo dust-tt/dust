@@ -247,6 +247,24 @@ export async function workspaceRelocateFrontTableWorkflow({
   } while (hasMoreRows);
 }
 
+// Polls the source cell until the transfer finishes. A null job name means the
+// transfer was skipped and completes immediately (see isFileStorageTransferComplete).
+async function waitForFileStorageTransfer(
+  sourceCellActivities: ReturnType<typeof getFrontSourceCellActivities>,
+  jobName: string | null
+) {
+  let isTransferComplete = false;
+  while (!isTransferComplete) {
+    isTransferComplete =
+      await sourceCellActivities.isFileStorageTransferComplete({ jobName });
+
+    if (!isTransferComplete) {
+      // Sleep for 1 minute before checking again.
+      await sleep("1m");
+    }
+  }
+}
+
 export async function workspaceRelocateFrontFileStorageWorkflow({
   sourceCell,
   destCell,
@@ -267,19 +285,7 @@ export async function workspaceRelocateFrontFileStorageWorkflow({
       workspaceId,
     });
 
-  // Wait for the file storage transfer to complete.
-  let isPublicFilesTransferComplete = false;
-  while (!isPublicFilesTransferComplete) {
-    isPublicFilesTransferComplete =
-      await sourceCellActivities.isFileStorageTransferComplete({
-        jobName: publicFilesJobName,
-      });
-
-    if (!isPublicFilesTransferComplete) {
-      // Sleep for 1 minute before checking again.
-      await sleep("1m");
-    }
-  }
+  await waitForFileStorageTransfer(sourceCellActivities, publicFilesJobName);
 
   // 2) Relocate private files.
   const destPrivateBucket =
@@ -293,19 +299,25 @@ export async function workspaceRelocateFrontFileStorageWorkflow({
       workspaceId,
     });
 
-  // Wait for the file storage transfer to complete.
-  let isPrivateFilesTransferComplete = false;
-  while (!isPrivateFilesTransferComplete) {
-    isPrivateFilesTransferComplete =
-      await sourceCellActivities.isFileStorageTransferComplete({
-        jobName: privateFilesJobName,
-      });
+  await waitForFileStorageTransfer(sourceCellActivities, privateFilesJobName);
 
-    if (!isPrivateFilesTransferComplete) {
-      // Sleep for 1 minute before checking again.
-      await sleep("1m");
-    }
-  }
+  // 3) Relocate sandbox egress policy files. Keep this step last: inserting
+  // steps before it breaks replay of in-flight workflows.
+  const destEgressPolicyBucket =
+    await destinationCellActivities.getDestinationEgressPolicyBucket();
+
+  const egressPolicyFilesJobName =
+    await sourceCellActivities.startTransferFrontEgressPolicyFiles({
+      destBucket: destEgressPolicyBucket,
+      destCell,
+      sourceCell,
+      workspaceId,
+    });
+
+  await waitForFileStorageTransfer(
+    sourceCellActivities,
+    egressPolicyFilesJobName
+  );
 }
 
 export async function workspaceRelocateFrontEsIndexationWorkflow({
