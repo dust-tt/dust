@@ -1,4 +1,5 @@
 import { CreateAgentDropdownContent } from "@app/components/assistant/CreateAgentDropdown";
+import { useIsAgentLoopStreaming } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import {
   ConversationMenu,
   useConversationMenu,
@@ -1537,6 +1538,7 @@ const ConversationListItem = memo(
     } = useConversationMenu();
 
     const [showTypingAnimation, setShowTypingAnimation] = useState(false);
+    const isAgentLoopStreaming = useIsAgentLoopStreaming(conversation.sId);
     const titleRef = useRef<string | null>(conversation.title); // Used to detect when the title changes to show the typing animation.
 
     useLayoutEffect(() => {
@@ -1599,7 +1601,7 @@ const ConversationListItem = memo(
         labelAnimation={
           showTypingAnimation
             ? "typing"
-            : conversation.isRunningAgentLoop
+            : isAgentLoopStreaming
               ? "streaming"
               : "none"
         }

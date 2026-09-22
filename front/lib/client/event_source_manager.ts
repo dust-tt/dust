@@ -31,6 +31,7 @@ const EMPTY_POLL_DELAY_JITTER_MS = 250;
 const HEARTBEAT_TIMEOUT_MS = 5 * 60 * 1000;
 const SSE_HANDSHAKE_TIMEOUT_MS = 2_500;
 const MIN_HEALTHY_SSE_LIFETIME_MS = 30_000;
+const IDLE_CONNECTION_STATE = { kind: "idle" } as const;
 
 const LongPollResponseSchema = z.object({
   events: z.array(z.string()),
@@ -124,7 +125,8 @@ async function createLongPoll(
 /**
  * @cc [owner:id13,label:architecture;concurrency] browser-session-sse-fallback
  * After two consecutive pre-handshake failures, fallback-capable streams MUST use long polling for
- * the rest of the browser session. SSE and long polling MUST NOT run concurrently for one stream.
+ * the rest of the browser session. Immediate polling MAY select long polling before any SSE
+ * attempt. SSE and long polling MUST NOT run concurrently for one stream.
  */
 /**
  * @cc [owner:id13,label:logging;performance] devtools-stream-diagnostics
@@ -136,6 +138,7 @@ export class EventSourceManager {
   private sseHealth: BrowserSseHealth = "unknown";
   private consecutivePreHandshakeFailures = 0;
   private readonly connections = new Map<string, ConnectionEntry>();
+  private readonly stateListeners = new Map<string, Set<() => void>>();
   private isPageWakeRecoveryInstalled = false;
   private readonly handshakeTimeoutMs: number;
   private readonly longPollFactory: LongPollFactory;
@@ -216,6 +219,31 @@ export class EventSourceManager {
         current.keepAliveState !== "active"
       ) {
         this.destroy(streamId);
+      }
+    };
+  }
+
+  getConnectionState(streamId: string): EventSourceConnectionState {
+    const entry = this.connections.get(streamId);
+    return entry?.state ?? IDLE_CONNECTION_STATE;
+  }
+
+  /**
+   * @cc [owner:id13,label:architecture;concurrency] read-only-stream-state-observation
+   * Observing stream state MUST NOT create, reconnect, retain, or otherwise change a transport.
+   * Missing and destroyed streams MUST read as idle.
+   */
+  subscribeToConnectionState(
+    streamId: string,
+    listener: () => void
+  ): () => void {
+    const listeners = this.stateListeners.get(streamId) ?? new Set();
+    listeners.add(listener);
+    this.stateListeners.set(streamId, listeners);
+    return () => {
+      listeners.delete(listener);
+      if (listeners.size === 0) {
+        this.stateListeners.delete(streamId);
       }
     };
   }
@@ -360,7 +388,11 @@ export class EventSourceManager {
     ) {
       return;
     }
-    if (this.sseHealth === "degraded" && entry.config.buildLongPollURL) {
+    if (
+      entry.config.buildLongPollURL &&
+      (this.sseHealth === "degraded" ||
+        entry.config.longPollActivation === "immediate")
+    ) {
       this.startLongPolling(streamId);
     } else {
       void this.startSse(streamId);
@@ -578,6 +610,8 @@ export class EventSourceManager {
       ) {
         continue;
       }
+      const hasPendingFactory =
+        entry.state.kind === "connecting" && entry.transport === null;
       entry.generation++;
       this.stopTransport(streamId);
       if (entry.reconnectTimeout) {
@@ -585,7 +619,9 @@ export class EventSourceManager {
         entry.reconnectTimeout = null;
       }
       entry.reconnectAttempts = 0;
-      this.startLongPolling(streamId);
+      if (!hasPendingFactory) {
+        this.startLongPolling(streamId);
+      }
     }
   }
 
@@ -877,6 +913,7 @@ export class EventSourceManager {
     for (const subscriber of entry.subscribers) {
       subscriber.onStateChange(state);
     }
+    this.notifyStateListeners(streamId);
   }
 
   private logVerbose(
@@ -921,6 +958,13 @@ export class EventSourceManager {
       clearTimeout(entry.reconnectTimeout);
     }
     this.connections.delete(streamId);
+    this.notifyStateListeners(streamId);
+  }
+
+  private notifyStateListeners(streamId: string): void {
+    for (const listener of this.stateListeners.get(streamId) ?? []) {
+      listener();
+    }
   }
 
   /**

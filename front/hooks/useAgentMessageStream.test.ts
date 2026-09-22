@@ -17,6 +17,7 @@ import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseEventSource = vi.fn();
+const mockUseRegisterAgentLoopStream = vi.fn();
 const mockMutateContextUsage = vi.fn();
 const mockUseVirtuosoMethods = vi.fn();
 
@@ -31,6 +32,14 @@ function makeVirtuosoMethodsMock<T>(map: (updater: (message: T) => T) => T[]) {
 vi.mock("@app/hooks/useEventSource", () => ({
   useEventSource: (...args: unknown[]) => mockUseEventSource(...args),
 }));
+
+vi.mock(
+  "@app/components/assistant/conversation/AgentLoopStreamContext",
+  () => ({
+    useRegisterAgentLoopStream: (...args: unknown[]) =>
+      mockUseRegisterAgentLoopStream(...args),
+  })
+);
 
 vi.mock("@app/hooks/conversations", () => ({
   useConversationContextUsage: () => ({
@@ -137,6 +146,7 @@ const mockOwner: LightWorkspaceType = {
 
 beforeEach(() => {
   mockUseEventSource.mockReset();
+  mockUseRegisterAgentLoopStream.mockReset();
   mockMutateContextUsage.mockReset();
   mockUseVirtuosoMethods.mockReset();
 });
@@ -366,6 +376,11 @@ describe("useAgentMessageStream", () => {
         restartKey: "stream_123",
       })
     );
+    expect(mockUseRegisterAgentLoopStream).toHaveBeenCalledWith({
+      conversationId: "conv_123",
+      enabled: true,
+      streamId: "message-msg_123",
+    });
 
     act(() => {
       onEventCallback!(

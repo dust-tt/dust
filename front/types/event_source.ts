@@ -45,12 +45,15 @@ export type EventSourceConnectionState =
   | { kind: "failed"; attempt: number; error: Error }
   | { kind: "terminal" };
 
+export type LongPollActivation = "fallback" | "immediate";
+
 export type ConnectionConfig = {
   buildLongPollURL?: (lastEvent: string | null) => string | null;
   buildURL: (lastEvent: string | null) => string | null;
   headers?: Record<string, string>;
   isPauseEvent?: (event: string) => boolean;
   isTerminalEvent?: (event: string) => boolean;
+  longPollActivation?: LongPollActivation;
   replayBufferedEventsOnSubscribe: boolean;
   restartKey: string;
   telemetryContext?: DatadogLogContext;

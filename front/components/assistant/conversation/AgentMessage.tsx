@@ -85,6 +85,7 @@ import {
   isGlobalAgentId,
   isGlobalAgentWithFeedback,
 } from "@app/types/assistant/assistant";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
 import {
   isLightAgentMessageType,
   isUserMessageType,
@@ -261,6 +262,7 @@ interface AgentMessageProps {
   additionalMarkdownPlugins?: PluggableList;
   isProjectArchived?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
+  onAgentMessageRetry: (message: AgentMessageType) => void;
 }
 
 export function AgentMessage({
@@ -281,6 +283,7 @@ export function AgentMessage({
   additionalMarkdownPlugins,
   isProjectArchived = false,
   setLimitReachedCode,
+  onAgentMessageRetry,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
   const [streamId, setStreamId] = useState<string>(`message-${sId}`);
@@ -849,12 +852,17 @@ export function AgentMessage({
       setIsRetryHandlerProcessing(false);
       if (result.isErr()) {
         setLimitReachedCode?.(result.error);
+        return;
+      }
+      if (!blockedOnly && result.value) {
+        onAgentMessageRetry(result.value);
       }
     },
     [
       agentMessage.parentMessageId,
       methods.data,
       mutateMessages,
+      onAgentMessageRetry,
       retryMessage,
       setLimitReachedCode,
       setStickyModelOverride,
