@@ -1,10 +1,22 @@
+import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
+import {
+  clearFilterCategory,
+  getFilterSummaries,
+} from "@app/components/shared/filter_panel/filterState";
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import { SkillFilterPanel } from "@app/components/skills/SkillFilterPanel";
 import {
   SKILL_SEARCH_NAME_COLUMN_WIDTH,
   SkillSearchTable,
 } from "@app/components/skills/SkillSearchTable";
+import type { SkillFilter } from "@app/components/skills/skillFilter";
+import {
+  SKILL_FILTER_CATEGORIES,
+  SKILL_FILTER_CATEGORY_SINGULAR_LABEL,
+  toSkillSearchFilters,
+} from "@app/components/skills/skillFilter";
 import {
   useSetContentWidth,
   useSetPageTitle,
@@ -161,7 +173,9 @@ export function SearchSkillsPage() {
   const { hasPermission } = useWorkspacePermissions();
   const [skillId, setSkillId] = useHashParam("skillId");
   const [searchTerm, setSearchTerm] = useState("");
+  const [filter, setFilter] = useState<SkillFilter>({});
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const searchFilters = toSkillSearchFilters(filter);
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Skills");
 
@@ -197,17 +211,35 @@ export function SearchSkillsPage() {
           />
         </div>
         <Tabs defaultValue="all">
-          <TabsList>
-            {SEARCH_TABS.map((tab) => (
-              <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
-            ))}
-          </TabsList>
+          <div className="flex items-center justify-between gap-4">
+            <TabsList>
+              {SEARCH_TABS.map((tab) => (
+                <TabsTrigger key={tab.id} value={tab.id} label={tab.label} />
+              ))}
+            </TabsList>
+            <SkillFilterPanel
+              owner={owner}
+              filter={filter}
+              onFilterChange={setFilter}
+            />
+          </div>
+          <FilterSummaryChips
+            summaries={getFilterSummaries(
+              filter,
+              SKILL_FILTER_CATEGORIES,
+              SKILL_FILTER_CATEGORY_SINGULAR_LABEL
+            )}
+            onClearCategory={(category) =>
+              setFilter(clearFilterCategory(filter, category))
+            }
+            onClearAll={() => setFilter({})}
+          />
           {SEARCH_TABS.map((tab) => (
             <TabsContent key={tab.id} value={tab.id}>
               <SkillsList
                 key={owner.sId}
                 searchTerm={searchTerm}
-                filters={tab.filters}
+                filters={{ ...tab.filters, ...searchFilters }}
                 onSelect={setSkillId}
               />
             </TabsContent>

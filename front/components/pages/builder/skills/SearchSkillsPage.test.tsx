@@ -7,6 +7,7 @@ import { AuthContext } from "@app/lib/auth/AuthContext";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewTypeFactory } from "@app/tests/utils/MCPServerViewTypeFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { SearchSkillsResponseBody } from "@app/types/api/skills";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
@@ -110,7 +111,14 @@ async function setup({
     });
   const fetcherWithBody = vi.fn(async () => search());
   const mutation = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+  const serverView = MCPServerViewTypeFactory.build({ name: "Slack" });
   const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith("/mcp")) {
+      return {
+        success: true,
+        servers: [{ ...serverView.server, views: [serverView] }],
+      };
+    }
     if (init?.method === "DELETE" || url.endsWith("/restore")) {
       await mutation();
       return {};
@@ -165,6 +173,7 @@ async function setup({
     fetcherWithBody,
     mutation,
     mount,
+    serverView,
   };
 }
 
@@ -281,6 +290,154 @@ describe("search-backed Manage Skills", () => {
         expect.objectContaining({
           query: "report",
           sortBy: "relevance",
+          cursor: null,
+        }),
+        "POST",
+      ])
+    );
+  });
+
+  it("applies filters together, keeps them across tabs, and clears the chips", async () => {
+    const { fetcher, fetcherWithBody, serverView, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    const initialSearchCount = fetcherWithBody.mock.calls.length;
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Members" }));
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Members and agents" })
+    );
+    await userEvent.click(screen.getByRole("tab", { name: "Editors" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Me" }));
+    expect(fetcher).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
+    await userEvent.click(
+      await screen.findByRole("checkbox", { name: "Slack" })
+    );
+    expect(fetcherWithBody).toHaveBeenCalledTimes(initialSearchCount);
+
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        expect.objectContaining({
+          status: ["active"],
+          availability: ["workspace_users", "users_and_agents"],
+          mcpServerViewIds: [serverView.sId],
+          editedByMe: true,
+          cursor: null,
+        }),
+        "POST",
+      ])
+    );
+    expect(screen.getByText("Tool")).toBeInTheDocument();
+    expect(screen.getByText("Editor")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Remove" })).toHaveLength(3);
+
+    await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        expect.objectContaining({
+          status: ["archived"],
+          availability: ["workspace_users", "users_and_agents"],
+          mcpServerViewIds: [serverView.sId],
+          editedByMe: true,
+        }),
+        "POST",
+      ])
+    );
+
+    // The first chip is availability; removing it preserves the other filters.
+    await userEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        {
+          query: "",
+          status: ["archived"],
+          mcpServerViewIds: [serverView.sId],
+          editedByMe: true,
+          sortBy: "usage",
+          limit: 50,
+          cursor: null,
+          permissionFiltering: undefined,
+        },
+        "POST",
+      ])
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        {
+          query: "",
+          status: ["archived"],
+          sortBy: "usage",
+          limit: 50,
+          cursor: null,
+          permissionFiltering: undefined,
+        },
+        "POST",
+      ])
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("Editor")).not.toBeInTheDocument()
+    );
+  });
+
+  it("discards unapplied filter selections when the panel is reopened", async () => {
+    const { fetcherWithBody, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    const initialSearchCount = fetcherWithBody.mock.calls.length;
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: "Editors only" })
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(fetcherWithBody).toHaveBeenCalledTimes(initialSearchCount);
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Editors only" })
+    ).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Members" })).not.toBeChecked();
+  });
+
+  it("resets pagination when filters change", async () => {
+    const { skill, search, fetcherWithBody, mount } = await setup();
+    search.mockResolvedValue({
+      skills: [skill],
+      hasMore: true,
+      nextCursor: "next-page",
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    const [, nextPageButton] = screen
+      .getAllByRole("button", { name: "" })
+      .slice(-2);
+    await userEvent.click(nextPageButton);
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        expect.objectContaining({ cursor: "next-page" }),
+        "POST",
+      ])
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Members" }));
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        expect.objectContaining({
+          availability: ["workspace_users"],
           cursor: null,
         }),
         "POST",
