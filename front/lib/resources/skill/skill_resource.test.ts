@@ -20,7 +20,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
-import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -124,7 +123,7 @@ describe("SkillResource", () => {
         created_at: null,
         updated_at: null,
       });
-      expect(toSkillListItem(auth, document).updatedAt).toBeNull();
+      expect(skill.toJSON(auth).updatedAt).toBeNull();
     });
   });
 

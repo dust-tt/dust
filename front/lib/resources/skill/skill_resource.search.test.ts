@@ -16,7 +16,6 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
   };
 });
 
-import { searchSkills } from "@app/lib/api/skills/search";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -33,14 +32,14 @@ import type { SkillSearchFilters } from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
 
-describe("searchSkills pagination", () => {
+describe("SkillResource.search pagination", () => {
   beforeEach(() => mockSearch.mockReset());
 
   it("defaults to the maximum page size and returns no cursor for empty results", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     mockSearch.mockResolvedValue({ hits: { hits: [] } });
 
-    const result = await searchSkills(auth, { searchTerm: "" });
+    const result = await SkillResource.search(auth, { searchTerm: "" });
     assert(result.isOk());
     expect(result.value).toEqual({
       skills: [],
@@ -55,19 +54,26 @@ describe("searchSkills pagination", () => {
   it("passes the last consumed ES sort tuple back unchanged on the next page", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     const skill = await SkillFactory.create(auth, { name: "ÉclairBot" });
-    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
+    const secondSkill = await SkillFactory.create(auth, { name: "ReportBot" });
+    const thirdSkill = await SkillFactory.create(auth, { name: "AlphaBot" });
+    const [document, secondDocument, thirdDocument] =
+      await SkillFactory.createSearchDocuments(auth, [
+        skill,
+        secondSkill,
+        thirdSkill,
+      ]);
     const hits = [
       {
         _source: document,
         sort: [3.25, document.active_users_count, skill.sId],
       },
       {
-        _source: { ...document, skill_id: "second", name: "ReportBot" },
-        sort: [2, document.active_users_count, "second"],
+        _source: secondDocument,
+        sort: [2, secondDocument.active_users_count, secondSkill.sId],
       },
       {
-        _source: { ...document, skill_id: "third", name: "AlphaBot" },
-        sort: [2, document.active_users_count, "third"],
+        _source: thirdDocument,
+        sort: [2, thirdDocument.active_users_count, thirdSkill.sId],
       },
     ];
     mockSearch
@@ -76,11 +82,11 @@ describe("searchSkills pagination", () => {
     const filters: SkillSearchFilters = { editedByMe: true };
     const options = { searchTerm: "bot", limit: 2, filters };
 
-    const first = await searchSkills(auth, options);
+    const first = await SkillResource.search(auth, options);
     assert(first.isOk());
     expect(first.value.skills.map((item) => item.sId)).toEqual([
       skill.sId,
-      "second",
+      secondSkill.sId,
     ]);
     expect(first.value.nextCursor).toBe(
       Buffer.from(JSON.stringify(hits[1].sort)).toString("base64url")
@@ -88,9 +94,11 @@ describe("searchSkills pagination", () => {
     expect(first.value.hasMore).toBe(true);
 
     const nextOptions = { ...options, cursor: first.value.nextCursor };
-    const second = await searchSkills(auth, nextOptions);
+    const second = await SkillResource.search(auth, nextOptions);
     assert(second.isOk());
-    expect(second.value.skills.map((item) => item.sId)).toEqual(["third"]);
+    expect(second.value.skills.map((item) => item.sId)).toEqual([
+      thirdSkill.sId,
+    ]);
     expect(second.value.nextCursor).toBe(
       Buffer.from(JSON.stringify(hits[2].sort)).toString("base64url")
     );
@@ -109,7 +117,7 @@ describe("searchSkills pagination", () => {
       query: buildSkillSearchQuery(auth, { ...options, codeDefinedSkillIds }),
     });
 
-    const retry = await searchSkills(auth, nextOptions);
+    const retry = await SkillResource.search(auth, nextOptions);
     assert(retry.isOk());
     expect(retry.value).toEqual(second.value);
   });
@@ -123,7 +131,7 @@ describe("searchSkills pagination", () => {
   ])("rejects invalid cursor %s before querying Elasticsearch", async (cursor) => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
 
-    const result = await searchSkills(auth, { searchTerm: "", cursor });
+    const result = await SkillResource.search(auth, { searchTerm: "", cursor });
 
     assert(result.isErr());
     expect(result.error).toBe("invalid_cursor");
@@ -151,7 +159,7 @@ describe("code-defined skill search", () => {
 
   it("applies registry restrictions and availability filters", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
-    const result = await searchSkills(auth, {
+    const result = await SkillResource.search(auth, {
       searchTerm: "",
       filters: { availability: ["users_and_agents"] },
     });
@@ -167,7 +175,7 @@ describe("code-defined skill search", () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     const expectedIds = await SkillResource.listAvailableCodeDefinedIds(auth);
 
-    const result = await searchSkills(auth, { searchTerm: "" });
+    const result = await SkillResource.search(auth, { searchTerm: "" });
 
     assert(result.isOk());
     expect(result.value.skills.map((skill) => skill.sId).sort()).toEqual(
@@ -187,7 +195,7 @@ describe("code-defined skill search", () => {
     await FeatureFlagFactory.basic(auth, "user_memory");
     await user.setMemoryEnabled(auth, true);
 
-    const enabled = await searchSkills(auth, { searchTerm: "" });
+    const enabled = await SkillResource.search(auth, { searchTerm: "" });
     assert(enabled.isOk());
     expect(enabled.value.skills.map((skill) => skill.sId)).toContain(
       "user_memory"
@@ -195,7 +203,7 @@ describe("code-defined skill search", () => {
 
     await user.setMemoryEnabled(auth, false);
 
-    const disabled = await searchSkills(auth, { searchTerm: "" });
+    const disabled = await SkillResource.search(auth, { searchTerm: "" });
     assert(disabled.isOk());
     expect(disabled.value.skills.map((skill) => skill.sId)).not.toContain(
       "user_memory"
@@ -208,7 +216,10 @@ describe("code-defined skill search", () => {
     { availability: ["editors"] },
   ])("excludes code-defined skills for %j", async (filters) => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
-    const result = await searchSkills(auth, { searchTerm: "", filters });
+    const result = await SkillResource.search(auth, {
+      searchTerm: "",
+      filters,
+    });
     assert(result.isOk());
     expect(result.value).toEqual({
       skills: [],
@@ -253,7 +264,7 @@ describe("code-defined skill search", () => {
     };
     const listViews = vi.spyOn(MCPServerViewResource, "listByMCPServers");
     try {
-      const result = await searchSkills(auth, options);
+      const result = await SkillResource.search(auth, options);
       assert(result.isOk());
       expect(result.value.skills.map((item) => item.sId)).toEqual([skill.sId]);
       expect(listViews).not.toHaveBeenCalled();
@@ -264,7 +275,7 @@ describe("code-defined skill search", () => {
     const { authenticator: otherAuth } = await createResourceTest({
       role: "admin",
     });
-    const denied = await searchSkills(otherAuth, options);
+    const denied = await SkillResource.search(otherAuth, options);
     assert(denied.isOk());
     expect(denied.value.skills).toEqual([]);
   });
@@ -272,7 +283,11 @@ describe("code-defined skill search", () => {
   it("uses the same autocomplete and cursor for a mixed ES page", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     const skill = await SkillFactory.create(auth, { name: "WeeklyDeepReport" });
-    const [custom] = await SkillFactory.createSearchDocuments(auth, [skill]);
+    const lastSkill = await SkillFactory.create(auth, { name: "Deep" });
+    const [custom, lastDocument] = await SkillFactory.createSearchDocuments(
+      auth,
+      [skill, lastSkill]
+    );
     const documents = SkillFactory.createCodeDefinedSearchDocuments();
     const global = documents.find(
       (document) => document.skill_id === "go-deep"
@@ -285,15 +300,18 @@ describe("code-defined skill search", () => {
         sort: [2, global.active_users_count, global.skill_id],
       },
       {
-        _source: { ...custom, skill_id: "last", name: "Deep" },
-        sort: [1.5, custom.active_users_count, "last"],
+        _source: lastDocument,
+        sort: [1.5, lastDocument.active_users_count, lastSkill.sId],
       },
     ];
     mockSearch
       .mockResolvedValueOnce({ hits: { hits } })
       .mockResolvedValueOnce({ hits: { hits: hits.slice(2) } });
 
-    const page = await searchSkills(auth, { searchTerm: "deep", limit: 2 });
+    const page = await SkillResource.search(auth, {
+      searchTerm: "deep",
+      limit: 2,
+    });
     assert(page.isOk());
     expect(page.value.skills.map((item) => item.sId)).toEqual([
       skill.sId,
@@ -308,13 +326,13 @@ describe("code-defined skill search", () => {
       buildSkillNameAutocompleteQuery("deep"),
     ]);
 
-    const next = await searchSkills(auth, {
+    const next = await SkillResource.search(auth, {
       searchTerm: "deep",
       limit: 2,
       cursor: page.value.nextCursor,
     });
     assert(next.isOk());
-    expect(next.value.skills.map((item) => item.sId)).toEqual(["last"]);
+    expect(next.value.skills.map((item) => item.sId)).toEqual([lastSkill.sId]);
     expect(next.value.nextCursor).toBe(
       Buffer.from(JSON.stringify(hits[2].sort)).toString("base64url")
     );

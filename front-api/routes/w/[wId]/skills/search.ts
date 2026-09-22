@@ -1,4 +1,4 @@
-import { searchSkills } from "@app/lib/api/skills/search";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { SearchSkillsQuerySchema } from "@app/lib/skill_search/query_schema";
 import logger from "@app/logger/logger";
@@ -42,7 +42,7 @@ app.post(
         },
       });
     }
-    const result = await searchSkills(auth, {
+    const result = await SkillResource.search(auth, {
       searchTerm: query,
       limit,
       cursor,
