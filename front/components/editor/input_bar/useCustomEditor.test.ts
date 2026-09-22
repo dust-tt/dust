@@ -100,11 +100,7 @@ describe("buildEditorExtensions", () => {
 
     const result = editor.getMarkdown();
     expect(result).toBe(
-      "```javascript\n" +
-        "console.log('Hello, world!');\n" +
-        "```\n" +
-        "\n" +
-        "&nbsp;"
+      "```javascript\n" + "console.log('Hello, world!');\n" + "```\n\n"
     );
   });
 
@@ -238,10 +234,7 @@ describe("buildEditorExtensions", () => {
     ]);
 
     const result = editor.getMarkdown();
-    expect(result).toBe(`- hello
-- world
-
-&nbsp;`);
+    expect(result).toBe("- hello\n- world\n\n");
   });
 
   it("does not open slash suggestions for pasted slashes", () => {
