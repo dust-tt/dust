@@ -251,11 +251,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "frankaloia",
   },
-  servicenow_tool: {
-    description: "ServiceNow MCP tool",
-    stage: "self_serve",
-    owner: "thomasvicaire",
-  },
   shopify_tool: {
     description: "Shopify MCP tool",
     stage: "self_serve",
