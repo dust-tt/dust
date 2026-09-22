@@ -472,11 +472,9 @@ export const CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
-  // Global Anthropic endpoint only — no Vertex agent-platform endpoint is
-  // registered for this model, so regional-only workspaces cannot route to it.
   regionalAvailability: {
     "us-central1": true,
-    "europe-west1": false,
+    "europe-west1": true,
   },
 };
 // https://platform.claude.com/docs/en/about-claude/models/overview
