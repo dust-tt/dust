@@ -78,7 +78,7 @@ app.get(
       origin: "v1_data_sources_check_upsert_queue",
     });
 
-    if (!dataSource || !dataSource.canRead(auth)) {
+    if (!dataSource || !auth.can("read", dataSource)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

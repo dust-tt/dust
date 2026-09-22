@@ -370,7 +370,9 @@ export async function getAgentDataSourceConfigurations(
     Array.from(dataSourceViewIDs)
   );
 
-  if (dataSourceViews.some((dataSourceView) => !dataSourceView.canRead(auth))) {
+  if (
+    dataSourceViews.some((dataSourceView) => !auth.can("read", dataSourceView))
+  ) {
     return new Err(
       new MCPError(
         "Failed to fetch data source views, some views are not readable.",
@@ -421,7 +423,7 @@ export async function getAgentDataSourceConfigurations(
         });
 
         const dataSourceView = dataSourceViewsMap.get(dataSourceViewId);
-        if (!dataSourceView || !dataSourceView.canRead(auth)) {
+        if (!dataSourceView || !auth.can("read", dataSourceView)) {
           return new Err(
             new Error(`Data source view not found: ${dataSourceViewId}`)
           );
@@ -475,7 +477,7 @@ export async function getAgentDataSourceConfigurations(
           configInfo.configuration.dataSourceViewId
         );
 
-        if (!dataSourceView || !dataSourceView.canRead(auth)) {
+        if (!dataSourceView || !auth.can("read", dataSourceView)) {
           return new Err(
             new Error(
               `Data source view not found: ${configInfo.configuration.dataSourceViewId}`

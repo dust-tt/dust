@@ -1144,7 +1144,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       params.suggestion;
     const view = await DataSourceViewResource.fetchById(auth, dataSourceViewId);
 
-    if (!view || !view.canRead(auth)) {
+    if (!view || !auth.can("read", view)) {
       return new Err(
         new MCPError(
           `The data source view ID "${dataSourceViewId}" is invalid or not accessible. ` +

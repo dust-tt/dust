@@ -26,7 +26,7 @@ app.post(
       auth,
       dataSourceViewIds
     );
-    if (dataSourceViews.some((dsv) => !dsv.canRead(auth))) {
+    if (dataSourceViews.some((dsv) => !auth.can("read", dsv))) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

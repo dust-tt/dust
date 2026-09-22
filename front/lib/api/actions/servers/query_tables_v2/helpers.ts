@@ -95,7 +95,9 @@ export function verifyDataSourceViewReadAccess(
   auth: Authenticator,
   dataSourceViews: DataSourceViewResource[]
 ): MCPError | null {
-  const unreadableViews = dataSourceViews.filter((dsv) => !dsv.canRead(auth));
+  const unreadableViews = dataSourceViews.filter(
+    (dsv) => !auth.can("read", dsv)
+  );
   if (unreadableViews.length > 0) {
     return new MCPError(
       `Access denied: You do not have read permission to all the required documents.`

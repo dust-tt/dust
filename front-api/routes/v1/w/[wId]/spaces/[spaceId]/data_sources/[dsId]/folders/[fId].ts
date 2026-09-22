@@ -47,7 +47,7 @@ app.get(
       !dataSource ||
       dataSource.space.sId !== spaceId ||
       dataSource.space.isConversations() ||
-      !dataSource.canReadOrAdministrate(auth)
+      !(auth.can("read", dataSource) || auth.can("admin", dataSource))
     ) {
       return apiError(ctx, {
         status_code: 404,
@@ -102,7 +102,7 @@ app.post(
       !dataSource ||
       dataSource.space.sId !== spaceId ||
       dataSource.space.isConversations() ||
-      !dataSource.canReadOrAdministrate(auth)
+      !(auth.can("read", dataSource) || auth.can("admin", dataSource))
     ) {
       return apiError(ctx, {
         status_code: 404,
@@ -113,8 +113,8 @@ app.post(
       });
     }
 
-    // To write we must have canWrite or be a systemAPIKey
-    if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
+    // To write we must have the write verb or be a system API key
+    if (!(auth.can("write", dataSource) || auth.isSystemKey())) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -234,7 +234,7 @@ app.delete(
       !dataSource ||
       dataSource.space.sId !== spaceId ||
       dataSource.space.isConversations() ||
-      !dataSource.canReadOrAdministrate(auth)
+      !(auth.can("read", dataSource) || auth.can("admin", dataSource))
     ) {
       return apiError(ctx, {
         status_code: 404,
@@ -245,8 +245,8 @@ app.delete(
       });
     }
 
-    // To write we must have canWrite or be a systemAPIKey
-    if (!(dataSource.canWrite(auth) || auth.isSystemKey())) {
+    // To write we must have the write verb or be a system API key
+    if (!(auth.can("write", dataSource) || auth.isSystemKey())) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

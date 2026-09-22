@@ -127,7 +127,7 @@ app.patch(
         : null;
 
       if (dataSourceView) {
-        const canWrite = dataSourceView.canWrite(auth);
+        const canWrite = auth.can("write", dataSourceView);
         if (!canWrite) {
           return apiError(ctx, {
             status_code: 403,

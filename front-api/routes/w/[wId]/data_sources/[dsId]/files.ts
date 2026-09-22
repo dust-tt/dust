@@ -62,7 +62,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  if (!dataSource.canWrite(auth)) {
+  if (!auth.can("write", dataSource)) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
