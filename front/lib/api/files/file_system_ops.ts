@@ -4,7 +4,11 @@
  * files MCP tools.
  */
 
-import type { DustFileSystem } from "@app/lib/api/file_system";
+import { DustFileSystem } from "@app/lib/api/file_system";
+import {
+  readFileWithRevision,
+  writeFileWithRevision,
+} from "@app/lib/api/files/revisions";
 import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { MoveFrameV2SourceError } from "@app/lib/api/frames/move_source";
 import { moveFrameV2Source } from "@app/lib/api/frames/move_source";
@@ -453,6 +457,48 @@ export async function moveCanonicalFile(
   return moveResult;
 }
 
+/**
+ * @cc [owner:flvndvd,label:security;concurrency] canonical-file-revision-read
+ * Reads MUST preserve mount permissions and path normalization. When a revision is
+ * available, it MUST identify exactly the streamed bytes. Other backends omit it.
+ */
+export async function readCanonicalFileContent(
+  dustFs: DustFileSystem,
+  scopedPath: string
+): Promise<
+  Result<
+    { stream: Readable; contentType: string; revision?: string } | null,
+    DustFileSystemError
+  >
+> {
+  const statResult = await dustFs.stat(scopedPath);
+  if (statResult.isErr()) {
+    return statResult;
+  }
+  if (statResult.value === null) {
+    return new Ok(null);
+  }
+
+  const normalizedPath = DustFileSystem.normalizeScopedPath(scopedPath);
+  const mountFilePath =
+    normalizedPath && dustFs.toMountFilePath(normalizedPath);
+  if (dustFs.isGCSBacked() && mountFilePath) {
+    return readFileWithRevision(mountFilePath);
+  }
+
+  const readResult = await dustFs.read(scopedPath);
+  if (readResult.isErr()) {
+    return readResult;
+  }
+  if (readResult.value === null) {
+    return new Ok(null);
+  }
+  return new Ok({
+    stream: readResult.value,
+    contentType: statResult.value.contentType,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Content write
 // ---------------------------------------------------------------------------
@@ -461,7 +507,9 @@ export const WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES = 512 * 1024;
 
 type WriteCanonicalFileContentErrorCode =
   | "too_large"
-  | "unsupported_content_type";
+  | "unsupported_content_type"
+  | "revision_conflict"
+  | "revision_not_supported";
 
 export class WriteCanonicalFileContentError extends Error {
   constructor(
@@ -492,11 +540,11 @@ function resolvePathWriteContentType(
 function validatePathWritableContentType(
   contentType: string
 ): Result<void, WriteCanonicalFileContentError> {
-  if (!contentType.startsWith("text/")) {
+  if (!contentType.startsWith("text/") && contentType !== "application/json") {
     return new Err(
       new WriteCanonicalFileContentError(
         "unsupported_content_type",
-        "Only text files can be updated through this endpoint."
+        "Only text and JSON files can be updated through this endpoint."
       )
     );
   }
@@ -506,17 +554,25 @@ function validatePathWritableContentType(
 
 /**
  * Create or replace the text content of a file at `scopedPath`.
- * Only `text/*` content types are supported.
+ * Only `text/*` and `application/json` content types are supported.
+ */
+/**
+ * @cc [owner:flvndvd,label:security;concurrency] canonical-file-conditional-write
+ * Writes MUST preserve mount permissions and path normalization. A supplied revision
+ * MUST be checked atomically or rejected when storage cannot enforce it.
+ * A stale revision MUST leave the current file unchanged. Without a revision,
+ * the existing overwrite behavior MUST remain available.
  */
 export async function writeCanonicalFileContent(
   _auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPath: string,
   content: Uint8Array,
-  contentTypeFromRequest?: string
+  contentTypeFromRequest?: string,
+  revision?: string
 ): Promise<
   Result<
-    { created: boolean },
+    { created: boolean; revision?: string },
     DustFileSystemError | WriteCanonicalFileContentError
   >
 > {
@@ -545,6 +601,42 @@ export async function writeCanonicalFileContent(
   const validationResult = validatePathWritableContentType(contentType);
   if (validationResult.isErr()) {
     return validationResult;
+  }
+
+  const writeAccess = dustFs.checkWriteAccess(scopedPath);
+  if (writeAccess.isErr()) {
+    return writeAccess;
+  }
+
+  const normalizedPath = DustFileSystem.normalizeScopedPath(scopedPath);
+  const mountFilePath =
+    normalizedPath && dustFs.toMountFilePath(normalizedPath);
+  if (dustFs.isGCSBacked() && mountFilePath) {
+    const writeResult = await writeFileWithRevision(mountFilePath, {
+      content: contentBuffer,
+      contentType,
+      revision,
+    });
+    if (writeResult.isErr()) {
+      return new Err(
+        writeResult.error === "conflict"
+          ? new WriteCanonicalFileContentError(
+              "revision_conflict",
+              "This file changed since it was loaded. Reload it before saving."
+            )
+          : writeResult.error
+      );
+    }
+    return new Ok({ created: !exists, revision: writeResult.value });
+  }
+
+  if (revision !== undefined) {
+    return new Err(
+      new WriteCanonicalFileContentError(
+        "revision_not_supported",
+        "This storage does not support conditional file updates."
+      )
+    );
   }
 
   const writeResult = await dustFs.write(

@@ -1,12 +1,15 @@
 // @vitest-environment node: ZIP inspection requires Node builtins.
 
+import assert from "node:assert";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import {
+  DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
   frameV2ContentType,
@@ -798,5 +801,257 @@ describe("POST /api/w/:wId/files/path/:canonicalPath?action=extract", () => {
     expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe("file_not_found");
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+});
+
+const setupRevisionedFile = async () => {
+  const { workspace, conversation, auth } = await setup();
+  const path = `conversation-${conversation.sId}/notes.json`;
+  const mountPath = `w/${workspace.sId}/conversations/${conversation.sId}/files/notes.json`;
+  const content = '{"arbitrary":"ordinary JSON file"}';
+  fileStorageMock.setObject(mountPath, content);
+  const loaded = await request(workspace, path);
+  const etag = loaded.headers.get("ETag");
+  assert(etag);
+  return { workspace, auth, path, mountPath, content, loaded, etag };
+};
+
+describe("conditional updates through Files paths", () => {
+  beforeEach(() => {
+    fileStorageMock.enableVersioning();
+    fileStorageMock.setFileExists(
+      (path) => fileStorageMock.getObject(path) !== undefined
+    );
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "application/json",
+      size: "32",
+    }));
+  });
+
+  it("reads ordinary JSON, conditionally saves it, and reopens the saved bytes", async () => {
+    const { workspace, path, loaded, etag } = await setupRevisionedFile();
+    expect(loaded.status).toBe(200);
+    expect(await loaded.json()).toEqual({ arbitrary: "ordinary JSON file" });
+    expect(loaded.headers.get(DUST_FILE_CAN_WRITE_HEADER)).toBe("true");
+
+    const edited = '{"anything":[1,2,3]}';
+    const saved = await request(workspace, path, {
+      method: "PUT",
+      headers: { "If-Match": etag, "Content-Type": "application/json" },
+      body: edited,
+    });
+    expect(saved.status).toBe(200);
+    expect(await saved.text()).toBe("");
+    const savedEtag = saved.headers.get("ETag");
+    expect(savedEtag).not.toBe(etag);
+
+    const reopened = await request(workspace, path);
+    expect(await reopened.text()).toBe(edited);
+    expect(reopened.headers.get("ETag")).toBe(savedEtag);
+  });
+
+  it("allows only one competing write for the same revision", async () => {
+    const { workspace, path, mountPath, etag } = await setupRevisionedFile();
+    const edits = ['{"writer":1}', '{"writer":2}'];
+    const results = await Promise.all(
+      edits.map((body) =>
+        request(workspace, path, {
+          method: "PUT",
+          headers: { "If-Match": etag },
+          body,
+        })
+      )
+    );
+    expect(results.map((result) => result.status).sort()).toEqual([200, 412]);
+    const winner = results.findIndex((result) => result.status === 200);
+    expect(fileStorageMock.getObject(mountPath)).toBe(edits[winner]);
+  });
+
+  it("protects Markdown from an agent edit made after loading", async () => {
+    const { workspace, conversation } = await setup();
+    const path = `conversation-${conversation.sId}/notes.md`;
+    const mountPath = `w/${workspace.sId}/conversations/${conversation.sId}/files/notes.md`;
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "text/markdown",
+      size: "7",
+    }));
+    fileStorageMock.setObject(mountPath, "# First");
+    const loaded = await request(workspace, path);
+    const etag = loaded.headers.get("ETag");
+    assert(etag);
+    fileStorageMock.setObject(mountPath, "# Agent edit");
+
+    const response = await request(workspace, path, {
+      method: "PUT",
+      headers: { "If-Match": etag },
+      body: "# Browser edit",
+    });
+    expect(response.status).toBe(412);
+    expect(fileStorageMock.getObject(mountPath)).toBe("# Agent edit");
+  });
+
+  it("does not recreate a deleted file from an outdated revision", async () => {
+    const { workspace, path, mountPath, etag } = await setupRevisionedFile();
+    await getPrivateUploadBucket().delete(mountPath);
+
+    const response = await request(workspace, path, {
+      method: "PUT",
+      headers: { "If-Match": etag, "Content-Type": "application/json" },
+      body: "{}",
+    });
+    expect(response.status).toBe(412);
+    expect(fileStorageMock.getObject(mountPath)).toBeUndefined();
+  });
+
+  it("pins streamed bytes to the returned revision when another writer updates during the read", async () => {
+    const { workspace, path, mountPath, content, etag } =
+      await setupRevisionedFile();
+    fileStorageMock.setFileMetadata((storagePath) => {
+      if (storagePath !== mountPath) {
+        return null;
+      }
+      fileStorageMock.setObject(mountPath, '{"newer":true}');
+      return {
+        contentType: "application/json",
+        size: "32",
+        generation: etag.slice(1, -1),
+      };
+    });
+
+    const response = await request(workspace, path);
+    expect(await response.text()).toBe(content);
+    expect(response.headers.get("ETag")).toBe(etag);
+  });
+
+  it.each([
+    'W/"1"',
+    '"1", "2"',
+    "*",
+    "1",
+    '"0"',
+  ])("rejects unsupported If-Match %s without writing", async (etag) => {
+    const { workspace, path, mountPath, content } = await setupRevisionedFile();
+    const response = await request(workspace, path, {
+      method: "PUT",
+      headers: { "If-Match": etag },
+      body: "{}",
+    });
+    expect(response.status).toBe(400);
+    expect(fileStorageMock.getObject(mountPath)).toBe(content);
+  });
+
+  it("returns this write's revision even if another writer saves before the response", async () => {
+    const { workspace, path, mountPath, etag } = await setupRevisionedFile();
+    const bucket = getInspectablePrivateUploadBucket();
+    const file = bucket.file(mountPath);
+    const getFile = vi.mocked(bucket.file).getMockImplementation();
+    assert(getFile);
+    const save = vi.mocked(file.save).getMockImplementation();
+    assert(save);
+    vi.mocked(file.save).mockImplementation(async (...args) => {
+      await save(...args);
+      fileStorageMock.setObject(mountPath, '{"laterWriter":true}');
+    });
+    vi.mocked(bucket.file).mockImplementation((path) =>
+      path === mountPath ? file : getFile(path)
+    );
+
+    const saved = await request(workspace, path, {
+      method: "PUT",
+      headers: { "If-Match": etag },
+      body: '{"myWrite":true}',
+    });
+    expect(saved.status).toBe(200);
+    const reloaded = await request(workspace, path);
+    expect(await reloaded.text()).toBe('{"laterWriter":true}');
+    expect(saved.headers.get("ETag")).not.toBe(reloaded.headers.get("ETag"));
+  });
+
+  it("exposes read-only Pod access and rejects writes even with its current ETag", async () => {
+    const { workspace, auth, globalGroup } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(
+      workspace,
+      auth.getNonNullableUser().id
+    );
+    await SpaceFactory.attachGroup(pod, globalGroup, "project_viewer");
+    const path = `pod-${pod.sId}/notes.json`;
+    const mountPath = `w/${workspace.sId}/pods/${pod.sId}/files/notes.json`;
+    fileStorageMock.setObject(mountPath, "{}");
+    await createPrivateApiMockRequest({ role: "user", workspace });
+
+    const loaded = await request(workspace, path);
+    const etag = loaded.headers.get("ETag");
+    assert(etag);
+    expect(loaded.status).toBe(200);
+    expect(loaded.headers.get(DUST_FILE_CAN_WRITE_HEADER)).toBe("false");
+    const head = await request(workspace, path, { method: "HEAD" });
+    expect(head.headers.get(DUST_FILE_CAN_WRITE_HEADER)).toBe("false");
+
+    const saved = await request(workspace, path, {
+      method: "PUT",
+      headers: { "If-Match": etag },
+      body: '{"unauthorized":true}',
+    });
+    expect(saved.status).toBe(403);
+    expect(fileStorageMock.getObject(mountPath)).toBe("{}");
+  });
+
+  it("does not expose private Pod files to another workspace member", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(
+      workspace,
+      auth.getNonNullableUser().id
+    );
+    const path = `pod-${pod.sId}/private.json`;
+    const mountPath = `w/${workspace.sId}/pods/${pod.sId}/files/private.json`;
+    fileStorageMock.setObject(mountPath, "{}");
+    await createPrivateApiMockRequest({ role: "user", workspace });
+
+    const loaded = await request(workspace, path);
+    expect(loaded.status).toBe(403);
+    const saved = await request(workspace, path, {
+      method: "PUT",
+      headers: { "If-Match": '"1"' },
+      body: '{"unauthorized":true}',
+    });
+    expect(saved.status).toBe(403);
+    expect(fileStorageMock.getObject(mountPath)).toBe("{}");
+  });
+
+  it("rejects a conditional write when storage cannot enforce the revision", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const pod = await SpaceFactory.project(
+      workspace,
+      auth.getNonNullableUser().id,
+      { name: "[Dust FS] Test" }
+    );
+    const path = `pod-${pod.sId}/notes.json`;
+    const saved = await request(workspace, path, {
+      method: "PUT",
+      headers: { "If-Match": '"1"', "Content-Type": "application/json" },
+      body: "{}",
+    });
+    expect(saved.status).toBe(400);
+    expect((await saved.json()).error.message).toContain(
+      "does not support conditional"
+    );
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("preserves overwrite behavior for callers without If-Match", async () => {
+    const { workspace, path, mountPath } = await setupRevisionedFile();
+    const response = await request(workspace, path, {
+      method: "PUT",
+      body: '{"overwrite":true}',
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("ETag")).toBeTruthy();
+    expect(fileStorageMock.getObject(mountPath)).toBe('{"overwrite":true}');
   });
 });

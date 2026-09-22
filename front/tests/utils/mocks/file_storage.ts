@@ -19,6 +19,7 @@ interface SignedUrlCall {
 }
 
 interface MockFileMetadata {
+  generation?: string;
   contentType: string;
   size: string;
   contentEncoding?: string;
@@ -53,6 +54,10 @@ export interface MockFileVersion {
  *   const writes = fileStorageMock.writeStreamCalls;
  */
 class FileStorageMock {
+  private _versioningEnabled = false;
+  private _nextGeneration = 0;
+  private _generations = new Map<string, string>();
+  private _versions = new Map<string, string>();
   private _writeStreamCalls: WriteStreamCall[] = [];
   private _readStreamCalls: string[] = [];
   private _saveFileCalls: SaveFileCall[] = [];
@@ -216,9 +221,22 @@ class FileStorageMock {
   // Seed the in-memory object store directly (no write path).
   setObject(filePath: string, content: string): void {
     this._objectStore.set(filePath, content);
+    if (this._versioningEnabled) {
+      const generation = String(++this._nextGeneration);
+      this._generations.set(filePath, generation);
+      this._versions.set(`${filePath}:${generation}`, content);
+    }
+  }
+
+  enableVersioning(): void {
+    this._versioningEnabled = true;
   }
 
   reset(): void {
+    this._versioningEnabled = false;
+    this._nextGeneration = 0;
+    this._generations.clear();
+    this._versions.clear();
     this._writeStreamCalls.length = 0;
     this._readStreamCalls.length = 0;
     this._saveFileCalls.length = 0;
@@ -264,7 +282,40 @@ class FileStorageMock {
   }
 
   private createMockGCSFile(filePath?: string) {
+    const metadata: { generation?: string } = {};
     return {
+      name: filePath,
+      metadata,
+      bucket: {
+        file: (path: string, { generation }: { generation: string }) => ({
+          createReadStream: () => {
+            this._readStreamCalls.push(path);
+            if (!this._versioningEnabled) {
+              const content =
+                this._objectStore.get(path) ?? this._contentForPath(path);
+              return content === null || content === undefined
+                ? new PassThrough()
+                : Readable.from([Buffer.from(content)]);
+            }
+            const content = this._versions.get(`${path}:${generation}`);
+            if (content === undefined) {
+              const stream = new PassThrough();
+              queueMicrotask(() =>
+                stream.destroy(new MockGcsError(404, "Generation not found"))
+              );
+              return stream;
+            }
+            return Readable.from([Buffer.from(content)]);
+          },
+          download: async () => {
+            const content = this._versions.get(`${path}:${generation}`);
+            if (content === undefined) {
+              throw new MockGcsError(404, "Generation not found");
+            }
+            return [Buffer.from(content)];
+          },
+        }),
+      },
       copy: vi.fn().mockResolvedValue(undefined),
       createReadStream: vi.fn(() => {
         const path = filePath ?? "unknown";
@@ -295,6 +346,7 @@ class FileStorageMock {
         }),
       delete: vi.fn().mockImplementation(() => {
         this._objectStore.delete(filePath ?? "unknown");
+        this._generations.delete(filePath ?? "unknown");
         return Promise.resolve(undefined);
       }),
       download: vi.fn().mockImplementation(() => {
@@ -308,33 +360,53 @@ class FileStorageMock {
         const path = filePath ?? "";
         this._metadataCalls.push(path);
         return Promise.resolve([
-          this._metadataForPath(path) ?? {
+          {
             contentType: "text/plain",
             size: "0",
+            generation: this._versioningEnabled
+              ? this._generations.get(path)
+              : "1",
+            ...this._metadataForPath(path),
           },
         ]);
       }),
       getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
       publicUrl: vi.fn().mockReturnValue("https://public-url.test"),
-      save: vi
-        .fn()
-        .mockImplementation(
-          (content: Buffer | string, opts?: { contentType?: string }) => {
-            const path = filePath ?? "unknown";
-            if (this._saveShouldFail(path)) {
-              return Promise.reject(
-                new Error(`Simulated GCS write failure: ${path}`)
-              );
-            }
-            this._saveFileCalls.push({
-              filePath: path,
-              content,
-              contentType: opts?.contentType,
-            });
-            this._objectStore.set(path, content.toString());
-            return Promise.resolve(undefined);
+      save: vi.fn().mockImplementation(
+        (
+          content: Buffer | string,
+          opts?: {
+            contentType?: string;
+            preconditionOpts?: { ifGenerationMatch: string | number };
           }
-        ),
+        ) => {
+          const path = filePath ?? "unknown";
+          if (
+            opts?.preconditionOpts &&
+            String(opts.preconditionOpts.ifGenerationMatch) !==
+              (this._generations.get(path) ?? "0")
+          ) {
+            return Promise.reject(
+              new MockGcsError(412, "Generation does not match")
+            );
+          }
+          if (this._saveShouldFail(path)) {
+            return Promise.reject(
+              new Error(`Simulated GCS write failure: ${path}`)
+            );
+          }
+          this._saveFileCalls.push({
+            filePath: path,
+            content,
+            contentType: opts?.contentType,
+          });
+          this.setObject(path, content.toString());
+          metadata.generation = this._versioningEnabled
+            ? this._generations.get(path)
+            : "1";
+          return Promise.resolve(undefined);
+        }
+      ),
     };
   }
 
@@ -365,7 +437,7 @@ class FileStorageMock {
               new Error(`Simulated GCS write failure: ${args.filePath}`)
             );
           }
-          this._objectStore.set(args.filePath, args.buffer.toString());
+          this.setObject(args.filePath, args.buffer.toString());
           this._saveFileCalls.push({
             filePath: args.filePath,
             content: args.buffer,
@@ -376,7 +448,7 @@ class FileStorageMock {
       ),
       uploadRawContentToBucket: vi.fn(
         (args: { content: string; contentType: string; filePath: string }) => {
-          this._objectStore.set(args.filePath, args.content);
+          this.setObject(args.filePath, args.content);
           this._saveFileCalls.push({
             filePath: args.filePath,
             content: args.content,
@@ -397,7 +469,7 @@ class FileStorageMock {
               new Error(`Simulated GCS write failure: ${args.filePath}`)
             );
           }
-          this._objectStore.set(args.filePath, args.content);
+          this.setObject(args.filePath, args.content);
           this._saveFileCalls.push({
             filePath: args.filePath,
             content: args.content,
@@ -443,7 +515,7 @@ class FileStorageMock {
         }
         const content = this._objectStore.get(src) ?? this._contentForPath(src);
         if (content !== null && content !== undefined) {
-          this._objectStore.set(dest, content);
+          this.setObject(dest, content);
         }
         return Promise.resolve(undefined);
       }),
@@ -465,6 +537,7 @@ class FileStorageMock {
       }),
       delete: vi.fn((filePath: string) => {
         this._objectStore.delete(filePath);
+        this._generations.delete(filePath);
         return Promise.resolve(undefined);
       }),
       deleteByPrefix: vi.fn(async (prefix: string) => {

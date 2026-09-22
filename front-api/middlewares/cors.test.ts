@@ -1,4 +1,5 @@
 import {
+  DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
 } from "@app/types/files";
@@ -30,6 +31,48 @@ function getExposedHeaders(response: Response): string[] {
 }
 
 describe("cors middleware", () => {
+  it("allows revision-checked file saves from the app origin", async () => {
+    const response = await createApp().request(
+      "/api/w/wsId/files/path/conversation-cId/notes.json",
+      {
+        method: "OPTIONS",
+        headers: {
+          Origin: APP_ORIGIN,
+          "Access-Control-Request-Method": "PUT",
+          "Access-Control-Request-Headers": "content-type,if-match",
+        },
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(
+      APP_ORIGIN
+    );
+    expect(response.headers.get("Access-Control-Allow-Credentials")).toBe(
+      "true"
+    );
+    expect(
+      response.headers.get("Access-Control-Allow-Headers")?.split(", ")
+    ).toContain("if-match");
+    expect(
+      response.headers.get("Access-Control-Allow-Methods")?.split(", ")
+    ).toContain("PUT");
+  });
+
+  it("still rejects unallowlisted headers on regular endpoints", async () => {
+    const response = await createApp().request("/", {
+      method: "OPTIONS",
+      headers: {
+        Origin: APP_ORIGIN,
+        "Access-Control-Request-Method": "PUT",
+        "Access-Control-Request-Headers": "content-type,if-match,x-unapproved",
+      },
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get("X-CORS-Reason")).toBe("headers");
+  });
+
   it("exposes linked file metadata headers on cross-origin responses", async () => {
     const response = await createApp().request("/", {
       headers: { Origin: APP_ORIGIN },
@@ -37,6 +80,8 @@ describe("cors middleware", () => {
 
     expect(response.status).toBe(200);
     expect(getExposedHeaders(response)).toContain(DUST_FILE_ID_HEADER);
+    expect(getExposedHeaders(response)).toContain(DUST_FILE_CAN_WRITE_HEADER);
+    expect(getExposedHeaders(response)).toContain("ETag");
     expect(getExposedHeaders(response)).toContain(
       DUST_FILE_CONTENT_TYPE_HEADER
     );
@@ -50,6 +95,8 @@ describe("cors middleware", () => {
 
     expect(response.status).toBe(200);
     expect(getExposedHeaders(response)).toContain(DUST_FILE_ID_HEADER);
+    expect(getExposedHeaders(response)).toContain(DUST_FILE_CAN_WRITE_HEADER);
+    expect(getExposedHeaders(response)).toContain("ETag");
     expect(getExposedHeaders(response)).toContain(
       DUST_FILE_CONTENT_TYPE_HEADER
     );
