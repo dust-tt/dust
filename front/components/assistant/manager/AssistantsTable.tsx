@@ -558,7 +558,6 @@ const getTableColumns = ({
     {
       header: "",
       accessorKey: "actions",
-      header: "",
       enableSorting: false,
       cell: (info: CellContext<RowData, number>) => {
         if (info.row.original.scope === "global") {
