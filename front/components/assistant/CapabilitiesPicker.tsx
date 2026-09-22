@@ -28,6 +28,7 @@ import {
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
+import { compareForAutocompleteSort } from "@app/lib/utils";
 import type {
   SkillListItemType,
   SkillWithoutInstructionsAndToolsType,
@@ -415,7 +416,17 @@ export function CapabilitiesPicker({
               ),
               query: normalizedSearchText,
             }),
-          ].slice(0, MAX_RENDERED_CAPABILITY_ITEMS)
+          ]
+            .toSorted(
+              (a, b) =>
+                (a.sortGroup ?? 0) - (b.sortGroup ?? 0) ||
+                compareForAutocompleteSort(
+                  normalizedSearchText,
+                  a.sortName,
+                  b.sortName
+                )
+            )
+            .slice(0, MAX_RENDERED_CAPABILITY_ITEMS)
         : searchCapabilityIndex({
             items: capabilityPickerIndex,
             query: normalizedSearchText,
