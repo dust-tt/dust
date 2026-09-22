@@ -78,27 +78,28 @@ export async function createAgentInstructionSuggestions(
     }
   }
 
-  const created: CreatedInstructionSuggestion[] = [];
-  for (const { analysis, ...suggestionData } of edits) {
-    const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
-      auth,
-      agentConfiguration,
-      {
-        kind: "instructions",
-        suggestion: suggestionData,
-        analysis: analysis ?? null,
-        state: "pending",
-        source,
-        conversationId,
-      }
-    );
+  const created: CreatedInstructionSuggestion[] = await Promise.all(
+    edits.map(async ({ analysis, ...suggestionData }) => {
+      const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
+        auth,
+        agentConfiguration,
+        {
+          kind: "instructions",
+          suggestion: suggestionData,
+          analysis: analysis ?? null,
+          state: "pending",
+          source,
+          conversationId,
+        }
+      );
 
-    created.push({
-      sId: suggestion.sId,
-      kind: "instructions",
-      targetBlockId: suggestionData.targetBlockId,
-    });
-  }
+      return {
+        sId: suggestion.sId,
+        kind: "instructions" as const,
+        targetBlockId: suggestionData.targetBlockId,
+      };
+    })
+  );
 
   await pruneConflictingInstructionSuggestions(
     auth,
