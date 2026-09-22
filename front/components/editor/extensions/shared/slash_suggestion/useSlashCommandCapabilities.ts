@@ -93,6 +93,7 @@ export function useInputBarSlashCommandCapabilities({
     disabled: !useSkillSearch,
   });
   const skills = useSkillSearch ? searchSkills : listedSkills;
+  // Use the displayed skills' query so tools and skills update together.
   const capabilityQuery = useSkillSearch ? (resolvedSearchTerm ?? "") : query;
   const isSkillsLoading = useSkillSearch
     ? isSearchSkillsLoading
