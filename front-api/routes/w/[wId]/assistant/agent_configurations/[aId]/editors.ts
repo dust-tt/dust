@@ -1,16 +1,14 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentEditors } from "@app/lib/api/assistant/editors";
-import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
+import {
+  getAgentEditors,
+  updateAgentEditorsFromDelta,
+} from "@app/lib/api/assistant/editors";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentEditorsLightResponseBody,
   AgentEditorsResponseBody,
 } from "@app/types/api/assistant/configuration/editors";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -42,81 +40,6 @@ const PatchAgentEditorsRequestBodySchema = z
         "Either addEditorIds or removeEditorIds must be provided and contain at least one ID.",
     }
   );
-
-type EditorDeltaErrorCode =
-  | "user_already_member"
-  | "user_not_member"
-  | "user_not_found"
-  | "internal_error";
-
-// Applies this endpoint's add/remove editor deltas by translating them into the complete editor set
-// and persisting it through `AgentResource.updateConfiguration` — the single editor-edit path
-// (admin-gated, applied in place with no new version; see `agent-edit-in-place`). Active-member
-// validation of added editors lives on that path (see `editor-add-requires-membership`); its
-// `user_not_found` failure is surfaced here as a 404. The caller has already checked admin access,
-// archived and global status.
-/**
- * @cc [owner:philipperolet,label:security;product] editor-removal-uses-grants
- * Translating add/remove deltas MUST validate against the grant-backed editor set (`listEditors`):
- * removing a user who holds no editor grant MUST fail with `user_not_member`, and adding a user who
- * already holds one MUST fail with `user_already_member`. Neither changes any grant.
- */
-async function applyEditorDelta(
-  auth: Authenticator,
-  agent: LightAgentConfigurationType,
-  {
-    usersToAdd,
-    usersToRemove,
-  }: { usersToAdd: UserResource[]; usersToRemove: UserResource[] }
-): Promise<Result<AgentResource, DustError<EditorDeltaErrorCode>>> {
-  const agentResource = AgentResource.fromAgentConfiguration(auth, agent);
-  const currentEditors = (await agentResource.listEditors(auth)) ?? [];
-  const currentEditorIds = new Set(currentEditors.map((u) => u.id));
-
-  if (usersToAdd.some((u) => currentEditorIds.has(u.id))) {
-    return new Err(
-      new DustError(
-        "user_already_member",
-        "The user is already a member of the agent editors group."
-      )
-    );
-  }
-
-  if (usersToRemove.some((u) => !currentEditorIds.has(u.id))) {
-    return new Err(
-      new DustError(
-        "user_not_member",
-        "The user is not a member of the agent editors group."
-      )
-    );
-  }
-
-  const removeEditorModelIds = new Set(usersToRemove.map((u) => u.id));
-  const nextEditors = [
-    ...currentEditors.filter((u) => !removeEditorModelIds.has(u.id)),
-    ...usersToAdd,
-  ].map((u) => u.toJSON());
-
-  const updateRes = await agentResource.updateConfiguration(auth, {
-    editors: nextEditors,
-  });
-  if (updateRes.isErr()) {
-    // `syncAgentEditors` rejects a non-member with a `user_not_found` DustError
-    // (see `editor-add-requires-membership`); surface that as a 404, anything else as internal.
-    const { error } = updateRes;
-    if (error instanceof DustError && error.code === "user_not_found") {
-      return new Err(
-        new DustError(
-          "user_not_found",
-          "The user was not found in the workspace."
-        )
-      );
-    }
-    return new Err(new DustError("internal_error", error.message));
-  }
-
-  return new Ok(updateRes.value.resource);
-}
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/editors.
 const app = workspaceApp();
@@ -263,7 +186,7 @@ app.patch(
       }
     }
 
-    const updateRes = await applyEditorDelta(auth, agent, {
+    const updateRes = await updateAgentEditorsFromDelta(auth, agent, {
       usersToAdd,
       usersToRemove,
     });

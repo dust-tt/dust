@@ -97,8 +97,6 @@ describe("resource-owned agent search indexation", () => {
       u.toJSON()
     );
 
-    // Editor changes go through the in-place path of `updateConfiguration`, which enqueues one
-    // indexation per change: first add the editor, then remove them again.
     const editorSets = [[...baseEditors, editor.toJSON()], baseEditors];
     for (const editors of editorSets) {
       vi.mocked(launchIndexAgentSearchWorkflow).mockClear();

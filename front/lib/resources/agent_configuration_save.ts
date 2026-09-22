@@ -460,19 +460,17 @@ export async function syncAgentEditors(
     );
   }
 
-  // Every newly added editor must be an active workspace member (see
-  // `editor-add-requires-membership`). Checked before any grant is written.
-  const addedEditorIds = editors
+  const addedEditorModelIds = editors
     .filter((e) => !currentIds.has(e.id))
     .map((e) => e.id);
-  if (addedEditorIds.length > 0) {
-    const addedUsers = await UserResource.fetchByModelIds(addedEditorIds);
+  if (addedEditorModelIds.length > 0) {
+    const addedUsers = await UserResource.fetchByModelIds(addedEditorModelIds);
     const { total: activeMembershipCount } =
       await MembershipResource.getActiveMemberships({
         users: addedUsers,
         workspace: auth.getNonNullableWorkspace(),
       });
-    if (activeMembershipCount !== addedEditorIds.length) {
+    if (activeMembershipCount !== addedEditorModelIds.length) {
       return new Err(
         new DustError("user_not_found", "Editor is not a workspace member.")
       );
