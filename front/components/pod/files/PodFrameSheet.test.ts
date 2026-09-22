@@ -1,7 +1,7 @@
 import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { cleanup, render, screen } from "@testing-library/react";
-import type { PropsWithChildren } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,14 +13,18 @@ const frameV2Metadata = {
 
 interface Mocks {
   fileMetadata: Record<string, unknown>;
+  hasFrameFunctions: boolean;
   iframeProps: { frameId?: string } | null;
   metadataCalls: { disabled?: boolean; fileId: string | null }[];
+  permissionsCalls: { disabled?: boolean; frameId: string }[];
 }
 
 const mocks = vi.hoisted<Mocks>(() => ({
   fileMetadata: {},
+  hasFrameFunctions: false,
   iframeProps: null,
   metadataCalls: [],
+  permissionsCalls: [],
 }));
 
 vi.mock(
@@ -74,6 +78,13 @@ vi.mock("@app/lib/swr/files", () => ({
   },
 }));
 
+vi.mock("@app/lib/swr/frames", () => ({
+  useFramePermissions: (args: { disabled?: boolean; frameId: string }) => {
+    mocks.permissionsCalls.push(args);
+    return { hasFrameFunctions: mocks.hasFrameFunctions };
+  },
+}));
+
 vi.mock("@dust-tt/sparkle", async () => {
   const { createElement } = await import("react");
   const Container = ({ children }: PropsWithChildren) =>
@@ -84,6 +95,7 @@ vi.mock("@dust-tt/sparkle", async () => {
 
   return {
     Button: Empty,
+    Chip: ({ label }: { label?: string }) => createElement("div", null, label),
     Maximize01: Empty,
     Minimize01: Empty,
     Sheet,
@@ -92,6 +104,8 @@ vi.mock("@dust-tt/sparkle", async () => {
     SheetHeader: Container,
     SheetTitle: Container,
     Spinner: Empty,
+    Tooltip: ({ trigger }: { trigger: ReactNode }) =>
+      createElement("div", null, trigger),
     XClose: Empty,
     cn: (...classes: Array<string | false | null | undefined>) =>
       classes.filter(Boolean).join(" "),
@@ -102,12 +116,14 @@ const owner = LightWorkspaceFactory.build();
 
 beforeEach(() => {
   mocks.fileMetadata = { ...frameV2Metadata };
+  mocks.hasFrameFunctions = false;
 });
 
 afterEach(() => {
   cleanup();
   mocks.iframeProps = null;
   mocks.metadataCalls = [];
+  mocks.permissionsCalls = [];
 });
 
 const openSheetProps = {
@@ -147,6 +163,49 @@ describe("PodFrameSheet", () => {
     );
 
     expect(screen.getByText("Legacy.tsx")).toBeInTheDocument();
+  });
+
+  it("marks a Frame declaring functions as beta", () => {
+    mocks.hasFrameFunctions = true;
+
+    render(createElement(PodFrameSheet, openSheetProps));
+
+    expect(screen.getByText("Beta")).toBeInTheDocument();
+  });
+
+  it("does not mark a Frame without functions as beta", () => {
+    render(createElement(PodFrameSheet, openSheetProps));
+
+    expect(screen.queryByText("Beta")).not.toBeInTheDocument();
+  });
+
+  it("asks for Frame permissions only for an open Frames v2 sheet", () => {
+    const { rerender } = render(
+      createElement(PodFrameSheet, { ...openSheetProps, isOpen: false })
+    );
+
+    expect(mocks.permissionsCalls.at(-1)).toMatchObject({ disabled: true });
+
+    rerender(createElement(PodFrameSheet, openSheetProps));
+
+    expect(mocks.permissionsCalls.at(-1)).toMatchObject({
+      disabled: false,
+      frameId: "fil_frame",
+    });
+
+    mocks.fileMetadata = {
+      contentType: "text/vnd.dust.attachment.slack.thread",
+      fileName: "Legacy.tsx",
+      useCaseMetadata: { spaceId: "vlt_project" },
+    };
+    rerender(
+      createElement(PodFrameSheet, {
+        ...openSheetProps,
+        framePath: "pod-vlt_project/Legacy.tsx",
+      })
+    );
+
+    expect(mocks.permissionsCalls.at(-1)).toMatchObject({ disabled: true });
   });
 
   it("loads metadata only while open and forwards the Frames v2 identity", () => {

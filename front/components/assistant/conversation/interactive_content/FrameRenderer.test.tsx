@@ -16,6 +16,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   editFrameText: vi.fn(),
   iframe: vi.fn((_props: { onEditText?: EditTextFn }) => null),
+  hasFrameFunctions: false,
   isFrameAuthor: true,
   mutateFileContent: vi.fn(),
 }));
@@ -121,6 +122,7 @@ vi.mock("@app/lib/swr/frames", () => ({
   useFramePermissions: () => ({
     isFrameAuthor: mocks.isFrameAuthor,
     packageRoot: null,
+    hasFrameFunctions: mocks.hasFrameFunctions,
     isFramePermissionsLoading: false,
     isFramePermissionsError: null,
   }),
@@ -170,6 +172,7 @@ const conversation: ConversationWithoutContentType = {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  mocks.hasFrameFunctions = false;
   mocks.isFrameAuthor = true;
 });
 
@@ -237,6 +240,41 @@ describe("FrameRenderer", () => {
         onEditText: undefined,
       })
     );
+  });
+
+  it("marks a Frame declaring functions as beta", () => {
+    mocks.hasFrameFunctions = true;
+
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="v2"
+      />
+    );
+
+    const betaLink = screen.getByRole("link", { name: "Beta" });
+    expect(betaLink).toHaveAttribute(
+      "href",
+      "https://app.dust.tt/share/frame/c5d83f0e-4825-4c6f-b33a-6841b1490d19"
+    );
+    expect(betaLink).toHaveAttribute("target", "_blank");
+  });
+
+  it("does not mark a Frame without functions as beta", () => {
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="v2"
+      />
+    );
+
+    expect(screen.queryByText("Beta")).not.toBeInTheDocument();
   });
 
   it("opens the frame's share URL in a new tab", () => {

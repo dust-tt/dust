@@ -37,6 +37,7 @@ export function useFramePermissions({
   return {
     isFrameAuthor: data?.isFrameAuthor ?? false,
     packageRoot: data?.packageRoot ?? null,
+    hasFrameFunctions: data?.hasFunctions ?? false,
     isFramePermissionsLoading: !disabled && !data && !error,
     isFramePermissionsError: error,
   };
@@ -110,6 +111,7 @@ export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
     isAuthenticatedMember: data?.isAuthenticatedMember ?? false,
     isPodMember: data?.isPodMember ?? false,
     isPodEditor: data?.isPodEditor ?? false,
+    hasFrameFunctions: data?.hasFunctions ?? false,
     error,
     mutateFrame: mutate,
   };

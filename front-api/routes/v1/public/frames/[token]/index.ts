@@ -129,9 +129,11 @@ app.get(
       });
     }
 
+    const hasFunctions = await file.hasActiveFrameFunctions();
+
     // Runs before the email-scope branch so an external viewer is not walked through OTP for a
     // Frame they still could not use.
-    if (!auth && (await file.hasActiveFrameFunctions())) {
+    if (!auth && hasFunctions) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -261,6 +263,8 @@ app.get(
       isAuthenticatedMember: !!user,
       isPodMember,
       isPodEditor,
+      // Lets the share page mark a Frame that declares functions as beta.
+      hasFunctions,
       // Lets a shared Frame in an app folder resolve bare function references, exactly as it does
       // when opened from the Pod. Workspace members who may view the frame may invoke its app's
       // functions, so they get the path even without pod read. External viewers cannot invoke

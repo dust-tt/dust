@@ -1,10 +1,12 @@
 import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
+import { FrameBetaChip } from "@app/components/assistant/conversation/interactive_content/frame/FrameBetaChip";
 import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
 import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import { useFramePermissions } from "@app/lib/swr/frames";
 import { getFrameFunctionReferenceKind } from "@app/types/api/frame_function_reference";
 import { getFrameV2NameFromManifestPath } from "@app/types/api/frame_manifest";
 import { getFileDisplayName } from "@app/types/files";
@@ -82,6 +84,12 @@ export function PodFrameSheet({
     fileMetadata?.contentType
   );
 
+  const { hasFrameFunctions } = useFramePermissions({
+    owner,
+    frameId: fileId ?? "",
+    disabled: !isOpen || !fileId || functionReferenceKind !== "v2",
+  });
+
   useEffect(() => {
     if (!isOpen) {
       setIsFullscreen(false);
@@ -105,6 +113,7 @@ export function PodFrameSheet({
             <SheetTitle className="min-w-0 flex-1 truncate">
               {fileMetadata && (frameName ?? getFileDisplayName(fileMetadata))}
             </SheetTitle>
+            {hasFrameFunctions && <FrameBetaChip />}
             {fileId && (
               <div className="flex max-w-[60%] shrink-0 items-center justify-end gap-1 overflow-x-auto">
                 <ExportContentDropdown

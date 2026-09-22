@@ -1,3 +1,4 @@
+import { FrameBetaChip } from "@app/components/assistant/conversation/interactive_content/frame/FrameBetaChip";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
 import { LinkWrapper } from "@app/lib/platform";
@@ -19,6 +20,7 @@ interface PublicInteractiveContentHeaderProps {
   projectUrl: string | null;
   logoUrl?: string | null;
   showSignUpCta?: boolean;
+  hasFrameFunctions?: boolean;
 }
 
 const UTM_PARAM = `utm_source=public-frames`;
@@ -34,6 +36,7 @@ export function PublicInteractiveContentHeader({
   projectUrl,
   logoUrl,
   showSignUpCta = false,
+  hasFrameFunctions = false,
 }: PublicInteractiveContentHeaderProps) {
   const staticWebsiteUrl = config.getStaticWebsiteUrl();
   return (
@@ -55,7 +58,7 @@ export function PublicInteractiveContentHeader({
           )}
         </div>
 
-        <div className="flex flex-1 justify-center">
+        <div className="flex flex-1 items-center justify-center gap-2">
           <span
             className={cn(
               "min-w-0 truncate text-sm font-normal",
@@ -64,6 +67,7 @@ export function PublicInteractiveContentHeader({
           >
             {title}
           </span>
+          {hasFrameFunctions && <FrameBetaChip />}
         </div>
 
         <div className="grow-1 flex basis-12 justify-end md:basis-60">
