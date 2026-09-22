@@ -1200,7 +1200,7 @@ export const VisualizationActionIframe = forwardRef<
                     )}
                     src={vizUrl}
                     allowFullScreen
-                    sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
+                    sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox allow-pointer-lock"
                   />
                 </div>
               )}
