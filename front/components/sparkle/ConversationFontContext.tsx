@@ -77,7 +77,7 @@ interface ConversationFontContextType {
   setConversationFont: (font: ConversationFont) => Promise<boolean>;
 }
 
-const ConversationFontContext = createContext<
+export const ConversationFontContext = createContext<
   ConversationFontContextType | undefined
 >(undefined);
 
@@ -95,6 +95,14 @@ const ConversationFontScript = memo(function ConversationFontInitScript() {
   );
 });
 
+/**
+ * @cc [owner:ykmsd,label:react] authenticated-mount-only
+ * The metadata fetch here uses the redirecting fetcher: a 401 navigates the
+ * visitor to the WorkOS sign-in page. This provider MUST only be mounted
+ * behind an authentication gate, never on routes anonymous
+ * visitors can reach (e.g. `/w/:wId/join`, `/login-error`) — mounting it
+ * globally bounced every invitation-link visitor to the sign-up page.
+ */
 export function ConversationFontProvider({
   children,
 }: {

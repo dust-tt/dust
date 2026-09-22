@@ -1,6 +1,5 @@
 import { ConfirmPopupArea } from "@app/components/Confirm";
 import { NoOpDesktopNavigationProvider } from "@app/components/navigation/DesktopNavigationContext";
-import { ConversationFontProvider } from "@app/components/sparkle/ConversationFontContext";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
@@ -9,23 +8,26 @@ import { ConversationSidePanelProvider } from "../assistant/conversation/Convers
 
 /**
  * This layout is used in _app only
+ *
+ * ConversationFontProvider is intentionally NOT mounted here: this layout
+ * wraps unauthenticated routes too, and the provider's user-metadata fetch
+ * must only run behind an auth gate. It is mounted in `AppContentRouterLayout`, 
+ * where the font is actually consumed (conversation views and the sidebar settings popover).
  */
 export function RootLayout({ children }: { children: React.ReactNode }) {
   useStripUtmParams();
 
   return (
     <ThemeProvider>
-      <ConversationFontProvider>
-        <SidebarProvider>
-          <NoOpDesktopNavigationProvider>
-            <ConfirmPopupArea>
-              <ConversationSidePanelProvider>
-                <Notification.Area>{children}</Notification.Area>
-              </ConversationSidePanelProvider>
-            </ConfirmPopupArea>
-          </NoOpDesktopNavigationProvider>
-        </SidebarProvider>
-      </ConversationFontProvider>
+      <SidebarProvider>
+        <NoOpDesktopNavigationProvider>
+          <ConfirmPopupArea>
+            <ConversationSidePanelProvider>
+              <Notification.Area>{children}</Notification.Area>
+            </ConversationSidePanelProvider>
+          </ConfirmPopupArea>
+        </NoOpDesktopNavigationProvider>
+      </SidebarProvider>
     </ThemeProvider>
   );
 }
