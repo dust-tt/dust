@@ -61,12 +61,9 @@ import type { CreationOptional } from "sequelize";
  *   skips the Stripe finalization step and leaves the invoice as a cleaned draft
  *   for manual review. Defaults to true (finalization is automatic).
  * - creditSpendCheckpointThresholdAwuCredits: Whether the credit spend
- *   checkpoint gate (agent loop pausing for the user to confirm continuing
- *   once a message's spend crosses a threshold) is active for the workspace,
- *   and at what threshold. NULL means the gate is off. A non-NULL value turns
- *   the gate on and is the threshold, in AWU credits; admins can only turn
- *   the gate on or off (see `CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS`),
- *   not choose the value.
+ *   checkpoint gate is active for the workspace, and at what threshold. NULL
+ *   means the gate is off. A non-NULL value turns the gate on and is the
+ *   threshold, in AWU credits.
  *
  * The Metronome balance-threshold alert id (used by the webhook to match the
  * firing alert) is NOT stored here: it is a Metronome-generated value resolved
