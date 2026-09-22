@@ -63,7 +63,7 @@ describe("getWorkspaceFilter", () => {
     );
   });
 
-  it("opens the EU agent-platform endpoints to credit-priced and vertex-flagged workspaces only", async () => {
+  it("requires regional hosting for eu endpoints, and plan entitlement on top for gated models", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const filter = getWorkspaceFilter(auth);
@@ -83,15 +83,24 @@ describe("getWorkspaceFilter", () => {
       isAdvancedModels: false,
     };
 
-    expect(regionsFor(baseConfig)).toEqual([["global"], ["global"]]);
+    // Gemini is ungated, Opus 5 needs a credit-priced or advanced-model plan.
+    expect(regionsFor(baseConfig)).toEqual([["global"], []]);
     expect(regionsFor({ ...baseConfig, isCreditPriced: true })).toEqual([
       ["eu", "global"],
       ["eu", "global"],
     ]);
+    // The vertex flag grants regional hosting, never the entitlement itself.
     expect(
       regionsFor({
         ...baseConfig,
         featureFlags: ["use_vertex_for_supported_models"],
+      })
+    ).toEqual([["eu", "global"], []]);
+    expect(
+      regionsFor({
+        ...baseConfig,
+        featureFlags: ["use_vertex_for_supported_models"],
+        isAdvancedModels: true,
       })
     ).toEqual([
       ["eu", "global"],
