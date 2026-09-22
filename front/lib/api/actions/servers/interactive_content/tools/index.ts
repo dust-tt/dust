@@ -25,6 +25,7 @@ import {
 import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
 import { exportInteractiveContentFileAsPdf } from "@app/lib/api/files/pdf_export";
 import { screenshotInteractiveContentFile } from "@app/lib/api/files/screenshot";
+import { upgradeLegacyFrameToV2 } from "@app/lib/api/frames/publish_from_source";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
@@ -374,7 +375,7 @@ export async function createInteractiveContentTools(
       { file_id, path },
       { sendNotification, _meta }
     ) => {
-      const { agentConfiguration } = isAgentLoopRunContext(
+      const { agentConfiguration, conversation } = isAgentLoopRunContext(
         toolContext?.runContext
       )
         ? toolContext?.runContext
@@ -409,6 +410,37 @@ export async function createInteractiveContentTools(
         return new Err(
           new MCPError(fsResult.error.message, { tracked: false })
         );
+      }
+
+      // `file_id` and `path` arrive as independent arguments, so they can disagree. Upgrading
+      // on a path that is another Frame's source would move that Frame's files and hand this
+      // one its package, where publishing as v1 only ever writes a publication. Such a pair is
+      // left to the legacy path, which is what it did before Frames v2.
+      const pathMountFilePath = fsResult.value.toMountFilePath(path);
+      const [frameAtPath] = pathMountFilePath
+        ? await FileResource.fetchByMountFilePaths(auth, [pathMountFilePath])
+        : [];
+      const isFrameOwnSource = !frameAtPath || frameAtPath.sId === file.sId;
+
+      // Publishing is where a legacy Frame becomes a Frames v2 package: the upgrade needs to
+      // publish to complete, and a Frame the upgrade declines publishes as v1 just as before.
+      const upgraded =
+        conversation && isFrameOwnSource
+          ? await upgradeLegacyFrameToV2(auth, {
+              conversation,
+              dustFs: fsResult.value,
+              entryScopedPath: path,
+              frame: file,
+              publishedByAgentConfigurationId: agentConfiguration?.sId,
+            })
+          : null;
+      if (upgraded) {
+        return new Ok([
+          {
+            type: "text",
+            text: `Frame '${file.sId}' published successfully.`,
+          },
+        ]);
       }
 
       const result = await publishFrame(auth, {
