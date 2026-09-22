@@ -73,7 +73,6 @@ import {
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
-import type { SkillReference } from "@app/lib/skills/format";
 import {
   buildSkillSearchQuery,
   MAX_SKILL_SEARCH_FACET_VALUES,
@@ -81,6 +80,7 @@ import {
   MAX_SKILL_SEARCH_WINDOW,
 } from "@app/lib/skill_search/query";
 import { buildSkillDefaultSort } from "@app/lib/skill_search/ranking";
+import type { SkillReference } from "@app/lib/skills/format";
 import {
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
@@ -122,6 +122,7 @@ import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
   AgentSkillType,
   SkillAvailability,
+  SkillListItemType,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
@@ -148,7 +149,6 @@ import assert from "assert";
 import groupBy from "lodash/groupBy";
 import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
-import pick from "lodash/pick";
 import range from "lodash/range";
 import uniq from "lodash/uniq";
 import type {
@@ -159,7 +159,6 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
-import { z } from "zod";
 
 const SKILL_SEARCH_INDEXATION_CONCURRENCY = 8;
 
@@ -455,6 +454,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   private redactedForCaller = false;
 
   private _mcpServerConfigurations: SkillMCPServerConfiguration[];
+  private searchDocument: SkillSearchDocument | null = null;
 
   private constructor(
     _: ModelStatic<SkillConfigurationModel>,
@@ -580,29 +580,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return new Ok({
-      skills: removeNulls(hits.map((hit) => hit._source)).map(
-        (document) => {
-          const skill = this.fromSearchDocument(auth, document);
-          const serializedSkill = skill.toJSON(auth);
-          return {
-            ...pick(serializedSkill, [
-              "sId",
-              "canAdministrate",
-              "status",
-              "name",
-              "userFacingDescription",
-              "icon",
-              "requestedSpaceIds",
-              "availability",
-            ]),
-            mcpServerViewIds: document.mcp_server_view_ids,
-            editorIds: document.editor_ids,
-            editedBy: document.last_edited_by_user_id,
-            activeUsersCount: document.active_users_count,
-            updatedAt:
-              document.updated_at === null ? null : serializedSkill.updatedAt,
-          };
-        }
+      skills: removeNulls(hits.map((hit) => hit._source)).map((document) =>
+        this.fromSearchDocument(auth, document)
       ),
       total: totalCount,
       hasMore: offset + hits.length < totalCount,
@@ -618,7 +597,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const isCodeDefined =
       document.workspace_id === CODE_DEFINED_SKILLS_WORKSPACE_ID;
 
-    return new SkillResource(
+    const skill = new SkillResource(
       this.model,
       {
         id: isCodeDefined
@@ -656,9 +635,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         mcpServerConfigurations: [],
       }
     );
+    skill.searchDocument = document;
+    return skill;
+  }
+
+  get editorIds(): string[] {
+    return this.searchDocument?.editor_ids ?? [];
   }
 
   get sId(): string {
+    if (this.searchDocument) {
+      return this.searchDocument.skill_id;
+    }
     if (this.codeDefinedSkillId) {
       return this.codeDefinedSkillId;
     }
@@ -5150,7 +5138,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     };
   }
 
-  toJSON(auth: Authenticator): SkillType {
+  toJSON(auth: Authenticator): SkillType;
+  toJSON(
+    auth: Authenticator,
+    options: { forListing: true; editors: UserResource[] }
+  ): SkillListItemType;
+  toJSON(
+    auth: Authenticator,
+    options?: { forListing: true; editors: UserResource[] }
+  ): SkillType | SkillListItemType {
     const toSpaceId = (spaceId: ModelId) =>
       SpaceResource.modelIdToSId({
         id: spaceId,
@@ -5158,6 +5154,35 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
 
     const requestedSpaceIds = this.requestedSpaceIds.map(toSpaceId);
+    const sharedFields = {
+      sId: this.sId,
+      updatedAt:
+        this.codeDefinedSkillId || this.searchDocument?.updated_at === null
+          ? null
+          : this.updatedAt.getTime(),
+      status: this.status,
+      name: this.name,
+      userFacingDescription: this.userFacingDescription,
+      requestedSpaceIds,
+      icon: this.icon ?? null,
+      canAdministrate: auth.can("admin", this),
+      availability: this.availability,
+    };
+
+    if (options?.forListing) {
+      return {
+        ...sharedFields,
+        mcpServerViewIds: this.searchDocument?.mcp_server_view_ids ?? [],
+        editorIds: this.editorIds,
+        editors: options.editors.map((editor) => {
+          const { sId, fullName, image } = editor.toJSON();
+          return { sId, fullName, image };
+        }),
+        editedBy: this.searchDocument?.last_edited_by_user_id ?? null,
+        activeUsersCount: this.searchDocument?.active_users_count ?? null,
+      };
+    }
+
     const manuallyRequestedSpaceIds =
       this.manuallyRequestedSpaceIds.map(toSpaceId);
 
@@ -5173,20 +5198,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       this.redactedForCaller;
 
     return {
+      ...sharedFields,
       id: this.id,
-      sId: this.sId,
       createdAt: this.codeDefinedSkillId ? null : this.createdAt.getTime(),
-      updatedAt: this.codeDefinedSkillId ? null : this.updatedAt.getTime(),
       editedBy: this.codeDefinedSkillId ? null : this.editedBy,
-      status: this.status,
-      name: this.name,
       agentFacingDescription: this.agentFacingDescription,
-      userFacingDescription: this.userFacingDescription,
       instructions: hideInstructions ? null : this.instructions,
       instructionsHtml: hideInstructions ? null : this.instructionsHtml,
-      requestedSpaceIds,
       manuallyRequestedSpaceIds,
-      icon: this.icon ?? null,
       reinforcement: this.reinforcement,
       lastReinforcementAnalysisAt:
         this.lastReinforcementAnalysisAt?.toISOString() ?? null,
@@ -5220,9 +5239,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ),
       canRead: auth.can("read", this),
       canWrite: auth.can("write", this),
-      canAdministrate: auth.can("admin", this),
       isDefault: isDefaultFromAvailability(this.availability),
-      availability: this.availability,
     };
   }
 

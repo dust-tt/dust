@@ -3,13 +3,9 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type {
-  SearchSkillsResponseBody,
-  SkillSearchFacetValue,
-} from "@app/types/api/skills";
+import type { SkillSearchFacetValue } from "@app/types/api/skills";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { Ok } from "@app/types/shared/result";
-import { removeNulls } from "@app/types/shared/utils/general";
 
 function facetIds(values: SkillSearchFacetValue[] | undefined): string[] {
   return (values ?? []).map(({ value }) => value);
@@ -23,7 +19,7 @@ function facetCountsById(
 
 /**
  * @cc [owner:tdraier,label:security] skill-search-listing-names
- * Resolve editor, child skill, space and tool names for `searchSkills` results (listed skills and
+ * Resolve editor, child skill, space and tool names for `SkillResource.search` results (listed skills and
  * facets) through resources, and only name child skills, spaces and tools the caller can read:
  * unreadable ones are dropped from the facets.
  */
@@ -63,19 +59,14 @@ export async function searchSkillListings(
       : [],
   ]);
 
-  const editorsById = new Map(
-    users.map((user) => {
-      const { sId, fullName, image } = user.toJSON();
-      return [sId, { sId, fullName, image }];
-    })
-  );
   const usersById = new Map(users.map((user) => [user.sId, user]));
   const childSkillCounts = facetCountsById(facetValues.childSkills);
   const spaceCounts = facetCountsById(facetValues.spaces);
   const mcpServerViewCounts = facetCountsById(facetValues.mcpServerViews);
 
-  return new Ok<SearchSkillsResponseBody>({
+  return new Ok({
     ...result.value,
+    usersById,
     facets: {
       ...(facetValues.availability
         ? {
@@ -131,11 +122,5 @@ export async function searchSkillListings(
         : {}),
       ...(facetValues.usage ? { usage: facetValues.usage } : {}),
     },
-    skills: result.value.skills.map((skill) => ({
-      ...skill,
-      editors: removeNulls(
-        [...new Set(skill.editorIds)].map((id) => editorsById.get(id))
-      ),
-    })),
   });
 }

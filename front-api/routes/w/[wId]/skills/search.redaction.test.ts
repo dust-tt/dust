@@ -109,7 +109,10 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     expect(response.status).toBe(200);
     expect((await response.json()).skills).toEqual([
       expect.objectContaining({ sId: skill.sId, canAdministrate: expected }),
-      expect.objectContaining({ sId: global.skill_id, canAdministrate: false }),
+      expect.objectContaining({
+        sId: global.skill_id,
+        canAdministrate: false,
+      }),
     ]);
   });
 
@@ -181,7 +184,10 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
         limit: 1,
       });
       expect(first.status).toBe(200);
-      expect(mockSearch.mock.lastCall?.[0]).toMatchObject({ from: 0, size: 1 });
+      expect(mockSearch.mock.lastCall?.[0]).toMatchObject({
+        from: 0,
+        size: 1,
+      });
 
       const second = await searchRequest(workspace.sId, {
         sortBy,
@@ -275,7 +281,10 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
         { spaceKind: "pod", availability: "editors" },
       ] as const
     ).flatMap((access) =>
-      (["active", "archived"] as const).map((status) => ({ ...access, status }))
+      (["active", "archived"] as const).map((status) => ({
+        ...access,
+        status,
+      }))
     )
   )("keeps only safe admin metadata for an unreadable $spaceKind / $availability / $status skill", async ({
     spaceKind,

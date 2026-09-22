@@ -1,6 +1,7 @@
 import { searchSkillListings } from "@app/lib/api/skills/search_listing";
 import { SearchSkillsQuerySchema } from "@app/lib/skill_search/query_schema";
 import type { SearchSkillsResponseBody } from "@app/types/api/skills";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -88,7 +89,19 @@ app.post(
       );
     }
 
-    return ctx.json(result.value);
+    const { usersById, ...searchResults } = result.value;
+
+    return ctx.json({
+      ...searchResults,
+      skills: searchResults.skills.map((skill) =>
+        skill.toJSON(auth, {
+          forListing: true,
+          editors: removeNulls(
+            [...new Set(skill.editorIds)].map((id) => usersById.get(id))
+          ),
+        })
+      ),
+    });
   }
 );
 

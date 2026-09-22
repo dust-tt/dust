@@ -4,7 +4,6 @@ import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDi
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
-import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewTypeFactory } from "@app/tests/utils/MCPServerViewTypeFactory";
@@ -94,14 +93,10 @@ async function setup({
     instructions: "",
     status: skillStatus,
   });
-  const [document] = await SkillFactory.createSearchDocuments(authenticator, [
-    resource,
-  ]);
-  const { sId, fullName, image } = user.toJSON();
-  const skill = {
-    ...toSkillListItem(authenticator, document),
-    editors: [{ sId, fullName, image }],
-  };
+  const skill = resource.toJSON(authenticator, {
+    forListing: true,
+    editors: [user],
+  });
   const fullSkill = {
     ...resource.toJSON(authenticator),
     name: "Full skill details",
@@ -159,7 +154,7 @@ async function setup({
           availability,
           count: 1,
         })),
-        editors: [{ sId, fullName, image, count: 1 }],
+        editors: [user.toSearchFacetJSON(1)],
         mcpServerViews: [serverView, otherSpaceServerView].map((view) => ({
           sId: view.sId,
           mcpServerId: view.server.sId,
@@ -780,7 +775,9 @@ describe("search-backed Manage Skills", () => {
     mount();
 
     expect(
-      await screen.findByRole("button", { name: "Used by 1 agent and 1 skill" })
+      await screen.findByRole("button", {
+        name: "Used by 1 agent and 1 skill",
+      })
     ).toBeInTheDocument();
     expect(usedBy).toHaveBeenCalledWith({ skillIds: [skill.sId] });
   });
