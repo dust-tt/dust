@@ -19,11 +19,6 @@ export interface SuggestAgentInstructionsChangeResult {
   suggestions: CreatedInstructionSuggestion[];
 }
 
-/**
- * Shares its validation, creation and pruning with the sidekick `suggest_prompt_edits` tool
- * (`createAgentInstructionSuggestions`), so an `instructions` suggestion behaves identically
- * whether proposed from a regular conversation or from the agent builder.
- */
 export async function suggestAgentInstructionsChange(
   auth: Authenticator,
   { agentId, instructionEdits, analysis }: SuggestAgentInstructionsChangeArgs
