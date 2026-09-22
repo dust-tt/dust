@@ -59,6 +59,57 @@ Always pass canonical \`/files/conversation-<conversationId>/...\` or
 \`/files/pod-<podId>/...\` paths to \`dsbx frame\`. Do not pass the convenience aliases
 \`/files/conversation\` or \`/files/pod\`.
 
+## Art direction and shared theme
+
+You own the Frame's visual direction. Derive it from the audience, subject, supplied brand assets
+and approved references. Choose the typography, color, density and bespoke visuals that communicate
+the material. There is no preset catalog or fixed font list.
+
+Copy the attached \`skills/Create Frames/theme.ts\` into the Frame folder as \`theme.ts\`, then edit
+its values for this Frame. It is an editable source example, not a runtime theme API. Add or remove
+fields and custom CSS variables as needed. Font families, colors and lengths are ordinary CSS values.
+Use relative imports for theme and component source, not \`useFile\`.
+
+\`\`\`tsx
+import { theme, tokens } from "./theme";
+
+export default function Frame() {
+  return (
+    <main
+      style={{
+        ...tokens,
+        background: theme.background,
+        color: theme.foreground,
+        fontFamily: theme.bodyFont,
+        fontSize: theme.bodySize,
+        lineHeight: theme.lineHeight,
+        padding: theme.pagePadding,
+      }}
+    >
+      <h1 style={{ fontFamily: theme.headingFont, fontSize: theme.headingSize }}>
+        ...
+      </h1>
+    </main>
+  );
+}
+\`\`\`
+
+Share these values across the Frame and its bespoke React, SVG and CSS. The example's \`tokens\`
+object installs \`--frame-*\` variables on the root, so descendants can use values such as
+\`var(--frame-accent)\`. Keep new shared values in the same file instead of inventing a separate
+palette or spacing system in each chart. Changing the theme should update the whole composition.
+
+For a substantial Frame, keep \`direction.md\` beside the source. Record audience, purpose, visual
+premise, typography hierarchy, density, color logic, reference material and what later edits must
+preserve. Create bespoke visuals when they explain the material better than generic cards. Small
+Frames do not need empty files or wrappers merely to match a folder layout.
+
+Publish, then inspect the rendered Frame using the available browser or Frame screenshot tools.
+Review wide and narrow layouts, hierarchy, contrast, whitespace, cropping and the relationship
+between text and graphics. Identify the weakest section, revise it and inspect the result again.
+A successful build does not establish visual quality. Preserve approved direction on ordinary edits
+unless the user requests a redesign.
+
 ## Retrieve a Frame's share link
 
 Frame sharing and use rights are configured by the user in the Dust UI. Agents must not change
