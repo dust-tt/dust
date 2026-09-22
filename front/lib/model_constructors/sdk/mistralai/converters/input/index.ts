@@ -43,7 +43,13 @@ export function WithMistralAIInputConverter<
       config: MistralInputConfig
     ): ChatCompletionStreamRequest {
       const { conversation } = payload;
-      const { tools = [], temperature, reasoning, outputFormat } = config;
+      const {
+        tools = [],
+        temperature,
+        reasoning,
+        outputFormat,
+        cacheKey,
+      } = config;
 
       // Mistral is not sent an explicit max-output cap (matching the legacy
       // client); it uses its own default. `reasoning_effort` is only sent when
@@ -54,6 +60,11 @@ export function WithMistralAIInputConverter<
         temperature,
         tools: tools.map(toTool),
         toolChoice: forceToolNameToToolChoice(tools, toToolChoiceInput(config)),
+        // Caching is implicit prefix matching, but hits are unreliable without
+        // a key: measured 2026-09-22, an identical 7k-token prefix hit on every
+        // repeat with a key and intermittently without one.
+        // https://docs.mistral.ai/studio/conversations/advanced/prompt-caching
+        ...(cacheKey ? { promptCacheKey: cacheKey } : {}),
         ...(reasoning ? { reasoningEffort: reasoning.effort } : {}),
         ...(outputFormat
           ? { responseFormat: outputFormatToResponseFormat(outputFormat) }

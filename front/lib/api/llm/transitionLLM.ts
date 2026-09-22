@@ -47,6 +47,7 @@ import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/end
 import type { Host } from "@app/lib/model_constructors/types/hosts";
 import {
   AGENT_PLATFORM_HOST,
+  MISTRAL_HOST,
   OPENAI_RESPONSES_HOST,
   XAI_HOST,
 } from "@app/lib/model_constructors/types/hosts";
@@ -884,12 +885,15 @@ export class StreamEndpointTransition extends BaseTransition {
     // Agent-platform (Vertex) has no request-level automatic cache_control, so it
     // needs an explicit breakpoint on the conversation tail (legacy's isLast).
     const explicitTailBreakpoint = api === AGENT_PLATFORM_HOST;
-    // OpenAI-compatible Responses hosts consume `prompt_cache_key`. Use the
-    // workspace and agent configuration so requests can reuse cached prefixes
-    // across conversations. xAI recommends always setting it to route stable
-    // prefixes to the same server:
+    // Hosts that consume `prompt_cache_key`. Use the workspace and agent
+    // configuration so requests can reuse cached prefixes across conversations.
+    // xAI recommends always setting it to route stable prefixes to the same
+    // server:
     // https://docs.x.ai/developers/advanced-api-usage/prompt-caching/maximizing-cache-hits
-    // (verified 2026-08-12). Other surfaces guard `cacheKey` to undefined.
+    // (verified 2026-08-12). Mistral's key is advisory the same way — its
+    // caching is implicit prefix matching, but hits only land reliably with one:
+    // https://docs.mistral.ai/studio/conversations/advanced/prompt-caching
+    // (verified 2026-09-22). Other surfaces guard `cacheKey` to undefined.
     const cacheKey = getPromptCacheKeyForHost(api, metadata);
     const config = await this.withFeatureFlaggedInputConfig(
       this.buildConfig(
@@ -918,7 +922,11 @@ export class StreamEndpointTransition extends BaseTransition {
   }
 }
 
-const PROMPT_CACHE_KEY_HOSTS = new Set<Host>([OPENAI_RESPONSES_HOST, XAI_HOST]);
+const PROMPT_CACHE_KEY_HOSTS = new Set<Host>([
+  MISTRAL_HOST,
+  OPENAI_RESPONSES_HOST,
+  XAI_HOST,
+]);
 
 export function getPromptCacheKeyForHost(
   host: Host,

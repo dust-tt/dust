@@ -28,7 +28,6 @@ const DEFAULT_REASONING_EFFORT = "none";
 const configSchema = z.union([
   inputConfigSchema.extend({
     reasoning: z.object({ effort: z.literal("high") }),
-    cacheKey: z.undefined(),
     temperature: mistralNonGreedyTemperatureSchema.optional(),
   }),
   inputConfigSchema.extend({
@@ -36,7 +35,6 @@ const configSchema = z.union([
     reasoning: z
       .object({ effort: z.literal("none") })
       .default({ effort: DEFAULT_REASONING_EFFORT }),
-    cacheKey: z.undefined(),
     temperature: mistralTemperatureSchema.optional(),
   }),
 ]);

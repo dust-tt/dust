@@ -19,8 +19,6 @@ export const mistralConfigSchema = inputConfigSchema.extend({
       effort: z.enum([...MISTRAL_SUPPORTED_REASONING_EFFORTS]),
     })
     .optional(),
-  // Mistral has no explicit prompt-cache key.
-  cacheKey: z.undefined(),
   temperature: mistralTemperatureSchema.optional(),
 });
 
@@ -31,6 +29,5 @@ export type MistralInputConfig = z.infer<typeof mistralConfigSchema>;
 // Dust layer drops it via `dropReasoning` before validation.
 export const mistralNonReasoningConfigSchema = inputConfigSchema.extend({
   reasoning: z.undefined(),
-  cacheKey: z.undefined(),
   temperature: mistralTemperatureSchema.optional(),
 });
