@@ -8,8 +8,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type { CSSProperties } from "react";
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 
 const DISCOVER_TABS = ["Discover", "Agents & Skills"] as const;
 type DiscoverTab = (typeof DISCOVER_TABS)[number];
@@ -23,23 +22,20 @@ const DISCOVER_SECTIONS = [
 interface DiscoverContainerProps {
   onAgentConfigurationClick: (agent: LightAgentConfigurationType) => void;
   owner: WorkspaceType;
-  style?: CSSProperties;
   user: UserType;
 }
 
-export function DiscoverContainer({
-  onAgentConfigurationClick,
-  owner,
-  style,
-  user,
-}: DiscoverContainerProps) {
+export const DiscoverContainer = forwardRef<
+  HTMLDivElement,
+  DiscoverContainerProps
+>(function DiscoverContainer({ onAgentConfigurationClick, owner, user }, ref) {
   const [tab, setTab] = useState<DiscoverTab>("Discover");
 
   return (
     <div
+      ref={ref}
       id="discover-container"
-      className="flex h-full w-full max-w-conversation flex-col gap-2 py-8"
-      style={style}
+      className="flex min-h-panel w-full max-w-conversation shrink-0 flex-col gap-2 pb-16 pt-6"
     >
       <Tabs value={tab}>
         <TabsList>
@@ -69,4 +65,4 @@ export function DiscoverContainer({
       </Tabs>
     </div>
   );
-}
+});
