@@ -30,8 +30,8 @@ import assert from "assert";
  * `use`, `make_discoverable`, `use_workspace_pool`) is a governance capability: an action that is
  * inherently workspace-wide, stays type-level, and is never granted per instance — which is why the
  * name and the verb can be the same word. A role named for what its holder is (`reader`, `member`,
- * `editor`, `admin`) describes access to a resource; it may be granted type-wide today and per
- * instance later, so it keeps a role name even when its only level is `type`.
+ * `editor`, `admin`) describes access to a resource. Instance roles can be granted on one instance
+ * or on every instance through resourceId = -1.
  *
  * A grant row stores the role name (see `@app/types/group_permissions`); `assertValidGrant` checks
  * a grant type is a role defined for its resource type at the required level. Translating a
@@ -101,10 +101,9 @@ export const ROLE_REGISTRY: Record<
     publish: { verbs: ["publish"], levels: ["type"] },
   },
   skill: {
-    // Type-level for now — the workspace global group holds it on `skill:-1`, which is what makes
-    // every skill readable — but named as a role rather than after its verb: unlike a governance
-    // capability, readership is expected to become per-skill.
-    reader: { verbs: ["read"], levels: ["type"] },
+    // The workspace global group holds this instance role on `skill:-1`, making every skill
+    // readable. The same role can also be granted on a specific skill.
+    reader: { verbs: ["read"], levels: ["instance"] },
     editor: { verbs: ["read", "write", "admin"], levels: ["instance"] },
     create: { verbs: ["create"], levels: ["type"] },
     publish: { verbs: ["publish"], levels: ["type"] },

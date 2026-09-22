@@ -130,7 +130,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
     return Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId);
   }
 
-  it("returns every type-level verb for an admin", async () => {
+  it("returns type-level capabilities and type-wide instance grants for an admin", async () => {
     // Admins hold every type-level capability by default; instance-only domains
     // (space, models_tier) stay empty. `read` on skills comes from the global group's `reader`
     // grant, which every workspace holds (see WorkspaceFactory / seedWorkspaceCapabilities).

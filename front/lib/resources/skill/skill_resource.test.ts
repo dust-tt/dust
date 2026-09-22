@@ -193,13 +193,52 @@ describe("SkillResource", () => {
         testContext.workspace.sId
       );
 
-      // Not an editor, so no `editor` grant: read comes from the role grants until they are
-      // dropped, and from the global group's workspace-wide `reader` grant after that.
+      // Not an editor, so no `editor` grant: read comes from the global group's workspace-wide
+      // `reader` grant.
       expect(otherAuth.can("read", skill)).toBe(true);
       expect(otherAuth.can("write", skill)).toBe(false);
 
       const fetched = await SkillResource.fetchById(otherAuth, skill.sId);
       expect(fetched?.sId).toBe(skill.sId);
+    });
+
+    it("limits an instance reader grant to that skill without granting edit access", async () => {
+      const { authenticator: auth, workspace, globalGroup } = testContext;
+      const readableSkill = await SkillFactory.create(auth, {
+        name: "Readable Skill",
+      });
+      const otherSkill = await SkillFactory.create(auth, {
+        name: "Other Skill",
+      });
+      await GroupPermissionResource.revokeTypeWide(auth, {
+        group: globalGroup,
+        grantType: "reader",
+        resourceType: "skill",
+      });
+      await GroupPermissionResource.grantToEverybody(auth, {
+        grantType: "reader",
+        resourceType: "skill",
+        resourceId: readableSkill.id,
+      });
+
+      const reader = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, reader, { role: "user" });
+      const readerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        reader.sId,
+        workspace.sId
+      );
+
+      expect(
+        (await SkillResource.fetchById(readerAuth, readableSkill.sId))?.sId
+      ).toBe(readableSkill.sId);
+      expect(
+        await SkillResource.fetchById(readerAuth, otherSkill.sId)
+      ).toBeNull();
+      expect(readerAuth.can("write", readableSkill)).toBe(false);
+      expect(readerAuth.can("admin", readableSkill)).toBe(false);
+      expect((await readerAuth.getWorkspacePermissions()).skill).not.toContain(
+        "read"
+      );
     });
   });
 

@@ -201,9 +201,7 @@ describe("ROLE_REGISTRY invariants", () => {
 
   it("keeps every type-level role a singleton", () => {
     // The Governance page toggles capabilities one verb at a time, so a type-level role must carry
-    // exactly one verb. The name is not required to be that verb: a governance capability is named
-    // after its verb because it stays type-level forever, while a role that describes access to a
-    // resource (skill `reader`) keeps its role name so it can also be granted per instance later.
+    // exactly one verb. Instance roles can bundle verbs, even when granted on every instance.
     for (const roles of roleMaps) {
       for (const role of Object.values(roles)) {
         if (role.levels.includes("type")) {

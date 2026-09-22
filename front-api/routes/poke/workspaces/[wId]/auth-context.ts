@@ -1,7 +1,6 @@
 import { getWorkspaceCellRedirect } from "@app/lib/api/cells/lookup";
 import type { GetPokeWorkspaceAuthContextResponseType } from "@app/lib/api/poke/auth_context";
 import { Authenticator } from "@app/lib/auth";
-import { allWorkspacePermissions } from "@app/lib/resources/group_permission_registry";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -65,7 +64,7 @@ app.get(
       });
     }
 
-    const workspacePermissions = allWorkspacePermissions();
+    const workspacePermissions = await auth.getWorkspacePermissions();
 
     return ctx.json({
       user: auth.toPokeUserJSON(),
