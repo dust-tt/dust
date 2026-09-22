@@ -44,9 +44,10 @@ import { literal, Op } from "sequelize";
 import { z } from "zod";
 
 // Grants are cached in a Redis hash per workspace, one field per groupId, so a caller reads its
-// own groups and fills only what is missing. Readers fill with HSETNX and mutations delete after
-// commit, so a stale in-flight read cannot replace a fresher value. The hash expires one hour after
-// its creation, so an entry missed by an invalidation is never served indefinitely.
+// own groups and fills only what is missing. Readers fill with HSETNX and mutations delete both
+// immediately and after commit, so a stale in-flight read cannot replace a fresher value. The hash
+// expires one hour after its creation, so an entry missed by an invalidation is never served
+// indefinitely.
 
 export type GroupGrant = {
   groupId: ModelId;
@@ -276,7 +277,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         transaction: t,
       });
 
-      await this.invalidateGroupGrantsAfterCommit(auth, [group.id], t);
+      await this.invalidateGroupGrantsForMutation(auth, [group.id], t);
 
       return new this(GroupPermissionModel, row.get());
     }, transaction);
@@ -694,7 +695,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       },
       transaction,
     });
-    await this.invalidateGroupGrantsAfterCommit(auth, [group.id], transaction);
+    await this.invalidateGroupGrantsForMutation(auth, [group.id], transaction);
   }
 
   // Read grants for the given groups, optionally narrowed by grant type / resource type /
@@ -834,10 +835,17 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
   }
 
-  // After commit only: inside the transaction a reader would refill the field from rows that are
-  // not committed yet. Deletes rather than rewrites the fields: a rewrite that fails leaves
-  // revoked grants readable, a delete that fails only costs the next reader a query.
-  private static async invalidateGroupGrantsAfterCommit(
+  // Deletes rather than rewrites the fields: a rewrite that fails leaves revoked grants readable,
+  // a delete that fails only costs the next reader a query.
+  /**
+   * @cc [owner:sfriquet,label:security;backend] mutation-invalidates-twice
+   * A grant mutation MUST delete the cached fields of the groups it touches both immediately and
+   * again after the transaction commits. The immediate delete drops the pre-mutation snapshot a
+   * reader may have filled before the mutation, and is the only one that runs when the transaction
+   * never commits; the after-commit delete drops a snapshot refilled from rows that were not
+   * committed yet. Dropping either one leaves a stale field readable for the hash's whole TTL.
+   */
+  private static async invalidateGroupGrantsForMutation(
     auth: Authenticator,
     groupModelIds: ModelId[],
     transaction?: Transaction
@@ -846,8 +854,11 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       return;
     }
 
+    const uniqueGroupModelIds = [...new Set(groupModelIds)];
+
+    await this.invalidateGroupGrants(auth, uniqueGroupModelIds);
     await invalidateCacheAfterCommit(transaction, () =>
-      this.invalidateGroupGrants(auth, [...new Set(groupModelIds)])
+      this.invalidateGroupGrants(auth, uniqueGroupModelIds)
     );
   }
 
@@ -930,7 +941,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       },
       transaction,
     });
-    await this.invalidateGroupGrantsAfterCommit(
+    await this.invalidateGroupGrantsForMutation(
       auth,
       groupModelIds,
       transaction
@@ -1022,7 +1033,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         workspaceId,
       },
     });
-    await this.invalidateGroupGrantsAfterCommit(auth, groupModelIds);
+    await this.invalidateGroupGrantsForMutation(auth, groupModelIds);
   }
 
   // Workspace-scrub hook: drop every grant for the workspace. Must run before groups and the
@@ -1088,7 +1099,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       })),
       { ignoreDuplicates: true, transaction }
     );
-    await this.invalidateGroupGrantsAfterCommit(
+    await this.invalidateGroupGrantsForMutation(
       auth,
       groups.map((group) => group.id),
       transaction
@@ -1111,7 +1122,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       },
       transaction,
     });
-    await this.invalidateGroupGrantsAfterCommit(auth, [group.id], transaction);
+    await this.invalidateGroupGrantsForMutation(auth, [group.id], transaction);
   }
 
   // Batch of instance-level grants (one INSERT, unique index dedupes). Each is validated; -1 is
@@ -1160,7 +1171,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       })),
       { ignoreDuplicates: true, transaction }
     );
-    await this.invalidateGroupGrantsAfterCommit(
+    await this.invalidateGroupGrantsForMutation(
       auth,
       grants.map(({ group }) => group.id),
       transaction
@@ -1279,7 +1290,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       where: capabilityWhere,
       transaction,
     });
-    await this.invalidateGroupGrantsAfterCommit(
+    await this.invalidateGroupGrantsForMutation(
       auth,
       groupModelIds,
       transaction
@@ -1404,7 +1415,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       },
       transaction,
     });
-    await GroupPermissionResource.invalidateGroupGrantsAfterCommit(
+    await GroupPermissionResource.invalidateGroupGrantsForMutation(
       auth,
       [this.groupId],
       transaction
