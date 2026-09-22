@@ -43,11 +43,7 @@ interface SkillsListProps {
   onSelect: (skillId: string) => void;
 }
 
-function SkillsList({
-  searchTerm,
-  filters,
-  onSelect,
-}: SkillsListProps) {
+function SkillsList({ searchTerm, filters, onSelect }: SkillsListProps) {
   const owner = useWorkspace();
   const {
     cursorPagination,
