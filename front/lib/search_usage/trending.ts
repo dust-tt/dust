@@ -14,6 +14,7 @@ import type { SearchUsageDimension } from "@app/lib/search_usage/usage";
 import { cacheWithRedisResult } from "@app/lib/utils/cache";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isNumber, isString } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
 
 export const DISCOVERY_TRENDING_WINDOW_DAYS = 7;
@@ -122,10 +123,10 @@ function candidatesFromBuckets(
     const currentUsers = bucket.current?.users?.value;
     const previousUsers = bucket.previous?.users?.value;
     if (
-      typeof resourceId !== "string" ||
-      typeof currentUsers !== "number" ||
+      !isString(resourceId) ||
+      !isNumber(currentUsers) ||
       !Number.isFinite(currentUsers) ||
-      typeof previousUsers !== "number" ||
+      !isNumber(previousUsers) ||
       !Number.isFinite(previousUsers)
     ) {
       return incompleteTrendingSnapshot();
