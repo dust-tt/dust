@@ -17,6 +17,7 @@ import type { DiscoveryItemType } from "@app/types/api/discovery";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -29,15 +30,6 @@ export type PinnedDiscoveryItemInput = {
   position: number;
 };
 
-type AccessibleDiscoveryTarget<
-  T extends Pick<PinnedDiscoveryItemInput, "type" | "itemId">,
-> = {
-  type: GroupPinnedItemType;
-  pin: T;
-  target: AgentResource | SkillResource;
-  withPin: (pin: DiscoveryItemResource) => ResolvedDiscoveryItem;
-};
-
 export type ResolvedDiscoveryItem = {
   type: GroupPinnedItemType;
   pin: DiscoveryItemResource;
@@ -45,85 +37,72 @@ export type ResolvedDiscoveryItem = {
   toJSON: () => DiscoveryItemType;
 };
 
-const discoveryTargets: Record<
-  GroupPinnedItemType,
-  {
-    resolve: <T extends Pick<PinnedDiscoveryItemInput, "type" | "itemId">>(
-      auth: Authenticator,
-      indexedPins: Array<{ index: number; pin: T }>
-    ) => Promise<
-      Array<{ index: number; resolved: AccessibleDiscoveryTarget<T> }>
-    >;
-  }
-> = {
-  agent: {
-    async resolve(auth, indexedPins) {
-      const agents = await AgentResource.fetchByIds(
-        auth,
-        indexedPins.map(({ pin }) => pin.itemId)
-      );
-      const agentsById = new Map(
-        agents
-          .filter(
-            (agent) => agent.status === "active" && auth.can("read", agent)
-          )
-          .map((agent) => [agent.sId, agent])
-      );
+type DiscoveryTargetByType = {
+  agent: AgentResource;
+  skill: SkillResource;
+};
 
-      return removeNulls(
-        indexedPins.map(({ index, pin }) => {
-          const target = agentsById.get(pin.itemId);
-          if (!target) {
-            return null;
-          }
-          return {
-            index,
-            resolved: {
-              type: "agent",
-              pin,
-              target,
-              withPin: (persisted) => agentDiscoveryItem(persisted, target),
-            },
-          };
-        })
-      );
-    },
+type DiscoveryTargetHandler<K extends GroupPinnedItemType> = {
+  fetchAccessible: (
+    auth: Authenticator,
+    ids: string[]
+  ) => Promise<Map<string, DiscoveryTargetByType[K]>>;
+  toItem: (
+    pin: DiscoveryItemResource,
+    target: DiscoveryTargetByType[K]
+  ) => ResolvedDiscoveryItem;
+};
+
+// One entry per pinned target. `GROUP_PINNED_ITEM_TYPES` requires every type to be present, and
+// each entry's card must match `DiscoveryItemType`, so a new type is added here and in that union.
+const discoveryTargets: {
+  [K in GroupPinnedItemType]: DiscoveryTargetHandler<K>;
+} = {
+  agent: {
+    fetchAccessible: fetchAccessibleAgents,
+    toItem: agentDiscoveryItem,
   },
   skill: {
-    async resolve(auth, indexedPins) {
-      const skills = await SkillResource.fetchByIds(
-        auth,
-        indexedPins.map(({ pin }) => pin.itemId),
-        {
-          onlyActive: true,
-          permissionFiltering: "strict",
-          withFileAttachments: false,
-          withInstructions: false,
-          withTools: false,
-        }
-      );
-      const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
-
-      return removeNulls(
-        indexedPins.map(({ index, pin }) => {
-          const target = skillsById.get(pin.itemId);
-          if (!target) {
-            return null;
-          }
-          return {
-            index,
-            resolved: {
-              type: "skill",
-              pin,
-              target,
-              withPin: (persisted) => skillDiscoveryItem(persisted, target),
-            },
-          };
-        })
-      );
-    },
+    fetchAccessible: fetchAccessibleSkills,
+    toItem: skillDiscoveryItem,
   },
 };
+
+function visitDiscoveryTarget<R>(
+  type: GroupPinnedItemType,
+  visit: <K extends GroupPinnedItemType>(
+    handler: DiscoveryTargetHandler<K>
+  ) => R
+): R {
+  switch (type) {
+    case "agent":
+      return visit(discoveryTargets.agent);
+    case "skill":
+      return visit(discoveryTargets.skill);
+    default:
+      return assertNever(type);
+  }
+}
+
+async function fetchAccessibleAgents(auth: Authenticator, ids: string[]) {
+  const agents = await AgentResource.fetchByIds(auth, ids);
+  return new Map(
+    agents
+      .filter((agent) => agent.status === "active" && auth.can("read", agent))
+      .map((agent) => [agent.sId, agent])
+  );
+}
+
+async function fetchAccessibleSkills(auth: Authenticator, ids: string[]) {
+  const skills = await SkillResource.fetchByIds(auth, ids, {
+    onlyActive: true,
+    permissionFiltering: "strict",
+    withFileAttachments: false,
+    withInstructions: false,
+    withTools: false,
+  });
+  return new Map(skills.map((skill) => [skill.sId, skill]));
+}
 
 function discoveryPinJSON(pin: DiscoveryItemResource) {
   return {
@@ -229,27 +208,34 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
    * Admin pin writes MUST resolve an active, readable target through the target Resource's normal
    * permission checks.
    */
-  private static async resolveAccessibleTargets<
-    T extends Pick<PinnedDiscoveryItemInput, "type" | "itemId">,
-  >(
+  private static async resolveAccessibleTargets(
     auth: Authenticator,
-    items: T[]
-  ): Promise<Array<AccessibleDiscoveryTarget<T>>> {
+    items: DiscoveryItemResource[]
+  ): Promise<ResolvedDiscoveryItem[]> {
     const indexedPins = items.map((pin, index) => ({ index, pin }));
     const resolved = (
       await Promise.all(
         GROUP_PINNED_ITEM_TYPES.map((type) =>
-          discoveryTargets[type].resolve(
-            auth,
-            indexedPins.filter(({ pin }) => pin.type === type)
-          )
+          visitDiscoveryTarget(type, async (handler) => {
+            const pins = indexedPins.filter(({ pin }) => pin.type === type);
+            const targetsById = await handler.fetchAccessible(
+              auth,
+              pins.map(({ pin }) => pin.itemId)
+            );
+            return removeNulls(
+              pins.map(({ index, pin }) => {
+                const target = targetsById.get(pin.itemId);
+                return target
+                  ? { index, item: handler.toItem(pin, target) }
+                  : null;
+              })
+            );
+          })
         )
       )
     ).flat();
 
-    return resolved
-      .sort((a, b) => a.index - b.index)
-      .map(({ resolved: item }) => item);
+    return resolved.sort((a, b) => a.index - b.index).map(({ item }) => item);
   }
 
   static toJSON(item: ResolvedDiscoveryItem): DiscoveryItemType {
@@ -269,9 +255,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       this.baseFetch(auth, { groupModelIds }),
       auth.getGlobalGroupModelId(),
     ]);
-    const rows = (await this.resolveAccessibleTargets(auth, items)).map(
-      (item) => item.withPin(item.pin)
-    );
+    const rows = await this.resolveAccessibleTargets(auth, items);
     const orderedGroupModelIds = [
       ...(globalGroupModelId !== null &&
       groupModelIds.includes(globalGroupModelId)
@@ -317,9 +301,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       groupModelIds: [groupModelId],
       transaction,
     });
-    return (await this.resolveAccessibleTargets(auth, items)).map((item) =>
-      item.withPin(item.pin)
-    );
+    return this.resolveAccessibleTargets(auth, items);
   }
 
   static async deleteAllForItem(
@@ -381,57 +363,64 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       return unauthorizedPinMutation();
     }
 
-    const [resolvedItem] = await this.resolveAccessibleTargets(auth, [item]);
-    if (!resolvedItem) {
-      return new Err(
-        new DustError(
-          "invalid_request_error",
-          "Pinned discovery items must reference an active agent or skill in this workspace."
-        )
-      );
-    }
-
     const workspaceModelId = auth.getNonNullableWorkspace().id;
 
-    return withTransaction(async (t) => {
-      const group = await GroupModel.findOne({
-        where: {
-          id: groupModelId,
-          workspaceId: workspaceModelId,
-        },
-        lock: t.LOCK.UPDATE,
-        transaction: t,
-      });
-      if (!group) {
+    return visitDiscoveryTarget(item.type, async (handler) => {
+      const target = (await handler.fetchAccessible(auth, [item.itemId])).get(
+        item.itemId
+      );
+      if (!target) {
         return new Err(
-          new DustError("group_not_found", "Group not found in this workspace.")
+          new DustError(
+            "invalid_request_error",
+            "Pinned discovery items must reference an active agent or skill in this workspace."
+          )
         );
       }
 
-      await this.model.destroy({
-        where: {
-          workspaceId: workspaceModelId,
-          groupId: groupModelId,
-          [Op.or]: [
-            { position: item.position },
-            { type: item.type, itemId: item.itemId },
-          ],
-        },
-        transaction: t,
-      });
+      return withTransaction(async (t) => {
+        const group = await GroupModel.findOne({
+          where: {
+            id: groupModelId,
+            workspaceId: workspaceModelId,
+          },
+          lock: t.LOCK.UPDATE,
+          transaction: t,
+        });
+        if (!group) {
+          return new Err(
+            new DustError(
+              "group_not_found",
+              "Group not found in this workspace."
+            )
+          );
+        }
 
-      const row = await this.model.create(
-        {
-          workspaceId: workspaceModelId,
-          groupId: groupModelId,
-          type: item.type,
-          itemId: item.itemId,
-          position: item.position,
-        },
-        { transaction: t }
-      );
-      return new Ok(resolvedItem.withPin(new this(this.model, row.get())));
-    }, transaction);
+        await this.model.destroy({
+          where: {
+            workspaceId: workspaceModelId,
+            groupId: groupModelId,
+            [Op.or]: [
+              { position: item.position },
+              { type: item.type, itemId: item.itemId },
+            ],
+          },
+          transaction: t,
+        });
+
+        const row = await this.model.create(
+          {
+            workspaceId: workspaceModelId,
+            groupId: groupModelId,
+            type: item.type,
+            itemId: item.itemId,
+            position: item.position,
+          },
+          { transaction: t }
+        );
+        return new Ok(handler.toItem(new this(this.model, row.get()), target));
+      }, transaction);
+    });
   }
 
   static async removePinnedForGroup(
