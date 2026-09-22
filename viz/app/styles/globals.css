@@ -8,6 +8,10 @@
 @config "../../tailwind.config.ts";
 @source "../../components";
 @source "..";
+/* Keep Sparkle responsive variants in the same cascade as Viz utilities. */
+@source "../../../node_modules/@dust-tt/sparkle/src";
+
+@custom-variant @sm (@container (width >= 40rem));
 
 @utility leading-96p {
   line-height: 0.96;

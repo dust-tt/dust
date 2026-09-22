@@ -80,6 +80,7 @@ import { Check } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "utils";
 import { cn as currentCn } from "@viz/lib/utils";
+import { Document, type DocumentProps } from "@dust/document/v1";
 import * as slideshowV1 from "@dust/slideshow/v1";
 import * as slideshowV2 from "@dust/slideshow/v2";
 import { captureScreenshot, triggerUserFileDownload, useFrameFunction, usePodFunction, SandboxFunctionCallError, useFile, readFile, writeFile } from "@dust/react-hooks";
@@ -103,7 +104,8 @@ const download: Promise<void> = triggerUserFileDownload({ content: "hello" });
 let error: SandboxFunctionCallError | undefined;
 export default function App() {
   const [label] = useState("Hello");
-  return <Button variant="outline">{label}</Button>;
+  const document: DocumentProps = { path: "./content.json", className: "rounded-xl", readOnly: false, autosaveDebounceMs: 5000, visuals: { revenue: <div>Chart</div> } };
+  return <><Button variant="outline">{label}</Button><Document {...document} /></>;
 }
 `,
       })
@@ -111,6 +113,10 @@ export default function App() {
   });
 
   it.each([
+    [
+      'import { Document } from "@dust/document/v1"; export default () => <Document />',
+      2741,
+    ],
     [
       'import { useFile } from "@dust/react-hooks"; export default () => useFile("./notes.json")?.revision',
       2339,
