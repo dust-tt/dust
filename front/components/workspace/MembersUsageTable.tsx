@@ -679,7 +679,7 @@ const seatUsageColumn: ColumnDef<RowData, string> = {
     );
   },
   meta: {
-    className: "hidden @4xl:table-cell @4xl:w-24",
+    className: "hidden @4xl:table-cell @4xl:w-32",
     headerAlign: "center",
   },
 };

@@ -140,6 +140,9 @@ function getTableColumns(
   const usedByColumn: ColumnDef<RowData, number> = {
     id: "usedBy",
     header: "Used by",
+    meta: {
+      headerAlign: "center",
+    },
     // Return a numeric count to allow numeric sorts if we want
     accessorFn: (row) => row.dataSourceView.usage?.count ?? 0,
     cell: (info) => (
