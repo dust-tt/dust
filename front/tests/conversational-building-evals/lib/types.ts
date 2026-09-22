@@ -20,9 +20,17 @@ export interface SeedSkill {
   availability?: SkillAvailability;
 }
 
+/** A regular (non-admin) member to create in the scenario's workspace before the run. */
+export interface SeedMember {
+  key: string;
+  firstName: string;
+  lastName: string;
+}
+
 /** Everything the scenario's workspace is seeded with. Tools then run for real against it. */
 export interface WorkspaceSeed {
   skills: SeedSkill[];
+  members?: SeedMember[];
 }
 
 export interface ConversationMessage {
@@ -45,6 +53,20 @@ export type FinalToolCallAssertion =
       // Which parts of the suggestion must be present. Defaults to at least one of them.
       edits?: SkillUpdateEditKind[];
     }
+  | {
+      type: "suggestSkillEditors";
+      skillKey: string;
+      // Members (by seed key) that must appear in `addUserIds`.
+      addMemberKeys?: string[];
+    }
+  | { type: "suggestSkillDeletion"; skillKey: string }
+  | { type: "suggestSkillName"; skillKey: string }
+  | {
+      type: "suggestSkillAvailability";
+      skillKey: string;
+      availability?: SkillAvailability;
+    }
+  | { type: "suggestSkillUserFacingDescription"; skillKey: string }
   | { type: "suggestAgentCreation" };
 
 interface BaseTestCase {
@@ -95,10 +117,11 @@ export interface ToolCall {
   arguments: Record<string, unknown>;
 }
 
-/** The scenario's seeded workspace: an admin user's authenticator and the created skill ids. */
+/** The scenario's seeded workspace: an admin user's authenticator and the created entity ids. */
 export interface SeededScenario {
   auth: Authenticator;
   skillIdsByKey: Map<string, string>;
+  memberIdsByKey: Map<string, string>;
 }
 
 /** The agent under test: the Dust global agent with the conversational-building skill enabled. */

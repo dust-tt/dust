@@ -33,6 +33,18 @@ export async function seedScenario(
       workspace.sId
     );
 
+    const memberIdsByKey = new Map<string, string>();
+    for (const member of testCase.workspaceSeed.members ?? []) {
+      const memberUser = await UserFactory.withName(
+        member.firstName,
+        member.lastName
+      );
+      await MembershipFactory.associate(workspace, memberUser, {
+        role: "user",
+      });
+      memberIdsByKey.set(member.key, memberUser.sId);
+    }
+
     const skillIdsByKey = new Map<string, string>();
     for (const seed of testCase.workspaceSeed.skills) {
       const skill = await SkillFactory.create(auth, {
@@ -49,6 +61,6 @@ export async function seedScenario(
     // Pick up the editor group memberships created alongside the skills.
     await auth.refresh();
 
-    return { auth, skillIdsByKey };
+    return { auth, skillIdsByKey, memberIdsByKey };
   });
 }

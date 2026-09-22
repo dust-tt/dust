@@ -146,7 +146,7 @@ describe
               const finalToolCallResult = validateFinalToolCall(
                 testCase.expectedFinalToolCall,
                 finalToolCall,
-                scenario.skillIdsByKey
+                scenario
               );
 
               const judgeResult = await evaluateWithJudge(

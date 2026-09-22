@@ -23,6 +23,15 @@ export class UserFactory {
     return UserResource.makeNew(this.defaultParams(false, new Date(), null));
   }
 
+  static async withName(firstName: string, lastName: string) {
+    return UserResource.makeNew({
+      ...this.defaultParams(false),
+      name: `${firstName} ${lastName}`,
+      firstName,
+      lastName,
+    });
+  }
+
   static async withWorkOSId(workOSUserId: string) {
     return UserResource.makeNew({
       ...this.defaultParams(false),
