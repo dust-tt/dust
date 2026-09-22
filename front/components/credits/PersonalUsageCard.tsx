@@ -4,13 +4,14 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   formatCredits,
   formatCreditValue,
+  formatRelativeResetDay,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/client/credits";
 import { useMyUsage, useSeatPlan } from "@app/lib/swr/credits";
 import { useFairUseCredits } from "@app/lib/swr/fair_use_credits";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { isCreditPricedPlan } from "@app/types/plan";
-import { ONE_DAY_MS, ordinalDay } from "@app/types/shared/utils/date_utils";
+import { ordinalDay } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -20,42 +21,6 @@ import {
   Stars02,
   Tooltip,
 } from "@dust-tt/sparkle";
-
-// Relative day label for a refill date: "today", "tomorrow", a weekday within
-// the week, or the calendar date beyond that.
-function formatRefillDay(isoDate: string): string {
-  const refillAt = new Date(isoDate);
-  const now = new Date();
-  const refillDayMs = Date.UTC(
-    refillAt.getUTCFullYear(),
-    refillAt.getUTCMonth(),
-    refillAt.getUTCDate()
-  );
-  const currentDayMs = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate()
-  );
-  const refillDelayDays = Math.round((refillDayMs - currentDayMs) / ONE_DAY_MS);
-
-  if (refillDelayDays <= 0) {
-    return "today";
-  }
-  if (refillDelayDays === 1) {
-    return "tomorrow";
-  }
-  if (refillDelayDays < 7) {
-    return `on ${refillAt.toLocaleDateString("en-US", {
-      weekday: "long",
-      timeZone: "UTC",
-    })}`;
-  }
-  return `on ${refillAt.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  })}`;
-}
 
 interface PersonalUsageCardProps {
   owner: WorkspaceType;
@@ -118,7 +83,7 @@ export function PersonalUsageCard({
     ? premiumModelUsage.usedMessages >= premiumModelUsage.limitMessages
     : false;
   const nextPremiumModelRefillDate = premiumModelUsage?.nextRefill
-    ? formatRefillDay(premiumModelUsage.nextRefill.availableAt)
+    ? formatRelativeResetDay(premiumModelUsage.nextRefill.availableAt)
     : null;
   const fairUseCreditsPercentage = fairUseAwuCreditsState
     ? Math.min(
@@ -136,6 +101,15 @@ export function PersonalUsageCard({
       ? getTimeframeSecondsFromLiteral(fairUseAwuCreditsState.timeframe) /
         (24 * 60 * 60)
       : null;
+  // A fixed window resets all at once at `nextResetAt`; a rolling one slides
+  // continuously, so it is described by its window length instead.
+  const fairUseResetLabel =
+    fairUseAwuCreditsState?.windowKind === "fixed" &&
+    fairUseAwuCreditsState.nextResetAt
+      ? `Resets ${formatRelativeResetDay(fairUseAwuCreditsState.nextResetAt)}`
+      : fairUseWindowDays !== null
+        ? `Resets on a rolling ${fairUseWindowDays}-day basis`
+        : null;
   const isLoading = isMyUsageLoading || isFairUseCreditsLoading;
 
   return (
@@ -209,9 +183,9 @@ export function PersonalUsageCard({
                   <span className="text-sm font-medium text-foreground">
                     Fair Usage credits
                   </span>
-                  {fairUseWindowDays !== null && (
+                  {fairUseResetLabel && (
                     <span className="text-xs text-muted-foreground">
-                      Resets on a rolling {fairUseWindowDays}-day basis
+                      {fairUseResetLabel}
                     </span>
                   )}
                 </div>
@@ -279,7 +253,7 @@ export function PersonalUsageCard({
               {isFairUseCreditsAtLimit && nextFairUseRefill ? (
                 <span className="text-xs text-muted-foreground">
                   {formatCreditValue(nextFairUseRefill.credits)} available again{" "}
-                  {formatRefillDay(nextFairUseRefill.date)}
+                  {formatRelativeResetDay(nextFairUseRefill.date)}
                 </span>
               ) : null}
             </div>

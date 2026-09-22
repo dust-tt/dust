@@ -1,3 +1,4 @@
+import { getFeatureFlags } from "@app/lib/auth";
 import type { GetFairUseCreditsResponseBody } from "@app/lib/metronome/user_block";
 import { getFairUseAwuCreditsStatus } from "@app/lib/metronome/user_block";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -16,6 +17,9 @@ app.get("/", async (ctx): HandlerResult<GetFairUseCreditsResponseBody> => {
     workspace,
     user: user.toJSON(),
     plan: auth.plan(),
+    useFixedWindow: (await getFeatureFlags(auth)).includes(
+      "fixed_window_fair_use"
+    ),
   });
 
   return ctx.json({ fairUseAwuCreditsState });
