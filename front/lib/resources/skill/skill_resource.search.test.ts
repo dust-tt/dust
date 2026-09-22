@@ -84,6 +84,9 @@ describe("SkillResource.search pagination", () => {
 
     const first = await SkillResource.search(auth, options);
     assert(first.isOk());
+    expect(
+      first.value.skills.every((item) => item instanceof SkillResource)
+    ).toBe(true);
     expect(first.value.skills.map((item) => item.sId)).toEqual([
       skill.sId,
       secondSkill.sId,

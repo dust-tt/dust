@@ -89,21 +89,18 @@ app.post(
     ];
     const users = await UserResource.fetchByIds(editorIds);
 
-    const editorsById = new Map(
-      users.map((user) => {
-        const { sId, fullName, image } = user.toJSON();
-        return [sId, { sId, fullName, image }];
-      })
-    );
+    const editorsById = new Map(users.map((user) => [user.sId, user]));
 
     return ctx.json({
       ...result.value,
-      skills: result.value.skills.map((skill) => ({
-        ...skill,
-        editors: removeNulls(
-          [...new Set(skill.editorIds)].map((id) => editorsById.get(id))
-        ),
-      })),
+      skills: result.value.skills.map((skill) =>
+        skill.toJSON(auth, {
+          forListing: true,
+          editors: removeNulls(
+            [...new Set(skill.editorIds)].map((id) => editorsById.get(id))
+          ),
+        })
+      ),
     });
   }
 );

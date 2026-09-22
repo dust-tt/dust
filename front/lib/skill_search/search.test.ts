@@ -76,7 +76,9 @@ async function searchListings(
     limit: 200,
   });
   assert(result.isOk());
-  return result.value.skills;
+  return result.value.skills.map((skill) =>
+    skill.toJSON(auth, { forListing: true, editors: [] })
+  );
 }
 
 describe("custom skill search", () => {
@@ -413,7 +415,12 @@ describe("custom skill search", () => {
       limit: 2,
     });
     assert(page.isOk());
-    expect(page.value).toEqual({
+    expect({
+      ...page.value,
+      skills: page.value.skills.map((skill) =>
+        skill.toJSON(auth, { forListing: true, editors: [] })
+      ),
+    }).toEqual({
       skills: [expected[0]],
       hasMore: true,
       nextCursor: Buffer.from(JSON.stringify([1, 0, "missing-skill"])).toString(
@@ -469,9 +476,7 @@ describe("custom skill search", () => {
         archived.sId,
       ]);
       const listing = both[0];
-      expect(
-        SkillListItemSchema.omit({ editors: true }).strict().parse(listing)
-      ).toEqual({
+      expect(SkillListItemSchema.strict().parse(listing)).toEqual({
         sId: active.sId,
         canAdministrate: true,
         status: "active",
@@ -481,6 +486,7 @@ describe("custom skill search", () => {
         requestedSpaceIds: [globalSpace.sId],
         mcpServerViewIds: ["tool-view-id"],
         editorIds: [auth.getNonNullableUser().sId],
+        editors: [],
         editedBy: auth.getNonNullableUser().sId,
         availability: "workspace_users",
         activeUsersCount: null,
@@ -529,7 +535,10 @@ describe("custom skill search", () => {
         limit: 200,
       });
       assert(result.isOk());
-      const listings = result.value.skills;
+      expect(result.value.skills[0]).toBeInstanceOf(SkillResource);
+      const listings = result.value.skills.map((skill) =>
+        skill.toJSON(auth, { forListing: true, editors: [] })
+      );
       expect(listings).toEqual([
         expect.objectContaining({
           sId: global.skill_id,
@@ -539,9 +548,7 @@ describe("custom skill search", () => {
           updatedAt: null,
         }),
       ]);
-      expect(
-        SkillListItemSchema.omit({ editors: true }).parse(listings[0]).updatedAt
-      ).toBeNull();
+      expect(SkillListItemSchema.parse(listings[0]).updatedAt).toBeNull();
       expect(onQuery).not.toHaveBeenCalled();
     } finally {
       frontSequelize.removeHook("afterQuery", "global-skill-search-no-db");
@@ -570,9 +577,7 @@ describe("custom skill search", () => {
       searchTerm: "",
       permissionFiltering: "redact_unreadable",
     });
-    expect(
-      SkillListItemSchema.omit({ editors: true }).strict().parse(redacted)
-    ).toMatchObject({
+    expect(SkillListItemSchema.strict().parse(redacted)).toMatchObject({
       sId: skill.sId,
       name: skill.name,
       canAdministrate: skill.toJSON(auth).canAdministrate,
