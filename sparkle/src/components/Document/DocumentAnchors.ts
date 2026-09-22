@@ -41,8 +41,14 @@ const getLocalHeadingId = (href: string): string | null => {
   return getHeadingIdFromHash(targetUrl.hash);
 };
 
+/**
+ * @cc [owner:flvndvd,label:product] document-unique-heading-ids
+ * Heading IDs MUST be unique within a document, including collisions between
+ * literal heading slugs and IDs generated for duplicate headings.
+ */
 const headingDecorations = (doc: Node) => {
-  const slugs = new Map<string, number>();
+  const nextSuffixBySlug = new Map<string, number>();
+  const usedHeadingIds = new Set<string>();
   const decorations: Decoration[] = [];
 
   doc.descendants((node, pos) => {
@@ -60,11 +66,19 @@ const headingDecorations = (doc: Node) => {
       return;
     }
 
-    const count = slugs.get(slug) ?? 0;
-    slugs.set(slug, count + 1);
+    let headingId = slug;
+    let suffix = nextSuffixBySlug.get(slug) ?? 1;
+
+    while (usedHeadingIds.has(headingId)) {
+      headingId = `${slug}-${suffix}`;
+      suffix += 1;
+    }
+
+    usedHeadingIds.add(headingId);
+    nextSuffixBySlug.set(slug, suffix);
     decorations.push(
       Decoration.node(pos, pos + node.nodeSize, {
-        id: count === 0 ? slug : `${slug}-${count}`,
+        id: headingId,
       })
     );
   });
