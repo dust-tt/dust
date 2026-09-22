@@ -58,8 +58,7 @@ export function Cell({ children, className, column, ...props }: CellProps) {
       {presets.align === "left" ? (
         children
       ) : (
-        // Cell helpers render flex rows, which ignore text-align; a flex
-        // wrapper pushes them along the main axis instead.
+        // Cell helpers are flex rows, which ignore text-align; justify them instead.
         <div
           className={cn(
             "flex items-center",
@@ -352,10 +351,7 @@ const TREND_LABEL: Record<
   flat: "No change",
 };
 
-/**
- * Right-aligned number in tabular figures, with optional unit and trend arrow.
- * Pair it with a `meta.type: "numeric"` column so the header aligns too.
- */
+/** Right-aligned number in tabular figures with optional unit and trend arrow; pair with a `meta.type: "numeric"` column so the header aligns too. */
 export function NumericCellContent({
   value,
   locale,
@@ -438,10 +434,7 @@ interface StatusCellContentProps {
   className?: string;
 }
 
-/**
- * Status as a mini Chip so it matches chips elsewhere in the product. Pair it
- * with a `meta.type: "status"` column to keep the label on one line.
- */
+/** Status as a mini Chip; pair with a `meta.type: "status"` column to keep the label on one line. */
 export function StatusCellContent({
   label,
   color = "primary",

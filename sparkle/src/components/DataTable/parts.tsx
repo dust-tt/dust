@@ -72,11 +72,7 @@ export function Header({ children, className, ...props }: HeaderProps) {
 interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   children?: ReactNode;
   column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  /**
-   * Makes the header a sort toggle: children render inside a full-width button
-   * with the sort icon, and the cell exposes `aria-sort`. Prefer this over
-   * `onClick` on the cell so keyboard users can sort.
-   */
+  /** Makes the header a sort toggle (button + sort icon + `aria-sort`); prefer it over `onClick` so keyboard users can sort. */
   onSort?: React.MouseEventHandler<HTMLButtonElement>;
 }
 

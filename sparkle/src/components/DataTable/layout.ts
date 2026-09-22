@@ -15,13 +15,11 @@ export const DENSITY_ROW_HEIGHT_CLASS: Record<DataTableDensity, string> = {
   relaxed: "h-16",
 };
 
-// Header rows are as tall as body rows.
 export const DATA_TABLE_HEADER_HEIGHT_PX = DATA_TABLE_ROW_HEIGHT_PX;
 
 export const DENSITY_HEADER_HEIGHT_CLASS = DENSITY_ROW_HEIGHT_CLASS;
 
-// Column minimum (124px) when the table scrolls horizontally, so columns do
-// not collapse to unreadable widths.
+// 124px column minimum when scrolling horizontally, so columns stay readable.
 export const SCROLL_COLUMN_MIN_WIDTH_CLASS = "min-w-31";
 
 export interface DataTableLayout {
@@ -35,9 +33,8 @@ export const DEFAULT_DATA_TABLE_LAYOUT: DataTableLayout = {
   enforceColumnMinWidth: false,
 };
 
-// Lets the cell helpers (Cell, BasicCellContent, CellContent) follow the table's
-// density and scroll layout without every call site threading props through
-// its column defs.
+// Lets cell helpers follow the table's density and scroll layout without call
+// sites threading props through column defs.
 export const DataTableLayoutContext = createContext<DataTableLayout>(
   DEFAULT_DATA_TABLE_LAYOUT
 );

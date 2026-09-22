@@ -98,7 +98,6 @@ export interface DataTableProps<TData extends TBaseData> {
     index: number,
     parent?: TanstackRow<TData> | undefined
   ) => string;
-  // row selection props
   /** Controlled row selection state. */
   rowSelection?: RowSelectionState;
   /** Called with the new selection state when the user selects rows. */
@@ -130,22 +129,16 @@ export interface DataTableProps<TData extends TBaseData> {
 
 const ROW_REVEAL_DURATION_MS = 300;
 
-/**
- * Reveals appended rows by animating the table's height, so the rows slide into
- * view at exactly the rate the footer below them moves down. Animating the
- * footer instead would let the rows pop in ahead of it.
- */
+// Animates the table height (not the footer) so appended rows slide in at the
+// rate the footer moves down; animating the footer lets rows pop in ahead of it.
 function useRowRevealAnimation(rowCount: number, enabled: boolean) {
   const ref = useRef<HTMLDivElement>(null);
   const previousHeightRef = useRef<number | null>(null);
   const previousRowCountRef = useRef(rowCount);
 
-  // Keep the last laid-out height current through every layout change, not just
-  // row changes. Cells are skipped on the first commit (the window size is not
-  // measured yet), so a height recorded only on mount would be the height of a
-  // table with no columns, and the first reveal would animate from ~nothing.
-  // ResizeObserver callbacks run after layout effects, so the value read below
-  // is always the height from before the new rows landed.
+  // Cells are skipped on the first commit (window size not measured yet), so a
+  // mount-only height would be ~0. ResizeObserver runs after layout effects, so
+  // the stored value is always the height from before the new rows landed.
   useLayoutEffect(() => {
     const element = ref.current;
     if (!element || !enabled) {
@@ -168,8 +161,7 @@ function useRowRevealAnimation(rowCount: number, enabled: boolean) {
       return;
     }
 
-    // `scrollHeight` reports the content height even while we pin `height`
-    // mid-animation, so this stays correct if rows land back to back.
+    // scrollHeight stays the content height while `height` is pinned mid-animation.
     const height = element.scrollHeight;
     const previousHeight = previousHeightRef.current;
     const grew = rowCount > previousRowCountRef.current;
@@ -214,12 +206,9 @@ function useRowRevealAnimation(rowCount: number, enabled: boolean) {
 }
 
 /**
- * A tabular data display built on TanStack Table, with text filtering, client-
- * or server-side sorting, pagination or a "Load more" footer, and row
- * selection, rendered with the DataTable.* cell helpers. Use it to list
- * structured records (data sources, members, files); for very long or infinite
- * server-side datasets, prefer ScrollableDataTable, which virtualizes rows and
- * loads more on scroll.
+ * Sortable, filterable, paginated data table built on TanStack Table, with row
+ * selection and a "Load more" footer. For very long or infinite datasets prefer
+ * ScrollableDataTable, which virtualizes rows.
  * @summary Sortable, filterable, paginated data table.
  */
 export function DataTableBase<TData extends TBaseData>({
@@ -339,8 +328,7 @@ export function DataTableBase<TData extends TBaseData>({
   }, [filter, filterColumn]);
 
   const rows = table.getRowModel().rows;
-  // Uses the rendered row count, not `data.length`, so filtering keeps the
-  // measured height in sync.
+  // Rendered row count, not data.length, so filtering keeps the height in sync.
   const rowRevealRef = useRowRevealAnimation(
     rows.length,
     !!onLoadMore && !pagination
@@ -369,8 +357,7 @@ export function DataTableBase<TData extends TBaseData>({
             maxHeight && "overflow-y-auto",
             maxHeight
           )}
-          // Auto layout lets the table outgrow its container; fixed layout
-          // would always share the width and never overflow.
+          // table-auto lets the table outgrow its container; fixed layout never overflows.
           className={cn(horizontalScroll && "w-max min-w-full table-auto")}
         >
           <Header
@@ -496,8 +483,7 @@ export function DataTableBase<TData extends TBaseData>({
   );
 }
 
-// Sortable headers get their content straight into Head's sort button; other
-// headers keep the historical flex wrapper so existing layouts do not move.
+/** Sortable headers render straight into Head's sort button; others keep the flex wrapper so existing layouts do not move. */
 export function renderHeaderContent<TData>(
   header: TanstackHeader<TData, unknown>,
   canSort: boolean

@@ -46,10 +46,8 @@ export interface ScrollableDataTableProps<TData extends TBaseData>
 const MIN_COLUMN_WIDTH = 40;
 
 /**
- * A virtualized variant of DataTable for large or infinite datasets: rows are
- * windowed with TanStack Virtual inside a scrollable container, with a sticky
- * header and infinite loading via onLoadMore. Use it when row counts are too
- * large for pagination; for ordinary lists prefer DataTable.
+ * Virtualized DataTable for large or infinite datasets: rows are windowed with
+ * TanStack Virtual, with a sticky header and infinite loading via onLoadMore.
  * @summary Virtualized, infinitely scrollable data table.
  */
 export function ScrollableDataTable<TData extends TBaseData>({
@@ -84,7 +82,6 @@ export function ScrollableDataTable<TData extends TBaseData>({
 
   const isSorting = !!setSorting;
 
-  // Handle container ref
   const setRef = (element: HTMLDivElement | null) => {
     tableContainerRef.current = element;
     if (containerRef) {
@@ -98,7 +95,6 @@ export function ScrollableDataTable<TData extends TBaseData>({
     }
   };
 
-  // Monitor table width changes
   useEffect(() => {
     if (!tableContainerRef.current) {
       return;
@@ -167,7 +163,6 @@ export function ScrollableDataTable<TData extends TBaseData>({
     }
     const columns = table.getAllColumns();
 
-    // Calculate ideal widths and handle minimums
     const idealSizing = columns.reduce(
       (acc, column) => {
         const ratio = column.columnDef.meta?.sizeRatio || 0;
@@ -180,14 +175,13 @@ export function ScrollableDataTable<TData extends TBaseData>({
       {} as Record<string, number>
     );
 
-    // Ensure total width matches tableWidth
     const totalIdealWidth = Object.values(idealSizing).reduce(
       (a, b) => a + b,
       0
     );
     const widthDifference = tableWidth - totalIdealWidth;
 
-    // adjust the largest column with leftover size
+    // Rounding leftovers go to the widest column.
     if (widthDifference !== 0) {
       const adjustColumnId = Object.entries(idealSizing).sort(
         (a, b) => b[1] - a[1]
@@ -198,7 +192,6 @@ export function ScrollableDataTable<TData extends TBaseData>({
     table.setColumnSizing(idealSizing);
   }, [table, tableWidth]);
 
-  // Get the current column sizing from the table for rendering
   const columnSizing = table.getState().columnSizing;
 
   const { rows } = table.getRowModel();
@@ -208,7 +201,6 @@ export function ScrollableDataTable<TData extends TBaseData>({
     estimateSize: () => DATA_TABLE_ROW_HEIGHT_PX[density],
   });
 
-  // Intersection observer for infinite loading
   useEffect(() => {
     if (!onLoadMore || !loadMoreRef.current) {
       return;
@@ -216,7 +208,6 @@ export function ScrollableDataTable<TData extends TBaseData>({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        // retrieving the sentinel div
         if (entries[0].isIntersecting && !isLoading) {
           onLoadMore();
         }
@@ -238,7 +229,6 @@ export function ScrollableDataTable<TData extends TBaseData>({
     };
   }, [onLoadMore, isLoading]);
 
-  // Observe whether the bottom of the table is visible to show/hide scroll indicator
   useEffect(() => {
     const sentinel = scrollSentinelRef.current;
     const root = tableContainerRef.current;

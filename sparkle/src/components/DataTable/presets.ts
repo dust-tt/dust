@@ -18,11 +18,7 @@ declare module "@tanstack/react-table" {
     sizeRatio?: number;
     /** Header text alignment. Overrides the alignment derived from `type` for the header only. */
     headerAlign?: ColumnAlign;
-    /**
-     * Column preset. `numeric`: right-aligned tabular figures, no wrapping.
-     * `row-actions`: fixed 48px, centered, never sortable (the "..." menu column).
-     * `status`: no wrapping.
-     */
+    /** Column preset: `numeric` right-aligned tabular figures; `row-actions` fixed 48px, centered, never sortable; `status` no wrapping. */
     type?: ColumnType;
     /** Render this column's body cells as `<th scope="row">` for screen readers. */
     rowHeader?: boolean;

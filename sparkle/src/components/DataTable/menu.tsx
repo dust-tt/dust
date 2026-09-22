@@ -46,12 +46,10 @@ interface SubmenuMenuItem extends BaseMenuItem {
 export type MenuItem = RegularMenuItem | SubmenuMenuItem;
 
 const preventMenuItemClickThrough = (event: React.PointerEvent) => {
-  // Prevent the subsequent click from reaching elements behind the menu when
-  // it closes on pointer down (modal={false}).
+  // With modal={false} the menu closes on pointer down; stop the click reaching what is behind it.
   event.preventDefault();
 };
 
-// Shared menu rendering functions
 const renderSubmenuItem = (
   item: SubmenuMenuItem,
   index: number,
