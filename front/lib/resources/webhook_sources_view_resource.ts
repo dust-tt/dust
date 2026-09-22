@@ -329,7 +329,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     webhookSourceModelId: ModelId
   ): Promise<WebhookSourcesViewResource[]> {
     // baseFetch already ensures we only return views from the same workspace.
-    // We skip the additional canReadOrAdministrate check since the webhook
+    // We skip the additional read-or-admin check since the webhook
     // request was already authorized via the URL secret.
     return this.baseFetch(auth, {
       where: { webhookSourceId: webhookSourceModelId },

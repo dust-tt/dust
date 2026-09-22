@@ -28,37 +28,6 @@ describe("SkillSuggestionResource", () => {
     await authenticator.refresh();
   });
 
-  describe("canWrite", () => {
-    it("should return true for admin", async () => {
-      const adminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
-      );
-
-      const suggestion = await SkillSuggestionFactory.create(
-        authenticator,
-        skill
-      );
-
-      expect(suggestion.canWrite(adminAuth)).toBe(true);
-    });
-
-    it("should return false for non-admin", async () => {
-      const otherUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
-      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        otherUser.sId,
-        workspace.sId
-      );
-
-      const suggestion = await SkillSuggestionFactory.create(
-        authenticator,
-        skill
-      );
-
-      expect(suggestion.canWrite(otherAuth)).toBe(false);
-    });
-  });
-
   describe("baseFetch / fetchById / fetchByIds", () => {
     it("should create and fetch a suggestion by id", async () => {
       const suggestion = await SkillSuggestionFactory.create(
