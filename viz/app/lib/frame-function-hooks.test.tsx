@@ -29,6 +29,7 @@ function makeDataAPI(
     callFunction,
     fetchCode: vi.fn(),
     fetchFile: vi.fn(),
+    writeFile: vi.fn(),
     getUserIdentity: vi.fn().mockResolvedValue({
       isAuthenticated: false,
       isWorkspaceMember: false,

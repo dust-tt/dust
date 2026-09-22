@@ -1,8 +1,18 @@
-import type { UserIdentityState } from "@viz/app/types";
+import type {
+  UserIdentityState,
+  WriteFileParams,
+  WriteFileResult,
+} from "@viz/app/types";
 import type {
   SupportedEventType,
   SupportedMessage,
 } from "@viz/app/types/messages";
+
+export interface FrameFile {
+  file: File;
+  revision: string | null;
+  canWrite: boolean;
+}
 
 /**
  * Data API - handles data fetching operations.
@@ -20,9 +30,11 @@ export interface VisualizationDataAPI {
   getUserIdentity(): Promise<UserIdentityState>;
 
   /**
-   * Fetch a file by ID.
+   * Fetch a file and its revision through the shared file transport.
    */
-  fetchFile(fileId: string): Promise<File | null>;
+  fetchFile(fileId: string): Promise<FrameFile | null>;
+
+  writeFile(params: WriteFileParams): Promise<WriteFileResult>;
 
   /**
    * Fetch visualization code.

@@ -1,9 +1,14 @@
 import { normalizeSandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
-import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
+import type {
+  FrameFile,
+  VisualizationDataAPI,
+} from "@viz/app/lib/visualization-api";
 import type {
   CommandResultMap,
   VisualizationRPCCommand,
   VisualizationRPCRequestMap,
+  WriteFileParams,
+  WriteFileResult,
 } from "@viz/app/types";
 
 /**
@@ -58,21 +63,43 @@ export class RPCDataAPI implements VisualizationDataAPI {
     };
   }
 
-  async fetchFile(fileId: string): Promise<File | null> {
+  /**
+   * @cc [owner:flvndvd,label:api] frame-file-read-compatibility
+   * File reads MUST use the existing getFile request and accept responses without
+   * revision metadata. Missing metadata MUST disable writes.
+   */
+  async fetchFile(fileId: string): Promise<FrameFile | null> {
+    let result: CommandResultMap["getFile"];
     try {
-      console.log(">> RPCDataAPI: Fetching file via RPC", fileId);
-
-      const res = await this.sendMessage("getFile", { fileId });
-      const { fileBlob: blob } = res;
-
-      if (!blob) {
-        return null;
-      }
-
-      return new File([blob], fileId, { type: blob.type });
-    } catch (error) {
-      console.error(`Failed to fetch file ${fileId} via RPC:`, error);
+      result = await this.sendMessage("getFile", { fileId });
+    } catch {
       return null;
+    }
+
+    if (!result.fileBlob) {
+      return null;
+    }
+
+    const revision = result.revision ?? null;
+    return {
+      file: new File([result.fileBlob], fileId, { type: result.fileBlob.type }),
+      revision,
+      canWrite: result.canWrite === true && revision !== null,
+    };
+  }
+
+  async writeFile(params: WriteFileParams): Promise<WriteFileResult> {
+    try {
+      return await this.sendMessage("writeFile", params);
+    } catch {
+      return {
+        success: false,
+        error: {
+          code: "save_failed",
+          message:
+            "Could not confirm the save. Reload the file before trying again.",
+        },
+      };
     }
   }
 

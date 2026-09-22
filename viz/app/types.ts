@@ -6,6 +6,23 @@ interface GetFileParams {
   fileId: string;
 }
 
+export interface WriteFileParams {
+  path: string;
+  content: string;
+  contentType?: string;
+  revision: string;
+}
+
+export type WriteFileResult =
+  | { success: true; revision: string }
+  | {
+      success: false;
+      error: {
+        code: "read_only" | "invalid_path" | "conflict" | "save_failed";
+        message: string;
+      };
+    };
+
 interface CallFunctionParams {
   functionIdOrSlug: string;
   input?: unknown;
@@ -72,6 +89,7 @@ export type VisualizationRPCRequestMap = {
   callFunction: CallFunctionParams;
   getUserIdentity: null;
   getFile: GetFileParams;
+  writeFile: WriteFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
   setErrorMessage: SetErrorMessageParams;
@@ -89,7 +107,12 @@ export interface CommandResultMap {
   callFunction: unknown;
   getUserIdentity: UserIdentityState;
   getCodeToExecute: { code: string };
-  getFile: { fileBlob: Blob | null };
+  getFile: {
+    fileBlob: Blob | null;
+    revision?: string | null;
+    canWrite?: boolean;
+  };
+  writeFile: WriteFileResult;
   downloadFileRequest: { blob: Blob; filename?: string };
   setContentHeight: void;
   setErrorMessage: void;
