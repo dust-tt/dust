@@ -99,7 +99,13 @@ export function Head({
         ALIGN_JUSTIFY_CLASS[presets.headerAlign]
       )}
     >
-      <span className="min-w-0 truncate">{children}</span>
+      {typeof column.columnDef.header === "string" ? (
+        <span className="min-w-0 truncate">{children}</span>
+      ) : (
+        // Custom header renderers lay themselves out (e.g. a centered
+        // label); wrapping them would shrink `w-full` to the text width.
+        children
+      )}
       <Icon visual={getSortIcon(sorted)} size="xs" className="shrink-0" />
     </button>
   ) : (
