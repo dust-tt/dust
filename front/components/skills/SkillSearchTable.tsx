@@ -9,7 +9,11 @@ import { isDustProvidedSkill } from "@app/lib/skill";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
 import { DataTable } from "@dust-tt/sparkle";
-import type { ColumnDef, PaginationState } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import { useMemo } from "react";
 
 // Leave room for Usage and Actions, then Editors/Last edited at sm and Availability at md.
@@ -24,6 +28,9 @@ interface SkillSearchTableProps {
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
   hasMore: boolean;
+  sorting: SortingState;
+  setSorting: (sorting: SortingState) => void;
+  isLoading: boolean;
 }
 
 type SkillSearchRow = SkillListItemType & { onClick: () => void };
@@ -36,12 +43,18 @@ export function SkillSearchTable({
   pagination,
   setPagination,
   hasMore,
+  sorting,
+  setSorting,
+  isLoading,
 }: SkillSearchTableProps) {
   const columns = useMemo<ColumnDef<SkillSearchRow>[]>(
     () => [
       {
         id: "name",
+        accessorKey: "name",
         header: "Name",
+        sortDescFirst: false,
+        enableMultiSort: false,
         cell: ({ row: { original: skill } }) => (
           <DataTable.CellContent>
             <button type="button" className="w-full min-w-0 text-left">
@@ -64,7 +77,10 @@ export function SkillSearchTable({
       },
       {
         id: "usage",
+        accessorKey: "activeUsersCount",
         header: "Usage",
+        sortDescFirst: true,
+        enableMultiSort: false,
         cell: ({ row: { original: skill } }) => (
           <DataTable.BasicCellContent
             label={skill.activeUsersCount?.toLocaleString() ?? "-"}
@@ -89,7 +105,10 @@ export function SkillSearchTable({
       },
       {
         id: "updatedAt",
+        accessorKey: "updatedAt",
         header: "Last edited",
+        sortDescFirst: true,
+        enableMultiSort: false,
         cell: ({ row: { original: skill } }) => (
           <SkillLastEditedCell updatedAt={skill.updatedAt} emptyLabel="-" />
         ),
@@ -128,6 +147,10 @@ export function SkillSearchTable({
       }}
       pagination={pagination}
       setPagination={setPagination}
+      sorting={sorting}
+      setSorting={setSorting}
+      isServerSideSorting
+      isLoading={isLoading}
       totalRowCount={
         hasMore
           ? (pagination.pageIndex + 1) * pagination.pageSize + 1
