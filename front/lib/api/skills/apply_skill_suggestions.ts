@@ -224,7 +224,7 @@ async function resolveInstructionAttachments(
     : [];
   const dataSourceViewsById = new Map(
     dataSourceViews
-      .filter((dsv) => dsv.canRead(auth))
+      .filter((dsv) => auth.can("read", dsv))
       .map((dsv) => [dsv.sId, dsv])
   );
 

@@ -48,7 +48,7 @@ app.post(
     if (
       !dataSourceView ||
       spaceId !== dataSourceView.space.sId ||
-      !dataSourceView.canReadOrAdministrate(auth)
+      !(auth.can("read", dataSourceView) || auth.can("admin", dataSourceView))
     ) {
       return apiError(ctx, {
         status_code: 404,

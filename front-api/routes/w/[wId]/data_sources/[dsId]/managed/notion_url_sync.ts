@@ -58,7 +58,7 @@ async function fetchManagedNotionDataSource(
       message: "The data source you requested is not managed.",
     };
   }
-  if (!dataSource.canAdministrate(auth) || !auth.isAdmin()) {
+  if (!auth.can("admin", dataSource) || !auth.isAdmin()) {
     return {
       kind: "err",
       status: 403,

@@ -166,7 +166,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     dataSource: DataSourceResource,
     parentsIn: string[]
   ): Promise<Result<DataSourceViewResource, Error>> {
-    if (!dataSource.canAdministrate(auth)) {
+    if (!auth.can("admin", dataSource)) {
       return new Err(
         new Error(
           "You do not have the rights to create a view for this data source."
@@ -312,7 +312,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       options
     );
 
-    return dataSourceViews.filter((dsv) => dsv.canReadOrAdministrate(auth));
+    return dataSourceViews.filter((dsv) => (auth.can("read", dsv) || auth.can("admin", dsv)));
   }
 
   static async listBySpace(

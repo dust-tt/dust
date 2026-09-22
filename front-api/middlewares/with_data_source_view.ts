@@ -17,16 +17,16 @@ function hasPermission(
   view: DataSourceViewResource,
   o: WithDataSourceViewOptions
 ): boolean {
-  if (o.requireCanAdministrate && !view.canAdministrate(auth)) {
+  if (o.requireCanAdministrate && !auth.can("admin", view)) {
     return false;
   }
-  if (o.requireCanReadOrAdministrate && !view.canReadOrAdministrate(auth)) {
+  if (o.requireCanReadOrAdministrate && !(auth.can("read", view) || auth.can("admin", view))) {
     return false;
   }
-  if (o.requireCanRead && !view.canRead(auth)) {
+  if (o.requireCanRead && !auth.can("read", view)) {
     return false;
   }
-  if (o.requireCanWrite && !view.canWrite(auth)) {
+  if (o.requireCanWrite && !auth.can("write", view)) {
     return false;
   }
   return true;
