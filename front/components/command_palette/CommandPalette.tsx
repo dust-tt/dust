@@ -228,11 +228,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         return;
       }
       // Skills without administration access have only one action (view details).
-      if (
-        item.kind === "skill" &&
-        "canAdministrate" in item.skill &&
-        !item.skill.canAdministrate
-      ) {
+      if (item.kind === "skill" && !item.skill.canAdministrate) {
         executeAction(item, "view_details");
       } else {
         setSelectedItem(item);
@@ -288,7 +284,6 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             />
           ) : selectedItem ? (
             <CommandPaletteActionPhase
-              owner={owner}
               item={selectedItem}
               onAction={handleAction}
               onBack={handleBack}
