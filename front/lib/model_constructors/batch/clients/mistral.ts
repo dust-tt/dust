@@ -64,7 +64,10 @@ export abstract class MistralBatch extends WithMistralAIInputConverter(
 
   constructor({ MISTRAL_API_KEY }: Credentials) {
     super();
-    this.client = new Mistral({ apiKey: MISTRAL_API_KEY });
+    // Unlike `MistralStream`, batch cannot use the EU regional endpoint: the Batch and Files
+    // APIs it relies on are global-only.
+    // https://docs.mistral.ai/inference/regional-inference (verified 2026-09-22)
+    this.client = new Mistral({ apiKey: MISTRAL_API_KEY, server: "global" });
   }
 
   rawBatchOutputToEvents(
