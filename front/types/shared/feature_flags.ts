@@ -460,6 +460,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "smb2268",
   },
+  discovery_homepage: {
+    description: "New homepage optimized for skill and agents discovery",
+    stage: "dust_only",
+    owner: "adrsimon",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";
