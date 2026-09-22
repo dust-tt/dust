@@ -10,12 +10,14 @@ import {
 } from "@app/components/skills/SkillTableCells";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import { useSkillMenuItems } from "@app/hooks/useSkillMenuItems";
 import { isDustProvidedSkill } from "@app/lib/skill";
 import { classNames } from "@app/lib/utils";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { MenuItem } from "@dust-tt/sparkle";
 import { Checkbox, DataTable, Label, LoadingBlock } from "@dust-tt/sparkle";
 import type {
   CellContext,
@@ -24,7 +26,6 @@ import type {
   Row,
   RowSelectionState,
 } from "@tanstack/react-table";
-import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 const SKELETON_ROW_COUNT = 16;
@@ -54,7 +55,7 @@ type RowData = {
   updatedAt: number | null;
   createdAt: number | null;
   onClick: () => void;
-  actions: ReactNode;
+  menuItems: MenuItem[];
 };
 
 const SKILLS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
@@ -72,7 +73,7 @@ const SKILLS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
     updatedAt: null,
     createdAt: null,
     onClick: () => undefined,
-    actions: null,
+    menuItems: [],
   })
 );
 
@@ -169,7 +170,7 @@ function renderSkillsTableSkeletonCell(columnId: string, rowIndex: number) {
           />
         </DataTable.CellContent>
       );
-    case "actions":
+    case "menuItems":
       return (
         <DataTable.CellContent>
           <LoadingBlock className="h-8 w-8 rounded-xl" />
@@ -276,8 +277,10 @@ const lastEditedColumn = {
 
 const menuColumn = {
   header: "",
-  accessorKey: "actions",
-  cell: (info: CellContext<RowData, ReactNode>) => info.getValue(),
+  accessorKey: "menuItems",
+  cell: (info: CellContext<RowData, MenuItem[]>) => (
+    <SkillActionsMenu menuItems={info.getValue()} />
+  ),
   meta: {
     className: "w-14",
   },
@@ -415,6 +418,7 @@ export function SkillsTable({
   isLoading = false,
 }: SkillsTableProps) {
   const { pagination, setPagination } = usePaginationFromUrl({});
+  const getSkillMenuItems = useSkillMenuItems({ owner });
   const [skillToArchive, setSkillToArchive] = useState<
     GetSkillsWithRelationsResponseBody["skills"][number] | null
   >(null);
@@ -457,23 +461,21 @@ export function SkillsTable({
         onClick: () => {
           onSkillClick(skill);
         },
-        actions:
-          skill.status !== "archived" ? (
-            <SkillActionsMenu
-              owner={owner}
-              skillId={skill.sId}
-              // `canRead` is false for skills redacted for an admin (see the details sheet).
-              canEdit={skill.canAdministrate && skill.canRead}
-              onSelect={() => onSkillClick(skill)}
-              onArchive={
-                skill.canAdministrate
+        // DataTable.Row also uses these items for its right-click context menu.
+        menuItems:
+          skill.status !== "archived"
+            ? getSkillMenuItems({
+                skillId: skill.sId,
+                // `canRead` is false for skills redacted for an admin (see the details sheet).
+                canEdit: skill.canAdministrate && skill.canRead,
+                onSelect: () => onSkillClick(skill),
+                onArchive: skill.canAdministrate
                   ? () => setSkillToArchive(skill)
-                  : undefined
-              }
-            />
-          ) : null,
+                  : undefined,
+              })
+            : [],
       })),
-    [skills, onSkillClick, owner]
+    [skills, onSkillClick, getSkillMenuItems]
   );
 
   const selectionSet = useMemo(
