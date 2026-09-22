@@ -11,6 +11,7 @@ import type {
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
   SkillSearchSort,
+  SkillSearchSortOrder,
 } from "@app/types/api/skills";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -41,6 +42,7 @@ const SkillSearchSortSchema = z.array(
  * Custom and code-defined skills share one ES-ranked stream; cursors advance only past
  * consumed hits.
  * Cursors encode the ES sort tuple as an opaque string and convey no authorization.
+ * Callers reset the cursor when changing the query, filters, or sort order.
  * Every page applies hydrated grants to indexed requirements.
  * Pagination reads the live index; concurrent index changes may cause skips or duplicates.
  */
@@ -50,6 +52,7 @@ export async function searchSkills(
     limit = MAX_SKILL_SEARCH_RESULTS,
     cursor,
     sortBy,
+    sortOrder,
     ...options
   }: {
     searchTerm: string;
@@ -58,6 +61,7 @@ export async function searchSkills(
     limit?: number;
     cursor?: string | null;
     sortBy?: SkillSearchSort;
+    sortOrder?: SkillSearchSortOrder;
   }
 ) {
   let searchAfter: estypes.SortResults | undefined;
@@ -87,7 +91,7 @@ export async function searchSkills(
       _source: true,
       query,
       size: limit + 1,
-      sort: buildSkillDefaultSort(sortBy),
+      sort: buildSkillDefaultSort({ sortBy, sortOrder }),
       ...(searchAfter ? { search_after: searchAfter } : {}),
     })
   );

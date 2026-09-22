@@ -31,6 +31,7 @@ app.post(
       editedByMe,
       codeDefinedOnly,
       sortBy,
+      sortOrder,
     } = ctx.req.valid("json");
     if (permissionFiltering === "redact_unreadable" && !auth.isAdmin()) {
       return apiError(ctx, {
@@ -46,6 +47,7 @@ app.post(
       limit,
       cursor,
       sortBy,
+      sortOrder,
       permissionFiltering,
       filters: {
         status,

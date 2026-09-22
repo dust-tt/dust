@@ -1,21 +1,47 @@
-import type { SkillSearchSort } from "@app/types/api/skills";
+import type {
+  SkillSearchSort,
+  SkillSearchSortOrder,
+} from "@app/types/api/skills";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
-export function buildSkillDefaultSort(
-  sortBy: SkillSearchSort = "relevance"
-): estypes.Sort {
+export function buildSkillDefaultSort({
+  sortBy = "relevance",
+  sortOrder = sortBy === "name" ? "asc" : "desc",
+}: {
+  sortBy?: SkillSearchSort;
+  sortOrder?: SkillSearchSortOrder;
+} = {}): estypes.Sort {
   switch (sortBy) {
     case "relevance":
       return [
-        { _score: { order: "desc" } },
+        { _score: { order: sortOrder } },
         { active_users_count: { order: "desc", missing: "_last" } },
         // Skill ID is the tie-breaker.
         { skill_id: { order: "asc" } },
       ];
     case "usage":
       return [
-        { active_users_count: { order: "desc", missing: "_last" } },
+        { active_users_count: { order: sortOrder, missing: "_last" } },
+        // Skill ID is the tie-breaker.
+        { skill_id: { order: "asc" } },
+      ];
+    case "name":
+      return [
+        { "name.keyword": { order: sortOrder, missing: "_last" } },
+        // Skill ID is the tie-breaker.
+        { skill_id: { order: "asc" } },
+      ];
+    case "updatedAt":
+      return [
+        // Format dates so missing-date cursors do not contain unsafe JSON integers.
+        {
+          updated_at: {
+            order: sortOrder,
+            missing: "_last",
+            format: "epoch_millis",
+          },
+        },
         // Skill ID is the tie-breaker.
         { skill_id: { order: "asc" } },
       ];
