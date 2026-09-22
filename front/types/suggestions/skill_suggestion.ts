@@ -2,6 +2,7 @@ import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import {
   SKILL_AVAILABILITIES,
   SKILL_NAME_MAX_LENGTH,
+  SKILL_REINFORCEMENT_MODES,
 } from "@app/types/assistant/skill_configuration_constants";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { z } from "zod";
@@ -61,6 +62,7 @@ export const SKILL_SUGGESTION_KINDS = [
   "name",
   "delete",
   "availability",
+  "reinforcement",
 ] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
@@ -206,6 +208,16 @@ export type SkillAvailabilitySuggestionType = z.infer<
   typeof SkillAvailabilitySuggestionSchema
 >;
 
+export const SkillReinforcementModeSuggestionSchema = z.object({
+  reinforcement: z
+    .enum(SKILL_REINFORCEMENT_MODES)
+    .describe("The self-improvement mode the skill will use."),
+});
+
+export type SkillReinforcementModeSuggestionType = z.infer<
+  typeof SkillReinforcementModeSuggestionSchema
+>;
+
 export type SkillSuggestionPayload =
   | SkillEditSuggestionType
   | SkillEditorsSuggestionType
@@ -213,7 +225,8 @@ export type SkillSuggestionPayload =
   | SkillCreateSuggestionType
   | SkillNameSuggestionType
   | SkillDeleteSuggestionType
-  | SkillAvailabilitySuggestionType;
+  | SkillAvailabilitySuggestionType
+  | SkillReinforcementModeSuggestionType;
 
 const SkillEditSuggestionDataSchema = z.object({
   kind: z.literal("edit"),
@@ -250,6 +263,11 @@ const SkillAvailabilitySuggestionDataSchema = z.object({
   suggestion: SkillAvailabilitySuggestionSchema,
 });
 
+const SkillReinforcementModeSuggestionDataSchema = z.object({
+  kind: z.literal("reinforcement"),
+  suggestion: SkillReinforcementModeSuggestionSchema,
+});
+
 const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillEditSuggestionDataSchema,
   SkillEditorsSuggestionDataSchema,
@@ -258,6 +276,7 @@ const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillNameSuggestionDataSchema,
   SkillDeleteSuggestionDataSchema,
   SkillAvailabilitySuggestionDataSchema,
+  SkillReinforcementModeSuggestionDataSchema,
 ]);
 
 type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
@@ -299,6 +318,11 @@ export type SkillDeleteSuggestionData = Extract<
 export type SkillAvailabilitySuggestionData = Extract<
   SkillSuggestionData,
   { kind: "availability" }
+>;
+
+export type SkillReinforcementModeSuggestionData = Extract<
+  SkillSuggestionData,
+  { kind: "reinforcement" }
 >;
 
 // `kind` and `suggestion` are separate columns, so narrowing one without the other would lie about
@@ -361,6 +385,12 @@ export function isAvailabilitySkillSuggestion<
   T extends { kind: SkillSuggestionKind; suggestion: unknown },
 >(carrier: T): carrier is T & SkillAvailabilitySuggestionData {
   return isSkillSuggestionOfKind(carrier, "availability");
+}
+
+export function isReinforcementModeSkillSuggestion<
+  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+>(carrier: T): carrier is T & SkillReinforcementModeSuggestionData {
+  return isSkillSuggestionOfKind(carrier, "reinforcement");
 }
 
 const SkillSuggestionUpdatedBySchema = z.object({

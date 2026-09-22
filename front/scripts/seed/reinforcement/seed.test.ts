@@ -20,6 +20,7 @@ function instructionEditsOf(suggestion: SkillSuggestionResource) {
     case "delete":
     case "editors":
     case "name":
+    case "reinforcement":
     case "user_facing_description":
       return undefined;
     case "edit":

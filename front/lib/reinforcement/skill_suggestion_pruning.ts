@@ -14,6 +14,7 @@ import type {
   SkillEditSuggestionType,
   SkillInstructionEditItemType,
   SkillNameSuggestionData,
+  SkillReinforcementModeSuggestionData,
   SkillSuggestionSource,
   SkillUserFacingDescriptionSuggestionData,
 } from "@app/types/suggestions/skill_suggestion";
@@ -22,6 +23,7 @@ import {
   isEditorsSkillSuggestion,
   isEditSkillSuggestion,
   isNameSkillSuggestion,
+  isReinforcementModeSkillSuggestion,
   isUserFacingDescriptionSkillSuggestion,
   REVIEWABLE_SKILL_SUGGESTION_SOURCES,
 } from "@app/types/suggestions/skill_suggestion";
@@ -333,6 +335,41 @@ export async function pruneConflictingSkillAvailabilitySuggestions(
     })
   )
     .filter(isAvailabilitySkillSuggestion)
+    .filter((s) => !excluded.has(s.sId));
+
+  await SkillSuggestionResource.bulkUpdateState(
+    auth,
+    toMarkOutdated,
+    "outdated"
+  );
+}
+
+/**
+ * @cc [owner:achilleburah,label:product] prune-conflicting-reinforcement-suggestions
+ * Recording a new `reinforcement` suggestion, or applying one to the skill, MUST mark every other
+ * pending `reinforcement` suggestion for the same skill `outdated`: the field holds a single
+ * value, so two pending changes always conflict. Approving a suggestion without applying it
+ * changes nothing on the skill and prunes nothing.
+ */
+export async function pruneConflictingSkillReinforcementModeSuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  newSuggestions: (SkillSuggestionResource &
+    SkillReinforcementModeSuggestionData)[]
+): Promise<void> {
+  if (newSuggestions.length === 0) {
+    return;
+  }
+
+  const excluded = new Set(newSuggestions.map((s) => s.sId));
+  const toMarkOutdated = (
+    await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
+      states: ["pending"],
+      kinds: ["reinforcement"],
+      sources: PRUNED_SOURCES,
+    })
+  )
+    .filter(isReinforcementModeSkillSuggestion)
     .filter((s) => !excluded.has(s.sId));
 
   await SkillSuggestionResource.bulkUpdateState(

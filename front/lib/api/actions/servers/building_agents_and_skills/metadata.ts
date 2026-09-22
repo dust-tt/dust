@@ -8,6 +8,7 @@ import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning
 import {
   SKILL_AVAILABILITIES,
   SKILL_NAME_MAX_LENGTH,
+  SKILL_REINFORCEMENT_MODES,
 } from "@app/types/assistant/skill_configuration_constants";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import { SkillInstructionEditItemSchema } from "@app/types/suggestions/skill_suggestion";
@@ -37,6 +38,8 @@ export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME =
 export const SUGGEST_SKILL_NAME_TOOL_NAME = "suggest_skill_name" as const;
 export const SUGGEST_SKILL_AVAILABILITY_TOOL_NAME =
   "suggest_skill_availability" as const;
+export const SUGGEST_SKILL_REINFORCEMENT_TOOL_NAME =
+  "suggest_skill_reinforcement" as const;
 
 // Bounds the O(n²) pairwise conflict check in hasSuggestionSelfConflict; larger rewrites
 // should target the instructions root block instead.
@@ -342,6 +345,35 @@ export type SuggestSkillAvailabilityArgs = z.infer<
   typeof SUGGEST_SKILL_AVAILABILITY_INPUT_SCHEMA
 >;
 
+export const SUGGEST_SKILL_REINFORCEMENT_INPUT_SCHEMA = z.object({
+  skillId: z
+    .string()
+    .describe(
+      "The id of the custom skill whose self-improvement mode to change."
+    ),
+  reinforcement: z
+    .enum(SKILL_REINFORCEMENT_MODES)
+    .describe(
+      "The self-improvement mode: `on` (Dust analyzes how the skill is used and suggests " +
+        "improvements over time), `off`, or `auto` (the workspace default)."
+    ),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Why the skill should use this self-improvement mode."),
+  title: z
+    .string()
+    .max(25)
+    .optional()
+    .describe(
+      "A short, action-oriented user-facing title for this suggestion (at most 25 characters)."
+    ),
+});
+
+export type SuggestSkillReinforcementArgs = z.infer<
+  typeof SUGGEST_SKILL_REINFORCEMENT_INPUT_SCHEMA
+>;
+
 export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   {
     name: DESCRIBE_SKILL_TOOL_NAME,
@@ -517,6 +549,21 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting skill availability",
       done: "Suggest skill availability",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_SKILL_REINFORCEMENT_TOOL_NAME,
+    description:
+      "Suggest turning an existing custom Skill's self-improvement on or off. The change is " +
+      "not applied directly: it is recorded as a pending suggestion that the skill's editors " +
+      "can review, accept, or reject.",
+    schema: SUGGEST_SKILL_REINFORCEMENT_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting skill self-improvement change",
+      done: "Suggest skill self-improvement change",
     },
     toolCostCategory: "basic",
     freeUsage: true,

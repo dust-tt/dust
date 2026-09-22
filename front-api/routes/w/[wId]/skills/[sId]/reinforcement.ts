@@ -3,9 +3,11 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { validateSkillReinforcementChange } from "@app/lib/api/skills/reinforcement_change";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { SKILL_REINFORCEMENT_MODES } from "@app/types/assistant/skill_configuration";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -98,27 +100,39 @@ app.patch(
       });
     }
 
-    // Toggling reinforcement requires skill administration access; if the
-    // skill is locked, only admins can flip it.
     if (reinforcement !== undefined) {
-      if (!skill.canAdministrate(auth)) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "app_auth_error",
-            message: "Only admins and editors can modify this skill.",
-          },
-        });
-      }
-      if (skill.selfImprovementLock && !auth.isAdmin()) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "This skill's self-improvement is locked; only admins can change it.",
-          },
-        });
+      const validation = await validateSkillReinforcementChange(auth, skill, {
+        reinforcement,
+      });
+      if (validation.isErr()) {
+        switch (validation.error.code) {
+          case "not_authorized":
+            return apiError(ctx, {
+              status_code: 403,
+              api_error: {
+                type: "app_auth_error",
+                message: validation.error.message,
+              },
+            });
+          case "locked":
+            return apiError(ctx, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message: validation.error.message,
+              },
+            });
+          case "archived":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: validation.error.message,
+              },
+            });
+          default:
+            assertNever(validation.error.code);
+        }
       }
     }
 

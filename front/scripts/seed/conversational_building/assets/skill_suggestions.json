@@ -134,5 +134,18 @@
     "suggestion": {
       "availability": "workspace_users"
     }
+  },
+  {
+    "id": "skillReinforcement",
+    "skillName": "MeetingNotesFormatter",
+    "overwrite": true,
+    "kind": "reinforcement",
+    "title": "Pause self-improvement",
+    "analysis": "The team is rewriting the meeting template this month. Suggestions based on conversations using the old template would only add noise until the rewrite lands.",
+    "state": "pending",
+    "source": "conversational",
+    "suggestion": {
+      "reinforcement": "off"
+    }
   }
 ]

@@ -62,6 +62,7 @@ export function SkillBuilderSuggestionsPanel({
         case "delete":
         case "editors":
         case "name":
+        case "reinforcement":
         case "user_facing_description":
           return;
         case "edit":

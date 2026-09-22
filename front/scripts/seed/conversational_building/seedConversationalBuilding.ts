@@ -149,6 +149,8 @@ export async function seedConversationalBuilding(
       ),
       __SKILL_NAME_SUGGESTION_SID__: suggestionSId("skillName"),
       __SKILL_DELETE_SUGGESTION_SID__: suggestionSId("skillDelete"),
+      __SKILL_REINFORCEMENT_SUGGESTION_SID__:
+        createdSkillSuggestions.get("skillReinforcement")?.sId ?? "",
     },
     additionalUsers: createdUsers,
   });

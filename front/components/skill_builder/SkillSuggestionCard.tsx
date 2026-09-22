@@ -3,6 +3,7 @@ import { SkillFieldEditSection } from "@app/components/skill_builder/SkillFieldE
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
 import { SuggestedSkillEditors } from "@app/components/skill_builder/SuggestedSkillEditors";
 import { SuggestedSkillName } from "@app/components/skill_builder/SuggestedSkillName";
+import { SuggestedSkillReinforcementMode } from "@app/components/skill_builder/SuggestedSkillReinforcementMode";
 import { SuggestedSkillUserFacingDescription } from "@app/components/skill_builder/SuggestedSkillUserFacingDescription";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
@@ -329,6 +330,15 @@ function SuggestionDetails({
     case "user_facing_description":
       return (
         <SuggestedSkillUserFacingDescription
+          suggestion={suggestion.suggestion}
+          skillId={suggestion.skillConfigurationId}
+          workspaceId={workspaceId}
+        />
+      );
+
+    case "reinforcement":
+      return (
+        <SuggestedSkillReinforcementMode
           suggestion={suggestion.suggestion}
           skillId={suggestion.skillConfigurationId}
           workspaceId={workspaceId}
