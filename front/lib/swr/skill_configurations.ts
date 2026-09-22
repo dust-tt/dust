@@ -244,7 +244,7 @@ export function useSearchSkills({
     skills:
       (disabled ? undefined : data?.skills) ?? emptyArray<SkillListItemType>(),
     // Filter and rank local tools with this query so they update with the skills.
-    resolvedSearchTerm: disabled ? "" : (data?.searchTerm ?? ""),
+    resolvedSearchTerm: disabled ? null : (data?.searchTerm ?? null),
     hasMore: data?.hasMore ?? false,
     nextCursor: data?.nextCursor ?? null,
     isSkillsError: !!error,
