@@ -26,7 +26,8 @@ to the save callback do not restart the debounce timer.
 remain controlled by Document. Initial content is captured at mount. Remount with
 a new key to open a different document. Invalid stored JSON disables editing and
 saving. The parser rejects unknown blocks, marks, fields and attributes instead
-of dropping them. The same schema validates browser saves. Sources are limited to
+of dropping them. The same schema validates paste and browser saves. Ordinary typing
+uses the editor schema without reparsing the complete document. Sources are limited to
 512 KiB, 10,000 nodes and 64 levels of nesting.
 Link destinations support HTTP, HTTPS, mailto, tel and relative URLs. Link styling,
 targets and opener isolation belong to Document, including after an HTML paste.

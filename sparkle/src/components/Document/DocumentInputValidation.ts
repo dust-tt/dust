@@ -9,8 +9,8 @@ interface DocumentInputValidationOptions {
 
 /**
  * @cc [owner:flvndvd,label:security;product] document-live-validation
- * Invalid or over-budget edits MUST be rejected before the changed document renders.
- * Rejection MUST preserve the previous draft and MUST NOT suspend its autosave.
+ * Invalid or over-budget pastes MUST be rejected without replacing the current draft
+ * or suspending its autosave. Ordinary edits MUST NOT reparse the document.
  * Oversized clipboard input MUST be rejected before the HTML parser consumes it.
  */
 export const DocumentInputValidation =
@@ -23,7 +23,10 @@ export const DocumentInputValidation =
       return [
         new Plugin({
           filterTransaction: (transaction) => {
-            if (!transaction.docChanged) {
+            if (
+              !transaction.docChanged ||
+              transaction.getMeta("paste") !== true
+            ) {
               return true;
             }
             const parsed = parseDocumentContent(
