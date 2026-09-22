@@ -554,7 +554,11 @@ When using a disabled param and returning a loading flag, ensure `loading` is `f
 is `true`.
 
 When a hook is expected to return an array of objects, return an empty array (from `emptyArray()`)
-while loading/error/disabled instead of `undefined`.
+instead of `undefined` when no data is available or the hook is explicitly disabled.
+
+Hooks that intentionally retain previous results (for example, with `keepPreviousData`) may
+return them during debounce, loading, or after a refresh error. Loading and error flags must
+still reflect the current request.
 
 Example:
 
