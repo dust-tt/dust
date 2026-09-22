@@ -41,6 +41,7 @@ const columns = [
   {
     accessorKey: "action",
     header: "",
+    enableSorting: false,
     cell: (info: CellContext<any, number>) => (
       <DataTable.MoreButton menuItems={info.row.original.menuItems} />
     ),
