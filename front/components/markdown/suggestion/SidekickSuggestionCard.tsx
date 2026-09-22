@@ -692,6 +692,7 @@ export function SidekickSuggestionCard({
   switch (agentSuggestion.kind) {
     case "create":
     case "delete":
+    case "description":
     case "name":
       return (
         <ConnectedAgentSuggestionActionCard agentSuggestion={agentSuggestion} />
@@ -714,8 +715,6 @@ export function SidekickSuggestionCard({
       return <SubAgentSuggestionCard agentSuggestion={agentSuggestion} />;
     case "tools":
       return <ToolSuggestionCard agentSuggestion={agentSuggestion} />;
-    case "description":
-      return null;
     default:
       assertNeverAndIgnore(agentSuggestion);
       return null;

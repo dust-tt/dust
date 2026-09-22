@@ -9,6 +9,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   AgentCreateSuggestionType,
   AgentDeleteSuggestionType,
+  AgentDescriptionSuggestionType,
   AgentModelSuggestionType,
   AgentNameSuggestionType,
   AgentSuggestionState,
@@ -37,6 +38,7 @@ export function mapSuggestionStateToCardState(
 export type AgentActionCardSuggestionType =
   | AgentCreateSuggestionType
   | AgentDeleteSuggestionType
+  | AgentDescriptionSuggestionType
   | AgentModelSuggestionType
   | AgentNameSuggestionType;
 
@@ -74,6 +76,16 @@ function getLabels(agentSuggestion: AgentActionCardSuggestionType): {
         title: `Delete "${name}" agent`,
         acceptedTitle: `"${name}" agent deletion accepted`,
         rejectedTitle: `"${name}" agent deletion rejected`,
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "description": {
+      const { description } = agentSuggestion.suggestion;
+      return {
+        title: `Change description to "${description}"`,
+        acceptedTitle: `Description change to "${description}" accepted`,
+        rejectedTitle: `Description change to "${description}" rejected`,
         description: analysis ?? undefined,
       };
     }
