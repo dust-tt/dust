@@ -4,7 +4,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "aubin-tchoi",
   },
-  skills_search_manage_page: {
+  new_manage_skills_page: {
     description:
       "Enable the search-backed Manage Skills page (requires skills_search)",
     stage: "dust_only",

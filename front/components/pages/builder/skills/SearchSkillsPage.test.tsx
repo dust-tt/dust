@@ -73,7 +73,7 @@ async function setup({ searchEnabled = true, pageEnabled = true } = {}) {
     context.featureFlags.push("skills_search");
   }
   if (pageEnabled) {
-    context.featureFlags.push("skills_search_manage_page");
+    context.featureFlags.push("new_manage_skills_page");
   }
   const search = vi
     .fn<() => Promise<SearchSkillsResponseBody>>()
