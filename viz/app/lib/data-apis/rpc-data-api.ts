@@ -76,13 +76,14 @@ export class RPCDataAPI implements VisualizationDataAPI {
       return null;
     }
 
-    if (!result.fileBlob) {
+    const { fileBlob } = result;
+    if (!fileBlob) {
       return null;
     }
 
     const revision = result.revision ?? null;
     return {
-      file: new File([result.fileBlob], fileId, { type: result.fileBlob.type }),
+      file: new File([fileBlob], fileId, { type: fileBlob.type }),
       revision,
       canWrite: result.canWrite === true && revision !== null,
     };
