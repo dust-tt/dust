@@ -1633,7 +1633,7 @@ const InputBarContainer = ({
               className={classNames(
                 contentEditableClasses,
                 "scrollbar-hide",
-                "overflow-y-auto",
+                "overflow-y-auto overscroll-contain",
                 "max-h-[40vh] min-h-11"
               )}
             />

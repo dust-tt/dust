@@ -1,3 +1,4 @@
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // Accumulated wheel delta that closes the ring.
@@ -15,6 +16,27 @@ interface UseDiscoverScrollParams {
   isFillEnabled: boolean;
 }
 
+// Wheeling a nested scrollable, a long draft in the composer for instance, is reading rather
+// than intent to leave the home page.
+function isOverScrollableRegion(
+  target: EventTarget | null,
+  boundary: HTMLElement
+): boolean {
+  let node = target instanceof Element ? target : null;
+
+  while (node && node !== boundary) {
+    if (node.scrollHeight > node.clientHeight) {
+      const { overflowY } = window.getComputedStyle(node);
+      if (overflowY === "auto" || overflowY === "scroll") {
+        return true;
+      }
+    }
+    node = node.parentElement;
+  }
+
+  return false;
+}
+
 export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
   // The scroller only exists on the new-conversation route, so it comes and
   // goes while this hook stays mounted. Held as state, not a ref, so the
@@ -25,30 +47,67 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
   const [fillProgress, setFillProgress] = useState(0);
   const fillRef = useRef(0);
   const idleTimerRef = useRef<number | null>(null);
+  const endTransitionRef = useRef<(() => void) | null>(null);
+
+  // Locking the scroller is what keeps the home stage in place: a wheel, a page down or a
+  // space bar then does nothing, rather than moving and being snapped back. Radix rewrites
+  // the viewport's inline overflow on every scroll-state change, so the lock has to outrank
+  // it.
+  useEffect(() => {
+    if (!scroller) {
+      return;
+    }
+    if (isFillEnabled && stage === "home") {
+      scroller.style.setProperty("overflow-y", "hidden", "important");
+    } else {
+      scroller.style.removeProperty("overflow-y");
+    }
+
+    return () => {
+      scroller.style.removeProperty("overflow-y");
+    };
+  }, [isFillEnabled, scroller, stage]);
 
   const goToDiscover = useCallback(() => {
+    if (!scroller) {
+      return;
+    }
+    endTransitionRef.current?.();
+
     // Hold the ring at full while the page travels, so completing it reads
     // as the cause of the move; it resets once Discover has landed.
     fillRef.current = 1;
     setFillProgress(1);
     setStage("transition");
+    // The lock effect has not run for the new stage yet, and scrollIntoView needs a scroller
+    // that can move.
+    scroller.style.removeProperty("overflow-y");
     discoverRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
     let fallbackTimer = 0;
-    const land = () => {
+    const endTransition = () => {
       window.clearTimeout(fallbackTimer);
-      scroller?.removeEventListener("scrollend", land);
+      scroller.removeEventListener("scrollend", land);
+      endTransitionRef.current = null;
+    };
+    const land = () => {
+      endTransition();
       setStage("discover");
       fillRef.current = 0;
       setFillProgress(0);
     };
+
     fallbackTimer = window.setTimeout(land, TRANSITION_FALLBACK_MS);
-    scroller?.addEventListener("scrollend", land);
+    scroller.addEventListener("scrollend", land);
+    endTransitionRef.current = endTransition;
   }, [scroller]);
+
+  useEffect(() => () => endTransitionRef.current?.(), []);
 
   // A fresh scroller is a fresh home page: whatever stage the previous visit
   // ended on, this one starts at the top with an empty ring.
   useEffect(() => {
+    endTransitionRef.current?.();
     if (!scroller) {
       return;
     }
@@ -57,22 +116,17 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
     fillRef.current = 0;
   }, [scroller]);
 
-  // Wheel intent on the home stage fills the button instead of scrolling;
-  // during the transition it is swallowed so the animation completes.
+  // Wheel intent on the home stage fills the button; during the transition it is swallowed
+  // so the animation completes.
   useEffect(() => {
-    if (!scroller || !isFillEnabled || stage === "discover") {
+    if (!scroller || !isFillEnabled) {
       return;
     }
 
-    const handleWheel = (event: WheelEvent) => {
-      if (stage === "transition") {
-        event.preventDefault();
+    const fill = (event: WheelEvent) => {
+      if (event.deltaY <= 0 || isOverScrollableRegion(event.target, scroller)) {
         return;
       }
-      if (event.deltaY <= 0) {
-        return;
-      }
-      event.preventDefault();
       fillRef.current = Math.min(
         1,
         fillRef.current + event.deltaY / FILL_DISTANCE_PX
@@ -92,6 +146,21 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
       }, FILL_IDLE_RESET_MS);
     };
 
+    const handleWheel = (event: WheelEvent) => {
+      switch (stage) {
+        case "home":
+          fill(event);
+          return;
+        case "transition":
+          event.preventDefault();
+          return;
+        case "discover":
+          return;
+        default:
+          assertNever(stage);
+      }
+    };
+
     scroller.addEventListener("wheel", handleWheel, { passive: false });
     return () => {
       scroller.removeEventListener("wheel", handleWheel);
@@ -101,23 +170,33 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
     };
   }, [goToDiscover, isFillEnabled, scroller, stage]);
 
-  // On the discover stage, scrolling back to the very top hands control back
-  // to the home stage. On the home stage the scroller is locked to wheel
-  // input, but focus() and scrollIntoView() can still move it, so any stray
-  // offset snaps back to the top.
+  // On the discover stage, scrolling back to the very top hands control back to the home
+  // stage.
   useEffect(() => {
-    if (!scroller || !isFillEnabled || stage === "transition") {
+    if (!scroller || !isFillEnabled) {
       return;
     }
+
     const handleScroll = () => {
-      if (stage === "discover") {
-        if (scroller.scrollTop <= 0) {
-          setStage("home");
-        }
-      } else if (scroller.scrollTop > 0) {
-        scroller.scrollTop = 0;
+      switch (stage) {
+        case "discover":
+          if (scroller.scrollTop <= 0) {
+            setStage("home");
+          }
+          return;
+        case "home":
+          // The scroller is locked, but focus() and scrollIntoView() still move it.
+          if (scroller.scrollTop > 0) {
+            scroller.scrollTop = 0;
+          }
+          return;
+        case "transition":
+          return;
+        default:
+          assertNever(stage);
       }
     };
+
     scroller.addEventListener("scroll", handleScroll, { passive: true });
     return () => scroller.removeEventListener("scroll", handleScroll);
   }, [isFillEnabled, scroller, stage]);
