@@ -96,6 +96,7 @@ vi.mock("@app/lib/utils/cache", () => ({
 
 import { Authenticator } from "@app/lib/auth";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -163,11 +164,16 @@ describe("Authenticator.fromJSON", () => {
     const editorGroup = await pod.fetchManualEditorGroup(auth);
     expect(editorGroup).not.toBeNull();
 
+    // Pod admin access is conferred by membership in the pod's editor group. A stale auth
+    // serialized before the pod existed lacks it; a refreshed one reloads the membership and
+    // resolves the grant.
     const staleAuth = await Authenticator.fromJSON(staleAuthJson);
-    expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(false);
+    expect(staleAuth.can("admin", pod)).toBe(false);
 
     const freshAuth =
       await Authenticator.fromJsonWithRefrehedGroups(staleAuthJson);
-    expect(freshAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
+    const refreshedPod = await SpaceResource.fetchById(freshAuth, pod.sId);
+    expect(refreshedPod).not.toBeNull();
+    expect(freshAuth.can("admin", refreshedPod!)).toBe(true);
   });
 });

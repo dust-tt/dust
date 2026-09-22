@@ -303,10 +303,8 @@ describe("createSpaceAndGroup", () => {
 
         const staleAuth = await Authenticator.fromJSON(staleAuthJson);
         expect(staleAuth.can("admin", pod)).toBe(false);
-        expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(false);
 
         await staleAuth.refresh();
-        expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
 
         const refreshedPod = await SpaceResource.fetchById(staleAuth, pod.sId);
         expect(staleAuth.can("admin", refreshedPod!)).toBe(true);
@@ -346,10 +344,9 @@ describe("createSpaceAndGroup", () => {
         expect(editorGroup).toBeDefined();
 
         // createSpaceAndGroup added the creator to the new editor group, wrote its grants, and
-        // refreshed `userAuth` post-commit. The same live auth must now see the group and
-        // administrate the pod with no manual refresh (contrast the reconstructed stale-auth test
-        // above, which has to call refresh() itself).
-        expect(userAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
+        // refreshed `userAuth` post-commit. The same live auth must now administrate the pod with
+        // no manual refresh (contrast the reconstructed stale-auth test above, which has to call
+        // refresh() itself).
         expect(
           userAuth.getGovernanceGrantVerbs("space", pod.id, pod.workspaceId)
         ).toContain("admin");
