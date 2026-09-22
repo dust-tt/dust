@@ -4,6 +4,7 @@ export const DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON = false;
 export const DEFAULT_AUTO_SEAT_UPGRADE_ENABLED = false;
 export const DEFAULT_TOP_UP_ENABLED = false;
 export const DEFAULT_AUTO_INVOICE_FINALIZATION_ENABLED = true;
+export const DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED = false;
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
@@ -62,10 +63,8 @@ import type { CreationOptional } from "sequelize";
  *   for manual review. Defaults to true (finalization is automatic).
  * - creditSpendCheckpointEnabled: Whether the credit spend checkpoint gate
  *   (agent loop pausing for the user to confirm continuing once a message's
- *   spend crosses a threshold) is active for the workspace at all. NULL means
- *   the admin hasn't overridden it: the effective value then defaults based
- *   on the workspace's plan. A non-NULL value is an explicit admin override
- *   that applies regardless of plan.
+ *   spend crosses a threshold) is active for the workspace. Defaults to
+ *   false.
  *
  * The Metronome balance-threshold alert id (used by the webhook to match the
  * firing alert) is NOT stored here: it is a Metronome-generated value resolved
@@ -86,7 +85,7 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare balanceThresholdAwuCredits: number | null;
   declare topUpEnabled: CreationOptional<boolean>;
   declare autoInvoiceFinalizationEnabled: CreationOptional<boolean>;
-  declare creditSpendCheckpointEnabled: boolean | null;
+  declare creditSpendCheckpointEnabled: CreationOptional<boolean>;
 }
 
 CreditUsageConfigurationModel.init(
@@ -176,8 +175,8 @@ CreditUsageConfigurationModel.init(
     },
     creditSpendCheckpointEnabled: {
       type: DataTypes.BOOLEAN,
-      allowNull: true,
-      defaultValue: null,
+      allowNull: false,
+      defaultValue: DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED,
     },
   },
   {
