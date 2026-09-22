@@ -15,7 +15,7 @@ interface SkillNameCellProps {
     SkillListItemType | SkillWithoutInstructionsAndToolsType,
     "name" | "icon" | "editedBy"
   >;
-  description?: string;
+  description: string;
 }
 
 export function SkillNameCell({ skill, description }: SkillNameCellProps) {
@@ -30,11 +30,9 @@ export function SkillNameCell({ skill, description }: SkillNameCellProps) {
         <div className="heading-sm overflow-hidden truncate text-foreground">
           {skill.name}
         </div>
-        {description && (
-          <div className="overflow-hidden truncate text-sm text-muted-foreground">
-            {description}
-          </div>
-        )}
+        <div className="overflow-hidden truncate text-sm text-muted-foreground">
+          {description}
+        </div>
       </div>
     </div>
   );
