@@ -60,21 +60,19 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).toContain("dsbx frame publish");
-    expect(instructions).toContain("dsbx frame create");
+    expect(instructions).toContain('mkdir -p "$FRAME"');
     expect(instructions).toContain(
-      "publish a new Frame in one Computer command"
+      "write the real source\nand publish a new Frame in one Computer command"
     );
-    expect(instructions).toContain("read the scaffolded files back");
-    expect(instructions).not.toContain(
-      "Edit the generated source before publishing"
-    );
-    expect(instructions).toContain("dsbx frame register");
+    expect(instructions).toContain("There is no scaffold step");
+    expect(instructions).not.toContain("dsbx frame create");
+    expect(instructions).not.toContain("dsbx frame register");
     expect(instructions).toContain("dsbx frame share-link");
     expect(instructions).toContain("dsbx frame call");
     expect(instructions).toContain("stable Frame ID");
     expect(instructions).toContain("additionally requires read access");
     expect(instructions).toContain("does not test the Frame");
-    expect(instructions).toContain("dsbx frame validate");
+    expect(instructions).not.toContain("dsbx frame validate");
     expect(instructions).toContain(
       'bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME"'
     );
@@ -106,6 +104,9 @@ describe("framesSkill.fetchInstructions", () => {
       "Inside a durable function, shell out to:"
     );
     expect(instructions).toContain("useFrameFunctionMutation");
+    expect(instructions).toContain("data` is typed as `unknown`");
+    expect(instructions).toContain("as CommentList | undefined");
+    expect(instructions).toContain("isMutating");
     expect(instructions).toContain("## Persisting state in a Frame database");
     expect(instructions).toContain('db("comments")');
     expect(instructions).toContain("reconciles the declared schemas");

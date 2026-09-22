@@ -37,7 +37,13 @@ export interface UseFrameFunctionResult {
 export interface UseFrameFunctionMutationResult {
   data: unknown;
   error: Error | undefined;
+  /** True while a triggered mutation is in flight. Prefer this name. */
   isMutating: boolean;
+  /**
+   * Alias of {@link isMutating}. Kept so Frame UIs written against query-style
+   * `isLoading` still typecheck.
+   */
+  isLoading: boolean;
   reset: () => void;
   trigger: (input: unknown) => Promise<unknown>;
 }
@@ -227,10 +233,13 @@ export function useFrameFunctionMutation(
     [resolution.error, resolution.functionId, result.trigger]
   );
 
+  const isMutating = key !== null && !mutationKeyChanged && result.isMutating;
+
   return {
     data: mutationKeyChanged ? undefined : result.data,
     error: resolution.error ?? (mutationKeyChanged ? undefined : result.error),
-    isMutating: key !== null && !mutationKeyChanged && result.isMutating,
+    isMutating,
+    isLoading: isMutating,
     reset: result.reset,
     trigger,
   };

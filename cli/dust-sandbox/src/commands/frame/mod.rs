@@ -1,9 +1,6 @@
 mod call;
-mod create;
 mod publish;
-mod register;
 mod share_link;
-mod validate;
 
 use std::path::{Component, Path, PathBuf};
 
@@ -11,13 +8,9 @@ use anyhow::{bail, Context};
 use clap::Subcommand;
 
 pub use call::run as cmd_frame_call;
-pub use create::run as cmd_frame_create;
 pub use publish::run as cmd_frame_publish;
-pub use register::run as cmd_frame_register;
 pub use share_link::run as cmd_frame_share_link;
-pub use validate::run as cmd_frame_validate;
 
-const FRAME_MANIFEST_FILE: &str = "manifest.json";
 const FILES_ROOT: &str = "/files";
 
 #[derive(Subcommand)]
@@ -32,31 +25,12 @@ pub enum FrameCommand {
         #[arg(long, value_name = "JSON")]
         input: Option<String>,
     },
-    /// Create and register a new Frame folder
-    Create {
-        /// Frame folder under /files/conversation-... or /files/pod-... The folder name is the
-        /// Frame's name.
-        directory: PathBuf,
-        /// Frame description
-        #[arg(long, default_value = "")]
-        description: String,
-    },
-    /// Register an existing Frame manifest and assign its stable identity
-    Register {
-        /// Absolute /files/.../manifest.json path
-        manifest: PathBuf,
-    },
     /// Retrieve the existing share link for a registered Frame
     ShareLink {
         /// Existing Frame folder under /files
         directory: PathBuf,
     },
-    /// Validate a Frames v2 source without publishing it
-    Validate {
-        /// Absolute path to a v2 manifest under /files
-        manifest: PathBuf,
-    },
-    /// Build and publish a Frame from its current source
+    /// Register (if needed), build, and publish a Frame from its current source
     Publish {
         /// Absolute path to a v2 manifest or legacy Frame entry file under /files
         source: PathBuf,
@@ -65,13 +39,6 @@ pub enum FrameCommand {
 
 fn scoped_path(path: &Path) -> anyhow::Result<String> {
     scoped_path_under(path, Path::new(FILES_ROOT))
-}
-
-fn validate_scoped_path(path: &Path) -> anyhow::Result<()> {
-    let relative = path
-        .strip_prefix(FILES_ROOT)
-        .with_context(|| format!("path must be under {FILES_ROOT}: {}", path.display()))?;
-    validate_relative_scoped_path(relative).map(|_| ())
 }
 
 fn scoped_path_under(path: &Path, files_root: &Path) -> anyhow::Result<String> {
@@ -101,13 +68,6 @@ fn validate_relative_scoped_path(relative: &Path) -> anyhow::Result<String> {
         .to_str()
         .map(str::to_owned)
         .context("path must be valid UTF-8")
-}
-
-fn scoped_manifest_path(path: &Path) -> anyhow::Result<String> {
-    if path.file_name().and_then(|name| name.to_str()) != Some(FRAME_MANIFEST_FILE) {
-        bail!("Frame path must end in {FRAME_MANIFEST_FILE}");
-    }
-    scoped_path(path)
 }
 
 pub(crate) fn validate_frame_id(frame_id: &str) -> anyhow::Result<()> {
@@ -191,7 +151,5 @@ mod tests {
 
         assert!(scoped_path_under(&outside, &files_root).is_err());
         assert!(scoped_path_under(&files_root.join("missing.json"), &files_root).is_err());
-        assert!(validate_scoped_path(Path::new("/tmp/manifest.json")).is_err());
-        assert!(validate_scoped_path(Path::new("/files/../tmp/manifest.json")).is_err());
     }
 }

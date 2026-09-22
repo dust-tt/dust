@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Ensure an ngrok HTTPS tunnel to front-api (:3000) and persist its public URL
-# for SBX_DEV_FRONT_URL (sandbox → local API). Soft-fails when auth is missing.
+# Ensure ngrok HTTPS tunnels to front-api (:3000) and viz (:3007), and persist
+# their public URLs for SBX_DEV_FRONT_URL / VIZ_PUBLIC_URL (sandbox → local).
+# Soft-fails when auth is missing.
 set -euo pipefail
 
 DUST_DEV_SCRIPT_NAME=ensure-ngrok
@@ -11,7 +12,9 @@ source "$(dirname "$0")/env.sh"
 
 NGROK_API_URL="${NGROK_API_URL:-http://127.0.0.1:4040}"
 NGROK_FRONT_ADDR="${NGROK_FRONT_ADDR:-http://localhost:3000}"
+NGROK_VIZ_ADDR="${NGROK_VIZ_ADDR:-http://localhost:3007}"
 SBX_DEV_FRONT_URL_FILE="${SBX_DEV_FRONT_URL_FILE:-${DUST_INFRA_LOG_DIR}/sbx-dev-front-url}"
+SBX_DEV_VIZ_URL_FILE="${SBX_DEV_VIZ_URL_FILE:-${DUST_INFRA_LOG_DIR}/sbx-dev-viz-url}"
 NGROK_LOG_FILE="${DUST_INFRA_LOG_DIR}/ngrok.log"
 NGROK_PID_FILE="${DUST_INFRA_LOG_DIR}/ngrok.pid"
 
@@ -21,10 +24,11 @@ ngrok_agent_up() {
   curl -sf "${NGROK_API_URL}/api/tunnels" >/dev/null 2>&1
 }
 
-# Print the https public_url for a tunnel whose config.addr targets front-api, or
-# any https tunnel if none match. Empty stdout when the agent has no tunnels yet.
-ngrok_front_public_url() {
-  python3 - "${NGROK_API_URL}" "${NGROK_FRONT_ADDR}" <<'PY'
+# Print the https public_url for a tunnel whose config.addr matches want_addr, or
+# empty stdout when none match / the agent has no tunnels yet.
+ngrok_public_url_for_addr() {
+  local want_addr="$1"
+  python3 - "${NGROK_API_URL}" "${want_addr}" <<'PY'
 import json, sys, urllib.error, urllib.request
 
 api, want_addr = sys.argv[1], sys.argv[2]
@@ -45,15 +49,17 @@ def addr_matches(t: dict) -> bool:
     return addr.rstrip("/").endswith(f":{want_port}") or addr.rstrip("/") == want_addr.rstrip("/")
 
 matched = next((t for t in https if addr_matches(t)), None)
-print((matched or https[0])["public_url"].rstrip("/"))
+if matched:
+    print(matched["public_url"].rstrip("/"))
 PY
 }
 
-request_front_tunnel() {
-  # Agent already running (e.g. Slack named tunnel) — ask it for :3000 as well.
+request_tunnel() {
+  local name="$1"
+  local addr="$2"
   curl -sf -X POST "${NGROK_API_URL}/api/tunnels" \
     -H "Content-Type: application/json" \
-    -d "{\"name\":\"front-api\",\"addr\":\"${NGROK_FRONT_ADDR}\",\"proto\":\"http\"}" \
+    -d "{\"name\":\"${name}\",\"addr\":\"${addr}\",\"proto\":\"http\"}" \
     >/dev/null 2>&1 || true
 }
 
@@ -69,65 +75,85 @@ start_ngrok_agent() {
 
   log "Starting ngrok http tunnel to ${NGROK_FRONT_ADDR}..."
   # NGROK_AUTHTOKEN is read from the environment by the ngrok agent.
+  # Viz (:3007) is added via the local agent API once this tunnel is up.
   nohup ngrok http --log=stdout "${NGROK_FRONT_ADDR}" \
     >>"${NGROK_LOG_FILE}" 2>&1 &
   echo $! >"${NGROK_PID_FILE}"
 }
 
-wait_for_front_url() {
+persist_url() {
+  local url="$1"
+  local file="$2"
+  local label="$3"
+  printf '%s\n' "${url}" >"${file}"
+  chmod 644 "${file}"
+  log "${label}: ${url} (-> ${file})"
+}
+
+wait_for_url() {
+  local addr="$1"
+  local file="$2"
+  local label="$3"
+  local tunnel_name="$4"
   local attempt=0
   local max_attempts="${DUST_NGROK_WAIT_SECONDS:-30}"
   local url=""
 
-  until url="$(ngrok_front_public_url)" && [ -n "${url}" ]; do
+  until url="$(ngrok_public_url_for_addr "${addr}")" && [ -n "${url}" ]; do
     attempt=$((attempt + 1))
     if [ "$attempt" -gt "$max_attempts" ]; then
-      log "ngrok did not publish a public URL in time (see ${NGROK_LOG_FILE})"
+      log "ngrok did not publish a public URL for ${addr} in time (see ${NGROK_LOG_FILE})"
       if [ -f "${NGROK_LOG_FILE}" ]; then
         tail -40 "${NGROK_LOG_FILE}"
       fi
       return 1
     fi
     if [ "$attempt" -eq 1 ] || [ $((attempt % 5)) -eq 0 ]; then
-      log "Waiting for ngrok public URL (${attempt}s)..."
+      log "Waiting for ngrok public URL for ${addr} (${attempt}s)..."
     fi
-    # If an agent is up without a :3000 tunnel, request one once early.
+    # If an agent is up without this tunnel, request one once early.
     if [ "$attempt" -eq 2 ] && ngrok_agent_up; then
-      request_front_tunnel
+      request_tunnel "${tunnel_name}" "${addr}"
     fi
     sleep 1
   done
 
-  printf '%s\n' "${url}" >"${SBX_DEV_FRONT_URL_FILE}"
-  chmod 644 "${SBX_DEV_FRONT_URL_FILE}"
-  log "Sandbox front tunnel: ${url} (SBX_DEV_FRONT_URL -> ${SBX_DEV_FRONT_URL_FILE})"
+  persist_url "${url}" "${file}" "${label}"
 }
 
-persist_existing_url() {
+ensure_tunnel() {
+  local addr="$1"
+  local file="$2"
+  local label="$3"
+  local tunnel_name="$4"
   local url
-  url="$(ngrok_front_public_url)"
-  if [ -z "${url}" ]; then
-    return 1
+
+  url="$(ngrok_public_url_for_addr "${addr}")"
+  if [ -n "${url}" ]; then
+    persist_url "${url}" "${file}" "Reusing ${label}"
+    return 0
   fi
-  printf '%s\n' "${url}" >"${SBX_DEV_FRONT_URL_FILE}"
-  chmod 644 "${SBX_DEV_FRONT_URL_FILE}"
-  log "Reusing ngrok tunnel: ${url} (SBX_DEV_FRONT_URL -> ${SBX_DEV_FRONT_URL_FILE})"
+
+  wait_for_url "${addr}" "${file}" "${label}" "${tunnel_name}"
 }
 
-if persist_existing_url; then
-  exit 0
+# --- main ---
+
+if ! ngrok_agent_up; then
+  if ! start_ngrok_agent; then
+    rm -f "${SBX_DEV_FRONT_URL_FILE}" "${SBX_DEV_VIZ_URL_FILE}"
+    exit 0
+  fi
 fi
 
-if ngrok_agent_up; then
-  log "ngrok agent is up but has no :3000 tunnel; requesting front-api tunnel"
-  request_front_tunnel
-  wait_for_front_url
-  exit 0
-fi
+# Front-api is required for sandbox API callbacks.
+ensure_tunnel "${NGROK_FRONT_ADDR}" "${SBX_DEV_FRONT_URL_FILE}" \
+  "Sandbox front tunnel (SBX_DEV_FRONT_URL)" "front-api"
 
-if ! start_ngrok_agent; then
-  rm -f "${SBX_DEV_FRONT_URL_FILE}"
-  exit 0
+# Viz so sandboxes can fetch frame-runtime from local viz (:3007).
+# Soft-fail: free ngrok plans may only allow one concurrent tunnel.
+if ! ensure_tunnel "${NGROK_VIZ_ADDR}" "${SBX_DEV_VIZ_URL_FILE}" \
+  "Sandbox viz tunnel (VIZ_PUBLIC_URL)" "viz"; then
+  log "viz tunnel (:3007) not available; sandboxes will keep using VIZ_PUBLIC_URL as-is"
+  rm -f "${SBX_DEV_VIZ_URL_FILE}"
 fi
-
-wait_for_front_url

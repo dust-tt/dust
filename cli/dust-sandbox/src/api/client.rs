@@ -12,8 +12,7 @@ use super::types::{
     CallToolPostOutcome, CallToolPostResponse, CallToolRequest, CallToolResponse, CallToolResult,
     FrameCallByIdRequest, FrameCallFromSourceRequest, FrameCallResponse, FrameDatabaseListResponse,
     FrameDatabaseQueryRequest, FrameDatabaseQueryResponse, FramePublishRequest,
-    FramePublishResponse, FrameRegisterRequest, FrameRegisterResponse, FrameShareLinkResponse,
-    FrameValidateRequest, FrameValidateResponse, MCPServerView, SandboxServerViewsResponse,
+    FramePublishResponse, FrameShareLinkResponse, MCPServerView, SandboxServerViewsResponse,
 };
 
 // Action poll schedule after a 202 create: Temporal + MCP need time before
@@ -202,29 +201,6 @@ impl DustApiClient {
                 function_name,
                 input,
             },
-            POLL_MAX_DURATION,
-        )
-        .await
-    }
-
-    pub async fn register_frame(
-        &self,
-        manifest_path: &str,
-    ) -> anyhow::Result<FrameRegisterResponse> {
-        self.post(
-            "sandbox/frames/register",
-            &FrameRegisterRequest { manifest_path },
-        )
-        .await
-    }
-
-    pub async fn validate_frame(
-        &self,
-        manifest_path: &str,
-    ) -> anyhow::Result<FrameValidateResponse> {
-        self.post_with_timeout(
-            "sandbox/frames/validate",
-            &FrameValidateRequest { manifest_path },
             POLL_MAX_DURATION,
         )
         .await

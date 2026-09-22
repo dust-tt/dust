@@ -72,7 +72,7 @@ documents.
 | `init-data-dirs.sh` | Create `DUST_DATA_ROOT` dirs; `initdb` a fresh Postgres cluster if empty |
 | `init-qdrant-collections.sh` | Create the Qdrant embedding collection (idempotent) |
 | `apps.sh` | Wait for infra, optional WorkOS seed, ngrok front tunnel, mprocs |
-| `ensure-ngrok.sh` | Start ngrok → `:3000` and persist `SBX_DEV_FRONT_URL` for sandboxes |
+| `ensure-ngrok.sh` | Start ngrok → `:3000` + `:3007` and persist `SBX_DEV_FRONT_URL` / viz URL for sandboxes |
 | `up.sh` | `install?` → `infra` → `apps` (serial entry for laptop / non-Cursor agents) |
 | `refresh-op-env.sh` | Re-fetch 1Password Environment into `/tmp` for all shells |
 | `docker-run.sh` | Local container launcher |
@@ -81,7 +81,7 @@ documents.
 
 - **Runtime / host-injected:** `OP_SERVICE_ACCOUNT_TOKEN`, `DEV_WORKOS_*` (already in process env; not re-exported).
 - **1Password Environment:** materialized once to `/tmp/dust-op-environment.env`, loaded via `BASH_ENV=/tmp/dust-shell-env.sh` for non-interactive bash (infra/mprocs) and via `/root/.zshrc` / `dev/zshrc` for interactive terminals. Store `GCP_SERVICE_ACCOUNT_B64` as base64-encoded JSON; on materialize it is decoded to `SERVICE_ACCOUNT` (`/tmp/dust-dev-sa.json`). Include `NGROK_AUTHTOKEN` so `apps.sh` can open the sandbox front-api tunnel.
-- **Local overrides:** `dev/scripts/env.sh` → `apply_local_overrides` forces in-container DB/API URLs after OP load. When `/tmp/dust-infra/sbx-dev-front-url` exists (from `ensure-ngrok.sh`), it exports `SBX_DEV_FRONT_URL` and defaults `SBX_DEV_UNRESTRICTED_EGRESS=true` so sandboxes can reach the tunnel (agent-proxied traffic otherwise goes through the cloud egress proxy, which only allowlists `dust.tt`).
+- **Local overrides:** `dev/scripts/env.sh` → `apply_local_overrides` forces in-container DB/API URLs after OP load. When `/tmp/dust-infra/sbx-dev-front-url` exists (from `ensure-ngrok.sh`), it exports `SBX_DEV_FRONT_URL` and defaults `SBX_DEV_UNRESTRICTED_EGRESS=true` so sandboxes can reach the tunnel (agent-proxied traffic otherwise goes through the cloud egress proxy, which only allowlists `dust.tt`). When `/tmp/dust-infra/sbx-dev-viz-url` exists, it overrides `VIZ_PUBLIC_URL` (sandbox `DUST_VIZ_URL`) while leaving `NEXT_PUBLIC_VIZ_URL` on localhost for the SPA.
 
 ## Infra models
 
