@@ -72,7 +72,7 @@ Then `rm` both files on the pod, and point ingest at the export: `npm run ingest
 
 ### Searching as a user
 
-A profile is the slice of an `Authenticator` a search needs: role, `auth.groupIds()`, and the workspace spaces where `space.canRead(auth)` holds, split into pods and non-pods. Pass it instead of spelling out ids:
+A profile is the slice of an `Authenticator` a search needs: role, `auth.groupIds()`, and the workspace spaces where `auth.can("read", space)` holds, split into pods and non-pods. Pass it instead of spelling out ids:
 
 ```bash
 npm run search -- --profile assets/profile_<userSId>.json --q "pull request"

@@ -62,13 +62,6 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   }
 
   /**
-   * Check if the user has permission to write (edit/delete) this suggestion's agent.
-   */
-  canWrite(auth: Authenticator): boolean {
-    return AgentSuggestionResource.canEditAgent(auth, this.agentAccess);
-  }
-
-  /**
    * Fetches permissions for agent suggestions using the selected agent read source.
    */
   private static async getAgentAccessById(
@@ -303,7 +296,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    if (!this.canWrite(auth)) {
+    if (!AgentSuggestionResource.canEditAgent(auth, this.agentAccess)) {
       return new Err(
         new Error("User does not have permission to edit this agent")
       );
@@ -388,7 +381,9 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     }
 
     assert(
-      suggestions.every((s) => s.canWrite(auth)),
+      suggestions.every((s) =>
+        AgentSuggestionResource.canEditAgent(auth, s.agentAccess)
+      ),
       "User does not have permission to edit this agent"
     );
 
