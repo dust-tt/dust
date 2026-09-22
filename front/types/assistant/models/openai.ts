@@ -472,7 +472,6 @@ export const GPT_6_ASTRA_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
-    featureFlag: "claude_4_5_opus_feature",
   },
   unavailableIfOneOf: {
     featureFlag: "disable_gpt_6_astra",
@@ -517,7 +516,6 @@ export const GPT_5_6_SOL_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     creditPricedPlan: true,
     plansWithAdvancedModels: true,
-    featureFlag: "claude_4_5_opus_feature",
   },
   formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
   toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,

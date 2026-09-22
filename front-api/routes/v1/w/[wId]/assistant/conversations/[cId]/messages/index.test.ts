@@ -1,6 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -171,6 +170,8 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
   it("persists a valid modelSelection as the user message requestedModel", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       method: "POST",
+      // Opus 4.8 is premium: entitlement comes from the plan.
+      plan: "creditPriced",
     });
 
     const user = await UserFactory.basic();
@@ -179,7 +180,6 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(userAuth, "claude_4_5_opus_feature");
     const conversation = await ConversationFactory.create(userAuth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date()],
