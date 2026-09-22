@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { parseDocumentContent, serializeDocumentMarkdown } from "./content";
+import { DocumentInputValidation } from "./DocumentInputValidation";
 import { documentExtensions } from "./extensions";
 import type { DocumentProps, DocumentSaveResult } from "./types";
 
@@ -23,6 +24,7 @@ interface UseDocumentEditorProps {
   readOnly: boolean;
   autosaveDebounceMs: number;
   onSave: DocumentProps["onSave"];
+  onPendingChangesChange?: DocumentProps["onPendingChangesChange"];
 }
 
 /**
@@ -46,6 +48,12 @@ interface UseDocumentEditorProps {
  * Saves MUST default to JSON regardless of the input format. Markdown saves MUST use the
  * committed saveFormat. Opening a document or changing its output format MUST NOT write it.
  */
+/**
+ * @cc [owner:flvndvd,label:product] document-pending-events
+ * Pending-change notifications MUST reflect unsaved content or an in-flight save.
+ * Save completion MUST acknowledge only submitted content. Unmounted editors MUST NOT
+ * notify the host, including when an earlier save finishes after a new session opens.
+ */
 export const useDocumentEditor = ({
   initialContent,
   contentType,
@@ -53,26 +61,52 @@ export const useDocumentEditor = ({
   readOnly,
   autosaveDebounceMs,
   onSave,
+  onPendingChangesChange,
 }: UseDocumentEditorProps) => {
   const [initial] = useState(() => ({
     ...parseDocumentContent(initialContent, contentType),
     contentType,
     source: initialContent,
   }));
+  const [inputError, setInputError] = useState<string | null>(null);
+  const [extensions] = useState(() => [
+    ...documentExtensions,
+    DocumentInputValidation.configure({ onRejected: setInputError }),
+  ]);
   const [baseline, setBaseline] = useState<string | null>(null);
   const [draft, setDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
-  const editable = !readOnly && onSave !== undefined && initial.ok;
-  const persistenceRef = useRef({ onSave, editable, baseline, saveFormat });
+  const mountedRef = useRef(true);
 
   useLayoutEffect(() => {
-    persistenceRef.current = { onSave, editable, baseline, saveFormat };
-  }, [onSave, editable, baseline, saveFormat]);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  const editable = !readOnly && onSave !== undefined && initial.ok;
+  const persistenceRef = useRef({
+    onSave,
+    editable,
+    baseline,
+    saveFormat,
+    onPendingChangesChange,
+  });
+
+  useLayoutEffect(() => {
+    persistenceRef.current = {
+      onSave,
+      editable,
+      baseline,
+      saveFormat,
+      onPendingChangesChange,
+    };
+  }, [onSave, editable, baseline, saveFormat, onPendingChangesChange]);
 
   const editor = useEditor({
-    extensions: documentExtensions,
+    extensions,
     content: initial.ok ? initial.content : "",
     contentType: "json",
     immediatelyRender: false,
@@ -96,10 +130,16 @@ export const useDocumentEditor = ({
       const content = JSON.stringify(editor.getJSON());
       setBaseline(content);
       setDraft(content);
+      persistenceRef.current.baseline = content;
+      persistenceRef.current.onPendingChangesChange?.(false);
     },
     onUpdate: ({ editor }) => {
+      setInputError(null);
       const content = JSON.stringify(editor.getJSON());
       setDraft(content);
+      persistenceRef.current.onPendingChangesChange?.(
+        savingRef.current || content !== persistenceRef.current.baseline
+      );
 
       if (content === baseline) {
         setError(null);
@@ -141,6 +181,12 @@ export const useDocumentEditor = ({
       return;
     }
 
+    const validated = parseDocumentContent(content, "json");
+    if (!validated.ok) {
+      setError(validated.error);
+      return;
+    }
+
     const serialized =
       format === "markdown" ? serializeDocumentMarkdown(document) : content;
 
@@ -150,6 +196,7 @@ export const useDocumentEditor = ({
     }
 
     savingRef.current = true;
+    persistenceRef.current.onPendingChangesChange?.(true);
     setSaving(true);
     setError(null);
 
@@ -163,7 +210,15 @@ export const useDocumentEditor = ({
     savingRef.current = false;
     setSaving(false);
 
+    if (mountedRef.current && !editor.isDestroyed) {
+      persistenceRef.current.onPendingChangesChange?.(
+        JSON.stringify(editor.getJSON()) !==
+          (result.ok ? content : savedContent)
+      );
+    }
+
     if (result.ok) {
+      persistenceRef.current.baseline = content;
       setBaseline(content);
       return;
     }
@@ -186,11 +241,13 @@ export const useDocumentEditor = ({
     editor,
     editable,
     valid: initial.ok,
+    validationError: initial.ok ? null : initial.error,
     unsupportedMarkdown:
       !initial.ok && initial.contentType === "markdown" ? initial.source : null,
     dirty,
     saving,
     error,
+    inputError,
     save,
   };
 };

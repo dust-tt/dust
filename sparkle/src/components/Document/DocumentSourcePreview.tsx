@@ -4,17 +4,21 @@ import React from "react";
 interface DocumentSourcePreviewProps {
   source: string;
   className?: string;
+  reason?: string;
 }
 
 export const DocumentSourcePreview = ({
   source,
   className,
+  reason,
 }: DocumentSourcePreviewProps) => (
   <article className={className}>
     <div className="mx-auto max-w-[50rem] px-5 py-8 text-foreground">
       <p role="alert" className="mb-6 text-muted-foreground copy-sm">
-        This document includes formatting that isn't supported yet. The original
-        Markdown is shown below and editing is disabled to preserve it.
+        {reason ??
+          "This document includes formatting that isn't supported yet."}{" "}
+        The original Markdown is shown below and editing is disabled to preserve
+        it.
       </p>
       <pre
         className={cn(

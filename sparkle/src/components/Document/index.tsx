@@ -35,15 +35,18 @@ export const Document = ({
   readOnly = false,
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
+  onPendingChangesChange,
 }: DocumentProps) => {
   const {
     editor,
     editable,
     valid,
+    validationError,
     unsupportedMarkdown,
     dirty,
     saving,
     error,
+    inputError,
     save,
   } = useDocumentEditor({
     initialContent,
@@ -52,6 +55,7 @@ export const Document = ({
     readOnly,
     autosaveDebounceMs,
     onSave,
+    onPendingChangesChange,
   });
   const blockMenu = useDocumentBlockMenu(editor, editable);
 
@@ -83,6 +87,7 @@ export const Document = ({
       <DocumentSourcePreview
         source={unsupportedMarkdown}
         className={className}
+        reason={validationError ?? undefined}
       />
     );
   }
@@ -91,8 +96,7 @@ export const Document = ({
     return (
       <article className={className}>
         <p role="alert">
-          This document could not be opened. Its saved content has not been
-          changed.
+          {validationError} Its saved content has not been changed.
         </p>
       </article>
     );
@@ -117,6 +121,14 @@ export const Document = ({
             onRetry={save}
             autosaveDebounceMs={autosaveDebounceMs}
           />
+        )}
+        {inputError && (
+          <p
+            role="alert"
+            className="mb-6 rounded-lg border border-border bg-muted-background px-4 py-3 text-foreground copy-sm"
+          >
+            That change was not applied. {inputError}
+          </p>
         )}
         {editor && editable && (
           <>

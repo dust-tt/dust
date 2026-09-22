@@ -8,14 +8,22 @@ import {
 } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
 import { Fragment, type Node } from "@tiptap/pm/model";
-import { z } from "zod";
 import { documentExtensions } from "./extensions";
+import {
+  isDocumentSourceWithinLimit,
+  validateDocumentJSON,
+} from "./validation";
+
+export { DOCUMENT_MAX_BYTES } from "./validation";
+
+export type DocumentContentResult =
+  | { ok: true; content: JSONContent }
+  | { ok: false; error: string };
 
 const documentSchema = getSchema(documentExtensions);
 const documentMarkdown = new MarkdownManager({
   extensions: documentExtensions,
 });
-const documentEnvelope = z.object({ type: z.literal("doc") }).passthrough();
 
 /**
  * @cc [owner:flvndvd,label:architecture] document-markdown-capabilities
@@ -53,17 +61,38 @@ const isSupportedMarkdownToken = (token: MarkdownToken) =>
     token.raw?.startsWith("```") ||
     token.codeBlockStyle === "indented");
 
-const hasSupportedMarkdown = (content: string) => {
-  const tokens = documentMarkdown.instance.lexer(content);
-  let supported = true;
+const getUnsupportedMarkdown = (content: string): string[] | null => {
+  const unsupported = new Set<string>();
 
-  documentMarkdown.instance.walkTokens(tokens, (token) => {
-    if (!isSupportedMarkdownToken(token)) {
-      supported = false;
-    }
-  });
+  try {
+    const tokens = documentMarkdown.instance.lexer(content);
+    documentMarkdown.instance.walkTokens(tokens, (token) => {
+      if (!isSupportedMarkdownToken(token)) {
+        unsupported.add(token.type ?? "unknown");
+      }
+    });
+  } catch {
+    return null;
+  }
 
-  return supported;
+  return [...unsupported];
+};
+
+const parseMarkdownContent = (content: string): DocumentContentResult => {
+  let parsed: JSONContent;
+  try {
+    parsed = documentMarkdown.parse(content);
+  } catch {
+    return { ok: false, error: "This Markdown could not be parsed." };
+  }
+
+  const normalized = parsed.content?.length
+    ? parsed
+    : { ...parsed, content: [{ type: "paragraph" }] };
+  const validated = validateDocumentJSON(normalized, documentSchema);
+  return validated.ok
+    ? { ok: true, content: validated.node.toJSON() }
+    : validated;
 };
 
 const withoutTrailingParagraphs = (document: JSONContent): JSONContent => {
@@ -82,12 +111,16 @@ const withoutTrailingParagraphs = (document: JSONContent): JSONContent => {
 };
 
 const canRoundTripMarkdown = (document: JSONContent, markdown: string) => {
-  const reopened = documentMarkdown.parse(markdown);
+  const reopened = parseMarkdownContent(markdown);
+  if (!reopened.ok) {
+    return false;
+  }
+
   return normalizeTextNodes(
     documentSchema.nodeFromJSON(withoutTrailingParagraphs(document))
   ).eq(
     normalizeTextNodes(
-      documentSchema.nodeFromJSON(withoutTrailingParagraphs(reopened))
+      documentSchema.nodeFromJSON(withoutTrailingParagraphs(reopened.content))
     )
   );
 };
@@ -107,52 +140,60 @@ const normalizeTextNodes = (node: Node): Node => {
 export const parseDocumentContent = (
   content: string,
   contentType: "markdown" | "json"
-): { ok: true; content: JSONContent } | { ok: false } => {
+): DocumentContentResult => {
+  if (!isDocumentSourceWithinLimit(content)) {
+    return {
+      ok: false,
+      error: "This document exceeds the 512 KiB size limit.",
+    };
+  }
+
   if (contentType === "markdown") {
-    if (!hasSupportedMarkdown(content)) {
-      return { ok: false };
+    const unsupported = getUnsupportedMarkdown(content);
+    if (unsupported === null) {
+      return { ok: false, error: "This Markdown could not be parsed." };
+    }
+    if (unsupported.length > 0) {
+      return {
+        ok: false,
+        error: `Unsupported Markdown: ${unsupported.join(", ")}.`,
+      };
     }
 
-    let parsed: JSONContent;
+    const parsed = parseMarkdownContent(content);
+    if (!parsed.ok) {
+      return parsed;
+    }
+
     let serialized: string;
-
     try {
-      parsed = documentMarkdown.parse(content);
-      serialized = documentMarkdown.serialize(parsed);
+      serialized = documentMarkdown.serialize(parsed.content);
     } catch {
-      return { ok: false };
+      return {
+        ok: false,
+        error: "This formatting cannot be saved as Markdown.",
+      };
     }
 
-    if (!canRoundTripMarkdown(parsed, serialized)) {
-      return { ok: false };
-    }
-
-    return { ok: true, content: parsed };
+    return canRoundTripMarkdown(parsed.content, serialized)
+      ? parsed
+      : {
+          ok: false,
+          error: "This formatting cannot be preserved as Markdown.",
+        };
   }
 
   let json: unknown;
-
   try {
     json = JSON.parse(content);
   } catch {
-    return { ok: false };
+    return { ok: false, error: "This document is not valid JSON." };
   }
 
-  const parsed = documentEnvelope.safeParse(json);
-  if (!parsed.success) {
-    return { ok: false };
-  }
-
-  let node: Node;
-
-  try {
-    node = documentSchema.nodeFromJSON(parsed.data);
-    node.check();
-  } catch {
-    return { ok: false };
-  }
-
-  return { ok: true, content: node.toJSON() };
+  const validated = validateDocumentJSON(json, documentSchema);
+  return validated.ok
+    ? { ok: true, content: validated.node.toJSON() }
+    : validated;
 };
 
 /**
@@ -163,7 +204,11 @@ export const parseDocumentContent = (
 export const serializeDocumentMarkdown = (
   document: JSONContent
 ): string | null => {
-  const content = withoutTrailingParagraphs(document);
+  const validated = validateDocumentJSON(document, documentSchema);
+  if (!validated.ok) {
+    return null;
+  }
+  const content = withoutTrailingParagraphs(validated.node.toJSON());
   let markdown: string;
 
   try {
@@ -172,8 +217,12 @@ export const serializeDocumentMarkdown = (
     return null;
   }
 
-  return hasSupportedMarkdown(markdown) &&
-    canRoundTripMarkdown(content, markdown)
+  const unsupported = getUnsupportedMarkdown(markdown);
+  if (unsupported === null) {
+    return null;
+  }
+
+  return unsupported.length === 0 && canRoundTripMarkdown(content, markdown)
     ? markdown
     : null;
 };

@@ -14,4 +14,6 @@ export interface DocumentProps {
   autosaveDebounceMs?: number;
   /** Enables editing. Persist the selected save format before returning { ok: true }. */
   onSave?: (content: string) => Promise<DocumentSaveResult>;
+  /** Reports unsaved edits or an in-flight save from editor events. */
+  onPendingChangesChange?: (pending: boolean) => void;
 }

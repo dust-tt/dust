@@ -166,7 +166,7 @@ export const UnsupportedMarkdown: Story = {
       "~~~ts\nconst ready = true;\n~~~",
       "> | Task | Owner |\n> | --- | --- |\n> | Review | Sam |",
     ]) {
-      await expect(parseDocumentContent(source, "markdown")).toEqual({
+      await expect(parseDocumentContent(source, "markdown")).toMatchObject({
         ok: false,
       });
     }
