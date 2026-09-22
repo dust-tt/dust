@@ -5,48 +5,75 @@ import {
   User01,
   XClose,
 } from "@dust-tt/sparkle";
+import type { LogoListRegion } from "@marketing/lib/logo_bars";
+import { LOGO_LIST_REGIONS, toLogoListRegion } from "@marketing/lib/logo_bars";
+import { useGeolocation } from "@marketing/lib/swr/geo";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-// =============================================================================
-// PROMO SCHEDULE — Ordered list of events to promote.
-// Every entry that hasn't expired yet is shown, as a carousel the visitor can
-// page through. Expired entries drop out on their own, so the banner needs no
-// deploy to stay current. Keep it ordered by `expiresAt` (soonest first) —
-// that's the order visitors page through. Empty it when there's nothing to
-// promote.
-// =============================================================================
+// Events to promote, in the order visitors page through them — an editorial
+// call, not expiry order. Expired entries drop out on their own, so the banner
+// needs no deploy to stay current; empty the list when there is nothing to
+// promote. Preview a region-gated entry from anywhere with `?geo=FR`.
+
+// Derived from `LOGO_LIST_REGIONS` rather than spelled out, so a market added
+// there joins this audience instead of silently dropping out of it.
+const OUTSIDE_FRANCE: readonly LogoListRegion[] = LOGO_LIST_REGIONS.filter(
+  (region) => region !== "FR"
+);
+
 const PROMO_SCHEDULE: PromoConfig[] = [
   {
-    id: "take-control-of-your-ai-spend-sep17",
-    image: "/static/landing/AI_Spend_Webinar_Banner.png",
-    link: "https://watch.getcontrast.io/register/dust-take-control-of-your-ai-spend?utm_source=website",
+    id: "take-control-of-your-ai-bill-oct8",
+    image: "/static/landing/AI_Bill_Webinar_Banner.png",
+    link: "https://watch.getcontrast.io/register/dust-metronome-x-northlane-x-dust?utm_source=website",
     badge: "Online Event",
-    title: "Take control of your AI spend",
-    time: "September 17 · 9:00am PT / 6:00pm CET",
+    title: "Take control of your AI bill - with Metronome and Northlane CEOs",
+    time: "October 8 · 12:30pm ET / 6:30pm CET",
     linkLabel: "Register Now",
-    // Drops out of the carousel an hour after the September 17th event.
-    expiresAt: new Date("2026-09-17T10:00:00-07:00"),
+    regions: OUTSIDE_FRANCE,
+    expiresAt: new Date("2026-10-08T13:30:00-04:00"),
+  },
+  {
+    id: "how-to-use-openai-in-dust-oct1",
+    image: "/static/landing/OpenAI_In_Dust_Webinar_Banner.png",
+    link: "https://watch.getcontrast.io/register/dust-use-openai-in-dust?utm_source=website",
+    badge: "Online Event",
+    title: "How to use OpenAI in Dust",
+    time: "October 1 · 12:00pm ET / 6:00pm CET",
+    host: "Vince Sarkisian, Solutions Engineer @Dust",
+    linkLabel: "Register Now",
+    regions: OUTSIDE_FRANCE,
+    expiresAt: new Date("2026-10-01T13:00:00-04:00"),
+  },
+  {
+    id: "ia-en-entreprise-passez-a-l-echelle-oct13",
+    image: "/static/landing/IA_Entreprise_Webinar_Banner.png",
+    link: "https://watch.getcontrast.io/register/dust-ia-en-entreprise-passez-a-l-echelle-gardez-le-controle?utm_source=website",
+    badge: "Événement en ligne",
+    // Non-breaking space before the colon: French typography, and it keeps the
+    // colon off the start of a line when this title wraps.
+    title: "IA en entreprise\u00a0: passez à l’échelle, gardez le contrôle",
+    time: "Mardi 13 octobre · 11h30–12h30",
+    linkLabel: "S’inscrire",
+    regions: ["FR"],
+    expiresAt: new Date("2026-10-13T12:30:00+02:00"),
   },
 ];
-// =============================================================================
 
 interface PromoConfig {
-  /** Unique id — changing it resets dismissal for returning visitors. */
+  /** Changing it resets dismissal for returning visitors. */
   id: string;
-  /** Path to the image in public/static/ — shown on `sm` and up only. */
   image: string;
-  /** Registration / event URL. */
   link: string;
-  /** Badge label shown above the title (e.g. "Webinar", "Online Event"). */
   badge: string;
   title: string;
-  /** Event time line, shown with a clock icon. */
   time: string;
-  /** Optional host line, shown with a user icon. */
   host?: string;
   linkLabel: string;
-  /** Optional expiry — banner stops showing after this date. */
+  /** Markets this promo runs in. Omit to show it everywhere. */
+  regions?: readonly LogoListRegion[];
   expiresAt?: Date;
 }
 
@@ -55,58 +82,88 @@ function storageKey(promos: PromoConfig[]) {
   return `promo-banner-dismissed-${promos.map((promo) => promo.id).join("+")}`;
 }
 
-/** Promos that haven't expired yet, in schedule order. */
-function getActivePromos(now: Date): PromoConfig[] {
-  return PROMO_SCHEDULE.filter(
-    (promo) => !promo.expiresAt || now <= promo.expiresAt
-  );
+/**
+ * @cc [owner:martindust,label:product] region-gated-promo-needs-resolved-region
+ * A promo carrying `regions` MUST NOT be returned unless `region` is non-null and listed in it.
+ * An unresolved region (`null`, i.e. geolocation still pending or failed) MUST NOT match any
+ * `regions` entry, so a market-gated promo stays hidden rather than defaulting to a market.
+ * Note that `toLogoListRegion` maps an unknown country to `"US"`, so a caller that passes its
+ * result for a failed lookup instead of `null` would show every market's promo worldwide.
+ */
+/**
+ * @cc [owner:martindust,label:product] expired-promo-never-returned
+ * A promo MUST NOT be returned once `now` is past its `expiresAt`, whatever the visitor's region.
+ * A promo with no `expiresAt` never expires.
+ */
+function getActivePromos(
+  now: Date,
+  region: LogoListRegion | null
+): PromoConfig[] {
+  return PROMO_SCHEDULE.filter((promo) => {
+    if (promo.expiresAt && now > promo.expiresAt) {
+      return false;
+    }
+    return (
+      !promo.regions || (region !== null && promo.regions.includes(region))
+    );
+  });
 }
 
 export function PromoBanner() {
-  // Resolved on mount only: the schedule is picked from the visitor's clock, so
-  // it must not run during SSR (the server would bake in a stale promo).
+  const { geoData } = useGeolocation();
+  const searchParams = useSearchParams();
+
   const [promos, setPromos] = useState<PromoConfig[]>([]);
   const [index, setIndex] = useState(0);
 
+  // `?geo=FR` overrides the detected country, as it does for the logo bars, so
+  // marketing can check a market's promo without sitting in that market.
+  const geoParam = searchParams?.get("geo");
+  const region = geoParam
+    ? toLogoListRegion(geoParam)
+    : geoData?.countryCode
+      ? toLogoListRegion(geoData.countryCode)
+      : null;
+
+  // The visitor's clock picks the schedule, so it must not be read during SSR
+  // (the server would bake in a stale promo). Re-runs once geolocation answers.
   useEffect(() => {
-    const activePromos = getActivePromos(new Date());
-    if (activePromos.length === 0) {
+    setIndex(0);
+    const activePromos = getActivePromos(new Date(), region);
+    if (
+      activePromos.length === 0 ||
+      sessionStorage.getItem(storageKey(activePromos)) === "true"
+    ) {
+      setPromos([]);
       return;
     }
-    if (sessionStorage.getItem(storageKey(activePromos)) !== "true") {
-      setPromos(activePromos);
-    }
-  }, []);
+    setPromos(activePromos);
+  }, [region]);
 
   if (promos.length === 0) {
     return null;
   }
 
   const hasMultiplePromos = promos.length > 1;
-  // Wraps around, so two events stay one click apart in either direction.
   const step = (offset: number) =>
     setIndex((current) => (current + offset + promos.length) % promos.length);
 
-  // Below `sm` the card keeps its width but loses vertical padding, so it
-  // covers less of the hero on a phone.
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-[264px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xl ring-1 ring-black/5">
+    <div className="fixed bottom-4 right-4 z-40 w-[272px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-xl ring-1 ring-black/5">
       <button
         type="button"
         aria-label="Dismiss"
-        className="absolute right-1.5 top-1.5 z-10 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+        className="absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
         onClick={() => {
           sessionStorage.setItem(storageKey(promos), "true");
           setPromos([]);
         }}
       >
-        <XClose className="h-4 w-4" />
+        <XClose className="h-3.5 w-3.5" />
       </button>
-      {/* Slides sit side by side on one row; paging slides the row rather than
-          swapping the content, so the movement reads as continuous. */}
       <div className="overflow-hidden">
         <div
-          className="flex transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none"
+          className="flex transition-transform duration-[600ms] ease-[cubic-bezier(0.23,1,0.32,1)] will-change-[transform] motion-reduce:transition-none"
           style={{ transform: `translateX(-${index * 100}%)` }}
         >
           {promos.map((promo, promoIndex) => {
@@ -118,13 +175,10 @@ export function PromoBanner() {
                 href={promo.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group block w-full shrink-0"
-                // Off-screen slides stay out of the tab order and the a11y tree.
+                className="group flex w-full shrink-0 flex-col"
                 aria-hidden={!isActive}
                 tabIndex={isActive ? undefined : -1}
               >
-                {/* Decorative, and hidden below `sm` so the card stays small on
-                    a phone — the title and time carry the message on their own. */}
                 <Image
                   alt=""
                   src={promo.image}
@@ -132,30 +186,32 @@ export function PromoBanner() {
                   height={540}
                   className="hidden h-auto w-full sm:block"
                 />
-                <div className="px-4 py-3 sm:p-4">
-                  <div className="mb-1.5 flex items-center gap-2 pr-6 text-[11px] font-semibold uppercase tracking-wide text-blue-600 sm:mb-2.5">
-                    <span className="relative flex h-2 w-2">
+                <div className="flex flex-1 flex-col px-4 py-3 sm:py-3.5">
+                  <div className="mb-1.5 flex items-center gap-1.5 pr-6 text-[10px] font-semibold uppercase tracking-wide text-blue-600 sm:mb-2">
+                    <span className="relative flex h-1.5 w-1.5">
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-500" />
+                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-blue-500" />
                     </span>
                     {promo.badge}
                   </div>
-                  <div className="text-sm font-semibold leading-snug text-slate-900">
+                  <div className="text-[13px] font-semibold leading-snug text-slate-900">
                     {promo.title}
                   </div>
-                  <div className="mt-1.5 space-y-1 text-[11px] leading-relaxed text-slate-500 sm:mt-2">
-                    <div className="flex items-start gap-1.5">
-                      <Clock className="mt-px h-3.5 w-3.5 shrink-0 text-slate-400" />
-                      <span>{promo.time}</span>
-                    </div>
-                    {promo.host && (
+                  <div className="flex flex-1 items-center py-1.5 sm:py-2">
+                    <div className="space-y-0.5 text-[11px] leading-snug text-slate-500">
                       <div className="flex items-start gap-1.5">
-                        <User01 className="mt-px h-3.5 w-3.5 shrink-0 text-slate-400" />
-                        <span>{promo.host}</span>
+                        <Clock className="mt-px h-3 w-3 shrink-0 text-slate-400" />
+                        <span>{promo.time}</span>
                       </div>
-                    )}
+                      {promo.host && (
+                        <div className="flex items-start gap-1.5">
+                          <User01 className="mt-px h-3 w-3 shrink-0 text-slate-400" />
+                          <span>{promo.host}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-center gap-1 text-[11px] font-medium text-blue-600 group-hover:underline sm:mt-3">
+                  <div className="flex items-center gap-1 text-[11px] font-medium text-blue-600 group-hover:underline">
                     {promo.linkLabel}
                     <span
                       aria-hidden
@@ -173,7 +229,7 @@ export function PromoBanner() {
       {/* Kept outside the <a> — nesting buttons in a link is invalid markup and
           every arrow click would also open the registration page. */}
       {hasMultiplePromos && (
-        <div className="flex items-center justify-between border-t border-slate-100 px-1.5 py-0.5 sm:py-1">
+        <div className="flex items-center justify-between border-t border-slate-100 px-2 py-1 sm:py-1.5">
           <button
             type="button"
             aria-label="Previous event"
@@ -189,10 +245,10 @@ export function PromoBanner() {
                 type="button"
                 aria-label={`Show ${promo.title}`}
                 aria-current={promoIndex === index}
-                className={`h-1 w-1 rounded-full transition-colors ${
+                className={`h-1 rounded-full transition-[width,background-color] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${
                   promoIndex === index
-                    ? "bg-blue-500"
-                    : "bg-slate-300 hover:bg-slate-400"
+                    ? "w-2.5 bg-blue-500"
+                    : "w-1 bg-slate-300 hover:bg-slate-400"
                 }`}
                 onClick={() => setIndex(promoIndex)}
               />
