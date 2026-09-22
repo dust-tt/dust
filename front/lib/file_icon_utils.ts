@@ -168,15 +168,19 @@ export function getFileTypeIcon(
 
   const extension = fileName ? getExtension(fileName) : undefined;
 
-  // Check against mappings (MIME type takes priority, then extension)
-  for (const mapping of FILE_TYPE_MAPPINGS) {
-    if (mapping.mimeTypes.includes(contentType)) {
-      return mapping.icon;
-    }
-    if (extension && mapping.extensions.includes(extension)) {
-      return mapping.icon;
-    }
+  // Content type first, across every mapping, then extension. Interleaving the two lets an
+  // earlier mapping win on extension alone: a Frames v2 `manifest.json` would draw as JSON
+  // because the JSON mapping claims the extension before the Frame mapping is reached.
+  const byContentType = FILE_TYPE_MAPPINGS.find((mapping) =>
+    mapping.mimeTypes.includes(contentType)
+  );
+  if (byContentType) {
+    return byContentType.icon;
   }
 
-  return File02;
+  const byExtension = extension
+    ? FILE_TYPE_MAPPINGS.find((mapping) => mapping.extensions.includes(extension))
+    : undefined;
+
+  return byExtension?.icon ?? File02;
 }

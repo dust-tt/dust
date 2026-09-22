@@ -103,6 +103,27 @@ describe("getFileExplorerPipeline Frame packages", () => {
     ).toBe("file");
   });
 
+  it("counts the manifest under Frames inside the package folder", () => {
+    const files = [
+      frameManifest("conversation-c1/apps/status/manifest.json"),
+      mountFile("conversation-c1/apps/status/index.tsx", "index.tsx", {
+        contentType: "text/typescript",
+      }),
+    ];
+
+    const pipeline = getFileExplorerPipeline({
+      activeFilter: "all",
+      contentNodes: [],
+      currentFolderPath: "apps/status",
+      displayFramePackages: true,
+      files,
+      searchQuery: "",
+      sortMode: "name-asc",
+    });
+
+    expect(pipeline.filterCounts).toMatchObject({ frames: 1, code: 1 });
+  });
+
   it("keeps an unregistered manifest as ordinary source", () => {
     const files = [
       mountFile(

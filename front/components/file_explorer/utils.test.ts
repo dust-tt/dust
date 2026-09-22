@@ -12,6 +12,7 @@ import {
   getExplorerRelativePath,
   getFileExplorerBucket,
   getFileExplorerSearchResultTitle,
+  getSingularFileCategoryLabelForContentType,
   getVirtualScopeRootNodes,
   isFileExplorerMovableFile,
   withVirtualExplorerPath,
@@ -21,7 +22,11 @@ import {
   getFilePreviewConfig,
   isFilePreviewableContentType,
 } from "@app/types/file_preview";
-import { frameContentType, frameSlideshowContentType } from "@app/types/files";
+import {
+  frameContentType,
+  frameSlideshowContentType,
+  frameV2ContentType,
+} from "@app/types/files";
 import { describe, expect, it } from "vitest";
 
 function mountFile(
@@ -150,6 +155,38 @@ describe("file preview configuration", () => {
         contentType: "text/plain",
       })
     ).toBe("texts");
+  });
+
+  it("buckets a Frames v2 manifest on its resource type, not its JSON bytes", () => {
+    const manifest: FileSystemFileTreeNode = {
+      name: "manifest.json",
+      path: "status/manifest.json",
+      isDirectory: false,
+      canonicalPath: "conversation-c1/status/manifest.json",
+      contentType: "application/json",
+      fileResourceContentType: frameV2ContentType,
+      fileId: "frame-1",
+      children: [],
+    };
+
+    expect(getFileExplorerBucket(manifest)).toBe("frames");
+    expect(
+      getFileExplorerBucket({
+        ...manifest,
+        fileResourceContentType: undefined,
+      })
+    ).toBe("texts");
+  });
+});
+
+describe("getSingularFileCategoryLabelForContentType", () => {
+  it.each([
+    [frameContentType, "Frame"],
+    [frameV2ContentType, "Frame"],
+    [frameSlideshowContentType, "Slideshow"],
+    ["text/plain", "Document"],
+  ])("labels %s as %s", (contentType, label) => {
+    expect(getSingularFileCategoryLabelForContentType(contentType)).toBe(label);
   });
 });
 

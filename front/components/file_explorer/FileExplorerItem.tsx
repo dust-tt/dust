@@ -14,6 +14,7 @@ import type {
 } from "@app/components/file_explorer/types";
 import {
   getCategoryFromContentType,
+  getDisplayContentType,
   getFileExplorerSearchResultTitle,
   getSingularFileCategoryLabelForContentType,
 } from "@app/components/file_explorer/utils";
@@ -240,7 +241,7 @@ function getFileSubtitle(
   viewMode: ViewMode
 ): string {
   const typeLabel = getSingularFileCategoryLabelForContentType(
-    entry.contentType
+    getDisplayContentType(entry)
   );
   const timeLabel = entry.lastModifiedMs
     ? intlFormatDistance(entry.lastModifiedMs, Date.now(), {
@@ -427,7 +428,7 @@ export function FileExplorerFileCard({
     ) : (
       <FileExplorerItem
         kind="icon"
-        visual={getFileTypeIcon(entry.contentType, entry.fileName)}
+        visual={getFileTypeIcon(getDisplayContentType(entry), entry.fileName)}
         viewMode={viewMode}
         title={title}
         subtitle={subtitle}

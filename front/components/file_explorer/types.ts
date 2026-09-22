@@ -98,6 +98,8 @@ export type FileSystemFileTreeNode = FileSystemTreeNodeBase & {
   /** Null only for synthetic content nodes that are not filesystem entries. */
   canonicalPath: string | null;
   contentType: string | null;
+  /** Semantic type of the linked FileResource, when it differs from the stored bytes. */
+  fileResourceContentType?: string;
   fileId: string | null;
 };
 

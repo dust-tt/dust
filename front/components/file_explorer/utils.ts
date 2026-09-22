@@ -2,7 +2,7 @@ import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import { getFilePreviewConfig } from "@app/types/file_preview";
 import {
   frameSlideshowContentType,
-  isFrameV2ContentType,
+  isFrameContentType,
   isInteractiveContentType,
 } from "@app/types/files";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
@@ -43,6 +43,28 @@ export const CATEGORY_CONFIG: {
   { value: "other", singular: "File", plural: "Other" },
 ];
 
+/** A file's stored bytes and the resource they belong to, which can carry different types. */
+type TypedFileEntry<T extends string | null> = {
+  contentType: T;
+  fileResourceContentType?: string;
+};
+
+/**
+ * @cc [owner:pmilliotte,label:react] explorer-describes-files-by-resource-type
+ * Where the explorer describes what a file is — its filter bucket, its type label, its icon — a
+ * file whose linked FileResource carries a different content type from its stored bytes MUST be
+ * described by the resource's type. A Frames v2 package is a `manifest.json` stored as JSON whose
+ * resource is a Frame, and describing it by the stored type files it under Texts as a Document.
+ * The stored type stays authoritative for reading the bytes: previews, downloads and thumbnails.
+ */
+/** The linked resource's content type when the listing exposes one, the stored bytes' otherwise. */
+export function getDisplayContentType<T extends string | null>({
+  contentType,
+  fileResourceContentType,
+}: TypedFileEntry<T>): T | string {
+  return fileResourceContentType ?? contentType;
+}
+
 /**
  * Maps a tree node (file or folder) to its explorer filter bucket. Audio files (and any other
  * unmapped type) return null and only surface under the "All" chip.
@@ -54,15 +76,12 @@ export function getFileExplorerBucket(
     return "folders";
   }
 
-  const contentType = node.contentType;
+  const contentType = getDisplayContentType(node);
   if (!contentType) {
     return null;
   }
 
-  if (
-    isInteractiveContentType(contentType) ||
-    isFrameV2ContentType(contentType)
-  ) {
+  if (isFrameContentType(contentType)) {
     return "frames";
   }
 
@@ -172,6 +191,17 @@ export function compareTreeNodesForSort(
   }
 }
 
+function getFilePanelCategory(contentType: string): FilePanelCategory {
+  if (contentType === frameSlideshowContentType) {
+    return "slideshow";
+  }
+  if (isFrameContentType(contentType)) {
+    return "frame";
+  }
+
+  return getCategoryFromContentType(contentType);
+}
+
 /**
  * Human-readable singular category for a file MIME type (Image, Frame, PDF, …).
  * Aligns with {@link getCategoryFromContentType}.
@@ -179,12 +209,10 @@ export function compareTreeNodesForSort(
 export function getSingularFileCategoryLabelForContentType(
   contentType: string
 ): string {
-  const category: FilePanelCategory = isInteractiveContentType(contentType)
-    ? contentType === frameSlideshowContentType
-      ? "slideshow"
-      : "frame"
-    : getCategoryFromContentType(contentType);
-  const config = CATEGORY_CONFIG.find((c) => c.value === category);
+  const config = CATEGORY_CONFIG.find(
+    (c) => c.value === getFilePanelCategory(contentType)
+  );
+
   return config?.singular ?? "File";
 }
 
@@ -419,6 +447,7 @@ export function buildFileSystemTree(
       isDirectory: false,
       canonicalPath,
       contentType: entry.contentType,
+      fileResourceContentType: entry.fileResourceContentType,
       fileId: entry.fileId,
       children: [],
     };
