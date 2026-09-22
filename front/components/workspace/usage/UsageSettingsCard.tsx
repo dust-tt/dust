@@ -1,5 +1,6 @@
 import { parseDefaultLimitInput } from "@app/components/workspace/member_spend_limit_helpers";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import {
   useDefaultUserSpendLimit,
   useUpdateDefaultUserSpendLimit,
@@ -193,7 +194,7 @@ export function UsageSettingsCard({
         />
         <SettingsList.Row
           title="Credit spend checkpoint"
-          description="Pause the agent and ask the user to confirm continuing once a single message reaches the spend threshold. Turning this off never pauses, whatever the spend."
+          description={`Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches ${CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS.toLocaleString()} credits. Turning this off never pauses, whatever the spend.`}
           action={
             <SliderToggle
               selected={usageSettings.creditSpendCheckpointEnabled}
