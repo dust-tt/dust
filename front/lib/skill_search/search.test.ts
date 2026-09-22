@@ -469,6 +469,7 @@ describe("custom skill search", () => {
         SkillListItemSchema.omit({ editors: true }).strict().parse(listing)
       ).toEqual({
         sId: active.sId,
+        canAdministrate: true,
         status: "active",
         name: "Indexed name",
         userFacingDescription: "Indexed description",
@@ -527,7 +528,8 @@ describe("custom skill search", () => {
       const listings = result.value.skills;
       expect(listings).toEqual([
         {
-          ...toSkillListItem(global),
+          ...toSkillListItem(auth, global),
+          canAdministrate: false,
           editedBy: null,
           updatedAt: null,
         },
@@ -565,7 +567,7 @@ describe("custom skill search", () => {
     });
     expect(
       SkillListItemSchema.omit({ editors: true }).strict().parse(redacted)
-    ).toEqual(toSkillListItem(document));
+    ).toEqual(toSkillListItem(auth, document));
     expect(
       mockSearch.mock.lastCall![0].query.bool.should[0].bool.filter
     ).toEqual([{ term: { workspace_id: workspace.sId } }]);
@@ -714,7 +716,7 @@ describe("custom skill search", () => {
 
     const lastSort = hits[Math.min(hitCount, 2) - 1]?.sort;
     expect(result.value).toEqual({
-      skills: hits.slice(0, 2).map((hit) => toSkillListItem(hit._source)),
+      skills: hits.slice(0, 2).map((hit) => toSkillListItem(auth, hit._source)),
       hasMore: hitCount > 2,
       nextCursor: lastSort
         ? Buffer.from(JSON.stringify(lastSort)).toString("base64url")

@@ -2,6 +2,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { matchesSkillSearchFilters } from "@app/tests/utils/skill_search";
@@ -41,6 +42,53 @@ function searchRequest(
 describe("POST /api/w/:wId/skills/search redaction integration", () => {
   beforeEach(() => {
     mockSearch.mockReset();
+  });
+
+  it.each([
+    { role: "user", grant: "none", expected: false },
+    { role: "user", grant: "editor", expected: true },
+    { role: "manager", grant: "none", expected: false },
+    { role: "manager", grant: "editor", expected: true },
+    { role: "admin", grant: "none", expected: true },
+    { role: "user", grant: "*", expected: true },
+  ] as const)("returns administration permissions for $role with $grant grants", async ({
+    role,
+    grant,
+    expected,
+  }) => {
+    const { auth, workspace, user } = await createPrivateApiMockRequest({
+      role,
+    });
+    await FeatureFlagFactory.basic(auth, "skills_search");
+    const skill = await SkillFactory.create(auth, {
+      availability: "workspace_users",
+      addCurrentUserAsEditor: grant === "editor",
+    });
+    if (grant === "*") {
+      await grantWorkspacePermission(workspace, user, {
+        grantType: "*",
+        resourceType: "skill",
+      });
+      await auth.refresh();
+    }
+    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
+    // Indexed editors may be stale; administration must use the current caller's grants.
+    document.editor_ids = expected ? [] : [user.sId];
+    const global = SkillFactory.createCodeDefinedSearchDocuments().find(
+      (document) => document.skill_id === "go-deep"
+    );
+    assert(global);
+    mockSearch.mockResolvedValue({
+      hits: { hits: [{ _source: document }, { _source: global }] },
+    });
+
+    const response = await searchRequest(workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).skills).toEqual([
+      expect.objectContaining({ sId: skill.sId, canAdministrate: expected }),
+      expect.objectContaining({ sId: global.skill_id, canAdministrate: false }),
+    ]);
   });
 
   it.each([
@@ -235,7 +283,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     const body = await redacted.json();
     expect(body).toEqual({
       skills: hits.slice(0, 3).map(({ _source }) => ({
-        ...toSkillListItem(_source),
+        ...toSkillListItem(auth, _source),
         editors: [
           {
             sId: user.sId,
