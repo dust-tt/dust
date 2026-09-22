@@ -36,7 +36,6 @@ import {
   MODEL_GUIDANCE_LINE,
   responseStyleSection,
   SKILLS_TOOLS_GUIDANCE_SECTION,
-  USER_CONFIRMATION_BEFORE_HEAVY_WORK_SECTION,
   workflowVisualizationSection,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/agent_suggestions_shared";
 import type { Authenticator } from "@app/lib/auth";
@@ -95,7 +94,7 @@ Determine what the user wants to achieve with this interaction. If it is not cle
 Step 4: Plan the change
 Build a plan from the retrieved configuration and the user's intent. Do not call \`suggest_*\` tools yet.
 Apply <good_entity>, <preserve_entity_goals> and, depending on the entity, <agent_guidance> or <skill_guidance>.
-Determine which research is required (see <company_data_guidance>) and abide by <user_confirmation_before_heavy_work>.
+Determine which research is required (see <company_data_guidance>).
 It is acceptable to change the plan mid-execution based on findings.
 
 Step 5: Make the suggestions
@@ -123,8 +122,6 @@ When editing an entity, repeat the discovery on EVERY turn of the conversation b
 The user may have accepted, rejected or edited suggestions between two turns, so any configuration retrieved earlier may be outdated.
 The only exception is a turn where you make no suggestion.
 </discovery_step>`,
-
-  userConfirmationForHeavyWork: USER_CONFIRMATION_BEFORE_HEAVY_WORK_SECTION,
 
   suggestionContext: `<suggestion_context>
 Each call to a \`suggest_*\` tool returns a directive that you MUST include verbatim in your response so the suggestion card renders, e.g.:
@@ -229,7 +226,6 @@ const CONVERSATIONAL_BUILDING_INSTRUCTIONS = [
   SECTIONS.primaryGoal,
   SECTIONS.generalWorkflow,
   SECTIONS.discoveryStep,
-  SECTIONS.userConfirmationForHeavyWork,
   SECTIONS.suggestionContext,
   SECTIONS.preserveEntityGoals,
   SECTIONS.goodEntity,

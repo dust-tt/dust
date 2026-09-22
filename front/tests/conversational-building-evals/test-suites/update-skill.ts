@@ -4,6 +4,71 @@ import type {
 } from "@app/tests/conversational-building-evals/lib/types";
 
 const SUPPORT_REPLY_SKILL_KEY = "support-reply";
+const BUG_TRIAGE_SKILL_KEY = "bug-triage";
+const LINEAR_TOOL_KEY = "linear";
+const REFUND_POLICY_KEY = "refund-policy";
+
+const BUG_TRIAGE_SKILL = {
+  key: BUG_TRIAGE_SKILL_KEY,
+  name: "Bug Triage",
+  agentFacingDescription:
+    "Use when a user reports a bug to classify its severity and component.",
+  instructions: [
+    "# Bug Triage",
+    "",
+    "Classify each reported bug.",
+    "",
+    "## Steps",
+    "",
+    "1. Ask for reproduction steps if they are missing.",
+    "2. Assign a severity: critical, high, medium or low.",
+    "3. Identify the affected component.",
+  ].join("\n"),
+};
+
+const WORKSPACE_WITH_LINEAR: WorkspaceSeed = {
+  skills: [BUG_TRIAGE_SKILL],
+  tools: [
+    {
+      key: LINEAR_TOOL_KEY,
+      name: "Linear",
+      description: "Create and update issues in Linear.",
+      functions: [
+        { name: "create_issue", description: "Create a Linear issue." },
+        { name: "update_issue", description: "Update a Linear issue." },
+      ],
+    },
+    {
+      key: "zendesk",
+      name: "Zendesk",
+      description: "Read and reply to Zendesk support tickets.",
+      functions: [
+        { name: "get_ticket", description: "Fetch a Zendesk ticket." },
+      ],
+    },
+  ],
+};
+
+const WORKSPACE_WITH_SUPPORT_HANDBOOK: WorkspaceSeed = {
+  skills: [],
+  knowledge: [
+    {
+      name: "Support Handbook",
+      documents: [
+        {
+          key: REFUND_POLICY_KEY,
+          title: "Refund Policy",
+          text: "Refunds are granted within 30 days of purchase for annual plans. Monthly plans are not refundable.",
+        },
+        {
+          key: "escalation-matrix",
+          title: "Escalation Matrix",
+          text: "Severity 1 incidents go to the on-call engineer. Billing disputes go to finance.",
+        },
+      ],
+    },
+  ],
+};
 
 const WORKSPACE_WITH_SUPPORT_SKILLS: WorkspaceSeed = {
   skills: [
@@ -62,6 +127,57 @@ export const updateSkillSuite: TestSuite = {
   description:
     "The user asks, in conversation, for a targeted change to an existing custom skill.",
   testCases: [
+    {
+      scenarioId: "inline-tool",
+      workspaceSeed: WORKSPACE_WITH_LINEAR,
+      userMessage:
+        "Update the Bug Triage skill: once the bug is classified, it should create a Linear " +
+        "issue with the severity and component, using our Linear tool.",
+      expectedFinalToolCall: {
+        type: "suggestSkillUpdate",
+        skillKey: BUG_TRIAGE_SKILL_KEY,
+        edits: ["instructionEdits"],
+        references: { toolKeys: [LINEAR_TOOL_KEY] },
+      },
+      judgeCriteria: `
+- The edit must add a step that creates a Linear issue after classification, carrying the
+  severity and component, and reference the Linear tool inline with a \`<tool id=... name=.../>\`
+  tag whose id is the seeded Linear tool id.
+- The agent must have looked the tool up (list_tools and/or get_tool_details) rather than
+  guessing an id; referencing Zendesk is wrong.
+- The existing steps (reproduction steps, severity, component) must be preserved.
+- Score 0-1 if the tool is not referenced with a <tool> tag, if the id is invented, or if the
+  suggestion targets another skill.
+- The closing message must surface the recorded suggestion directive to the user.
+`.trim(),
+    },
+    {
+      scenarioId: "inline-knowledge",
+      workspaceSeed: {
+        ...WORKSPACE_WITH_SUPPORT_HANDBOOK,
+        skills: WORKSPACE_WITH_SUPPORT_SKILLS.skills,
+      },
+      userMessage:
+        "Update the Customer Support Reply skill so that when a customer asks about refunds, it " +
+        "bases its answer on our Refund Policy document from the knowledge base.",
+      expectedFinalToolCall: {
+        type: "suggestSkillUpdate",
+        skillKey: SUPPORT_REPLY_SKILL_KEY,
+        edits: ["instructionEdits"],
+        references: { knowledgeKeys: [REFUND_POLICY_KEY] },
+      },
+      judgeCriteria: `
+- The edit must add guidance for refund questions that inlines the "Refund Policy" document
+  with a \`<knowledge .../>\` tag whose id, title, space and dsv are exactly those returned by
+  search_knowledge for that document. The "Escalation Matrix" document is not relevant here.
+- The agent must have called search_knowledge to find the document rather than inventing a
+  reference.
+- The Tone, Structure and Sign-off sections must be preserved.
+- Score 0-1 if the knowledge tag is missing or points at anything other than the seeded Refund
+  Policy document, or if the suggestion targets another skill.
+- The closing message must surface the recorded suggestion directive to the user.
+`.trim(),
+    },
     {
       scenarioId: "add-ticket-number-check",
       workspaceSeed: WORKSPACE_WITH_SUPPORT_SKILLS,

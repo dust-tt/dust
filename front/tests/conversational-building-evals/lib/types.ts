@@ -27,10 +27,33 @@ export interface SeedMember {
   lastName: string;
 }
 
+/** A remote MCP server (and its view in the global space) the agent can reference inline. */
+export interface SeedTool {
+  key: string;
+  name: string;
+  description: string;
+  functions: Array<{ name: string; description: string }>;
+}
+
+/** A document of a seeded knowledge source, returned by `search_knowledge` for any query. */
+export interface SeedKnowledgeDocument {
+  key: string;
+  title: string;
+  text: string;
+}
+
+/** A folder data source (and its view in the global space) holding the documents. */
+export interface SeedKnowledge {
+  name: string;
+  documents: SeedKnowledgeDocument[];
+}
+
 /** Everything the scenario's workspace is seeded with. Tools then run for real against it. */
 export interface WorkspaceSeed {
   skills: SeedSkill[];
   members?: SeedMember[];
+  tools?: SeedTool[];
+  knowledge?: SeedKnowledge[];
 }
 
 export interface ConversationMessage {
@@ -52,6 +75,9 @@ export type FinalToolCallAssertion =
       skillKey: string;
       // Which parts of the suggestion must be present. Defaults to at least one of them.
       edits?: SkillUpdateEditKind[];
+      // Inline references the instruction edits must carry: `<tool id=.../>` tags for the seeded
+      // tools, and `<knowledge .../>` tags matching the seeded documents attribute for attribute.
+      references?: { toolKeys?: string[]; knowledgeKeys?: string[] };
     }
   | {
       type: "suggestSkillEditors";
@@ -117,11 +143,22 @@ export interface ToolCall {
   arguments: Record<string, unknown>;
 }
 
+/** What a `<knowledge>` tag must carry to point at a seeded document. */
+export interface SeededKnowledgeNode {
+  nodeId: string;
+  title: string;
+  spaceId: string;
+  dataSourceViewId: string;
+}
+
 /** The scenario's seeded workspace: an admin user's authenticator and the created entity ids. */
 export interface SeededScenario {
   auth: Authenticator;
   skillIdsByKey: Map<string, string>;
   memberIdsByKey: Map<string, string>;
+  // MCP server view ids, which is what `<tool id=.../>` references.
+  toolIdsByKey: Map<string, string>;
+  knowledgeByKey: Map<string, SeededKnowledgeNode>;
 }
 
 /** The agent under test: the Dust global agent with the conversational-building skill enabled. */

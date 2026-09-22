@@ -12,7 +12,10 @@ import {
 } from "@app/tests/conversational-building-evals/lib/config";
 import { executeBuildingAgent } from "@app/tests/conversational-building-evals/lib/executor";
 import { evaluateWithJudge } from "@app/tests/conversational-building-evals/lib/judge";
-import { seedScenario } from "@app/tests/conversational-building-evals/lib/seed";
+import {
+  getSeededDocuments,
+  seedScenario,
+} from "@app/tests/conversational-building-evals/lib/seed";
 import { filterTestCases } from "@app/tests/conversational-building-evals/lib/suite-loader";
 import type {
   BuildingAgentConfig,
@@ -23,6 +26,8 @@ import type {
 } from "@app/tests/conversational-building-evals/lib/types";
 import { allTestSuites } from "@app/tests/conversational-building-evals/test-suites";
 import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
+import { CoreAPI } from "@app/types/core/core_api";
+import { Ok } from "@app/types/shared/result";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("openai", async (importOriginal) => {
@@ -109,6 +114,14 @@ describe
       // Skill instructions are converted through the production markdown -> block HTML
       // pipeline, which is lazily required behind a path alias vitest cannot resolve.
       setupSkillInstructionsMarkdownPipeline();
+      // `search_knowledge` with a query goes through core, which the eval does not run: answer
+      // the bulk search with the documents seeded for the requested data sources.
+      vi.spyOn(CoreAPI.prototype, "bulkSearchDataSources").mockImplementation(
+        async (_query, _topK, _credentials, _fullText, searches) =>
+          new Ok({
+            documents: getSeededDocuments(searches.map((s) => s.dataSourceId)),
+          })
+      );
       for (const testCase of testCases) {
         const scenario = await seedScenario(testCase);
         const config = await getBuildingAgentConfig(scenario.auth);
