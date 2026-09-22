@@ -3,7 +3,6 @@ import {
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
-import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -12,8 +11,11 @@ import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { launchIndexAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 import { QueryTypes } from "sequelize";
@@ -220,11 +222,17 @@ async function restoreAuthor(
       },
     });
 
-    // Keep indexing outside the write transaction so a Temporal connection failure cannot skip the
-    // audit event after the repair has committed. Retry connection failures, then log and continue.
-    const indexation = await withRetry(() =>
-      AgentResource.launchSearchIndexation(auth, [restored.agentId])
-    );
+    // Keep indexing outside the write transaction so a Temporal failure cannot skip the audit event
+    // after the repair has committed. Retry launch failures, then log and continue.
+    const indexation = await withRetry(async () => {
+      const result = await launchIndexAgentSearchWorkflow({
+        workspaceId: restored.workspaceId,
+        agentId: restored.agentId,
+      });
+      if (result.isErr()) {
+        throw result.error;
+      }
+    });
     if (indexation.isErr()) {
       logger.error(
         {
@@ -329,14 +337,35 @@ export async function restoreEditorlessAgentAuthors({
           const auth = authsByWorkspaceId.get(agent.workspaceId);
           assert(auth);
           // Each agent needs its own transaction and advisory lock to serialize with live editor
-          // changes. Concurrency is capped at four to bound database pressure.
-          return restoreAuthor(auth, agent, logger);
+          // changes. Catch failures here so every in-flight repair finishes its post-commit audit
+          // attempt before the batch propagates an error to makeScript.
+          try {
+            return new Ok(await restoreAuthor(auth, agent, logger));
+          } catch (error) {
+            return new Err(normalizeError(error));
+          }
         },
         { concurrency: CONCURRENCY }
       );
 
-      for (const [index, restored] of results.entries()) {
+      let firstError: Error | undefined;
+      for (const [index, result] of results.entries()) {
         const discovered = agents[index];
+        if (result.isErr()) {
+          firstError ??= result.error;
+          logger.error(
+            {
+              error: result.error,
+              workspaceId: discovered.workspaceId,
+              agentId: discovered.agentId,
+              agentModelId: discovered.agentModelId,
+            },
+            "Failed to restore author as agent editor"
+          );
+          continue;
+        }
+
+        const restored = result.value;
         if (!restored) {
           stats.agentsSkipped += 1;
           logger.info(
@@ -360,6 +389,9 @@ export async function restoreEditorlessAgentAuthors({
           },
           "Restored author as agent editor"
         );
+      }
+      if (firstError) {
+        throw firstError;
       }
     }
 

@@ -3,11 +3,13 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import baseLogger from "@app/logger/logger";
 import { restoreEditorlessAgentAuthors } from "@app/migrations/20260922_restore_editorless_agent_authors";
+import * as searchIndexationClient from "@app/temporal/es_indexation/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { Err, Ok } from "@app/types/shared/result";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -50,8 +52,8 @@ async function editorIds(
 describe("restoreEditorlessAgentAuthors", () => {
   it("restores only editorless agents, with a dry run and idempotent rerun", async () => {
     const launchSearchIndexation = vi
-      .spyOn(AgentResource, "launchSearchIndexation")
-      .mockResolvedValue();
+      .spyOn(searchIndexationClient, "launchIndexAgentSearchWorkflow")
+      .mockResolvedValue(new Ok(undefined));
     const {
       authenticator: auth,
       user,
@@ -117,10 +119,10 @@ describe("restoreEditorlessAgentAuthors", () => {
       otherEditor.sId,
     ]);
     expect(await editorIds(auth, resourceWithGlobalEditor)).toEqual([]);
-    expect(launchSearchIndexation).toHaveBeenCalledExactlyOnceWith(
-      expect.anything(),
-      [editorlessAgent.sId]
-    );
+    expect(launchSearchIndexation).toHaveBeenCalledExactlyOnceWith({
+      workspaceId: workspace.sId,
+      agentId: editorlessAgent.sId,
+    });
 
     await expect(
       restoreEditorlessAgentAuthors({
@@ -133,6 +135,95 @@ describe("restoreEditorlessAgentAuthors", () => {
       authorsRestored: 0,
       agentsSkipped: 0,
     });
+  });
+
+  it("retries failed search workflow launches", async () => {
+    const launchSearchIndexation = vi
+      .spyOn(searchIndexationClient, "launchIndexAgentSearchWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Editorless agent",
+    });
+    await replaceEditors(auth, agent, []);
+    launchSearchIndexation.mockReset();
+    launchSearchIndexation
+      .mockResolvedValueOnce(new Err(new Error("Temporal unavailable")))
+      .mockResolvedValueOnce(new Err(new Error("Temporal unavailable")))
+      .mockResolvedValueOnce(new Ok(undefined));
+
+    await restoreEditorlessAgentAuthors({
+      execute: true,
+      logger,
+      wId: workspace.sId,
+    });
+
+    expect(launchSearchIndexation).toHaveBeenCalledTimes(3);
+  });
+
+  it("waits for every in-flight repair before propagating a failure", async () => {
+    vi.spyOn(
+      searchIndexationClient,
+      "launchIndexAgentSearchWorkflow"
+    ).mockResolvedValue(new Ok(undefined));
+    const {
+      authenticator: auth,
+      user,
+      workspace,
+    } = await createResourceTest({ role: "admin" });
+    const firstAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "First editorless agent",
+    });
+    const secondAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Second editorless agent",
+    });
+    const firstResource = await replaceEditors(auth, firstAgent, []);
+    const secondResource = await replaceEditors(auth, secondAgent, []);
+
+    const originalGrantToUser = GroupPermissionResource.grantToUser;
+    let releaseSecondGrant: () => void = () => undefined;
+    const secondGrantGate = new Promise<void>((resolve) => {
+      releaseSecondGrant = resolve;
+    });
+    let markSecondGrantStarted: () => void = () => undefined;
+    const secondGrantStarted = new Promise<void>((resolve) => {
+      markSecondGrantStarted = resolve;
+    });
+    vi.spyOn(GroupPermissionResource, "grantToUser").mockImplementation(
+      async (grantAuth, grant) => {
+        if (grant.resourceId === firstResource.id) {
+          throw new Error("Failed first repair");
+        }
+        if (grant.resourceId === secondResource.id) {
+          markSecondGrantStarted();
+          await secondGrantGate;
+        }
+        return originalGrantToUser.call(
+          GroupPermissionResource,
+          grantAuth,
+          grant
+        );
+      }
+    );
+
+    let settled = false;
+    const run = restoreEditorlessAgentAuthors({
+      execute: true,
+      logger,
+      wId: workspace.sId,
+    }).finally(() => {
+      settled = true;
+    });
+    await secondGrantStarted;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(settled).toBe(false);
+
+    releaseSecondGrant();
+    await expect(run).rejects.toThrow("Failed first repair");
+    expect(await editorIds(auth, firstResource)).toEqual([]);
+    expect(await editorIds(auth, secondResource)).toEqual([user.sId]);
   });
 
   it("rejects an unknown workspace scope", async () => {
