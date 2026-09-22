@@ -7,27 +7,27 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 describe("DiscoveryItemResource", () => {
   let auth: Authenticator;
-  let groupId: number;
+  let groupModelId: number;
   let user: UserResource;
 
   beforeEach(async () => {
     const setup = await createResourceTest({ role: "manager" });
     auth = setup.authenticator;
-    groupId = setup.globalGroup.id;
+    groupModelId = setup.globalGroup.id;
     user = setup.user;
   });
 
   it("sets pins independently and lists them by position", async () => {
     await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupId,
+      groupModelId,
       item: { type: "skill", itemId: "skl_c", position: 2 },
     });
     await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupId,
+      groupModelId,
       item: { type: "agent", itemId: "agt_a", position: 0 },
     });
     await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupId,
+      groupModelId,
       item: { type: "agent", itemId: "agt_b", position: 1 },
     });
 
@@ -42,15 +42,15 @@ describe("DiscoveryItemResource", () => {
 
   it("replaces only the selected position", async () => {
     await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupId,
+      groupModelId,
       item: { type: "agent", itemId: "agt_a", position: 0 },
     });
     await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupId,
+      groupModelId,
       item: { type: "skill", itemId: "skl_kept", position: 1 },
     });
     await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupId,
+      groupModelId,
       item: { type: "skill", itemId: "skl_replacement", position: 0 },
     });
 
@@ -63,19 +63,19 @@ describe("DiscoveryItemResource", () => {
 
   it("moves an existing item and removes only the requested position", async () => {
     await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupId,
+      groupModelId,
       item: { type: "agent", itemId: "agt_moved", position: 0 },
     });
     await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupId,
+      groupModelId,
       item: { type: "skill", itemId: "skl_kept", position: 1 },
     });
     await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupId,
+      groupModelId,
       item: { type: "agent", itemId: "agt_moved", position: 2 },
     });
     const removed = await DiscoveryItemResource.removePinnedForGroup(auth, {
-      groupId,
+      groupModelId,
       position: 1,
     });
     expect(removed.isOk() && removed.value).toBe(1);
@@ -88,12 +88,12 @@ describe("DiscoveryItemResource", () => {
 
   it("rejects an invalid position without changing existing pins", async () => {
     await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupId,
+      groupModelId,
       item: { type: "agent", itemId: "agt_kept", position: 0 },
     });
 
     const rejected = await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupId,
+      groupModelId,
       item: { type: "skill", itemId: "skl_invalid", position: 3 },
     });
     expect(rejected.isErr()).toBe(true);
@@ -111,11 +111,11 @@ describe("DiscoveryItemResource", () => {
     await auth.refresh();
 
     await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupId: group.id,
+      groupModelId: group.id,
       item: { type: "skill", itemId: "skl_group", position: 0 },
     });
     await DiscoveryItemResource.setPinnedForGroup(auth, {
-      groupId,
+      groupModelId,
       item: { type: "agent", itemId: "agt_global", position: 0 },
     });
 
@@ -126,7 +126,7 @@ describe("DiscoveryItemResource", () => {
     ]);
 
     const groupPins = await DiscoveryItemResource.listPinnedForGroup(auth, {
-      groupId: group.id,
+      groupModelId: group.id,
     });
     expect(groupPins.map((item) => item.itemId)).toEqual(["skl_group"]);
   });
@@ -137,7 +137,7 @@ describe("DiscoveryItemResource", () => {
     const result = await DiscoveryItemResource.setPinnedForGroup(
       setup.authenticator,
       {
-        groupId: setup.globalGroup.id,
+        groupModelId: setup.globalGroup.id,
         item: { type: "agent", itemId: "agt_forbidden", position: 0 },
       }
     );

@@ -230,7 +230,7 @@ describe("SkillResource", () => {
       const replaceResult = await DiscoveryItemResource.setPinnedForGroup(
         testContext.authenticator,
         {
-          groupId: testContext.globalGroup.id,
+          groupModelId: testContext.globalGroup.id,
           item: { type: "skill", itemId: skill.sId, position: 0 },
         }
       );
@@ -1625,7 +1625,7 @@ describe("SkillResource", () => {
       const replaceResult = await DiscoveryItemResource.setPinnedForGroup(
         testContext.authenticator,
         {
-          groupId: testContext.globalGroup.id,
+          groupModelId: testContext.globalGroup.id,
           item: { type: "skill", itemId: skill.sId, position: 0 },
         }
       );

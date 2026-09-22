@@ -84,10 +84,12 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       groupModelIds.includes(globalGroupModelId)
         ? [globalGroupModelId]
         : []),
-      ...groupModelIds.filter((groupId) => groupId !== globalGroupModelId),
+      ...groupModelIds.filter(
+        (groupModelId) => groupModelId !== globalGroupModelId
+      ),
     ];
     const groupRank = new Map(
-      orderedGroupModelIds.map((groupId, index) => [groupId, index])
+      orderedGroupModelIds.map((groupModelId, index) => [groupModelId, index])
     );
 
     return rows.sort(
@@ -106,19 +108,19 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
   static async listPinnedForGroup(
     auth: Authenticator,
     {
-      groupId,
+      groupModelId,
       transaction,
     }: {
-      groupId: ModelId;
+      groupModelId: ModelId;
       transaction?: Transaction;
     }
   ): Promise<DiscoveryItemResource[]> {
-    if (!auth.isManager() && !auth.groupModelIds().includes(groupId)) {
+    if (!auth.isManager() && !auth.groupModelIds().includes(groupModelId)) {
       return [];
     }
 
     return this.baseFetch(auth, {
-      groupModelIds: [groupId],
+      groupModelIds: [groupModelId],
       transaction,
     });
   }
@@ -160,11 +162,11 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
   static async setPinnedForGroup(
     auth: Authenticator,
     {
-      groupId,
+      groupModelId,
       item,
       transaction,
     }: {
-      groupId: ModelId;
+      groupModelId: ModelId;
       item: PinnedDiscoveryItemInput;
       transaction?: Transaction;
     }
@@ -182,13 +184,13 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       return unauthorizedPinMutation();
     }
 
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
 
     return withTransaction(async (t) => {
       const group = await GroupModel.findOne({
         where: {
-          id: groupId,
-          workspaceId,
+          id: groupModelId,
+          workspaceId: workspaceModelId,
         },
         lock: t.LOCK.UPDATE,
         transaction: t,
@@ -201,8 +203,8 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
 
       await this.model.destroy({
         where: {
-          workspaceId,
-          groupId,
+          workspaceId: workspaceModelId,
+          groupId: groupModelId,
           [Op.or]: [
             { position: item.position },
             { type: item.type, itemId: item.itemId },
@@ -213,8 +215,8 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
 
       const row = await this.model.create(
         {
-          workspaceId,
-          groupId,
+          workspaceId: workspaceModelId,
+          groupId: groupModelId,
           type: item.type,
           itemId: item.itemId,
           position: item.position,
@@ -228,11 +230,11 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
   static async removePinnedForGroup(
     auth: Authenticator,
     {
-      groupId,
+      groupModelId,
       position,
       transaction,
     }: {
-      groupId: ModelId;
+      groupModelId: ModelId;
       position: number;
       transaction?: Transaction;
     }
@@ -246,11 +248,11 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       return unauthorizedPinMutation();
     }
 
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
     const deletedCount = await this.model.destroy({
       where: {
-        workspaceId,
-        groupId,
+        workspaceId: workspaceModelId,
+        groupId: groupModelId,
         position,
       },
       transaction,

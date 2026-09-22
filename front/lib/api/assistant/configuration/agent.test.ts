@@ -415,7 +415,7 @@ describe("stable agent identities", () => {
     const replaceResult = await DiscoveryItemResource.setPinnedForGroup(
       authenticator,
       {
-        groupId: globalGroup.id,
+        groupModelId: globalGroup.id,
         item: { type: "agent", itemId: firstVersion.sId, position: 0 },
       }
     );
@@ -1092,7 +1092,7 @@ describe("AgentResource.archive and AgentResource.restore", () => {
     const replaceResult = await DiscoveryItemResource.setPinnedForGroup(
       authenticator,
       {
-        groupId: globalGroup.id,
+        groupModelId: globalGroup.id,
         item: { type: "agent", itemId: agent.sId, position: 0 },
       }
     );
