@@ -82,7 +82,20 @@ import { cn } from "utils";
 import { cn as currentCn } from "@viz/lib/utils";
 import * as slideshowV1 from "@dust/slideshow/v1";
 import * as slideshowV2 from "@dust/slideshow/v2";
-import { captureScreenshot, triggerUserFileDownload, useFrameFunction, usePodFunction, SandboxFunctionCallError } from "@dust/react-hooks";
+import { captureScreenshot, triggerUserFileDownload, useFrameFunction, usePodFunction, SandboxFunctionCallError, useFile, readFile, writeFile } from "@dust/react-hooks";
+async function editFile() {
+  const file = await readFile("./notes.json");
+  if (file?.canWrite && file.revision) {
+    const content: string = await file.file.text();
+    const result = await writeFile(file.file.name, content, { revision: file.revision });
+    if (result.success) {
+      const revision: string = result.revision;
+    } else {
+      const message: string = result.error.message;
+    }
+  }
+}
+const fileHook: (path: string) => File | null = useFile;
 const legacy: typeof useFrameFunction = usePodFunction;
 const child: ReactNode = "hello";
 const screenshot: Promise<void> = captureScreenshot();
@@ -98,6 +111,14 @@ export default function App() {
   });
 
   it.each([
+    [
+      'import { useFile } from "@dust/react-hooks"; export default () => useFile("./notes.json")?.revision',
+      2339,
+    ],
+    [
+      'import { writeFile } from "@dust/react-hooks"; writeFile("./notes.json", "{}"); export default () => null',
+      2554,
+    ],
     [
       'import { fakeThing } from "react"; export default () => <div>{fakeThing()}</div>',
       2305,
