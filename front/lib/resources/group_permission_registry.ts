@@ -459,15 +459,22 @@ export class GroupPermissions {
     return { kind: "ids", resourceIds };
   }
 
-  // The type-wide (-1) verbs the caller's grants confer per resource type — the flat record for the
+  // The type-level verbs the caller's grants confer per resource type — the flat record for the
   // auth context / Workspace & Governance page. Grants only; admin-by-default is layered on by the
   // Authenticator (see `getWorkspacePermissions`).
+  /**
+   * @cc [owner:philipperolet,label:security;backend] workspace-permission-summary
+   * The summary MUST include only type-level verbs held through resourceId = -1 grants.
+   * Instance-only verbs MUST NOT appear, even when granted over all instances with resourceId = -1.
+   */
   toWorkspacePermissions(): WorkspacePermissions {
     const result = emptyWorkspacePermissions();
     for (const [resourceType, byId] of this.grants) {
       const mask = byId.get(WHOLE_TYPE_RESOURCE_ID) ?? 0;
       if (mask) {
-        result[resourceType] = maskToVerbs(mask);
+        result[resourceType] = maskToVerbs(mask).filter(
+          (verb) => grantTypesForVerb(resourceType, verb, "type").length > 0
+        );
       }
     }
     return result;

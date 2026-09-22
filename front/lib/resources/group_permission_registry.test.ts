@@ -330,6 +330,18 @@ describe("GroupPermissions wildcard grant", () => {
     expect(restored.resolvedVerbsForResource("space", 12)).toContain("admin");
   });
 
+  it("reports only type-level capabilities while retaining instance access", () => {
+    const perms = GroupPermissions.fromGrants([...WILDCARD]);
+    const restored = GroupPermissions.fromJSON(perms.toJSON());
+
+    expect(restored.toWorkspacePermissions()).toMatchObject({
+      skill: ["create", "publish", "make_discoverable"],
+      space: [],
+      models_tier: [],
+    });
+    expect(restored.resolvedVerbsForResource("skill", 42)).toContain("read");
+  });
+
   it("enumerates as every instance, not as none", () => {
     // A type-wide entry names no id, so it cannot come back as a list. Reporting "all" is what
     // keeps the enumeration consistent with `resolvedVerbsForResource`, which folds -1 in.

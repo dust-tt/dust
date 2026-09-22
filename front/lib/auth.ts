@@ -58,11 +58,7 @@ import type {
   GrantVerb,
   WorkspacePermissions,
 } from "@app/types/group_permissions";
-import {
-  GROUP_PERMISSION_RESOURCE_TYPES,
-  isConcreteResourceType,
-  WHOLE_TYPE_RESOURCE_ID,
-} from "@app/types/group_permissions";
+import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { GroupKind } from "@app/types/groups";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
@@ -1322,32 +1318,14 @@ export class Authenticator {
 
   /**
    * The caller's workspace capabilities, as the wire shape consumed by the `/permissions` endpoint.
-   * Admins hold every type-level capability by default; all callers also carry their type-wide
-   * grants, including instance roles granted on every resource.
-   */
-  /**
-   * @cc [owner:philipperolet,label:security;backend] workspace-permission-summary
-   * The summary MUST include the caller's type-wide grants, including instance roles, plus every
-   * type-level capability for admins. A grant on a specific instance MUST NOT appear here.
+   * Admins hold every capability by default; everyone else derives them from the grants resolved at
+   * construction.
    */
   async getWorkspacePermissions(): Promise<WorkspacePermissions> {
-    const permissions = this._permissions.toWorkspacePermissions();
-    if (!this.isAdmin()) {
-      return permissions;
+    if (this.isAdmin()) {
+      return allWorkspacePermissions();
     }
-
-    const adminPermissions = allWorkspacePermissions();
-    for (const resourceType of GROUP_PERMISSION_RESOURCE_TYPES.filter(
-      isConcreteResourceType
-    )) {
-      permissions[resourceType] = [
-        ...new Set([
-          ...permissions[resourceType],
-          ...adminPermissions[resourceType],
-        ]),
-      ];
-    }
-    return permissions;
+    return this._permissions.toWorkspacePermissions();
   }
 
   /**
