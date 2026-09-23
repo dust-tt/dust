@@ -229,7 +229,7 @@ export function ActionCardBlock({
 
   const card = (
     <Card
-      variant="primary"
+      variant={cardVariant ?? "primary"}
       size={isCompact ? "sm" : "md"}
       disabled={isDisabled}
       containerClassName={isResolved ? "max-w-lg w-fit" : "max-w-lg w-full"}

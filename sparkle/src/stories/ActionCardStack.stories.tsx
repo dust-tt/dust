@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
 import { expect, userEvent } from "storybook/test";
 
+import type { ActionCardStackExitDirection } from "../index_with_tw_base";
 import {
   ActionCardBlock,
   ActionCardStack,
@@ -17,15 +18,16 @@ const meta = {
     layout: "padded",
     docs: {
       description: {
-        component: `A pile of action cards rendered inside an agent message when several proposals are grouped together. The front card (\`children\`) is the only interactive one; up to two tilted, decorative layers are drawn behind it based on **cardCount**, and they stretch to the front card's height.
+        component: `A pile of action cards rendered inside an agent message when several proposals are grouped together. **cards** lists the whole pile, front first. Only the front card is rendered and interactive; up to two tilted, decorative layers are drawn behind it, and they stretch to the front card's height.
 
 **When to use**
-- When an agent message proposes several changes at once: put a recap **ActionCardBlock** ("N edits ready for your review", with review / reject all / accept all actions) at the front, then swap in each proposal as the user reviews them.
+- When an agent message proposes several changes at once: put a recap **ActionCardBlock** ("N edits ready for your review", with review / reject all / accept all actions) in front of the proposals, then drop cards from the front as the user reviews them.
 
 **Guidelines**
 - Give the front card \`cardVariant="secondary"\` so it reads lighter than the layers behind it.
-- Pass the number of cards still to review as **cardCount**, so the pile shrinks as the user goes through it.
-- Once nothing is left to review, set **cardCount** to 1 to drop the layers and show a resolved summary card.`,
+- Pass only the cards still to review, each with a stable **key**, so the pile shrinks as the user goes through it.
+- Set **exitDirection** with each decision (\`"right"\` when accepted, \`"left"\` when rejected), so reviewed cards slide off the pile. Cards decided in bulk leave one after another, each shown in front first.
+- Once nothing is left to review, pass a single resolved summary card.`,
       },
     },
   },
@@ -82,6 +84,14 @@ function RecapCard({
   );
 }
 
+// Cards behind the front one are never rendered, only counted as layers.
+function placeholderCards(count: number) {
+  return Array.from({ length: count }, (_, index) => ({
+    key: `proposal-${index}`,
+    card: null,
+  }));
+}
+
 /**
  * The full pile: a recap card at the front with two tilted layers behind it.
  * Four or more cards still render only three.
@@ -90,8 +100,10 @@ function RecapCard({
  */
 export const RecapOnTop: Story = {
   args: {
-    cardCount: 4,
-    children: <RecapCard pendingCount={4} />,
+    cards: [
+      { key: "recap", card: <RecapCard pendingCount={4} /> },
+      ...placeholderCards(4),
+    ],
   },
   render: (args) => <ActionCardStack {...args} />,
 };
@@ -103,8 +115,10 @@ export const RecapOnTop: Story = {
  */
 export const TwoCards: Story = {
   args: {
-    cardCount: 2,
-    children: <RecapCard pendingCount={2} />,
+    cards: [
+      { key: "recap", card: <RecapCard pendingCount={2} /> },
+      ...placeholderCards(1),
+    ],
   },
   render: (args) => <ActionCardStack {...args} />,
 };
@@ -117,14 +131,18 @@ export const TwoCards: Story = {
  */
 export const ReviewedSummary: Story = {
   args: {
-    cardCount: 1,
-    children: (
-      <ActionCardBlock
-        title="4 edits"
-        acceptedTitle="3 edits accepted, 1 rejected"
-        state="accepted"
-      />
-    ),
+    cards: [
+      {
+        key: "summary",
+        card: (
+          <ActionCardBlock
+            title="4 edits"
+            acceptedTitle="3 edits accepted, 1 rejected"
+            state="accepted"
+          />
+        ),
+      },
+    ],
   },
   render: (args) => <ActionCardStack {...args} />,
 };
@@ -158,88 +176,102 @@ function StepThroughDemo() {
     PROPOSALS.map(() => "active")
   );
   const [isReviewing, setIsReviewing] = useState(false);
+  const [exitDirection, setExitDirection] =
+    useState<ActionCardStackExitDirection>();
 
   const pendingIndexes = states.flatMap((s, i) => (s === "active" ? [i] : []));
-  const setAll = (state: ProposalState) =>
-    setStates((current) => current.map((s) => (s === "active" ? state : s)));
-  const review = (index: number, state: ProposalState) => {
-    setStates((current) => current.map((s, i) => (i === index ? state : s)));
+  const decide = (indexes: number[], state: ProposalState) => {
+    setExitDirection(state === "accepted" ? "right" : "left");
+    setStates((current) =>
+      current.map((s, i) => (indexes.includes(i) ? state : s))
+    );
+  };
+  const startReview = () => {
+    setExitDirection("right");
+    setIsReviewing(true);
   };
 
-  if (pendingIndexes.length === 0) {
-    const acceptedCount = states.filter((s) => s === "accepted").length;
-    return (
-      <ActionCardStack cardCount={1}>
-        <ActionCardBlock
-          title={`${states.length} edits`}
-          acceptedTitle={`${acceptedCount} accepted, ${states.length - acceptedCount} rejected`}
-          state="accepted"
-        />
-      </ActionCardStack>
-    );
-  }
-
-  if (!isReviewing) {
-    return (
-      <ActionCardStack cardCount={pendingIndexes.length}>
-        <RecapCard
-          pendingCount={pendingIndexes.length}
-          onReview={() => setIsReviewing(true)}
-          onRejectAll={() => setAll("rejected")}
-          onAcceptAll={() => setAll("accepted")}
-        />
-      </ActionCardStack>
-    );
-  }
-
-  const [current] = pendingIndexes;
-  return (
-    <ActionCardStack cardCount={pendingIndexes.length}>
+  const proposalCards = pendingIndexes.map((index) => ({
+    key: `proposal-${index}`,
+    card: (
       <ActionCardBlock
-        key={current}
         cardVariant="secondary"
-        {...PROPOSALS[current]}
-        titleAside={`Edit ${current + 1} of ${PROPOSALS.length}`}
+        {...PROPOSALS[index]}
+        titleAside={`Edit ${index + 1} of ${PROPOSALS.length}`}
         actions={
           <div className="flex w-full items-center justify-between gap-2 pl-11">
             <Button
               variant="ghost-secondary"
               size="sm"
               label="Accept remaining"
-              onClick={() => setAll("accepted")}
+              onClick={() => decide(pendingIndexes, "accepted")}
             />
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 label="Reject"
-                onClick={() => review(current, "rejected")}
+                onClick={() => decide([index], "rejected")}
               />
               <Button
                 variant="highlight"
                 size="sm"
                 label="Accept"
-                onClick={() => review(current, "accepted")}
+                onClick={() => decide([index], "accepted")}
               />
             </div>
           </div>
         }
       />
-    </ActionCardStack>
-  );
+    ),
+  }));
+
+  const acceptedCount = states.filter((s) => s === "accepted").length;
+  const cards =
+    pendingIndexes.length === 0
+      ? [
+          {
+            key: "summary",
+            card: (
+              <ActionCardBlock
+                title={`${states.length} edits`}
+                acceptedTitle={`${acceptedCount} accepted, ${states.length - acceptedCount} rejected`}
+                state="accepted"
+              />
+            ),
+          },
+        ]
+      : isReviewing
+        ? proposalCards
+        : [
+            {
+              key: "recap",
+              card: (
+                <RecapCard
+                  pendingCount={pendingIndexes.length}
+                  onReview={startReview}
+                  onRejectAll={() => decide(pendingIndexes, "rejected")}
+                  onAcceptAll={() => decide(pendingIndexes, "accepted")}
+                />
+              ),
+            },
+            ...proposalCards,
+          ];
+
+  return <ActionCardStack cards={cards} exitDirection={exitDirection} />;
 }
 
 /**
- * "Review" brings the first proposal to the front; each accept or reject
- * reveals the next one, and "Accept remaining" accepts every pending
- * proposal at once, until the pile collapses into a summary.
+ * "Review" slides the recap card out and brings the first proposal to the
+ * front; each accept or reject slides the card out (right when accepted, left
+ * when rejected) and reveals the next one, and bulk actions slide every
+ * pending card out one after another, until the pile collapses into a summary.
  *
  * @summary Step through proposals one by one from the recap card.
  */
 export const StepThroughReview: Story = {
   args: {
-    cardCount: PROPOSALS.length,
-    children: null,
+    cards: [],
   },
   render: () => <StepThroughDemo />,
   play: async ({ canvas }) => {
@@ -258,9 +290,13 @@ export const StepThroughReview: Story = {
     await userEvent.click(
       canvas.getByRole("button", { name: "Accept remaining" })
     );
+    // Each remaining proposal still shows in front before it leaves.
+    await expect(canvas.getByText(PROPOSALS[2].title)).toBeInTheDocument();
 
     await expect(
-      canvas.getByText("2 accepted, 1 rejected")
+      await canvas.findByText("2 accepted, 1 rejected", undefined, {
+        timeout: 3000,
+      })
     ).toBeInTheDocument();
   },
 };
