@@ -15,6 +15,7 @@ use clap::Subcommand;
 
 use super::frame::validate_frame_id;
 use super::function::spawn_runner;
+use crate::sandbox_owner::{self, SandboxOwner};
 
 mod list;
 mod query;
@@ -35,7 +36,6 @@ pub(crate) use super::function::emit_error;
 /// definition (these here are the superset: PathBuf-typed helper + empty-value fallback).
 pub(crate) const POD_DATABASES_DIR_ENV: &str = "DUST_POD_DATABASES_DIR";
 pub(crate) const DEFAULT_POD_DATABASES_DIR: &str = "/sandbox-state/databases";
-const CONVERSATION_ID_ENV: &str = "CONVERSATION_ID";
 const NO_LOCAL_DATABASES_MESSAGE: &str = "conversation sandboxes have no local databases";
 
 #[derive(Subcommand)]
@@ -76,10 +76,8 @@ pub(crate) enum DbExecutionTarget<'a> {
     RemoteFrame(&'a str),
 }
 
-/// Front sets `CONVERSATION_ID` on conversation-owned sandboxes only (see
-/// `getSandboxOwnerEnvVars` in front/lib/api/sandbox/owner.ts).
 fn in_conversation_sandbox() -> bool {
-    std::env::var_os(CONVERSATION_ID_ENV).is_some_and(|value| !value.is_empty())
+    sandbox_owner::detect() == SandboxOwner::Conversation
 }
 
 /**
