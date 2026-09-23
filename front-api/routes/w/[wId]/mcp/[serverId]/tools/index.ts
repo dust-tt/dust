@@ -1,7 +1,12 @@
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import type { PatchMCPServerToolsPermissionsResponseBody } from "@app/lib/api/mcp";
 import { UpdateMCPToolsSettingsBodySchema } from "@app/lib/api/mcp_schemas";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsUser } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -27,23 +32,48 @@ app.patch(
   async (ctx): HandlerResult<PatchMCPServerToolsPermissionsResponseBody> => {
     const auth = ctx.get("auth");
     const { serverId } = ctx.req.valid("param");
-    const { id } = getServerTypeAndIdFromSId(serverId);
+    const { tools } = ctx.req.valid("json");
+    const updateResult =
+      await RemoteMCPServerToolMetadataResource.updateOrCreateSettingsBatch(
+        auth,
+        { serverId, tools }
+      );
 
-    if (!id) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid server ID.",
-        },
-      });
+    if (updateResult.isErr()) {
+      switch (updateResult.error.code) {
+        case "invalid_id":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: updateResult.error.message,
+            },
+          });
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message: updateResult.error.message,
+            },
+          });
+        default:
+          return assertNever(updateResult.error.code);
+      }
     }
 
-    const { tools } = ctx.req.valid("json");
-    await RemoteMCPServerToolMetadataResource.updateOrCreateSettingsBatch(
+    void emitAuditLogEvent({
       auth,
-      { serverId, tools }
-    );
+      action: "mcp_server.tool_settings_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        server_id: serverId,
+        tool_count: String(tools.length),
+      },
+    });
 
     return ctx.json({ success: true });
   }

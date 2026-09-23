@@ -1,5 +1,8 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import {
+  getServerTypeAndIdFromSId,
+  parseServerTypeAndIdFromSId,
+} from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
@@ -145,6 +148,10 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
    * A batch tool-settings update MUST authorize once and persist every requested setting in one
    * database statement.
    */
+  /**
+   * @cc [owner:id13,label:error-handling;security] mcp-tool-settings-batch-errors
+   * Invalid server identifiers and authorization failures MUST return typed errors.
+   */
   static async updateOrCreateSettingsBatch(
     auth: Authenticator,
     {
@@ -158,24 +165,29 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
         enabled: boolean;
       }>;
     }
-  ): Promise<void> {
+  ): Promise<Result<void, DustError<"invalid_id" | "unauthorized">>> {
     if (tools.length === 0) {
-      return;
+      return new Ok(undefined);
     }
 
     const canAdministrate =
       await SpaceResource.canAdministrateSystemSpace(auth);
 
     if (!canAdministrate) {
-      throw new DustError(
-        "unauthorized",
-        "The user is not authorized to update tool metadata"
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "The user is not authorized to update tool metadata"
+        )
       );
     }
 
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const { serverType, id: serverModelId } =
-      getServerTypeAndIdFromSId(serverId);
+    const serverResult = parseServerTypeAndIdFromSId(serverId);
+    if (serverResult.isErr()) {
+      return serverResult;
+    }
+    const { serverType, id: serverModelId } = serverResult.value;
 
     const serverAttributes =
       serverType === "remote"
@@ -199,6 +211,8 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
         updateOnDuplicate: ["permission", "enabled", "updatedAt"],
       }
     );
+
+    return new Ok(undefined);
   }
 
   // Deletes tool metadata for tools that are not in the list
