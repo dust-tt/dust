@@ -1,5 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
+import { getBrowserMarkdownPipeline } from "@app/lib/editor/browser_markdown_pipeline";
+import { previewSkillSuggestions } from "@app/lib/editor/preview_skill_suggestions";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -14,8 +16,12 @@ import type {
   PatchSkillSuggestionRequestBody,
   PatchSkillSuggestionResponseBody,
 } from "@app/types/api/assistant/skills/suggestions";
-import type { ReviewableSkillSuggestionSource } from "@app/types/suggestions/skill_suggestion";
-import { useCallback } from "react";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type {
+  ReviewableSkillSuggestionSource,
+  SkillSuggestionType,
+} from "@app/types/suggestions/skill_suggestion";
+import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
 export function useAreSkillSuggestionsEnabled(): boolean {
@@ -76,6 +82,32 @@ export function useSkillSuggestions({
     isSuggestionsValidating: isValidating,
     mutateSuggestions: mutate,
   };
+}
+
+interface UseSkillSuggestionsPreviewParams {
+  skill: SkillType | null;
+  suggestions: SkillSuggestionType[];
+}
+
+export function useSkillSuggestionsPreview({
+  skill,
+  suggestions,
+}: UseSkillSuggestionsPreviewParams) {
+  const preview = useMemo(() => {
+    if (!skill || suggestions.length === 0) {
+      return null;
+    }
+
+    const previewRes = previewSkillSuggestions({
+      skill,
+      suggestions,
+      pipeline: getBrowserMarkdownPipeline(),
+    });
+
+    return previewRes.isOk() ? previewRes.value : null;
+  }, [skill, suggestions]);
+
+  return { preview };
 }
 
 interface UsePatchSkillSuggestionsParams {

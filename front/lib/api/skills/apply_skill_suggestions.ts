@@ -10,6 +10,8 @@ import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
 import { findSkillEditorsWithoutAccessToSpaceIds } from "@app/lib/api/skills/space_requirements";
 import type { Authenticator } from "@app/lib/auth";
+import type { SkillEdits } from "@app/lib/editor/merge_skill_suggestion_edits";
+import { mergeSkillSuggestionEdits } from "@app/lib/editor/merge_skill_suggestion_edits";
 import type { AppliedSkillInstructions } from "@app/lib/editor/skill_instructions_html";
 import {
   applyInstructionEditsToHtml,
@@ -29,11 +31,9 @@ import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_reso
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { extractToolTags } from "@app/lib/tools/format";
-import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
 import {
@@ -41,126 +41,8 @@ import {
   isEditorsSkillSuggestion,
   isNameSkillSuggestion,
   isUserFacingDescriptionSkillSuggestion,
-  parseSkillSuggestionData,
 } from "@app/types/suggestions/skill_suggestion";
 import uniq from "lodash/uniq";
-
-/**
- * What a suggestion asks to change on the skill. `editors` is not a skill field: it is written as
- * per-user grants, so it travels here but is applied separately from `updateSkill`. `archive` is
- * not a field either: it is a terminal status change applied through `skill.archive`, never
- * combined with other edits in practice, but folded in here so a mixed batch still fails loudly
- * instead of silently dropping the deletion.
- */
-interface SkillEdits {
-  agentFacingDescription?: string;
-  userFacingDescription?: string;
-  name?: string;
-  availability?: SkillAvailability;
-  editors?: { addUserIds: string[]; removeUserIds: string[] };
-  instructionEdits?: SkillInstructionEditItemType[];
-  archive?: boolean;
-}
-
-function editsForSuggestion(
-  suggestion: SkillSuggestionResource
-): Result<SkillEdits, DustError<"invalid_request_error">> {
-  const data = parseSkillSuggestionData({
-    kind: suggestion.kind,
-    suggestion: suggestion.suggestion,
-  });
-
-  switch (data.kind) {
-    case "availability":
-      return new Ok({ availability: data.suggestion.availability });
-
-    case "create":
-      return new Err(
-        new DustError(
-          "invalid_request_error",
-          "Skill creation suggestions cannot be applied to the skill yet."
-        )
-      );
-
-    case "delete":
-      return new Ok({ archive: true });
-
-    case "edit":
-      return new Ok({
-        agentFacingDescription:
-          data.suggestion.agentFacingDescriptionEdit?.content,
-        instructionEdits: data.suggestion.instructionEdits,
-      });
-
-    case "editors":
-      return new Ok({ editors: data.suggestion });
-
-    case "name":
-      return new Ok({ name: data.suggestion.name });
-
-    case "user_facing_description":
-      return new Ok({
-        userFacingDescription: data.suggestion.userFacingDescription,
-      });
-
-    default:
-      assertNever(data);
-  }
-}
-
-/**
- * Folds what every accepted suggestion asks for into one set of changes, so a batch produces one
- * skill version.
- */
-function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
-  const agentFacingDescription = edits.reduce<string | undefined>(
-    (merged, next) => next.agentFacingDescription ?? merged,
-    undefined
-  );
-  const userFacingDescription = edits.reduce<string | undefined>(
-    (merged, next) => next.userFacingDescription ?? merged,
-    undefined
-  );
-  const name = edits.reduce<string | undefined>(
-    (merged, next) => next.name ?? merged,
-    undefined
-  );
-  const availability = edits.reduce<SkillAvailability | undefined>(
-    (merged, next) => next.availability ?? merged,
-    undefined
-  );
-
-  // Concatenated in suggestion order: every accepted edit is applied, each to its own block.
-  const instructionEdits = edits.flatMap((e) => e.instructionEdits ?? []);
-
-  const archive = edits.some((e) => e.archive);
-
-  // Union, not last-wins: approving two suggestions must apply both editor changes.
-  const editorsEdits = edits.flatMap((e) => e.editors ?? []);
-  if (editorsEdits.length === 0) {
-    return {
-      agentFacingDescription,
-      userFacingDescription,
-      name,
-      availability,
-      instructionEdits,
-      archive,
-    };
-  }
-
-  return {
-    agentFacingDescription,
-    userFacingDescription,
-    name,
-    availability,
-    instructionEdits,
-    archive,
-    editors: {
-      addUserIds: [...new Set(editorsEdits.flatMap((e) => e.addUserIds))],
-      removeUserIds: [...new Set(editorsEdits.flatMap((e) => e.removeUserIds))],
-    },
-  };
-}
 
 function hasSkillFieldEdits({
   agentFacingDescription,
@@ -438,18 +320,12 @@ export async function applySkillSuggestions(
     suggestions,
   }: { skill: SkillResource; suggestions: SkillSuggestionResource[] }
 ): Promise<Result<undefined, DustError<"invalid_request_error">>> {
-  const perSuggestionEdits: SkillEdits[] = [];
-
-  for (const suggestion of suggestions) {
-    const suggestionEdits = editsForSuggestion(suggestion);
-    if (suggestionEdits.isErr()) {
-      return suggestionEdits;
-    }
-
-    perSuggestionEdits.push(suggestionEdits.value);
+  const mergedEdits = mergeSkillSuggestionEdits(suggestions);
+  if (mergedEdits.isErr()) {
+    return mergedEdits;
   }
 
-  let edits = mergeSkillEdits(perSuggestionEdits);
+  let edits = mergedEdits.value;
 
   if (edits.name !== undefined) {
     const validation = await validateSkillNameChange(auth, skill, {

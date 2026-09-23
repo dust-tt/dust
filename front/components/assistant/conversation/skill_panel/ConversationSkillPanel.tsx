@@ -9,7 +9,10 @@ import {
   SkillDetailsHeader,
   SkillLoadError,
 } from "@app/components/skills/SkillDetailsBody";
-import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
+import {
+  useSkillSuggestions,
+  useSkillSuggestionsPreview,
+} from "@app/hooks/useSkillSuggestions";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { useUser } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -48,6 +51,12 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
     disabled: !skillId,
   });
 
+  const { preview } = useSkillSuggestionsPreview({
+    skill,
+    suggestions: previewSuggestions,
+  });
+  const previewedSkill = skill && preview ? { ...skill, ...preview } : skill;
+
   return (
     <div className="flex h-panel flex-col bg-panel-background">
       <ConversationSidePanelHeader onClose={closePanel}>
@@ -56,18 +65,22 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
         {isSkillError ? (
           <SkillLoadError onRetry={mutateSkill} />
-        ) : !skill || !user || isSuggestionsLoading ? (
+        ) : !previewedSkill || !user || isSuggestionsLoading ? (
           <div className="flex h-full items-center justify-center">
             <Spinner size="lg" />
           </div>
         ) : (
           <SkillSuggestionPreviewProvider suggestions={previewSuggestions}>
             <SkillDetailsHeader
-              skill={skill}
+              skill={previewedSkill}
               owner={owner}
               onClose={closePanel}
             />
-            <SkillDetailsContent skill={skill} owner={owner} user={user} />
+            <SkillDetailsContent
+              skill={previewedSkill}
+              owner={owner}
+              user={user}
+            />
           </SkillSuggestionPreviewProvider>
         )}
       </div>
