@@ -7,6 +7,7 @@ import { ExportContentDropdown } from "@app/components/assistant/conversation/in
 import { FrameBetaChip } from "@app/components/assistant/conversation/interactive_content/frame/FrameBetaChip";
 import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
 import { ConfirmContext } from "@app/components/Confirm";
+import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
 import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
@@ -38,7 +39,6 @@ import {
   LinkExternal01,
   Maximize01,
   Minimize01,
-  Pencil01,
   RefreshCw01,
   ReverseLeft,
   Spinner,
@@ -430,7 +430,36 @@ export function FrameRenderer({
             />
             {hasFrameFunctions && <FrameBetaChip />}
           </div>
-          <div className="flex items-center">
+          <div className="flex min-w-0 items-center gap-1">
+            {isAuthor &&
+              (canEnterEditMode ? (
+                <MarkdownFilePreviewViewModeSwitch
+                  viewMode={isEditable ? "edit" : "preview"}
+                  hideLabels={isMobile}
+                  onViewModeChange={(mode) =>
+                    setEditModeState({
+                      fileId,
+                      enabled: mode === "edit",
+                    })
+                  }
+                />
+              ) : (
+                <Tooltip
+                  label="Text editing isn't available for this Frame right now."
+                  side="bottom"
+                  tooltipTriggerAsChild
+                  trigger={
+                    <span className="inline-flex shrink-0">
+                      <MarkdownFilePreviewViewModeSwitch
+                        viewMode="preview"
+                        hideLabels={isMobile}
+                        disabled
+                        onViewModeChange={() => undefined}
+                      />
+                    </span>
+                  }
+                />
+              ))}
             <ExportContentDropdown
               iframeRef={iframeRef}
               owner={owner}
@@ -548,12 +577,6 @@ export function FrameRenderer({
                 enterFullScreen={enterFullScreen}
                 shareUrl={fileShare?.shareUrl}
                 reloadFile={reloadFile}
-                showEditModeToggle={isAuthor}
-                canEnterEditMode={canEnterEditMode}
-                isEditMode={isEditable}
-                onEditModeChange={(enabled) =>
-                  setEditModeState({ fileId, enabled })
-                }
               />
             )}
           </div>
@@ -605,10 +628,6 @@ interface PreviewActionButtonsProps {
   exitFullScreen: () => void;
   shareUrl?: string;
   reloadFile: () => void;
-  showEditModeToggle: boolean;
-  canEnterEditMode: boolean;
-  isEditMode: boolean;
-  onEditModeChange: (isEditMode: boolean) => void;
 }
 
 function PreviewActionButtons({
@@ -620,38 +639,11 @@ function PreviewActionButtons({
   exitFullScreen,
   shareUrl,
   reloadFile,
-  showEditModeToggle,
-  canEnterEditMode,
-  isEditMode,
-  onEditModeChange,
 }: PreviewActionButtonsProps) {
   const clientType = useClientType();
-  const editModeTooltipLabel = !canEnterEditMode
-    ? "Text editing isn't available for this Frame right now."
-    : isEditMode
-      ? "Exit edit mode"
-      : "Edit text";
 
   return (
     <div className="fixed bottom-5 right-5 flex flex-col gap-1 rounded-lg bg-background p-1 shadow-md">
-      {showEditModeToggle && (
-        <Tooltip
-          label={editModeTooltipLabel}
-          side="left"
-          tooltipTriggerAsChild
-          trigger={
-            <Button
-              icon={Pencil01}
-              variant={isEditMode ? "outline" : "ghost"}
-              size="xs"
-              disabled={!canEnterEditMode}
-              aria-pressed={isEditMode}
-              aria-label={editModeTooltipLabel}
-              onClick={() => onEditModeChange(!isEditMode)}
-            />
-          }
-        />
-      )}
       {clientType !== "extension" && (
         <Tooltip
           label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}

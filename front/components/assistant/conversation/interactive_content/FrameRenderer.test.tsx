@@ -218,9 +218,11 @@ describe("FrameRenderer", () => {
         onEditText: undefined,
       })
     );
-    expect(
-      screen.getByRole("button", { name: "Edit text" })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.getByRole("tab", { name: "Edit" })).toBeInTheDocument();
   });
 
   it("enables inline editing after the author enters edit mode", () => {
@@ -234,7 +236,7 @@ describe("FrameRenderer", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit text" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
 
     expect(mocks.iframe).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -243,9 +245,10 @@ describe("FrameRenderer", () => {
         onEditText: expect.any(Function),
       })
     );
-    expect(
-      screen.getByRole("button", { name: "Exit edit mode" })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Edit" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
   });
 
   it("hides the edit mode toggle when the viewer cannot edit the Frame source", () => {
@@ -268,9 +271,7 @@ describe("FrameRenderer", () => {
         onEditText: undefined,
       })
     );
-    expect(
-      screen.queryByRole("button", { name: "Edit text" })
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Edit" })).not.toBeInTheDocument();
   });
 
   it("marks a Frame declaring functions as beta", () => {
@@ -345,7 +346,7 @@ describe("FrameRenderer", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit text" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
 
     const onEditText = mocks.iframe.mock.calls.at(-1)?.[0].onEditText;
     if (!onEditText) {
@@ -379,7 +380,7 @@ describe("FrameRenderer", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit text" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
 
     const identifierBefore =
       mocks.iframe.mock.calls.at(-1)?.[0].visualization.identifier;
