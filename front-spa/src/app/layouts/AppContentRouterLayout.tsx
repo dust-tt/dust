@@ -1,5 +1,6 @@
 import { AppContentLayout } from "@dust-tt/front/components/sparkle/AppContentLayout";
 import { AppLayoutProvider } from "@dust-tt/front/components/sparkle/AppLayoutContext";
+import { ConversationFontProvider } from "@dust-tt/front/components/sparkle/ConversationFontContext";
 import { Outlet } from "react-router-dom";
 
 /**
@@ -12,9 +13,11 @@ import { Outlet } from "react-router-dom";
 export function AppContentRouterLayout() {
   return (
     <AppLayoutProvider>
-      <AppContentLayout>
-        <Outlet />
-      </AppContentLayout>
+      <ConversationFontProvider>
+        <AppContentLayout>
+          <Outlet />
+        </AppContentLayout>
+      </ConversationFontProvider>
     </AppLayoutProvider>
   );
 }
