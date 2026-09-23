@@ -111,6 +111,8 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain('db("comments")');
     expect(instructions).toContain("reconciles the declared schemas");
     expect(instructions).toContain("### React Component Rules");
+    expect(instructions).toContain("### Slideshows");
+    expect(instructions).toContain("Keep the built-in width and height");
     expect(instructions).toContain("legacy Frame");
     expect(instructions).toContain("<frame>.tsx");
     expect(instructions).toContain(
@@ -158,6 +160,8 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).toContain(COMPUTER_FIRST_MARKER);
+    expect(instructions).toContain("### Slideshows");
+    expect(instructions).toContain("Keep the built-in width and height");
     expect(instructions).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(instructions).not.toContain(

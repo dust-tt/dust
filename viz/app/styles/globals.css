@@ -5,6 +5,9 @@
 @import "./slideshow.css" layer(utilities);
 @import "tailwindcss/utilities.css" layer(utilities) source(none);
 @import "./tailwind-v3-safelist.css";
+
+/* Generated Frames can use serif fonts without a local component using them. */
+@source inline("font-serif");
 @config "../../tailwind.config.ts";
 @source "../../components";
 @source "..";
@@ -56,11 +59,9 @@
     --sidebar-accent-foreground: oklch(0.1898 0.0094 255.6333);
     --sidebar-border: oklch(0.9065 0.0029 264.5412);
     --sidebar-ring: oklch(0.7752 0.0109 261.7847);
-    --font-sans: Inter, ui-sans-serif, sans-serif, system-ui;
-    --font-serif: Arvo, ui-serif, serif;
-    --font-mono:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-      "Courier New", monospace;
+    --font-sans: var(--font-geist, ui-sans-serif), sans-serif;
+    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-mono: var(--font-geist-mono, ui-monospace), monospace;
     --radius: 0.575rem;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
@@ -111,11 +112,9 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(0.275 0 0);
     --sidebar-ring: oklch(0.439 0 0);
-    --font-sans: Inter, ui-sans-serif, sans-serif, system-ui;
-    --font-serif: Arvo, ui-serif, serif;
-    --font-mono:
-      ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-      "Courier New", monospace;
+    --font-sans: var(--font-geist, ui-sans-serif), sans-serif;
+    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-mono: var(--font-geist-mono, ui-monospace), monospace;
     --radius: 0.575rem;
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0);

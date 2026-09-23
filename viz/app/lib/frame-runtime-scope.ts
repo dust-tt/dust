@@ -7,6 +7,7 @@ import {
 import type { FrameRuntimeImportName } from "@viz/app/lib/frame-runtime-imports";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import type { WriteFileParams } from "@viz/app/types";
+import * as dustFrame from "@viz/components/dust/frame";
 import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
 import * as dustSlideshowV2 from "@viz/components/dust/slideshow/v2";
 import * as shadcn from "@viz/components/ui";
@@ -45,6 +46,7 @@ export function createFrameRuntimeImports({
     "@viz/lib/utils": utils,
     "lucide-react": lucide,
     "motion/react": motion,
+    "@dust/frame": dustFrame,
     "@dust/slideshow/v1": dustSlideshowV1,
     "@dust/slideshow/v2": dustSlideshowV2,
     "@dust/react-hooks": {
