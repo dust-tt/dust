@@ -56,10 +56,7 @@ export function ConversationSkillPanel({ owner }: ConversationSkillPanelProps) {
     suggestionIds: previewSuggestions.map((s) => s.sId).join(","),
     workspaceId: owner.sId,
   });
-  const previewedSkill = useMemo(
-    () => (skill && preview ? { ...skill, ...preview } : skill),
-    [skill, preview]
-  );
+  const previewedSkill = skill && preview ? { ...skill, ...preview } : skill;
 
   return (
     <div className="flex h-panel flex-col bg-panel-background">
