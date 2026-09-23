@@ -15,7 +15,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   editFrameText: vi.fn(),
-  iframe: vi.fn((_props: { onEditText?: EditTextFn }) => null),
+  iframe: vi.fn(
+    (_props: {
+      frameId?: string;
+      isEditable?: boolean;
+      onEditText?: EditTextFn;
+      visualization?: { identifier: string };
+    }) => null
+  ),
   hasFrameFunctions: false,
   isFrameAuthor: true,
   mutateFileContent: vi.fn(),
@@ -382,9 +389,9 @@ describe("FrameRenderer", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
 
-    const identifierBefore =
-      mocks.iframe.mock.calls.at(-1)?.[0].visualization.identifier;
-    const onEditText = mocks.iframe.mock.calls.at(-1)?.[0].onEditText;
+    const lastIframeProps = mocks.iframe.mock.calls.at(-1)?.[0];
+    const identifierBefore = lastIframeProps?.visualization?.identifier;
+    const onEditText = lastIframeProps?.onEditText;
     if (!onEditText) {
       throw new Error("Expected Frame v2 to be editable.");
     }
@@ -398,11 +405,9 @@ describe("FrameRenderer", () => {
     });
 
     expect(mocks.mutateFileContent).toHaveBeenCalled();
-    expect(
-      mocks.iframe.mock.calls.at(-1)?.[0].visualization.identifier
-    ).not.toEqual(identifierBefore);
-    expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization.identifier).toBe(
-      "viz-frame_1-1"
-    );
+    const remountedIdentifier =
+      mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier;
+    expect(remountedIdentifier).not.toEqual(identifierBefore);
+    expect(remountedIdentifier).toBe("viz-frame_1-1");
   });
 });
