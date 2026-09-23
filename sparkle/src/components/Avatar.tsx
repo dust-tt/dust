@@ -194,6 +194,12 @@ export interface AvatarProps {
 }
 
 /**
+ * @cc [owner:ykmsd,label:performance] lazy-load-avatar-images
+ * The avatar image MUST be rendered with `loading="lazy"` so that long avatar lists
+ * (e.g. agent pickers, member tables) only fetch the images near the viewport instead
+ * of firing one request per row on mount.
+ */
+/**
  * Represents a user, agent, or entity with an image, emoji, icon, or initials
  * fallback, in a range of sizes with busy and clickable states. Use it to identify
  * the author of a message, a workspace member, or an agent; always provide a `name`
@@ -264,6 +270,8 @@ export function Avatar({
         <ImageWrapper
           src={visualToUse}
           alt={name}
+          loading="lazy"
+          decoding="async"
           className={cn(avatarVariants({ size }), "object-cover object-center")}
         />
       ) : visualToUse ? (
