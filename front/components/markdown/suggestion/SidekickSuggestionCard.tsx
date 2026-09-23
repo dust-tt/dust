@@ -694,6 +694,7 @@ export function SidekickSuggestionCard({
     case "delete":
     case "description":
     case "name":
+    case "scope":
       return (
         <ConnectedAgentSuggestionActionCard agentSuggestion={agentSuggestion} />
       );
@@ -709,8 +710,6 @@ export function SidekickSuggestionCard({
       return <KnowledgeSuggestionCard agentSuggestion={agentSuggestion} />;
     case "model":
       return <ModelSuggestionCard agentSuggestion={agentSuggestion} />;
-    case "scope":
-      return null;
     case "skills":
       return <SkillSuggestionCard agentSuggestion={agentSuggestion} />;
     case "sub_agent":

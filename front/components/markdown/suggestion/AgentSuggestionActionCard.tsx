@@ -13,6 +13,7 @@ import type {
   AgentInstructionsSuggestionType,
   AgentModelSuggestionType,
   AgentNameSuggestionType,
+  AgentScopeSuggestionType,
   AgentSuggestionState,
 } from "@app/types/suggestions/agent_suggestion";
 import type { ActionCardState } from "@dust-tt/sparkle";
@@ -40,9 +41,10 @@ export type AgentActionCardSuggestionType =
   | AgentCreateSuggestionType
   | AgentDeleteSuggestionType
   | AgentDescriptionSuggestionType
+  | AgentInstructionsSuggestionType
   | AgentModelSuggestionType
   | AgentNameSuggestionType
-  | AgentInstructionsSuggestionType;
+  | AgentScopeSuggestionType;
 
 interface AgentSuggestionActionCardProps {
   agentSuggestion: AgentActionCardSuggestionType;
@@ -110,6 +112,16 @@ function getLabels(agentSuggestion: AgentActionCardSuggestionType): {
         title: `Rename agent to "${name}"`,
         acceptedTitle: `Rename to "${name}" accepted`,
         rejectedTitle: `Rename to "${name}" rejected`,
+        description: analysis ?? undefined,
+      };
+    }
+
+    case "scope": {
+      const isPublishing = agentSuggestion.suggestion.scope === "visible";
+      return {
+        title: isPublishing ? "Publish agent" : "Unpublish agent",
+        acceptedTitle: isPublishing ? "Agent published" : "Agent unpublished",
+        rejectedTitle: isPublishing ? "Publish rejected" : "Unpublish rejected",
         description: analysis ?? undefined,
       };
     }
