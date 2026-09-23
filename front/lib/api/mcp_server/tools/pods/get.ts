@@ -6,6 +6,7 @@ import { listProjectContextAttachments } from "@app/lib/api/projects/context";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { getPodRoute } from "@app/lib/utils/router";
+import { normalizeTabsOrder } from "@app/types/pod_file_tab";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { mcpError, mcpJsonResponse } from "../response";
@@ -20,7 +21,7 @@ export function registerPodsGetTool(server: McpServer) {
     "get_pod",
     {
       description:
-        "Get information about a Pod: title, description, URL, pinned frame, linked content nodes, and file count.",
+        "Get information about a Pod: title, description, URL, pinned frame, custom file tabs, linked content nodes, and file count.",
       inputSchema,
     },
     async (auth, { podId }) => {
@@ -36,6 +37,7 @@ export function registerPodsGetTool(server: McpServer) {
       }
 
       const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+      const metadataJson = metadata?.toJSON();
       const attachments = await listProjectContextAttachments(auth, pod);
       const contentNodes = attachments
         .filter(isContentNodeAttachmentType)
@@ -64,8 +66,10 @@ export function registerPodsGetTool(server: McpServer) {
           id: pod.sId,
           name: pod.name,
           url: `${config.getAppUrl()}${getPodRoute(owner.sId, pod.sId)}`,
-          description: metadata?.description ?? null,
-          pinnedFramePath: metadata?.pinnedFramePath ?? null,
+          description: metadataJson?.description ?? null,
+          pinnedFramePath: metadataJson?.pinnedFramePath ?? null,
+          fileTabs: metadataJson?.frameTabs ?? [],
+          tabsOrder: metadataJson?.tabsOrder ?? normalizeTabsOrder([], []),
           contentNodes,
           fileCount,
         },

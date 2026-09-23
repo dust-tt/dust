@@ -20,13 +20,16 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
   declare description: string | null;
-  /** Scoped path to a project frame file, e.g. `project/banner.html`. */
+  /** Scoped path to the frame pinned as the Pod banner, e.g. `pod-{spaceId}/...`. */
   declare pinnedFramePath: CreationOptional<string | null>;
-  /** Frames promoted as custom pod tabs (shared). */
+  /**
+   * Previewable Pod files promoted as custom nav tabs (shared). Column name is
+   * historical (`frameTabs`); values are `PodFileTab` entries for any previewable file.
+   */
   declare frameTabs: CreationOptional<PodFileTab[]>;
   /**
-   * Interleaved nav order before Settings: system tab ids + frame paths.
-   * Empty means default (system tabs then frame paths).
+   * Interleaved nav order before Settings: system tab ids + file-tab paths.
+   * Empty means default (system tabs then file-tab paths).
    */
   declare tabsOrder: CreationOptional<string[]>;
   /** sId of the agent pre-selected for new conversations in this pod. Null = @dust. */

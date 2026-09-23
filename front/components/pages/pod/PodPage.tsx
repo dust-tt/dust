@@ -119,8 +119,8 @@ export function PodPage() {
     [fileTabs, tabsOrder]
   );
 
-  // Drop file-tab selection when the flag is off or the tab was removed
-  // (including restored preference pointing at a deleted tab).
+  // Drop file-tab selection when the tab was removed (including a restored
+  // preference pointing at a deleted tab).
   useEffect(() => {
     const filePath = parsePodFileTabPath(currentTab);
     if (!filePath) {

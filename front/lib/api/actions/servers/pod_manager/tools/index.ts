@@ -34,6 +34,7 @@ import {
   POD_MANAGER_TOOLS_METADATA,
   SEMANTIC_SEARCH_TOOL_NAME,
   SET_DEFAULT_AGENT_TOOL_NAME,
+  SET_FILE_TABS_TOOL_NAME,
   SET_PINNED_FRAME_TOOL_NAME,
   UPDATE_MEMBERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
@@ -60,6 +61,7 @@ import {
   moveConversationOutOfProject,
   moveConversationToProject,
 } from "@app/lib/api/projects/conversations";
+import { validatePodFileTabs } from "@app/lib/api/projects/file_tabs";
 import { listPodsForScope } from "@app/lib/api/projects/list";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
@@ -79,6 +81,13 @@ import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import { extractDataSourceIdFromNodeId } from "@app/types/core/content_node";
+import type { PodFileTab } from "@app/types/pod_file_tab";
+import {
+  DEFAULT_POD_FILE_TAB_ICON,
+  normalizeTabsOrder,
+  seedPodFileTabTitle,
+} from "@app/types/pod_file_tab";
+import { isCustomResourceIconType } from "@app/types/resources_icon_names";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -409,6 +418,86 @@ export function createProjectManagerTools(
       }, "Failed to set Pod pinned frame");
     },
 
+    [SET_FILE_TABS_TOOL_NAME]: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getPod(auth, {
+          toolContext,
+          dustPod: params.dustPod,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { pod } = contextRes.value;
+
+        if (!auth.can("admin", pod)) {
+          return new Err(
+            new MCPError(
+              "You do not have permission to edit this Pod's information",
+              { tracked: false }
+            )
+          );
+        }
+
+        const preparedTabs: PodFileTab[] = [];
+        for (const tab of params.fileTabs) {
+          if (tab.icon !== undefined && !isCustomResourceIconType(tab.icon)) {
+            return new Err(
+              new MCPError(`Invalid file tab icon: ${tab.icon}`, {
+                tracked: false,
+              })
+            );
+          }
+          preparedTabs.push({
+            path: tab.path,
+            title: tab.title?.trim() || seedPodFileTabTitle(tab.path),
+            icon: tab.icon ?? DEFAULT_POD_FILE_TAB_ICON,
+          });
+        }
+
+        let metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
+        const existingFileTabPaths = new Set(
+          (metadata?.frameTabs ?? []).map((tab) => tab.path)
+        );
+
+        const validation = await validatePodFileTabs(
+          auth,
+          pod,
+          preparedTabs,
+          params.tabsOrder,
+          { existingFileTabPaths }
+        );
+        if (validation.isErr()) {
+          return new Err(
+            new MCPError(validation.error.message, { tracked: false })
+          );
+        }
+
+        const { fileTabs, tabsOrder } = validation.value;
+
+        if (!metadata) {
+          metadata = await ProjectMetadataResource.makeNew(auth, pod, {
+            frameTabs: fileTabs,
+            tabsOrder,
+          });
+        } else {
+          await metadata.updateFileTabs(fileTabs, tabsOrder);
+        }
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            fileTabs,
+            tabsOrder,
+            message:
+              fileTabs.length === 0
+                ? "File tabs cleared successfully."
+                : "File tabs updated successfully.",
+          })
+        );
+      }, "Failed to set Pod file tabs");
+    },
+
     [SET_DEFAULT_AGENT_TOOL_NAME]: async ({ agentName, dustPod }) => {
       return withErrorHandling(async () => {
         const contextRes = await getPod(auth, {
@@ -694,6 +783,8 @@ export function createProjectManagerTools(
         const projectPath = getPodRoute(owner.sId, pod.sId);
         const projectUrl = `${config.getAppUrl()}${projectPath}`;
 
+        const metadataJson = metadata?.toJSON();
+
         return new Ok(
           makeSuccessResponse({
             success: true,
@@ -702,8 +793,10 @@ export function createProjectManagerTools(
               name: pod.name,
               url: projectUrl,
               access: (await pod.isRestricted(auth)) ? "restricted" : "open",
-              description: metadata?.description ?? null,
-              pinnedFramePath: metadata?.pinnedFramePath ?? null,
+              description: metadataJson?.description ?? null,
+              pinnedFramePath: metadataJson?.pinnedFramePath ?? null,
+              fileTabs: metadataJson?.frameTabs ?? [],
+              tabsOrder: metadataJson?.tabsOrder ?? normalizeTabsOrder([], []),
               defaultAgent,
               contentNodes,
               files: {
