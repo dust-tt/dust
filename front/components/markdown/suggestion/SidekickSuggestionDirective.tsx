@@ -190,7 +190,7 @@ function ConversationAgentSuggestion({
       workspaceId: owner.sId,
     });
 
-  const { isSuggestionPending, acceptSuggestion, rejectSuggestion } =
+  const { getPendingAction, acceptSuggestion, rejectSuggestion } =
     useAgentSuggestionActions({
       agentConfigurationId: agentId,
       workspaceId: owner.sId,
@@ -217,7 +217,7 @@ function ConversationAgentSuggestion({
       <AgentSuggestionActionCard
         agentSuggestion={suggestion}
         pictureUrl={agentConfiguration?.pictureUrl}
-        disabled={isSuggestionPending(suggestion)}
+        disabled={getPendingAction(suggestion) !== null}
         onAccept={() => void acceptSuggestion(suggestion)}
         onReject={() => void rejectSuggestion(suggestion)}
         onPreview={() =>

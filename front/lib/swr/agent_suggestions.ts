@@ -125,6 +125,8 @@ export function usePatchAgentSuggestions({
   return { patchSuggestions };
 }
 
+type SuggestionReviewAction = "accept" | "reject";
+
 export function useAgentSuggestionActions({
   agentConfigurationId,
   workspaceId,
@@ -140,11 +142,14 @@ export function useAgentSuggestionActions({
     agentConfigurationId,
     workspaceId,
   });
-  const [pendingIds, setPendingIds] = useState<Record<string, boolean>>({});
+  const [pendingActions, setPendingActions] = useState<
+    Record<string, SuggestionReviewAction>
+  >({});
 
-  const isSuggestionPending = useCallback(
-    (suggestion: { sId: string }) => pendingIds[suggestion.sId] ?? false,
-    [pendingIds]
+  const getPendingAction = useCallback(
+    (suggestion: { sId: string }): SuggestionReviewAction | null =>
+      pendingActions[suggestion.sId] ?? null,
+    [pendingActions]
   );
 
   const setSuggestionState = useCallback(
@@ -153,7 +158,10 @@ export function useAgentSuggestionActions({
       nextState: Extract<AgentSuggestionState, "approved" | "rejected">,
       options?: { applyToAgent?: boolean }
     ): Promise<boolean> => {
-      setPendingIds((current) => ({ ...current, [suggestion.sId]: true }));
+      setPendingActions((current) => ({
+        ...current,
+        [suggestion.sId]: nextState === "approved" ? "accept" : "reject",
+      }));
 
       const result = await patchSuggestions(
         [suggestion.sId],
@@ -161,7 +169,7 @@ export function useAgentSuggestionActions({
         options
       );
 
-      setPendingIds((current) => {
+      setPendingActions((current) => {
         const { [suggestion.sId]: _removed, ...rest } = current;
         return rest;
       });
@@ -198,7 +206,7 @@ export function useAgentSuggestionActions({
   );
 
   return {
-    isSuggestionPending,
+    getPendingAction,
     acceptSuggestion,
     rejectSuggestion,
   };
