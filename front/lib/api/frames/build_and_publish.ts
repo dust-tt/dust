@@ -68,7 +68,7 @@ async function buildFrameUiBundle({
  * any artifact is stored or activated, for validation and publication alike. Violations are never
  * reported as warnings on a success.
  */
-async function buildFramePublication(
+export async function buildFramePublication(
   auth: Authenticator,
   {
     conversation,

@@ -2,10 +2,17 @@ import path from "node:path";
 
 import { DustFileSystem } from "@app/lib/api/file_system";
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
-import { buildAndPublishFramePublication } from "@app/lib/api/frames/build_and_publish";
+import {
+  buildAndPublishFramePublication,
+  buildFramePublication,
+} from "@app/lib/api/frames/build_and_publish";
 import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
-import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
+import {
+  buildFramePublicationContracts,
+  FramePublicationError,
+  publishFramePublication,
+} from "@app/lib/api/frames/publication_storage";
 import { registerFrameV2FromSourceUsingFileSystem } from "@app/lib/api/frames/register_from_source";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
@@ -18,7 +25,9 @@ import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
 import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import {
   FRAME_MANIFEST_FILE,
@@ -158,18 +167,35 @@ async function resolveFrameFromSource(
   });
 }
 
+export type PublishFrameFromSourceParams = {
+  conversation: ConversationWithoutContentType;
+  publishedByAgentConfigurationId: string;
+  sourcePath: string;
+  /**
+   * Entry file of a legacy Frame that the v2 manifest at `sourcePath` replaces. The legacy
+   * Frame's identity is converted in place once the replacement builds.
+   */
+  replacesPath?: string;
+};
+
 export async function publishFrameFromSource(
   auth: Authenticator,
   {
     conversation,
     publishedByAgentConfigurationId,
     sourcePath,
-  }: {
-    conversation: ConversationWithoutContentType;
-    publishedByAgentConfigurationId: string;
-    sourcePath: string;
-  }
+    replacesPath,
+  }: PublishFrameFromSourceParams
 ): Promise<Result<PublishFrameFromSourceResult, PublishFrameFromSourceError>> {
+  if (replacesPath) {
+    return replaceLegacyFrameFromSource(auth, {
+      conversation,
+      legacyEntryPath: replacesPath,
+      manifestPath: sourcePath,
+      publishedByAgentConfigurationId,
+    });
+  }
+
   const resolved = await resolveFrameFromSource(auth, {
     conversation,
     sourcePath,
@@ -224,6 +250,289 @@ export async function publishFrameFromSource(
   });
 }
 
+type ReplaceLegacyFrameFromSourceParams = {
+  conversation: ConversationWithoutContentType;
+  legacyEntryPath: string;
+  manifestPath: string;
+  publishedByAgentConfigurationId: string;
+};
+
+type LegacyFrameReplacementTarget = {
+  dustFs: DustFileSystem;
+  legacyEntryPath: string;
+  legacyFrameId: string;
+  legacyMountFilePath: string;
+  manifestMountFilePath: string;
+  manifestPath: string;
+  mount: { kind: "conversation" | "pod"; id: string };
+};
+
+/**
+ * Check that a legacy Frame and the v2 manifest replacing it share one writable conversation or
+ * Pod mount, that a legacy Frame is registered at the entry path, and that the manifest has no
+ * identity of its own yet.
+ */
+async function resolveLegacyFrameReplacement(
+  auth: Authenticator,
+  {
+    conversation,
+    legacyEntryPath,
+    manifestPath,
+  }: ReplaceLegacyFrameFromSourceParams
+): Promise<
+  Result<
+    LegacyFrameReplacementTarget,
+    DustFileSystemError | FramePublicationError
+  >
+> {
+  const normalizedManifestPath =
+    DustFileSystem.normalizeScopedPath(manifestPath);
+  const normalizedLegacyPath =
+    DustFileSystem.normalizeScopedPath(legacyEntryPath);
+  if (
+    !normalizedManifestPath ||
+    !normalizedLegacyPath ||
+    path.posix.basename(normalizedManifestPath) !== FRAME_MANIFEST_FILE
+  ) {
+    return frameError(
+      "invalid_source",
+      `Replacing a legacy Frame requires a ${FRAME_MANIFEST_FILE} source and the legacy entry file.`
+    );
+  }
+
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return new Err(fsResult.error);
+  }
+  const dustFs = fsResult.value;
+
+  const manifestWriteAccess = dustFs.checkWriteAccess(normalizedManifestPath);
+  if (manifestWriteAccess.isErr()) {
+    return new Err(manifestWriteAccess.error);
+  }
+  const legacyWriteAccess = dustFs.checkWriteAccess(normalizedLegacyPath);
+  if (legacyWriteAccess.isErr()) {
+    return new Err(legacyWriteAccess.error);
+  }
+
+  const mount = dustFs
+    .getMounts()
+    .find(
+      (candidate) =>
+        normalizedManifestPath.startsWith(`${candidate.scopedPrefix}/`) &&
+        candidate.permissions.canWrite
+    );
+  const isAuthoringMount =
+    mount?.kind === "conversation" || mount?.kind === "pod";
+  const isSameMount =
+    mount !== undefined &&
+    normalizedLegacyPath.startsWith(`${mount.scopedPrefix}/`);
+  if (!mount || !isAuthoringMount || !isSameMount) {
+    return frameError(
+      "invalid_source",
+      "A Frame and the legacy Frame it replaces must live in the same conversation or Pod."
+    );
+  }
+
+  const manifestMountFilePath = dustFs.toMountFilePath(normalizedManifestPath);
+  const legacyMountFilePath = dustFs.toMountFilePath(normalizedLegacyPath);
+  if (!manifestMountFilePath || !legacyMountFilePath) {
+    return frameError("invalid_source", "Invalid Frame source path.");
+  }
+
+  const registered = await FileResource.fetchByMountFilePaths(auth, [
+    legacyMountFilePath,
+    manifestMountFilePath,
+  ]);
+  const legacyFrame = registered.find(
+    (file) => file.mountFilePath === legacyMountFilePath
+  );
+  const manifestFile = registered.find(
+    (file) => file.mountFilePath === manifestMountFilePath
+  );
+  if (!legacyFrame?.isInteractiveContent) {
+    return frameError(
+      "invalid_source",
+      `No legacy Frame found at ${normalizedLegacyPath}.`
+    );
+  }
+  if (manifestFile) {
+    return frameError(
+      "invalid_source",
+      `A separate Frame already exists at ${normalizedManifestPath}, so it cannot replace the legacy Frame. Stop and ask the user whether to delete it from the Dust UI or keep both Frames.`
+    );
+  }
+
+  return new Ok({
+    dustFs,
+    legacyEntryPath: normalizedLegacyPath,
+    legacyFrameId: legacyFrame.sId,
+    legacyMountFilePath,
+    manifestMountFilePath,
+    manifestPath: normalizedManifestPath,
+    mount: {
+      kind: mount.kind === "pod" ? "pod" : "conversation",
+      id: mount.id,
+    },
+  });
+}
+
+/**
+ * @cc [owner:pierremilliotte,label:product;backend] legacy-frame-replacement-is-atomic
+ * Replacing a legacy Frame MUST leave it untouched unless the v2 replacement builds, passes its
+ * publication contracts, and activates. A build or contract failure MUST NOT convert the legacy
+ * FileResource; a failure after conversion MUST restore it.
+ */
+async function replaceLegacyFrameFromSource(
+  auth: Authenticator,
+  params: ReplaceLegacyFrameFromSourceParams
+): Promise<Result<PublishFrameFromSourceResult, PublishFrameFromSourceError>> {
+  const resolved = await resolveLegacyFrameReplacement(auth, params);
+  if (resolved.isErr()) {
+    return resolved;
+  }
+  const target = resolved.value;
+
+  const publication = await withFrameSourceLock<
+    { publicationId: string },
+    PublishFrameFromSourceError
+  >(target.legacyFrameId, async () => {
+    const legacyFrame = await FileResource.fetchById(
+      auth,
+      target.legacyFrameId
+    );
+    const isStillLegacy =
+      legacyFrame?.isInteractiveContent === true &&
+      legacyFrame.mountFilePath === target.legacyMountFilePath;
+    if (!legacyFrame || !isStillLegacy) {
+      return frameError(
+        "invalid_frame",
+        `Legacy Frame '${target.legacyFrameId}' changed during the replacement; retry.`
+      );
+    }
+
+    const source = await readFrameV2SourceTree(
+      target.dustFs,
+      target.manifestPath
+    );
+    if (source.isErr()) {
+      return source;
+    }
+    const { manifest, sourceFiles } = source.value;
+
+    const build = await buildFramePublication(auth, {
+      conversation: params.conversation,
+      manifest,
+      sourceFiles,
+    });
+    if (build.isErr()) {
+      return build;
+    }
+    const { functionArtifacts, uiBundleCode } = build.value;
+
+    const contracts = buildFramePublicationContracts({
+      functionArtifacts,
+      manifest,
+      sourceFiles,
+    });
+    if (contracts.isErr()) {
+      return contracts;
+    }
+
+    const manifestSource = sourceFiles.find(
+      (sourceFile) => sourceFile.relativePath === FRAME_MANIFEST_FILE
+    );
+    const legacyFields = await legacyFrame.convertLegacyFrameToFrameV2(auth, {
+      fileSize: manifestSource?.content.length ?? 0,
+      mountFilePath: target.manifestMountFilePath,
+      useCase: target.mount.kind === "pod" ? "project_context" : "conversation",
+      useCaseMetadata:
+        target.mount.kind === "pod"
+          ? { spaceId: target.mount.id }
+          : { conversationId: target.mount.id },
+    });
+
+    const logContext = {
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      frameId: target.legacyFrameId,
+      legacyMountFilePath: target.legacyMountFilePath,
+      manifestMountFilePath: target.manifestMountFilePath,
+    };
+    try {
+      const published = await publishFramePublication(auth, {
+        frame: legacyFrame,
+        functionArtifacts,
+        manifest,
+        sourceFiles,
+        uiBundleCode,
+        publishedByAgentConfigurationId: params.publishedByAgentConfigurationId,
+      });
+      if (published.isErr()) {
+        logger.warn(
+          { ...logContext, error: published.error },
+          "Legacy Frame v2 publication failed, restoring legacy Frame"
+        );
+        await legacyFrame.restoreLegacyFrame(legacyFields);
+      }
+      return published;
+    } catch (error) {
+      logger.error(
+        { ...logContext, error },
+        "Legacy Frame v2 publication threw, restoring legacy Frame"
+      );
+      await legacyFrame.restoreLegacyFrame(legacyFields);
+      throw error;
+    }
+  });
+  if (publication.isErr()) {
+    if (isLockAcquisitionTimeoutError(publication.error)) {
+      return new Err(frameSourceConflictError());
+    }
+    return new Err(publication.error);
+  }
+
+  if (target.mount.kind === "pod") {
+    await repointPodFrameReferences(auth, {
+      podId: target.mount.id,
+      oldFramePath: target.legacyEntryPath,
+      newManifestPath: target.manifestPath,
+    });
+  }
+
+  return new Ok({
+    kind: "v2",
+    frameId: target.legacyFrameId,
+    sourcePath: target.manifestPath,
+    publicationId: publication.value.publicationId,
+    created: false,
+  });
+}
+
+type PodFrameReferencesRepoint = {
+  podId: string;
+  oldFramePath: string;
+  newManifestPath: string;
+};
+
+// The replacement is already active. A dangling tab renders as a missing tab in the Pod UI,
+// which is a better outcome than failing a publish whose Frame is already live.
+async function repointPodFrameReferences(
+  auth: Authenticator,
+  { podId, oldFramePath, newManifestPath }: PodFrameReferencesRepoint
+): Promise<void> {
+  try {
+    const [metadata] = await ProjectMetadataResource.fetchBySpaceIds(auth, [
+      podId,
+    ]);
+    await metadata?.renameFramePath(oldFramePath, newManifestPath);
+  } catch (error) {
+    logger.warn(
+      { error, podId, oldFramePath, newManifestPath },
+      "Legacy Frame replaced but its Pod references could not be repointed"
+    );
+  }
+}
+
 async function resolveWritableFrameV2Source(
   auth: Authenticator,
   frame: FileResource
@@ -274,15 +583,7 @@ async function readFrameV2SourceWithSourceLockHeld(
     frame: FileResource;
     manifestPath: string;
   }
-): Promise<
-  Result<
-    {
-      manifest: FrameManifest;
-      sourceFiles: FramePublicationSourceFile[];
-    },
-    FramePublicationError
-  >
-> {
+): Promise<Result<FrameV2SourceTree, FramePublicationError>> {
   const resolved = await resolveWritableFrameV2Source(auth, frame);
   if (resolved.isErr()) {
     return resolved;
@@ -298,6 +599,19 @@ async function readFrameV2SourceWithSourceLockHeld(
     );
   }
 
+  return readFrameV2SourceTree(dustFs, canonicalManifestPath);
+}
+
+type FrameV2SourceTree = {
+  manifest: FrameManifest;
+  sourceFiles: FramePublicationSourceFile[];
+};
+
+/** Capture the manifest and source tree of the Frames v2 folder holding `canonicalManifestPath`. */
+async function readFrameV2SourceTree(
+  dustFs: DustFileSystem,
+  canonicalManifestPath: string
+): Promise<Result<FrameV2SourceTree, FramePublicationError>> {
   const manifestBufferResult = await dustFs.readBuffer(canonicalManifestPath);
   if (manifestBufferResult.isErr()) {
     return frameError("invalid_source", manifestBufferResult.error.message);
