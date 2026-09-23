@@ -38,6 +38,7 @@ import {
   LinkExternal01,
   Maximize01,
   Minimize01,
+  Pencil01,
   RefreshCw01,
   ReverseLeft,
   Spinner,
@@ -164,6 +165,16 @@ export function FrameRenderer({
   });
 
   const [showCode, setShowCode] = useState(false);
+  // Inline text editing is opt-in: authors must enter edit mode explicitly so previewing does
+  // not surface hover affordances on every text node. Reset when switching Frames.
+  const [editModeState, setEditModeState] = useState({
+    fileId,
+    enabled: false,
+  });
+  if (editModeState.fileId !== fileId) {
+    setEditModeState({ fileId, enabled: false });
+  }
+  const isEditMode = editModeState.enabled;
 
   // A legacy Frame renders its own source, so `fileContent` is the code. A Frames v2 package
   // renders a built bundle, so its sources are fetched separately, and only once shown.
@@ -201,8 +212,16 @@ export function FrameRenderer({
     fileId,
     conversationId: conversation?.sId,
   });
-  const isEditable =
-    renderMode === "legacy" || Boolean(conversation && isFrameAuthor);
+  // Legacy Frames have no separate author flag: anyone who can open them in the conversation
+  // drawer could previously edit. Frame v2 uses write access to the source (`isFrameAuthor`).
+  const isAuthor =
+    renderMode === "legacy" || (!isFramePermissionsLoading && isFrameAuthor);
+  // Inline editing needs a conversation (v2 edit-text requires conversationId + source).
+  const canEnterEditMode =
+    renderMode === "legacy"
+      ? Boolean(conversation)
+      : Boolean(conversation && isFrameAuthor);
+  const isEditable = isEditMode && canEnterEditMode;
 
   const handleEditText = useCallback(
     async (params: Parameters<typeof editFrameText>[0]) => {
@@ -518,6 +537,12 @@ export function FrameRenderer({
                 enterFullScreen={enterFullScreen}
                 shareUrl={fileShare?.shareUrl}
                 reloadFile={reloadFile}
+                showEditModeToggle={isAuthor}
+                canEnterEditMode={canEnterEditMode}
+                isEditMode={isEditable}
+                onEditModeChange={(enabled) =>
+                  setEditModeState({ fileId, enabled })
+                }
               />
             )}
           </div>
@@ -569,6 +594,10 @@ interface PreviewActionButtonsProps {
   exitFullScreen: () => void;
   shareUrl?: string;
   reloadFile: () => void;
+  showEditModeToggle: boolean;
+  canEnterEditMode: boolean;
+  isEditMode: boolean;
+  onEditModeChange: (isEditMode: boolean) => void;
 }
 
 function PreviewActionButtons({
@@ -580,10 +609,38 @@ function PreviewActionButtons({
   exitFullScreen,
   shareUrl,
   reloadFile,
+  showEditModeToggle,
+  canEnterEditMode,
+  isEditMode,
+  onEditModeChange,
 }: PreviewActionButtonsProps) {
   const clientType = useClientType();
+  const editModeTooltipLabel = !canEnterEditMode
+    ? "Text editing isn't available for this Frame right now."
+    : isEditMode
+      ? "Exit edit mode"
+      : "Edit text";
+
   return (
     <div className="fixed bottom-5 right-5 flex flex-col gap-1 rounded-lg bg-background p-1 shadow-md">
+      {showEditModeToggle && (
+        <Tooltip
+          label={editModeTooltipLabel}
+          side="left"
+          tooltipTriggerAsChild
+          trigger={
+            <Button
+              icon={Pencil01}
+              variant={isEditMode ? "outline" : "ghost"}
+              size="xs"
+              disabled={!canEnterEditMode}
+              aria-pressed={isEditMode}
+              aria-label={editModeTooltipLabel}
+              onClick={() => onEditModeChange(!isEditMode)}
+            />
+          }
+        />
+      )}
       {clientType !== "extension" && (
         <Tooltip
           label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}

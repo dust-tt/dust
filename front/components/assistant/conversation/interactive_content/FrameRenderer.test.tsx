@@ -200,7 +200,7 @@ describe("FrameRenderer", () => {
     ).toBeInTheDocument();
   });
 
-  it("enables inline editing for a Frame v2 author", () => {
+  it("keeps Frame v2 read-only until the author enters edit mode", () => {
     render(
       <FrameRenderer
         conversation={conversation}
@@ -214,13 +214,41 @@ describe("FrameRenderer", () => {
     expect(mocks.iframe).toHaveBeenCalledWith(
       expect.objectContaining({
         frameId: "frame_1",
+        isEditable: false,
+        onEditText: undefined,
+      })
+    );
+    expect(
+      screen.getByRole("button", { name: "Edit text" })
+    ).toBeInTheDocument();
+  });
+
+  it("enables inline editing after the author enters edit mode", () => {
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="v2"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit text" }));
+
+    expect(mocks.iframe).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        frameId: "frame_1",
         isEditable: true,
         onEditText: expect.any(Function),
       })
     );
+    expect(
+      screen.getByRole("button", { name: "Exit edit mode" })
+    ).toBeInTheDocument();
   });
 
-  it("keeps Frame v2 read-only when the viewer cannot edit its source", () => {
+  it("hides the edit mode toggle when the viewer cannot edit the Frame source", () => {
     mocks.isFrameAuthor = false;
 
     render(
@@ -240,6 +268,9 @@ describe("FrameRenderer", () => {
         onEditText: undefined,
       })
     );
+    expect(
+      screen.queryByRole("button", { name: "Edit text" })
+    ).not.toBeInTheDocument();
   });
 
   it("marks a Frame declaring functions as beta", () => {
@@ -313,6 +344,8 @@ describe("FrameRenderer", () => {
         renderMode="v2"
       />
     );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit text" }));
 
     const onEditText = mocks.iframe.mock.calls.at(-1)?.[0].onEditText;
     if (!onEditText) {
