@@ -18,7 +18,7 @@ export function validateSkillDeletion(
   auth: Authenticator,
   skill: SkillResource
 ): Result<undefined, SkillDeletionError> {
-  if (!skill.canAdministrate(auth)) {
+  if (!auth.can("admin", skill)) {
     return new Err(
       new SkillDeletionError(
         "not_authorized",

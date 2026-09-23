@@ -27,7 +27,7 @@ function isAuthorizedForVerb(
   skill: SkillResource,
   verb: SkillSuggestionRequiredVerb
 ): boolean {
-  return verb === "admin" ? skill.canAdministrate(auth) : skill.canWrite(auth);
+  return auth.can(verb, skill);
 }
 
 export function isAuthorizedForSkillSuggestionKind(

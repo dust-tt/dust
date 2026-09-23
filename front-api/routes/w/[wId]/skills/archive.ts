@@ -62,7 +62,7 @@ app.post(
       });
     }
 
-    if (skills.some((skill) => !skill.canAdministrate(auth))) {
+    if (skills.some((skill) => !auth.can("admin", skill))) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

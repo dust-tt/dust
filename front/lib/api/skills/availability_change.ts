@@ -26,7 +26,7 @@ export interface SkillAvailabilityChange {
 /**
  * @cc [owner:achilleburah,label:security;product] same-rules-as-manual-availability-change
  * A change MUST pass exactly when `PATCH /skills/availability` would accept it from the same
- * caller: `skill.canAdministrate(auth)` (editors of this skill or workspace admins, matching
+ * caller: `auth.can("admin", skill)` (editors of this skill or workspace admins, matching
  * `validateSkillDeletion`), skill not archived, then, only when the requested value differs from
  * the current one, `hasWorkspacePermission("publish", "skill")` and, when either side is
  * `users_and_agents`, `hasWorkspacePermission("make_discoverable", "skill")`
@@ -40,7 +40,7 @@ export function validateSkillAvailabilityChange(
   skill: SkillResource,
   { availability }: { availability: SkillAvailability }
 ): Result<SkillAvailabilityChange | null, SkillAvailabilityChangeError> {
-  if (!skill.canAdministrate(auth)) {
+  if (!auth.can("admin", skill)) {
     return new Err(
       new SkillAvailabilityChangeError(
         "not_authorized",

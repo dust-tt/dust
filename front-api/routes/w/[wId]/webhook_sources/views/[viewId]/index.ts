@@ -58,7 +58,7 @@ app.get(
         },
       });
     }
-    if (!webhookSourceView.canRead(auth)) {
+    if (!auth.can("read", webhookSourceView)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

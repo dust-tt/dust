@@ -36,6 +36,7 @@ import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
+import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
@@ -361,6 +362,171 @@ describe("stable agent identities", () => {
     expect(await currentVersion(firstVersion.sId)).toBeNull();
   });
 
+  it("mirrors the current configuration's head fields onto the identity", async () => {
+    const test = await createResourceTest({ role: "admin" });
+    const { workspace } = test;
+    // Changing scope needs the `publish` capability, which the test harness does not seed.
+    await GroupPermissionResource.setForEverybody(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      { grantType: "publish", resourceType: "agent" }
+    );
+    const authenticator = await Authenticator.fromUserIdAndWorkspaceId(
+      test.user.sId,
+      workspace.sId
+    );
+    const headFields = async (sId: string) => {
+      const identity = await AgentModel.findOne({
+        where: { sId, workspaceId: workspace.id },
+      });
+      assert(identity);
+      return {
+        name: identity.name,
+        status: identity.status,
+        scope: identity.scope,
+        reinforcement: identity.reinforcement,
+        templateId: identity.templateId,
+      };
+    };
+
+    const template = await TemplateFactory.published();
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Before rename",
+        scope: "hidden",
+        templateId: template.sId,
+        reinforcement: "off",
+      }
+    );
+    expect(await headFields(agent.sId)).toEqual({
+      name: "Before rename",
+      status: "active",
+      scope: "hidden",
+      reinforcement: "off",
+      templateId: template.id,
+    });
+
+    // An upgrade moves the pointer and re-mirrors whatever the new current version holds: the
+    // factory clears `templateId` explicitly, and omits `reinforcement`, which a partial update
+    // carries over.
+    await AgentConfigurationFactory.updateTestAgent(authenticator, agent.sId, {
+      name: "After rename",
+    });
+    expect(await headFields(agent.sId)).toEqual({
+      name: "After rename",
+      status: "active",
+      scope: "hidden",
+      reinforcement: "off",
+      templateId: null,
+    });
+
+    // In-place writers on the current row update the identity as well.
+    const scopeResult = await updateAgentConfigurationsScope(
+      authenticator,
+      [agent.sId],
+      "visible"
+    );
+    assert(scopeResult.isOk());
+    expect((await headFields(agent.sId)).scope).toBe("visible");
+
+    const resource = await AgentResource.fetchById(authenticator, agent.sId);
+    assert(resource);
+    const archiveResult = await resource.archive(authenticator);
+    assert(archiveResult.isOk());
+    expect((await headFields(agent.sId)).status).toBe("archived");
+
+    const archived = await AgentResource.fetchById(authenticator, agent.sId);
+    assert(archived);
+    const restoreResult = await archived.restore(authenticator);
+    assert(restoreResult.isOk());
+    expect((await headFields(agent.sId)).status).toBe("active");
+  });
+
+  it("re-mirrors the head fields of the version restored by a rollback", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const template = await TemplateFactory.published();
+    const firstVersion = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      {
+        name: "Before rename",
+        scope: "hidden",
+        templateId: template.sId,
+        reinforcement: "off",
+      }
+    );
+    const secondVersion = await AgentConfigurationFactory.updateTestAgent(
+      authenticator,
+      firstVersion.sId,
+      { name: "After rename" }
+    );
+    expect(secondVersion.version).toBe(1);
+
+    const identityAfterUpgrade = await AgentModel.findOne({
+      where: { sId: firstVersion.sId, workspaceId: workspace.id },
+    });
+    assert(identityAfterUpgrade);
+    expect(identityAfterUpgrade.templateId).toBeNull();
+    expect(identityAfterUpgrade.name).toBe("After rename");
+
+    // Deleting the current version makes the previous one current again, so the identity has to
+    // pick its head fields back up.
+    await hardDeleteAgentVersion(authenticator, secondVersion);
+
+    const identityAfterRollback = await AgentModel.findOne({
+      where: { sId: firstVersion.sId, workspaceId: workspace.id },
+    });
+    assert(identityAfterRollback);
+    expect(identityAfterRollback.currentVersion).toBe(0);
+    expect(identityAfterRollback.templateId).toBe(template.id);
+    expect(identityAfterRollback.reinforcement).toBe("off");
+    expect(identityAfterRollback.scope).toBe("hidden");
+    expect(identityAfterRollback.name).toBe("Before rename");
+  });
+
+  it("stores a draft agent as hidden on both the identity and its configuration", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const user = authenticator.getNonNullableUser();
+
+    // A builder "try" preview is saved as a draft: whatever scope the form carries, it is persisted
+    // hidden so an unpublished agent is never visible (see `agent-publish-capability`).
+    const result = await AgentResource.makeNew(authenticator, {
+      name: "Draft preview",
+      description: "Draft preview description",
+      instructions: "Draft instructions",
+      instructionsHtml: null,
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "draft",
+      scope: "visible",
+      model: {
+        providerId: "openai",
+        modelId: "gpt-5-mini",
+        temperature: 0.7,
+      },
+      templateId: null,
+      requestedSpaceIds: [],
+      tags: [],
+      editors: [user.toJSON()],
+      authorId: user.id,
+    });
+    assert(result.isOk());
+
+    const configuration = await AgentConfigurationModel.findOne({
+      where: { sId: result.value.sId, workspaceId: workspace.id },
+    });
+    const identity = await AgentModel.findOne({
+      where: { sId: result.value.sId, workspaceId: workspace.id },
+    });
+    assert(configuration && identity);
+
+    expect(configuration.scope).toBe("hidden");
+    expect(identity.scope).toBe("hidden");
+    expect(identity.status).toBe("draft");
+  });
+
   it("keeps a pending identity at version 0 through activation", async () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
@@ -371,17 +537,26 @@ describe("stable agent identities", () => {
       where: { sId: pending.value.sId, workspaceId: workspace.id },
     });
     expect(identityBefore?.currentVersion).toBe(0);
+    expect(identityBefore?.status).toBe("pending");
+    expect(identityBefore?.name).toBe("__PENDING__");
+    expect(identityBefore?.scope).toBe("hidden");
 
     // Activation updates the pending row in place, so the version does not move.
     const activated = await AgentConfigurationFactory.updateTestAgent(
       authenticator,
-      pending.value.sId
+      pending.value.sId,
+      { name: "Activated" }
     );
     const identityAfter = await AgentModel.findOne({
       where: { sId: pending.value.sId, workspaceId: workspace.id },
     });
     expect(activated.version).toBe(0);
     expect(identityAfter?.currentVersion).toBe(0);
+    // The in-place activation does not move the pointer, so the head fields have to be mirrored on
+    // their own. `scope` stays `hidden`: the factory updates the definition without publishing.
+    expect(identityAfter?.status).toBe("active");
+    expect(identityAfter?.name).toBe("Activated");
+    expect(identityAfter?.scope).toBe("hidden");
   });
 
   it("deletes the identity and grants only after its last version is deleted", async () => {

@@ -39,7 +39,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { getToolBillingInfo } from "@app/lib/metronome/events";
 import { LEGACY_REGION_BIT } from "@app/lib/resources/string_ids";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+
+// Each internal MCP server is loaded through a dynamic import, so the first collection transforms
+// and imports every server module and its vendor SDKs, which exceeds the default test timeout.
+const COLLECT_METADATA_TIMEOUT_MS = 60_000;
 
 interface ServerMetadataSnapshot {
   name: string;
@@ -234,9 +238,13 @@ async function collectAllServersMetadata(): Promise<ServerMetadataSnapshot[]> {
 }
 
 describe("MCP Servers Metadata Snapshot", () => {
-  it("should have all servers accounted for", async () => {
-    const currentMetadata = await collectAllServersMetadata();
+  let currentMetadata: ServerMetadataSnapshot[];
 
+  beforeAll(async () => {
+    currentMetadata = await collectAllServersMetadata();
+  }, COLLECT_METADATA_TIMEOUT_MS);
+
+  it("should have all servers accounted for", () => {
     // Check that we have entries for all known servers
     const serverNames = currentMetadata.map((s) => s.name);
     for (const expectedName of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
@@ -244,9 +252,7 @@ describe("MCP Servers Metadata Snapshot", () => {
     }
   });
 
-  it("should not have any servers with extraction errors", async () => {
-    const currentMetadata = await collectAllServersMetadata();
-
+  it("should not have any servers with extraction errors", () => {
     const serversWithErrors = currentMetadata.filter((s) =>
       s.tools.some((t) => t.name === "__ERROR__")
     );

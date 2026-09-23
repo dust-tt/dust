@@ -1,5 +1,6 @@
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
+import { useResumeOngoingAgentLoopsPolling } from "@app/lib/swr/ongoing_agent_loops";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { PostMessagesResponseBody } from "@app/types/api/assistant/messages";
 import type {
@@ -19,6 +20,11 @@ import { useCallback } from "react";
 // lock and times out (SequelizeDatabaseError).
 const CONTENT_FRAGMENT_POST_CONCURRENCY = 8;
 
+/**
+ * @cc [owner:id13,label:performance;react] submitted-message-resumes-agent-loop-polling
+ * After a message request succeeds, ongoing-loop polling MUST resume at the active interval without
+ * waiting for the idle poll.
+ */
 export function useSubmitMessage({
   owner,
   user,
@@ -29,6 +35,9 @@ export function useSubmitMessage({
   conversationId: string | null;
 }) {
   const contextOrigin = useClientType();
+  const resumeOngoingAgentLoopsPolling = useResumeOngoingAgentLoopsPolling(
+    owner.sId
+  );
 
   return useCallback(
     async (messageData: {
@@ -169,8 +178,11 @@ export function useSubmitMessage({
         });
       }
 
-      return new Ok(await mRes.json());
+      const response: PostMessagesResponseBody = await mRes.json();
+      resumeOngoingAgentLoopsPolling();
+
+      return new Ok(response);
     },
-    [owner, user, conversationId, contextOrigin]
+    [owner, user, conversationId, contextOrigin, resumeOngoingAgentLoopsPolling]
   );
 }

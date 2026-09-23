@@ -163,10 +163,10 @@ apply_local_overrides() {
   fi
 
   # Viz tunnel so sandboxes can fetch frame-runtime from local viz (:3007).
-  # Overrides VIZ_PUBLIC_URL only; NEXT_PUBLIC_VIZ_URL stays localhost for the SPA.
+  # Sandbox-only (DUST_VIZ_URL): the browser keeps loading viz from VIZ_PUBLIC_URL.
   SBX_DEV_VIZ_URL_FILE="${SBX_DEV_VIZ_URL_FILE:-${DUST_INFRA_LOG_DIR:-/tmp/dust-infra}/sbx-dev-viz-url}"
   if [ -f "${SBX_DEV_VIZ_URL_FILE}" ]; then
-    export VIZ_PUBLIC_URL="$(tr -d '\n' <"${SBX_DEV_VIZ_URL_FILE}")"
+    export SBX_DEV_VIZ_URL="$(tr -d '\n' <"${SBX_DEV_VIZ_URL_FILE}")"
     export SBX_DEV_UNRESTRICTED_EGRESS="${SBX_DEV_UNRESTRICTED_EGRESS:-true}"
   fi
 }

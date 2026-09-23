@@ -11,6 +11,7 @@ import type {
   InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   NameSuggestionType,
+  ScopeSuggestionType,
   SkillsSuggestionType,
   SubAgentSuggestionType,
   ToolsSuggestionType,
@@ -237,6 +238,30 @@ export class AgentSuggestionFactory {
         kind: "name",
         suggestion: overrides.suggestion ?? { name: "RenamedAgent" },
         analysis: overrides.analysis ?? "A clearer name for this agent",
+        state: overrides.state ?? "pending",
+        conversationId: null,
+        source: overrides.source ?? "conversational",
+      }
+    );
+  }
+
+  static async createScope(
+    auth: Authenticator,
+    agentConfiguration: LightAgentConfigurationType,
+    overrides: Partial<{
+      suggestion: ScopeSuggestionType;
+      analysis: string | null;
+      state: AgentSuggestionState;
+      source: AgentSuggestionSource;
+    }> = {}
+  ): Promise<AgentSuggestionResource> {
+    return AgentSuggestionResource.createSuggestionForAgent(
+      auth,
+      agentConfiguration,
+      {
+        kind: "scope",
+        suggestion: overrides.suggestion ?? { scope: "visible" },
+        analysis: overrides.analysis ?? "This agent is ready to be published",
         state: overrides.state ?? "pending",
         conversationId: null,
         source: overrides.source ?? "conversational",

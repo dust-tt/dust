@@ -30,7 +30,7 @@ app.get(
     const { dsId, documentId } = ctx.req.valid("param");
 
     const dataSource = await DataSourceResource.fetchById(auth, dsId);
-    if (!dataSource || !dataSource.canRead(auth)) {
+    if (!dataSource || !auth.can("read", dataSource)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

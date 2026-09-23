@@ -23,7 +23,7 @@ app.post(
     const auth = ctx.get("auth");
     const dataSource = ctx.get("dataSource");
 
-    if (!dataSource.canWrite(auth)) {
+    if (!auth.can("write", dataSource)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

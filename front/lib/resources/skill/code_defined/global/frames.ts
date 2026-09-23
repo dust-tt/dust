@@ -61,6 +61,6 @@ export const framesSkill = {
   // Frames v2 authoring runs entirely through the Computer.
   warmsConversationSandbox: (auth: Authenticator) =>
     hasFeatureFlag(auth, "frames_v2"),
-  version: 11,
+  version: 13,
   icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;

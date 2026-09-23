@@ -60,11 +60,21 @@
  * credit), sequentially, dry-run unless --execute. No need to iterate all
  * workspaces — a plain pro-monthly workspace has no stray credit to empty.
  *
+ * `--includeRemovedSeats` additionally scans members currently on a
+ * non-credit-bearing seat (none/free/workspace) for an ORPHANED seat credit that
+ * an old downgrade to None left live (tasks#10578). These members are unassigned
+ * in Metronome, so they are pulled from the DB; the shared core treats their home
+ * (none/free) as "no home credit" and empties every seat credit they still hold,
+ * with no carry. A no-op when Metronome returns no balance for the unassigned
+ * seat. (The source fix in `seats.ts` prevents new orphans; this recovers the
+ * backlog created before it shipped.)
+ *
  *   npx tsx scripts/fix_metronome_stacked_seat_credits.ts --workspaceId <wId>
  *   npx tsx scripts/fix_metronome_stacked_seat_credits.ts --workspaceId <wId> --homeSeatType max --seatId <userId>
  *   npx tsx scripts/fix_metronome_stacked_seat_credits.ts --workspaceId <wId> --homeSeatType max --execute
+ *   npx tsx scripts/fix_metronome_stacked_seat_credits.ts --workspaceId <wId> --includeRemovedSeats
  *   npx tsx scripts/fix_metronome_stacked_seat_credits.ts --allWorkspaces
- *   npx tsx scripts/fix_metronome_stacked_seat_credits.ts --allWorkspaces --execute
+ *   npx tsx scripts/fix_metronome_stacked_seat_credits.ts --allWorkspaces --includeRemovedSeats --execute
  */
 import config from "@app/lib/api/config";
 import {
@@ -79,6 +89,7 @@ import {
 } from "@app/lib/metronome/seat_types";
 import { getSeatCreditNameForSeatType } from "@app/lib/metronome/seats";
 import { correctStackedSeatCreditsFromBalances } from "@app/lib/metronome/stacked_seat_credits";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { Op } from "@app/lib/resources/storage/data_types";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -86,6 +97,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { hasMetronomeSeatBalance } from "@app/types/memberships";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import { makeScript } from "./helpers";
@@ -114,12 +126,14 @@ async function fixWorkspace(
     onlySeatId,
     onlyHomeSeatType,
     excludeSeatIds,
+    includeRemovedSeats,
     logger,
   }: {
     execute: boolean;
     onlySeatId: string | null;
     onlyHomeSeatType: MembershipSeatType | null;
     excludeSeatIds: Set<string>;
+    includeRemovedSeats: boolean;
     logger: Logger;
   }
 ) {
@@ -217,6 +231,45 @@ async function fixWorkspace(
       continue;
     }
     currentSeatTypeBySeatId.set(seatId, homeSeatType);
+  }
+
+  // Orphaned-credit recovery (tasks#10578): a user downgraded to a
+  // non-credit-bearing seat (none/free/workspace) can still hold a live seat
+  // credit that was never emptied — the origin-drain used to skip →none moves.
+  // Such a user is absent from the Metronome seat ASSIGNMENT scan above
+  // (unassigned from every credit-bearing subscription), so pull them from the DB
+  // memberships. The shared core treats a none/free home as "no home credit" and
+  // empties every seat credit they still hold, with no carry. (If Metronome
+  // returns no balance for the now-unassigned seat, it is simply a no-op.)
+  if (includeRemovedSeats) {
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      workspace: lightWorkspace,
+    });
+    for (const membership of memberships) {
+      const seatId = membership.user?.sId;
+      if (!seatId || hasMetronomeSeatBalance(membership.seatType)) {
+        // Credit-bearing members are already covered by the assignment scan.
+        continue;
+      }
+      if (onlySeatId && seatId !== onlySeatId) {
+        continue;
+      }
+      if (excludeSeatIds.has(seatId)) {
+        continue;
+      }
+      if (onlyHomeSeatType && membership.seatType !== onlyHomeSeatType) {
+        continue;
+      }
+      currentSeatTypeBySeatId.set(seatId, membership.seatType);
+    }
+  }
+
+  if (currentSeatTypeBySeatId.size === 0) {
+    logger.info(
+      { workspaceId, includeRemovedSeats },
+      "[StackedFix] no candidate seats — nothing to do"
+    );
+    return;
   }
 
   // Read per-seat, per-credit balances once (credits[] via
@@ -374,6 +427,15 @@ makeScript(
         "Comma-separated seat ids (userIds) to skip — e.g. seats already " +
         "corrected manually, since adjustSeatCreditBalances does not dedup",
     },
+    includeRemovedSeats: {
+      type: "boolean",
+      default: false,
+      describe:
+        "Also scan members currently on a non-credit-bearing seat " +
+        "(none/free/workspace) for an ORPHANED seat credit left live by an " +
+        "old downgrade to None (tasks#10578), and empty it (no carry). Pulls " +
+        "these members from the DB since they are unassigned in Metronome.",
+    },
   },
   async (
     {
@@ -382,6 +444,7 @@ makeScript(
       seatId,
       homeSeatType,
       excludeSeatIds,
+      includeRemovedSeats,
       execute,
     },
     logger
@@ -400,6 +463,7 @@ makeScript(
           .map((s) => s.trim())
           .filter((s) => s.length > 0)
       ),
+      includeRemovedSeats,
       logger,
     };
 

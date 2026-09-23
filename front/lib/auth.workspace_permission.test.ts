@@ -132,12 +132,12 @@ describe("Authenticator.getWorkspacePermissions", () => {
 
   it("returns every type-level verb for an admin", async () => {
     // Admins hold every type-level capability by default; instance-only domains
-    // (space, models_tier) stay empty. `read` on skills comes from the global group's `reader`
-    // grant, which every workspace holds (see WorkspaceFactory / seedWorkspaceCapabilities).
+    // (space, models_tier) stay empty. The global group's skill `reader` grant is instance-level
+    // and does not appear in this summary, even though it grants read access to every skill.
     expect(await adminAuth.getWorkspacePermissions()).toEqual({
       ...emptyWorkspacePermissions(),
       agent: ["create", "publish"],
-      skill: ["read", "create", "publish", "make_discoverable"],
+      skill: ["create", "publish", "make_discoverable"],
       frame: ["invite", "publish"],
       billing: ["admin"],
       security: ["admin"],
@@ -146,15 +146,14 @@ describe("Authenticator.getWorkspacePermissions", () => {
     });
   });
 
-  it("returns no permissions for a regular user without grants", async () => {
+  it("excludes instance readership granted on all skills", async () => {
     const auth = await memberAuthInGroup();
 
-    // Every workspace member reads skills through the global group's `reader` grant; nothing else
-    // is granted to a member by default.
-    expect(await auth.getWorkspacePermissions()).toEqual({
-      ...emptyWorkspacePermissions(),
-      skill: ["read"],
-    });
+    // Every workspace member reads skills through the global group's `reader` grant, but that
+    // does not confer any type-level capability.
+    expect(await auth.getWorkspacePermissions()).toEqual(
+      emptyWorkspacePermissions()
+    );
   });
 
   it("reflects a capability granted to everyone", async () => {
@@ -167,7 +166,6 @@ describe("Authenticator.getWorkspacePermissions", () => {
     expect(await auth.getWorkspacePermissions()).toEqual({
       ...emptyWorkspacePermissions(),
       agent: ["create"],
-      skill: ["read"],
     });
   });
 
@@ -183,7 +181,6 @@ describe("Authenticator.getWorkspacePermissions", () => {
     expect(await auth.getWorkspacePermissions()).toEqual({
       ...emptyWorkspacePermissions(),
       agent: ["publish"],
-      skill: ["read"],
     });
   });
 });

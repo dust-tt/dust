@@ -8,6 +8,8 @@ import { readFile } from "fs/promises"
 import { basename, extname } from "path"
 import type { Result, AgentResponse } from "./types"
 import { Ok, Err } from "./types"
+import type { AgentSpec } from "./model-selection"
+import { parseAgentSpec } from "./model-selection"
 
 const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
   ".csv": "text/csv",
@@ -24,8 +26,7 @@ const CONTENT_TYPE_BY_EXTENSION: Record<string, string> = {
   ".png": "image/png",
   ".txt": "text/plain",
   ".webp": "image/webp",
-  ".xlsx":
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   ".xml": "application/xml",
   ".yaml": "application/x-yaml",
   ".yml": "application/x-yaml",
@@ -335,7 +336,7 @@ export class DustClient {
   }
 
   private async callAgentInternal(
-    agentId: string,
+    spec: AgentSpec,
     prompt: string,
     timeout: number,
     filePaths: string[]
@@ -369,7 +370,7 @@ export class DustClient {
           content: prompt,
           mentions: [
             {
-              configurationId: agentId,
+              configurationId: spec.agentId,
             },
           ],
           context: {
@@ -377,6 +378,9 @@ export class DustClient {
             timezone: "UTC",
             origin: "api" as const,
           },
+          ...(spec.modelSelection
+            ? { modelSelection: spec.modelSelection }
+            : {}),
         },
         ...(contentFragments.length > 0 ? { contentFragments } : {}),
       })
@@ -567,8 +571,14 @@ export class DustClient {
     return null
   }
 
+  /**
+   * Call an agent. `agentSpec` is either a bare agent sId or an sId with a
+   * model-picker override (see `parseAgentSpec`); the spec string is echoed
+   * back as `agentId` on the response so reports break results down per
+   * model/effort.
+   */
   async callAgent(
-    agentId: string,
+    agentSpec: string,
     prompt: string,
     timeout: number,
     // Judges are agents too, but we only track the cost of the agent under
@@ -582,13 +592,20 @@ export class DustClient {
     let lastError: Error | null = null
     let retryCount = 0
 
+    const parsed = parseAgentSpec(agentSpec)
+    if (!parsed.isOk) {
+      return Err(parsed.error)
+    }
+    const spec = parsed.value
+    const agentId = spec.label
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       if (this.config.verbose) {
         console.error(`    [Agent ${agentId}] Attempt ${attempt}/${maxRetries}`)
       }
 
       const result = await this.callAgentInternal(
-        agentId,
+        spec,
         prompt,
         timeout,
         filePaths
@@ -698,9 +715,18 @@ export class DustClient {
   }
 
   /**
-   * Validate that an agent exists and is accessible.
+   * Validate that an agent exists and is accessible. Accepts a full agent spec
+   * (`<sId>#<providerId>/<modelId>@<effort>`); the model override itself is
+   * validated server-side at send time — it must be enabled and selectable for
+   * the workspace.
    */
-  async validateAgent(agentId: string): Promise<Result<{ name: string }>> {
+  async validateAgent(agentSpec: string): Promise<Result<{ name: string }>> {
+    const parsed = parseAgentSpec(agentSpec)
+    if (!parsed.isOk) {
+      return Err(parsed.error)
+    }
+    const { agentId, modelSelection } = parsed.value
+
     try {
       // API keys authenticate without an OAuth user, so the "list" view is
       // rejected (401). "all" returns every non-private agent and is the
@@ -722,7 +748,17 @@ export class DustClient {
         return Err(new Error(`Agent '${agentId}' not found in workspace`))
       }
 
-      return Ok({ name: (agent as { name: string }).name })
+      const name = (agent as { name: string }).name
+      if (!modelSelection) {
+        return Ok({ name })
+      }
+
+      const effortSuffix = modelSelection.reasoningEffort
+        ? ` @${modelSelection.reasoningEffort}`
+        : ""
+      return Ok({
+        name: `${name} (${modelSelection.providerId}/${modelSelection.modelId}${effortSuffix})`,
+      })
     } catch (error) {
       return Err(
         error instanceof Error

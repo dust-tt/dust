@@ -12,7 +12,7 @@ export function WithDustClaudeOpusFiveConfig<
   abstract class DustClaudeOpusFive extends Base {
     static readonly displayName = "Claude Opus 5";
     static readonly description =
-      "Anthropic's Claude Opus 5 model, the latest and most capable model for complex agentic coding and enterprise work (250k context).";
+      "Anthropic's Claude Opus 5 model, a powerful model for complex agentic coding and enterprise work (250k context).";
     // Dust caps usable context at 250k; the model itself supports 1M.
     static readonly contextSize = 250_000;
     // Dust caps output at 64k; the model itself supports 128k.

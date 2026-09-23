@@ -16,16 +16,19 @@ function hasPermission(
   ds: DataSourceResource,
   o: WithDataSourceOptions
 ): boolean {
-  if (o.requireCanAdministrate && !ds.canAdministrate(auth)) {
+  if (o.requireCanAdministrate && !auth.can("admin", ds)) {
     return false;
   }
-  if (o.requireCanReadOrAdministrate && !ds.canReadOrAdministrate(auth)) {
+  if (
+    o.requireCanReadOrAdministrate &&
+    !(auth.can("read", ds) || auth.can("admin", ds))
+  ) {
     return false;
   }
-  if (o.requireCanRead && !ds.canRead(auth)) {
+  if (o.requireCanRead && !auth.can("read", ds)) {
     return false;
   }
-  if (o.requireCanWrite && !ds.canWrite(auth)) {
+  if (o.requireCanWrite && !auth.can("write", ds)) {
     return false;
   }
   return true;

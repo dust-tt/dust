@@ -152,6 +152,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "premium",
     high: "premium",
   },
+  "gpt-6-sol": {
+    none: "balanced",
+    light: "premium",
+    medium: "premium",
+    high: "premium",
+  },
   "gpt-5.6-sol": {
     none: "balanced",
     light: "premium",
@@ -169,6 +175,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     light: "premium",
     medium: "premium",
     high: "premium",
+  },
+  "gpt-6-luna": {
+    none: "cost_efficient",
+    light: "cost_efficient",
+    medium: "balanced",
+    high: "balanced",
   },
   "gpt-5.6-luna": {
     none: "cost_efficient",
@@ -251,6 +263,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     high: "premium",
   },
   "claude-opus-5": {
+    light: "premium",
+    medium: "premium",
+    high: "premium",
+  },
+  "claude-opus-5-5": {
     light: "premium",
     medium: "premium",
     high: "premium",
@@ -389,6 +406,17 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "accounts/fireworks/models/deepseek-v4-pro": {
     none: "balanced",
   },
+  "accounts/fireworks/models/deepseek-v4-pro-0813": {
+    light: "balanced",
+    medium: "balanced",
+    high: "balanced",
+  },
+  "accounts/fireworks/models/deepseek-v4-flash-0731": {
+    none: "cost_efficient",
+    light: "cost_efficient",
+    medium: "cost_efficient",
+    high: "cost_efficient",
+  },
   "accounts/fireworks/models/deepseek-v4p1-flash": {
     none: "cost_efficient",
     light: "cost_efficient",
@@ -399,6 +427,12 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     light: "balanced",
   },
   "accounts/fireworks/models/kimi-k2p5": {
+    none: "balanced",
+    light: "balanced",
+    medium: "balanced",
+    high: "balanced",
+  },
+  "accounts/fireworks/models/kimi-k2p6": {
     none: "balanced",
     light: "balanced",
     medium: "balanced",
@@ -418,6 +452,9 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     light: "cost_efficient",
     medium: "cost_efficient",
     high: "cost_efficient",
+  },
+  "accounts/fireworks/models/glm-5p2": {
+    high: "balanced",
   },
   "accounts/fireworks/models/glm-5p3": {
     light: "balanced",

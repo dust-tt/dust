@@ -52,7 +52,7 @@ export function useModelPickerModels({
   const canSelectPremiumModels =
     isCreditPricedPlan(subscription.plan) ||
     subscription.plan.hasAdvancedModelAccess ||
-    hasFeature("claude_4_5_opus_feature");
+    hasFeature("premium_model_access");
   const isFilterMode = mode === "filter";
   const lockPremiumEfforts = !canSelectPremiumModels;
 

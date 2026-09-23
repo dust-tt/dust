@@ -96,7 +96,7 @@ app.patch(
       return skillRes;
     }
 
-    if (!skillRes.canAdministrate(auth)) {
+    if (!auth.can("admin", skillRes)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

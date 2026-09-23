@@ -11,6 +11,11 @@ interface PodConversationListItemProps {
   owner: WorkspaceType;
 }
 
+/**
+ * @cc [label:product;react] pods-conversation-avatar-shape-follows-author-type
+ * The leading avatar MUST preserve `conversation.creator.isRounded` so human authors
+ * render rounded and agent authors render non-rounded in the Pods conversations list.
+ */
 export function PodConversationListItem({
   conversation,
   owner,
@@ -33,6 +38,7 @@ export function PodConversationListItem({
         creator={{
           fullName: conversation.creator?.name ?? "",
           portrait: conversation.creator?.visual ?? "",
+          isRounded: conversation.creator?.isRounded ?? true,
         }}
         time={time}
         replySection={

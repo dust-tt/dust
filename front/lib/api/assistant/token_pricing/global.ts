@@ -79,6 +79,38 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
       cache_read_input_tokens: 0.4,
     },
   },
+  // Verified 2026-09-22: https://developers.openai.com/api/docs/pricing
+  // Prompts above 272K input tokens cost 2x input and 1.5x output for the full request.
+  "gpt-6-sol": {
+    input: 2.0,
+    output: 10.0,
+    cache_creation_input_tokens: 2.5,
+    cache_read_input_tokens: 0.2,
+    long_context: {
+      // `computeTokensCostForUsageInMicroUsd` switches tiers inclusively.
+      prompt_token_threshold: 272_001,
+      input: 4.0,
+      output: 15.0,
+      cache_creation_input_tokens: 5.0,
+      cache_read_input_tokens: 0.4,
+    },
+  },
+  // Verified 2026-09-22: https://developers.openai.com/api/docs/pricing
+  // Prompts above 272K input tokens cost 2x input and 1.5x output for the full request.
+  "gpt-6-luna": {
+    input: 0.1,
+    output: 0.5,
+    cache_creation_input_tokens: 0.125,
+    cache_read_input_tokens: 0.01,
+    long_context: {
+      // `computeTokensCostForUsageInMicroUsd` switches tiers inclusively.
+      prompt_token_threshold: 272_001,
+      input: 0.2,
+      output: 0.75,
+      cache_creation_input_tokens: 0.25,
+      cache_read_input_tokens: 0.02,
+    },
+  },
   // https://openai.com/api/pricing
   "gpt-5.6-luna": {
     input: 0.2,
@@ -266,6 +298,15 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     long_cache_creation_input_tokens: 10.0,
     cache_read_input_tokens: 0.5,
   },
+  // https://platform.claude.com/docs/en/about-claude/pricing (2026-09-22).
+  // Cache reads are 0.05x base input on Opus 5.5, not the usual 0.1x.
+  "claude-opus-5-5": {
+    input: 4.0,
+    output: 20.0,
+    cache_creation_input_tokens: 5.0,
+    long_cache_creation_input_tokens: 8.0,
+    cache_read_input_tokens: 0.2,
+  },
   // https://platform.claude.com/docs/en/about-claude/models/overview
   "claude-fable-5": {
     input: 10.0,
@@ -350,26 +391,42 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     long_cache_creation_input_tokens: 2.0,
     cache_read_input_tokens: 0.1,
   },
+  // https://docs.mistral.ai/inference/pricing (verified 2026-09-22). Cached reads
+  // are 10% of standard input on every row; no cache-write rate is published.
+  //
+  // Each `-latest` alias below is priced for the version it actually resolves to,
+  // read off `GET /v1/models` on 2026-09-22 — the alias tracks the newest GA
+  // model, so a new generation silently repoints it:
+  // https://docs.mistral.ai/inference/model-lifecycle
+  //
+  //   mistral-large-latest -> mistral-large-2512  (Mistral Large 3)
+  //   mistral-small-latest -> mistral-small-2603  (Mistral Small 4)
+  //   codestral-latest     -> codestral-2508      (Codestral 25.08)
   "mistral-large-latest": {
-    input: 2.0,
-    output: 6.0,
+    input: 0.5,
+    output: 1.5,
+    cache_read_input_tokens: 0.05,
   },
+  // Retired by Mistral and absent from the pricing page; left at its last known
+  // rate. It has no endpoint, so nothing can bill under it going forward.
   "mistral-medium": {
     input: 2.5,
     output: 7.5,
   },
-  // No cache pricing published by Mistral for medium 3.5 as of 2026-05-19.
   "mistral-medium-3-5": {
     input: 1.5,
     output: 7.5,
+    cache_read_input_tokens: 0.15,
   },
   "mistral-small-latest": {
-    input: 0.9,
-    output: 2.8,
+    input: 0.15,
+    output: 0.6,
+    cache_read_input_tokens: 0.015,
   },
   "codestral-latest": {
-    input: 0.9,
-    output: 2.8,
+    input: 0.3,
+    output: 0.9,
+    cache_read_input_tokens: 0.03,
   },
   // https://ai.google.dev/gemini-api/docs/pricing: 2/12 up to 200k input tokens,
   // 4/18 beyond that.
@@ -469,6 +526,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 1.68,
     cache_read_input_tokens: 0.28,
   },
+  // https://fireworks.ai/models/deepseek-ai/deepseek-v4-flash-0731
+  "accounts/fireworks/models/deepseek-v4-flash-0731": {
+    input: 0.14,
+    output: 0.28,
+    cache_read_input_tokens: 0.028,
+  },
   // Verified 2026-09-11: https://fireworks.ai/models/deepseek-ai/deepseek-v4p1-flash
   "accounts/fireworks/models/deepseek-v4p1-flash": {
     input: 0.22,
@@ -481,6 +544,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 3.48,
     cache_read_input_tokens: 0.14,
   },
+  // Verified 2026-09-07: https://fireworks.ai/models/deepseek-ai/deepseek-v4-pro-0813
+  "accounts/fireworks/models/deepseek-v4-pro-0813": {
+    input: 1.32,
+    output: 3.96,
+    cache_read_input_tokens: 0.044,
+  },
   // https://fireworks.ai/models/fireworks/kimi-k2-instruct-0905
   "accounts/fireworks/models/kimi-k2-instruct-0905": {
     input: 0.6,
@@ -492,6 +561,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0.6,
     output: 3.0,
     cache_read_input_tokens: 0.1,
+  },
+  // https://fireworks.ai/models/fireworks/kimi-k2p6
+  "accounts/fireworks/models/kimi-k2p6": {
+    input: 0.95,
+    output: 4.0,
+    cache_read_input_tokens: 0.16,
   },
   // https://docs.fireworks.ai/serverless/pricing
   "accounts/fireworks/models/kimi-k3": {
@@ -510,6 +585,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0.01,
     output: 0.2,
     cache_read_input_tokens: 0.002,
+  },
+  // https://fireworks.ai/models/fireworks/glm-5p2
+  "accounts/fireworks/models/glm-5p2": {
+    input: 1.4,
+    output: 4.4,
+    cache_read_input_tokens: 0.26,
   },
   // Verified 2026-09-11: https://fireworks.ai/models/fireworks/glm-5p3
   "accounts/fireworks/models/glm-5p3": {
@@ -649,32 +730,6 @@ const IMAGE_MODEL_PRICING: Record<string, PricingEntry> = {
 // Pricing for legacy/deprecated models that are no longer in BaseModelIdType.
 // These are kept to ensure we can still compute token usage for historical runs.
 const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
-  // Decommissioned, superseded by GLM-5.3. Kept so historical token
-  // accounting stays exact.
-  "accounts/fireworks/models/kimi-k2p6": {
-    input: 0.95,
-    output: 4.0,
-    cache_read_input_tokens: 0.16,
-  },
-  // Fireworks decommissioned the glm-5p2 serverless endpoint on 2026-09-25;
-  // superseded by GLM-5.3. Kept so historical token accounting stays exact.
-  "accounts/fireworks/models/glm-5p2": {
-    input: 1.4,
-    output: 4.4,
-    cache_read_input_tokens: 0.26,
-  },
-  // Decommissioned by Fireworks, superseded by DeepSeek V4.1 Flash.
-  "accounts/fireworks/models/deepseek-v4-flash-0731": {
-    input: 0.14,
-    output: 0.28,
-    cache_read_input_tokens: 0.028,
-  },
-  // Decommissioned by Fireworks, superseded by DeepSeek V4.1 Flash.
-  "accounts/fireworks/models/deepseek-v4-pro-0813": {
-    input: 1.32,
-    output: 3.96,
-    cache_read_input_tokens: 0.044,
-  },
   "gpt-4-32k": {
     input: 60.0,
     output: 120.0,

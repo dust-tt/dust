@@ -1,0 +1,9 @@
+@cc [owner:pmilliotte,label:product] endpoint-region-matches-served-host
+An endpoint's `region` must name the region the host its client actually talks to serves
+inference from, not the region the model is nominally associated with. `region` is the sole
+input to `inferenceRegionForEndpointRegion`, which selects `REGIONAL_MODEL_PRICING` over
+`MODEL_PRICING`, and it is surfaced to workspaces as their inference location. An endpoint
+declaring `EUROPE` while its client resolves to a global host therefore both misreports hosting
+and bills the regional uplift on non-regional traffic. Where a provider serves only part of its
+API regionally — Mistral's Batch and Files APIs are global-only — the endpoints on the
+global-only path declare `GLOBAL`.

@@ -30,8 +30,8 @@ import assert from "assert";
  * `use`, `make_discoverable`, `use_workspace_pool`) is a governance capability: an action that is
  * inherently workspace-wide, stays type-level, and is never granted per instance — which is why the
  * name and the verb can be the same word. A role named for what its holder is (`reader`, `member`,
- * `editor`, `admin`) describes access to a resource; it may be granted type-wide today and per
- * instance later, so it keeps a role name even when its only level is `type`.
+ * `editor`, `admin`) describes access to a resource. Instance roles can be granted on one instance
+ * or on every instance through resourceId = -1.
  *
  * A grant row stores the role name (see `@app/types/group_permissions`); `assertValidGrant` checks
  * a grant type is a role defined for its resource type at the required level. Translating a
@@ -44,8 +44,8 @@ import assert from "assert";
 
 export type ConcreteGrantType = Exclude<GrantType, "*">;
 
-// A grant applies either to a specific resource instance (resourceId > 0) or to the whole type
-// (resourceId = -1). A role declares the levels at which it can be granted.
+// Levels describe what a role acts on, independently of a grant's scope. Every role can be granted
+// over the whole type (resourceId = -1); only instance roles accept a specific resourceId > 0.
 export type GrantLevel = "instance" | "type";
 
 interface RoleDefinition {
@@ -101,10 +101,7 @@ export const ROLE_REGISTRY: Record<
     publish: { verbs: ["publish"], levels: ["type"] },
   },
   skill: {
-    // Type-level for now — the workspace global group holds it on `skill:-1`, which is what makes
-    // every skill readable — but named as a role rather than after its verb: unlike a governance
-    // capability, readership is expected to become per-skill.
-    reader: { verbs: ["read"], levels: ["type"] },
+    reader: { verbs: ["read"], levels: ["instance"] },
     editor: { verbs: ["read", "write", "admin"], levels: ["instance"] },
     create: { verbs: ["create"], levels: ["type"] },
     publish: { verbs: ["publish"], levels: ["type"] },
@@ -139,6 +136,11 @@ interface GrantSpec {
 
 // Throws when the (grantType, resourceType, resourceId) combination is not representable in the
 // governance model. Fail-fast: callers pass programmatic values, not user input.
+/**
+ * @cc [owner:philipperolet,label:security;backend] grant-scope
+ * Every role defined for a resource type MUST accept resourceId = -1. A positive resourceId MUST
+ * require an instance-level role. Wildcards on either axis MUST require resourceId = -1.
+ */
 export function assertValidGrant({
   grantType,
   resourceType,
@@ -161,10 +163,6 @@ export function assertValidGrant({
 
   // Type-wide grant (all resources of the type / an instance-less domain).
   if (resourceId === WHOLE_TYPE_RESOURCE_ID) {
-    assert(
-      role.levels.includes("type"),
-      `Grant type "${grantType}" cannot be granted type-wide on "${resourceType}".`
-    );
     return;
   }
 
@@ -459,15 +457,22 @@ export class GroupPermissions {
     return { kind: "ids", resourceIds };
   }
 
-  // The type-wide (-1) verbs the caller's grants confer per resource type — the flat record for the
+  // The type-level verbs the caller's grants confer per resource type — the flat record for the
   // auth context / Workspace & Governance page. Grants only; admin-by-default is layered on by the
   // Authenticator (see `getWorkspacePermissions`).
+  /**
+   * @cc [owner:philipperolet,label:security;backend] workspace-permission-summary
+   * The summary MUST include only type-level verbs held through resourceId = -1 grants.
+   * Instance-only verbs MUST NOT appear, even when granted over all instances with resourceId = -1.
+   */
   toWorkspacePermissions(): WorkspacePermissions {
     const result = emptyWorkspacePermissions();
     for (const [resourceType, byId] of this.grants) {
       const mask = byId.get(WHOLE_TYPE_RESOURCE_ID) ?? 0;
       if (mask) {
-        result[resourceType] = maskToVerbs(mask);
+        result[resourceType] = maskToVerbs(mask).filter(
+          (verb) => grantTypesForVerb(resourceType, verb, "type").length > 0
+        );
       }
     }
     return result;

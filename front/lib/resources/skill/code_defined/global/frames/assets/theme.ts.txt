@@ -1,0 +1,9 @@
+import type { FrameTheme } from "@dust/frame";
+
+// Edit these CSS values for the Frame's audience, subject and brand.
+export const theme = {
+  "--primary": "#315b8c",
+  "--primary-foreground": "#ffffff",
+  "--font-serif": "Georgia, 'Times New Roman', serif",
+  "--radius": "0.75rem",
+} satisfies FrameTheme;

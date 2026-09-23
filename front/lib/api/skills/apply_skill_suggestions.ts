@@ -212,7 +212,7 @@ async function resolveInstructionAttachments(
     ? await MCPServerViewResource.fetchByIds(auth, mcpServerViewIds)
     : [];
   const resolvedToolIds = new Set(
-    mcpServerViews.filter((v) => v.canRead(auth)).map((v) => v.sId)
+    mcpServerViews.filter((v) => auth.can("read", v)).map((v) => v.sId)
   );
 
   const knowledgeReferences = extractKnowledgeTagReferences(instructions);
@@ -224,7 +224,7 @@ async function resolveInstructionAttachments(
     : [];
   const dataSourceViewsById = new Map(
     dataSourceViews
-      .filter((dsv) => dsv.canRead(auth))
+      .filter((dsv) => auth.can("read", dsv))
       .map((dsv) => [dsv.sId, dsv])
   );
 

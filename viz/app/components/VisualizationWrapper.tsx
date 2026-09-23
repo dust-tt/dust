@@ -79,7 +79,8 @@ async function resolveFileRef(
   }
 
   const promise = (async () => {
-    const file = await dataAPI.fetchFile(key);
+    const frameFile = await dataAPI.fetchFile(key);
+    const file = frameFile?.file;
     if (!file) {
       return { default: null };
     }
@@ -278,22 +279,31 @@ export function useVisualizationAPI(
   };
 }
 
-function useFile(fileId: string, dataAPI: VisualizationDataAPI) {
+/**
+ * @cc [owner:flvndvd,label:api] use-file-result
+ * useFile MUST return the native File or null, without exposing revision metadata.
+ */
+/**
+ * @cc [owner:flvndvd,label:concurrency] use-file-request-lifetime
+ * A request from a cleaned-up effect MUST NOT update the hook's state.
+ */
+export function useFile(fileId: string, dataAPI: VisualizationDataAPI) {
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
-    const fetch = async () => {
-      try {
-        const fetchedFile = await dataAPI.fetchFile(fileId);
-        setFile(fetchedFile);
-      } catch (_err) {
-        setFile(null);
-      }
-    };
+    let ignore = false;
 
     if (fileId) {
-      fetch();
+      void dataAPI.fetchFile(fileId).then((frameFile) => {
+        if (!ignore) {
+          setFile(frameFile?.file ?? null);
+        }
+      });
     }
+
+    return () => {
+      ignore = true;
+    };
   }, [dataAPI, fileId]);
 
   return file;
@@ -704,6 +714,13 @@ function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
 }
 
 export const USER_IDENTITY_RPC_TIMEOUT_MS = 5_000;
+export const FILE_RPC_TIMEOUT_MS = 30_000;
+
+/**
+ * @cc [owner:flvndvd,label:error-handling] frame-rpc-rejections
+ * This transport MAY reject with a host-provided error or an Error when a request
+ * times out. writeFile MUST time out so an older host cannot leave a save pending.
+ */
 
 export function makeSendCrossDocumentMessage({
   identifier,
@@ -751,6 +768,12 @@ export function makeSendCrossDocumentMessage({
           cleanup();
           reject(new Error("Frame host did not provide user identity."));
         }, USER_IDENTITY_RPC_TIMEOUT_MS);
+      }
+      if (command === "writeFile") {
+        timeoutId = window.setTimeout(() => {
+          cleanup();
+          reject(new Error("Frame host did not respond to the file request."));
+        }, FILE_RPC_TIMEOUT_MS);
       }
       window.parent?.postMessage(
         {

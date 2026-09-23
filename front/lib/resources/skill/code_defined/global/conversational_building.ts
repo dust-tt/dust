@@ -9,6 +9,7 @@ import {
   SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME,
   SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME,
   SUGGEST_AGENT_NAME_TOOL_NAME,
+  SUGGEST_AGENT_PUBLISH_STATE_TOOL_NAME,
   SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
   SUGGEST_SKILL_DELETION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
@@ -222,9 +223,10 @@ Agent suggestions:
 - \`${buildingToolName(SUGGEST_AGENT_CREATION_TOOL_NAME)}\`: propose a new agent from a \`name\`, \`description\` and \`instructions\`.
 - \`${buildingToolName(SUGGEST_AGENT_DELETION_TOOL_NAME)}\`: propose deleting an existing agent by \`agentId\`
 - \`${buildingToolName(SUGGEST_AGENT_DESCRIPTION_TOOL_NAME)}\`: propose a new description for an existing agent.
+- \`${buildingToolName(SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME)}\`: propose a block-targeted instruction edit (see <block_aware_editing>) for an existing agent, by \`agentId\` and \`instructionEdit\`. Call it once per block to change several blocks.
 - \`${buildingToolName(SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME)}\`: propose changing an existing agent's model, by \`agentId\`, \`modelId\` and an optional \`reasoningEffort\`.
 - \`${buildingToolName(SUGGEST_AGENT_NAME_TOOL_NAME)}\`: rename an agent.
-- \`${buildingToolName(SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME)}\`: propose a block-targeted instruction edit (see <block_aware_editing>) for an existing agent, by \`agentId\` and \`instructionEdit\`. Call it once per block to change several blocks.
+- \`${buildingToolName(SUGGEST_AGENT_PUBLISH_STATE_TOOL_NAME)}\`: propose publishing or unpublishing an existing agent, by \`agentId\` and \`scope\`.
 </tools>`,
 
   responseStyle: responseStyleSection({ noun: NOUN, editTool: EDIT_TOOLS }),

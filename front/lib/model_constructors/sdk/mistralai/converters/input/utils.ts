@@ -239,7 +239,7 @@ export function conversationToMistralAIMessages(
 
 // -- Config converters (pure) --
 
-export function toTool(tool: ToolSpecification): Tool {
+export function toTool(tool: ToolSpecification): Tool & { type: "function" } {
   return {
     type: "function",
     function: {

@@ -4,6 +4,8 @@ import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assi
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
+import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -20,9 +22,13 @@ import { RunFactory } from "@app/tests/utils/RunFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { FIREWORKS_GLM_5P2_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 import { GPT_5_4_MODEL_CONFIG } from "@app/types/assistant/models/openai";
-import type { ModelIdType } from "@app/types/assistant/models/types";
+import type {
+  ModelConfigurationType,
+  ModelIdType,
+} from "@app/types/assistant/models/types";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -38,6 +44,7 @@ const INPUT_TOKENS_COUNT = 100;
 const OUTPUT_TOKENS_COUNT = 20;
 const REASONING_TOKENS_COUNT = 5;
 const BILLED_CREDIT_AMOUNT_MICRO = 10_000_000;
+const OUTPUT_TOKENS_COUNT_ABOVE_ONE_DEFAULT_TIER_CREDIT = 6_000;
 
 // Every tokenized footprint counts as this many tokens, so tool-call output and tool input
 // footprints are deterministic in the assertions below.
@@ -47,10 +54,18 @@ async function setupSettledMessageWithUsage({
   runCount = 1,
   restrictedConversation = false,
   modelId,
+  retiredModel,
+  outputTokens = OUTPUT_TOKENS_COUNT,
+  serviceTier,
+  billedCredits = BILLED_CREDIT_AMOUNT_MICRO / 1_000_000,
 }: {
   runCount?: number;
   restrictedConversation?: boolean;
   modelId?: ModelIdType;
+  retiredModel?: ModelConfigurationType;
+  outputTokens?: number;
+  serviceTier?: ServiceTier;
+  billedCredits?: number;
 } = {}) {
   const { authenticator, globalSpace, user, workspace } =
     await createResourceTest({ role: "admin" });
@@ -78,9 +93,11 @@ async function setupSettledMessageWithUsage({
   for (let index = 0; index < runCount; index++) {
     const { run } = await RunFactory.createWithUsage(auth, {
       inputTokens: INPUT_TOKENS_COUNT,
-      outputTokens: OUTPUT_TOKENS_COUNT,
+      outputTokens,
       reasoningTokens: REASONING_TOKENS_COUNT,
       modelId,
+      serviceTier,
+      retiredModel,
     });
     runs.push(run);
   }
@@ -97,7 +114,7 @@ async function setupSettledMessageWithUsage({
   });
   await ConversationResource.updateAgentMessageCostCredits(auth, {
     agentMessageModelId: agentMessage.agentMessageId,
-    costCredits: BILLED_CREDIT_AMOUNT_MICRO / 1_000_000,
+    costCredits: billedCredits,
   });
 
   return {
@@ -178,6 +195,53 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         0
       )
     ).toBe(BILLED_CREDIT_AMOUNT_MICRO);
+  });
+
+  it("reconciles a flex message whose default-tier output would exceed the bill", async () => {
+    const billedCredits = 1;
+    const setupAtServiceTier = (serviceTier: ServiceTier) =>
+      setupSettledMessageWithUsage({
+        outputTokens: OUTPUT_TOKENS_COUNT_ABOVE_ONE_DEFAULT_TIER_CREDIT,
+        serviceTier,
+        billedCredits,
+      });
+
+    const defaultMessage = await setupAtServiceTier("default");
+    expect(
+      await computeAndStoreAgentMessageConsumptionAttribution(
+        defaultMessage.auth,
+        {
+          agentMessageId: defaultMessage.agentMessageId,
+          conversationId: defaultMessage.conversationId,
+        }
+      )
+    ).toBeUndefined();
+
+    const flexMessage = await setupAtServiceTier("flex");
+    expect(
+      await computeAndStoreAgentMessageConsumptionAttribution(
+        flexMessage.auth,
+        {
+          agentMessageId: flexMessage.agentMessageId,
+          conversationId: flexMessage.conversationId,
+        }
+      )
+    ).toEqual({ costCredits: billedCredits });
+
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        flexMessage.auth,
+        {
+          agentMessageModelIds: [flexMessage.agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    expect(
+      items.reduce(
+        (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
+        0
+      )
+    ).toBe(billedCredits * 1_000_000);
   });
 
   it("writes attribution for a project conversation hidden from the workflow auth", async () => {
@@ -415,6 +479,52 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     expect(
       (outputItem?.outputTokensCount ?? 0) + (toolItem?.outputTokensCount ?? 0)
     ).toBe(OUTPUT_TOKENS_COUNT - REASONING_TOKENS_COUNT);
+  });
+
+  it("writes a tool row for a run on a retired model", async () => {
+    expect(
+      getModelConfigByModelId(FIREWORKS_GLM_5P2_MODEL_CONFIG.modelId)
+    ).toBeUndefined();
+
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage({
+      retiredModel: FIREWORKS_GLM_5P2_MODEL_CONFIG,
+    });
+
+    const { action } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      status: "succeeded",
+      dustRunId: run.dustRunId,
+    });
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+
+    expect(items.find((item) => item.itemType === "tool")).toMatchObject({
+      agentMCPActionId: action.id,
+      outputTokensCount: TOKENS_PER_FOOTPRINT,
+      inputTokensCount: TOKENS_PER_FOOTPRINT,
+    });
   });
 
   it("stores every skill that exposes the action's tool", async () => {

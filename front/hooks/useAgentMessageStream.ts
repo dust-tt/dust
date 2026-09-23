@@ -1,3 +1,4 @@
+import { useRegisterAgentLoopStream } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
@@ -312,6 +313,12 @@ export function useAgentMessageStream({
       agentMessage.streaming.agentState !== "placeholder",
     [agentMessage.status, agentMessage.streaming.agentState]
   );
+  const managerStreamId = `message-${sId}`;
+  useRegisterAgentLoopStream({
+    conversationId,
+    enabled: shouldStream,
+    streamId: managerStreamId,
+  });
 
   const isFreshMountWithContent = useRef(
     shouldStream && (!!agentMessage.content || !!agentMessage.chainOfThought)
@@ -824,7 +831,7 @@ export function useAgentMessageStream({
   const { isError } = useEventSource(
     buildEventSourceURL,
     onEventCallback,
-    `message-${sId}`,
+    managerStreamId,
     {
       workspaceId: owner.sId,
       buildLongPollURL,

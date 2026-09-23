@@ -1,0 +1,37 @@
+import { Slideshow, Slide } from "@dust/slideshow/v2";
+
+export default function App() {
+  return (
+    <Slideshow>
+      <Slide className="bg-background">
+        <h1 className="text-6xl font-bold text-foreground mb-4">Q4 Revenue Analysis</h1>
+        <p className="text-xl text-muted-foreground">Annual review & key insights</p>
+      </Slide>
+      <Slide className="bg-background">
+        <h2 className="text-4xl font-semibold mb-8">Key Metrics</h2>
+        <div className="grid grid-cols-3 gap-8">
+          <div className="text-center">
+            <p className="text-5xl font-bold text-primary">+25%</p>
+            <p className="text-lg text-muted-foreground mt-2">YoY Growth</p>
+          </div>
+          <div className="text-center">
+            <p className="text-5xl font-bold text-primary">92%</p>
+            <p className="text-lg text-muted-foreground mt-2">Retention</p>
+          </div>
+          <div className="text-center">
+            <p className="text-5xl font-bold text-primary">1.2k</p>
+            <p className="text-lg text-muted-foreground mt-2">New Customers</p>
+          </div>
+        </div>
+      </Slide>
+      <Slide className="bg-background">
+        <h2 className="text-4xl font-semibold mb-6">Next Steps</h2>
+        <ul className="space-y-4 text-xl text-foreground">
+          <li>Expand into EU markets</li>
+          <li>Launch premium tier</li>
+          <li>Revamp onboarding flow</li>
+        </ul>
+      </Slide>
+    </Slideshow>
+  );
+}

@@ -32,7 +32,7 @@ app.patch(
     const dataSource = ctx.get("dataSource");
     const { documentId } = ctx.req.valid("param");
 
-    if (!dataSource.canWrite(auth)) {
+    if (!auth.can("write", dataSource)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -126,7 +126,7 @@ app.delete(
     const dataSource = ctx.get("dataSource");
     const { documentId } = ctx.req.valid("param");
 
-    if (!dataSource.canWrite(auth)) {
+    if (!auth.can("write", dataSource)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

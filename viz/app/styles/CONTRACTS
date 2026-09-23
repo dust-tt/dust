@@ -3,3 +3,8 @@ The Tailwind build MUST request the frozen V3 utility vocabulary, including util
 local components. Saved Frames are loaded at runtime and cannot be scanned during the build.
 Classes no longer emitted by V4 MUST be recorded in the build's coverage report. The migration uses
 V4 rendering behavior and does not promise V3 visual equivalence.
+
+@cc [owner:flvndvd,label:product] frame-authored-color-scheme
+Default semantic colors MUST follow the consuming element's color scheme. A Frame subtree with
+`color-scheme: light` MUST retain the light palette inside a dark host, and an explicit dark subtree
+MUST retain the dark palette inside a light host. Authored theme variable overrides MUST take precedence.

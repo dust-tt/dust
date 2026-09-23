@@ -208,7 +208,7 @@ describe("PodFrameSheet", () => {
     expect(mocks.permissionsCalls.at(-1)).toMatchObject({ disabled: true });
   });
 
-  it("loads metadata only while open and forwards the Frames v2 identity", () => {
+  it("loads metadata only while open and forwards the Frames v2 identity and package root", () => {
     const props = { ...openSheetProps, isOpen: false };
     const { rerender } = render(createElement(PodFrameSheet, props));
 
@@ -218,6 +218,9 @@ describe("PodFrameSheet", () => {
     rerender(createElement(PodFrameSheet, { ...props, isOpen: true }));
 
     expect(mocks.metadataCalls.at(-1)).toMatchObject({ disabled: false });
-    expect(mocks.iframeProps?.frameId).toBe("fil_frame");
+    expect(mocks.iframeProps).toMatchObject({
+      frameId: "fil_frame",
+      framePackageRoot: "pod-vlt_project/App",
+    });
   });
 });

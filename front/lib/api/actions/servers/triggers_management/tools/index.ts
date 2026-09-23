@@ -82,7 +82,7 @@ async function getAccessibleWebhookSourceViews(
   const views = await WebhookSourcesViewResource.listByWorkspace(auth);
   const usable = views.filter(
     (view) =>
-      view.canReadOrAdministrate(auth) &&
+      (auth.can("read", view) || auth.can("admin", view)) &&
       !view.space.isSystem() &&
       !view.space.isConversations()
   );

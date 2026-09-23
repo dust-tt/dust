@@ -5,6 +5,9 @@ import {
 } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
+import { DiscoverButton } from "@app/components/assistant/conversation/discover/DiscoverButton";
+import { DiscoverContainer } from "@app/components/assistant/conversation/discover/DiscoverContainer";
+import { useDiscoverScroll } from "@app/components/assistant/conversation/discover/useDiscoverScroll";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
@@ -115,6 +118,14 @@ const chatWithEntranceStyle = heroEntranceStyle({
   delaySeconds: CHAT_WITH_ENTER_DELAY_SECONDS,
 });
 
+const DISCOVER_BUTTON_ENTER_DELAY_SECONDS = 0.42;
+const discoverButtonEntranceStyle = heroEntranceStyle({
+  yPx: 8,
+  blurPx: 3,
+  durationSeconds: 0.28,
+  delaySeconds: DISCOVER_BUTTON_ENTER_DELAY_SECONDS,
+});
+
 interface ConversationContainerProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -158,6 +169,7 @@ export function ConversationContainerVirtuoso({
     : null;
 
   const { isAgentsSectionVisible } = useAgentsSectionVisibility();
+  const isDiscoveryHomepage = hasFeature("discovery_homepage");
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -317,9 +329,94 @@ export function ConversationContainerVirtuoso({
   const { startConversationRef } = useWelcomeTourGuide();
   const isMobile = useIsMobile();
 
+  const { discoverRef, fillProgress, goToDiscover, scrollerRef } =
+    useDiscoverScroll({ isFillEnabled: isDiscoveryHomepage && !isMobile });
+
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.
   const conversationViewerKey = activeConversationId;
+
+  const homeHero = (
+    <>
+      <div
+        id="agent-input-header"
+        className={classNames(
+          "flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4",
+          isDiscoveryHomepage ? "" : "md:min-h-[36vh]"
+        )}
+        ref={startConversationRef}
+      >
+        <Page.Header
+          title={
+            <h3
+              key={greeting}
+              className="heading-3xl font-medium text-foreground"
+            >
+              {greeting.split(" ").map((word, index) => (
+                <span
+                  key={`${index}-${word}`}
+                  className="inline-block whitespace-pre"
+                  style={
+                    shouldReduceMotion ? undefined : greetingWordStyle(index)
+                  }
+                >
+                  {index === 0 ? word : ` ${word}`}
+                </span>
+              ))}
+            </h3>
+          }
+        />
+      </div>
+      <div
+        className={classNames(
+          "flex max-h-dvh w-full",
+          "pb-2",
+          // px-1 keeps a constant gutter so the card's shadow ring never
+          // clips at the scroller edge; max-w compensates so the card
+          // still measures exactly --container-conversation when wide.
+          "md:w-full md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1 md:pb-4",
+          // A sticky composer would ride along on the way down to Discover.
+          isDiscoveryHomepage ? "" : "sticky bottom-0 z-20"
+        )}
+        style={shouldReduceMotion ? undefined : composerEntranceStyle}
+      >
+        <InputBar
+          owner={owner}
+          user={user}
+          onSubmit={handleConversationCreation}
+          draftKey="home-new-conversation"
+          disableAutoFocus={false}
+          defaultAgentId={workspaceDefaultAgentId}
+        />
+      </div>
+
+      {suggestion && (
+        <div className="w-full max-w-conversation mt-1">
+          <Card variant="highlight" size="md" containerClassName="w-full group">
+            <div className="flex w-full flex-col gap-2 text-sm">
+              <div className="flex w-full items-center gap-2 font-semibold text-highlight-600">
+                <Lightbulb04 className="text-highlight-600 h-5 w-5" />
+                <div className="w-full">{suggestion.title}</div>
+                <div className="opacity-0 transition-opacity group-hover:opacity-100">
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    icon={XClose}
+                    tooltip="Dismiss"
+                    onClick={() => onDismissSuggestion?.(suggestion.id)}
+                    className="text-highlight-600"
+                  />
+                </div>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {suggestion.description}
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+    </>
+  );
 
   const body = (
     <DropzoneContainer
@@ -338,93 +435,46 @@ export function ConversationContainerVirtuoso({
         />
       ) : (
         <>
-          <div
-            id="agent-input-header"
-            className="flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4 md:min-h-[36vh]"
-            ref={startConversationRef}
-          >
-            <Page.Header
-              title={
-                <h3
-                  key={greeting}
-                  className="heading-3xl font-medium text-foreground"
-                >
-                  {greeting.split(" ").map((word, index) => (
-                    <span
-                      key={`${index}-${word}`}
-                      className="inline-block whitespace-pre"
-                      style={
-                        shouldReduceMotion
-                          ? undefined
-                          : greetingWordStyle(index)
-                      }
-                    >
-                      {index === 0 ? word : ` ${word}`}
-                    </span>
-                  ))}
-                </h3>
-              }
-            />
-          </div>
-          <div
-            className={classNames(
-              "sticky bottom-0 z-20 flex max-h-dvh w-full",
-              "pb-2",
-              // px-1 keeps a constant gutter so the card's shadow ring never
-              // clips at the scroller edge; max-w compensates so the card
-              // still measures exactly --container-conversation when wide.
-              "md:w-full md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1 md:pb-4"
-            )}
-            style={shouldReduceMotion ? undefined : composerEntranceStyle}
-          >
-            <InputBar
-              owner={owner}
-              user={user}
-              onSubmit={handleConversationCreation}
-              draftKey="home-new-conversation"
-              disableAutoFocus={false}
-              defaultAgentId={workspaceDefaultAgentId}
-            />
-          </div>
-
-          {suggestion && (
-            <div className="w-full max-w-conversation mt-1">
-              <Card
-                variant="highlight"
-                size="md"
-                containerClassName="w-full group"
+          {isDiscoveryHomepage ? (
+            <div className="flex h-panel w-full shrink-0 flex-col items-center">
+              <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center">
+                {homeHero}
+              </div>
+              <div
+                className="flex shrink-0 pb-6"
+                style={
+                  shouldReduceMotion ? undefined : discoverButtonEntranceStyle
+                }
               >
-                <div className="flex w-full flex-col gap-2 text-sm">
-                  <div className="flex w-full items-center gap-2 font-semibold text-highlight-600">
-                    <Lightbulb04 className="text-highlight-600 h-5 w-5" />
-                    <div className="w-full">{suggestion.title}</div>
-                    <div className="opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        icon={XClose}
-                        tooltip="Dismiss"
-                        onClick={() => onDismissSuggestion?.(suggestion.id)}
-                        className="text-highlight-600"
-                      />
-                    </div>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {suggestion.description}
-                  </div>
-                </div>
-              </Card>
+                <DiscoverButton
+                  onClick={goToDiscover}
+                  progress={fillProgress}
+                />
+              </div>
             </div>
+          ) : (
+            homeHero
           )}
-          {isAgentsSectionVisible && (
-            <AgentBrowserContainer
+          {isDiscoveryHomepage ? (
+            <DiscoverContainer
+              ref={discoverRef}
               onAgentConfigurationClick={(agent) => {
                 setSelectedSingleAgent(toRichAgentMentionType(agent));
               }}
               owner={owner}
-              style={shouldReduceMotion ? undefined : chatWithEntranceStyle}
               user={user}
             />
+          ) : (
+            isAgentsSectionVisible && (
+              <AgentBrowserContainer
+                onAgentConfigurationClick={(agent) => {
+                  setSelectedSingleAgent(toRichAgentMentionType(agent));
+                }}
+                owner={owner}
+                style={shouldReduceMotion ? undefined : chatWithEntranceStyle}
+                user={user}
+              />
+            )
           )}
         </>
       )}
@@ -446,6 +496,8 @@ export function ConversationContainerVirtuoso({
   ) : isMobile ? (
     <div className="px-4">{body}</div>
   ) : (
-    <ScrollArea className="px-4 md:px-8">{body}</ScrollArea>
+    <ScrollArea className="px-4 md:px-8" viewportRef={scrollerRef}>
+      {body}
+    </ScrollArea>
   );
 }

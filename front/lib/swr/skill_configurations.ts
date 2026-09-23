@@ -18,6 +18,8 @@ import type {
   SearchSkillsResponseBody,
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
+  SkillSearchSort,
+  SkillSearchSortOrder,
 } from "@app/types/api/skills";
 import type { ImportSkillsResponseBody } from "@app/types/api/skills/detection/github/import_skills";
 import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
@@ -36,6 +38,7 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
+import { useSWRConfig } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
@@ -190,6 +193,8 @@ export function useSearchSkills({
   searchTerm,
   cursor,
   limit,
+  sortBy,
+  sortOrder,
   permissionFiltering,
   filters,
   disabled,
@@ -198,11 +203,14 @@ export function useSearchSkills({
   searchTerm: string;
   cursor?: string | null;
   limit?: number;
+  sortBy?: SkillSearchSort;
+  sortOrder?: SkillSearchSortOrder;
   permissionFiltering?: SkillSearchPermissionFiltering;
   filters?: SkillSearchFilters;
   disabled?: boolean;
 }) {
   const { fetcherWithBody } = useFetcher();
+  const { mutate: globalMutate } = useSWRConfig();
   const query = searchTerm.slice(0, SEARCH_SKILLS_QUERY_MAX_LENGTH);
   const { debouncedValue: debouncedSearchTerm, setValue: setSearchTerm } =
     useDebounce(query, { delay: SEARCH_SKILLS_DEBOUNCE_MS });
@@ -218,6 +226,8 @@ export function useSearchSkills({
     query: debouncedSearchTerm,
     cursor,
     limit,
+    sortBy,
+    sortOrder,
     permissionFiltering,
   };
   const skillsFetcher = async () => {
@@ -229,7 +239,7 @@ export function useSearchSkills({
     return { ...response, searchTerm: debouncedSearchTerm };
   };
 
-  const { data, error, isLoading } = useSWRWithDefaults(
+  const { data, error, isLoading, mutate } = useSWRWithDefaults(
     [url, body],
     skillsFetcher,
     {
@@ -240,6 +250,12 @@ export function useSearchSkills({
     }
   );
 
+  // Search filters and cursors are in the body, so refresh every search key for this workspace.
+  const mutateRegardlessOfQueryParams = useCallback(
+    () => globalMutate((key) => Array.isArray(key) && key[0] === url),
+    [globalMutate, url]
+  );
+
   return {
     skills:
       (disabled ? undefined : data?.skills) ?? emptyArray<SkillListItemType>(),
@@ -248,6 +264,8 @@ export function useSearchSkills({
     nextCursor: data?.nextCursor ?? null,
     isSkillsError: !!error,
     isSkillsLoading: !disabled && (isDebouncing || isLoading),
+    mutate,
+    mutateRegardlessOfQueryParams,
   };
 }
 
@@ -393,6 +411,11 @@ export function useArchiveSkill({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
+  const { mutateRegardlessOfQueryParams: mutateSkillSearch } = useSearchSkills({
+    owner,
+    searchTerm: "",
+    disabled: true,
+  });
 
   const { mutateSkillsWithRelations: mutateArchivedSkills } =
     useSkillsWithRelations({
@@ -425,6 +448,7 @@ export function useArchiveSkill({
       void mutateArchivedSkills();
       void mutateActiveSkills();
       void mutateSuggestedSkills();
+      void mutateSkillSearch();
 
       sendNotification({
         type: "success",
@@ -634,6 +658,11 @@ export function useRestoreSkill({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
+  const { mutateRegardlessOfQueryParams: mutateSkillSearch } = useSearchSkills({
+    owner,
+    searchTerm: "",
+    disabled: true,
+  });
 
   const { mutateSkillsWithRelations: mutateArchivedSkills } =
     useSkillsWithRelations({
@@ -659,6 +688,7 @@ export function useRestoreSkill({
 
       void mutateArchivedSkills();
       void mutateActiveSkills();
+      void mutateSkillSearch();
 
       sendNotification({
         type: "success",
@@ -855,6 +885,11 @@ function notifyImportResult(
 export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
+  const { mutateRegardlessOfQueryParams: mutateSkillSearch } = useSearchSkills({
+    owner,
+    searchTerm: "",
+    disabled: true,
+  });
 
   const [isImporting, setIsImporting] = useState(false);
   const { mutateSkillsWithRelations: mutateActiveSkills } =
@@ -899,6 +934,10 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
 
         void mutateActiveSkills();
 
+        if (data.imported.length > 0 || data.updated.length > 0) {
+          void mutateSkillSearch();
+        }
+
         return notifyImportResult(data, sendNotification);
       } catch (err) {
         const message = isAPIErrorResponse(err)
@@ -914,7 +953,13 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
         setIsImporting(false);
       }
     },
-    [owner.sId, mutateActiveSkills, sendNotification, fetcher]
+    [
+      owner.sId,
+      mutateActiveSkills,
+      mutateSkillSearch,
+      sendNotification,
+      fetcher,
+    ]
   );
 
   return { importSkills, isImporting };

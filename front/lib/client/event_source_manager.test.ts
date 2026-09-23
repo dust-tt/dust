@@ -171,6 +171,53 @@ describe("EventSourceManager", () => {
     manager.releaseWorkspace("w_1");
   });
 
+  it("observes connection state without creating or retaining a stream", async () => {
+    const sources: FakeEventSource[] = [];
+    const manager = new EventSourceManager(async (url) => {
+      const source = new FakeEventSource(url);
+      sources.push(source);
+      return source;
+    });
+    const listener = vi.fn();
+    const unsubscribeState = manager.subscribeToConnectionState(
+      "message-msg_observed",
+      listener
+    );
+
+    expect(manager.getConnectionState("message-msg_observed")).toEqual({
+      kind: "idle",
+    });
+    expect(sources).toHaveLength(0);
+
+    manager.subscribe({
+      streamId: "message-msg_observed",
+      config: {
+        buildURL: () => "/events",
+        replayBufferedEventsOnSubscribe: false,
+        restartKey: "message-msg_observed",
+        workspaceId: "w_1",
+      },
+      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: true,
+    });
+
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    expect(manager.getConnectionState("message-msg_observed").kind).toBe(
+      "connecting"
+    );
+    sources[0].emitHandshake();
+    expect(manager.getConnectionState("message-msg_observed").kind).toBe(
+      "open"
+    );
+
+    manager.releaseWorkspace("w_1");
+    expect(manager.getConnectionState("message-msg_observed")).toEqual({
+      kind: "idle",
+    });
+    expect(listener).toHaveBeenCalledTimes(3);
+    unsubscribeState();
+  });
+
   it("retains one connection and replays buffered events to remounted subscribers", async () => {
     const sources: FakeEventSource[] = [];
     const manager = new EventSourceManager(async (url) => {
@@ -672,6 +719,117 @@ describe("EventSourceManager", () => {
       "/events/message-failing/poll",
       expect.objectContaining({ signal: expect.any(AbortSignal) })
     );
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("waits for a pending SSE factory before starting long polling", async () => {
+    let resolvePendingSource: ((source: FakeEventSource) => void) | undefined;
+    const sources: FakeEventSource[] = [];
+    const sourceFactory = vi.fn((url: string) => {
+      if (url === "/events/message-pending") {
+        return new Promise<FakeEventSource>((resolve) => {
+          resolvePendingSource = resolve;
+        });
+      }
+      const source = new FakeEventSource(url);
+      sources.push(source);
+      return Promise.resolve(source);
+    });
+    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const manager = new EventSourceManager(sourceFactory, () => 0, {
+      longPollFactory,
+      reconnectDelayBaseMs: 0,
+      reconnectDelayJitterMs: 0,
+    });
+    const subscribe = (streamId: string) =>
+      manager.subscribe({
+        streamId,
+        config: {
+          buildURL: () => `/events/${streamId}`,
+          buildLongPollURL: () => `/events/${streamId}/poll`,
+          replayBufferedEventsOnSubscribe: false,
+          restartKey: streamId,
+          workspaceId: "w_1",
+        },
+        subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+        keepAliveWithoutSubscribers: true,
+      });
+
+    subscribe("message-pending");
+    subscribe("message-failing");
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].onerror?.({ type: "error", target: sources[0] });
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    sources[1].onerror?.({ type: "error", target: sources[1] });
+
+    await vi.waitFor(() => expect(longPollFactory).toHaveBeenCalledOnce());
+    expect(longPollFactory).toHaveBeenCalledWith(
+      "/events/message-failing/poll",
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+
+    const pendingSource = new FakeEventSource("/events/message-pending");
+    resolvePendingSource?.(pendingSource);
+
+    await vi.waitFor(() => expect(longPollFactory).toHaveBeenCalledTimes(2));
+    expect(pendingSource.close).toHaveBeenCalledOnce();
+    expect(pendingSource.close.mock.invocationCallOrder[0]).toBeLessThan(
+      longPollFactory.mock.invocationCallOrder[1]
+    );
+    expect(longPollFactory).toHaveBeenLastCalledWith(
+      "/events/message-pending/poll",
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("polls immediately when configured without degrading the browser session", async () => {
+    const sources: FakeEventSource[] = [];
+    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const manager = new EventSourceManager(
+      async (url) => {
+        const source = new FakeEventSource(url);
+        sources.push(source);
+        return source;
+      },
+      () => 0,
+      { longPollFactory }
+    );
+
+    manager.subscribe({
+      streamId: "message-msg_preemptive_poll",
+      config: {
+        buildURL: () => "/api/sse/events/msg_preemptive_poll",
+        buildLongPollURL: () => "/api/events/msg_preemptive_poll/poll",
+        longPollActivation: "immediate",
+        replayBufferedEventsOnSubscribe: true,
+        restartKey: "message-msg_preemptive_poll",
+        workspaceId: "w_1",
+      },
+      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: true,
+    });
+
+    expect(longPollFactory).toHaveBeenCalledOnce();
+    expect(sources).toHaveLength(0);
+
+    manager.subscribe({
+      streamId: "message-msg_sse",
+      config: {
+        buildURL: () => "/api/sse/events/msg_sse",
+        buildLongPollURL: () => "/api/events/msg_sse/poll",
+        longPollActivation: "fallback",
+        replayBufferedEventsOnSubscribe: false,
+        restartKey: "message-msg_sse",
+        workspaceId: "w_1",
+      },
+      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: true,
+    });
+
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    expect(longPollFactory).toHaveBeenCalledOnce();
     manager.releaseWorkspace("w_1");
   });
 

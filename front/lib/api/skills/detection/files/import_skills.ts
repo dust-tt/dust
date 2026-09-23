@@ -60,6 +60,11 @@ type ImportSkillsResult = {
  *  - "skip": the conflicting skill is skipped and reported in `skipped`.
  *  - "error": the entire import is rejected upfront (no partial writes).
  */
+/**
+ * @cc [owner:philipperolet,label:security] api-key-import-editors-preflight
+ * If a file import requests editors for a new skill, a non-admin API key MUST be rejected before
+ * any imported skill is created.
+ */
 export async function importSkillsFromFiles(
   auth: Authenticator,
   {
@@ -207,6 +212,19 @@ export async function importSkillsFromFiles(
     return editorUsersResult;
   }
   const editorUsers = editorUsersResult.value;
+  const createsSkill = selectedSkills.some(
+    (skill) => !existingSkillsMap.has(skill.name)
+  );
+  if (
+    editorUsers.length > 0 &&
+    createsSkill &&
+    auth.isKey() &&
+    !auth.isAdmin()
+  ) {
+    return new Err(
+      new Error("User is not authorized to update skill editors.")
+    );
+  }
 
   const user = auth.user();
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);

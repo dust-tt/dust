@@ -26,6 +26,7 @@ import {
   CompletionResponseStreamChoiceFinishReason,
 } from "@mistralai/mistralai/models/components";
 import { MistralError } from "@mistralai/mistralai/models/errors/mistralerror";
+import { z } from "zod";
 
 // Parses tool-call arguments into an object, falling back to `{}` for malformed
 // or non-object JSON.
@@ -43,18 +44,44 @@ function thinkingChunkToText(thinking: ThinkChunk["thinking"]): string {
     .join("");
 }
 
-function usageToTokenUsageEvent(
+// `UsageInfo` does not declare the cached-token breakdown, so the SDK leaves it
+// in `additionalProperties` under its raw wire name — camelCasing is generated
+// per declared field. Both spellings are accepted so a later SDK declaring the
+// field does not silently drop the cache credit and bill reads at full price.
+const cachedPromptTokensSchema = z.object({
+  prompt_tokens_details: z.object({ cached_tokens: z.number() }).optional(),
+  promptTokensDetails: z.object({ cachedTokens: z.number() }).optional(),
+});
+
+function cachedTokensFromUsage(usage: UsageInfo | undefined): number {
+  const parsed = cachedPromptTokensSchema.safeParse(usage);
+  if (!parsed.success) {
+    return 0;
+  }
+
+  return (
+    parsed.data.prompt_tokens_details?.cached_tokens ??
+    parsed.data.promptTokensDetails?.cachedTokens ??
+    0
+  );
+}
+
+export function usageToTokenUsageEvent(
   metadata: EndpointMetadata,
   usage: UsageInfo | undefined
 ): TokenUsageEvent {
+  const cacheHit = cachedTokensFromUsage(usage);
   return {
     type: "token_usage",
     content: {
+      // Caching is implicit prefix matching and Mistral publishes no cache-write
+      // dimension: reads are reported, writes are billed as standard input.
       cacheCreated: 0,
       longCacheCreated: 0,
       shortCacheCreated: 0,
-      cacheHit: 0,
-      standardInput: usage?.promptTokens ?? 0,
+      cacheHit,
+      // `promptTokens` counts cached reads too, so they come back out here.
+      standardInput: Math.max(0, (usage?.promptTokens ?? 0) - cacheHit),
       // Mistral exposes one aggregate completion count with no reasoning-token
       // breakdown, so the inclusive total remains unattributed.
       totalOutput: usage?.completionTokens ?? 0,

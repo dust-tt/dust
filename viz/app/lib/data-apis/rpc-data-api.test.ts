@@ -1,4 +1,5 @@
 import { CacheDataAPI } from "@viz/app/lib/data-apis/cache-data-api";
+import { HybridDataAPI } from "@viz/app/lib/data-apis/hybrid-data-api";
 import { RPCDataAPI } from "@viz/app/lib/data-apis/rpc-data-api";
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import { describe, expect, it, vi } from "vitest";
@@ -202,5 +203,87 @@ describe("sandbox function data APIs", () => {
     await expect(api.callFunction("pod/function")).rejects.toMatchObject({
       code: "not_supported",
     });
+  });
+});
+
+const fileEdit = {
+  path: "./notes.json",
+  content: "{}",
+  revision: '\"123\"',
+};
+
+describe("revision-aware file access", () => {
+  it("returns file contents and their revision in a separate snapshot", async () => {
+    const api = new RPCDataAPI(
+      vi.fn().mockResolvedValue({
+        fileBlob: new Blob(['{"text":"hello"}'], { type: "application/json" }),
+        revision: '\"123\"',
+        canWrite: true,
+      })
+    );
+    const file = await api.fetchFile("./notes.json");
+    expect(file?.file).toBeInstanceOf(File);
+    expect(file?.file).not.toHaveProperty("revision");
+    expect(file?.file).not.toHaveProperty("canWrite");
+    expect(await file?.file.text()).toBe('{"text":"hello"}');
+    expect(file).toMatchObject({
+      file: expect.objectContaining({ name: "./notes.json" }),
+      revision: '\"123\"',
+      canWrite: true,
+    });
+  });
+
+  it("accepts the old getFile response and disables writes without metadata", async () => {
+    const sendMessage = vi
+      .fn()
+      .mockResolvedValue({ fileBlob: new Blob(["old host"]) });
+    const api = new RPCDataAPI(sendMessage);
+    const file = await api.fetchFile("./notes.txt");
+    expect(await file?.file.text()).toBe("old host");
+    expect(sendMessage).toHaveBeenCalledExactlyOnceWith("getFile", {
+      fileId: "./notes.txt",
+    });
+    expect(file).toMatchObject({ revision: null, canWrite: false });
+  });
+
+  it("returns save conflicts without retrying or treating them as success", async () => {
+    const result = {
+      success: false,
+      error: { code: "conflict", message: "Reload before saving." },
+    };
+    const sendMessage = vi.fn().mockResolvedValue(result);
+    const api = new RPCDataAPI(sendMessage);
+    await expect(api.writeFile(fileEdit)).resolves.toEqual(result);
+    expect(sendMessage).toHaveBeenCalledExactlyOnceWith("writeFile", fileEdit);
+  });
+
+  it("returns an unconfirmed save when the transport times out", async () => {
+    const api = new RPCDataAPI(
+      vi.fn().mockRejectedValue(new Error("Timed out"))
+    );
+    await expect(api.writeFile(fileEdit)).resolves.toMatchObject({
+      success: false,
+      error: { code: "save_failed" },
+    });
+  });
+
+  it("keeps cached public files read-only even with an authenticated RPC channel", async () => {
+    const cache = new CacheDataAPI([
+      {
+        fileId: "./notes.json",
+        data: btoa("{}"),
+        mimeType: "application/json",
+      },
+    ]);
+    const sendMessage = vi.fn();
+    const api = new HybridDataAPI(cache, new RPCDataAPI(sendMessage));
+    const file = await api.fetchFile("./notes.json");
+    expect(await file?.file.text()).toBe("{}");
+    expect(file).toMatchObject({ revision: null, canWrite: false });
+    await expect(api.writeFile(fileEdit)).resolves.toMatchObject({
+      success: false,
+      error: { code: "read_only" },
+    });
+    expect(sendMessage).not.toHaveBeenCalled();
   });
 });

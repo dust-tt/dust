@@ -266,6 +266,24 @@ describe("DiscoveryItemResource", () => {
     expect(listedForGroup.map(({ pin }) => pin.itemId)).toEqual([agentAId]);
   });
 
+  it("rejects pins on regular_auto groups", async () => {
+    const autoGroup = await GroupFactory.regularAuto(
+      auth.getNonNullableWorkspace(),
+      "Agent editors"
+    );
+
+    const result = await DiscoveryItemResource.setPinnedForGroup(auth, {
+      groupModelId: autoGroup.id,
+      item: { type: "agent", itemId: agentAId, position: 0 },
+    });
+
+    expect(result.isErr() && result.error.code).toBe("invalid_request_error");
+    const listed = await DiscoveryItemResource.listPinnedForGroup(auth, {
+      groupModelId: autoGroup.id,
+    });
+    expect(listed).toEqual([]);
+  });
+
   it("rejects pin mutations from workspace managers", async () => {
     const setup = await createResourceTest({ role: "manager" });
 

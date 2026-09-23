@@ -30,7 +30,6 @@ import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { canonicalizeSaveParamsForComparison } from "@app/lib/resources/agent_configuration_comparison";
 import {
   assertPublishPermissionForScopeChange,
-  resolveAgentIdentity,
   resolveExistingAgentAndVersion,
   syncAgentEditors,
   syncAgentTags,
@@ -56,6 +55,7 @@ import type { SkillFetchContext } from "@app/lib/resources/skill/skill_resource"
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -107,6 +107,28 @@ import { Op, UniqueConstraintError, ValidationError } from "sequelize";
 // grant: once the agent leaves draft status, only explicit grants confer editorship.
 const DRAFT_OWNER_VERBS: GrantVerb[] = ["read", "write", "admin"];
 
+// Columns of the current configuration that `agents` mirrors.
+export type AgentHeadFields = Pick<
+  AgentConfigurationModel,
+  | "name"
+  | "status"
+  | "scope"
+  | "reinforcement"
+  | "lastReinforcementAnalysisAt"
+  | "templateId"
+>;
+
+function headFieldsOf(configuration: AgentHeadFields): AgentHeadFields {
+  return {
+    name: configuration.name,
+    status: configuration.status,
+    scope: configuration.scope,
+    reinforcement: configuration.reinforcement,
+    lastReinforcementAnalysisAt: configuration.lastReinforcementAnalysisAt,
+    templateId: configuration.templateId,
+  };
+}
+
 // Agents in these statuses only exist inside the builder — behind its "try" button or before the
 // first save — and are never indexed.
 const NON_INDEXABLE_AGENT_STATUSES: AgentConfigurationStatus[] = [
@@ -141,9 +163,6 @@ export type AgentResourceContent = {
   instructions: string | null;
   instructionsHtml: string | null;
   maxStepsPerRun: number;
-  templateId: ModelId | null;
-  reinforcement: AgentReinforcementMode;
-  lastReinforcementAnalysisAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -155,6 +174,9 @@ type AgentResourceExtraBlob = {
   description: string;
   status: AgentConfigurationStatus;
   pictureUrl: string;
+  templateId: ModelId | null;
+  reinforcement: AgentReinforcementMode;
+  lastReinforcementAnalysisAt: Date | null;
   versionAuthorId: ModelId | null;
   requestedSpaceIds: ModelId[];
   modelConfiguration: AgentModelConfigurationType;
@@ -277,9 +299,8 @@ type SerializedModelConfiguration = {
 // JSON-serializable form of `AgentResourceContent`: Date columns become epoch millis.
 type SerializedAgentResourceContent = Omit<
   AgentResourceContent,
-  "lastReinforcementAnalysisAt" | "createdAt" | "updatedAt"
+  "createdAt" | "updatedAt"
 > & {
-  lastReinforcementAnalysisAt: number | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -300,6 +321,9 @@ export type AgentResourceSnapshot = {
   description: string;
   status: AgentConfigurationStatus;
   pictureUrl: string;
+  templateId: ModelId | null;
+  reinforcement: AgentReinforcementMode;
+  lastReinforcementAnalysisAt: number | null;
   versionAuthorId: ModelId | null;
   requestedSpaceIds: ModelId[];
   modelConfiguration: SerializedModelConfiguration;
@@ -332,12 +356,14 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
 /**
  * @cc [owner:sfriquet,label:security] unreadable-agent-is-light
  * A resource built for a caller who does not hold `read` on the agent (per `getAllowedVerbs`) MUST
- * be `light`: `content` — instructions, `instructionsHtml`, template, reinforcement and the
- * version dates — is never materialized for that caller, whatever their role, key type, or
- * superuser status. This holds for every `fetch*` resolver and for `fromAgentConfigurationModel`,
- * so a caller allowed to enumerate agents they cannot read (an admin listing hidden agents, a
- * superuser) sees identity and core fields only. Callers MUST NOT re-attach private fields to a
- * `light` resource from another read path.
+ * be `light`: its `content`, which carries the agent's instructions (`instructions`,
+ * `instructionsHtml`), is never materialized for that caller, whatever their role, key type, or
+ * superuser status. The instructions are the only private fields: the head fields (`name`,
+ * `status`, `scope`, `templateId`, `reinforcement`, `lastReinforcementAnalysisAt`) are core and
+ * carried by every resource. This holds for every `fetch*` resolver and for
+ * `fromAgentConfigurationModel`, so a caller allowed to enumerate agents they cannot read (an admin
+ * listing hidden agents, a superuser) sees identity and core fields only. Callers MUST NOT
+ * re-attach the instructions to a `light` resource from another read path.
  */
 /**
  * @cc [owner:philipperolet,label:security;product] agent-verbs
@@ -374,13 +400,14 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  * @cc [owner:philipperolet,label:security;product] agent-publish-capability
  * `publish` on the `agent` type means deciding whether an active agent is visible to the whole
  * workspace. Creating or activating a visible agent, or changing an active agent's scope, MUST
- * require the `publish` capability — resolved per-resource as `auth.can("publish", r)` for a scope
- * write (see `scope-change-requires-edit-and-publish`) — even for its editors. Draft and pending
- * agents MUST be persisted and authorized as hidden. An archived agent's scope MUST remain stored
- * and MUST NOT change until restore; archived versions with stored scope `visible` remain readable
- * so historical references keep working. Restoring a stored visible scope MUST require `publish`.
- * Editing an agent without changing its workspace visibility MUST NOT require `publish`. Protected
- * tags and linking Slack channels to an agent are gated by it too.
+ * require the `publish` capability — a workspace-wide capability resolved via
+ * `auth.hasWorkspacePermission("publish", "agent")` (see `scope-change-requires-edit-and-publish`) —
+ * even for its editors. Draft and pending agents MUST be persisted and authorized as hidden. An
+ * archived agent's scope MUST remain stored and MUST NOT change until restore; archived versions with
+ * stored scope `visible` remain readable so historical references keep working. Restoring a stored
+ * visible scope MUST require `publish`. Editing an agent without changing its workspace visibility
+ * MUST NOT require `publish`. Protected tags and linking Slack channels to an agent are gated by it
+ * too.
  */
 /**
  * @cc [owner:tdraier,label:security] agent-edit-requires-write
@@ -416,6 +443,9 @@ export class AgentResource
   readonly description: string;
   readonly status: AgentConfigurationStatus;
   readonly pictureUrl: string;
+  readonly templateId: ModelId | null;
+  readonly reinforcement: AgentReinforcementMode;
+  readonly lastReinforcementAnalysisAt: Date | null;
   readonly versionAuthorId: ModelId | null;
   private readonly requestedSpaceIds: ModelId[];
   readonly modelConfiguration: AgentModelConfigurationType;
@@ -445,6 +475,9 @@ export class AgentResource
     this.description = extra.description;
     this.status = extra.status;
     this.pictureUrl = extra.pictureUrl;
+    this.templateId = extra.templateId;
+    this.reinforcement = extra.reinforcement;
+    this.lastReinforcementAnalysisAt = extra.lastReinforcementAnalysisAt;
     this.versionAuthorId = extra.versionAuthorId;
     this.requestedSpaceIds = extra.requestedSpaceIds;
     this.modelConfiguration = extra.modelConfiguration;
@@ -486,6 +519,14 @@ export class AgentResource
       configuration.versionAuthorId !== null,
       "Unexpected: custom agent author is missing"
     );
+    const templateId = configuration.templateId
+      ? getResourceIdFromSId(configuration.templateId)
+      : null;
+    const reinforcement = configuration.reinforcement ?? "auto";
+    const lastReinforcementAnalysisAt =
+      configuration.lastReinforcementAnalysisAt
+        ? new Date(configuration.lastReinforcementAnalysisAt)
+        : null;
 
     return new AgentResource(
       {
@@ -495,6 +536,14 @@ export class AgentResource
         createdAt: new Date(),
         updatedAt: new Date(),
         currentVersion: configuration.version,
+        name: configuration.name,
+        status: isAgentStatus(configuration.status)
+          ? configuration.status
+          : null,
+        scope: configuration.scope,
+        templateId,
+        reinforcement,
+        lastReinforcementAnalysisAt,
       },
       {
         agentConfigurationModelId: configuration.id,
@@ -503,6 +552,9 @@ export class AgentResource
         description: configuration.description,
         status: configuration.status,
         pictureUrl: configuration.pictureUrl,
+        templateId,
+        reinforcement,
+        lastReinforcementAnalysisAt,
         versionAuthorId: configuration.versionAuthorId,
         // `LightAgentConfigurationType.requestedSpaceIds` are space sIds; the resource holds model ids.
         requestedSpaceIds: removeNulls(
@@ -541,6 +593,12 @@ export class AgentResource
         createdAt: new Date(),
         updatedAt: new Date(),
         currentVersion: configuration.version,
+        name: configuration.name,
+        status: null,
+        scope: null,
+        templateId: null,
+        reinforcement: configuration.reinforcement ?? "auto",
+        lastReinforcementAnalysisAt: null,
       },
       {
         agentConfigurationModelId: configuration.id,
@@ -549,6 +607,9 @@ export class AgentResource
         description: configuration.description,
         status: configuration.status,
         pictureUrl: configuration.pictureUrl,
+        templateId: null,
+        reinforcement: configuration.reinforcement ?? "auto",
+        lastReinforcementAnalysisAt: null,
         versionAuthorId: null,
         requestedSpaceIds: [],
         modelConfiguration: configuration.model,
@@ -578,6 +639,12 @@ export class AgentResource
             createdAt: agent.createdAt,
             updatedAt: agent.updatedAt,
             currentVersion: agent.currentVersion,
+            name: agent.name,
+            status: agent.status,
+            scope: agent.scope,
+            templateId: agent.templateId,
+            reinforcement: agent.reinforcement,
+            lastReinforcementAnalysisAt: agent.lastReinforcementAnalysisAt,
           }
         : {
             id: configuration.agentId,
@@ -586,6 +653,7 @@ export class AgentResource
             createdAt: configuration.createdAt,
             updatedAt: configuration.updatedAt,
             currentVersion: configuration.version,
+            ...headFieldsOf(configuration),
           },
       {
         agentConfigurationModelId: configuration.id,
@@ -594,6 +662,9 @@ export class AgentResource
         description: configuration.description,
         status: configuration.status,
         pictureUrl: configuration.pictureUrl,
+        templateId: configuration.templateId,
+        reinforcement: configuration.reinforcement,
+        lastReinforcementAnalysisAt: configuration.lastReinforcementAnalysisAt,
         versionAuthorId: configuration.authorId,
         requestedSpaceIds: configuration.requestedSpaceIds,
         modelConfiguration: {
@@ -609,10 +680,6 @@ export class AgentResource
           instructions: configuration.instructions,
           instructionsHtml: configuration.instructionsHtml,
           maxStepsPerRun: configuration.maxStepsPerRun,
-          templateId: configuration.templateId,
-          reinforcement: configuration.reinforcement,
-          lastReinforcementAnalysisAt:
-            configuration.lastReinforcementAnalysisAt,
           createdAt: configuration.createdAt,
           updatedAt: configuration.updatedAt,
         },
@@ -862,6 +929,10 @@ export class AgentResource
       description: this.description,
       status: this.status,
       pictureUrl: this.pictureUrl,
+      templateId: this.templateId,
+      reinforcement: this.reinforcement,
+      lastReinforcementAnalysisAt:
+        this.lastReinforcementAnalysisAt?.getTime() ?? null,
       versionAuthorId: this.versionAuthorId,
       requestedSpaceIds: this.requestedSpaceIds,
       modelConfiguration: {
@@ -873,8 +944,6 @@ export class AgentResource
       },
       content: {
         ...content,
-        lastReinforcementAnalysisAt:
-          content.lastReinforcementAnalysisAt?.getTime() ?? null,
         createdAt: content.createdAt.getTime(),
         updatedAt: content.updatedAt.getTime(),
       },
@@ -884,6 +953,10 @@ export class AgentResource
   // Rebuilds a `full` resource from a cached snapshot. Inverse of `toSnapshot`.
   static fromSnapshot(snapshot: AgentResourceSnapshot): FullAgentResource {
     const { content, modelConfiguration } = snapshot;
+    const lastReinforcementAnalysisAt =
+      snapshot.lastReinforcementAnalysisAt !== null
+        ? new Date(snapshot.lastReinforcementAnalysisAt)
+        : null;
 
     const resource = new AgentResource(
       {
@@ -896,6 +969,12 @@ export class AgentResource
         updatedAt: new Date(content.updatedAt),
         // The cached row is the current version, so its version is the agent's `currentVersion`.
         currentVersion: content.version,
+        name: snapshot.name,
+        status: isAgentStatus(snapshot.status) ? snapshot.status : null,
+        scope: snapshot.scope === "global" ? null : snapshot.scope,
+        templateId: snapshot.templateId,
+        reinforcement: snapshot.reinforcement,
+        lastReinforcementAnalysisAt,
       },
       {
         agentConfigurationModelId: snapshot.agentConfigurationModelId,
@@ -904,6 +983,9 @@ export class AgentResource
         description: snapshot.description,
         status: snapshot.status,
         pictureUrl: snapshot.pictureUrl,
+        templateId: snapshot.templateId,
+        reinforcement: snapshot.reinforcement,
+        lastReinforcementAnalysisAt,
         versionAuthorId: snapshot.versionAuthorId,
         requestedSpaceIds: snapshot.requestedSpaceIds,
         modelConfiguration: {
@@ -916,10 +998,6 @@ export class AgentResource
         codeDefinedSkillIds: [],
         content: {
           ...content,
-          lastReinforcementAnalysisAt:
-            content.lastReinforcementAnalysisAt !== null
-              ? new Date(content.lastReinforcementAnalysisAt)
-              : null,
           createdAt: new Date(content.createdAt),
           updatedAt: new Date(content.updatedAt),
         },
@@ -1214,15 +1292,15 @@ export class AgentResource
       status: this.status,
       scope: this.scope,
       model: this.modelConfiguration,
-      templateId: this.content.templateId
-        ? TemplateResource.modelIdToSId({ id: this.content.templateId })
+      templateId: this.templateId
+        ? TemplateResource.modelIdToSId({ id: this.templateId })
         : null,
       requestedSpaceIds: this.requestedSpaceIds,
       tags: tags.map((tag) => tag.toJSON()),
       editors: (editors ?? []).map((editor) => editor.toJSON()),
       // Preserve the version's author rather than re-attributing it to the caller.
       authorId: this.versionAuthorId ?? auth.getNonNullableUser().id,
-      reinforcement: this.content.reinforcement,
+      reinforcement: this.reinforcement,
       actions,
       skills,
     };
@@ -1270,13 +1348,14 @@ export class AgentResource
   }
 
   /**
-   * Makes `configuration`, one of the agent's own rows, the current one. Called by every path
-   * that inserts a configuration row or deletes the current one (see
-   * `agent-current-version-pointer` on `AgentModel`).
+   * Makes `configuration`, one of the agent's own rows, the current one and mirrors its head
+   * fields. Called by every path that inserts a configuration row, activates a pending one or
+   * deletes the current one (see `agent-current-version-pointer` on `AgentModel`).
    */
   async setCurrentConfiguration(
     auth: Authenticator,
-    configuration: Pick<AgentConfigurationModel, "agentId" | "version">,
+    configuration: Pick<AgentConfigurationModel, "agentId" | "version"> &
+      AgentHeadFields,
     { transaction }: { transaction: Transaction }
   ): Promise<void> {
     assert(this.scope !== "global");
@@ -1286,10 +1365,49 @@ export class AgentResource
       "Unexpected: configuration belongs to another agent"
     );
 
+    // Moves the version pointer and mirrors the head fields of the row becoming current.
     await AgentModel.update(
-      { currentVersion: configuration.version },
+      {
+        currentVersion: configuration.version,
+        ...headFieldsOf(configuration),
+      },
       { where: { id: this.id, workspaceId: this.workspaceId }, transaction }
     );
+  }
+
+  private async updateAgentIdentity(
+    auth: Authenticator,
+    fields: Partial<AgentHeadFields>,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<boolean> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    assert(workspaceId === this.workspaceId);
+
+    return withTransaction(async (t) => {
+      const agent = await AgentModel.findOne({
+        where: { id: this.id, workspaceId },
+        transaction: t,
+      });
+      if (!agent) {
+        return false;
+      }
+
+      const [updatedCount] = await AgentConfigurationModel.update(fields, {
+        where: {
+          agentId: this.id,
+          workspaceId,
+          version: agent.currentVersion,
+        },
+        transaction: t,
+      });
+
+      await AgentModel.update(fields, {
+        where: { id: this.id, workspaceId },
+        transaction: t,
+      });
+
+      return updatedCount > 0;
+    }, transaction);
   }
 
   /**
@@ -1411,12 +1529,11 @@ export class AgentResource
     // Only the current version is `active` (older versions were archived when superseded), so
     // flipping the current row suffices (see the `archive-current-version-only` behavior mirrored by
     // `restore`).
-    const [affectedCount] = await AgentConfigurationModel.update(
-      { status: "archived" },
-      { where: { id: this.agentConfigurationModelId, workspaceId: owner.id } }
-    );
+    const affected = await this.updateAgentIdentity(auth, {
+      status: "archived",
+    });
 
-    if (affectedCount > 0) {
+    if (affected) {
       void emitAuditLogEvent({
         auth,
         action: "agent.archived",
@@ -1435,7 +1552,7 @@ export class AgentResource
       await AgentResource.launchSearchIndexation(auth, [this.sId]);
     }
 
-    return new Ok(affectedCount > 0);
+    return new Ok(affected);
   }
 
   // Re-enables the agent's triggers as their respective editors. Shared by `restore`.
@@ -1545,12 +1662,9 @@ export class AgentResource
       );
     }
 
-    const [affectedCount] = await AgentConfigurationModel.update(
-      { status: "active" },
-      { where: { id: this.agentConfigurationModelId, workspaceId: owner.id } }
-    );
+    const affected = await this.updateAgentIdentity(auth, { status: "active" });
 
-    if (affectedCount > 0) {
+    if (affected) {
       // The restored version is active again, so the cached AgentResource is now stale.
       await AgentResource.invalidateCache(owner.id, this.sId);
       await AgentResource.launchSearchIndexation(auth, [this.sId]);
@@ -1571,7 +1685,7 @@ export class AgentResource
       });
     }
 
-    return new Ok({ restored: affectedCount > 0 });
+    return new Ok({ restored: affected });
   }
 
   // Tears down the agent-scoped resources keyed by `sId` (stable across versions) that carry
@@ -2006,8 +2120,8 @@ export class AgentResource
       description: this.description,
       pictureUrl: this.pictureUrl,
       maxStepsPerRun: content.maxStepsPerRun,
-      templateId: content.templateId
-        ? TemplateResource.modelIdToSId({ id: content.templateId })
+      templateId: this.templateId
+        ? TemplateResource.modelIdToSId({ id: this.templateId })
         : null,
       // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
       visualizationEnabled: false,
@@ -2019,9 +2133,9 @@ export class AgentResource
           workspaceId: this.workspaceId,
         })
       ),
-      reinforcement: content.reinforcement,
+      reinforcement: this.reinforcement,
       lastReinforcementAnalysisAt:
-        content.lastReinforcementAnalysisAt?.toISOString() ?? null,
+        this.lastReinforcementAnalysisAt?.toISOString() ?? null,
       canRead: this._verbs.has("read"),
       // Regular API keys hold `write` from the admin role but may only edit an active version
       // (see the `regular-key-agent-editability` contract on `enrichAgentConfigurations`).
@@ -2232,7 +2346,7 @@ export class AgentResource
       if (this.status === "archived" || targetStatus !== "active") {
         return new Err(new Error("Only active agents can change scope."));
       }
-      if (!this.canWriteScope(auth)) {
+      if (!this.canChangeScope(auth)) {
         return new Err(
           new Error("You don't have permission to publish agents.")
         );
@@ -2290,25 +2404,28 @@ export class AgentResource
     return new Ok({ resource: updated ?? target, changed: true });
   }
 
-  // Whether `auth` may publish or unpublish this agent.
-  private canWriteScope(auth: Authenticator): boolean {
-    const canEdit = auth.can("write", this) || auth.can("admin", this);
-    return canEdit && auth.can("publish", this);
+  // Whether `auth` may publish or unpublish this agent. `write` never appears without `admin` on an
+  // agent (editor grants bundle both, workspace admins hold `admin` by role), so `admin` alone is the
+  // edit gate here.
+  private canChangeScope(auth: Authenticator): boolean {
+    return (
+      auth.can("admin", this) && auth.hasWorkspacePermission("publish", "agent")
+    );
   }
 
   // Changes this agent's scope in place — no new version. A no-op when the scope is unchanged, so it
   // is safe to call unconditionally and does not require permission for an unchanged value. A real
-  // change requires scope-write permission (see `canWriteScope`) and, on `visible` -> `hidden`,
+  // change requires scope-write permission (see `canChangeScope`) and, on `visible` -> `hidden`,
   // disables the triggers of non-editors.
   /**
    * @cc [owner:tdraier,label:security;product] scope-change-requires-edit-and-publish
-   * Changing an active agent's scope requires `write` OR `admin` on the agent, plus `publish`, all
-   * resolved per-resource via `auth.can`. A draft or pending agent MUST remain hidden, and an
-   * archived agent's scope MUST NOT be changed. This MUST be enforced wherever a scope is written
-   * (`updateScopeInPlace`, and `bulkUpdate` per agent): the scope of an agent the caller does not
-   * satisfy MUST NOT be written. `publish` is a workspace-wide capability that
-   * `getGovernanceGrantVerbs` folds into every instance's verbs, so it resolves per-resource via
-   * `auth.can("publish", r)` (grant-backed, never role-derived).
+   * Changing an active agent's scope requires `write` OR `admin` on the agent (resolved per-resource
+   * via `auth.can`), plus the workspace-wide `publish` capability
+   * (`auth.hasWorkspacePermission("publish", "agent")`). A draft or pending agent MUST remain hidden,
+   * and an archived agent's scope MUST NOT be changed. This MUST be enforced wherever a scope is
+   * written (`updateScopeInPlace`, and `bulkUpdate` per agent): the scope of an agent the caller does
+   * not satisfy MUST NOT be written. `publish` is a workspace-wide capability (admins hold it by
+   * default), never resolved per-resource or role-derived.
    */
   /**
    * @cc [owner:tdraier,label:security] hide-disables-non-editor-triggers
@@ -2326,21 +2443,13 @@ export class AgentResource
     if (this.status !== "active") {
       return new Err(new Error("Only active agents can change scope."));
     }
-    if (!this.canWriteScope(auth)) {
+    if (!this.canChangeScope(auth)) {
       return new Err(new Error("You don't have permission to publish agents."));
     }
 
     const previousScope = this.scope;
     const workspaceModelId = auth.getNonNullableWorkspace().id;
-    await AgentConfigurationModel.update(
-      { scope },
-      {
-        where: {
-          id: this.agentConfigurationModelId,
-          workspaceId: workspaceModelId,
-        },
-      }
-    );
+    await this.updateAgentIdentity(auth, { scope });
     // `scope` is a snapshot field, so the cached current version is now stale.
     await AgentResource.invalidateCache(workspaceModelId, this.sId);
 
@@ -2463,12 +2572,28 @@ export class AgentResource
           { agentConfigurationId, authorId, owner, transaction: t }
         );
 
-        const { sId, agentModelId } = await resolveAgentIdentity({
-          agentConfigurationId,
-          existingAgent,
-          owner,
-          transaction: t,
-        });
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        const sId = agentConfigurationId || generateRandomModelSId();
+        // A brand-new agent needs its identity row before the configuration that references it, and
+        // carries the head fields of the version 0 row written just below. `findOrCreate` covers an
+        // identity left behind by an interrupted creation.
+        let agentModelId = existingAgent?.agentId;
+        if (!agentModelId) {
+          const [agentIdentity] = await AgentModel.findOrCreate({
+            where: { sId, workspaceId: owner.id },
+            defaults: {
+              sId,
+              workspaceId: owner.id,
+              name,
+              status,
+              scope: persistedScope,
+              reinforcement: reinforcement ?? "auto",
+              templateId: template?.id ?? null,
+            },
+            transaction: t,
+          });
+          agentModelId = agentIdentity.id;
+        }
 
         const agentConfigurationInstance = await writeAgentConfigurationRow({
           existingAgent,
@@ -2491,8 +2616,9 @@ export class AgentResource
           transaction: t,
         });
 
-        // A brand-new agent already starts at version 0; an upgrade moves the pointer.
-        if (agentConfigurationInstance.version !== 0) {
+        // A brand-new agent's identity was just created at version 0 with its head fields; an
+        // upgrade or a pending activation moves the pointer and mirrors the new ones.
+        if (existingAgent) {
           await AgentResource.fromAgentConfigurationModel(
             auth,
             agentConfigurationInstance
