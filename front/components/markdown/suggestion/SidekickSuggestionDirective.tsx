@@ -9,6 +9,7 @@
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { AgentSuggestionActionCard } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
+import { ConversationalSuggestionReviewCard } from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
 import {
   SidekickSuggestionCard,
   SuggestionCardSkeleton,
@@ -222,20 +223,41 @@ function ConversationAgentSuggestion({
     return null;
   }
 
+  const pendingAction = getPendingAction(suggestion);
+
+  if (
+    suggestion.source === "conversational" &&
+    suggestion.state === "pending"
+  ) {
+    return (
+      <ConversationalSuggestionReviewCard
+        target={{
+          type: "agent",
+          suggestion,
+          pictureUrl: agentConfiguration?.pictureUrl,
+        }}
+        onAccept={() => void acceptSuggestion(suggestion)}
+        onReject={() => void rejectSuggestion(suggestion)}
+        onPreview={() =>
+          openPanel({
+            type: AGENT_SIDE_PANEL_TYPE,
+            agentId,
+            previewSuggestionIds: [suggestion.sId],
+          })
+        }
+        isAccepting={pendingAction === "accept"}
+        isRejecting={pendingAction === "reject"}
+      />
+    );
+  }
+
   return (
     <AgentSuggestionActionCard
       agentSuggestion={suggestion}
       pictureUrl={agentConfiguration?.pictureUrl}
-      disabled={getPendingAction(suggestion) !== null}
+      disabled={pendingAction !== null}
       onAccept={() => void acceptSuggestion(suggestion)}
       onReject={() => void rejectSuggestion(suggestion)}
-      onPreview={() =>
-        openPanel({
-          type: AGENT_SIDE_PANEL_TYPE,
-          agentId,
-          previewSuggestionIds: [suggestion.sId],
-        })
-      }
     />
   );
 }

@@ -7,6 +7,7 @@
  */
 
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConversationalSuggestionReviewCard } from "@app/components/markdown/suggestion/ConversationalSuggestionReviewCard";
 import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
   useSkillSuggestionActions,
@@ -142,18 +143,39 @@ function ConversationSkillSuggestion({
 
   const pendingAction = getPendingAction(suggestion);
 
+  if (
+    suggestion.source === "conversational" &&
+    suggestion.state === "pending"
+  ) {
+    return (
+      <ConversationalSuggestionReviewCard
+        target={{
+          type: "skill",
+          suggestion,
+          getSkillInstructionsHtml,
+          getCurrentAgentFacingDescription,
+          workspaceId: owner.sId,
+        }}
+        onAccept={() => void handleAccept(suggestion)}
+        onReject={() => void rejectSuggestion(suggestion)}
+        onPreview={() =>
+          openPanel({
+            type: SKILL_SIDE_PANEL_TYPE,
+            skillId,
+            previewSuggestionIds: [suggestion.sId],
+          })
+        }
+        isAccepting={pendingAction === "accept"}
+        isRejecting={pendingAction === "reject"}
+      />
+    );
+  }
+
   return (
     <SkillSuggestionCard
       suggestion={suggestion}
       onAccept={(s) => void handleAccept(s)}
       onDecline={(s) => void rejectSuggestion(s)}
-      onPreview={() =>
-        openPanel({
-          type: SKILL_SIDE_PANEL_TYPE,
-          skillId,
-          previewSuggestionIds: [suggestion.sId],
-        })
-      }
       getSkillInstructionsHtml={getSkillInstructionsHtml}
       getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
       workspaceId={owner.sId}
