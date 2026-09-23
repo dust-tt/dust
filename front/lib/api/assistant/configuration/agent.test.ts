@@ -666,10 +666,10 @@ describe("saveAgentConfiguration with pending agent", () => {
     if (!pendingAgent) {
       throw new Error("Pending agent was not created");
     }
-    const [pendingAgentResource] = await AgentResource.fromConfigurationModels(
-      authenticator,
-      [pendingAgent]
-    );
+    const [pendingAgentResource] =
+      await AgentResource.dangerouslyFromConfigurationModels(authenticator, [
+        pendingAgent,
+      ]);
     if (!pendingAgentResource.id) {
       throw new Error("Pending agent identity was not created");
     }

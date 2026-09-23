@@ -130,7 +130,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
 
   // Build the resources (used below for the per-agent read/write permission checks) from the real
   // `agents` identity rows, batch-loaded once, rather than synthesizing them from configuration rows.
-  const resources = await AgentResource.fromConfigurationModels(
+  const resources = await AgentResource.dangerouslyFromConfigurationModels(
     auth,
     agentConfigurations
   );

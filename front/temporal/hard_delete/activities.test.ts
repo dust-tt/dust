@@ -84,7 +84,11 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     }
     const grantGroupModelId = await getEditorGrantGroupModelId(
       authenticator,
-      (await AgentResource.fromConfigurationModels(authenticator, [agent]))[0]
+      (
+        await AgentResource.dangerouslyFromConfigurationModels(authenticator, [
+          agent,
+        ])
+      )[0]
     );
 
     // Advance time past the retention threshold.
@@ -120,7 +124,11 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     }
     const grantGroupModelId = await getEditorGrantGroupModelId(
       authenticator,
-      (await AgentResource.fromConfigurationModels(authenticator, [agent]))[0]
+      (
+        await AgentResource.dangerouslyFromConfigurationModels(authenticator, [
+          agent,
+        ])
+      )[0]
     );
 
     await purgeExpiredPendingAgentsActivity();
@@ -218,7 +226,7 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     const expiredGroupModelId = await getEditorGrantGroupModelId(
       authenticator,
       (
-        await AgentResource.fromConfigurationModels(authenticator, [
+        await AgentResource.dangerouslyFromConfigurationModels(authenticator, [
           expiredAgent,
         ])
       )[0]
@@ -238,7 +246,9 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     const freshGroupModelId = await getEditorGrantGroupModelId(
       authenticator,
       (
-        await AgentResource.fromConfigurationModels(authenticator, [freshAgent])
+        await AgentResource.dangerouslyFromConfigurationModels(authenticator, [
+          freshAgent,
+        ])
       )[0]
     );
 

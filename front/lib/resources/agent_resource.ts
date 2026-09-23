@@ -611,8 +611,8 @@ export class AgentResource
 
   // Builds a resource from an agent row and one of its already-loaded configuration rows: `full`
   // (with `content`) when the caller can read the agent, `light` otherwise. Private: external callers
-  // holding only configuration rows go through `fromConfigurationModels` (which loads the real agent
-  // rows), and callers with an `sId` use `fetchById`.
+  // holding only configuration rows go through `dangerouslyFromConfigurationModels` (which loads the
+  // real agent rows), and callers with an `sId` use `fetchById`.
   private static fromModels(
     auth: Authenticator,
     agent: AgentModel,
@@ -633,7 +633,12 @@ export class AgentResource
   // one batch so a resource is never synthesized without a real agent row.
   // Returns one resource per input configuration, in the same order. Runs within `transaction` when
   // given (e.g. to observe rows written earlier in the same save).
-  static async fromConfigurationModels(
+  // `dangerously`: this returns a resource for every input configuration and does NOT drop those the
+  // caller cannot `canFetch` (see `permission-checked-fetch`). The one-to-one result is required by
+  // `enrichAgentConfigurations`, which annotates each entry with its own `canRead`/`canEdit`; callers
+  // are responsible for the access decision (the fetch that produced the configurations, or per-entry
+  // verb checks).
+  static async dangerouslyFromConfigurationModels(
     auth: Authenticator,
     agentConfigurations: AgentConfigurationModel[],
     { transaction }: { transaction?: Transaction } = {}
