@@ -3,7 +3,6 @@ import { MCPServerDetailsAvailability } from "@app/components/actions/mcp/MCPSer
 import { MCPServerDetailsGeneral } from "@app/components/actions/mcp/MCPServerDetailsGeneral";
 import {
   MCPServerDetailsTools,
-  MCPServerDetailsToolsBulkBar,
   useToolsAndStakesController,
 } from "@app/components/actions/mcp/MCPServerDetailsTools";
 import { ConfirmContext } from "@app/components/Confirm";
@@ -31,7 +30,7 @@ import {
   TabsTrigger,
   Trash01,
 } from "@dust-tt/sparkle";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
 const DETAILS_TABS = ["general", "tools", "availability"] as const;
@@ -65,7 +64,6 @@ export function MCPServerDetailsSheet({
   confirmSkillsRestrictionChange,
 }: MCPServerDetailsSheetProps) {
   const [selectedTab, setSelectedTab] = useState<TabType>("general");
-  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const [isSaving, setIsSaving] = useState(false);
 
   const confirm = useContext(ConfirmContext);
@@ -73,14 +71,6 @@ export function MCPServerDetailsSheet({
 
   const form = useFormContext<MCPServerFormValues>();
   const toolsController = useToolsAndStakesController(mcpServerView);
-
-  useEffect(() => {
-    // Only reset to the first tab when the sheet transitions from closed to open.
-    if (isOpen && !prevIsOpen) {
-      setSelectedTab("general");
-    }
-    setPrevIsOpen(isOpen);
-  }, [isOpen, prevIsOpen]);
 
   const header = useMemo(() => {
     if (!mcpServerView) {
@@ -127,6 +117,7 @@ export function MCPServerDetailsSheet({
     }
 
     onCancel();
+    setSelectedTab("general");
     onClose();
   };
 
@@ -157,6 +148,7 @@ export function MCPServerDetailsSheet({
     }
     const deleted = await deleteServer(server);
     if (deleted) {
+      setSelectedTab("general");
       onClose();
     }
   };
@@ -236,13 +228,6 @@ export function MCPServerDetailsSheet({
             </Tabs>
           )}
         </SheetContainer>
-        {/* Outside the container: the body scrolls inside a ScrollArea, where
-            nothing can stick to the bottom of the sheet. */}
-        {!readOnly && selectedTab === "tools" && (
-          <div className="px-5">
-            <MCPServerDetailsToolsBulkBar controller={toolsController} />
-          </div>
-        )}
         {!readOnly && (
           <div className="mt-2">
             <div className="flex flex-row gap-2 border-t border-border px-3 py-3">
@@ -266,7 +251,10 @@ export function MCPServerDetailsSheet({
                 onClick={async () => {
                   setIsSaving(true);
                   try {
-                    await onSave();
+                    const saved = await onSave();
+                    if (saved) {
+                      setSelectedTab("general");
+                    }
                   } finally {
                     setIsSaving(false);
                   }

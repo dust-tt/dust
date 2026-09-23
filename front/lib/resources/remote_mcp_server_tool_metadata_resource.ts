@@ -140,6 +140,67 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     return new this(this.model, toolMetadata.get());
   }
 
+  /**
+   * @cc [owner:id13,label:performance] mcp-tool-settings-batch-write
+   * A batch tool-settings update MUST authorize once and persist every requested setting in one
+   * database statement.
+   */
+  static async updateOrCreateSettingsBatch(
+    auth: Authenticator,
+    {
+      serverId,
+      tools,
+    }: {
+      serverId: string;
+      tools: Array<{
+        toolName: string;
+        permission: MCPToolStakeLevelType;
+        enabled: boolean;
+      }>;
+    }
+  ): Promise<void> {
+    if (tools.length === 0) {
+      return;
+    }
+
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
+
+    if (!canAdministrate) {
+      throw new DustError(
+        "unauthorized",
+        "The user is not authorized to update tool metadata"
+      );
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const { serverType, id: serverModelId } =
+      getServerTypeAndIdFromSId(serverId);
+
+    const serverAttributes =
+      serverType === "remote"
+        ? { remoteMCPServerId: serverModelId }
+        : { internalMCPServerId: serverId };
+    const conflictAttributes: Array<
+      keyof Attributes<RemoteMCPServerToolMetadataModel>
+    > =
+      serverType === "remote"
+        ? ["workspaceId", "remoteMCPServerId", "toolName"]
+        : ["workspaceId", "internalMCPServerId", "toolName"];
+
+    await this.model.bulkCreate(
+      tools.map((tool) => ({
+        ...serverAttributes,
+        ...tool,
+        workspaceId,
+      })),
+      {
+        conflictAttributes,
+        updateOnDuplicate: ["permission", "enabled", "updatedAt"],
+      }
+    );
+  }
+
   // Deletes tool metadata for tools that are not in the list
   static async deleteStaleTools(
     auth: Authenticator,

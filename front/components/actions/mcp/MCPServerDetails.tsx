@@ -15,7 +15,10 @@ import {
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type {
+  MCPServerViewType,
+  UpdateMCPToolsSettingsBodyType,
+} from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -204,32 +207,21 @@ export function MCPServerDetails({
   };
 
   const applyToolChanges = async (
-    toolChanges: Array<{
-      toolName: string;
-      enabled: boolean;
-      permission: string;
-    }>
+    toolChanges: UpdateMCPToolsSettingsBodyType["tools"]
   ) => {
-    for (const change of toolChanges) {
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}/tools/${change.toolName}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            permission: change.permission,
-            enabled: change.enabled,
-          }),
-        }
-      );
-      if (!response.ok) {
-        const body = await response.json();
-        throw new Error(
-          body.error?.message ?? "Failed to update tool settings"
-        );
+    const response = await clientFetch(
+      `/api/w/${owner.sId}/mcp/${mcpServerView?.server.sId}/tools`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ tools: toolChanges }),
       }
+    );
+    if (!response.ok) {
+      const body = await response.json();
+      throw new Error(body.error?.message ?? "Failed to update tool settings");
     }
   };
 
