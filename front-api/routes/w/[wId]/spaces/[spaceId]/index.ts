@@ -160,10 +160,10 @@ const app = workspaceApp();
  *                         pinnedFramePath:
  *                           type: string
  *                           nullable: true
- *                           description: Scoped path to the frame file pinned as the Pod banner.
+ *                           description: Scoped path to the frame pinned as the Pod banner.
  *                         frameTabs:
  *                           type: array
- *                           description: Frames promoted as custom Pod tabs.
+ *                           description: Previewable Pod files promoted as custom nav tabs. Field name is historical.
  *                           items:
  *                             type: object
  *                             properties:
@@ -175,7 +175,7 @@ const app = workspaceApp();
  *                                 type: string
  *                         tabsOrder:
  *                           type: array
- *                           description: Interleaved system tab ids and frame paths before Settings.
+ *                           description: Interleaved system tab ids and file-tab paths before Settings.
  *                           items:
  *                             type: string
  *       401:

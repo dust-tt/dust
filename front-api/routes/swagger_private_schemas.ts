@@ -1141,10 +1141,10 @@
  *             pinnedFramePath:
  *               type: string
  *               nullable: true
- *               description: Scoped path to the frame file pinned as the Pod banner (e.g. project/banner.html).
+ *               description: Scoped path to the frame pinned as the Pod banner (e.g. pod-{spaceId}/banner.tsx).
  *             frameTabs:
  *               type: array
- *               description: Frames promoted as custom Pod tabs (shared for all members).
+ *               description: Previewable Pod files promoted as custom nav tabs (shared for all members). Field name is historical.
  *               items:
  *                 type: object
  *                 required:
@@ -1154,7 +1154,7 @@
  *                 properties:
  *                   path:
  *                     type: string
- *                     description: Canonical scoped path to the frame file in the Pod filesystem.
+ *                     description: Canonical scoped path to the file in the Pod filesystem.
  *                   title:
  *                     type: string
  *                     description: Display title for the tab.
@@ -1163,7 +1163,7 @@
  *                     description: Action icon name (e.g. ActionDashboardIcon).
  *             tabsOrder:
  *               type: array
- *               description: Interleaved system tab ids and frame paths before Settings.
+ *               description: Interleaved system tab ids and file-tab paths before Settings.
  *               items:
  *                 type: string
  *     PrivateDataSourceView:

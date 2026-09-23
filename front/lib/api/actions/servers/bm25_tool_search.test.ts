@@ -1116,6 +1116,14 @@ const QUERIES: LabeledQuery[] = [
     expected: "pod_manager.edit_information",
     maxRank: 2,
   },
+  {
+    query: "add this markdown file as a custom tab in the pod",
+    expected: "pod_manager.set_file_tabs",
+  },
+  {
+    query: "clear the pod file tabs from the navigation",
+    expected: "pod_manager.set_file_tabs",
+  },
 
   // --- val_town ---
   {

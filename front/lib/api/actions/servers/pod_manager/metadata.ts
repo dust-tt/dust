@@ -11,6 +11,10 @@ import {
 } from "@app/lib/api/actions/servers/pod_manager/types";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { SCOPED_PREFIX_POD } from "@app/types/file_system";
+import {
+  MAX_POD_FILE_TAB_TITLE_LENGTH,
+  MAX_POD_FILE_TABS,
+} from "@app/types/pod_file_tab";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
 
@@ -20,6 +24,7 @@ export const LIST_MEMBERS_TOOL_NAME = "list_members" as const;
 export const SEMANTIC_SEARCH_TOOL_NAME = "semantic_search" as const;
 export const EDIT_INFORMATION_TOOL_NAME = "edit_information" as const;
 export const SET_PINNED_FRAME_TOOL_NAME = "set_pinned_frame" as const;
+export const SET_FILE_TABS_TOOL_NAME = "set_file_tabs" as const;
 export const MOVE_CONVERSATION_TOOL_NAME = "move_conversation" as const;
 export const SET_DEFAULT_AGENT_TOOL_NAME = "set_default_agent" as const;
 
@@ -145,6 +150,67 @@ export const POD_MANAGER_TOOLS_METADATA = [
     freeUsage: true,
   },
   {
+    name: SET_FILE_TABS_TOOL_NAME,
+    description:
+      "Set the Pod's custom file tabs (nav tabs for all members). Replaces the full list — " +
+      "pass the desired tabs after reading current ones via get_information. " +
+      `At most ${MAX_POD_FILE_TABS} tabs. Any previewable Pod file can be a tab (frames, markdown, PDFs, images, etc.). ` +
+      "Pass an empty array to clear all custom tabs. Optional tabsOrder interleaves system tab ids " +
+      "(`conversations`, `files`, `tasks`) with file-tab paths; Settings stays last and is never included.",
+    schema: {
+      fileTabs: z
+        .array(
+          z.object({
+            path: z
+              .string()
+              .min(1)
+              .describe(
+                `Scoped path to a Pod file (e.g. ${SCOPED_PREFIX_POD}<id>/notes.md).`
+              ),
+            title: z
+              .string()
+              .min(1)
+              .max(MAX_POD_FILE_TAB_TITLE_LENGTH)
+              .optional()
+              .describe(
+                "Display title for the tab. Defaults to the file basename when omitted."
+              ),
+            icon: z
+              .string()
+              .optional()
+              .describe(
+                "Action icon name (e.g. ActionDocumentIcon, ActionDashboardIcon). Defaults to ActionDocumentIcon."
+              ),
+          })
+        )
+        .max(MAX_POD_FILE_TABS)
+        .describe(
+          "Desired custom file tabs. Replaces the existing list; pass [] to clear."
+        ),
+      tabsOrder: z
+        .array(z.string().min(1))
+        .optional()
+        .describe(
+          "Optional nav order before Settings: system tab ids (`conversations`, `files`, `tasks`) " +
+            "and/or file-tab paths. Missing entries are appended; unknown entries are dropped."
+        ),
+      dustPod: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
+      ]
+        .optional()
+        .describe(
+          "Optional Pod to update, will fallback to the conversation's Pod."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Updating file tabs",
+      done: "Update file tabs",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
     name: SET_DEFAULT_AGENT_TOOL_NAME,
     description:
       "Set or clear the Pod default agent: the agent that handles new conversations started in this Pod when no agent is picked explicitly. " +
@@ -207,9 +273,9 @@ export const POD_MANAGER_TOOLS_METADATA = [
     name: "get_information",
     description:
       "Get metadata about the Pod: URL, title, description, access, pinned frame, " +
-      "and linked Company Data content-node references attached to the " +
-      "Pod context. This returns metadata only, not document bodies or " +
-      "transcript bodies. Scoped path operations live under " +
+      "custom file tabs (and their nav order), and linked Company Data content-node " +
+      "references attached to the Pod context. This returns metadata only, not " +
+      "document bodies or transcript bodies. Scoped path operations live under " +
       `\`${SCOPED_PREFIX_POD}<id>/<rel>\` paths in the ` +
       `\`${FILES_SERVER_NAME}\` MCP server.`,
     schema: {
