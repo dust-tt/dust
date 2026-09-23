@@ -542,14 +542,64 @@ describe("search-backed Manage Skills", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows loading and a retryable error without falling back to the old list", async () => {
+  it("keeps the current table visible and busy while a new search loads", async () => {
+    const { skill, search, fetcherWithBody, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    const table = screen.getByRole("table");
+
+    const pending = Promise.withResolvers<SearchSkillsResponseBody>();
+    search.mockReturnValueOnce(pending.promise);
+    await userEvent.type(screen.getByLabelText("Search skills"), "report");
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        expect.objectContaining({ query: "report" }),
+        "POST",
+      ])
+    );
+
+    expect(screen.getByRole("table")).toBe(table);
+    expect(table.querySelector("tbody")).toHaveAttribute("aria-busy", "true");
+    expect(
+      screen.getByRole("button", { name: /Weekly report/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("status", { name: "Loading skills" })
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      pending.resolve({
+        skills: [{ ...skill, name: "New report" }],
+        hasMore: false,
+        nextCursor: null,
+      });
+    });
+    await screen.findByRole("button", { name: /New report/ });
+    expect(screen.getByRole("table")).toBe(table);
+    expect(table.querySelector("tbody")).not.toHaveAttribute("aria-busy");
+    expect(
+      screen.queryByRole("button", { name: /Weekly report/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a table skeleton and a retryable error without falling back to the old list", async () => {
     const { search, fetcher, mount } = await setup();
     const pending = Promise.withResolvers<SearchSkillsResponseBody>();
     search.mockReturnValueOnce(pending.promise);
     mount();
+    const loading = screen.getByRole("status", { name: "Loading skills" });
+    expect(within(loading).getByRole("table")).toHaveAttribute(
+      "aria-busy",
+      "true"
+    );
     expect(
-      screen.getByRole("status", { name: "Loading skills" })
+      within(loading).getByRole("columnheader", { name: "Name" })
     ).toBeInTheDocument();
+    expect(
+      within(loading).getByRole("columnheader", { name: "Usage" })
+    ).toBeInTheDocument();
+    expect(screen.queryByText("No skills to show.")).not.toBeInTheDocument();
     await act(async () => pending.reject(new Error("Unavailable")));
     await screen.findByRole("alert");
     search.mockResolvedValue({

@@ -4,7 +4,6 @@ import { useSkillMenuItems } from "@app/hooks/useSkillMenuItems";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface SkillSearchActionsMenuProps {
@@ -32,14 +31,7 @@ export function SkillSearchActionsMenu({
   });
 
   const statusItems: MenuItem[] = [];
-  if (isSkillLoading) {
-    statusItems.push({
-      kind: "item",
-      label: "Loading actions…",
-      icon: () => <Spinner size="xs" />,
-      disabled: true,
-    });
-  } else if (isSkillError) {
+  if (isSkillError) {
     statusItems.push({
       kind: "item",
       label: "Could not load actions. Retry",
