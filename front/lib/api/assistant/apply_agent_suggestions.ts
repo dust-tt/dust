@@ -252,12 +252,6 @@ function mergeFieldEdits(
   };
 }
 
-/**
- * @cc [owner:matteotrab,label:product] instructions-accumulate-other-fields-overwrite
- * `name`, `model`, and `description` changes are merged with last-suggestion-wins semantics, but
- * every `instructions` change in the batch MUST be kept as they are block-targeted and
- * independent of one another rather than replacing each other.
- */
 function mergeAgentChanges(changes: AgentChange[]): AgentBatchChanges {
   return changes.reduce<AgentBatchChanges>(
     (merged, next) => ({
@@ -309,9 +303,8 @@ function resolveInstructionsEdits(
 
 /**
  * Carries the agent's current model over untouched when no suggestion changes it. Model
- * availability and reasoning effort support are re-validated against live state, mirroring what
- * `suggest_agent_model_change` checked when the suggestion was created; the agent's own
- * temperature and response format are carried over regardless.
+ * availability and reasoning effort support are re-validated against live state, the
+ * agent's own temperature and response format are carried over regardless.
  */
 async function resolveModelEdit(
   auth: Authenticator,
