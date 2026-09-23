@@ -895,7 +895,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_synced_queries"
   | "salesforce_tool"
   | "self_created_slack_app_connector_rollout"
-  | "servicenow_tool"
   | "shopify_tool"
   | "show_debug_tools"
   | "simulated_failure_model_feature"
