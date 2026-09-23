@@ -57,7 +57,7 @@ function RecapCard({
       actions={
         <div className="flex w-full items-center justify-between gap-2 pl-11">
           <Button
-            variant="ghost"
+            variant="ghost-secondary"
             size="sm"
             label="Reject all"
             onClick={onRejectAll}
@@ -203,7 +203,7 @@ function StepThroughDemo() {
         actions={
           <div className="flex w-full items-center justify-between gap-2 pl-11">
             <Button
-              variant="ghost"
+              variant="ghost-secondary"
               size="sm"
               label="Accept remaining"
               onClick={() => setAll("accepted")}
