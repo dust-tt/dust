@@ -1,6 +1,5 @@
 import { DiscoverCatalog } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { scrollToAgentInputHeader } from "@app/components/assistant/conversation/scrollToAgentInputHeader";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -26,6 +25,7 @@ const DISCOVER_SECTIONS = [
 interface DiscoverContainerProps {
   onAgentConfigurationClick: (agent: LightAgentConfigurationType) => void;
   onSkillClick: (skill: PendingSkill) => void;
+  onFiltersChange: () => void;
   owner: WorkspaceType;
 }
 
@@ -33,7 +33,7 @@ export const DiscoverContainer = forwardRef<
   HTMLDivElement,
   DiscoverContainerProps
 >(function DiscoverContainer(
-  { onAgentConfigurationClick, onSkillClick, owner },
+  { onAgentConfigurationClick, onSkillClick, onFiltersChange, owner },
   ref
 ) {
   const [tab, setTab] = useState<DiscoverTab>("Discover");
@@ -54,7 +54,10 @@ export const DiscoverContainer = forwardRef<
                   name="discover-search"
                   placeholder="Search for agents or skills"
                   value={search}
-                  onChange={setSearch}
+                  onChange={(value) => {
+                    setSearch(value);
+                    onFiltersChange();
+                  }}
                 />
               </div>
             )}
@@ -101,14 +104,10 @@ export const DiscoverContainer = forwardRef<
           <DiscoverCatalog
             owner={owner}
             search={search}
-            onAgentClick={async (agent) => {
-              await scrollToAgentInputHeader();
-              onAgentConfigurationClick(agent);
-            }}
-            onSkillClick={async (skill) => {
-              await scrollToAgentInputHeader();
-              onSkillClick(skill);
-            }}
+            onClearSearch={() => setSearch("")}
+            onAgentClick={onAgentConfigurationClick}
+            onSkillClick={onSkillClick}
+            onFiltersChange={onFiltersChange}
           />
         </TabsContent>
       </Tabs>

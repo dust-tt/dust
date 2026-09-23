@@ -10,7 +10,6 @@ import { DiscoverContainer } from "@app/components/assistant/conversation/discov
 import { useDiscoverScroll } from "@app/components/assistant/conversation/discover/useDiscoverScroll";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { AGENT_INPUT_HEADER_ID } from "@app/components/assistant/conversation/scrollToAgentInputHeader";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useConversations } from "@app/hooks/conversations";
@@ -331,8 +330,14 @@ export function ConversationContainerVirtuoso({
   const { startConversationRef } = useWelcomeTourGuide();
   const isMobile = useIsMobile();
 
-  const { discoverRef, fillProgress, goToDiscover, scrollerRef } =
-    useDiscoverScroll({ isFillEnabled: isDiscoveryHomepage && !isMobile });
+  const {
+    alignDiscover,
+    discoverRef,
+    fillProgress,
+    goToDiscover,
+    goToHome,
+    scrollerRef,
+  } = useDiscoverScroll({ isFillEnabled: isDiscoveryHomepage && !isMobile });
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.
@@ -341,7 +346,7 @@ export function ConversationContainerVirtuoso({
   const homeHero = (
     <>
       <div
-        id={AGENT_INPUT_HEADER_ID}
+        id="agent-input-header"
         className={classNames(
           "flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4",
           isDiscoveryHomepage ? "" : "md:min-h-[36vh]"
@@ -460,10 +465,15 @@ export function ConversationContainerVirtuoso({
           {isDiscoveryHomepage ? (
             <DiscoverContainer
               ref={discoverRef}
-              onAgentConfigurationClick={(agent) => {
+              onAgentConfigurationClick={async (agent) => {
+                await goToHome();
                 setSelectedSingleAgent(toRichAgentMentionType(agent));
               }}
-              onSkillClick={setPendingSkill}
+              onFiltersChange={alignDiscover}
+              onSkillClick={async (skill) => {
+                await goToHome();
+                setPendingSkill(skill);
+              }}
               owner={owner}
             />
           ) : (

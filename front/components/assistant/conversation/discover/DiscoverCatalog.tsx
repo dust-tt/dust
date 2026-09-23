@@ -9,6 +9,7 @@ import {
 } from "@app/lib/utils";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -40,6 +41,18 @@ const CATALOG_VIEWS: { id: CatalogView; label: string }[] = [
 ];
 
 type CatalogKind = "all" | CatalogItem["kind"];
+
+interface CatalogFilters {
+  view: CatalogView;
+  kind: CatalogKind;
+  tagId: string | null;
+}
+
+const DEFAULT_FILTERS: CatalogFilters = {
+  view: "all",
+  kind: "all",
+  tagId: null,
+};
 
 const CATALOG_KINDS: { id: CatalogKind; label: string }[] = [
   { id: "all", label: "Agents & Skills" },
@@ -99,25 +112,33 @@ function formatAuthors(authors: readonly string[]): string {
     return authors[0];
   }
   const others = authors.length - 1;
-  return `${authors[0]} and ${others} other${others > 1 ? "s" : ""}`;
+  return `${authors[0]} and ${others} other${pluralize(others)}`;
 }
 
 interface DiscoverCatalogProps {
   owner: WorkspaceType;
   search: string;
+  onClearSearch: () => void;
   onAgentClick: (agent: LightAgentConfigurationType) => void;
   onSkillClick: (skill: DiscoverSkill) => void;
+  onFiltersChange: () => void;
 }
 
 export function DiscoverCatalog({
   owner,
   search,
+  onClearSearch,
   onAgentClick,
   onSkillClick,
+  onFiltersChange,
 }: DiscoverCatalogProps) {
-  const [view, setView] = useState<CatalogView>("all");
-  const [kind, setKind] = useState<CatalogKind>("all");
-  const [tagId, setTagId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<CatalogFilters>(DEFAULT_FILTERS);
+  const { view, kind, tagId } = filters;
+
+  const updateFilters = (update: Partial<CatalogFilters>) => {
+    setFilters((current) => ({ ...current, ...update }));
+    onFiltersChange();
+  };
 
   const { agentConfigurations, isLoading: isAgentsLoading } =
     useUnifiedAgentConfigurations({ workspaceId: owner.sId });
@@ -140,54 +161,63 @@ export function DiscoverCatalog({
     [activeAgents]
   );
 
-  const items = useMemo(() => {
-    const needle = search.trim().toLowerCase().replace(/^@/, "");
-    const all: CatalogItem[] = [
-      ...activeAgents.map((agent) => ({ kind: "agent" as const, agent })),
-      ...skillsWithRelations.map((skill) => ({
-        kind: "skill" as const,
-        skill,
+  const entries = useMemo(
+    () =>
+      [
+        ...activeAgents.map((agent) => ({ kind: "agent" as const, agent })),
+        ...skillsWithRelations.map((skill) => ({
+          kind: "skill" as const,
+          skill,
+        })),
+      ].map((item: CatalogItem) => ({
+        item,
+        searchString: getItemSearchString(item),
+        sortName: getItemName(item).toLowerCase(),
       })),
-    ];
+    [activeAgents, skillsWithRelations]
+  );
 
-    const filtered = all.filter(
-      (item) =>
-        (kind === "all" || item.kind === kind) &&
-        (tagId === null ||
-          (item.kind === "agent" &&
-            item.agent.tags.some((t) => t.sId === tagId))) &&
-        (view !== "favorites" || isFavorite(item)) &&
-        (view !== "mine" || isMine(item)) &&
-        (!needle || subFilter(needle, getItemSearchString(item)))
-    );
+  const needle = search.trim().toLowerCase().replace(/^@/, "");
 
-    return filtered.sort(
-      (a, b) =>
-        (needle
-          ? compareForFuzzySort(
-              needle,
-              getItemSearchString(a),
-              getItemSearchString(b)
-            )
-          : 0) ||
-        (view === "popular"
-          ? getItemUsageCount(b) - getItemUsageCount(a)
-          : 0) ||
-        getItemName(a).toLowerCase().localeCompare(getItemName(b).toLowerCase())
-    );
-  }, [activeAgents, skillsWithRelations, kind, tagId, view, search]);
+  const items = useMemo(
+    () =>
+      entries
+        .filter(
+          ({ item, searchString }) =>
+            (kind === "all" || item.kind === kind) &&
+            (tagId === null ||
+              (item.kind === "agent" &&
+                item.agent.tags.some((t) => t.sId === tagId))) &&
+            (view !== "favorites" || isFavorite(item)) &&
+            (view !== "mine" || isMine(item)) &&
+            (!needle || subFilter(needle, searchString))
+        )
+        .sort(
+          (a, b) =>
+            (needle
+              ? compareForFuzzySort(needle, a.searchString, b.searchString)
+              : 0) ||
+            (view === "popular"
+              ? getItemUsageCount(b.item) - getItemUsageCount(a.item)
+              : 0) ||
+            a.sortName.localeCompare(b.sortName)
+        )
+        .map(({ item }) => item),
+    [entries, kind, tagId, view, needle]
+  );
 
-  const hasActiveFilters = view !== "all" || kind !== "all" || tagId !== null;
+  const hasActiveFilters =
+    view !== "all" || kind !== "all" || tagId !== null || needle !== "";
 
   const clearFilters = () => {
-    setView("all");
-    setKind("all");
-    setTagId(null);
+    updateFilters(DEFAULT_FILTERS);
+    onClearSearch();
   };
 
-  const isLoading =
+  const isInitialLoading =
     (isAgentsLoading && activeAgents.length === 0) ||
     isSkillsWithRelationsLoading;
+  const isRefreshing = isAgentsLoading && !isInitialLoading;
 
   return (
     <div className="grid grid-cols-1 gap-10 md:grid-cols-[12rem_1fr]">
@@ -201,7 +231,7 @@ export function DiscoverCatalog({
               key={v.id}
               label={v.label}
               selected={view === v.id}
-              onClick={() => setView(v.id)}
+              onClick={() => updateFilters({ view: v.id })}
             />
           ))}
         </NavigationList>
@@ -211,12 +241,13 @@ export function DiscoverCatalog({
               key={k.id}
               label={k.label}
               selected={kind === k.id}
-              onClick={() => {
-                setKind(k.id);
-                if (k.id === "skill") {
-                  setTagId(null);
-                }
-              }}
+              onClick={() =>
+                updateFilters(
+                  k.id === "skill"
+                    ? { kind: k.id, tagId: null }
+                    : { kind: k.id }
+                )
+              }
             />
           ))}
         </NavigationList>
@@ -227,14 +258,21 @@ export function DiscoverCatalog({
                 key={t.sId}
                 label={capitalizeWords(t.name)}
                 selected={tagId === t.sId}
-                onClick={() => setTagId(tagId === t.sId ? null : t.sId)}
+                onClick={() =>
+                  updateFilters({ tagId: tagId === t.sId ? null : t.sId })
+                }
               />
             ))}
           </NavigationList>
         )}
       </nav>
-      <section className="flex min-w-0 flex-col">
-        {isLoading ? (
+      <section className="relative flex min-w-0 flex-col">
+        {isRefreshing && (
+          <div className="absolute right-0 top-0">
+            <Spinner size="xs" />
+          </div>
+        )}
+        {isInitialLoading ? (
           <div className="flex justify-center py-6">
             <Spinner />
           </div>

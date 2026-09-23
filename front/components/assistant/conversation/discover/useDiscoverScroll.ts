@@ -34,6 +34,24 @@ function isOverScrollableRegion(
   return false;
 }
 
+function onScrollSettled(
+  target: HTMLElement | Window,
+  callback: () => void
+): () => void {
+  let fallbackTimer = 0;
+  const cancel = () => {
+    window.clearTimeout(fallbackTimer);
+    target.removeEventListener("scrollend", land);
+  };
+  const land = () => {
+    cancel();
+    callback();
+  };
+  fallbackTimer = window.setTimeout(land, TRANSITION_FALLBACK_MS);
+  target.addEventListener("scrollend", land);
+  return cancel;
+}
+
 export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
   // State rather than a ref: the scroller comes and goes with the new-conversation route,
   // and the listeners below have to rebind to whichever node is on screen.
@@ -75,23 +93,50 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
     scroller?.style.removeProperty("overflow-y");
     discoverRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-    let fallbackTimer = 0;
-    const endTransition = () => {
-      window.clearTimeout(fallbackTimer);
-      scroller?.removeEventListener("scrollend", land);
+    const cancel = onScrollSettled(scroller ?? window, () => {
       endTransitionRef.current = null;
-    };
-    const land = () => {
-      endTransition();
       setStage("discover");
       fillRef.current = 0;
       setFillProgress(0);
+    });
+    endTransitionRef.current = () => {
+      cancel();
+      endTransitionRef.current = null;
     };
-
-    fallbackTimer = window.setTimeout(land, TRANSITION_FALLBACK_MS);
-    scroller?.addEventListener("scrollend", land);
-    endTransitionRef.current = endTransition;
   }, [scroller]);
+
+  const alignDiscover = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      const discover = discoverRef.current;
+      if (!scroller || !discover) {
+        return;
+      }
+      const offset =
+        discover.getBoundingClientRect().top -
+        scroller.getBoundingClientRect().top;
+      if (Math.abs(offset) >= 1) {
+        scroller.scrollTo({
+          top: scroller.scrollTop + offset,
+          behavior: "smooth",
+        });
+      }
+    });
+  }, [scroller]);
+
+  const goToHome = useCallback(
+    () =>
+      new Promise<void>((resolve) => {
+        const target = scroller ?? document.scrollingElement;
+        if (!target || target.scrollTop <= 0) {
+          resolve();
+          return;
+        }
+
+        onScrollSettled(scroller ?? window, resolve);
+        target.scrollTo({ top: 0, behavior: "smooth" });
+      }),
+    [scroller]
+  );
 
   useEffect(() => () => endTransitionRef.current?.(), []);
 
@@ -187,5 +232,12 @@ export function useDiscoverScroll({ isFillEnabled }: UseDiscoverScrollParams) {
     return () => scroller.removeEventListener("scroll", handleScroll);
   }, [isFillEnabled, scroller, stage]);
 
-  return { discoverRef, fillProgress, goToDiscover, scrollerRef: setScroller };
+  return {
+    alignDiscover,
+    discoverRef,
+    fillProgress,
+    goToDiscover,
+    goToHome,
+    scrollerRef: setScroller,
+  };
 }
