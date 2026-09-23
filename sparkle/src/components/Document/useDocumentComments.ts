@@ -1,65 +1,19 @@
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type DocumentCommentDraft,
   documentCommentsPluginKey,
+  getCommentedTexts,
   getDocumentComments,
+  scrollToCommentHighlight,
 } from "./DocumentComments";
 import type { DocumentComment, DocumentCommentAuthor } from "./types";
 
-const NO_COMMENTS: DocumentComment[] = [];
-
-export const createCommentId = (): string =>
+const createCommentId = (): string =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-
-export const escapeAttributeValue = (value: string) =>
-  value.replace(/["\\]/g, "\\$&");
-
-const prefersReducedMotion = () =>
-  typeof window !== "undefined" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-export const scrollToCommentHighlight = (editor: Editor, id: string) => {
-  editor.view.dom
-    .querySelector<HTMLElement>(
-      `[data-comment-highlight="${escapeAttributeValue(id)}"]`
-    )
-    ?.scrollIntoView({
-      block: "center",
-      behavior: prefersReducedMotion() ? "instant" : "smooth",
-    });
-};
-
-/** Increments after each document change and when the editor's DOM resizes. */
-export const useEditorLayoutVersion = (editor: Editor | null) => {
-  const [version, setVersion] = useState(0);
-
-  useEffect(() => {
-    if (!editor) {
-      return;
-    }
-
-    const bump = () => setVersion((value) => value + 1);
-    const observer =
-      typeof ResizeObserver !== "undefined" ? new ResizeObserver(bump) : null;
-
-    // Selection-only transactions follow every render, so only document changes count.
-    editor.on("update", bump);
-    observer?.observe(editor.view.dom);
-    window.addEventListener("resize", bump);
-
-    return () => {
-      editor.off("update", bump);
-      observer?.disconnect();
-      window.removeEventListener("resize", bump);
-    };
-  }, [editor]);
-
-  return version;
-};
 
 interface UseDocumentCommentsProps {
   editor: Editor | null;
@@ -70,21 +24,38 @@ interface UseDocumentCommentsProps {
 
 interface EditorCommentsState {
   comments: DocumentComment[];
+  /** Commented text by comment id, in document order. */
+  quotes: Map<string, string>;
   activeId: string | null;
   draft: DocumentCommentDraft | null;
 }
 
 const EMPTY_STATE: EditorCommentsState = {
-  comments: NO_COMMENTS,
+  comments: [],
+  quotes: new Map(),
   activeId: null,
   draft: null,
 };
+
+/** Where the panel should move focus once it has rendered. */
+export interface PanelFocusRequest {
+  /** Thread to focus, or null for the panel heading. */
+  threadId: string | null;
+  nonce: number;
+}
 
 /**
  * @cc [owner:flvndvd,label:product] document-comment-authoring
  * Starting, submitting, replying to, resolving and deleting comments MUST require canComment.
  * A pending draft MUST be cancelled when commenting becomes unavailable. New comments and
  * replies MUST carry the current author and creation time.
+ */
+/**
+ * @cc [owner:flvndvd,label:react] document-comment-navigation
+ * Selecting a thread MUST make it active and scroll its highlight into view. Revealing a
+ * comment from a highlight or marker MUST open the panel and request focus on that thread.
+ * Opening the panel from its toggle MUST request focus on the panel. Closing the panel while
+ * focus is inside it MUST return focus to the toggle.
  */
 export const useDocumentComments = ({
   editor,
@@ -101,21 +72,24 @@ export const useDocumentComments = ({
         const pluginState = documentCommentsPluginKey.getState(editor.state);
         return {
           comments: getDocumentComments(editor.state.doc),
+          quotes: getCommentedTexts(editor.state.doc),
           activeId: pluginState?.activeId ?? null,
           draft: pluginState?.draft ?? null,
         };
       },
     }) ?? EMPTY_STATE;
   const [panelOpen, setPanelOpen] = useState(false);
+  const [focusRequest, setFocusRequest] = useState<PanelFocusRequest | null>(
+    null
+  );
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
   const canWrite = canComment && author !== undefined;
+  // Stable identity matters: the markers re-measure the DOM whenever this array changes.
   const unresolved = useMemo(
     () => state.comments.filter((comment) => !comment.resolved),
     [state.comments]
   );
-
-  const cancelDraft = useCallback(() => {
-    editor?.chain().cancelCommentDraft().focus().run();
-  }, [editor]);
 
   useEffect(() => {
     if (!canWrite && state.draft && editor) {
@@ -123,50 +97,73 @@ export const useDocumentComments = ({
     }
   }, [canWrite, state.draft, editor]);
 
-  const select = useCallback(
-    (id: string | null) => {
-      editor?.commands.setActiveComment(id);
-    },
-    [editor]
-  );
+  const requestFocus = (threadId: string | null) =>
+    setFocusRequest((current) => ({
+      threadId,
+      nonce: (current?.nonce ?? 0) + 1,
+    }));
 
-  const reveal = useCallback(
-    (id: string) => {
+  const select = (id: string | null) => {
+    editor?.commands.setActiveComment(id);
+  };
+
+  const now = () => new Date().toISOString();
+
+  return {
+    comments: state.comments,
+    unresolved,
+    quotes: state.quotes,
+    activeId: state.activeId,
+    draft: canWrite ? state.draft : null,
+    canWrite,
+    author,
+    panelOpen,
+    focusRequest,
+    toggleRef,
+    panelRef,
+    select,
+    closePanel: () => {
+      if (panelRef.current?.contains(document.activeElement)) {
+        toggleRef.current?.focus();
+      }
+      setPanelOpen(false);
+    },
+    togglePanel: () => {
+      if (!panelOpen) {
+        requestFocus(null);
+      }
+      setPanelOpen((open) => !open);
+    },
+    /** Opens the panel on a comment, from a highlight or marker. */
+    reveal: (id: string) => {
       select(id);
       setPanelOpen(true);
+      requestFocus(id);
     },
-    [select]
-  );
-
-  const jumpTo = useCallback(
-    (id: string) => {
+    /** Activates a thread from the panel and scrolls to its text. */
+    jumpTo: (id: string) => {
       select(id);
       if (editor) {
         scrollToCommentHighlight(editor, id);
       }
     },
-    [editor, select]
-  );
-
-  const startDraft = useCallback(
-    () => (canWrite && editor ? editor.commands.startCommentDraft() : false),
-    [canWrite, editor]
-  );
-
-  const submitDraft = useCallback(
-    (body: string) => {
+    startDraft: () =>
+      canWrite && editor ? editor.commands.startCommentDraft() : false,
+    cancelDraft: () => {
+      editor?.chain().cancelCommentDraft().focus().run();
+    },
+    submitDraft: (body: string) => {
       const draft = state.draft;
       if (!canWrite || !editor || !author || !draft) {
         return;
       }
-      const id = createCommentId();
       editor
         .chain()
         .addComment({
-          id,
+          id: createCommentId(),
           body,
           author,
-          createdAt: new Date().toISOString(),
+          createdAt: now(),
           resolved: false,
           replies: [],
         })
@@ -175,61 +172,29 @@ export const useDocumentComments = ({
         .run();
       setPanelOpen(true);
     },
-    [author, canWrite, editor, state.draft]
-  );
-
-  const reply = useCallback(
-    (id: string, body: string) => {
-      if (!canWrite || !editor || !author) {
-        return;
+    reply: (id: string, body: string) => {
+      if (canWrite && editor && author) {
+        editor.commands.replyToComment(id, {
+          id: createCommentId(),
+          body,
+          author,
+          createdAt: now(),
+        });
       }
-      editor.commands.replyToComment(id, {
-        id: createCommentId(),
-        body,
-        author,
-        createdAt: new Date().toISOString(),
-      });
     },
-    [author, canWrite, editor]
-  );
-
-  const setResolved = useCallback(
-    (id: string, resolved: boolean) => {
+    /** Resolves or reopens, then focuses the given thread or the panel heading. */
+    setResolved: (id: string, resolved: boolean, focusNext: string | null) => {
       if (canWrite && editor) {
         editor.commands.setCommentResolved(id, resolved);
+        requestFocus(focusNext);
       }
     },
-    [canWrite, editor]
-  );
-
-  const remove = useCallback(
-    (id: string) => {
+    remove: (id: string, focusNext: string | null) => {
       if (canWrite && editor) {
         editor.commands.deleteComment(id);
+        requestFocus(focusNext);
       }
     },
-    [canWrite, editor]
-  );
-
-  return {
-    comments: state.comments,
-    unresolved,
-    activeId: state.activeId,
-    draft: canWrite ? state.draft : null,
-    canWrite,
-    panelOpen,
-    openPanel: () => setPanelOpen(true),
-    closePanel: () => setPanelOpen(false),
-    togglePanel: () => setPanelOpen((open) => !open),
-    select,
-    reveal,
-    jumpTo,
-    startDraft,
-    cancelDraft,
-    submitDraft,
-    reply,
-    setResolved,
-    remove,
   };
 };
 

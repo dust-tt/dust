@@ -28,9 +28,8 @@ const TOOLBAR_BUTTON_CLASS = cn(
 
 /**
  * @cc [owner:flvndvd,label:product] document-comment-cta
- * The Comment action MUST appear in the selection toolbar, after a separator following the
- * formatting controls, only when onComment is provided. The toolbar MUST stay hidden while a
- * comment draft is pending.
+ * The Comment action MUST appear only when onComment is provided. The toolbar MUST stay
+ * hidden while a comment draft is pending.
  */
 export const DocumentSelectionToolbar = ({
   editor,

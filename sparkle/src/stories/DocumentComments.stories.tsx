@@ -2,6 +2,7 @@ import {
   Document,
   type DocumentComment,
   type DocumentCommentAuthor,
+  type DocumentProps,
   type DocumentSaveResult,
 } from "@sparkle/components/Document";
 import type { Meta, StoryObj } from "@storybook/react-vite";
@@ -125,6 +126,33 @@ const selectContents = (element: Element) => {
   element.ownerDocument.dispatchEvent(new Event("selectionchange"));
 };
 
+const selectFirstParagraph = (editor: HTMLElement) => {
+  const paragraph = editor.querySelector("p");
+  if (!paragraph) {
+    throw new Error("Expected a document paragraph");
+  }
+  selectContents(paragraph);
+};
+
+const findSelectionToolbar = (canvasElement: HTMLElement) =>
+  within(canvasElement.ownerDocument.body).findByRole("toolbar", {
+    name: "Format selection",
+  });
+
+const lastSavedDocument = (onSave: DocumentProps["onSave"]) =>
+  JSON.parse(
+    (onSave as ReturnType<typeof fn>).mock.lastCall?.[0] as string
+  ) as { attrs: { comments: DocumentComment[] } };
+
+const openPanel: Story["play"] = async ({ canvas }) => {
+  await userEvent.click(
+    await canvas.findByRole("button", { name: /Comments/ })
+  );
+  await expect(
+    await canvas.findByRole("complementary", { name: "Comments" })
+  ).toBeVisible();
+};
+
 const highlights = (editor: HTMLElement) =>
   Array.from(
     new Set(
@@ -157,8 +185,8 @@ export const BrowseComments: Story = {
     });
     await expect(within(panel).getAllByRole("article")).toHaveLength(2);
     await expect(
-      within(panel).getByRole("heading", { name: /Comments/ })
-    ).toHaveTextContent("Comments2");
+      within(panel).getByRole("heading", { name: "Comments, 2 unresolved" })
+    ).toHaveFocus();
     await expect(within(panel).getByText("Resolved (1)")).toBeVisible();
     await expect(
       within(panel).queryByText(/Typo: “regions”/)
@@ -174,16 +202,18 @@ export const BrowseComments: Story = {
     await expect(wording).toHaveTextContent("no regressions");
     await expect(wording).toHaveTextContent("Let’s soften this.");
     await expect(
-      canvasElement.querySelector('[aria-pressed="true"]')
+      canvasElement.querySelector('[aria-current="true"]')
     ).toBeNull();
 
     await userEvent.click(
-      within(wording).getByRole("button", { name: "Show commented text" })
+      within(wording).getByRole("button", {
+        name: "Commented text: no regressions",
+      })
     );
     await expect(wording).toHaveAttribute("aria-current", "true");
     await expect(
       canvas.getByRole("button", { name: "Show comment by Liam Ortiz" })
-    ).toHaveAttribute("aria-pressed", "true");
+    ).toHaveAttribute("aria-current", "true");
     await expect(
       within(wording).getByRole("textbox", { name: "Reply" })
     ).toBeVisible();
@@ -201,20 +231,13 @@ export const AddComment: Story = {
     const editor = await canvas.findByRole("textbox", {
       name: "Document content",
     });
-    const page = within(canvasElement.ownerDocument.body);
     await expect(
       canvas.queryByRole("button", { name: /Show comment by/ })
     ).not.toBeInTheDocument();
 
     await userEvent.click(editor);
-    const paragraph = editor.querySelector("p");
-    if (!paragraph) {
-      throw new Error("Expected a document paragraph");
-    }
-    selectContents(paragraph);
-    const toolbar = await page.findByRole("toolbar", {
-      name: "Format selection",
-    });
+    selectFirstParagraph(editor);
+    const toolbar = await findSelectionToolbar(canvasElement);
     await userEvent.click(
       within(toolbar).getByRole("button", { name: "Comment" })
     );
@@ -254,9 +277,7 @@ export const AddComment: Story = {
 
     await userEvent.keyboard("{Control>}s{/Control}");
     await waitFor(() => expect(args.onSave).toHaveBeenCalledTimes(1));
-    const saved = JSON.parse(
-      (args.onSave as ReturnType<typeof fn>).mock.calls[0][0] as string
-    );
+    const saved = lastSavedDocument(args.onSave);
     await expect(saved.attrs.comments).toHaveLength(1);
     await expect(saved.attrs.comments[0]).toMatchObject({
       body: "Could we make this\nshorter?",
@@ -282,20 +303,21 @@ export const CancelDraft: Story = {
       name: "Document content",
     });
     await userEvent.click(editor);
-    const paragraph = editor.querySelector("p");
-    if (!paragraph) {
-      throw new Error("Expected a document paragraph");
-    }
-    selectContents(paragraph);
+    selectFirstParagraph(editor);
     await userEvent.keyboard("{Control>}{Alt>}m{/Alt}{/Control}");
     const composer = await canvas.findByRole("dialog", { name: "New comment" });
     await userEvent.keyboard("Never posted");
+    // Escape works from any control in the composer, not only the field.
+    await userEvent.tab();
+    await expect(
+      within(composer).getByRole("button", { name: "Send" })
+    ).toHaveFocus();
     await userEvent.keyboard("{Escape}");
     await expect(composer).not.toBeInTheDocument();
     await expect(editor.querySelector("[data-comment-draft]")).toBeNull();
     await expect(editor).toHaveFocus();
 
-    selectContents(paragraph);
+    selectFirstParagraph(editor);
     await userEvent.keyboard("{Control>}{Alt>}m{/Alt}{/Control}");
     await canvas.findByRole("dialog", { name: "New comment" });
     await userEvent.click(canvasElement.ownerDocument.body);
@@ -329,21 +351,32 @@ export const ManageThreads: Story = {
     await expect(reach).toHaveTextContent("Adding the numbers");
 
     await userEvent.click(
-      within(reach).getByRole("button", { name: "Show commented text" })
+      within(reach).getByRole("button", { name: /^Commented text/ })
     );
-    await userEvent.type(
-      within(reach).getByRole("textbox", { name: "Reply" }),
-      "Target was 30%, so we are ahead.{Enter}"
+    const replyField = within(reach).getByRole("textbox", { name: "Reply" });
+    await userEvent.type(replyField, "A discarded{Shift>}{Enter}{/Shift}draft");
+    const grownHeight = replyField.getBoundingClientRect().height;
+    // Escape clears the reply and hands focus to the thread, without closing the panel.
+    await userEvent.keyboard("{Escape}");
+    await expect(replyField).toHaveValue("");
+    await expect(replyField.getBoundingClientRect().height).toBeLessThan(
+      grownHeight
     );
+    await expect(reach).toHaveFocus();
+    await expect(panel).toBeVisible();
+
+    await userEvent.type(replyField, "Target was 30%, so we are ahead.{Enter}");
     await expect(reach).toHaveTextContent("Target was 30%, so we are ahead.");
-    await expect(
-      within(reach).getByRole("textbox", { name: "Reply" })
-    ).toHaveValue("");
+    await expect(replyField).toHaveValue("");
 
     await userEvent.click(
       within(reach).getByRole("button", { name: "Resolve" })
     );
     await expect(highlights(editor)).toEqual(["wording"]);
+    // Focus moves to the neighbouring thread instead of falling off the page.
+    await expect(
+      within(panel).getByRole("article", { name: "Comment by Liam Ortiz" })
+    ).toHaveFocus();
     await expect(
       canvas.getAllByRole("button", { name: /^Show comment by/ })
     ).toHaveLength(1);
@@ -373,20 +406,22 @@ export const ManageThreads: Story = {
     );
     await expect(wording).not.toBeInTheDocument();
     await expect(highlights(editor)).toEqual(["reach"]);
+    // Resolving and reopening remounted the thread, so query it again.
     await expect(
-      editor.querySelector("[data-comment-id='wording']")
-    ).toBeNull();
+      within(panel)
+        .getAllByRole("article", { name: "Comment by Maya Chen" })
+        .find((thread) => thread.textContent?.includes("reached 40%"))
+    ).toHaveFocus();
 
     // Cmd/Ctrl+S saves from the editor, so leave the panel first.
     await userEvent.click(editor);
     await userEvent.keyboard("{Control>}s{/Control}");
     await waitFor(() => expect(args.onSave).toHaveBeenCalledTimes(1));
-    const saved = JSON.parse(
-      (args.onSave as ReturnType<typeof fn>).mock.calls[0][0] as string
-    );
-    await expect(
-      saved.attrs.comments.map((comment: DocumentComment) => comment.id)
-    ).toEqual(["reach", "typo"]);
+    const saved = lastSavedDocument(args.onSave);
+    await expect(saved.attrs.comments.map((comment) => comment.id)).toEqual([
+      "reach",
+      "typo",
+    ]);
     await expect(saved.attrs.comments[0].replies).toHaveLength(2);
     await expect(JSON.stringify(saved)).not.toContain("wording");
   },
@@ -506,6 +541,7 @@ export const ReadOnlyComments: Story = {
       name: "Comment by Maya Chen",
     });
     await expect(thread).toHaveAttribute("aria-current", "true");
+    await expect(thread).toHaveFocus();
     await expect(within(panel).queryByRole("textbox")).not.toBeInTheDocument();
     await expect(
       within(panel).queryByRole("button", {
@@ -520,6 +556,9 @@ export const ReadOnlyComments: Story = {
         canvas.queryByRole("complementary", { name: "Comments" })
       ).not.toBeInTheDocument()
     );
+    await expect(
+      canvas.getByRole("button", { name: "Comments, 2 unresolved" })
+    ).toHaveFocus();
   },
 };
 
@@ -531,15 +570,8 @@ export const WithoutAuthor: Story = {
       name: "Document content",
     });
     await userEvent.click(editor);
-    const paragraph = editor.querySelector("p");
-    if (!paragraph) {
-      throw new Error("Expected a document paragraph");
-    }
-    selectContents(paragraph);
-    const toolbar = await within(canvasElement.ownerDocument.body).findByRole(
-      "toolbar",
-      { name: "Format selection" }
-    );
+    selectFirstParagraph(editor);
+    const toolbar = await findSelectionToolbar(canvasElement);
     await expect(
       within(toolbar).queryByRole("button", { name: "Comment" })
     ).not.toBeInTheDocument();
@@ -566,10 +598,7 @@ export const MarkdownSaveFormat: Story = {
     });
     await userEvent.click(editor);
     selectContents(editor);
-    const toolbar = await within(canvasElement.ownerDocument.body).findByRole(
-      "toolbar",
-      { name: "Format selection" }
-    );
+    const toolbar = await findSelectionToolbar(canvasElement);
     await expect(
       within(toolbar).queryByRole("button", { name: "Comment" })
     ).not.toBeInTheDocument();
@@ -596,12 +625,33 @@ export const InvalidComments: Story = {
   },
 };
 
-/** @summary The panel open in the dark theme. */
+/** @summary The composer open under a selection, left for the accessibility check. */
+export const ComposerOpen: Story = {
+  args: {
+    initialContent: "Select these words to comment on them.",
+    contentType: "markdown",
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const editor = await canvas.findByRole("textbox", {
+      name: "Document content",
+    });
+    await userEvent.click(editor);
+    selectFirstParagraph(editor);
+    const toolbar = await findSelectionToolbar(canvasElement);
+    await userEvent.click(
+      within(toolbar).getByRole("button", { name: "Comment" })
+    );
+    await canvas.findByRole("dialog", { name: "New comment" });
+    await userEvent.keyboard("Left open for review.");
+  },
+};
+
+/** @summary The panel open on an active thread in the dark theme. */
 export const DarkCommentedDocument: Story = {
   globals: { theme: "dark" },
   play: async ({ canvas }) => {
     await userEvent.click(
-      await canvas.findByRole("button", { name: /Comments/ })
+      await canvas.findByRole("button", { name: "Show comment by Maya Chen" })
     );
     await expect(
       await canvas.findByRole("complementary", { name: "Comments" })
@@ -611,8 +661,7 @@ export const DarkCommentedDocument: Story = {
 
 /** @summary In a narrow container the panel overlays the text instead of pushing it. */
 export const NarrowCommentedDocument: Story = {
-  ...DarkCommentedDocument,
-  globals: { theme: "light" },
+  play: openPanel,
   decorators: [
     (Story) => (
       <div className="mx-auto max-w-120">

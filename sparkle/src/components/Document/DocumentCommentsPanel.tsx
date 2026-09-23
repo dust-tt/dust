@@ -14,15 +14,14 @@ import {
   XClose,
 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
-import type { Editor } from "@tiptap/core";
 import React, { type ComponentType, useEffect, useRef, useState } from "react";
 import { DocumentCommentInput } from "./DocumentCommentInput";
-import { getCommentedTexts } from "./DocumentComments";
 import type {
   DocumentComment,
   DocumentCommentAuthor,
   DocumentCommentReply,
 } from "./types";
+import type { DocumentCommentsController } from "./useDocumentComments";
 
 const SECOND_MS = 1_000;
 const MINUTE_MS = 60 * SECOND_MS;
@@ -112,12 +111,14 @@ const CommentByline = ({
   size: "xxs" | "3xs";
 }) => (
   <div className="flex min-w-0 flex-1 items-center gap-2">
-    <Avatar
-      size={size}
-      isRounded
-      name={author.name}
-      visual={author.avatarUrl ?? undefined}
-    />
+    <span aria-hidden="true">
+      <Avatar
+        size={size}
+        isRounded
+        name={author.name}
+        visual={author.avatarUrl ?? undefined}
+      />
+    </span>
     <span className="min-w-0 truncate text-sm font-medium">{author.name}</span>
     <time
       dateTime={createdAt}
@@ -132,9 +133,11 @@ const CommentByline = ({
 interface ReplyComposerProps {
   author: DocumentCommentAuthor | undefined;
   onReply: (body: string) => void;
+  /** Escape clears the field and hands focus back to the thread. */
+  onCancel: () => void;
 }
 
-const ReplyComposer = ({ author, onReply }: ReplyComposerProps) => {
+const ReplyComposer = ({ author, onReply, onCancel }: ReplyComposerProps) => {
   const [body, setBody] = useState("");
 
   return (
@@ -144,9 +147,13 @@ const ReplyComposer = ({ author, onReply }: ReplyComposerProps) => {
       author={author}
       value={body}
       onChange={setBody}
-      onSubmit={() => {
-        onReply(body.trim());
+      onSubmit={(trimmed) => {
+        onReply(trimmed);
         setBody("");
+      }}
+      onCancel={() => {
+        setBody("");
+        onCancel();
       }}
       className="-mb-1 border-t border-border pt-2"
     />
@@ -189,11 +196,14 @@ const CommentThread = ({
   return (
     <article
       ref={ref}
+      tabIndex={-1}
+      data-thread-id={comment.id}
       aria-label={`Comment by ${comment.author.name}`}
       aria-current={active ? "true" : undefined}
       onClick={onSelect}
       className={cn(
         "flex cursor-pointer flex-col gap-2.5 rounded-xl border border-border bg-background p-3 transition-colors motion-reduce:transition-none",
+        "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         active
           ? "border-golden-500/60 ring-1 ring-golden-500/40"
           : "hover:border-border-dark",
@@ -225,7 +235,6 @@ const CommentThread = ({
       </header>
       <button
         type="button"
-        aria-label="Show commented text"
         onClick={(event) => {
           event.stopPropagation();
           onSelect();
@@ -236,6 +245,7 @@ const CommentThread = ({
           comment.resolved && "line-through decoration-muted-foreground/60"
         )}
       >
+        <span className="sr-only">Commented text: </span>
         {quote || "The commented text was removed."}
       </button>
       <p className="text-sm whitespace-pre-wrap wrap-anywhere">
@@ -258,7 +268,11 @@ const CommentThread = ({
         </ul>
       )}
       {canWrite && active && !comment.resolved && (
-        <ReplyComposer author={author} onReply={onReply} />
+        <ReplyComposer
+          author={author}
+          onReply={onReply}
+          onCancel={() => ref.current?.focus()}
+        />
       )}
     </article>
   );
@@ -266,47 +280,50 @@ const CommentThread = ({
 
 interface DocumentCommentsPanelProps {
   id: string;
-  open: boolean;
-  onClose: () => void;
-  editor: Editor;
-  comments: DocumentComment[];
-  activeId: string | null;
-  canWrite: boolean;
-  author: DocumentCommentAuthor | undefined;
-  onSelect: (id: string) => void;
-  onReply: (id: string, body: string) => void;
-  onSetResolved: (id: string, resolved: boolean) => void;
-  onDelete: (id: string) => void;
+  comments: DocumentCommentsController;
   mountPortalContainer?: HTMLElement;
 }
+
+/** The thread to focus after removing one from its list: the next, else the previous. */
+const neighbourId = (list: DocumentComment[], id: string): string | null => {
+  const index = list.findIndex((comment) => comment.id === id);
+  return (list[index + 1] ?? list[index - 1])?.id ?? null;
+};
 
 /**
  * @cc [owner:flvndvd,label:react] document-comments-panel
  * The panel MUST list unresolved threads in document order, then resolved threads in a
- * collapsed group. Selecting a thread MUST make it active and scroll to its text. Reply
- * and moderation controls MUST render only when canWrite, and replies only on the active
- * unresolved thread. Opening or closing the panel MUST NOT change the document.
+ * collapsed group. Reply and moderation controls MUST render only when canWrite, and replies
+ * only on the active unresolved thread. Escape inside a reply field MUST clear it and return
+ * focus to its thread, not close the panel. After resolving, reopening or deleting a thread,
+ * focus MUST move to a neighbouring thread or to the panel heading. Opening or closing the
+ * panel MUST NOT change the document.
  */
 export const DocumentCommentsPanel = ({
   id,
-  open,
-  onClose,
-  editor,
   comments,
-  activeId,
-  canWrite,
-  author,
-  onSelect,
-  onReply,
-  onSetResolved,
-  onDelete,
   mountPortalContainer,
 }: DocumentCommentsPanelProps) => {
-  const quotes = getCommentedTexts(editor.state.doc);
+  const {
+    comments: threads,
+    quotes,
+    activeId,
+    canWrite,
+    author,
+    panelOpen,
+    focusRequest,
+    panelRef,
+    closePanel,
+    jumpTo,
+    reply,
+    setResolved,
+    remove,
+  } = comments;
+  const headingRef = useRef<HTMLHeadingElement>(null);
   const order = new Map(
     Array.from(quotes.keys()).map((commentId, index) => [commentId, index])
   );
-  const sorted = [...comments].sort(
+  const sorted = [...threads].sort(
     (a, b) =>
       (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
       (order.get(b.id) ?? Number.MAX_SAFE_INTEGER)
@@ -314,42 +331,72 @@ export const DocumentCommentsPanel = ({
   const unresolved = sorted.filter((comment) => !comment.resolved);
   const resolved = sorted.filter((comment) => comment.resolved);
 
-  const renderThread = (comment: DocumentComment) => (
-    <CommentThread
-      key={comment.id}
-      comment={comment}
-      quote={quotes.get(comment.id)}
-      active={comment.id === activeId}
-      canWrite={canWrite}
-      author={author}
-      onSelect={() => onSelect(comment.id)}
-      onReply={(body) => onReply(comment.id, body)}
-      onSetResolved={(value) => onSetResolved(comment.id, value)}
-      onDelete={() => onDelete(comment.id)}
-      mountPortalContainer={mountPortalContainer}
-    />
-  );
+  useEffect(() => {
+    if (!panelOpen || !focusRequest) {
+      return;
+    }
+    const thread = focusRequest.threadId
+      ? panelRef.current?.querySelector<HTMLElement>(
+          `[data-thread-id="${focusRequest.threadId.replace(/["\\]/g, "\\$&")}"]`
+        )
+      : null;
+    (thread ?? headingRef.current)?.focus();
+  }, [panelOpen, focusRequest, panelRef]);
+
+  const renderThread = (comment: DocumentComment) => {
+    const siblings = comment.resolved ? resolved : unresolved;
+    return (
+      <CommentThread
+        key={comment.id}
+        comment={comment}
+        quote={quotes.get(comment.id)}
+        active={comment.id === activeId}
+        canWrite={canWrite}
+        author={author}
+        onSelect={() => jumpTo(comment.id)}
+        onReply={(body) => reply(comment.id, body)}
+        onSetResolved={(value) =>
+          setResolved(comment.id, value, neighbourId(siblings, comment.id))
+        }
+        onDelete={() => remove(comment.id, neighbourId(siblings, comment.id))}
+        mountPortalContainer={mountPortalContainer}
+      />
+    );
+  };
 
   return (
     <aside
       id={id}
+      ref={panelRef}
       aria-label="Comments"
-      aria-hidden={!open}
-      data-state={open ? "open" : "closed"}
+      data-state={panelOpen ? "open" : "closed"}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.preventDefault();
-          onClose();
+          closePanel();
         }
       }}
       className={cn(
         "fixed inset-y-0 right-0 z-40 flex w-80 max-w-[calc(100%-2rem)] flex-col border-l border-border bg-background/95 font-sans text-foreground antialiased shadow-xl backdrop-blur-xl print:hidden",
-        "transition-[transform,visibility] duration-300 ease-out-quint motion-reduce:transition-none",
-        open ? "visible translate-x-0" : "invisible translate-x-full"
+        // Visibility flips at once on open, so focus can land inside during the slide,
+        // and only after the slide on close.
+        "[transition-property:transform,visibility] [transition-duration:300ms,0s] ease-out-quint motion-reduce:transition-none",
+        panelOpen
+          ? "visible translate-x-0 [transition-delay:0s]"
+          : "invisible translate-x-full [transition-delay:0s,300ms]"
       )}
     >
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-border pl-4 pr-2">
-        <h2 className="text-sm font-semibold">
+        <h2
+          ref={headingRef}
+          tabIndex={-1}
+          aria-label={
+            unresolved.length > 0
+              ? `Comments, ${unresolved.length} unresolved`
+              : "Comments"
+          }
+          className="rounded-md text-sm font-semibold focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+        >
           Comments
           {unresolved.length > 0 && (
             <span className="ml-1.5 font-normal text-muted-foreground tabular-nums">
@@ -360,21 +407,19 @@ export const DocumentCommentsPanel = ({
         <PanelIconButton
           label="Close comments"
           icon={XClose}
-          onClick={onClose}
+          onClick={closePanel}
           mountPortalContainer={mountPortalContainer}
         />
       </header>
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-3">
-        {comments.length === 0 && (
+        {threads.length === 0 && (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground">
             <Icon visual={MessageTextCircle01} size="md" />
             <p className="text-sm font-medium text-foreground">
               No comments yet
             </p>
             <p className="text-xs">
-              {canWrite
-                ? "Select some text and choose Comment to start a thread."
-                : "This document has no comments."}
+              Select some text and choose Comment to start a thread.
             </p>
           </div>
         )}

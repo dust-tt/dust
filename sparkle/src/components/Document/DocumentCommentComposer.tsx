@@ -9,7 +9,8 @@ import React, {
 } from "react";
 import { DocumentCommentInput } from "./DocumentCommentInput";
 import type { DocumentCommentAuthor } from "./types";
-import { useEditorLayoutVersion } from "./useDocumentComments";
+import type { DocumentCommentsController } from "./useDocumentComments";
+import { useEditorLayoutVersion } from "./useEditorLayoutVersion";
 
 const COMPOSER_WIDTH_PX = 320;
 const COMPOSER_GAP_PX = 8;
@@ -17,23 +18,21 @@ const COMPOSER_GAP_PX = 8;
 interface DocumentCommentComposerProps {
   editor: Editor;
   author: DocumentCommentAuthor;
+  comments: DocumentCommentsController;
   containerRef: RefObject<HTMLElement>;
-  onCancel: () => void;
-  onSubmit: (body: string) => void;
 }
 
 /**
  * @cc [owner:flvndvd,label:react] document-comment-composer
  * The composer MUST sit below the last line of the draft highlight, aligned with its start
- * and kept inside the document container. Escape, and pointer presses outside the composer,
- * MUST cancel the draft. Enter MUST submit the trimmed text.
+ * and kept inside the document container. Escape anywhere in the composer, and pointer
+ * presses outside it, MUST cancel the draft. Enter MUST submit the trimmed text.
  */
 export const DocumentCommentComposer = ({
   editor,
   author,
+  comments,
   containerRef,
-  onCancel,
-  onSubmit,
 }: DocumentCommentComposerProps) => {
   const [body, setBody] = useState("");
   const [position, setPosition] = useState<{
@@ -42,7 +41,7 @@ export const DocumentCommentComposer = ({
   } | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const layoutVersion = useEditorLayoutVersion(editor);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { cancelDraft, submitDraft } = comments;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: layoutVersion re-measures after document changes and resizes
   useLayoutEffect(() => {
@@ -72,28 +71,20 @@ export const DocumentCommentComposer = ({
     });
   }, [editor, containerRef, layoutVersion]);
 
-  // Focus once the card is positioned and visible. Hidden elements ignore focus().
-  const positioned = position !== null;
-  useEffect(() => {
-    if (positioned) {
-      textareaRef.current?.focus();
-    }
-  }, [positioned]);
-
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
       if (
         event.target instanceof Node &&
         !cardRef.current?.contains(event.target)
       ) {
-        onCancel();
+        cancelDraft();
       }
     };
 
     document.addEventListener("pointerdown", handlePointerDown, true);
     return () =>
       document.removeEventListener("pointerdown", handlePointerDown, true);
-  }, [onCancel]);
+  }, [cancelDraft]);
 
   return (
     <div
@@ -102,20 +93,26 @@ export const DocumentCommentComposer = ({
       aria-label="New comment"
       data-document-selection=""
       style={position ?? { top: 0, left: 0 }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          cancelDraft();
+        }
+      }}
       className={cn(
         "absolute z-40 w-80 max-w-full rounded-xl border border-border bg-overlay-background px-3 py-1.5 shadow-md print:hidden",
         position === null && "invisible"
       )}
     >
       <DocumentCommentInput
-        ref={textareaRef}
         label="Comment"
         placeholder="Add a comment…"
         author={author}
         value={body}
         onChange={setBody}
-        onSubmit={() => onSubmit(body.trim())}
-        onCancel={onCancel}
+        onSubmit={submitDraft}
+        // Hidden elements ignore focus(), so wait until the card is positioned.
+        autoFocus={position !== null}
       />
     </div>
   );

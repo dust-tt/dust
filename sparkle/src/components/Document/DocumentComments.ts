@@ -1,5 +1,5 @@
 import { cn } from "@sparkle/lib/utils";
-import { Extension, Mark } from "@tiptap/core";
+import { type Editor, Extension, Mark } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
@@ -30,9 +30,10 @@ const HIGHLIGHT_CLASS = cn(
   "hover:bg-golden-300/60 dark:border-golden-500/70 dark:bg-golden-400/25 dark:hover:bg-golden-400/40",
   "motion-reduce:transition-none print:border-transparent print:bg-transparent"
 );
+// Dark alphas keep stone-200 text above 4.5:1 on the composited highlight.
 const ACTIVE_HIGHLIGHT_CLASS = cn(
   "border-golden-500 bg-golden-300/80 hover:bg-golden-300/80",
-  "dark:border-golden-400 dark:bg-golden-400/50 dark:hover:bg-golden-400/50"
+  "dark:border-golden-400 dark:bg-golden-400/40 dark:hover:bg-golden-400/40"
 );
 
 export interface DocumentCommentDraft {
@@ -58,6 +59,21 @@ export const documentCommentsPluginKey = new PluginKey<DocumentCommentsState>(
 
 export const getDocumentComments = (doc: Node): DocumentComment[] =>
   (doc.attrs[COMMENTS_ATTRIBUTE] as DocumentComment[] | undefined) ?? [];
+
+/** First rendered highlight of an unresolved comment, if any. */
+export const findCommentHighlight = (editor: Editor, id: string) =>
+  editor.view.dom.querySelector<HTMLElement>(
+    `[data-comment-highlight="${id.replace(/["\\]/g, "\\$&")}"]`
+  );
+
+export const scrollToCommentHighlight = (editor: Editor, id: string) => {
+  findCommentHighlight(editor, id)?.scrollIntoView({
+    block: "center",
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "instant"
+      : "smooth",
+  });
+};
 
 /** Text covered by each comment, in document order, joined across blocks. */
 export const getCommentedTexts = (doc: Node): Map<string, string> => {
@@ -192,6 +208,12 @@ export const DocumentCommentMark = Mark.create({
  * comments without a thread MUST render as plain text. The active comment and a pending draft
  * MUST render with the emphasized highlight.
  */
+/**
+ * @cc [owner:flvndvd,label:product] document-comment-draft-range
+ * A pending draft range MUST follow document edits around it without growing from text
+ * inserted at its edges. A draft whose range collapses MUST be dropped. Starting a draft
+ * MUST collapse the selection to the end of the range.
+ */
 export const DocumentComments = Extension.create({
   name: "documentComments",
   addGlobalAttributes: () => [
@@ -312,19 +334,12 @@ export const DocumentComments = Extension.create({
         }
 
         if (dispatch) {
-          state.doc.descendants((node, pos) => {
-            if (!node.isText) {
-              return;
-            }
-            for (const mark of node.marks) {
-              if (
-                mark.type.name === COMMENT_MARK_NAME &&
-                mark.attrs.id === id
-              ) {
-                tr.removeMark(pos, pos + node.nodeSize, mark);
-              }
-            }
-          });
+          // With a mark instance, removeMark strips only marks equal to it.
+          tr.removeMark(
+            0,
+            state.doc.content.size,
+            state.schema.marks[COMMENT_MARK_NAME].create({ id })
+          );
           tr.setDocAttribute(
             COMMENTS_ATTRIBUTE,
             comments.filter((comment) => comment.id !== id)
@@ -392,12 +407,7 @@ export const DocumentComments = Extension.create({
             activeId = null;
           }
 
-          if (
-            !transaction.docChanged &&
-            meta === undefined &&
-            activeId === previous.activeId &&
-            draft === previous.draft
-          ) {
+          if (!transaction.docChanged && meta === undefined) {
             return previous;
           }
 

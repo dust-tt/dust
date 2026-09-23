@@ -8,7 +8,6 @@ import React, { useId, useRef } from "react";
 import { DocumentBlockMenu, useDocumentBlockMenu } from "./DocumentBlockMenu";
 import { DocumentCommentComposer } from "./DocumentCommentComposer";
 import { DocumentCommentMarkers } from "./DocumentCommentMarkers";
-import { getCommentedTexts } from "./DocumentComments";
 import { DocumentCommentsPanel } from "./DocumentCommentsPanel";
 import { DocumentSaveStatus } from "./DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "./DocumentSelectionToolbar";
@@ -28,7 +27,7 @@ export type {
 
 const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 
-/** Comment ids under the clicked highlight, innermost first. */
+/** Comment ids of every highlight wrapping the clicked element. */
 const getClickedCommentIds = (target: EventTarget | null, root: Element) => {
   const ids: string[] = [];
   let element = target instanceof Element ? target : null;
@@ -159,9 +158,10 @@ export const Document = ({
     }
 
     // Start with the most specific comment, then widen on repeated clicks.
-    const texts = getCommentedTexts(editor.state.doc);
-    const ids = [...clicked].sort(
-      (a, b) => (texts.get(a)?.length ?? 0) - (texts.get(b)?.length ?? 0)
+    const ids = clicked.sort(
+      (a, b) =>
+        (comments.quotes.get(a)?.length ?? 0) -
+        (comments.quotes.get(b)?.length ?? 0)
     );
     const current = comments.activeId ? ids.indexOf(comments.activeId) : -1;
     comments.reveal(ids[(current + 1) % ids.length]);
@@ -187,15 +187,22 @@ export const Document = ({
     );
   }
 
+  const unresolvedCount = comments.unresolved.length;
   const commentsToggle = showCommentsToggle && (
     <Button
+      ref={comments.toggleRef}
       type="button"
       variant="ghost"
       size="xs"
       icon={MessageTextCircle01}
       label="Comments"
-      isCounter={comments.unresolved.length > 0}
-      counterValue={String(comments.unresolved.length)}
+      aria-label={
+        unresolvedCount > 0
+          ? `Comments, ${unresolvedCount} unresolved`
+          : "Comments"
+      }
+      isCounter={unresolvedCount > 0}
+      counterValue={String(unresolvedCount)}
       aria-expanded={comments.panelOpen}
       aria-controls={panelId}
       onClick={comments.togglePanel}
@@ -253,23 +260,22 @@ export const Document = ({
               <EditorContent editor={editor} />
             </div>
           </DocumentVisualsContext.Provider>
-          {editor && comments.unresolved.length > 0 && (
+          {editor && unresolvedCount > 0 && (
             <DocumentCommentMarkers
               editor={editor}
-              comments={comments.unresolved}
-              activeId={comments.activeId}
+              comments={comments}
               containerRef={contentRef}
-              onSelect={comments.reveal}
               mountPortalContainer={mountPortalContainer}
             />
           )}
           {editor && commentAuthor && comments.draft && (
             <DocumentCommentComposer
+              // A new range is a new draft: reset the typed text and position.
+              key={`${comments.draft.from}:${comments.draft.to}`}
               editor={editor}
               author={commentAuthor}
+              comments={comments}
               containerRef={contentRef}
-              onCancel={comments.cancelDraft}
-              onSubmit={comments.submitDraft}
             />
           )}
         </div>
@@ -277,17 +283,7 @@ export const Document = ({
       {editor && showCommentsToggle && (
         <DocumentCommentsPanel
           id={panelId}
-          open={comments.panelOpen}
-          onClose={comments.closePanel}
-          editor={editor}
-          comments={comments.comments}
-          activeId={comments.activeId}
-          canWrite={comments.canWrite}
-          author={commentAuthor}
-          onSelect={comments.jumpTo}
-          onReply={comments.reply}
-          onSetResolved={comments.setResolved}
-          onDelete={comments.remove}
+          comments={comments}
           mountPortalContainer={mountPortalContainer}
         />
       )}
