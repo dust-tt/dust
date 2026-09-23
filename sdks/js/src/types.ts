@@ -3653,6 +3653,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "PraizLogo"
   | "ProductboardLogo"
   | "PuzzleIcon"
+  | "QobraLogo"
   | "SalesforceLogo"
   | "SemrushLogo"
   | "SiitLogo"
