@@ -420,19 +420,20 @@ A deprecated model needs no agent-config migration — that is the point of the 
 
 ### Path 2: remove (provider decommissioned it)
 
-Nothing can run on the model any more, so it comes out of the codebase entirely **and every
-agent still pinned to it must be repointed**. Worked example: DeepSeek R1 removal
-(`3ca8d834527`, #26958). Do Path 1's picker/global-agent repointing first, then:
+Nothing can run on the model any more, so its serving code comes out of the codebase **and
+every agent still pinned to it must be repointed**. Its id and config stay: stored runs still
+reference the id, and consumption attribution prices and tokenizes them from it (the
+`retain-retired-model-ids` and `tokenizer-for-every-static-model` contracts). Worked example:
+GLM-5.2 retirement (the `glm-5p2` entries in `fireworks.ts`). Do Path 1's picker/global-agent
+repointing first, then:
 
-- **Model config + registry**: delete the `X_MODEL_ID` const and `X_MODEL_CONFIG` from
-  `front/types/assistant/models/{provider}.ts`, and their entries in
-  `front/types/assistant/models/models.ts` (`STATIC_MODEL_IDS`, `SUPPORTED_MODEL_CONFIGS`).
-- **The compile-forced trio** (§B) then goes red — remove the entries from
-  `static_model_reasoning_efforts.ts` and `model_tiers.ts`. For pricing, **move** the entry
-  from `CURRENT_MODEL_PRICING` into `LEGACY_MODEL_PRICING` in the same
-  `token_pricing/global.ts` (a `Record<string, PricingEntry>`, so it survives the id leaving
-  `StaticModelIdType`); that block exists precisely so historical runs still cost out.
-  Deleting the pricing outright silently zeroes past usage.
+- **Model config + registry**: remove `X_MODEL_CONFIG` from `SUPPORTED_MODEL_CONFIGS` in
+  `front/types/assistant/models/models.ts` and add it to `HISTORICAL_TOKENIZATION_MODEL_CONFIGS`
+  in `front/lib/api/assistant/agent_message_consumption_attribution/tool_footprint.ts`. **Keep**
+  the `X_MODEL_ID` const, the `X_MODEL_CONFIG` export (with `isLegacy: true`), the id in
+  `STATIC_MODEL_IDS`, and its entries in `CURRENT_MODEL_PRICING`, `STATIC_MODEL_TIERS` and
+  `STATIC_MODEL_SUPPORTED_REASONING_EFFORTS`. `tool_footprint.test.ts` fails for any static id
+  that resolves to no tokenizer config.
 - **`model_constructors` + `llms`**: delete the endpoint classes, config mixins, and
   `test/endpoints/*.test.ts`; unregister from `stream/index.ts`, `setups.ts` and
   `llms/stream/index.ts`; drop the id from the `MODELS` array in
@@ -449,9 +450,9 @@ agent still pinned to it must be repointed**. Worked example: DeepSeek R1 remova
   `RETIRED_GLOBAL_AGENTS_SID` existed — prefer retirement now.)
 - **Feature flag**: drop the model's flag from `front/types/shared/feature_flags.ts` once
   nothing else references it.
-- **SDK**: removing an id from `KnownModelLLMId` in `sdks/js/src/types.ts` **narrows a
-  public API type — a breaking change.** Get explicit sign-off first (see the
-  `dust-breaking-changes` skill), then rebuild (`cd sdks/js && npm run build:types`).
+- **SDK**: keep the id in `KnownModelLLMId` in `sdks/js/src/types.ts`. `sdk_drift.test.ts`
+  requires every `STATIC_MODEL_IDS` entry there, and removing it would narrow a public API
+  type, a breaking change.
 
 ### Migrating agent configurations
 
@@ -526,9 +527,9 @@ Retiring the superseded model (same PR):
 - [ ] Superseded model `isLegacy: true` + `isLatest: false`, dropped from `USED_MODEL_CONFIGS`
 - [ ] `MODEL_STREAMS` candidates and `dust-*` global agents repointed to the new model,
       global-agent descriptions updated
-- [ ] If **decommissioned**: config + registry + trio + endpoints + global agent + feature
-      flag removed; pricing **moved** to `LEGACY_MODEL_PRICING`, not deleted
-- [ ] SDK `KnownModelLLMId` narrowing signed off as a breaking change before removal
+- [ ] If **decommissioned**: endpoints + global agent + feature flag removed; config moved from
+      `SUPPORTED_MODEL_CONFIGS` to `HISTORICAL_TOKENIZATION_MODEL_CONFIGS`; id, config export,
+      pricing, tiers and reasoning efforts kept
 - [ ] Agent-config repoint migration written with hardcoded ids, batched update, dry-run
       output reviewed before `--execute`
 

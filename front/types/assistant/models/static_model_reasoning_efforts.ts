@@ -418,6 +418,18 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: false,
     high: false,
   },
+  "accounts/fireworks/models/deepseek-v4-pro-0813": {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  "accounts/fireworks/models/deepseek-v4-flash-0731": {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "accounts/fireworks/models/deepseek-v4p1-flash": {
     none: true,
     light: true,
@@ -431,6 +443,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     high: false,
   },
   "accounts/fireworks/models/kimi-k2p5": {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  "accounts/fireworks/models/kimi-k2p6": {
     none: true,
     light: true,
     medium: true,
@@ -452,6 +470,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     none: false,
     light: true,
     medium: true,
+    high: true,
+  },
+  "accounts/fireworks/models/glm-5p2": {
+    none: false,
+    light: false,
+    medium: false,
     high: true,
   },
   "accounts/fireworks/models/glm-5p3": {

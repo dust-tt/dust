@@ -6,7 +6,10 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { RunUsageModel } from "@app/lib/resources/storage/models/runs";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
-import type { ModelIdType } from "@app/types/assistant/models/types";
+import type {
+  ModelConfigurationType,
+  ModelIdType,
+} from "@app/types/assistant/models/types";
 
 export class RunFactory {
   static async createWithUsage(
@@ -18,6 +21,7 @@ export class RunFactory {
       modelId = GPT_5_MINI_MODEL_CONFIG.modelId,
       usageType = USAGE_TYPE_USER,
       serviceTier,
+      retiredModel,
     }: {
       inputTokens?: number;
       outputTokens?: number;
@@ -25,6 +29,7 @@ export class RunFactory {
       modelId?: ModelIdType;
       usageType?: UsageType | null;
       serviceTier?: ServiceTier;
+      retiredModel?: ModelConfigurationType;
     } = {}
   ) {
     const workspace = auth.getNonNullableWorkspace();
@@ -60,6 +65,15 @@ export class RunFactory {
     if (usageType === null) {
       await RunUsageModel.update(
         { usageType: null },
+        { where: { id: runUsage.id, workspaceId: workspace.id } }
+      );
+    }
+    if (retiredModel) {
+      await RunUsageModel.update(
+        {
+          providerId: retiredModel.providerId,
+          modelId: retiredModel.modelId,
+        },
         { where: { id: runUsage.id, workspaceId: workspace.id } }
       );
     }
