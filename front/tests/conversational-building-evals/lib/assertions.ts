@@ -58,6 +58,14 @@ function resolveSkillId(scenario: SeededScenario, skillKey: string): string {
   return skillId;
 }
 
+function resolveAgentId(scenario: SeededScenario, agentKey: string): string {
+  const agentId = scenario.agentIdsByKey.get(agentKey);
+  if (!agentId) {
+    throw new Error(`Scenario references unknown agent key "${agentKey}"`);
+  }
+  return agentId;
+}
+
 function resolveMemberId(scenario: SeededScenario, memberKey: string): string {
   const memberId = scenario.memberIdsByKey.get(memberKey);
   if (!memberId) {
@@ -286,12 +294,7 @@ export function validateFinalToolCall(
           error: `Expected final tool call ${TOOL.suggestAgentInstructionsChange}, got ${finalToolCall.name}`,
         };
       }
-      const expectedAgentId = scenario.agentIdsByKey.get(assertion.agentKey);
-      if (!expectedAgentId) {
-        throw new Error(
-          `Scenario references unknown agent key "${assertion.agentKey}"`
-        );
-      }
+      const expectedAgentId = resolveAgentId(scenario, assertion.agentKey);
       const agentId = finalToolCall.arguments.agentId;
       if (agentId !== expectedAgentId) {
         return {
@@ -348,7 +351,8 @@ function mentionedIds(responseText: string, regex: RegExp): string[] {
 /**
  * The response must mention the entity it acted on with its mention directive, so the user can
  * click it open next to the suggestion cards. A created agent has no seeded id, so its mention is
- * checked against the id the `suggest_agent_creation` directive carries.
+ * checked against the id the `suggest_agent_creation` directive carries; an edited agent is
+ * checked against its seeded id, like a skill.
  */
 export function validateEntityMention(
   assertion: FinalToolCallAssertion,
@@ -374,6 +378,20 @@ export function validateEntityMention(
         error:
           `Expected the response to mention the created agent as ` +
           `:build_agent[...]{sId=${suggestedAgentId}}; mentioned ids: ${JSON.stringify(mentioned)}`,
+      };
+    }
+    return { success: true };
+  }
+
+  if (assertion.type === "suggestAgentInstructionsChange") {
+    const expectedAgentId = resolveAgentId(scenario, assertion.agentKey);
+    const mentioned = mentionedIds(responseText, BUILD_AGENT_REGEX);
+    if (!mentioned.includes(expectedAgentId)) {
+      return {
+        success: false,
+        error:
+          `Expected the response to mention agent "${assertion.agentKey}" as ` +
+          `:build_agent[...]{sId=${expectedAgentId}}; mentioned ids: ${JSON.stringify(mentioned)}`,
       };
     }
     return { success: true };
