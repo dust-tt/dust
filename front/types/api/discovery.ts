@@ -52,3 +52,14 @@ export type PutGroupDiscoveryPinResponseBody = {
 export type DeleteGroupDiscoveryPinResponseBody = {
   success: true;
 };
+
+export type DiscoveryItemKind = "agent" | "skill";
+
+export interface DiscoveryTrendingItemType {
+  kind: DiscoveryItemKind;
+  itemId: string;
+}
+
+export interface GetDiscoveryTrendingResponseBody {
+  items: DiscoveryTrendingItemType[] | null;
+}
