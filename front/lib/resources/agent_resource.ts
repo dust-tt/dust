@@ -125,8 +125,6 @@ export type EditorDeltaErrorCode =
   | "user_not_found"
   | "internal_error";
 
-// Placeholder values for the pending agent created when the builder opens for a new agent, before its
-// first real save (see `AgentResource.createPending`).
 const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
 const PENDING_AGENT_PLACEHOLDER_DESCRIPTION = "";
 const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
@@ -255,7 +253,6 @@ const AGENT_CONFIGURATION_KEYS = [
   "skills",
 ] as const satisfies readonly (keyof SaveAgentConfigurationParams)[];
 
-// A `full` resource always exposes its `content`.
 export interface FullAgentResource extends AgentResource {
   readonly variant: "full";
 }
@@ -307,15 +304,6 @@ export type AgentResourceSnapshot = {
 // Ship the cache dark: wired end to end but touching no Redis. Flip to `false` to turn it on.
 const AGENT_RESOURCE_CACHE_DRY_RUN = true;
 
-// The resource's identity is the `AgentModel` row (so all its attributes are carried, readonly),
-// plus the core fields resolved from the current `AgentConfigurationModel` version. The overlapping
-// head columns (`name`/`status`/`scope`/`reinforcement`) are re-declared here because the resource
-// exposes the configuration's values: non-null, and `scope` may be `"global"` for code-defined
-// agents (see `fromGlobalAgent`), unlike the agent row's nullable, non-global copies.
-// `createdAt`/`updatedAt` come from the `agents` row: `createdAt` is the agent's own creation date
-// (not the version's), `updatedAt` tracks the last time its `currentVersion` pointer moved.
-// Declared before the class so the `@cc` blocks below attach to `AgentResource` (the class), keeping
-// its verb contracts discoverable (see `access-control-verbs-documented`).
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentResource
   extends Omit<
@@ -333,14 +321,6 @@ export interface AgentResource
   readonly modelConfiguration: AgentModelConfigurationType;
 }
 
-// The stable identity of an agent, backed by `AgentModel` (so `id` is the agent's `agentModelId`).
-// It comes in two shapes, discriminated by `variant`:
-// - `light`: identity + `agentConfigurationModelId`/`scope`/`name`/`description`/`status`/
-//   `pictureUrl`/`versionAuthorId`/`requestedSpaceIds`/`modelConfiguration`, built without a query
-//   from a configuration already in hand. These core fields are not read-gated — they are carried
-//   by every resource — and are sufficient for permission decisions.
-// - `full`: additionally carries `content` (every remaining `AgentConfigurationModel` column of the
-//   resolved version). Produced by the access-controlled `fetch*` resolvers.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 /**
  * @cc [owner:tdraier,label:backend] agent-resource-identity
@@ -431,32 +411,18 @@ export class AgentResource
   implements WithAccessControl
 {
   private readonly requestedSpaceIds: ModelId[];
-  // Code-defined skill ids, only ever populated by `fromGlobalAgent` (empty for every other path).
   private codeDefinedSkillIds: string[] = [];
-  // Mutable so a light resource can be enriched to full in place once read access is confirmed
-  // (see `fromModels`). `variant` is derived from its presence.
   private _content: AgentResourceContent | null;
 
-  // The loading caller's permission context, stamped by `materializeResource` at the per-call read
-  // boundary — NOT on the caller-independent, cacheable `content`.
   private _verbs: Set<GrantVerb> = new Set();
   private _isRegularApiKey = false;
 
-  // Both models are mandatory: the identity/timestamps (`id`/`sId`/`workspaceId`/`createdAt`/
-  // `updatedAt`/`currentVersion`) come from the `agents` row, the head + remaining core fields and
-  // `_content` from the resolved configuration version. Global agents have no real rows (their blobs
-  // are synthesized by `fromGlobalAgent`, which patches their divergent head fields after construction).
   private constructor(
     agent: Attributes<AgentModel>,
     agentConfiguration: Attributes<AgentConfigurationModel>
   ) {
     super(AgentModel, agent);
 
-    // The core fields exposed by the resource come from the configuration version, overriding the
-    // agent row's denormalized head copies. Assigned via `Object.assign` because they are declared
-    // `readonly` on the merged `AgentResource` interface. Global agents' divergent head fields
-    // (`scope: "global"`, no author, a possibly disabled-* status) are applied by `fromGlobalAgent`
-    // after construction, since the configuration blob's types cannot represent them.
     Object.assign(this, {
       agentConfigurationModelId: agentConfiguration.id,
       scope: agentConfiguration.scope,
@@ -518,11 +484,6 @@ export class AgentResource
     return this._content;
   }
 
-  // Global agents are code-defined and have no `agent`/configuration rows; their
-  // `AgentConfigurationType` is built from synthetic values by `getGlobalAgent(s)`. Their head fields
-  // diverge from a configuration row's shape — `scope: "global"`, no author, and a status that may be
-  // `disabled_*` (wider than `AgentStatus`) — so the synthetic blobs use in-range placeholders and the
-  // real values are applied after construction (typed, no unsafe casts).
   static fromGlobalAgent(
     auth: Authenticator,
     configuration: AgentConfigurationType
@@ -533,8 +494,6 @@ export class AgentResource
     const now = new Date();
 
     const resource = new AgentResource(
-      // No `agent` identity row; `-1` mirrors their synthetic configuration id. The head columns are
-      // re-derived from the configuration by the constructor, so they are left null here.
       {
         id: -1,
         workspaceId,
@@ -556,7 +515,6 @@ export class AgentResource
         createdAt: now,
         updatedAt: now,
         version: configuration.version,
-        // Placeholders for the global-only divergent fields; overwritten below with the real values.
         agentId: -1,
         status: "active",
         scope: "hidden",
@@ -578,8 +536,6 @@ export class AgentResource
         requestedSpaceIds: [],
       }
     );
-    // Apply the global-only head fields the configuration blob cannot represent (all in-range, no
-    // cast): `scope: "global"`, no author, and the possibly disabled-* `AgentConfigurationStatus`.
     Object.assign(resource, {
       scope: "global",
       status: configuration.status,
@@ -591,9 +547,6 @@ export class AgentResource
     return resource;
   }
 
-  // Materializes the caller-dependent state onto a full resource (`_verbs`, `_isRegularApiKey`, and
-  // the read-access downgrade to `light`). The resource is a fresh per-call instance, so mutating it
-  // here never affects a cached value.
   private static materializeResource(
     auth: Authenticator,
     cachedResource: FullAgentResource
@@ -609,17 +562,11 @@ export class AgentResource
     return cachedResource;
   }
 
-  // Builds a resource from an agent row and one of its already-loaded configuration rows: `full`
-  // (with `content`) when the caller can read the agent, `light` otherwise. Private: external callers
-  // holding only configuration rows go through `dangerouslyFromConfigurationModels` (which loads the
-  // real agent rows), and callers with an `sId` use `fetchById`.
   private static fromModels(
     auth: Authenticator,
     agent: AgentModel,
     agentConfiguration: AgentConfigurationModel
   ): AgentResource {
-    // Both models are present, so the constructor always yields a `full` resource; the read-access
-    // downgrade to `light` is applied by `materializeResource`.
     return this.materializeResource(
       auth,
       new AgentResource(
@@ -629,15 +576,6 @@ export class AgentResource
     );
   }
 
-  // Builds resources from already-loaded configuration rows, loading their `agents` identity rows in
-  // one batch so a resource is never synthesized without a real agent row.
-  // Returns one resource per input configuration, in the same order. Runs within `transaction` when
-  // given (e.g. to observe rows written earlier in the same save).
-  // `dangerously`: this returns a resource for every input configuration and does NOT drop those the
-  // caller cannot `canFetch` (see `permission-checked-fetch`). The one-to-one result is required by
-  // `enrichAgentConfigurations`, which annotates each entry with its own `canRead`/`canEdit`; callers
-  // are responsible for the access decision (the fetch that produced the configurations, or per-entry
-  // verb checks).
   static async dangerouslyFromConfigurationModels(
     auth: Authenticator,
     agentConfigurations: AgentConfigurationModel[],
@@ -793,14 +731,10 @@ export class AgentResource
     });
 
     return agents.flatMap((agent) => {
-      // `required: true` + `version = currentVersion` yields exactly one configuration per agent.
-      // `agent.get()` carries the eager-loaded `agent_configurations` too; drop it so the association
-      // does not leak onto the resource instance.
       const { agent_configurations: configurations, ...agentAttributes } =
         agent.get() as Attributes<AgentModel> & {
           agent_configurations: AgentConfigurationModel[];
         };
-      // Both models are present, so the constructor always yields a `full` resource.
       return configurations.map(
         (configuration) =>
           new AgentResource(
@@ -908,17 +842,12 @@ export class AgentResource
     };
   }
 
-  // Rebuilds a `full` resource from a cached snapshot. Inverse of `toSnapshot`. Only custom agents'
-  // current versions are cached (see `loadResource`/`toSnapshot`), so the snapshot is never global.
   static fromSnapshot(snapshot: AgentResourceSnapshot): FullAgentResource {
     const { content, modelConfiguration } = snapshot;
-    // A cached custom agent always has an author (the configuration's non-null `authorId`).
     assert(
       snapshot.versionAuthorId !== null,
       "Unexpected: cached custom agent is missing its author"
     );
-    // Cached agents are never global (see `toSnapshot`), so their stored status/scope narrow to the
-    // configuration's shapes — asserted rather than cast (see `no-unsafe-type-assertions`).
     assert(
       isAgentStatus(snapshot.status),
       `Unexpected: cached agent has non-agent status "${snapshot.status}"`
@@ -933,9 +862,6 @@ export class AgentResource
         : null;
 
     return new AgentResource(
-      // Only the identity/timestamps are read from this blob; the head columns are re-derived from
-      // the configuration by the constructor. `createdAt` is the agent row's own timestamp, NOT the
-      // version's (`content.createdAt`).
       {
         id: snapshot.agentModelId,
         workspaceId: snapshot.workspaceId,
@@ -1416,7 +1342,6 @@ export class AgentResource
     );
   }
 
-  // `fields` are the columns of the current configuration that `agents` mirrors (the head fields).
   private async updateAgentIdentity(
     auth: Authenticator,
     fields: Partial<
@@ -2215,10 +2140,6 @@ export class AgentResource
     });
   }
 
-  // Creates the pending placeholder agent captured when the builder opens for a new agent, before its
-  // first real save. Reuses `makeNew` (create capability + normal save path: identity + configuration
-  // + author editor grant) so no resource is ever synthesized from a bare configuration row; it is
-  // overwritten on the first real save.
   static async createPending(
     auth: Authenticator
   ): Promise<Result<AgentResource, Error>> {
@@ -2702,8 +2623,6 @@ export class AgentResource
           transaction: t,
         });
 
-        // Load the `agents` identity row for an existing agent (a brand-new one was just created
-        // above), so resources built below carry the real identity, never a configuration-derived one.
         if (!agentModel) {
           agentModel = await AgentModel.findOne({
             where: { id: agentModelId, workspaceId: owner.id },
