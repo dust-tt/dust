@@ -63,32 +63,35 @@ export const DocumentCommentInput = forwardRef<
             className="mt-1"
           />
         )}
-        <TextArea
-          ref={textareaRef}
-          aria-label={label}
-          placeholder={placeholder}
-          value={value}
-          minRows={1}
-          resize="none"
-          onChange={(event) => {
-            onChange(event.target.value);
-            event.target.style.height = "auto";
-            event.target.style.height = `${event.target.scrollHeight}px`;
-          }}
-          onKeyDown={(event) => {
-            if (event.nativeEvent.isComposing) {
-              return;
-            }
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              submit();
-            } else if (event.key === "Escape" && onCancel) {
-              event.preventDefault();
-              onCancel();
-            }
-          }}
-          className="min-h-7 rounded-none border-0 bg-transparent px-0 py-1 text-sm leading-5 shadow-none focus-visible:ring-0"
-        />
+        {/* TextArea's own wrapper does not grow, so give it a flex item to fill. */}
+        <div className="min-w-0 flex-1">
+          <TextArea
+            ref={textareaRef}
+            aria-label={label}
+            placeholder={placeholder}
+            value={value}
+            minRows={1}
+            resize="none"
+            onChange={(event) => {
+              onChange(event.target.value);
+              event.target.style.height = "auto";
+              event.target.style.height = `${event.target.scrollHeight}px`;
+            }}
+            onKeyDown={(event) => {
+              if (event.nativeEvent.isComposing) {
+                return;
+              }
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                submit();
+              } else if (event.key === "Escape" && onCancel) {
+                event.preventDefault();
+                onCancel();
+              }
+            }}
+            className="min-h-7 rounded-none border-0 bg-transparent px-0 py-1 text-sm leading-5 shadow-none focus-visible:ring-0"
+          />
+        </div>
         <button
           type="button"
           aria-label="Send"
