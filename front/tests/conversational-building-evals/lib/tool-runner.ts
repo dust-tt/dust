@@ -3,6 +3,7 @@ import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import {
   BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
+  DESCRIBE_AGENT_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
   SUGGEST_AGENT_CREATION_TOOL_NAME,
   SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME,
@@ -30,6 +31,10 @@ export const TOOL = {
   describeSkill: getPrefixedToolName(
     BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
     DESCRIBE_SKILL_TOOL_NAME
+  ),
+  describeAgent: getPrefixedToolName(
+    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
+    DESCRIBE_AGENT_TOOL_NAME
   ),
   suggestSkillUpdate: getPrefixedToolName(
     BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,

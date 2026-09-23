@@ -132,7 +132,7 @@ async function renderWorkspaceAgents(
   const rendered: string[] = [];
   for (const agentId of scenario.agentIdsByKey.values()) {
     rendered.push(
-      await runTool(scenario.auth, TOOL.getAgentDetails, { agentId })
+      await runTool(scenario.auth, TOOL.describeAgent, { agentId })
     );
   }
   return rendered.length > 0 ? rendered.join("\n\n") : "(none)";
