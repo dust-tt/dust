@@ -82,6 +82,7 @@ import {
   launchDeleteWorkspaceSkillSearchWorkflow,
   launchIndexSkillSearchWorkflow,
 } from "@app/temporal/es_indexation/client";
+import type { DiscoverySkillType } from "@app/types/api/discovery";
 import type {
   AgentConfigurationWithoutModelType,
   LightAgentConfigurationType,
@@ -4855,6 +4856,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   toRefJSON(): SkillReference {
     return { icon: this.icon, id: this.sId, name: this.name };
+  }
+
+  toDiscoveryJSON(): DiscoverySkillType {
+    return {
+      sId: this.sId,
+      name: this.name,
+      description: this.userFacingDescription,
+      icon: this.icon ?? null,
+    };
   }
 
   toJSON(auth: Authenticator): SkillType {

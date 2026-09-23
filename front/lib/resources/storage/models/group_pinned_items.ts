@@ -2,10 +2,8 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { GroupPinnedItemType } from "@app/types/discovery";
 import type { CreationOptional, ForeignKey } from "sequelize";
-
-export const GROUP_PINNED_ITEM_TYPES = ["agent", "skill"] as const;
-export type GroupPinnedItemType = (typeof GROUP_PINNED_ITEM_TYPES)[number];
 
 export class GroupPinnedItemModel extends WorkspaceAwareModel<GroupPinnedItemModel> {
   declare id: CreationOptional<number>;

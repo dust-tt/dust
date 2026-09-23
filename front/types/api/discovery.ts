@@ -1,3 +1,4 @@
+import { GROUP_PINNED_ITEM_TYPES } from "@app/types/discovery";
 import { z } from "zod";
 
 export type DiscoveryAgentType = {
@@ -32,7 +33,7 @@ export type DiscoveryItemType =
     };
 
 export const PutGroupDiscoveryPinBodySchema = z.object({
-  type: z.enum(["agent", "skill"]),
+  type: z.enum(GROUP_PINNED_ITEM_TYPES),
   itemId: z.string().min(1),
 });
 
