@@ -9,7 +9,7 @@ import type { DocumentProps } from "./types";
 export const DocumentVisualsContext =
   createContext<DocumentProps["visuals"]>(undefined);
 
-const visualName = z.string().min(1);
+const visualNameSchema = z.string().min(1);
 
 const DocumentVisualView = ({ node, selected }: NodeViewProps) => {
   const visuals = useContext(DocumentVisualsContext);
@@ -48,7 +48,7 @@ export const DocumentVisual = Node.create({
     name: {
       default: null,
       validate: (value: unknown) => {
-        visualName.parse(value);
+        visualNameSchema.parse(value);
       },
       parseHTML: (element) => element.getAttribute("data-document-visual"),
       renderHTML: (attributes) => ({ "data-document-visual": attributes.name }),
