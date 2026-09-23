@@ -133,9 +133,7 @@ export function AgentPicker({
             return (
               <DropdownMenuItem
                 key={`agent-picker-${c.sId}`}
-                icon={() => (
-                  <Avatar size="xs" visual={c.pictureUrl} lazyLoad />
-                )}
+                icon={() => <Avatar size="xs" visual={c.pictureUrl} lazyLoad />}
                 label={c.name}
                 truncateText
                 className={`group py-1 notranslate ${
