@@ -138,43 +138,80 @@ export const MarkdownOutput: Story = {
   },
 };
 
-/** @summary Preserve unsupported Markdown as read-only source without writing it. */
-export const UnsupportedMarkdown: Story = {
-  args: {
-    initialContent:
-      "# Release plan\n\n| Task | Owner |\n| --- | --- |\n| Review | Sam |",
-  },
-  play: async ({ canvas, canvasElement, args }) => {
-    await expect(await canvas.findByRole("alert")).toHaveTextContent(
-      "editing is disabled"
-    );
-    await expect(canvasElement.querySelector("pre")).toHaveTextContent(
-      "| Review | Sam |"
-    );
-    await expect(canvasElement.querySelector("pre")?.textContent).toBe(
-      args.initialContent
-    );
-    await expect(canvas.queryByRole("textbox")).not.toBeInTheDocument();
-    await expect(canvas.queryByRole("toolbar")).not.toBeInTheDocument();
+const TABLE_MARKDOWN =
+  "# Release plan\n\n| Task | Owner |\n| --- | --- |\n| Review | Sam |\n\nShip it.";
+const TABLE_SOURCE = "| Task | Owner |\n| --- | --- |\n| Review | Sam |";
 
-    for (const source of [
-      "Before ![Diagram](https://example.com/diagram.png) after.",
-      "- [x] Reviewed\n- [ ] Shipped",
-      "Keep <!-- internal note --> this.",
-      "[A reference][ref]\n\n[ref]: https://dust.tt",
-      "Literal \\*asterisks\\*",
-      "~~~ts\nconst ready = true;\n~~~",
-      "> | Task | Owner |\n> | --- | --- |\n> | Review | Sam |",
+/** @summary Keep blocks with unsupported formatting as read-only source and save them verbatim. */
+export const UnsupportedBlocks: Story = {
+  args: { initialContent: TABLE_MARKDOWN },
+  play: async ({ canvas, args }) => {
+    const editor = await canvas.findByRole("textbox", {
+      name: "Document content",
+    });
+    await expect(
+      canvas.getByRole("heading", { name: "Release plan", level: 1 })
+    ).toBeVisible();
+    await expect(editor).toHaveTextContent(
+      "Formatting not supported yet. Kept as written."
+    );
+    await expect(editor.querySelector("pre")?.textContent).toBe(TABLE_SOURCE);
+
+    for (const [source, block] of [
+      ["Before ![Diagram](https://example.com/diagram.png) after."],
+      ["- [x] Reviewed\n- [ ] Shipped"],
+      ["Keep <!-- internal note --> this."],
+      [
+        "[A reference][ref]\n\n[ref]: https://dust.tt",
+        "[ref]: https://dust.tt",
+      ],
+      ["Literal \\*asterisks\\*"],
+      ["~~~ts\nconst ready = true;\n~~~"],
+      ["> | Task | Owner |\n> | --- | --- |\n> | Review | Sam |"],
     ]) {
-      await expect(parseDocumentContent(source, "markdown")).toEqual({
-        ok: false,
+      await expect(parseDocumentContent(source, "markdown")).toMatchObject({
+        ok: true,
+        content: {
+          content: expect.arrayContaining([
+            { type: "markdownSource", attrs: { source: block ?? source } },
+          ]),
+        },
       });
     }
 
-    await new Promise((resolve) =>
-      setTimeout(resolve, AUTOSAVE_DEBOUNCE_MS * 2)
+    placeCaretAtEnd(editor);
+    await userEvent.keyboard(" Today.");
+    await waitFor(() =>
+      expect(args.onSave).toHaveBeenCalledWith(
+        `# Release plan\n\n${TABLE_SOURCE}\n\nShip it. Today.`
+      )
     );
-    await expect(args.onSave).not.toHaveBeenCalled();
+    await expect(canvas.getByRole("status")).toHaveTextContent(/^Saved$/);
+  },
+};
+
+/** @summary Select and delete a source block like any other block. */
+export const DeleteSourceBlock: Story = {
+  args: { initialContent: TABLE_MARKDOWN },
+  play: async ({ canvas, args }) => {
+    const editor = await canvas.findByRole("textbox", {
+      name: "Document content",
+    });
+    const source = canvas.getByText(/Review \| Sam/);
+    const bounds = source.getBoundingClientRect();
+    await userEvent.pointer({
+      keys: "[MouseLeft]",
+      target: source,
+      coords: {
+        clientX: bounds.left + bounds.width / 2,
+        clientY: bounds.top + bounds.height / 2,
+      },
+    });
+    await userEvent.keyboard("{Delete}");
+    await expect(editor.querySelector("pre")).toBeNull();
+    await waitFor(() =>
+      expect(args.onSave).toHaveBeenCalledWith("# Release plan\n\nShip it.")
+    );
   },
 };
 

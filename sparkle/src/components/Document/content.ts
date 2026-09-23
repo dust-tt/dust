@@ -1,69 +1,29 @@
-import {
-  type ExtendableConfig,
-  flattenExtensions,
-  getExtensionField,
-  getSchema,
-  type JSONContent,
-  type MarkdownToken,
-} from "@tiptap/core";
+import { getSchema, type JSONContent } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
 import { Fragment, type Node } from "@tiptap/pm/model";
 import { z } from "zod";
-import { documentExtensions } from "./extensions";
+import { documentExtensions, documentMarked } from "./extensions";
 
 const documentSchema = getSchema(documentExtensions);
 const documentMarkdown = new MarkdownManager({
   extensions: documentExtensions,
+  marked: documentMarked,
 });
 const documentEnvelope = z.object({ type: z.literal("doc") }).passthrough();
 
 /**
- * @cc [owner:flvndvd,label:architecture] document-markdown-capabilities
- * Supported token names MUST derive from the editor extensions' parse and render handlers.
+ * @cc [owner:flvndvd,label:product] document-source-preservation
+ * Every top-level Markdown block MUST either load into the editor or be kept as a source
+ * block. Markdown that would still change when reopened MUST be rejected before editing,
+ * and callers MUST retain the original source for display.
+ * JSON content MUST satisfy the document schema before editing.
  */
-const supportedMarkdownTokens = new Set(
-  flattenExtensions(documentExtensions)
-    .filter(
-      (extension) =>
-        getExtensionField<ExtendableConfig["parseMarkdown"]>(
-          extension,
-          "parseMarkdown"
-        ) &&
-        getExtensionField<ExtendableConfig["renderMarkdown"]>(
-          extension,
-          "renderMarkdown"
-        )
-    )
-    .map(
-      (extension) =>
-        getExtensionField<ExtendableConfig["markdownTokenName"]>(
-          extension,
-          "markdownTokenName"
-        ) || extension.name
-    )
-);
-
-const isSupportedMarkdownToken = (token: MarkdownToken) =>
-  token.type !== undefined &&
-  // Whitespace separates blocks without an editor extension.
-  (token.type === "space" || supportedMarkdownTokens.has(token.type)) &&
-  // Registered list and code handlers still discard task markers and tilde fences.
-  !(token.type === "list_item" && token.task) &&
-  (token.type !== "code" ||
-    token.raw?.startsWith("```") ||
-    token.codeBlockStyle === "indented");
-
-const hasSupportedMarkdown = (content: string) => {
-  const tokens = documentMarkdown.instance.lexer(content);
-  let supported = true;
-
-  documentMarkdown.instance.walkTokens(tokens, (token) => {
-    if (!isSupportedMarkdownToken(token)) {
-      supported = false;
-    }
-  });
-
-  return supported;
+const parseMarkdown = (markdown: string): JSONContent | null => {
+  try {
+    return documentMarkdown.parse(markdown);
+  } catch {
+    return null;
+  }
 };
 
 const withoutTrailingParagraphs = (document: JSONContent): JSONContent => {
@@ -82,12 +42,15 @@ const withoutTrailingParagraphs = (document: JSONContent): JSONContent => {
 };
 
 const canRoundTripMarkdown = (document: JSONContent, markdown: string) => {
-  const reopened = documentMarkdown.parse(markdown);
-  return normalizeTextNodes(
-    documentSchema.nodeFromJSON(withoutTrailingParagraphs(document))
-  ).eq(
+  const reopened = parseMarkdown(markdown);
+  return (
+    reopened !== null &&
     normalizeTextNodes(
-      documentSchema.nodeFromJSON(withoutTrailingParagraphs(reopened))
+      documentSchema.nodeFromJSON(withoutTrailingParagraphs(document))
+    ).eq(
+      normalizeTextNodes(
+        documentSchema.nodeFromJSON(withoutTrailingParagraphs(reopened))
+      )
     )
   );
 };
@@ -98,26 +61,19 @@ const normalizeTextNodes = (node: Node): Node => {
   return node.copy(Fragment.fromArray(children));
 };
 
-/**
- * @cc [owner:flvndvd,label:product] document-source-preservation
- * Markdown containing unsupported tokens or formatting that cannot survive serialization
- * MUST be rejected before editing. Callers MUST retain the original source for display.
- * JSON content MUST satisfy the document schema before editing.
- */
 export const parseDocumentContent = (
   content: string,
   contentType: "markdown" | "json"
 ): { ok: true; content: JSONContent } | { ok: false } => {
   if (contentType === "markdown") {
-    if (!hasSupportedMarkdown(content)) {
+    const parsed = parseMarkdown(content);
+    if (parsed === null) {
       return { ok: false };
     }
 
-    let parsed: JSONContent;
     let serialized: string;
 
     try {
-      parsed = documentMarkdown.parse(content);
       serialized = documentMarkdown.serialize(parsed);
     } catch {
       return { ok: false };
@@ -172,8 +128,5 @@ export const serializeDocumentMarkdown = (
     return null;
   }
 
-  return hasSupportedMarkdown(markdown) &&
-    canRoundTripMarkdown(content, markdown)
-    ? markdown
-    : null;
+  return canRoundTripMarkdown(content, markdown) ? markdown : null;
 };

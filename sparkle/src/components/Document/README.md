@@ -43,11 +43,13 @@ spacing, list markers, and emphasis delimiters. Empty trailing paragraphs are
 omitted. Dirty state is tracked separately from the serialized output so a
 successful Markdown save acknowledges the same draft as a JSON save.
 
-Markdown support is derived from the configured editor extensions. Loading is
-conservative. Tables, images, task lists, HTML, reference definitions, escaped
-punctuation, and tilde code fences are shown as their original read-only source
-because the installed parser cannot reliably preserve them.
-Supported input is also checked by serializing and parsing it again. Before a
+Markdown support is derived from the configured editor extensions. A top-level
+block the editor cannot represent, such as a table, an image, a task list, raw HTML, a
+reference definition, escaped punctuation, or a tilde code fence, loads as a read-only
+source block showing its original Markdown. The block can be selected and deleted, and
+saving writes its source back verbatim while the surrounding content stays editable.
+Supported input is also checked by serializing and parsing it again. Markdown that
+still cannot be reopened unchanged is shown as its original read-only source. Before a
 Markdown save, the same check prevents a conversion from changing the draft's
 content or formatting. Conversion failures preserve the draft and never call
 `onSave`. These checks use the existing TipTap Markdown parser and serializer.

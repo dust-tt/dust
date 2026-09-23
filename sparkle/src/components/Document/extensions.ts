@@ -4,9 +4,15 @@ import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
 
 import { DocumentAnchors } from "./DocumentAnchors";
+import {
+  createDocumentMarked,
+  type DocumentMarked,
+  MarkdownSource,
+} from "./DocumentMarkdownSource";
 
-export const documentExtensions = [
+const contentExtensions = [
   DocumentAnchors,
+  MarkdownSource,
   StarterKit.configure({
     heading: {
       HTMLAttributes: {
@@ -57,7 +63,6 @@ export const documentExtensions = [
       HTMLAttributes: { class: "my-8 border-0 border-t border-border" },
     },
   }),
-  Markdown,
   Placeholder.configure({
     placeholder: ({ node, pos, editor }) =>
       node.type.name === "heading"
@@ -70,4 +75,12 @@ export const documentExtensions = [
             : "Type / for blocks…"
           : "",
   }),
+];
+
+export const documentMarked: DocumentMarked =
+  createDocumentMarked(contentExtensions);
+
+export const documentExtensions = [
+  ...contentExtensions,
+  Markdown.configure({ marked: documentMarked }),
 ];
