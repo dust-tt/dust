@@ -184,20 +184,17 @@ export function ConversationContainerVirtuoso({
   const { isAgentsSectionVisible } = useAgentsSectionVisibility();
   const isDiscoveryHomepage = hasFeature("discovery_homepage");
 
-  const handleUseCasePick = useCallback(
-    (useCase: HomepageUseCaseType) => {
-      const references = [
-        ...useCase.skills.map((skill) => serializeSkillTag(skill)),
-        ...useCase.tools.map((tool) => serializeToolTag(tool)),
-      ].join(" ");
+  const handleUseCasePick = (useCase: HomepageUseCaseType) => {
+    const references = [
+      ...useCase.skills.map((skill) => serializeSkillTag(skill)),
+      ...useCase.tools.map((tool) => serializeToolTag(tool)),
+    ].join(" ");
 
-      setPendingInputText(references, {
-        replace: true,
-        typedSuffix: references ? ` ${useCase.prompt}` : useCase.prompt,
-      });
-    },
-    [setPendingInputText]
-  );
+    setPendingInputText(references, {
+      replace: true,
+      typedSuffix: references ? ` ${useCase.prompt}` : useCase.prompt,
+    });
+  };
 
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,

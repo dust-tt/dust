@@ -47,6 +47,7 @@ const SUBMIT_COOLDOWN_MS = 750;
 export const INPUT_BAR_DEFAULT_PLACEHOLDER = "Get work done";
 // Matches the sidebar conversation title TypingAnimation cadence.
 export const TYPING_INTERVAL_MS = 32;
+export const TYPING_MAX_DURATION_MS = 700;
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;

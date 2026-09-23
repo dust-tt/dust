@@ -38,6 +38,7 @@ import type { CustomEditorProps } from "@app/components/editor/input_bar/useCust
 import useCustomEditor, {
   INPUT_BAR_DEFAULT_PLACEHOLDER,
   TYPING_INTERVAL_MS,
+  TYPING_MAX_DURATION_MS,
 } from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
@@ -108,10 +109,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
-import type {
-  AnimationPlaybackControls,
-  BezierDefinition,
-} from "framer-motion";
+import type { BezierDefinition } from "framer-motion";
 import { animate, useReducedMotion } from "framer-motion";
 import type React from "react";
 import {
@@ -145,7 +143,6 @@ function narrowToKnownSlashCommand(
 }
 
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
-const TYPING_MAX_DURATION_MS = 700;
 const TYPING_EASE: BezierDefinition = [0.86, 0, 0.07, 1];
 const EMPTY_SPACE_IDS: string[] = [];
 const EMPTY_SELECTABLE_SPACES: SelectableConversationSpaceType[] = [];
@@ -1326,28 +1323,15 @@ const InputBarContainer = ({
   ]);
 
   const pendingReplaceInputRef = useRef<PendingInputText | null>(null);
-  const typingAnimationRef = useRef<AnimationPlaybackControls | null>(null);
-
-  const stopTyping = useCallback(() => {
-    typingAnimationRef.current?.stop();
-    typingAnimationRef.current = null;
-  }, []);
-
-  useEffect(() => {
-    return () => stopTyping();
-  }, [stopTyping]);
-
   const typeIntoEditor = useCallback(
     (text: string) => {
-      stopTyping();
-
       if (shouldReduceMotion) {
         editorServiceRef.current.appendText(text);
         return;
       }
 
       let typed = 0;
-      typingAnimationRef.current = animate(0, text.length, {
+      animate(0, text.length, {
         duration:
           Math.min(text.length * TYPING_INTERVAL_MS, TYPING_MAX_DURATION_MS) /
           1000,
@@ -1363,7 +1347,7 @@ const InputBarContainer = ({
         },
       });
     },
-    [shouldReduceMotion, stopTyping]
+    [shouldReduceMotion]
   );
 
   // Apply replace-mode pending text once the editor is ready. The async /go

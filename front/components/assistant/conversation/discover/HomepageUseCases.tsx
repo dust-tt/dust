@@ -1,3 +1,4 @@
+import { TYPING_MAX_DURATION_MS } from "@app/components/editor/input_bar/useCustomEditor";
 import {
   getIcon,
   ResourceAvatar,
@@ -46,6 +47,21 @@ export function HomepageUseCases({
     });
   }, [useCases]);
 
+  const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    if (!isTyping) {
+      return;
+    }
+
+    const timer = window.setTimeout(
+      () => setIsTyping(false),
+      TYPING_MAX_DURATION_MS
+    );
+
+    return () => window.clearTimeout(timer);
+  }, [isTyping]);
+
   const isPreparing =
     isUseCasesLoading || (useCases.length > 0 && page.length === 0);
 
@@ -74,7 +90,11 @@ export function HomepageUseCases({
         {page.map((useCase) => (
           <UseCaseRow
             key={useCase.id}
-            onPick={() => onPick(useCase)}
+            isDisabled={isTyping}
+            onPick={() => {
+              setIsTyping(true);
+              onPick(useCase);
+            }}
             useCase={useCase}
           />
         ))}
@@ -84,19 +104,22 @@ export function HomepageUseCases({
 }
 
 interface UseCaseRowProps {
+  isDisabled: boolean;
   onPick: () => void;
   useCase: HomepageUseCaseType;
 }
 
-function UseCaseRow({ onPick, useCase }: UseCaseRowProps) {
+function UseCaseRow({ isDisabled, onPick, useCase }: UseCaseRowProps) {
   return (
     <li className="h-12">
       <button
         type="button"
+        disabled={isDisabled}
         onClick={onPick}
         className={cn(
           "flex h-full w-full items-center gap-3 rounded-xl px-2 text-left",
-          "transition-colors duration-150 hover:bg-hover motion-reduce:transition-none"
+          "transition-[colors,opacity] duration-150 motion-reduce:transition-none",
+          isDisabled ? "opacity-50" : "hover:bg-hover"
         )}
       >
         <ResourceAvatar icon={getIcon(useCase.icon)} size="sm" />
