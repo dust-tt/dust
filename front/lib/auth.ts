@@ -20,6 +20,7 @@ import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import type {
+  GrantLevel,
   GroupPermissionsJSON,
   ResourcesWithVerb,
 } from "@app/lib/resources/group_permission_registry";
@@ -1312,7 +1313,8 @@ export class Authenticator {
     return this.getGovernanceGrantVerbs(
       resourceType,
       WHOLE_TYPE_RESOURCE_ID,
-      this.getNonNullableWorkspace().id
+      this.getNonNullableWorkspace().id,
+      "type"
     ).includes(verb);
   }
 
@@ -1595,12 +1597,17 @@ export class Authenticator {
   getGovernanceGrantVerbs(
     resourceType: ConcreteResourceType,
     resourceId: number,
-    workspaceModelId: ModelId
+    workspaceModelId: ModelId,
+    grantLevel: GrantLevel = "instance"
   ): GrantVerb[] {
     if (this.getNonNullableWorkspace().id !== workspaceModelId) {
       return [];
     }
-    return this._permissions.resolvedVerbsForResource(resourceType, resourceId);
+    return this._permissions.resolvedVerbsForResource(
+      resourceType,
+      resourceId,
+      grantLevel
+    );
   }
 
   /**
