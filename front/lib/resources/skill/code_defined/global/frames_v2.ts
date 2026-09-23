@@ -301,6 +301,7 @@ export const comments = sqliteTable(
 
 // functions/post-comment.ts
 import { db } from "@dust/pod";
+import { desc, eq } from "drizzle-orm";
 import { comments } from "../databases/comments.db.ts";
 
 const inserted = db("comments")
@@ -308,6 +309,12 @@ const inserted = db("comments")
   .values({ threadId, authorId, body, createdAt: new Date() })
   .returning()
   .get();
+
+// Every builder names the table first; finish with .get(), .all() or .run().
+const updated = db("comments").update(comments).set({ body }).where(eq(comments.id, id)).returning().get();
+const thread = db("comments").select().from(comments)
+  .where(eq(comments.threadId, threadId)).orderBy(desc(comments.createdAt)).all();
+db("comments").delete(comments).where(eq(comments.id, id)).run();
 \`\`\`
 
 Do not redefine tables inside function files, hand-write SQL schema changes, or keep durable state
