@@ -224,6 +224,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "JiraLogo",
   "LemlistLogo",
   "LinearLogo",
+  "LokaliseLogo",
   "LumaLogo",
   "MicrosoftExcelLogo",
   "MicrosoftLogo",

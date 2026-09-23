@@ -3718,6 +3718,299 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10037,
+    name: "Lokalise",
+    description:
+      "Lokalise tools to manage your localization projects — projects, languages, contributors, tasks, keys, glossary terms, translation orders and file uploads, scoped to your Lokalise permissions.",
+    url: "https://mcp.lokalise.com/mcp/project-management",
+    icon: "LokaliseLogo",
+    documentationUrl:
+      "https://docs.lokalise.com/en/articles/13547066-setting-up-and-using-the-lokalise-mcp-server",
+    connectionInstructions:
+      "Lokalise uses OAuth with dynamic client registration. You will be prompted to sign in with your Lokalise account and to grant the scopes the tools need. The MCP can only read data you can already see and only perform writes you can already perform in Lokalise, so your contributor role must give you access to the projects you want to work on. This is the project management toolkit; developers looking for keys, screenshots and file downloads should use the Lokalise Software Development server instead.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      list_lokalise_projects: "never_ask",
+      get_lokalise_project: "never_ask",
+      get_project_statistics: "never_ask",
+      list_project_languages: "never_ask",
+      list_project_contributors: "never_ask",
+      list_lokalise_tasks: "never_ask",
+      get_lokalise_task: "never_ask",
+      list_lokalise_teams: "never_ask",
+      get_lokalise_team: "never_ask",
+      list_lokalise_team_users: "never_ask",
+      list_lokalise_translation_orders: "never_ask",
+      get_lokalise_translation_order: "never_ask",
+      list_lokalise_keys: "never_ask",
+      get_lokalise_key: "never_ask",
+      list_lokalise_glossary_terms: "never_ask",
+      get_lokalise_glossary_term: "never_ask",
+      get_file_upload_url: "never_ask",
+      get_process_status: "never_ask",
+      list_processes: "never_ask",
+
+      update_lokalise_task: "low",
+      create_lokalise_keys: "low",
+      update_lokalise_key: "low",
+      create_lokalise_glossary_terms: "low",
+      update_lokalise_glossary_terms: "low",
+
+      // Structural, hard to undo, or spends money: always ask.
+      // task_type "automatic_translation" burns paid Lokalise AI words or
+      // Google/DeepL machine translation credits.
+      create_lokalise_task: "high",
+      create_project: "high",
+      create_project_contributor: "high",
+      add_project_language: "high",
+      // Places a paid order with translation providers.
+      create_lokalise_translation_order: "high",
+      // Both rewrite existing translations in bulk.
+      bulk_update_lokalise_keys: "high",
+      upload_file: "high",
+    },
+    toolDisplayLabels: {
+      list_lokalise_projects: {
+        running: "Listing projects on Lokalise",
+        done: "Listed projects on Lokalise",
+      },
+      get_lokalise_project: {
+        running: "Fetching project from Lokalise",
+        done: "Fetched project from Lokalise",
+      },
+      get_project_statistics: {
+        running: "Fetching project statistics from Lokalise",
+        done: "Fetched project statistics from Lokalise",
+      },
+      list_project_languages: {
+        running: "Listing project languages on Lokalise",
+        done: "Listed project languages on Lokalise",
+      },
+      create_project: {
+        running: "Creating project on Lokalise",
+        done: "Created project on Lokalise",
+      },
+      list_project_contributors: {
+        running: "Listing project contributors on Lokalise",
+        done: "Listed project contributors on Lokalise",
+      },
+      create_project_contributor: {
+        running: "Adding contributor on Lokalise",
+        done: "Added contributor on Lokalise",
+      },
+      add_project_language: {
+        running: "Adding language to project on Lokalise",
+        done: "Added language to project on Lokalise",
+      },
+      list_lokalise_tasks: {
+        running: "Listing tasks on Lokalise",
+        done: "Listed tasks on Lokalise",
+      },
+      get_lokalise_task: {
+        running: "Fetching task from Lokalise",
+        done: "Fetched task from Lokalise",
+      },
+      create_lokalise_task: {
+        running: "Creating task on Lokalise",
+        done: "Created task on Lokalise",
+      },
+      update_lokalise_task: {
+        running: "Updating task on Lokalise",
+        done: "Updated task on Lokalise",
+      },
+      list_lokalise_teams: {
+        running: "Listing teams on Lokalise",
+        done: "Listed teams on Lokalise",
+      },
+      get_lokalise_team: {
+        running: "Fetching team from Lokalise",
+        done: "Fetched team from Lokalise",
+      },
+      list_lokalise_team_users: {
+        running: "Listing team users on Lokalise",
+        done: "Listed team users on Lokalise",
+      },
+      list_lokalise_translation_orders: {
+        running: "Listing translation orders on Lokalise",
+        done: "Listed translation orders on Lokalise",
+      },
+      get_lokalise_translation_order: {
+        running: "Fetching translation order from Lokalise",
+        done: "Fetched translation order from Lokalise",
+      },
+      create_lokalise_translation_order: {
+        running: "Placing translation order on Lokalise",
+        done: "Placed translation order on Lokalise",
+      },
+      list_lokalise_keys: {
+        running: "Listing keys on Lokalise",
+        done: "Listed keys on Lokalise",
+      },
+      get_lokalise_key: {
+        running: "Fetching key from Lokalise",
+        done: "Fetched key from Lokalise",
+      },
+      create_lokalise_keys: {
+        running: "Creating keys on Lokalise",
+        done: "Created keys on Lokalise",
+      },
+      update_lokalise_key: {
+        running: "Updating key on Lokalise",
+        done: "Updated key on Lokalise",
+      },
+      bulk_update_lokalise_keys: {
+        running: "Bulk updating keys on Lokalise",
+        done: "Bulk updated keys on Lokalise",
+      },
+      list_lokalise_glossary_terms: {
+        running: "Listing glossary terms on Lokalise",
+        done: "Listed glossary terms on Lokalise",
+      },
+      get_lokalise_glossary_term: {
+        running: "Fetching glossary term from Lokalise",
+        done: "Fetched glossary term from Lokalise",
+      },
+      create_lokalise_glossary_terms: {
+        running: "Creating glossary terms on Lokalise",
+        done: "Created glossary terms on Lokalise",
+      },
+      update_lokalise_glossary_terms: {
+        running: "Updating glossary terms on Lokalise",
+        done: "Updated glossary terms on Lokalise",
+      },
+      get_file_upload_url: {
+        running: "Preparing file upload on Lokalise",
+        done: "Prepared file upload on Lokalise",
+      },
+      upload_file: {
+        running: "Uploading file to Lokalise",
+        done: "Uploaded file to Lokalise",
+      },
+      get_process_status: {
+        running: "Checking process status on Lokalise",
+        done: "Checked process status on Lokalise",
+      },
+      list_processes: {
+        running: "Listing processes on Lokalise",
+        done: "Listed processes on Lokalise",
+      },
+    },
+  },
+  {
+    id: 10038,
+    name: "Lokalise Software Development",
+    description:
+      "Lokalise tools for developer localization workflows — projects, translation keys, screenshots, tasks and file downloads, scoped to your Lokalise permissions.",
+    url: "https://mcp.lokalise.com/mcp/software-development",
+    icon: "LokaliseLogo",
+    documentationUrl:
+      "https://docs.lokalise.com/en/articles/13547066-setting-up-and-using-the-lokalise-mcp-server",
+    connectionInstructions:
+      "Lokalise uses OAuth with dynamic client registration. You will be prompted to sign in with your Lokalise account and to grant the scopes the tools need. The MCP can only read data you can already see and only perform writes you can already perform in Lokalise, so your contributor role must give you access to the projects you want to work on. This is the software development toolkit; for contributors, teams, glossary and translation orders, use the Lokalise server instead.",
+    authMethod: "oauth-dynamic",
+    // Ce serveur partage des noms d'outils avec "Lokalise", mais les stakes et
+    // les labels sont résolus par serveur : la copie est nécessaire.
+    toolStakes: {
+      list_lokalise_tasks: "never_ask",
+      get_lokalise_task: "never_ask",
+      list_lokalise_projects: "never_ask",
+      get_lokalise_project: "never_ask",
+      list_lokalise_keys: "never_ask",
+      get_lokalise_key: "never_ask",
+      list_lokalise_screenshots: "never_ask",
+      get_lokalise_screenshot: "never_ask",
+      download_files: "never_ask",
+      download_files_async: "never_ask",
+      get_process_status: "never_ask",
+
+      create_lokalise_keys: "low",
+      update_lokalise_key: "low",
+      create_lokalise_screenshots: "low",
+      update_lokalise_screenshot: "low",
+
+      // task_type "automatic_translation" burns paid Lokalise AI words or
+      // Google/DeepL machine translation credits.
+      create_lokalise_task: "high",
+      // Rewrites existing translations in bulk.
+      bulk_update_lokalise_keys: "high",
+      delete_lokalise_screenshot: "high",
+    },
+    toolDisplayLabels: {
+      list_lokalise_tasks: {
+        running: "Listing tasks on Lokalise",
+        done: "Listed tasks on Lokalise",
+      },
+      get_lokalise_task: {
+        running: "Fetching task from Lokalise",
+        done: "Fetched task from Lokalise",
+      },
+      create_lokalise_task: {
+        running: "Creating task on Lokalise",
+        done: "Created task on Lokalise",
+      },
+      list_lokalise_projects: {
+        running: "Listing projects on Lokalise",
+        done: "Listed projects on Lokalise",
+      },
+      get_lokalise_project: {
+        running: "Fetching project from Lokalise",
+        done: "Fetched project from Lokalise",
+      },
+      list_lokalise_keys: {
+        running: "Listing keys on Lokalise",
+        done: "Listed keys on Lokalise",
+      },
+      get_lokalise_key: {
+        running: "Fetching key from Lokalise",
+        done: "Fetched key from Lokalise",
+      },
+      create_lokalise_keys: {
+        running: "Creating keys on Lokalise",
+        done: "Created keys on Lokalise",
+      },
+      update_lokalise_key: {
+        running: "Updating key on Lokalise",
+        done: "Updated key on Lokalise",
+      },
+      bulk_update_lokalise_keys: {
+        running: "Bulk updating keys on Lokalise",
+        done: "Bulk updated keys on Lokalise",
+      },
+      list_lokalise_screenshots: {
+        running: "Listing screenshots on Lokalise",
+        done: "Listed screenshots on Lokalise",
+      },
+      get_lokalise_screenshot: {
+        running: "Fetching screenshot from Lokalise",
+        done: "Fetched screenshot from Lokalise",
+      },
+      create_lokalise_screenshots: {
+        running: "Adding screenshots to Lokalise",
+        done: "Added screenshots to Lokalise",
+      },
+      update_lokalise_screenshot: {
+        running: "Updating screenshot on Lokalise",
+        done: "Updated screenshot on Lokalise",
+      },
+      delete_lokalise_screenshot: {
+        running: "Deleting screenshot on Lokalise",
+        done: "Deleted screenshot on Lokalise",
+      },
+      download_files: {
+        running: "Downloading files from Lokalise",
+        done: "Downloaded files from Lokalise",
+      },
+      download_files_async: {
+        running: "Downloading files from Lokalise",
+        done: "Downloaded files from Lokalise",
+      },
+      get_process_status: {
+        running: "Checking process status on Lokalise",
+        done: "Checked process status on Lokalise",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (
