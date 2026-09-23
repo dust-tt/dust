@@ -66,7 +66,7 @@ if [ -f "${SBX_DEV_FRONT_URL_FILE}" ]; then
 fi
 SBX_DEV_VIZ_URL_FILE="${SBX_DEV_VIZ_URL_FILE:-${DUST_INFRA_LOG_DIR}/sbx-dev-viz-url}"
 if [ -f "${SBX_DEV_VIZ_URL_FILE}" ]; then
-  export VIZ_PUBLIC_URL="$(tr -d '\n' <"${SBX_DEV_VIZ_URL_FILE}")"
+  export SBX_DEV_VIZ_URL="$(tr -d '\n' <"${SBX_DEV_VIZ_URL_FILE}")"
   export SBX_DEV_UNRESTRICTED_EGRESS="${SBX_DEV_UNRESTRICTED_EGRESS:-true}"
 fi
 

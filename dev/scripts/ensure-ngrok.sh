@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ensure ngrok HTTPS tunnels to front-api (:3000) and viz (:3007), and persist
-# their public URLs for SBX_DEV_FRONT_URL / VIZ_PUBLIC_URL (sandbox → local).
+# their public URLs for SBX_DEV_FRONT_URL / SBX_DEV_VIZ_URL (sandbox → local).
 # Soft-fails when auth is missing.
 set -euo pipefail
 
@@ -153,7 +153,7 @@ ensure_tunnel "${NGROK_FRONT_ADDR}" "${SBX_DEV_FRONT_URL_FILE}" \
 # Viz so sandboxes can fetch frame-runtime from local viz (:3007).
 # Soft-fail: free ngrok plans may only allow one concurrent tunnel.
 if ! ensure_tunnel "${NGROK_VIZ_ADDR}" "${SBX_DEV_VIZ_URL_FILE}" \
-  "Sandbox viz tunnel (VIZ_PUBLIC_URL)" "viz"; then
-  log "viz tunnel (:3007) not available; sandboxes will keep using VIZ_PUBLIC_URL as-is"
+  "Sandbox viz tunnel (SBX_DEV_VIZ_URL)" "viz"; then
+  log "viz tunnel (:3007) not available; sandboxes will fall back to VIZ_PUBLIC_URL"
   rm -f "${SBX_DEV_VIZ_URL_FILE}"
 fi

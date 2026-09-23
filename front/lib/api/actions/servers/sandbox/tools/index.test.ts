@@ -47,7 +47,7 @@ const {
 vi.mock("@app/lib/api/config", () => ({
   default: {
     getApiBaseUrl: () => "https://dust.tt",
-    getVizPublicUrl: () => "https://viz.dust.tt",
+    getSandboxVizUrl: () => "https://viz.dust.tt",
     getSandboxDevFrontHostName: () => undefined,
   },
 }));

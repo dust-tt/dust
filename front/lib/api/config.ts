@@ -647,6 +647,17 @@ const config = {
   getSandboxDatadogApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("SANDBOX_DD_API_KEY");
   },
+  // The viz origin a sandbox uses (DUST_VIZ_URL). In development, SBX_DEV_VIZ_URL points it at a
+  // tunnel to local viz without routing the browser's viz traffic through that tunnel too.
+  getSandboxVizUrl: (): string => {
+    const developmentVizUrl =
+      EnvironmentConfig.getOptionalEnvVariable("SBX_DEV_VIZ_URL");
+    if (isDevelopment() && developmentVizUrl) {
+      return developmentVizUrl;
+    }
+
+    return config.getVizPublicUrl();
+  },
   getSandboxDevFrontHostName: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "SBX_DEV_FRONT_URL"
