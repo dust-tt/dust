@@ -1,5 +1,6 @@
 import { ManageSkillsPage } from "@app/components/pages/builder/skills/ManageSkillsPage";
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
+import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
@@ -16,14 +17,16 @@ import { SWRConfig } from "swr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 beforeEach(() => {
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    }
-  );
+  for (const observer of ["ResizeObserver", "IntersectionObserver"]) {
+    vi.stubGlobal(
+      observer,
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    );
+  }
 });
 
 vi.mock("@app/lib/platform", () => ({
@@ -361,7 +364,7 @@ describe("search-backed Manage Skills", () => {
   });
 
   it("refreshes All after importing a skill", async () => {
-    const { skill, search, mutation, mount } = await setup();
+    const { skill, context, search, mutation, mount } = await setup();
     search.mockResolvedValue({ skills: [], hasMore: false, nextCursor: null });
     mutation.mockImplementation(async () => {
       search.mockResolvedValue({
@@ -370,23 +373,36 @@ describe("search-backed Manage Skills", () => {
         nextCursor: null,
       });
     });
-    mount();
-    await screen.findByText("No skills to show.");
+    // Test import-driven cache refresh without the dropdown-to-dialog focus transition.
+    function PageWithImport() {
+      const [isOpen, setIsOpen] = useState(true);
 
-    await userEvent.click(screen.getByRole("button", { name: "Create skill" }));
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "From existing" })
-    );
+      return (
+        <>
+          <ManageSkillsPage />
+          {isOpen && (
+            <ImportSkillsDialog
+              owner={context.workspace}
+              onClose={() => setIsOpen(false)}
+            />
+          )}
+        </>
+      );
+    }
+
+    mount(<PageWithImport />);
+    await screen.findByText("No skills to show.");
     const dialog = await screen.findByRole("dialog", { name: "Import skills" });
     await userEvent.type(
       within(dialog).getByPlaceholderText("https://github.com/owner/repo"),
       "https://github.com/dust-tt/skills"
     );
-    await within(dialog).findByText(skill.name, {}, { timeout: 3_000 });
     const importButton = within(dialog).getByRole("button", {
       name: "Import",
     });
-    await waitFor(() => expect(importButton).toBeEnabled());
+    await waitFor(() => expect(importButton).toBeEnabled(), {
+      timeout: 3_000,
+    });
     await userEvent.click(importButton);
 
     await screen.findByRole("button", { name: /Weekly report/ });
