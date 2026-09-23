@@ -110,14 +110,18 @@ const HISTORICAL_TOKENIZATION_MODEL_CONFIGS = [
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
 ];
 
+/**
+ * @cc [owner:sfriquet,label:product] raw-tool-footprint-token-counts
+ * Tool footprints MUST be tokenized with a `tokenCountAdjustment` of 1, whatever the model
+ * configuration declares. Configured adjustments are context-window safety margins and MUST NOT
+ * inflate attributed tokens.
+ */
 function modelForToolFootprintAttribution(
   model: ModelConfigurationType
 ): ModelConfigurationType {
   return {
     ...model,
-    // The shared default is a context-window safety margin. Attribution needs the raw estimate.
-    // Preserve only explicit adjustments that compensate for a model-specific tokenizer mismatch.
-    tokenCountAdjustment: model.tokenCountAdjustment ?? 1,
+    tokenCountAdjustment: 1,
   };
 }
 
