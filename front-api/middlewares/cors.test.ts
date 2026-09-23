@@ -2,6 +2,7 @@ import {
   DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
+  DUST_FILE_REVISION_HEADER,
 } from "@app/types/files";
 import { cors } from "@front-api/middlewares/cors";
 import { Hono } from "hono";
@@ -39,7 +40,8 @@ describe("cors middleware", () => {
         headers: {
           Origin: APP_ORIGIN,
           "Access-Control-Request-Method": "PUT",
-          "Access-Control-Request-Headers": "content-type,if-match",
+          "Access-Control-Request-Headers":
+            "content-type,x-dust-if-revision-match",
         },
       }
     );
@@ -53,7 +55,7 @@ describe("cors middleware", () => {
     );
     expect(
       response.headers.get("Access-Control-Allow-Headers")?.split(", ")
-    ).toContain("if-match");
+    ).toContain("x-dust-if-revision-match");
     expect(
       response.headers.get("Access-Control-Allow-Methods")?.split(", ")
     ).toContain("PUT");
@@ -65,7 +67,8 @@ describe("cors middleware", () => {
       headers: {
         Origin: APP_ORIGIN,
         "Access-Control-Request-Method": "PUT",
-        "Access-Control-Request-Headers": "content-type,if-match,x-unapproved",
+        "Access-Control-Request-Headers":
+          "content-type,x-dust-if-revision-match,x-unapproved",
       },
     });
 
@@ -81,7 +84,7 @@ describe("cors middleware", () => {
     expect(response.status).toBe(200);
     expect(getExposedHeaders(response)).toContain(DUST_FILE_ID_HEADER);
     expect(getExposedHeaders(response)).toContain(DUST_FILE_CAN_WRITE_HEADER);
-    expect(getExposedHeaders(response)).toContain("ETag");
+    expect(getExposedHeaders(response)).toContain(DUST_FILE_REVISION_HEADER);
     expect(getExposedHeaders(response)).toContain(
       DUST_FILE_CONTENT_TYPE_HEADER
     );
@@ -96,7 +99,7 @@ describe("cors middleware", () => {
     expect(response.status).toBe(200);
     expect(getExposedHeaders(response)).toContain(DUST_FILE_ID_HEADER);
     expect(getExposedHeaders(response)).toContain(DUST_FILE_CAN_WRITE_HEADER);
-    expect(getExposedHeaders(response)).toContain("ETag");
+    expect(getExposedHeaders(response)).toContain(DUST_FILE_REVISION_HEADER);
     expect(getExposedHeaders(response)).toContain(
       DUST_FILE_CONTENT_TYPE_HEADER
     );

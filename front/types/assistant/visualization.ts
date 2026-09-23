@@ -1,3 +1,4 @@
+import { FileRevisionSchema } from "@app/types/files";
 import { z } from "zod";
 
 // Best-effort event, intentionally outside the request/response RPC protocol so
@@ -29,7 +30,7 @@ const WriteFileParamsSchema = z.object({
   path: z.string(),
   content: z.string(),
   contentType: z.string().optional(),
-  revision: z.string().regex(/^"[1-9][0-9]*"$/),
+  revision: FileRevisionSchema,
 });
 
 export type WriteFileParams = z.infer<typeof WriteFileParamsSchema>;
@@ -121,8 +122,12 @@ const GetFileRequestSchema = VisualizationRPCRequestBaseSchema.extend({
   params: GetFileParamsSchema,
 });
 
-const WriteFileRequestSchema = VisualizationRPCRequestBaseSchema.extend({
-  command: z.literal("writeFile"),
+export const WriteFileRequestEnvelopeSchema =
+  VisualizationRPCRequestBaseSchema.extend({
+    command: z.literal("writeFile"),
+  });
+
+const WriteFileRequestSchema = WriteFileRequestEnvelopeSchema.extend({
   params: WriteFileParamsSchema,
 });
 

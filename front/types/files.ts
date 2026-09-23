@@ -11,8 +11,17 @@ const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
 export const TABLE_PREFIX = "TABLE:";
 export const DUST_FILE_CAN_WRITE_HEADER = "X-Dust-File-Can-Write";
+export const DUST_FILE_REVISION_HEADER = "X-Dust-File-Revision";
+export const DUST_IF_REVISION_MATCH_HEADER = "X-Dust-If-Revision-Match";
 export const DUST_FILE_ID_HEADER = "X-Dust-File-Id";
 export const DUST_FILE_CONTENT_TYPE_HEADER = "X-Dust-File-Content-Type";
+
+/**
+ * @cc [owner:flvndvd,label:api;concurrency] file-revision-token
+ * File revisions MUST preserve the exact positive storage generation as a string,
+ * independently of HTTP ETags. Missing or invalid revisions MUST NOT enable Frame writes.
+ */
+export const FileRevisionSchema = z.string().regex(/^[1-9][0-9]*$/);
 
 export type FileStatus = "created" | "failed" | "ready";
 

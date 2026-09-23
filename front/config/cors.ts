@@ -45,16 +45,16 @@ export function isAllowedOrigin(origin: string): boolean {
 
 /**
  * @cc [owner:flvndvd,label:api] conditional-file-write-preflight
- * Browser preflights MUST allow If-Match for revision-checked file saves.
+ * Browser preflights MUST allow X-Dust-If-Revision-Match for revision-checked file saves.
  */
 export const ALLOWED_HEADERS = [
   "authorization",
   "content-type",
-  "if-match",
   "mcp-protocol-version",
   "mcp-session-id",
   "x-commit-hash",
   "x-dust-extension-version",
+  "x-dust-if-revision-match",
   "x-build-date",
   "x-hackerone-research",
   "x-request-origin",

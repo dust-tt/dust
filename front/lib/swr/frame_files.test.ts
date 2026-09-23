@@ -1,5 +1,9 @@
 import { useFrameFiles } from "@app/lib/swr/frame_files";
-import { DUST_FILE_CAN_WRITE_HEADER } from "@app/types/files";
+import {
+  DUST_FILE_CAN_WRITE_HEADER,
+  DUST_FILE_REVISION_HEADER,
+  DUST_IF_REVISION_MATCH_HEADER,
+} from "@app/types/files";
 import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,7 +20,7 @@ const edit = {
   path: "./notes.json",
   content: '{"text":"updated"}',
   contentType: "application/json",
-  revision: '"123"',
+  revision: "123",
 };
 
 beforeEach(() => {
@@ -43,7 +47,10 @@ describe("Frame file access", () => {
   ])("preserves reads by %s without granting writes outside the package", async (path, url) => {
     clientFetch.mockResolvedValue(
       new Response("{}", {
-        headers: { ETag: '"123"', [DUST_FILE_CAN_WRITE_HEADER]: "true" },
+        headers: {
+          [DUST_FILE_REVISION_HEADER]: "123",
+          [DUST_FILE_CAN_WRITE_HEADER]: "true",
+        },
       })
     );
     const { result } = renderHook(() =>
@@ -79,12 +86,17 @@ describe("Frame file access", () => {
     expect(clientFetch).not.toHaveBeenCalled();
   });
 
-  it("reads a package file and saves with its exact revision", async () => {
+  it.each([
+    null,
+    '"123"',
+    'W/"123"',
+  ])("saves with the file revision independently of ETag %s", async (etag) => {
     clientFetch.mockResolvedValueOnce(
       new Response("{}", {
         headers: {
           "Content-Type": "application/json",
-          ETag: '"123"',
+          [DUST_FILE_REVISION_HEADER]: "123",
+          ...(etag && { ETag: etag }),
           [DUST_FILE_CAN_WRITE_HEADER]: "true",
         },
       })
@@ -99,17 +111,22 @@ describe("Frame file access", () => {
     });
 
     clientFetch.mockResolvedValueOnce(
-      new Response(null, { headers: { ETag: '"124"' } })
+      new Response(null, {
+        headers: { [DUST_FILE_REVISION_HEADER]: "124", ETag: 'W/"124"' },
+      })
     );
     await expect(result.current.writeFile(edit)).resolves.toEqual({
       success: true,
-      revision: '"124"',
+      revision: "124",
     });
     expect(clientFetch).toHaveBeenLastCalledWith(
       "/api/w/w_test/files/path/conversation-c_test/report/notes.json",
       {
         method: "PUT",
-        headers: { "Content-Type": "application/json", "If-Match": '"123"' },
+        headers: {
+          "Content-Type": "application/json",
+          [DUST_IF_REVISION_MATCH_HEADER]: "123",
+        },
         body: edit.content,
       }
     );
@@ -123,6 +140,28 @@ describe("Frame file access", () => {
       "/api/w/w_test/files/path/conversation-c_test/report/draft%20notes.json"
     );
     expect(file.canWrite).toBe(false);
+  });
+
+  it.each([
+    null,
+    "",
+    'W/"123"',
+  ])("keeps files with missing or invalid revision %s read-only even with an ETag", async (revision) => {
+    clientFetch.mockResolvedValue(
+      new Response("{}", {
+        headers: {
+          ETag: '"123"',
+          [DUST_FILE_CAN_WRITE_HEADER]: "true",
+          ...(revision !== null && { [DUST_FILE_REVISION_HEADER]: revision }),
+        },
+      })
+    );
+    const { result } = renderHook(() => useFrameFiles(options));
+    await expect(result.current.readFile(edit.path)).resolves.toMatchObject({
+      fileBlob: expect.any(Blob),
+      revision: null,
+      canWrite: false,
+    });
   });
 
   it.each([
@@ -154,7 +193,7 @@ describe("Frame file access", () => {
       })
     );
     clientFetch.mockResolvedValue(
-      new Response(null, { headers: { ETag: '"124"' } })
+      new Response(null, { headers: { [DUST_FILE_REVISION_HEADER]: "124" } })
     );
     await result.current.readFile(edit.path);
     expect(clientFetch).toHaveBeenCalledWith(
@@ -197,7 +236,7 @@ describe("Frame file access", () => {
     clientFetch.mockResolvedValue(
       new Response("{}", {
         headers: {
-          ETag: '"123"',
+          [DUST_FILE_REVISION_HEADER]: "123",
           [DUST_FILE_CAN_WRITE_HEADER]: String(canWrite),
         },
       })
@@ -208,8 +247,19 @@ describe("Frame file access", () => {
     });
   });
 
-  it("does not confirm a save if the response omits its revision", async () => {
-    clientFetch.mockResolvedValue(new Response(null));
+  it.each([
+    null,
+    "",
+    'W/"124"',
+  ])("does not confirm a save with missing or invalid revision %s", async (revision) => {
+    clientFetch.mockResolvedValue(
+      new Response(null, {
+        headers: {
+          ETag: '"124"',
+          ...(revision !== null && { [DUST_FILE_REVISION_HEADER]: revision }),
+        },
+      })
+    );
     const { result } = renderHook(() => useFrameFiles(options));
     await expect(result.current.writeFile(edit)).resolves.toMatchObject({
       success: false,
