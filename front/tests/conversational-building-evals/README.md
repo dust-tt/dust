@@ -49,9 +49,11 @@ regular (non-admin) workspace members the agent can find through `list_workspace
 to add them as editors. `tools` are remote MCP servers with a view in the global space, listed by
 `list_tools`. `knowledge` is a folder data source per entry; its documents are served to
 `search_knowledge` by a stub of core's bulk search (core does not run in the eval), for any
-query. Scenarios and assertions refer to every seeded entity by `key` because the database
-assigns the ids; `references` on a `suggestSkillUpdate` assertion checks that the instruction
-edits inline the seeded tool ids and knowledge documents.
+query. `agents` are created with hand-written block HTML whose `data-block-id`s the scenario picks, so a
+`suggestAgentInstructionsChange` assertion can restrict which blocks an edit may target.
+Scenarios and assertions refer to every seeded entity by `key` because the database assigns the
+ids; `references` on a `suggestSkillUpdate` assertion checks that the instruction edits inline
+the seeded tool ids and knowledge documents.
 
 ### Writing `judgeCriteria`
 

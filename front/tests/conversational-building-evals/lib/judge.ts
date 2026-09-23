@@ -48,6 +48,10 @@ User message:
 
 {{WORKSPACE_REFERENCES}}
 
+## Agents in the workspace (as the agent could read them with get_agent_details)
+
+{{WORKSPACE_AGENTS}}
+
 ## Final suggestion tool call
 
 {{FINAL_TOOL_CALL}}
@@ -76,6 +80,10 @@ User message:
      \`targetBlockId\`: the id must exist in the skill's instructions (or be the root id for a full
      rewrite), and the \`content\` must be a complete, well-formed replacement for that block,
      including its wrapping tag.
+   - For agent instruction changes: the same block rules apply as for skills. When the request
+     concerns one section of the instructions, the edit must target that section's block (or a
+     block inside it) and leave every other block untouched; rewriting the root or unrelated
+     blocks for a local change = score 0-1.
    - For agent creations: are the name, description and instructions coherent with the request,
      and are the instructions complete enough for the agent to do its job without inventing
      capabilities (tools, knowledge) that were not verified to exist?
@@ -123,6 +131,18 @@ function renderWorkspaceReferences(scenario: SeededScenario): string {
   return lines.length > 0 ? lines.join("\n") : "(none)";
 }
 
+async function renderWorkspaceAgents(
+  scenario: SeededScenario
+): Promise<string> {
+  const rendered: string[] = [];
+  for (const agentId of scenario.agentIdsByKey.values()) {
+    rendered.push(
+      await runTool(scenario.auth, TOOL.describeAgent, { agentId })
+    );
+  }
+  return rendered.length > 0 ? rendered.join("\n\n") : "(none)";
+}
+
 export async function evaluateWithJudge(
   scenario: SeededScenario,
   testCase: TestCase,
@@ -138,6 +158,7 @@ export async function evaluateWithJudge(
   )
     .replace("{{WORKSPACE_SKILLS}}", await renderWorkspaceSkills(scenario))
     .replace("{{WORKSPACE_REFERENCES}}", renderWorkspaceReferences(scenario))
+    .replace("{{WORKSPACE_AGENTS}}", await renderWorkspaceAgents(scenario))
     .replace(
       "{{FINAL_TOOL_CALL}}",
       finalToolCall

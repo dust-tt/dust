@@ -284,6 +284,16 @@ export interface AppliedSkillInstructions {
   instructionsHtml: string;
 }
 
+/**
+ * Converts stored block HTML back to the markdown `instructions` field, the way the editor
+ * serializes it. Counterpart of `convertMarkdownToBlockHtml`.
+ */
+export function convertBlockHtmlToMarkdown(instructionsHtml: string): string {
+  const { document, domParser, markdownManager } = getMarkdownPipeline();
+  const doc = parseInstructionsHtml(instructionsHtml, { document, domParser });
+  return postProcessMarkdown(markdownManager.serialize(doc.toJSON())).trim();
+}
+
 export function applyInstructionEditsToHtml(
   instructionsHtml: string,
   edits: { targetBlockId: string; content: string }[],

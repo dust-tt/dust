@@ -48,12 +48,23 @@ export interface SeedKnowledge {
   documents: SeedKnowledgeDocument[];
 }
 
+/** An agent to create in the scenario's workspace before the run. */
+export interface SeedAgent {
+  key: string;
+  name: string;
+  description: string;
+  // Block-structured HTML with hand-picked `data-block-id`s, so scenarios can assert on which
+  // blocks an edit targets. Wrap in the `instructions-root` div, as the editor stores it.
+  instructionsHtml: string;
+}
+
 /** Everything the scenario's workspace is seeded with. Tools then run for real against it. */
 export interface WorkspaceSeed {
   skills: SeedSkill[];
   members?: SeedMember[];
   tools?: SeedTool[];
   knowledge?: SeedKnowledge[];
+  agents?: SeedAgent[];
 }
 
 export interface ConversationMessage {
@@ -93,7 +104,14 @@ export type FinalToolCallAssertion =
       availability?: SkillAvailability;
     }
   | { type: "suggestSkillUserFacingDescription"; skillKey: string }
-  | { type: "suggestAgentCreation" };
+  | { type: "suggestAgentCreation" }
+  | {
+      type: "suggestAgentInstructionsChange";
+      agentKey: string;
+      // The edit must target one of these block ids (from the seeded HTML). Guards against a
+      // rewrite of the root or of an unrelated block when the change fits in one block.
+      allowedTargetBlockIds?: string[];
+    };
 
 interface BaseTestCase {
   scenarioId: string;
@@ -159,6 +177,7 @@ export interface SeededScenario {
   // MCP server view ids, which is what `<tool id=.../>` references.
   toolIdsByKey: Map<string, string>;
   knowledgeByKey: Map<string, SeededKnowledgeNode>;
+  agentIdsByKey: Map<string, string>;
 }
 
 /** The agent under test: the Dust global agent with the conversational-building skill enabled. */

@@ -9,8 +9,30 @@ import type {
 } from "@app/tests/conversational-building-evals/lib/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
+import type {
+  SkillAgentFacingDescriptionEditType,
+  SkillInstructionEditItemType,
+} from "@app/types/suggestions/skill_suggestion";
+import {
+  SkillAgentFacingDescriptionEditSchema,
+  SkillInstructionEditItemSchema,
+} from "@app/types/suggestions/skill_suggestion";
 
 type AssertionResult = { success: true } | { success: false; error: string };
+
+// Type guards over the production edit schemas, so the assertions read the tool arguments the
+// way the tools validate them.
+function isInstructionEditItem(
+  value: unknown
+): value is SkillInstructionEditItemType {
+  return SkillInstructionEditItemSchema.safeParse(value).success;
+}
+
+function isAgentFacingDescriptionEdit(
+  value: unknown
+): value is SkillAgentFacingDescriptionEditType {
+  return SkillAgentFacingDescriptionEditSchema.safeParse(value).success;
+}
 
 function hasEdit(
   args: Record<string, unknown>,
@@ -21,15 +43,8 @@ function hasEdit(
       return (
         Array.isArray(args.instructionEdits) && args.instructionEdits.length > 0
       );
-    case "agentFacingDescriptionEdit": {
-      const edit = args.agentFacingDescriptionEdit;
-      return (
-        typeof edit === "object" &&
-        edit !== null &&
-        "content" in edit &&
-        isString(edit.content)
-      );
-    }
+    case "agentFacingDescriptionEdit":
+      return isAgentFacingDescriptionEdit(args.agentFacingDescriptionEdit);
     default:
       assertNever(kind);
   }
@@ -56,14 +71,8 @@ function getInstructionEditsContent(args: Record<string, unknown>): string {
     return "";
   }
   return args.instructionEdits
-    .map((edit: unknown) =>
-      typeof edit === "object" &&
-      edit !== null &&
-      "content" in edit &&
-      isString(edit.content)
-        ? edit.content
-        : ""
-    )
+    .filter(isInstructionEditItem)
+    .map((edit) => edit.content)
     .join("\n");
 }
 
@@ -265,6 +274,48 @@ export function validateFinalToolCall(
         return {
           success: false,
           error: `Expected availability "${assertion.availability}", got "${String(finalToolCall.arguments.availability)}"`,
+        };
+      }
+      return { success: true };
+    }
+
+    case "suggestAgentInstructionsChange": {
+      if (finalToolCall.name !== TOOL.suggestAgentInstructionsChange) {
+        return {
+          success: false,
+          error: `Expected final tool call ${TOOL.suggestAgentInstructionsChange}, got ${finalToolCall.name}`,
+        };
+      }
+      const expectedAgentId = scenario.agentIdsByKey.get(assertion.agentKey);
+      if (!expectedAgentId) {
+        throw new Error(
+          `Scenario references unknown agent key "${assertion.agentKey}"`
+        );
+      }
+      const agentId = finalToolCall.arguments.agentId;
+      if (agentId !== expectedAgentId) {
+        return {
+          success: false,
+          error: `Expected ${TOOL.suggestAgentInstructionsChange} on agent "${assertion.agentKey}" (${expectedAgentId}), got "${String(agentId)}"`,
+        };
+      }
+      // The tool takes exactly one edit; a block outside the expected ones means the change
+      // was applied to the wrong section or to the whole instructions.
+      const edit = finalToolCall.arguments.instructionEdit;
+      if (!isInstructionEditItem(edit)) {
+        return {
+          success: false,
+          error: `${TOOL.suggestAgentInstructionsChange} carries no valid instructionEdit`,
+        };
+      }
+      const { targetBlockId } = edit;
+      if (
+        assertion.allowedTargetBlockIds &&
+        !assertion.allowedTargetBlockIds.includes(targetBlockId)
+      ) {
+        return {
+          success: false,
+          error: `Edit targets block "${targetBlockId}", outside the expected ones: ${JSON.stringify(assertion.allowedTargetBlockIds)}`,
         };
       }
       return { success: true };

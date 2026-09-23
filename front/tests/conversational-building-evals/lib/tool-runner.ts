@@ -3,8 +3,10 @@ import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import {
   BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
+  DESCRIBE_AGENT_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
   SUGGEST_AGENT_CREATION_TOOL_NAME,
+  SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME,
   SUGGEST_SKILL_AVAILABILITY_TOOL_NAME,
   SUGGEST_SKILL_DELETION_TOOL_NAME,
   SUGGEST_SKILL_EDITORS_TOOL_NAME,
@@ -13,7 +15,10 @@ import {
   SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { TOOLS as BUILDING_TOOLS } from "@app/lib/api/actions/servers/building_agents_and_skills/tools";
-import { WORKSPACE_MANAGEMENT_SERVER_NAME } from "@app/lib/api/actions/servers/workspace_management/metadata";
+import {
+  GET_AGENT_DETAILS_TOOL_NAME,
+  WORKSPACE_MANAGEMENT_SERVER_NAME,
+} from "@app/lib/api/actions/servers/workspace_management/metadata";
 import { TOOLS as WORKSPACE_MANAGEMENT_TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -26,6 +31,10 @@ export const TOOL = {
   describeSkill: getPrefixedToolName(
     BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
     DESCRIBE_SKILL_TOOL_NAME
+  ),
+  describeAgent: getPrefixedToolName(
+    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
+    DESCRIBE_AGENT_TOOL_NAME
   ),
   suggestSkillUpdate: getPrefixedToolName(
     BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
@@ -54,6 +63,14 @@ export const TOOL = {
   suggestAgentCreation: getPrefixedToolName(
     BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
     SUGGEST_AGENT_CREATION_TOOL_NAME
+  ),
+  suggestAgentInstructionsChange: getPrefixedToolName(
+    BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
+    SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME
+  ),
+  getAgentDetails: getPrefixedToolName(
+    WORKSPACE_MANAGEMENT_SERVER_NAME,
+    GET_AGENT_DETAILS_TOOL_NAME
   ),
 } as const;
 
