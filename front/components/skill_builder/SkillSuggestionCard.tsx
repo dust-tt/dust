@@ -1,3 +1,4 @@
+import { ConversationalSuggestionCard } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { SkillFieldEditSection } from "@app/components/skill_builder/SkillFieldEditSection";
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
@@ -27,7 +28,7 @@ import {
   XCircle,
 } from "@dust-tt/sparkle";
 import { EditorContent, useEditor } from "@tiptap/react";
-import type { ComponentType } from "react";
+import type { ComponentType, KeyboardEvent } from "react";
 import { useMemo } from "react";
 
 const MAX_VISIBLE_CONVERSATIONS = 3;
@@ -152,7 +153,12 @@ function InstructionEditDiffBlock({
     [blockHtml]
   );
 
-  return <DiffBlock>{editor && <EditorContent editor={editor} />}</DiffBlock>;
+  // The diff box's border is not configurable, so it is overridden here.
+  return (
+    <DiffBlock className="[&_.rounded-2xl.border]:border-0">
+      {editor && <EditorContent editor={editor} />}
+    </DiffBlock>
+  );
 }
 
 interface ConversationFooterProps {
@@ -285,7 +291,7 @@ function SuggestionDetails({
         <>
           {agentFacingDescriptionEdit && (
             <SkillFieldEditSection
-              label="Description change"
+              label="Description"
               currentValue={getCurrentAgentFacingDescription()}
               newValue={agentFacingDescriptionEdit.content}
             />
@@ -293,8 +299,8 @@ function SuggestionDetails({
 
           {instructionEdits && instructionEdits.length > 0 && (
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-foreground">
-                Instruction changes
+              <span className="text-sm text-muted-foreground">
+                Instructions
               </span>
               {instructionEdits.map((edit, index) => (
                 <InstructionEditDiffBlock
@@ -345,6 +351,7 @@ interface SkillSuggestionCardProps {
   suggestion: SkillSuggestionType;
   onAccept?: (suggestion: SkillSuggestionType) => void;
   onDecline?: (suggestion: SkillSuggestionType) => void;
+  onPreview?: () => void;
   getSkillInstructionsHtml: () => string;
   getCurrentAgentFacingDescription: () => string;
   isSelected?: boolean;
@@ -359,6 +366,7 @@ export function SkillSuggestionCard({
   suggestion,
   onAccept,
   onDecline,
+  onPreview,
   getSkillInstructionsHtml,
   getCurrentAgentFacingDescription,
   isSelected = false,
@@ -375,11 +383,57 @@ export function SkillSuggestionCard({
     return <ReviewedSuggestionCard suggestion={suggestion} />;
   }
 
+  const details = (
+    <>
+      <SuggestionDetails
+        suggestion={suggestion}
+        getSkillInstructionsHtml={getSkillInstructionsHtml}
+        getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
+        workspaceId={workspaceId}
+      />
+
+      <ConversationFooter
+        visibleSourceConversationIds={suggestion.visibleSourceConversationIds}
+        sourceConversationsCount={suggestion.sourceConversationsCount}
+        workspaceId={workspaceId}
+      />
+    </>
+  );
+
+  const wrapperClassName = `rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300" : ""}`;
+
+  const wrapperProps = onSelect
+    ? {
+        role: "button",
+        tabIndex: 0,
+        onClick: onSelect,
+        onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onSelect();
+          }
+        },
+      }
+    : {};
+
+  if (suggestion.source === "conversational") {
+    return (
+      <ConversationalSuggestionCard
+        title={suggestion.title ?? "Suggestion"}
+        analysis={suggestion.analysis}
+        onAccept={hasActions ? () => onAccept(suggestion) : undefined}
+        onReject={hasActions ? () => onDecline(suggestion) : undefined}
+        onPreview={onPreview}
+        disabled={disabled}
+        isAccepting={isAccepting}
+        isDeclining={isDeclining}
+        collapsibleContent={details}
+      />
+    );
+  }
+
   return (
-    <div
-      className={`rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300" : ""}`}
-      onClick={onSelect}
-    >
+    <div className={wrapperClassName} {...wrapperProps}>
       <Card variant="primary" size="md" className="flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <span className="heading-base text-foreground">
@@ -411,18 +465,7 @@ export function SkillSuggestionCard({
           <p className="text-sm text-muted-foreground">{suggestion.analysis}</p>
         )}
 
-        <SuggestionDetails
-          suggestion={suggestion}
-          getSkillInstructionsHtml={getSkillInstructionsHtml}
-          getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
-          workspaceId={workspaceId}
-        />
-
-        <ConversationFooter
-          visibleSourceConversationIds={suggestion.visibleSourceConversationIds}
-          sourceConversationsCount={suggestion.sourceConversationsCount}
-          workspaceId={workspaceId}
-        />
+        {details}
       </Card>
     </div>
   );

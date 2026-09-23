@@ -9,10 +9,12 @@ import React from "react";
 
 interface DocumentSelectionToolbarProps {
   editor: Editor;
+  mountPortalContainer?: HTMLElement;
 }
 
 export const DocumentSelectionToolbar = ({
   editor,
+  mountPortalContainer,
 }: DocumentSelectionToolbarProps) => {
   const selection = useEditorState({
     editor,
@@ -82,6 +84,7 @@ export const DocumentSelectionToolbar = ({
             label={label}
             shortcut={shortcut}
             tooltipTriggerAsChild
+            mountPortalContainer={mountPortalContainer}
             trigger={
               <button
                 type="button"

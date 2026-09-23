@@ -7,8 +7,8 @@
 //
 // The path is resolved from the environment front sets per exec and is never
 // hardcoded here (front's `frame-persistent-files-dir-single-source` contract).
-// It is read through podEnv() rather than process.env so a resident worker
-// serving two invocations resolves each against its own environment.
+// It is read through invocationEnv() rather than process.env so a resident
+// worker serving two invocations resolves each against its own environment.
 //
 // Two properties of the folder shape how it should be used:
 //
@@ -20,7 +20,7 @@
 //    from a fixed list rather than from the file name, and must never serve a
 //    type that can execute script (svg, html).
 
-import { podEnv } from "./context.ts";
+import { invocationEnv } from "./context.ts";
 
 /**
  * Env var carrying the absolute in-sandbox path of the Frame's persistent
@@ -53,7 +53,7 @@ export class FrameFilesUnavailableError extends Error {
  *   where the folder is not mounted.
  */
 export function persistentFilesDir(): string {
-  const dir = podEnv(FRAME_PERSISTENT_FILES_DIR_ENV);
+  const dir = invocationEnv(FRAME_PERSISTENT_FILES_DIR_ENV);
   if (dir === undefined || dir === "") {
     throw new FrameFilesUnavailableError();
   }

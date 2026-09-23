@@ -10,6 +10,7 @@ import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -23,9 +24,11 @@ beforeAll(() => {
 
 async function setupTest(options: { role?: MembershipRoleType } = {}) {
   const role = options.role ?? "user";
-  const { workspace, auth } = await createPrivateApiMockRequest({ role });
+  const { workspace, auth, user } = await createPrivateApiMockRequest({
+    role,
+  });
   const agent = await AgentConfigurationFactory.createTestAgent(auth);
-  return { workspace, auth, agent };
+  return { workspace, auth, user, agent };
 }
 
 function getSuggestions(
@@ -723,7 +726,7 @@ describe("PATCH with applyToAgent", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.message).toContain(
-      "Only an active agent"
+      "cannot be exported or updated"
     );
     const fetched = await AgentSuggestionResource.fetchById(
       auth,
@@ -891,6 +894,116 @@ describe("PATCH with applyToAgent", () => {
       name: "IncidentHelper",
       description: "Handles incident triage end to end.",
       scope: agent.scope,
+      instructions: agent.instructions,
+      // One batch, one version: both edits land in the same upgrade, not two.
+      version: agent.version + 1,
+    });
+  });
+
+  it("publishes the agent for a publish state suggestion, leaving other fields alone", async () => {
+    const { workspace, auth, user } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    // Starts hidden so publishing it is a real scope change, not a no-op.
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      scope: "hidden",
+    });
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "publish",
+      resourceType: "agent",
+    });
+    await auth.refresh();
+
+    const suggestion = await AgentSuggestionFactory.createScope(auth, agent, {
+      suggestion: { scope: "visible" },
+    });
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).suggestions[0].state).toBe("approved");
+
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "full",
+    });
+    expect(updated).toMatchObject({
+      sId: agent.sId,
+      status: "active",
+      name: agent.name,
+      description: agent.description,
+      scope: "visible",
+      instructions: agent.instructions,
+      version: agent.version + 1,
+    });
+  });
+
+  it("returns 400 when the caller lacks the publish capability, leaving the agent's scope unchanged", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    // The caller holds `write` on the agent (created it) but not the workspace `publish`
+    // capability that a scope change also requires (see `scope-change-requires-edit-and-publish`).
+    const suggestion = await AgentSuggestionFactory.createScope(auth, agent, {
+      suggestion: { scope: "hidden" },
+    });
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain("publish");
+
+    const untouched = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "light",
+    });
+    expect(untouched?.scope).toBe(agent.scope);
+    expect(untouched?.version).toBe(agent.version);
+  });
+
+  it("applies a name and a publish state suggestion from the same batch as a single version", async () => {
+    const { workspace, auth, user, agent } = await setupTest();
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "publish",
+      resourceType: "agent",
+    });
+    await auth.refresh();
+
+    const nameSuggestion = await AgentSuggestionFactory.createName(
+      auth,
+      agent,
+      { suggestion: { name: "IncidentHelper" } }
+    );
+    const scopeSuggestion = await AgentSuggestionFactory.createScope(
+      auth,
+      agent,
+      { suggestion: { scope: "hidden" } }
+    );
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [nameSuggestion.sId, scopeSuggestion.sId],
+      state: "approved",
+      applyToAgent: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const updated = await getAgentConfiguration(auth, {
+      agentId: agent.sId,
+      variant: "full",
+    });
+    expect(updated).toMatchObject({
+      sId: agent.sId,
+      status: "active",
+      name: "IncidentHelper",
+      description: agent.description,
+      scope: "hidden",
       instructions: agent.instructions,
       // One batch, one version: both edits land in the same upgrade, not two.
       version: agent.version + 1,

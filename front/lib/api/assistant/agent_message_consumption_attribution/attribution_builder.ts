@@ -18,8 +18,9 @@ import assert from "assert";
 // Version 6 excludes enabled-skill tool definitions when provider-side tool search keeps those
 // non-eager tools deferred, while continuing to attribute the enabled skill's instructions.
 // Version 7 records post-cap MCP server calls with zero direct credits.
+// Version 8 prices tokens at the run usage's service tier, so flex runs use the discounted rates.
 // Each version remains a separate, self-consistent set of rows.
-export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 7;
+export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 8;
 
 export type RunUsageForAttribution = Pick<
   RunUsageType,
@@ -28,6 +29,7 @@ export type RunUsageForAttribution = Pick<
   | "modelId"
   | "promptTokens"
   | "reasoningTokens"
+  | "serviceTier"
 >;
 
 type GrossAttributedCredits = {
@@ -122,6 +124,7 @@ function getRunTokenRates(usage: RunUsageForAttribution): {
     cachedTokens: null,
     cacheCreationTokens: null,
     isBatch: usage.isBatch,
+    serviceTier: usage.serviceTier,
   });
   const totalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
     modelId: usage.modelId,
@@ -130,6 +133,7 @@ function getRunTokenRates(usage: RunUsageForAttribution): {
     cachedTokens: null,
     cacheCreationTokens: null,
     isBatch: usage.isBatch,
+    serviceTier: usage.serviceTier,
   });
 
   return {

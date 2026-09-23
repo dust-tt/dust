@@ -68,6 +68,50 @@ function check(source: Record<string, string>) {
 }
 
 describe("Frame runtime declaration artifact", () => {
+  it("accepts a composed theme in an entry named Frame without shadowing the root", () => {
+    expect(
+      check({
+        "theme.ts": `
+import type { FrameTheme } from "@dust/frame";
+export const theme = {
+  "--font-serif": "Georgia, serif",
+  "--primary": "oklch(50% 0.15 240)",
+  "--chart-positive": "seagreen",
+} satisfies FrameTheme;
+`,
+        "index.tsx": `
+import { FrameRoot } from "@dust/frame";
+import { theme } from "./theme";
+export default function Frame() {
+  return <FrameRoot theme={theme} aria-label="Report">
+    <FrameRoot theme={{ "--primary": "rebeccapurple" }}>
+      <h1>Quarterly report</h1>
+    </FrameRoot>
+  </FrameRoot>;
+}
+`,
+      })
+    ).toEqual([]);
+  });
+
+  it("accepts the same theme directly on a slideshow", () => {
+    expect(
+      check({
+        "theme.ts": `
+import type { FrameTheme } from "@dust/frame";
+export const theme = { "--primary": "rebeccapurple" } satisfies FrameTheme;
+`,
+        "index.tsx": `
+import { Slideshow, Slide } from "@dust/slideshow/v2";
+import { theme } from "./theme";
+export default function App() {
+  return <Slideshow theme={theme}><Slide>Quarterly report</Slide></Slideshow>;
+}
+`,
+      })
+    ).toEqual([]);
+  });
+
   it("works outside the repository with real runtime libraries and current and legacy hooks", () => {
     expect(
       check({
@@ -80,6 +124,7 @@ import { Check } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "utils";
 import { cn as currentCn } from "@viz/lib/utils";
+import { Document, type DocumentProps } from "@dust/document/v1";
 import * as slideshowV1 from "@dust/slideshow/v1";
 import * as slideshowV2 from "@dust/slideshow/v2";
 import { captureScreenshot, triggerUserFileDownload, useFrameFunction, usePodFunction, SandboxFunctionCallError, useFile, readFile, writeFile } from "@dust/react-hooks";
@@ -103,7 +148,8 @@ const download: Promise<void> = triggerUserFileDownload({ content: "hello" });
 let error: SandboxFunctionCallError | undefined;
 export default function App() {
   const [label] = useState("Hello");
-  return <Button variant="outline">{label}</Button>;
+  const document: DocumentProps = { path: "./content.json", className: "rounded-xl", readOnly: false, autosaveDebounceMs: 5000, visuals: { revenue: <div>Chart</div> } };
+  return <><Button variant="outline">{label}</Button><Document {...document} /></>;
 }
 `,
       })
@@ -112,12 +158,32 @@ export default function App() {
 
   it.each([
     [
+      'import { Document } from "@dust/document/v1"; export default () => <Document />',
+      2741,
+    ],
+    [
       'import { useFile } from "@dust/react-hooks"; export default () => useFile("./notes.json")?.revision',
       2339,
     ],
     [
       'import { writeFile } from "@dust/react-hooks"; writeFile("./notes.json", "{}"); export default () => null',
       2554,
+    ],
+    [
+      'export default function Frame() { return <Frame theme={{ "--primary": "rebeccapurple" }}>Report</Frame>; }',
+      2322,
+    ],
+    [
+      "export default function App() { return <FrameRoot>Report</FrameRoot>; }",
+      2304,
+    ],
+    [
+      'import { FrameRoot } from "@dust/frame"; export default () => <FrameRoot theme={{ "--primary": { color: "red" } }}>Report</FrameRoot>',
+      2322,
+    ],
+    [
+      'import { Slideshow } from "@dust/slideshow/v2"; export default () => <Slideshow theme={{ "--primary": true }}>Report</Slideshow>',
+      2322,
     ],
     [
       'import { fakeThing } from "react"; export default () => <div>{fakeThing()}</div>',

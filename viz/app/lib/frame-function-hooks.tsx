@@ -109,6 +109,8 @@ function useFrameFunctionContext(): FrameFunctionContextValue {
   return context;
 }
 
+export const useFrameDataAPI = () => useFrameFunctionContext().dataAPI;
+
 export function useFrameFunction(
   slug: string | null,
   input: unknown

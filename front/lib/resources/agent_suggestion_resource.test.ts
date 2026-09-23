@@ -305,6 +305,32 @@ describe("AgentSuggestionResource", () => {
     });
   });
 
+  describe("scope suggestion", () => {
+    it("should create and fetch a scope suggestion", async () => {
+      const suggestion = await AgentSuggestionFactory.createScope(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: { scope: "visible" },
+          analysis: "The agent is ready to be published",
+        }
+      );
+
+      expect(suggestion).toBeDefined();
+      expect(suggestion.kind).toBe("scope");
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched).toBeDefined();
+
+      const json = fetched!.toJSON();
+      expect(json.kind).toBe("scope");
+      expect(json.suggestion).toEqual({ scope: "visible" });
+    });
+  });
+
   describe("bulkUpdateState", () => {
     it.each<"approved" | "rejected" | "outdated">([
       "approved",

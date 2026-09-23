@@ -63,6 +63,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
+import type { SkillReference } from "@app/lib/skills/format";
 import {
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
@@ -4840,6 +4841,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       created_at: isCodeDefined ? null : this.createdAt.toISOString(),
       updated_at: isCodeDefined ? null : this.updatedAt.toISOString(),
     };
+  }
+
+  toRefJSON(): SkillReference {
+    return { icon: this.icon, id: this.sId, name: this.name };
   }
 
   toJSON(auth: Authenticator): SkillType {

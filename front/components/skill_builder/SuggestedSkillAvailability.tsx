@@ -38,7 +38,7 @@ export function SuggestedSkillAvailability({
 
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-foreground">Availability</span>
+      <span className="text-sm text-muted-foreground">Availability</span>
       <div className="flex items-center gap-2 rounded-xl border border-separator bg-background px-3 py-2.5">
         {skill && (
           <>

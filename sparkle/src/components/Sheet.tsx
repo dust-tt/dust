@@ -262,9 +262,11 @@ const SheetHeader = ({
     {...props}
   >
     {children}
-    <SheetClose asChild className="absolute right-3 top-4">
-      {!hideButton && <Button icon={XClose} variant="ghost" size="sm" />}
-    </SheetClose>
+    {!hideButton && (
+      <SheetClose asChild className="absolute right-3 top-4">
+        <Button icon={XClose} variant="ghost" size="sm" />
+      </SheetClose>
+    )}
   </div>
 );
 SheetHeader.displayName = "SheetHeader";

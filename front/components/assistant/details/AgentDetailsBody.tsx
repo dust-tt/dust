@@ -37,6 +37,7 @@ import {
   ContentMessage,
   ContentMessageAction,
   ContentMessageInline,
+  cn,
   InfoCircle,
   Lock01,
   Mail01,
@@ -125,12 +126,14 @@ interface AgentDetailsBodyProps {
   owner: WorkspaceType;
   agentId: string | null;
   user: UserType;
+  isInSidePanel?: boolean;
 }
 
 export function AgentDetailsBody({
   agentId,
   owner,
   user,
+  isInSidePanel = false,
 }: AgentDetailsBodyProps) {
   const [selectedTab, setSelectedTab] = useState<
     "info" | "insights" | "editors" | "agent_memory" | "triggers"
@@ -327,7 +330,13 @@ export function AgentDetailsBody({
         />
       ) : (
         <>
-          <SheetHeader className="flex flex-col gap-5 text-sm text-foreground">
+          <SheetHeader
+            className={cn(
+              "flex flex-col gap-5 text-sm text-foreground",
+              isInSidePanel && "bg-panel-background"
+            )}
+            hideButton={isInSidePanel}
+          >
             {/* eslint-disable-next-line react-hooks/static-components */}
             <DescriptionSection />
           </SheetHeader>

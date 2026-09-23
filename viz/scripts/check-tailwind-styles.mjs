@@ -26,8 +26,64 @@ try {
       <div id="hidden" class="block" hidden></div>
       <div id="hover" class="bg-black hover:bg-blue-500" style="height:20px"></div>
       <div id="responsive" class="hidden md:block"></div>
+      <div style="--font-sans:Arial;--font-serif:Georgia;--font-mono:monospace">
+        <div id="theme-sans" class="font-sans">Sans</div>
+        <div id="theme-serif" class="font-serif">Serif</div>
+        <div id="theme-mono" class="font-mono">Mono</div>
+      </div>
       <div id="semantic" class="bg-background"></div>
+      <div id="host-card" class="bg-card text-card-foreground">Host card</div>
+      <div style="color-scheme: light">
+        <article id="authored-light-card" class="bg-card" style="color: #172b20">Authored light card</article>
+        <div id="light-semantic-card" class="bg-card text-card-foreground">Light card</div>
+        <div id="nested-dark-card" class="bg-card text-card-foreground" style="color-scheme: dark">Dark section</div>
+      </div>
+      <div style="color-scheme: dark">
+        <div id="authored-dark-card" class="bg-card text-card-foreground">Dark card</div>
+        <div id="nested-light-card" class="bg-card text-card-foreground" style="color-scheme: light">Light section</div>
+      </div>
+      <div id="custom-card" class="bg-card text-card-foreground" style="--card: papayawhip; --card-foreground: #172b20">Custom theme</div>
       <div id="dark" class="bg-background dark:bg-stone-800/80"></div>`;
+  });
+  const readCardColors = () =>
+    page.evaluate(() =>
+      Object.fromEntries(
+        [
+          "host-card",
+          "authored-light-card",
+          "light-semantic-card",
+          "nested-dark-card",
+          "authored-dark-card",
+          "nested-light-card",
+          "custom-card",
+        ].map((id) => {
+          const style = getComputedStyle(document.getElementById(id));
+          return [
+            id,
+            { background: style.backgroundColor, color: style.color },
+          ];
+        }),
+      ),
+    );
+  const lightCards = await readCardColors();
+  assert.equal(lightCards["authored-light-card"].background, "oklch(1 0 0)");
+  assert.equal(lightCards["authored-light-card"].color, "rgb(23, 43, 32)");
+  assert.deepEqual(lightCards["host-card"], lightCards["light-semantic-card"]);
+  assert.deepEqual(
+    lightCards["nested-light-card"],
+    lightCards["light-semantic-card"],
+  );
+  assert.deepEqual(
+    lightCards["nested-dark-card"],
+    lightCards["authored-dark-card"],
+  );
+  assert.notDeepEqual(
+    lightCards["authored-dark-card"],
+    lightCards["light-semantic-card"],
+  );
+  assert.deepEqual(lightCards["custom-card"], {
+    background: "rgb(255, 239, 213)",
+    color: "rgb(23, 43, 32)",
   });
   const observations = await page.evaluate(() => {
     const style = (id) => getComputedStyle(document.getElementById(id));
@@ -40,6 +96,9 @@ try {
       return Array.from(context.getImageData(0, 0, 1, 1).data);
     };
     return {
+      fonts: ["theme-sans", "theme-serif", "theme-mono"].map(
+        (id) => style(id).fontFamily,
+      ),
       alpha: pixel("alpha"),
       removed: pixel("removed"),
       slide: {
@@ -64,6 +123,7 @@ try {
       semanticLightColor: style("semantic").backgroundColor,
     };
   });
+  assert.deepEqual(observations.fonts, ["Arial", "Georgia", "monospace"]);
   assert.deepEqual(observations.alpha, [0, 0, 0, 204]);
   assert.deepEqual(observations.removed, [0, 0, 0, 255]);
   assert.deepEqual(observations.slide, {
@@ -92,6 +152,22 @@ try {
     "block",
   );
   await page.evaluate(() => document.documentElement.classList.add("dark"));
+  const darkCards = await readCardColors();
+  for (const id of [
+    "authored-light-card",
+    "light-semantic-card",
+    "nested-dark-card",
+    "authored-dark-card",
+    "nested-light-card",
+    "custom-card",
+  ]) {
+    assert.deepEqual(
+      darkCards[id],
+      lightCards[id],
+      `${id} must keep its authored palette`,
+    );
+  }
+  assert.deepEqual(darkCards["host-card"], lightCards["authored-dark-card"]);
   assert.notEqual(
     await page
       .locator("#dark")
@@ -193,7 +269,7 @@ try {
     ),
   );
   process.stdout.write(
-    `Passed V4 styles, slideshow/theme/responsive checks, and rendered Frame diagnostics in Chromium ${browser.version()}.\n`,
+    `Passed V4 styles, slideshow/theme/responsive checks, authored color schemes, and rendered Frame diagnostics in Chromium ${browser.version()}.\n`,
   );
 } finally {
   await browser.close();

@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import {
   INVOCATION_CONTEXT_KEY,
+  invocationEnv,
   podEnv,
   runWithInvocationEnv,
 } from "@dust/pod";
@@ -13,32 +14,32 @@ afterEach(() => {
   delete process.env[MARKER];
 });
 
-describe("podEnv", () => {
+describe("invocationEnv", () => {
   test("reads process.env outside any invocation context", () => {
     process.env[MARKER] = "from-process";
-    expect(podEnv(MARKER)).toBe("from-process");
+    expect(invocationEnv(MARKER)).toBe("from-process");
   });
 
   test("reads only the context env inside an invocation context", () => {
     process.env[MARKER] = "from-process";
     const seen = runWithInvocationEnv({ [MARKER]: "from-context" }, () =>
-      podEnv(MARKER)
+      invocationEnv(MARKER)
     );
     expect(seen).toBe("from-context");
   });
 
   test("a key absent from the context env stays absent", () => {
     process.env[MARKER] = "from-process";
-    const seen = runWithInvocationEnv({}, () => podEnv(MARKER));
+    const seen = runWithInvocationEnv({}, () => invocationEnv(MARKER));
     expect(seen).toBeUndefined();
   });
 
   test("the context survives awaits and does not leak across concurrent flows", async () => {
     const flow = async (value: string, delayMs: number) =>
       runWithInvocationEnv({ [MARKER]: value }, async () => {
-        const before = podEnv(MARKER);
+        const before = invocationEnv(MARKER);
         await new Promise((resolve) => setTimeout(resolve, delayMs));
-        const after = podEnv(MARKER);
+        const after = invocationEnv(MARKER);
         return { before, after };
       });
     const [a, b] = await Promise.all([flow("alpha", 40), flow("beta", 10)]);
@@ -50,7 +51,7 @@ describe("podEnv", () => {
     const source: Record<string, string> = { [MARKER]: "original" };
     runWithInvocationEnv(source, () => {
       source[MARKER] = "mutated-after-entry";
-      expect(podEnv(MARKER)).toBe("original");
+      expect(invocationEnv(MARKER)).toBe("original");
     });
   });
 
@@ -63,5 +64,11 @@ describe("podEnv", () => {
       Symbol.for(INVOCATION_CONTEXT_KEY)
     );
     expect(shared instanceof AsyncLocalStorage).toBe(true);
+  });
+});
+
+describe("podEnv", () => {
+  test("stays exported as an alias of invocationEnv", () => {
+    expect(podEnv).toBe(invocationEnv);
   });
 });

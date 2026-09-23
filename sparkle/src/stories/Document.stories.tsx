@@ -378,6 +378,50 @@ export const InSheet: Story = {
   },
 };
 
+const DocumentWithPortalContainer = (props: DocumentProps) => {
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+
+  return (
+    <>
+      <div ref={setContainer} data-testid="document-portals" />
+      <Document {...props} mountPortalContainer={container ?? undefined} />
+    </>
+  );
+};
+
+/** @summary Hosts can keep formatting tooltips inside their own styling boundary. */
+export const CustomPortalContainer: Story = {
+  args: { initialContent: "Select these words." },
+  render: (args) => <DocumentWithPortalContainer {...args} />,
+  play: async ({ canvas, canvasElement, args }) => {
+    const editor = await canvas.findByRole("textbox", {
+      name: "Document content",
+    });
+    await userEvent.click(editor);
+    const range = canvasElement.ownerDocument.createRange();
+    range.selectNodeContents(editor);
+    const selection = canvasElement.ownerDocument.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    canvasElement.ownerDocument.dispatchEvent(new Event("selectionchange"));
+
+    const page = within(canvasElement.ownerDocument.body);
+    const toolbar = await page.findByRole("toolbar", {
+      name: "Format selection",
+    });
+    const bold = within(toolbar).getByRole("button", { name: "Bold" });
+    await userEvent.hover(bold);
+    await expect(
+      await within(canvas.getByTestId("document-portals")).findByRole("tooltip")
+    ).toHaveTextContent("Bold");
+    await userEvent.click(bold);
+    await expect(editor.querySelector("strong")).toHaveTextContent(
+      "Select these words."
+    );
+    await expect(args.onSave).not.toHaveBeenCalled();
+  },
+};
+
 /** @summary Configure the autosave delay and avoid requests for unchanged content. */
 export const Autosave: Story = {
   args: {

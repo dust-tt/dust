@@ -69,7 +69,7 @@ async function createSkillFileAttachment(
 }
 
 describe("upsertSkillFilesToConversation", () => {
-  it("loads the Frame checker, configs and plugin as skill attachments", async () => {
+  it("loads the Frame checker, configs, plugin and examples as skill attachments", async () => {
     const { auth, workspace, conversation } =
       await setupConversationAndSkillPermissions();
     const skill = await SkillResource.fetchById(auth, "frames");
@@ -84,7 +84,14 @@ describe("upsertSkillFilesToConversation", () => {
 
     assert(result.isOk());
     expect(result.value.loadedPaths).toEqual(
-      ["lint.sh", "tsconfig.json", "oxlintrc.json", "frame-rules.cjs"].map(
+      [
+        "lint.sh",
+        "tsconfig.json",
+        "oxlintrc.json",
+        "frame-rules.cjs",
+        "theme.ts",
+        "slideshow.example.tsx",
+      ].map(
         (fileName) =>
           `conversation-${conversation.sId}/skills/Create Frames/${fileName}`
       )

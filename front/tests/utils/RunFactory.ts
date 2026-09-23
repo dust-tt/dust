@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import type { UsageType } from "@app/lib/metronome/types";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { RunUsageModel } from "@app/lib/resources/storage/models/runs";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -16,12 +17,14 @@ export class RunFactory {
       reasoningTokens,
       modelId = GPT_5_MINI_MODEL_CONFIG.modelId,
       usageType = USAGE_TYPE_USER,
+      serviceTier,
     }: {
       inputTokens?: number;
       outputTokens?: number;
       reasoningTokens?: number;
       modelId?: ModelIdType;
       usageType?: UsageType | null;
+      serviceTier?: ServiceTier;
     } = {}
   ) {
     const workspace = auth.getNonNullableWorkspace();
@@ -39,6 +42,7 @@ export class RunFactory {
         totalOutputTokens: outputTokens,
         reasoningTokens,
         totalTokens: inputTokens + outputTokens,
+        serviceTier,
       },
       modelId,
       {

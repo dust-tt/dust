@@ -13,7 +13,7 @@ import type { ConversationFont } from "@app/components/sparkle/ConversationFontC
 import {
   CONVERSATION_FONT_LABELS,
   CONVERSATION_FONTS,
-  useConversationFont,
+  ConversationFontContext,
 } from "@app/components/sparkle/ConversationFontContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -85,7 +85,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -362,10 +362,13 @@ const CONVERSATION_FONT_OPTIONS: OptionTile<ConversationFont>[] =
 
 function CustomizationSection() {
   const { theme: currentTheme, setTheme } = useTheme();
-  const { conversationFont, setConversationFont } = useConversationFont();
+  // Null outside ConversationFontProvider: this
+  // popover also renders on pages without conversations (e.g. /no-workspace,
+  // /subscribe), where the font setting is hidden.
+  const fontContext = useContext(ConversationFontContext) ?? null;
   const sendNotification = useSendNotification();
   const [localConversationFont, setLocalConversationFont] =
-    useState<ConversationFont>(conversationFont);
+    useState<ConversationFont>(fontContext?.conversationFont ?? "sans");
   const isMac = useIsMac();
   const { isAgentsSectionVisible, setAgentsSectionVisible } =
     useAgentsSectionVisibility();
@@ -402,7 +405,8 @@ function CustomizationSection() {
   });
   const isDirty =
     localTheme !== currentTheme ||
-    localConversationFont !== conversationFont ||
+    (fontContext !== null &&
+      localConversationFont !== fontContext.conversationFont) ||
     submitKey !==
       (typeof window !== "undefined"
         ? (localStorage.getItem("submitMessageKey") ?? "enter")
@@ -423,23 +427,28 @@ function CustomizationSection() {
       localStorage.setItem("submitMessageKey", submitKey);
     }
     setAgentsSectionVisible(localAgentsSectionVisible);
-    if (localConversationFont !== conversationFont) {
+    if (
+      fontContext !== null &&
+      localConversationFont !== fontContext.conversationFont
+    ) {
       trackEvent({
         area: TRACKING_AREAS.SETTINGS,
         object: "conversation_font",
         action: TRACKING_ACTIONS.SELECT,
         extra: { font: localConversationFont },
       });
-      void setConversationFont(localConversationFont).then((saved) => {
-        if (!saved) {
-          sendNotification({
-            type: "error",
-            title: "Could not save the conversation font",
-            description:
-              "It applies on this device, but could not be saved to your account.",
-          });
-        }
-      });
+      void fontContext
+        .setConversationFont(localConversationFont)
+        .then((saved) => {
+          if (!saved) {
+            sendNotification({
+              type: "error",
+              title: "Could not save the conversation font",
+              description:
+                "It applies on this device, but could not be saved to your account.",
+            });
+          }
+        });
     }
   };
 
@@ -471,18 +480,20 @@ function CustomizationSection() {
           }
         />
 
-        <SettingsList.Row
-          title="Conversation font"
-          description="Font used for agent answers in conversations"
-          action={
-            <OptionTileGroup
-              ariaLabel="Conversation font"
-              options={CONVERSATION_FONT_OPTIONS}
-              value={localConversationFont}
-              onValueChange={setLocalConversationFont}
-            />
-          }
-        />
+        {fontContext !== null && (
+          <SettingsList.Row
+            title="Conversation font"
+            description="Font used for agent answers in conversations"
+            action={
+              <OptionTileGroup
+                ariaLabel="Conversation font"
+                options={CONVERSATION_FONT_OPTIONS}
+                value={localConversationFont}
+                onValueChange={setLocalConversationFont}
+              />
+            }
+          />
+        )}
 
         <SettingsList.Row
           title="Send message"

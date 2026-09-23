@@ -35,6 +35,7 @@ interface UsageSettings {
   autoSeatUpgradeEnabled: boolean;
   autoSeatUpgradeAvailable: boolean;
   topUpEnabled: boolean;
+  creditSpendCheckpointEnabled: boolean;
 }
 
 interface UsageNotifications {
@@ -49,6 +50,7 @@ const DEFAULT_USAGE_SETTINGS: UsageSettings = {
   autoSeatUpgradeEnabled: false,
   autoSeatUpgradeAvailable: false,
   topUpEnabled: false,
+  creditSpendCheckpointEnabled: true,
 };
 
 const DEFAULT_USAGE_NOTIFICATIONS: UsageNotifications = {
@@ -113,6 +115,8 @@ export function useUsageSettings({
           autoSeatUpgradeEnabled: data.configuration.autoSeatUpgradeEnabled,
           autoSeatUpgradeAvailable: data.configuration.autoSeatUpgradeAvailable,
           topUpEnabled: data.configuration.topUpEnabled,
+          creditSpendCheckpointEnabled:
+            data.configuration.creditSpendCheckpointEnabled,
         }
       : {}),
   };
@@ -147,6 +151,9 @@ export function useUpdateUsageSettings({
       }
       if (patch.autoSeatUpgradeEnabled !== undefined) {
         body.autoSeatUpgradeEnabled = patch.autoSeatUpgradeEnabled;
+      }
+      if (patch.creditSpendCheckpointEnabled !== undefined) {
+        body.creditSpendCheckpointEnabled = patch.creditSpendCheckpointEnabled;
       }
 
       if (Object.keys(body).length === 0) {

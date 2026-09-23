@@ -37,6 +37,13 @@ export class AgentModel extends WorkspaceAwareModel<AgentModel> {
 
   // Every agent starts at version 0, which is also the column default.
   declare currentVersion: CreationOptional<number>;
+
+  declare name: string | null;
+  declare status: AgentStatus | null;
+  declare scope: Exclude<AgentConfigurationScope, "global"> | null;
+  declare reinforcement: AgentReinforcementMode | null;
+  declare lastReinforcementAnalysisAt: Date | null;
+  declare templateId: ForeignKey<TemplateModel["id"]> | null;
 }
 
 AgentModel.init(
@@ -60,6 +67,26 @@ AgentModel.init(
       allowNull: false,
       defaultValue: 0,
     },
+    name: {
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
+      allowNull: true,
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    scope: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    reinforcement: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    lastReinforcementAnalysisAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent",
@@ -67,6 +94,17 @@ AgentModel.init(
     indexes: [
       { fields: ["sId"], unique: true },
       { fields: ["workspaceId"], concurrently: true },
+      { fields: ["workspaceId", "status", "scope"], concurrently: true },
+      { fields: ["templateId"], concurrently: true },
+      {
+        name: "agent_unique_active_name",
+        fields: ["workspaceId", "name"],
+        unique: true,
+        where: {
+          status: "active",
+        },
+        concurrently: true,
+      },
     ],
   }
 );
@@ -341,6 +379,14 @@ TemplateModel.hasOne(AgentConfigurationModel, {
 });
 
 AgentConfigurationModel.belongsTo(TemplateModel, {
+  foreignKey: { name: "templateId", allowNull: true },
+});
+
+TemplateModel.hasMany(AgentModel, {
+  foreignKey: { name: "templateId", allowNull: true },
+  onDelete: "SET NULL",
+});
+AgentModel.belongsTo(TemplateModel, {
   foreignKey: { name: "templateId", allowNull: true },
 });
 

@@ -1,3 +1,4 @@
+import type { VisualizationActionIframeProps } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
 import {
   getFrameRuntimeAccess,
   getSandboxFunctionInvocationAccessError,
@@ -173,7 +174,7 @@ describe("getSandboxFunctionInvocationAccessError", () => {
 });
 
 describe("VisualizationActionIframe", () => {
-  it("passes the resolved Dust theme in the iframe URL and reloads on changes", () => {
+  it("omits Dust's theme and keeps the iframe stable when it changes", () => {
     mocks.isDark = true;
     const props = {
       agentConfigurationId: null,
@@ -197,11 +198,13 @@ describe("VisualizationActionIframe", () => {
     if (!iframe) {
       throw new Error("Expected the visualization iframe to be mounted.");
     }
-    expect(new URL(iframe.src).searchParams.get("theme")).toBe("dark");
+    const initialSrc = iframe.src;
+    expect(new URL(initialSrc).searchParams.has("theme")).toBe(false);
 
     mocks.isDark = false;
     rerender(createElement(VisualizationActionIframe, props));
-    expect(new URL(iframe.src).searchParams.get("theme")).toBe("light");
+    expect(container.querySelector("iframe")).toBe(iframe);
+    expect(iframe.src).toBe(initialSrc);
     expect(new URL(iframe.src).searchParams.get("identifier")).toBe(
       "viz-fil_frame"
     );
@@ -435,5 +438,156 @@ describe("VisualizationActionIframe", () => {
         expect.objectContaining({ method: "POST" })
       );
     });
+  });
+});
+
+const renderFileFrame = (
+  visualization?: VisualizationActionIframeProps["visualization"]
+) => {
+  const { container } = render(
+    createElement(VisualizationActionIframe, {
+      agentConfigurationId: null,
+      canInvokeFunctions: true,
+      conversationId: "c_test",
+      frameId: "fil_frame",
+      framePackageRoot: "conversation-c_test/report",
+      scopedUserIdentity,
+      viewer: null,
+      visualization: visualization ?? {
+        code: "export default function App() {}",
+        complete: true,
+        identifier: "viz-fil_frame",
+      },
+      vizUrl: "https://viz.dust.tt",
+      workspaceId: "w_current",
+    })
+  );
+  const iframe = container.querySelector("iframe");
+  if (!iframe?.contentWindow) {
+    throw new Error("Expected the visualization iframe to be mounted.");
+  }
+  const postMessage = vi
+    .spyOn(iframe.contentWindow, "postMessage")
+    .mockImplementation(() => {});
+  return { iframe, postMessage };
+};
+
+const fileWriteMessage = {
+  command: "writeFile",
+  identifier: "viz-fil_frame",
+  messageUniqueId: "write-1",
+  params: {
+    path: "./notes.json",
+    content: "{}",
+    contentType: "application/json",
+    revision: '\"123\"',
+  },
+};
+
+describe("Frame file RPC", () => {
+  it("adds revision metadata to the existing getFile response", async () => {
+    const { iframe, postMessage } = renderFileFrame();
+    const headers = { ETag: '\"123\"', "X-Dust-File-Can-Write": "true" };
+    mocks.clientFetch.mockResolvedValueOnce(new Response("{}", { headers }));
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: {
+          command: "getFile",
+          identifier: "viz-fil_frame",
+          messageUniqueId: "file-read",
+          params: { fileId: "./notes.json" },
+        },
+      })
+    );
+    await waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(
+        {
+          command: "answer",
+          identifier: "viz-fil_frame",
+          messageUniqueId: "file-read",
+          result: {
+            fileBlob: expect.any(Blob),
+            revision: '\"123\"',
+            canWrite: true,
+          },
+        },
+        { targetOrigin: "*" }
+      )
+    );
+    expect(mocks.clientFetch).toHaveBeenCalledExactlyOnceWith(
+      "/api/w/w_current/files/path/conversation-c_test/report/notes.json"
+    );
+  });
+
+  it("accepts writes only from the mounted Frame window and identifier", async () => {
+    const { iframe, postMessage } = renderFileFrame();
+    mocks.clientFetch.mockResolvedValue(
+      new Response(null, { headers: { ETag: '\"124\"' } })
+    );
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: window,
+        data: fileWriteMessage,
+      })
+    );
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: { ...fileWriteMessage, identifier: "another-frame" },
+      })
+    );
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: {
+          ...fileWriteMessage,
+          params: { ...fileWriteMessage.params, revision: undefined },
+        },
+      })
+    );
+    expect(mocks.clientFetch).not.toHaveBeenCalled();
+
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: fileWriteMessage,
+      })
+    );
+    await waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: { success: true, revision: '\"124\"' },
+        }),
+        { targetOrigin: "*" }
+      )
+    );
+    expect(mocks.clientFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects writes from shared Frames even for workspace members", async () => {
+    const { iframe, postMessage } = renderFileFrame({
+      accessToken: "shared-frame",
+      complete: true,
+      identifier: "viz-fil_frame",
+    });
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source: iframe.contentWindow,
+        data: fileWriteMessage,
+      })
+    );
+    await waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: {
+            success: false,
+            error: { code: "read_only", message: "This Frame is read-only." },
+          },
+        }),
+        { targetOrigin: "*" }
+      )
+    );
+    expect(mocks.clientFetch).not.toHaveBeenCalled();
   });
 });

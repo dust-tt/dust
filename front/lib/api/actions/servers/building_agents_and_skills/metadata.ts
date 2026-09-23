@@ -31,6 +31,8 @@ export const SUGGEST_AGENT_DESCRIPTION_TOOL_NAME =
 export const SUGGEST_AGENT_MODEL_CHANGE_TOOL_NAME =
   "suggest_agent_model_change" as const;
 export const SUGGEST_AGENT_NAME_TOOL_NAME = "suggest_agent_name" as const;
+export const SUGGEST_AGENT_PUBLISH_STATE_TOOL_NAME =
+  "suggest_agent_publish_state" as const;
 export const SUGGEST_AGENT_INSTRUCTIONS_CHANGE_TOOL_NAME =
   "suggest_agent_instructions_change" as const;
 export const SUGGEST_SKILL_USER_FACING_DESCRIPTION_TOOL_NAME =
@@ -227,6 +229,27 @@ export const SUGGEST_AGENT_NAME_INPUT_SCHEMA = z.object({
 
 export type SuggestAgentNameArgs = z.infer<
   typeof SUGGEST_AGENT_NAME_INPUT_SCHEMA
+>;
+
+export const SUGGEST_AGENT_PUBLISH_STATE_DESCRIPTION =
+  "Suggest publishing or unpublishing an existing agent.";
+
+export const SUGGEST_AGENT_PUBLISH_STATE_INPUT_SCHEMA = z.object({
+  agentId: z.string().describe("The id of the agent to publish or unpublish."),
+  scope: z
+    .enum(["hidden", "visible"])
+    .describe(
+      "The new publish state: 'visible' to publish the agent (visible to the " +
+        "whole workspace), 'hidden' to unpublish it (visible to editors only)."
+    ),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Why the agent should be published or unpublished."),
+});
+
+export type SuggestAgentPublishStateArgs = z.infer<
+  typeof SUGGEST_AGENT_PUBLISH_STATE_INPUT_SCHEMA
 >;
 
 export const SUGGEST_AGENT_INSTRUCTIONS_CHANGE_DESCRIPTION =
@@ -478,6 +501,18 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting agent name",
       done: "Suggest agent name",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_AGENT_PUBLISH_STATE_TOOL_NAME,
+    description: SUGGEST_AGENT_PUBLISH_STATE_DESCRIPTION,
+    schema: SUGGEST_AGENT_PUBLISH_STATE_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting agent publish state",
+      done: "Suggest agent publish state",
     },
     toolCostCategory: "basic",
     freeUsage: true,

@@ -9,7 +9,7 @@ import type { Transaction } from "sequelize";
 // Cache identity shared with the read cache on `AgentResource`, so both address the same Redis key.
 // Bump the version on any snapshot-shape change: entries have no TTL, so they outlive a deploy.
 export const AGENT_RESOURCE_CACHE_ID = "agent_resource_by_id";
-export const AGENT_RESOURCE_CACHE_VERSION = 1;
+export const AGENT_RESOURCE_CACHE_VERSION = 2;
 
 export type AgentResourceCacheKey = { workspaceModelId: ModelId; id: string };
 

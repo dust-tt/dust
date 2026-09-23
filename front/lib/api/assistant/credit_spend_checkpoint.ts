@@ -1,6 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { awuFromMicroUsd } from "@app/lib/metronome/constants";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED } from "@app/lib/resources/storage/models/credit_usage_configurations";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 
 const CREDIT_SPEND_CHECKPOINT_RESUMABLE_ORIGINS: UserMessageOrigin[] = [
@@ -32,6 +34,16 @@ export function hasReachedCreditSpendCheckpoint({
     awuFromMicroUsd(totalCostMicroUsd) >=
     CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS
   );
+}
+
+export async function getCreditSpendCheckpointEnabled(
+  auth: Authenticator
+): Promise<boolean> {
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  return config
+    ? config.creditSpendCheckpointThresholdAwuCredits !== null
+    : DEFAULT_CREDIT_SPEND_CHECKPOINT_ENABLED;
 }
 
 /**

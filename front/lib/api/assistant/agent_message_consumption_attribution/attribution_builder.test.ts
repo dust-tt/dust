@@ -10,6 +10,7 @@ const DEFAULT_PROMPT_TOKENS_COUNT = 100;
 const DEFAULT_COMPLETION_TOKENS_COUNT = 20;
 const COMPLETION_TOKENS_COUNT_WITH_REASONING = 25;
 const REASONING_TOKENS_COUNT = 5;
+const FLEX_PROMPT_TOKENS_COUNT = 1_000;
 const TOOL_CALL_OUTPUT_TOKENS_COUNT = 8;
 const TOOL_RESULT_INPUT_TOKENS_COUNT = 12;
 const DIRECT_TOOL_CREDIT_AMOUNT_MICRO = 3_000_000;
@@ -135,6 +136,48 @@ describe("agent message consumption attribution domain", () => {
     expect(toolAttribution.grossAttributedCreditAmountMicro).toBe(
       EXPECTED_TOOL_GROSS_ATTRIBUTED_CREDIT_AMOUNT_MICRO
     );
+  });
+
+  it("prices every attributed row at the flex rate for flex usage", () => {
+    const toolCalls = [
+      {
+        tool: "search",
+        measuredOutputTokensCount: TOOL_CALL_OUTPUT_TOKENS_COUNT,
+      },
+    ];
+    const attributeAtServiceTier = (
+      serviceTier: RunUsageForAttribution["serviceTier"]
+    ) => {
+      const runUsage = usage({
+        promptTokens: FLEX_PROMPT_TOKENS_COUNT,
+        completionTokens: COMPLETION_TOKENS_COUNT_WITH_REASONING,
+        reasoningTokens: REASONING_TOKENS_COUNT,
+        serviceTier,
+      });
+      const runAttribution = buildRunUsageAttribution({
+        usage: runUsage,
+        toolCalls,
+      });
+      const toolAttribution = buildToolAttribution({
+        usage: runUsage,
+        toolCall: runAttribution.toolCalls[0],
+        inputTokensCount: TOOL_RESULT_INPUT_TOKENS_COUNT,
+        directCreditAmountMicro: null,
+      });
+
+      return [...runAttribution.modelItems, toolAttribution].map(
+        (item) => item.grossAttributedCreditAmountMicro
+      );
+    };
+
+    const defaultCredits = attributeAtServiceTier("default");
+    const flexCredits = attributeAtServiceTier("flex");
+
+    expect(flexCredits).toHaveLength(defaultCredits.length);
+    for (const [index, credits] of defaultCredits.entries()) {
+      expect(credits).toBeGreaterThan(0);
+      expect(Math.abs(flexCredits[index] - credits / 2)).toBeLessThanOrEqual(1);
+    }
   });
 
   it("rejects reasoning that cannot reconcile to provider completion", () => {

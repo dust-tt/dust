@@ -1,3 +1,8 @@
+/**
+ * @cc [owner:flvndvd,label:product] slideshow-authoring-layout
+ * Shared authoring instructions MUST leave Slideshow and Slide in control of their dimensions.
+ * Scrolling-page layout guidance MUST be scoped to pages and dashboards.
+ */
 export const INTERACTIVE_CONTENT_AUTHORING_PROSE_V2 = `\
 ### Rendering Context
 
@@ -18,7 +23,46 @@ Before declaring a frame done, mentally check both the default panel width and f
 - Do not use \`<form>\` elements, as the iframe sandbox blocks form submission. Use a \`<div>\` with inputs and an \`onClick\` handler on the button instead.
 - When displaying text with < or > symbols in JSX, use HTML entities such as \`&lt;\` and \`&gt;\`, or wrap the string in braces.
 
-### Layout Rules
+### Slideshows
+
+When the user asks for a presentation, slideshow, deck, or multi-slide content, create an interactive
+content file using the \`Slideshow\` and \`Slide\` components.
+
+**Import:** \`import { Slideshow, Slide } from "@dust/slideshow/v2";\`
+
+**Components:**
+- \`<Slideshow>\` is the root layout. It fills the viewport and provides navigation, slide previews,
+  keyboard shortcuts, fullscreen and PDF rendering. Return it directly from the exported component.
+  When using \`theme.ts\`, import its theme and pass it directly as \`<Slideshow theme={theme}>\`.
+- \`<Slide>\` fills the slideshow's width and height and centers its children. Both components accept
+  \`className\` for appearance, such as background colors, while keeping their built-in dimensions.
+  Inside a \`<Slide>\`, use any React and Tailwind, standard HTML elements, Recharts charts,
+  grid layouts, etc.
+
+**Content guidelines:**
+- Give each slide one main idea and enough space to read comfortably.
+- Use a consistent background color across slides for cohesion, such as \`bg-background\`.
+  Use 1-2 accent colors for emphasis elements.
+- Structure content with clear hierarchy: title, then visuals or key points, then supporting text.
+- For data-heavy slides, prefer charts (Recharts) over tables or bullet lists.
+
+**Layout and navigation:**
+- Use the built-in navigation controls and keyboard handlers.
+- Use \`@dust/slideshow/v2\` for new presentations. Keep v1 imports only when editing an existing v1 slideshow.
+- Keep the built-in width and height of \`Slideshow\` and \`Slide\`. Let these components manage
+  sizing, aspect ratio and scaling.
+- Place headers, footers, padding and all other content inside \`Slide\`. Use inner elements for
+  content layout and spacing.
+- Fit each slide's content within its available space. Simplify dense content or split it across
+  additional slides while preserving the slide dimensions.
+
+Before creating a slideshow, read the attached \`slideshow.example.tsx\`. Adapt its content and
+visual design to the user's request.
+
+### Page and dashboard layout
+
+Pages and dashboards use the following layout rules and examples. Slideshows use the built-in
+dimensions described above.
 
 - Default to one centered, naturally scrolling frame: \`min-h-screen\`, \`mx-auto\`, \`max-w-3xl\` or \`max-w-5xl\`, \`px-4\`, and clear vertical spacing.
 - Do not gate column count with viewport breakpoints such as \`md:grid-cols-2\`, \`lg:grid-cols-3\`, or \`lg:grid-cols-12\`. The iframe width is not the browser viewport.
@@ -39,21 +83,19 @@ GOOD:
 \`\`\`tsx
 <div className="min-h-screen bg-background">
   <main className="mx-auto max-w-5xl px-4 py-6 space-y-6">
-    <h1 className="text-3xl font-semibold text-indigo-700">{title}</h1>
+    <h1 className="text-3xl font-semibold text-foreground">{title}</h1>
     {content}
   </main>
 </div>
 \`\`\`
 
-The heading uses an explicit chroma accent (\`text-indigo-700\`). The structural neutral \`bg-background\` is the surface, not the palette.
-
 ### Color And Visual Identity
 
 - Tailwind classes are precompiled. Any arbitrary value in a className, such as \`h-[600px]\`, \`text-[14px]\`, \`bg-[#ff0000]\`, or \`grid-cols-[200px_1fr]\`, fails validation. Use predefined utilities such as \`h-96\`, \`text-sm\`, and \`bg-red-500\`, or use the \`style\` prop for exact values.
 - Use \`bg-background\` and \`bg-card\` for surfaces instead of hardcoded \`bg-white\`.
-- Every frame needs at least one explicit accent color from literal Tailwind chroma classes such as \`indigo-*\`, \`emerald-*\`, \`violet-*\`, or \`sky-*\`, or from a small hex palette constant.
+- Every frame needs at least one explicit accent color chosen to suit the user's brand or content. Use literal Tailwind chroma classes or a small hex palette constant.
 - Apply the accent deliberately on headings, primary actions, important metrics, and selected state. Do not leave color only in tiny status pills.
-- \`bg-primary\`, \`text-primary\`, and the default shadcn button style are near-black in this environment. They are not a brand color.
+- The default \`bg-primary\`, \`text-primary\`, and shadcn button style are near-black. Set \`--primary\` in the theme to use your accent color.
 - \`bg-background\`, \`bg-card\`, \`bg-secondary\`, \`text-foreground\`, and \`text-muted-foreground\` are structural neutrals. They are not a palette by themselves.
 - Keep the palette small: one accent family plus neutrals is usually enough. Leaving the frame colorless is wrong.
 - Use lucide-react icons instead of emojis.
@@ -162,7 +204,7 @@ These apply to data from any source: the user's prompt, attached files, tool out
 
 - Default output is a single Frame React component with a default export.
 - Use \`@dust/slideshow/v2\` only when the user explicitly asks for slides, a presentation, a deck, or multi-slide content.
-- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, \`motion/react\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
+- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/frame\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, \`motion/react\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
 - No other third-party libraries are installed or available.
 `;
 
@@ -180,7 +222,7 @@ export default function RoadmapFrame() {
   return (
     <main className="min-h-screen bg-background px-4 py-6">
       <section className="mx-auto max-w-3xl space-y-4">
-        <h1 className="text-3xl font-semibold text-indigo-700">Roadmap</h1>
+        <h1 className="text-3xl font-semibold text-foreground">Roadmap</h1>
         <div className="grid gap-3">
           {ROADMAP_ITEMS.map((item) => (
             <article key={item.title} className="rounded-lg border bg-card p-4">
@@ -268,7 +310,7 @@ export default function DataFrame() {
   return (
     <main className="min-h-screen bg-background px-4 py-6">
       <section className="mx-auto max-w-4xl space-y-4">
-        <h1 className="text-3xl font-semibold text-indigo-700">Imported data</h1>
+        <h1 className="text-3xl font-semibold text-foreground">Imported data</h1>
         <Card>
           <CardHeader>
             <CardTitle>Rows</CardTitle>
@@ -375,7 +417,7 @@ export default function RevenueFrame() {
   return (
     <main className="min-h-screen bg-background px-4 py-6">
       <section className="mx-auto max-w-4xl space-y-4">
-        <h1 className="text-3xl font-semibold text-indigo-700">Revenue trend</h1>
+        <h1 className="text-3xl font-semibold text-foreground">Revenue trend</h1>
         <Card>
           <CardHeader>
             <CardTitle>Monthly revenue</CardTitle>
