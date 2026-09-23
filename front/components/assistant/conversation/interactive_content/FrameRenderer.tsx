@@ -171,8 +171,13 @@ export function FrameRenderer({
     fileId,
     enabled: false,
   });
+  // Bumped after a successful live edit (or explicit reload) so the viz iframe remounts with the
+  // refreshed bundle. Without this, react-runner keeps the old module and any Frame re-render
+  // overwrites the optimistic DOM textContent patch — edits look saved then snap back (#10579).
+  const [contentRevision, setContentRevision] = useState(0);
   if (editModeState.fileId !== fileId) {
     setEditModeState({ fileId, enabled: false });
+    setContentRevision(0);
   }
   const isEditMode = editModeState.enabled;
 
@@ -230,6 +235,8 @@ export function FrameRenderer({
       if (result.success) {
         try {
           await mutateFileContent();
+          // Remount after the SWR cache holds the new publication so getCodeToExecute returns it.
+          setContentRevision((revision) => revision + 1);
         } catch {
           // The mutation already succeeded. Keep the inline edit and let the next reload fetch
           // the active publication rather than reporting a false save failure to the iframe.
@@ -273,8 +280,12 @@ export function FrameRenderer({
 
   const reloadFile = async () => {
     setIsLoading(true);
-    await mutateFileContent(`/api/w/${owner.sId}/files/${fileId}?action=view`);
-    setIsLoading(false);
+    try {
+      await mutateFileContent();
+      setContentRevision((revision) => revision + 1);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const onRevert = () => {
@@ -512,9 +523,9 @@ export function FrameRenderer({
               visualization={{
                 code: fileContent ?? "",
                 complete: true,
-                identifier: `viz-${fileId}`,
+                identifier: `viz-${fileId}-${contentRevision}`,
               }}
-              key={`viz-${fileId}-${resolvedFramePath ?? ""}`}
+              key={`viz-${fileId}-${resolvedFramePath ?? ""}-${contentRevision}`}
               conversationId={conversation?.sId ?? null}
               spaceId={frameSpaceId ?? undefined}
               framePath={resolvedFramePath}

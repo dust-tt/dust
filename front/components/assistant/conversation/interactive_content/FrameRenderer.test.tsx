@@ -362,4 +362,46 @@ describe("FrameRenderer", () => {
       ).resolves.toEqual({ success: true });
     });
   });
+
+  it("remounts the iframe after a successful edit refreshes content", async () => {
+    mocks.editFrameText.mockResolvedValue({ success: true });
+    mocks.mutateFileContent.mockResolvedValue(
+      "export default function Frame() { return <p>Done</p>; }"
+    );
+
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="v2"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit text" }));
+
+    const identifierBefore =
+      mocks.iframe.mock.calls.at(-1)?.[0].visualization.identifier;
+    const onEditText = mocks.iframe.mock.calls.at(-1)?.[0].onEditText;
+    if (!onEditText) {
+      throw new Error("Expected Frame v2 to be editable.");
+    }
+
+    await act(async () => {
+      await onEditText({
+        newText: "Done",
+        oldText: "Ready",
+        source: "index.tsx:1:42",
+      });
+    });
+
+    expect(mocks.mutateFileContent).toHaveBeenCalled();
+    expect(
+      mocks.iframe.mock.calls.at(-1)?.[0].visualization.identifier
+    ).not.toEqual(identifierBefore);
+    expect(mocks.iframe.mock.calls.at(-1)?.[0].visualization.identifier).toBe(
+      "viz-frame_1-1"
+    );
+  });
 });
