@@ -1,6 +1,6 @@
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { createRedisStreamClient } from "@app/lib/api/redis";
-import { sleep } from "@app/lib/utils/async_utils";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -238,7 +238,7 @@ class RedisHybridManager {
         // Sleep for at least 5ms to avoid flooding the Redis stream with events.
         // Add jitter to avoid re-conflicting when restarting
         // increase jitter for each failure to avoid even more conflicts
-        await sleep(5 + Math.floor(Math.random() * 5 * (i + 1)));
+        await setTimeoutAsync(5 + Math.floor(Math.random() * 5 * (i + 1)));
       }
     }
 

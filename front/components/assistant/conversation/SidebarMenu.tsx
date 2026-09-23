@@ -51,7 +51,7 @@ import {
 } from "@app/lib/swr/activation";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { sleep } from "@app/lib/utils/async_utils";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { getConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
@@ -1641,7 +1641,7 @@ const ConversationListItem = memo(
           if (sidebarOpen) {
             setSidebarOpen(false);
             // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
-            await sleep(600);
+            await setTimeoutAsync(600);
           }
         }}
       />

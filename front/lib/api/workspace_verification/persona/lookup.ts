@@ -1,5 +1,5 @@
 import { trustedFetch } from "@app/lib/egress/server";
-import { sleep } from "@app/lib/utils/async_utils";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -248,7 +248,7 @@ export async function lookupPhoneNumber(
   let lastFetchError: string | undefined;
 
   for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
-    await sleep(POLL_INTERVAL_MS);
+    await setTimeoutAsync(POLL_INTERVAL_MS);
 
     const fetchResult = await fetchReport(client, reportId);
     if (fetchResult.isErr()) {

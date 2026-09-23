@@ -59,7 +59,7 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
-import { sleep } from "@app/lib/utils/async_utils";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { isVoiceTranscriptionAllowed } from "@app/lib/workspace_policies";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -1509,7 +1509,7 @@ const InputBarContainer = ({
       editorService.blur();
       if (isMobile) {
         editorService.setLoading(true);
-        await sleep(500);
+        await setTimeoutAsync(500);
         editorService.setLoading(false);
       }
     }
@@ -1931,7 +1931,7 @@ const InputBarContainer = ({
                                 // wait a bit for the keyboard to be closed on mobile
                                 if (isMobile) {
                                   editorService.setLoading(true);
-                                  await sleep(500);
+                                  await setTimeoutAsync(500);
                                   editorService.setLoading(false);
                                 }
                               }
