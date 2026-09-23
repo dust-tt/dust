@@ -9,6 +9,7 @@ import type { SearchSkillsResponseBody } from "@app/types/api/skills";
 import type { SkillStatus } from "@app/types/assistant/skill_configuration";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ComponentProps } from "react";
 import { SWRConfig } from "swr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -38,6 +39,19 @@ vi.mock("@app/lib/platform", () => ({
 vi.mock("@app/components/assistant/details/AgentDetailsSheet", () => ({
   AgentDetailsSheet: () => null,
 }));
+
+vi.mock("@dust-tt/sparkle", async (importOriginal) => {
+  const sparkle = await importOriginal<typeof import("@dust-tt/sparkle")>();
+
+  return {
+    ...sparkle,
+    // Keep menus inside the sheet to avoid competing portal focus traps in jsdom.
+    // These tests cover search refresh after mutations, not focus management.
+    DropdownMenuContent: (
+      props: ComponentProps<typeof sparkle.DropdownMenuContent>
+    ) => <sparkle.DropdownMenuContent {...props} mountPortal={false} />,
+  };
+});
 
 afterEach(() => {
   window.history.replaceState({}, "", "/");
