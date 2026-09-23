@@ -11,6 +11,8 @@ import { RPCDataAPI } from "@viz/app/lib/data-apis/rpc-data-api";
 import type { CommandResultMap } from "@viz/app/types";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("lottie-react", () => ({ default: () => null }));
+
 const ALLOWED_ORIGIN = "https://app.dust.tt";
 
 afterEach(() => {
