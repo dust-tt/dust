@@ -191,6 +191,7 @@ export interface AvatarProps {
   icon?: React.ComponentType<{ className?: string }>;
   /** Tailwind text-color class for the `icon` (default `text-foreground`). */
   iconColor?: string;
+  lazyLoad?: boolean;
 }
 
 /**
@@ -216,6 +217,7 @@ export function Avatar({
   className,
   icon,
   iconColor = "text-foreground",
+  lazyLoad = false,
 }: AvatarProps) {
   const normalizedVisual = visual === "" ? null : visual;
   const emojiInfos =
@@ -264,6 +266,8 @@ export function Avatar({
         <ImageWrapper
           src={visualToUse}
           alt={name}
+          loading={lazyLoad ? "lazy" : undefined}
+          decoding={lazyLoad ? "async" : undefined}
           className={cn(avatarVariants({ size }), "object-cover object-center")}
         />
       ) : visualToUse ? (
