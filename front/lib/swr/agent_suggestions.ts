@@ -24,6 +24,7 @@ export function useAgentSuggestions({
   disabled,
   kind,
   state,
+  sources,
   conversationId,
   limit,
   workspaceId,
@@ -32,6 +33,7 @@ export function useAgentSuggestions({
   disabled?: boolean;
   kind?: GetSuggestionsQuery["kind"];
   state?: GetSuggestionsQuery["states"];
+  sources?: GetSuggestionsQuery["sources"];
   conversationId?: string;
   limit?: number;
   workspaceId: string;
@@ -45,6 +47,9 @@ export function useAgentSuggestions({
   }
   if (kind) {
     urlParams.append("kind", kind);
+  }
+  if (sources) {
+    sources.forEach((s) => urlParams.append("sources", s));
   }
   if (conversationId) {
     urlParams.append("conversationId", conversationId);

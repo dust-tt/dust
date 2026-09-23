@@ -204,6 +204,7 @@ function ConversationAgentSuggestion({
     useAgentSuggestions({
       agentConfigurationId: agentId,
       workspaceId: owner.sId,
+      sources: ["conversational"],
       conversationId,
     });
 

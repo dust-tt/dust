@@ -7,6 +7,7 @@ import type {
   PatchSuggestionResponseBody,
 } from "@app/types/api/assistant/agent_suggestion";
 import { PatchSuggestionRequestBodySchema } from "@app/types/api/assistant/agent_suggestion";
+import { AGENT_SUGGESTION_SOURCES } from "@app/types/suggestions/agent_suggestion";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -15,14 +16,13 @@ import { z } from "zod";
 
 const StateSchema = z.enum(["pending", "approved", "rejected", "outdated"]);
 
-const stringOrArrayToArray = z.preprocess(
-  (v) => (typeof v === "string" ? [v] : v),
-  z.array(StateSchema)
-);
+const stringOrArrayToArray = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess((v) => (typeof v === "string" ? [v] : v), z.array(schema));
 
 const GetSuggestionsQuerySchema = z.object({
-  states: stringOrArrayToArray.optional(),
+  states: stringOrArrayToArray(StateSchema).optional(),
   kind: z.enum(["instructions", "tools", "skills", "model"]).optional(),
+  sources: stringOrArrayToArray(z.enum(AGENT_SUGGESTION_SOURCES)).optional(),
   conversationId: z.string().optional(),
   limit: z.string().optional(),
 });
@@ -67,7 +67,8 @@ app.get(
       });
     }
 
-    const { states, kind, conversationId, limit } = ctx.req.valid("query");
+    const { states, kind, sources, conversationId, limit } =
+      ctx.req.valid("query");
 
     const parsedLimit = limit ? parseInt(limit, 10) : undefined;
     if (parsedLimit !== undefined && isNaN(parsedLimit)) {
@@ -98,6 +99,7 @@ app.get(
       await AgentSuggestionResource.listByAgentConfigurationId(auth, aId, {
         states,
         kind,
+        sources,
         conversationModelId,
         limit: parsedLimit,
       });
