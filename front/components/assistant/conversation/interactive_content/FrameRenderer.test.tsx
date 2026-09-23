@@ -339,6 +339,35 @@ describe("FrameRenderer", () => {
     );
   });
 
+  it("remounts the iframe when switching between Preview and Edit", () => {
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="v2"
+      />
+    );
+
+    const previewIdentifier =
+      mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier;
+    expect(previewIdentifier).toBe("viz-frame_1-0-preview");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
+
+    const editIdentifier =
+      mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier;
+    expect(editIdentifier).toBe("viz-frame_1-0-edit");
+    expect(editIdentifier).not.toEqual(previewIdentifier);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
+
+    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier).toBe(
+      "viz-frame_1-0-preview"
+    );
+  });
+
   it("keeps a successful edit successful when the content refresh fails", async () => {
     mocks.editFrameText.mockResolvedValue({ success: true });
     mocks.mutateFileContent.mockRejectedValue(new Error("refresh failed"));
@@ -408,6 +437,87 @@ describe("FrameRenderer", () => {
     const remountedIdentifier =
       mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier;
     expect(remountedIdentifier).not.toEqual(identifierBefore);
-    expect(remountedIdentifier).toBe("viz-frame_1-1");
+    expect(remountedIdentifier).toBe("viz-frame_1-1-edit");
+  });
+
+  it("defers remount until concurrent edits all settle", async () => {
+    let resolveFirst: (value: { success: true }) => void = () => undefined;
+    let resolveSecond: (value: { success: true }) => void = () => undefined;
+    mocks.editFrameText
+      .mockImplementationOnce(
+        () =>
+          new Promise<{ success: true }>((resolve) => {
+            resolveFirst = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<{ success: true }>((resolve) => {
+            resolveSecond = resolve;
+          })
+      );
+    mocks.mutateFileContent.mockResolvedValue(
+      "export default function Frame() { return <p>Done</p>; }"
+    );
+
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        renderMode="v2"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
+
+    const onEditText = mocks.iframe.mock.calls.at(-1)?.[0].onEditText;
+    const identifierBefore =
+      mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier;
+    if (!onEditText) {
+      throw new Error("Expected Frame v2 to be editable.");
+    }
+
+    let firstDone = false;
+    let secondDone = false;
+    await act(async () => {
+      void onEditText({
+        newText: "One",
+        oldText: "A",
+        source: "index.tsx:1:1",
+      }).then(() => {
+        firstDone = true;
+      });
+      void onEditText({
+        newText: "Two",
+        oldText: "B",
+        source: "index.tsx:2:1",
+      }).then(() => {
+        secondDone = true;
+      });
+    });
+
+    await act(async () => {
+      resolveFirst({ success: true });
+    });
+    await waitFor(() => expect(firstDone).toBe(true));
+
+    // First edit settled while the second is still in flight — do not remount yet.
+    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier).toBe(
+      identifierBefore
+    );
+
+    await act(async () => {
+      resolveSecond({ success: true });
+    });
+    await waitFor(() => expect(secondDone).toBe(true));
+
+    await waitFor(() => {
+      expect(
+        mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier
+      ).toBe("viz-frame_1-1-edit");
+    });
+    expect(mocks.mutateFileContent).toHaveBeenCalledTimes(2);
   });
 });

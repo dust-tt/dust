@@ -51,7 +51,6 @@ export function EditableFrame({ children }: EditableFrameProps) {
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const lastHoverPosRef = useRef<HoverState | null>(null);
   const hoveredSpanRef = useRef<HTMLElement | null>(null);
-  const isSavingRef = useRef(false);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const target = (e.target as Element).closest<HTMLElement>(
@@ -87,7 +86,9 @@ export function EditableFrame({ children }: EditableFrameProps) {
     setHoverState(null);
   }, []);
 
-  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+  // Single click: the parent already opted into edit mode via Preview|Edit, so requiring
+  // a double-click here is redundant and feels quirky.
+  const handleClick = useCallback((e: React.MouseEvent) => {
     const target = (e.target as Element).closest<HTMLElement>(
       EDITABLE_SELECTOR
     );
@@ -123,11 +124,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
       target.classList.remove(...ACTIVE_CLS);
       delete target.dataset.originalText;
 
-      if (
-        newVisibleText === originalVisibleText ||
-        isSavingRef.current ||
-        !editText
-      ) {
+      if (newVisibleText === originalVisibleText || !editText) {
         return;
       }
 
@@ -172,20 +169,17 @@ export function EditableFrame({ children }: EditableFrameProps) {
             };
           })();
 
-      isSavingRef.current = true;
-      void editText(editParams)
-        .then((result) => {
-          if (!result.success) {
-            target.textContent = originalVisibleText;
-            flash(FAILED_CLS);
-          } else {
-            // Keep data-raw-text in sync so chained edits on the same span stay correct.
-            target.dataset.rawText = encodeURIComponent(newRawText);
-          }
-        })
-        .finally(() => {
-          isSavingRef.current = false;
-        });
+      // Allow overlapping saves: a boolean gate dropped the second blur while the first
+      // publish was still in flight (only the first edit stuck).
+      void editText(editParams).then((result) => {
+        if (!result.success) {
+          target.textContent = originalVisibleText;
+          flash(FAILED_CLS);
+        } else {
+          // Keep data-raw-text in sync so chained edits on the same span stay correct.
+          target.dataset.rawText = encodeURIComponent(newRawText);
+        }
+      });
     },
     [editText]
   );
@@ -217,7 +211,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
   return (
     <>
       <div
-        onDoubleClick={handleDoubleClick}
+        onClick={handleClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
         onBlur={handleBlur}
@@ -237,7 +231,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
           />
         </TooltipTrigger>
         <TooltipContent side="top" sideOffset={4}>
-          Double-click to edit
+          Click to edit
         </TooltipContent>
       </Tooltip>
     </>

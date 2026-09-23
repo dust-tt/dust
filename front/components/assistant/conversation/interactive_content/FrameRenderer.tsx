@@ -175,9 +175,15 @@ export function FrameRenderer({
   // refreshed bundle. Without this, react-runner keeps the old module and any Frame re-render
   // overwrites the optimistic DOM textContent patch — edits look saved then snap back (#10579).
   const [contentRevision, setContentRevision] = useState(0);
+  // Concurrent field saves must not remount mid-flight: the first success would destroy the
+  // iframe (and drop later edits). Track in-flight edits and remount once they all settle.
+  const inFlightEditsRef = useRef(0);
+  const pendingRemountRef = useRef(false);
   if (editModeState.fileId !== fileId) {
     setEditModeState({ fileId, enabled: false });
     setContentRevision(0);
+    inFlightEditsRef.current = 0;
+    pendingRemountRef.current = false;
   }
   const isEditMode = editModeState.enabled;
 
@@ -227,23 +233,34 @@ export function FrameRenderer({
       ? Boolean(conversation)
       : Boolean(conversation && isFrameAuthor);
   const isEditable = isEditMode && canEnterEditMode;
+  // Include edit mode so Preview↔Edit remounts and resets contentHeight (async-network-loading-state).
+  const vizInstanceId = `viz-${fileId}-${contentRevision}-${isEditable ? "edit" : "preview"}`;
 
   const handleEditText = useCallback(
     async (params: Parameters<typeof editFrameText>[0]) => {
-      const result = await editFrameText(params);
+      inFlightEditsRef.current += 1;
+      try {
+        const result = await editFrameText(params);
 
-      if (result.success) {
-        try {
-          await mutateFileContent();
-          // Remount after the SWR cache holds the new publication so getCodeToExecute returns it.
+        if (result.success) {
+          try {
+            await mutateFileContent();
+            // Remount after the SWR cache holds the new publication so getCodeToExecute returns it.
+            pendingRemountRef.current = true;
+          } catch {
+            // The mutation already succeeded. Keep the inline edit and let the next reload fetch
+            // the active publication rather than reporting a false save failure to the iframe.
+          }
+        }
+
+        return result;
+      } finally {
+        inFlightEditsRef.current -= 1;
+        if (inFlightEditsRef.current === 0 && pendingRemountRef.current) {
+          pendingRemountRef.current = false;
           setContentRevision((revision) => revision + 1);
-        } catch {
-          // The mutation already succeeded. Keep the inline edit and let the next reload fetch
-          // the active publication rather than reporting a false save failure to the iframe.
         }
       }
-
-      return result;
     },
     [editFrameText, mutateFileContent]
   );
@@ -552,9 +569,9 @@ export function FrameRenderer({
               visualization={{
                 code: fileContent ?? "",
                 complete: true,
-                identifier: `viz-${fileId}-${contentRevision}`,
+                identifier: vizInstanceId,
               }}
-              key={`viz-${fileId}-${resolvedFramePath ?? ""}-${contentRevision}`}
+              key={`${vizInstanceId}-${resolvedFramePath ?? ""}`}
               conversationId={conversation?.sId ?? null}
               spaceId={frameSpaceId ?? undefined}
               framePath={resolvedFramePath}
