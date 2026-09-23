@@ -1,7 +1,10 @@
 import type { Editor } from "@tiptap/core";
 import { useEffect, useState } from "react";
 
-/** Increments after each document change and when the editor's DOM resizes. */
+// Markers and the composer read highlight positions from the DOM. Put this counter in
+// their layout effect deps and they measure again whenever the text may have moved:
+// after a document edit, when the editor element resizes, or when the window does.
+
 export const useEditorLayoutVersion = (editor: Editor | null) => {
   const [version, setVersion] = useState(0);
 
