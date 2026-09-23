@@ -1,6 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { concurrentExecutor, sleep } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { marked } from "marked";
@@ -81,7 +81,7 @@ export const makeFrontAPIRequest = async (
           MAX_RETRY_DELAY_MS
         );
 
-    await new Promise((resolve) => setTimeout(resolve, delay));
+    await sleep(delay);
     return makeFrontAPIRequest(options, retryCount + 1);
   }
 

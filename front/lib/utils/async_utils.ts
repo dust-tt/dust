@@ -121,6 +121,6 @@ export async function withPeriodicHeartbeat<T>(
   }
 }
 
-export async function setTimeoutAync(delayMs: number = 0): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, delayMs));
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
