@@ -81,7 +81,7 @@ documents.
 
 - **Runtime / host-injected:** `OP_SERVICE_ACCOUNT_TOKEN`, `DEV_WORKOS_*` (already in process env; not re-exported).
 - **1Password Environment:** materialized once to `/tmp/dust-op-environment.env`, loaded via `BASH_ENV=/tmp/dust-shell-env.sh` for non-interactive bash (infra/mprocs) and via `/root/.zshrc` / `dev/zshrc` for interactive terminals. Store `GCP_SERVICE_ACCOUNT_B64` as base64-encoded JSON; on materialize it is decoded to `SERVICE_ACCOUNT` (`/tmp/dust-dev-sa.json`). Include `NGROK_AUTHTOKEN` so `apps.sh` can open the sandbox front-api tunnel.
-- **Local overrides:** `dev/scripts/env.sh` → `apply_local_overrides` forces in-container DB/API URLs after OP load. When `/tmp/dust-infra/sbx-dev-front-url` exists (from `ensure-ngrok.sh`), it exports `SBX_DEV_FRONT_URL` and defaults `SBX_DEV_UNRESTRICTED_EGRESS=true` so sandboxes can reach the tunnel (agent-proxied traffic otherwise goes through the cloud egress proxy, which only allowlists `dust.tt`). When `/tmp/dust-infra/sbx-dev-viz-url` exists, it overrides `VIZ_PUBLIC_URL` (sandbox `DUST_VIZ_URL`) while leaving `NEXT_PUBLIC_VIZ_URL` on localhost for the SPA.
+- **Local overrides:** `dev/scripts/env.sh` → `apply_local_overrides` forces in-container DB/API URLs after OP load. When `/tmp/dust-infra/sbx-dev-front-url` exists (from `ensure-ngrok.sh`), it exports `SBX_DEV_FRONT_URL` and defaults `SBX_DEV_UNRESTRICTED_EGRESS=true` so sandboxes can reach the tunnel (agent-proxied traffic otherwise goes through the cloud egress proxy, which only allowlists `dust.tt`). When `/tmp/dust-infra/sbx-dev-viz-url` exists, it exports `SBX_DEV_VIZ_URL`, which only overrides the sandbox's `DUST_VIZ_URL`; the browser keeps loading viz from `VIZ_PUBLIC_URL`.
 
 ## Infra models
 
