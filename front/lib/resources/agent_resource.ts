@@ -55,6 +55,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { SkillFetchContext } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -177,23 +178,6 @@ export type AgentResourceContent = {
   maxStepsPerRun: number;
   createdAt: Date;
   updatedAt: Date;
-};
-
-type AgentResourceExtraBlob = {
-  agentConfigurationModelId: ModelId;
-  scope: AgentConfigurationScope;
-  name: string;
-  description: string;
-  status: AgentConfigurationStatus;
-  pictureUrl: string;
-  templateId: ModelId | null;
-  reinforcement: AgentReinforcementMode;
-  lastReinforcementAnalysisAt: Date | null;
-  versionAuthorId: ModelId | null;
-  requestedSpaceIds: ModelId[];
-  modelConfiguration: AgentModelConfigurationType;
-  codeDefinedSkillIds: string[];
-  content: AgentResourceContent | null;
 };
 
 // The outcome of a `bulkUpdate`: the agents whose save succeeded (`updatedAgentIds`, a change
@@ -437,31 +421,38 @@ const AGENT_RESOURCE_CACHE_DRY_RUN = true;
  * API keys are the sole exception: the admin role grants them `write` (see `admin-key-agent-write`),
  * so an admin key may edit an agent it holds no editor grant on.
  */
-export class AgentResource
-  extends BaseResource<AgentModel>
-  implements WithAccessControl
-{
-  readonly sId: string;
-  readonly workspaceId: ModelId;
-  // The agent's creation date (its `agents` row, not the current version's). A core field, so it is
-  // carried by `light` resources too. Only `fetch*`-built resources carry the real date: the `from*`
-  // factories have no `agents` row in hand and stamp a placeholder (see `fromAgentConfiguration`).
-  readonly createdAt: Date;
-  // Bumped whenever the agent's `currentVersion` pointer moves, so it tracks the last edit.
-  readonly updatedAt: Date;
+// The resource's identity is the `AgentModel` row (so all its attributes are carried, readonly),
+// plus the core fields resolved from the current `AgentConfigurationModel` version. The overlapping
+// head columns (`name`/`status`/`scope`/`reinforcement`) are re-declared here because the resource
+// exposes the configuration's values: non-null, and `scope` may be `"global"` for code-defined
+// agents (see `fromGlobalAgent`), unlike the agent row's nullable, non-global copies.
+// `createdAt`/`updatedAt` come from the `agents` row: `createdAt` is the agent's own creation date
+// (not the version's), `updatedAt` tracks the last time its `currentVersion` pointer moved.
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface AgentResource
+  extends Omit<
+    ReadonlyAttributesType<AgentModel>,
+    "name" | "status" | "scope" | "reinforcement"
+  > {
   readonly agentConfigurationModelId: ModelId;
   readonly scope: AgentConfigurationScope;
   readonly name: string;
   readonly description: string;
   readonly status: AgentConfigurationStatus;
   readonly pictureUrl: string;
-  readonly templateId: ModelId | null;
   readonly reinforcement: AgentReinforcementMode;
-  readonly lastReinforcementAnalysisAt: Date | null;
   readonly versionAuthorId: ModelId | null;
-  private readonly requestedSpaceIds: ModelId[];
   readonly modelConfiguration: AgentModelConfigurationType;
-  private readonly codeDefinedSkillIds: string[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class AgentResource
+  extends BaseResource<AgentModel>
+  implements WithAccessControl
+{
+  private readonly requestedSpaceIds: ModelId[];
+  // Code-defined skill ids, only ever populated by `fromGlobalAgent` (empty for every other path).
+  private codeDefinedSkillIds: string[] = [];
   // Mutable so a light resource can be enriched to full in place once read access is confirmed
   // (see `fromModels`). `variant` is derived from its presence.
   private _content: AgentResourceContent | null;
@@ -471,30 +462,65 @@ export class AgentResource
   private _verbs: Set<GrantVerb> = new Set();
   private _isRegularApiKey = false;
 
+  // Both models are mandatory: the identity/timestamps (`id`/`sId`/`workspaceId`/`createdAt`/
+  // `updatedAt`/`currentVersion`) come from the `agents` row, the head + remaining core fields and
+  // `_content` from the resolved configuration version. Global agents have no real rows (their blobs
+  // are synthesized by `fromGlobalAgent`); they are recognized by their `sId` to carry
+  // `scope: "global"` and no author, which the configuration blob cannot represent.
   private constructor(
-    blob: Attributes<AgentModel>,
-    extra: AgentResourceExtraBlob
+    agent: Attributes<AgentModel>,
+    agentConfiguration: Attributes<AgentConfigurationModel>
   ) {
-    super(AgentModel, blob);
+    super(AgentModel, agent);
 
-    this.sId = blob.sId;
-    this.workspaceId = blob.workspaceId;
-    this.createdAt = blob.createdAt;
-    this.updatedAt = blob.updatedAt;
-    this.agentConfigurationModelId = extra.agentConfigurationModelId;
-    this.scope = extra.scope;
-    this.name = extra.name;
-    this.description = extra.description;
-    this.status = extra.status;
-    this.pictureUrl = extra.pictureUrl;
-    this.templateId = extra.templateId;
-    this.reinforcement = extra.reinforcement;
-    this.lastReinforcementAnalysisAt = extra.lastReinforcementAnalysisAt;
-    this.versionAuthorId = extra.versionAuthorId;
-    this.requestedSpaceIds = extra.requestedSpaceIds;
-    this.modelConfiguration = extra.modelConfiguration;
-    this.codeDefinedSkillIds = extra.codeDefinedSkillIds;
-    this._content = extra.content;
+    const isGlobal = isGlobalAgentId(this.sId);
+
+    // The core fields exposed by the resource come from the configuration version, overriding the
+    // agent row's denormalized head copies. Assigned via `Object.assign` because they are declared
+    // `readonly` on the merged `AgentResource` interface. `scope`/`versionAuthorId` diverge for global
+    // agents, which have no configuration row to carry `"global"`/no-author.
+    Object.assign(this, {
+      agentConfigurationModelId: agentConfiguration.id,
+      scope: isGlobal ? "global" : agentConfiguration.scope,
+      name: agentConfiguration.name,
+      description: agentConfiguration.description,
+      status: agentConfiguration.status,
+      pictureUrl: agentConfiguration.pictureUrl,
+      templateId: agentConfiguration.templateId,
+      reinforcement: agentConfiguration.reinforcement,
+      lastReinforcementAnalysisAt:
+        agentConfiguration.lastReinforcementAnalysisAt,
+      versionAuthorId: isGlobal ? null : agentConfiguration.authorId,
+      modelConfiguration: {
+        providerId: agentConfiguration.providerId,
+        modelId: agentConfiguration.modelId,
+        temperature: agentConfiguration.temperature,
+        reasoningEffort: agentConfiguration.reasoningEffort ?? undefined,
+        responseFormat: agentConfiguration.responseFormat ?? undefined,
+      },
+    } satisfies Pick<
+      AgentResource,
+      | "agentConfigurationModelId"
+      | "scope"
+      | "name"
+      | "description"
+      | "status"
+      | "pictureUrl"
+      | "templateId"
+      | "reinforcement"
+      | "lastReinforcementAnalysisAt"
+      | "versionAuthorId"
+      | "modelConfiguration"
+    >);
+    this.requestedSpaceIds = agentConfiguration.requestedSpaceIds;
+    this._content = {
+      version: agentConfiguration.version,
+      instructions: agentConfiguration.instructions,
+      instructionsHtml: agentConfiguration.instructionsHtml,
+      maxStepsPerRun: agentConfiguration.maxStepsPerRun,
+      createdAt: agentConfiguration.createdAt,
+      updatedAt: agentConfiguration.updatedAt,
+    };
   }
 
   get variant(): "light" | "full" {
@@ -515,106 +541,71 @@ export class AgentResource
   }
 
   // Global agents are code-defined and have no `agent`/configuration rows; their
-  // `AgentConfigurationType` is built from synthetic values by `getGlobalAgent(s)`.
+  // `AgentConfigurationType` is built from synthetic values by `getGlobalAgent(s)`. Their divergent
+  // head fields — `scope: "global"` and no author — are recognized from the `sId` by the constructor;
+  // only their disabled-* `status`, wider than a configuration row's `AgentStatus`, is carried through.
   static fromGlobalAgent(
     auth: Authenticator,
     configuration: AgentConfigurationType
   ): AgentResource {
     assert(isGlobalAgentId(configuration.sId));
 
-    return new AgentResource(
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const now = new Date();
+
+    const resource = new AgentResource(
+      // No `agent` identity row; `-1` mirrors their synthetic configuration id. The head columns are
+      // re-derived from the configuration by the constructor, so they are left null here.
       {
-        // No `agent` identity row; `-1` mirrors their synthetic configuration id.
         id: -1,
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId,
         sId: configuration.sId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        createdAt: now,
+        updatedAt: now,
         currentVersion: configuration.version,
-        name: configuration.name,
+        name: null,
         status: null,
         scope: null,
-        templateId: null,
-        reinforcement: configuration.reinforcement ?? "auto",
+        reinforcement: null,
         lastReinforcementAnalysisAt: null,
+        templateId: null,
       },
       {
-        agentConfigurationModelId: configuration.id,
-        scope: "global",
+        id: configuration.id,
+        workspaceId,
+        sId: configuration.sId,
+        createdAt: now,
+        updatedAt: now,
+        version: configuration.version,
+        // No `agents` row: `-1` mirrors the synthetic identity. `scope`/`authorId` are ignored — the
+        // constructor forces `scope: "global"` and a null author for global sIds.
+        agentId: -1,
+        // A global agent may be `disabled_*`, wider than the configuration column's `AgentStatus`; the
+        // resource's `AgentConfigurationStatus` preserves it.
+        status: configuration.status as AgentStatus,
+        scope: "hidden",
         name: configuration.name,
         description: configuration.description,
-        status: configuration.status,
+        instructions: null,
+        instructionsHtml: null,
+        providerId: configuration.model.providerId,
+        modelId: configuration.model.modelId,
+        temperature: configuration.model.temperature,
+        reasoningEffort: configuration.model.reasoningEffort ?? null,
+        responseFormat: configuration.model.responseFormat,
         pictureUrl: configuration.pictureUrl,
+        authorId: -1,
+        maxStepsPerRun: configuration.maxStepsPerRun,
         templateId: null,
         reinforcement: configuration.reinforcement ?? "auto",
         lastReinforcementAnalysisAt: null,
-        versionAuthorId: null,
         requestedSpaceIds: [],
-        modelConfiguration: configuration.model,
-        codeDefinedSkillIds: configuration.codeDefinedSkillIds ?? [],
-        content: null,
       }
     );
-  }
+    resource._content = null;
+    resource.codeDefinedSkillIds = configuration.codeDefinedSkillIds ?? [];
 
-  // -- Full/light factory --
-
-  // Caller-independent: builds the `full` resource (identity + core + `content`) from an agent row and
-  // one of its configuration rows, with no read-access decision folded in. This is the shape the cache
-  // stores; the downgrade is applied separately at the read boundary (`materializeResource`). The
-  // identity and head fields always come from the real `agents` row, never synthesized from a
-  // configuration.
-  private static buildResource(
-    agent: AgentModel,
-    configuration: AgentConfigurationModel
-  ): FullAgentResource {
-    const resource = new AgentResource(
-      {
-        id: agent.id,
-        workspaceId: agent.workspaceId,
-        sId: agent.sId,
-        createdAt: agent.createdAt,
-        updatedAt: agent.updatedAt,
-        currentVersion: agent.currentVersion,
-        name: agent.name,
-        status: agent.status,
-        scope: agent.scope,
-        templateId: agent.templateId,
-        reinforcement: agent.reinforcement,
-        lastReinforcementAnalysisAt: agent.lastReinforcementAnalysisAt,
-      },
-      {
-        agentConfigurationModelId: configuration.id,
-        scope: configuration.scope,
-        name: configuration.name,
-        description: configuration.description,
-        status: configuration.status,
-        pictureUrl: configuration.pictureUrl,
-        templateId: configuration.templateId,
-        reinforcement: configuration.reinforcement,
-        lastReinforcementAnalysisAt: configuration.lastReinforcementAnalysisAt,
-        versionAuthorId: configuration.authorId,
-        requestedSpaceIds: configuration.requestedSpaceIds,
-        modelConfiguration: {
-          providerId: configuration.providerId,
-          modelId: configuration.modelId,
-          temperature: configuration.temperature,
-          reasoningEffort: configuration.reasoningEffort ?? undefined,
-          responseFormat: configuration.responseFormat ?? undefined,
-        },
-        codeDefinedSkillIds: [],
-        content: {
-          version: configuration.version,
-          instructions: configuration.instructions,
-          instructionsHtml: configuration.instructionsHtml,
-          maxStepsPerRun: configuration.maxStepsPerRun,
-          createdAt: configuration.createdAt,
-          updatedAt: configuration.updatedAt,
-        },
-      }
-    );
-
-    return resource as FullAgentResource;
+    return resource;
   }
 
   // Materializes the caller-dependent state onto a full resource (`_verbs`, `_isRegularApiKey`, and
@@ -644,14 +635,19 @@ export class AgentResource
     agent: AgentModel,
     agentConfiguration: AgentConfigurationModel
   ): AgentResource {
+    // Both models are present, so the constructor always yields a `full` resource; the read-access
+    // downgrade to `light` is applied by `materializeResource`.
     return this.materializeResource(
       auth,
-      this.buildResource(agent, agentConfiguration)
+      new AgentResource(
+        agent.get(),
+        agentConfiguration.get()
+      ) as FullAgentResource
     );
   }
 
   // Builds resources from already-loaded configuration rows, loading their `agents` identity rows in
-  // one batch so a resource is never synthesized without a real agent row (see `buildResource`).
+  // one batch so a resource is never synthesized without a real agent row.
   // Returns one resource per input configuration, in the same order. Runs within `transaction` when
   // given (e.g. to observe rows written earlier in the same save).
   static async fromConfigurationModels(
@@ -810,11 +806,19 @@ export class AgentResource
 
     return agents.flatMap((agent) => {
       // `required: true` + `version = currentVersion` yields exactly one configuration per agent.
-      const configurations = agent.get(
-        "agent_configurations"
-      ) as AgentConfigurationModel[];
-      return configurations.map((configuration) =>
-        this.buildResource(agent, configuration)
+      // `agent.get()` carries the eager-loaded `agent_configurations` too; drop it so the association
+      // does not leak onto the resource instance.
+      const { agent_configurations: configurations, ...agentAttributes } =
+        agent.get() as Attributes<AgentModel> & {
+          agent_configurations: AgentConfigurationModel[];
+        };
+      // Both models are present, so the constructor always yields a `full` resource.
+      return configurations.map(
+        (configuration) =>
+          new AgentResource(
+            agentAttributes,
+            configuration.get()
+          ) as FullAgentResource
       );
     });
   }
@@ -916,61 +920,69 @@ export class AgentResource
     };
   }
 
-  // Rebuilds a `full` resource from a cached snapshot. Inverse of `toSnapshot`.
+  // Rebuilds a `full` resource from a cached snapshot. Inverse of `toSnapshot`. Only custom agents'
+  // current versions are cached (see `loadResource`/`toSnapshot`), so the snapshot is never global.
   static fromSnapshot(snapshot: AgentResourceSnapshot): FullAgentResource {
     const { content, modelConfiguration } = snapshot;
+    // A cached custom agent always has an author (the configuration's non-null `authorId`).
+    assert(
+      snapshot.versionAuthorId !== null,
+      "Unexpected: cached custom agent is missing its author"
+    );
     const lastReinforcementAnalysisAt =
       snapshot.lastReinforcementAnalysisAt !== null
         ? new Date(snapshot.lastReinforcementAnalysisAt)
         : null;
 
-    const resource = new AgentResource(
+    return new AgentResource(
+      // Only the identity/timestamps are read from this blob; the head columns are re-derived from
+      // the configuration by the constructor. `createdAt` is the agent row's own timestamp, NOT the
+      // version's (`content.createdAt`).
       {
         id: snapshot.agentModelId,
         workspaceId: snapshot.workspaceId,
         sId: snapshot.sId,
-        // The agent row's own timestamp — NOT the version's (`content.createdAt`).
         createdAt: new Date(snapshot.createdAt),
         // `updatedAt` is not surfaced on the resource; the version's stands in harmlessly.
         updatedAt: new Date(content.updatedAt),
         // The cached row is the current version, so its version is the agent's `currentVersion`.
         currentVersion: content.version,
-        name: snapshot.name,
-        status: isAgentStatus(snapshot.status) ? snapshot.status : null,
-        scope: snapshot.scope === "global" ? null : snapshot.scope,
-        templateId: snapshot.templateId,
-        reinforcement: snapshot.reinforcement,
-        lastReinforcementAnalysisAt,
+        name: null,
+        status: null,
+        scope: null,
+        reinforcement: null,
+        lastReinforcementAnalysisAt: null,
+        templateId: null,
       },
       {
-        agentConfigurationModelId: snapshot.agentConfigurationModelId,
-        scope: snapshot.scope,
+        id: snapshot.agentConfigurationModelId,
+        workspaceId: snapshot.workspaceId,
+        sId: snapshot.sId,
+        createdAt: new Date(content.createdAt),
+        updatedAt: new Date(content.updatedAt),
+        version: content.version,
+        agentId: snapshot.agentModelId,
+        // Cached agents are never global, so their stored status/scope are configuration-shaped.
+        status: snapshot.status as AgentStatus,
+        scope: snapshot.scope as Exclude<AgentConfigurationScope, "global">,
         name: snapshot.name,
         description: snapshot.description,
-        status: snapshot.status,
+        instructions: content.instructions,
+        instructionsHtml: content.instructionsHtml,
+        providerId: modelConfiguration.providerId,
+        modelId: modelConfiguration.modelId,
+        temperature: modelConfiguration.temperature,
+        reasoningEffort: modelConfiguration.reasoningEffort ?? null,
+        responseFormat: modelConfiguration.responseFormat ?? undefined,
         pictureUrl: snapshot.pictureUrl,
+        authorId: snapshot.versionAuthorId,
+        maxStepsPerRun: content.maxStepsPerRun,
         templateId: snapshot.templateId,
         reinforcement: snapshot.reinforcement,
         lastReinforcementAnalysisAt,
-        versionAuthorId: snapshot.versionAuthorId,
         requestedSpaceIds: snapshot.requestedSpaceIds,
-        modelConfiguration: {
-          providerId: modelConfiguration.providerId,
-          modelId: modelConfiguration.modelId,
-          temperature: modelConfiguration.temperature,
-          reasoningEffort: modelConfiguration.reasoningEffort ?? undefined,
-          responseFormat: modelConfiguration.responseFormat ?? undefined,
-        },
-        codeDefinedSkillIds: [],
-        content: {
-          ...content,
-          createdAt: new Date(content.createdAt),
-          updatedAt: new Date(content.updatedAt),
-        },
       }
-    );
-
-    return resource as FullAgentResource;
+    ) as FullAgentResource;
   }
 
   async listEditors(
@@ -1382,8 +1394,7 @@ export class AgentResource
    */
   async setCurrentConfiguration(
     auth: Authenticator,
-    configuration: Pick<AgentConfigurationModel, "agentId" | "version"> &
-      AgentHeadFields,
+    configuration: AgentConfigurationModel,
     { transaction }: { transaction: Transaction }
   ): Promise<void> {
     assert(this.scope !== "global");
