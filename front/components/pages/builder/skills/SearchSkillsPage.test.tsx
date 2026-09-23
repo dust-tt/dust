@@ -1,7 +1,6 @@
 import { ManageSkillsPage } from "@app/components/pages/builder/skills/ManageSkillsPage";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
-import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -60,14 +59,10 @@ async function setup({
     instructions: "",
     status: skillStatus,
   });
-  const [document] = await SkillFactory.createSearchDocuments(authenticator, [
-    resource,
-  ]);
-  const { sId, fullName, image } = user.toJSON();
-  const skill = {
-    ...toSkillListItem(authenticator, document),
-    editors: [{ sId, fullName, image }],
-  };
+  const skill = resource.toJSON(authenticator, {
+    forListing: true,
+    editors: [user],
+  });
   const context: AuthContextValue = {
     workspace: authenticator.getNonNullableWorkspace(),
     user: user.toJSON(),

@@ -1,4 +1,4 @@
-import { searchSkills } from "@app/lib/api/skills/search";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { SearchSkillsQuerySchema } from "@app/lib/skill_search/query_schema";
 import logger from "@app/logger/logger";
@@ -42,7 +42,7 @@ app.post(
         },
       });
     }
-    const result = await searchSkills(auth, {
+    const result = await SkillResource.search(auth, {
       searchTerm: query,
       limit,
       cursor,
@@ -89,21 +89,18 @@ app.post(
     ];
     const users = await UserResource.fetchByIds(editorIds);
 
-    const editorsById = new Map(
-      users.map((user) => {
-        const { sId, fullName, image } = user.toJSON();
-        return [sId, { sId, fullName, image }];
-      })
-    );
+    const editorsById = new Map(users.map((user) => [user.sId, user]));
 
     return ctx.json({
       ...result.value,
-      skills: result.value.skills.map((skill) => ({
-        ...skill,
-        editors: removeNulls(
-          [...new Set(skill.editorIds)].map((id) => editorsById.get(id))
-        ),
-      })),
+      skills: result.value.skills.map((skill) =>
+        skill.toJSON(auth, {
+          forListing: true,
+          editors: removeNulls(
+            [...new Set(skill.editorIds)].map((id) => editorsById.get(id))
+          ),
+        })
+      ),
     });
   }
 );

@@ -1,16 +1,28 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const searchSkills = vi.hoisted(() => vi.fn());
+const mockSearch = vi.hoisted(() => vi.fn());
+vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/elasticsearch")>();
+  const { Ok } = await import("@app/types/shared/result");
+  return {
+    ...actual,
+    withEs: async (
+      fn: (client: { search: typeof mockSearch }) => Promise<unknown>
+    ) => new Ok(await fn({ search: mockSearch })),
+  };
+});
 
-vi.mock("@app/lib/api/skills/search", () => ({
-  searchSkills,
-}));
+const originalSearch = SkillResource.search.bind(SkillResource);
+const searchSkills = vi.spyOn(SkillResource, "search");
 
 async function setup(role: MembershipRoleType = "user") {
   const context = await createPrivateApiMockRequest({ role });
@@ -32,6 +44,7 @@ function searchRequest(
 describe("POST /api/w/:wId/skills/search", () => {
   beforeEach(() => {
     searchSkills.mockReset();
+    mockSearch.mockReset();
   });
 
   it.each([
@@ -53,29 +66,33 @@ describe("POST /api/w/:wId/skills/search", () => {
     0,
     null,
   ])("routes search results with updatedAt=%s", async (updatedAt) => {
-    const { workspace, user } = await setup();
-    searchSkills.mockResolvedValue(
-      new Ok({
-        skills: [
+    const { auth, workspace, user } = await setup();
+    const skill = await SkillFactory.create(auth, {
+      name: "Search result",
+      availability: "workspace_users",
+      addCurrentUserAsEditor: false,
+    });
+    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
+    mockSearch.mockResolvedValue({
+      hits: {
+        hits: [
           {
-            status: "active",
-            canAdministrate: false,
-            availability: "workspace_users",
-            mcpServerViewIds: [],
-            editorIds: [user.sId, user.sId, "missing-user"],
-            activeUsersCount: null,
-            updatedAt,
-            icon: null,
-            name: "Search result",
-            requestedSpaceIds: [],
-            sId: "search-result",
-            userFacingDescription: "Description",
+            _source: {
+              ...document,
+              description: "Description",
+              icon: null,
+              requested_space_ids: [],
+              editor_ids: [user.sId, user.sId, "missing-user"],
+              last_edited_by_user_id: null,
+              active_users_count: null,
+              updated_at:
+                updatedAt === null ? null : new Date(updatedAt).toISOString(),
+            },
           },
         ],
-        hasMore: false,
-        nextCursor: null,
-      })
-    );
+      },
+    });
+    searchSkills.mockImplementation(originalSearch);
 
     const response = await searchRequest(workspace.sId, { query: "research" });
 
@@ -105,6 +122,7 @@ describe("POST /api/w/:wId/skills/search", () => {
           availability: "workspace_users",
           mcpServerViewIds: [],
           editorIds: [user.sId, user.sId, "missing-user"],
+          editedBy: null,
           editors: [
             {
               sId: user.sId,
@@ -117,7 +135,7 @@ describe("POST /api/w/:wId/skills/search", () => {
           icon: null,
           name: "Search result",
           requestedSpaceIds: [],
-          sId: "search-result",
+          sId: skill.sId,
           userFacingDescription: "Description",
         },
       ],

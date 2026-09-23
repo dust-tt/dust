@@ -5,6 +5,7 @@ import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/ag
 import { getEffectiveSpaceIdsForAgentRun } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { updateConversationRequirementsForSkills } from "@app/lib/api/assistant/conversation/skill_permissions";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
+import { SKILL_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import { SkillNameSchema } from "@app/lib/api/skills/schemas";
 import {
   filterUsersWithSharedMembership,
@@ -64,6 +65,11 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
 import {
+  buildSkillSearchQuery,
+  MAX_SKILL_SEARCH_RESULTS,
+} from "@app/lib/skill_search/query";
+import { buildSkillDefaultSort } from "@app/lib/skill_search/ranking";
+import {
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
   renameSkillReferencesInContent,
@@ -81,6 +87,12 @@ import {
   launchIndexSkillSearchWorkflow,
 } from "@app/temporal/es_indexation/client";
 import type {
+  SkillSearchFilters,
+  SkillSearchPermissionFiltering,
+  SkillSearchSort,
+  SkillSearchSortOrder,
+} from "@app/types/api/skills";
+import type {
   AgentConfigurationWithoutModelType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
@@ -94,6 +106,7 @@ import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
   AgentSkillType,
   SkillAvailability,
+  SkillListItemType,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
@@ -113,8 +126,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
 import groupBy from "lodash/groupBy";
 import isEqual from "lodash/isEqual";
@@ -128,8 +143,13 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
+import { z } from "zod";
 
 const SKILL_SEARCH_INDEXATION_CONCURRENCY = 8;
+
+const SkillSearchSortSchema = z.array(
+  z.union([z.string(), z.number(), z.boolean(), z.null()])
+);
 
 export type SkillMCPServerConfiguration = {
   view: MCPServerViewResource;
@@ -367,6 +387,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   private redactedForCaller = false;
 
   private _mcpServerConfigurations: SkillMCPServerConfiguration[];
+  private searchDocument: SkillSearchDocument | null = null;
 
   private constructor(
     _: ModelStatic<SkillConfigurationModel>,
@@ -392,7 +413,152 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     this.version = version ?? null;
   }
 
+  /**
+   * @cc [owner:aubin-tchoi,label:security;performance] indexed-skill-search-listings
+   * Return only workspace-scoped or eligible code-defined indexed metadata using hydrated grants.
+   * Result projection must not read the database; code-defined eligibility is resolved before the query.
+   * Administration permissions come from hydrated grants, not indexed editors; code-defined skills cannot be administrated.
+   * Permission-bearing document changes are eventually consistent; full-skill
+   * access remains separately authorized. Callers must authorize admin-only redaction upstream.
+   * Build the authorized query internally; do not accept caller-supplied Elasticsearch queries.
+   * Preserve Elasticsearch hit order without exposing scores or readability flags in skill listings.
+   * Request _source and omit hits without source documents.
+   * Return at most limit skills; nextCursor must point to the last consumed hit, not the lookahead.
+   */
+
+  /**
+   * @cc [owner:aubin-tchoi,label:security;product] unified-search-pagination
+   * Custom and code-defined skills share one ES-ranked stream; cursors advance only past
+   * consumed hits.
+   * Cursors encode the ES sort tuple as an opaque string and convey no authorization.
+   * Callers reset the cursor when changing the query, filters, or sort order.
+   * Every page applies hydrated grants to indexed requirements.
+   * Pagination reads the live index; concurrent index changes may cause skips or duplicates.
+   */
+  static async search(
+    auth: Authenticator,
+    {
+      limit = MAX_SKILL_SEARCH_RESULTS,
+      cursor,
+      sortBy,
+      sortOrder,
+      ...options
+    }: {
+      searchTerm: string;
+      filters?: SkillSearchFilters;
+      permissionFiltering?: SkillSearchPermissionFiltering;
+      limit?: number;
+      cursor?: string | null;
+      sortBy?: SkillSearchSort;
+      sortOrder?: SkillSearchSortOrder;
+    }
+  ) {
+    let searchAfter: estypes.SortResults | undefined;
+    if (cursor !== undefined && cursor !== null) {
+      const parsed = safeParseJSON(
+        Buffer.from(cursor, "base64url").toString("utf8")
+      );
+      const sort = SkillSearchSortSchema.safeParse(
+        parsed.isOk() ? parsed.value : undefined
+      );
+      if (!sort.success) {
+        return new Err("invalid_cursor" as const);
+      }
+      searchAfter = sort.data;
+    }
+
+    const codeDefinedSkillIds = await this.listAvailableCodeDefinedIds(auth);
+    const query = buildSkillSearchQuery(auth, {
+      ...options,
+      codeDefinedSkillIds,
+    });
+
+    const result = await withEs((client) =>
+      client.search<SkillSearchDocument>({
+        index: SKILL_SEARCH_ALIAS_NAME,
+        _source: true,
+        query,
+        size: limit + 1,
+        sort: buildSkillDefaultSort({ sortBy, sortOrder }),
+        ...(searchAfter ? { search_after: searchAfter } : {}),
+      })
+    );
+    if (result.isErr()) {
+      return result;
+    }
+    const { hits } = result.value.hits;
+    const pageHits = hits.slice(0, limit);
+    const nextCursor = pageHits.at(-1)?.sort;
+
+    return new Ok({
+      skills: removeNulls(pageHits.map((hit) => hit._source)).map((document) =>
+        this.fromSearchDocument(auth, document)
+      ),
+      hasMore: hits.length > limit,
+      nextCursor: nextCursor
+        ? Buffer.from(JSON.stringify(nextCursor)).toString("base64url")
+        : null,
+    });
+  }
+
+  // Search snapshots stay inside the listing path. Fields absent from ES are not exposed.
+  private static fromSearchDocument(
+    auth: Authenticator,
+    document: SkillSearchDocument
+  ): SkillResource {
+    const isCodeDefined =
+      document.workspace_id === CODE_DEFINED_SKILLS_WORKSPACE_ID;
+
+    const skill = new SkillResource(
+      this.model,
+      {
+        id: isCodeDefined
+          ? -1
+          : (getResourceIdFromSId(document.skill_id) ?? -1),
+        workspaceId: auth.getNonNullableWorkspace().id,
+        name: document.name,
+        status: document.status,
+        availability: document.availability,
+        userFacingDescription: document.description ?? "",
+        icon: document.icon,
+        requestedSpaceIds: removeNulls(
+          document.requested_space_ids.map(getResourceIdFromSId)
+        ),
+        createdAt: new Date(document.created_at ?? 0),
+        updatedAt: new Date(document.updated_at ?? 0),
+        favoriteCount: document.favorite_count,
+        editedBy: null,
+        agentFacingDescription: "",
+        instructions: "",
+        instructionsHtml: null,
+        manuallyRequestedSpaceIds: [],
+        source: null,
+        sourceMetadata: null,
+        reinforcement: "auto",
+        lastReinforcementAnalysisAt: null,
+        selfImprovementCostsCapMicroUsd: null,
+        selfImprovementCostsCapAwuCredits: null,
+        selfImprovementLock: false,
+      },
+      {
+        codeDefinedSkillId: isCodeDefined ? document.skill_id : undefined,
+        dataSourceConfigurations: [],
+        fileAttachments: [],
+        mcpServerConfigurations: [],
+      }
+    );
+    skill.searchDocument = document;
+    return skill;
+  }
+
+  get editorIds(): string[] {
+    return this.searchDocument?.editor_ids ?? [];
+  }
+
   get sId(): string {
+    if (this.searchDocument) {
+      return this.searchDocument.skill_id;
+    }
     if (this.codeDefinedSkillId) {
       return this.codeDefinedSkillId;
     }
@@ -4842,7 +5008,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     };
   }
 
-  toJSON(auth: Authenticator): SkillType {
+  toJSON(auth: Authenticator): SkillType;
+  toJSON(
+    auth: Authenticator,
+    options: { forListing: true; editors: UserResource[] }
+  ): SkillListItemType;
+  toJSON(
+    auth: Authenticator,
+    options?: { forListing: true; editors: UserResource[] }
+  ): SkillType | SkillListItemType {
     const toSpaceId = (spaceId: ModelId) =>
       SpaceResource.modelIdToSId({
         id: spaceId,
@@ -4850,6 +5024,35 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
 
     const requestedSpaceIds = this.requestedSpaceIds.map(toSpaceId);
+    const sharedFields = {
+      sId: this.sId,
+      updatedAt:
+        this.codeDefinedSkillId || this.searchDocument?.updated_at === null
+          ? null
+          : this.updatedAt.getTime(),
+      status: this.status,
+      name: this.name,
+      userFacingDescription: this.userFacingDescription,
+      requestedSpaceIds,
+      icon: this.icon ?? null,
+      canAdministrate: auth.can("admin", this),
+      availability: this.availability,
+    };
+
+    if (options?.forListing) {
+      return {
+        ...sharedFields,
+        mcpServerViewIds: this.searchDocument?.mcp_server_view_ids ?? [],
+        editorIds: this.editorIds,
+        editors: options.editors.map((editor) => {
+          const { sId, fullName, image } = editor.toJSON();
+          return { sId, fullName, image };
+        }),
+        editedBy: this.searchDocument?.last_edited_by_user_id ?? null,
+        activeUsersCount: this.searchDocument?.active_users_count ?? null,
+      };
+    }
+
     const manuallyRequestedSpaceIds =
       this.manuallyRequestedSpaceIds.map(toSpaceId);
 
@@ -4865,20 +5068,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       this.redactedForCaller;
 
     return {
+      ...sharedFields,
       id: this.id,
-      sId: this.sId,
       createdAt: this.codeDefinedSkillId ? null : this.createdAt.getTime(),
-      updatedAt: this.codeDefinedSkillId ? null : this.updatedAt.getTime(),
       editedBy: this.codeDefinedSkillId ? null : this.editedBy,
-      status: this.status,
-      name: this.name,
       agentFacingDescription: this.agentFacingDescription,
-      userFacingDescription: this.userFacingDescription,
       instructions: hideInstructions ? null : this.instructions,
       instructionsHtml: hideInstructions ? null : this.instructionsHtml,
-      requestedSpaceIds,
       manuallyRequestedSpaceIds,
-      icon: this.icon ?? null,
       reinforcement: this.reinforcement,
       lastReinforcementAnalysisAt:
         this.lastReinforcementAnalysisAt?.toISOString() ?? null,
@@ -4912,9 +5109,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ),
       canRead: auth.can("read", this),
       canWrite: auth.can("write", this),
-      canAdministrate: auth.can("admin", this),
       isDefault: isDefaultFromAvailability(this.availability),
-      availability: this.availability,
     };
   }
 

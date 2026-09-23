@@ -15,13 +15,11 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
   };
 });
 
-import { searchSkills } from "@app/lib/api/skills/search";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
-import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
@@ -73,12 +71,14 @@ async function searchListings(
     permissionFiltering?: SkillSearchPermissionFiltering;
   } = { searchTerm: "" }
 ) {
-  const result = await searchSkills(auth, {
+  const result = await SkillResource.search(auth, {
     ...options,
     limit: 200,
   });
   assert(result.isOk());
-  return result.value.skills;
+  return result.value.skills.map((skill) =>
+    skill.toJSON(auth, { forListing: true, editors: [] })
+  );
 }
 
 describe("custom skill search", () => {
@@ -410,12 +410,17 @@ describe("custom skill search", () => {
 
     expect(await searchListings(auth)).toEqual(expected);
 
-    const page = await searchSkills(auth, {
+    const page = await SkillResource.search(auth, {
       searchTerm: "",
       limit: 2,
     });
     assert(page.isOk());
-    expect(page.value).toEqual({
+    expect({
+      ...page.value,
+      skills: page.value.skills.map((skill) =>
+        skill.toJSON(auth, { forListing: true, editors: [] })
+      ),
+    }).toEqual({
       skills: [expected[0]],
       hasMore: true,
       nextCursor: Buffer.from(JSON.stringify([1, 0, "missing-skill"])).toString(
@@ -471,9 +476,7 @@ describe("custom skill search", () => {
         archived.sId,
       ]);
       const listing = both[0];
-      expect(
-        SkillListItemSchema.omit({ editors: true }).strict().parse(listing)
-      ).toEqual({
+      expect(SkillListItemSchema.strict().parse(listing)).toEqual({
         sId: active.sId,
         canAdministrate: true,
         status: "active",
@@ -483,6 +486,7 @@ describe("custom skill search", () => {
         requestedSpaceIds: [globalSpace.sId],
         mcpServerViewIds: ["tool-view-id"],
         editorIds: [auth.getNonNullableUser().sId],
+        editors: [],
         editedBy: auth.getNonNullableUser().sId,
         availability: "workspace_users",
         activeUsersCount: null,
@@ -526,23 +530,25 @@ describe("custom skill search", () => {
       return response;
     });
     try {
-      const result = await searchSkills(auth, {
+      const result = await SkillResource.search(auth, {
         searchTerm: "",
         limit: 200,
       });
       assert(result.isOk());
-      const listings = result.value.skills;
+      expect(result.value.skills[0]).toBeInstanceOf(SkillResource);
+      const listings = result.value.skills.map((skill) =>
+        skill.toJSON(auth, { forListing: true, editors: [] })
+      );
       expect(listings).toEqual([
-        {
-          ...toSkillListItem(auth, global),
+        expect.objectContaining({
+          sId: global.skill_id,
+          name: global.name,
           canAdministrate: false,
           editedBy: null,
           updatedAt: null,
-        },
+        }),
       ]);
-      expect(
-        SkillListItemSchema.omit({ editors: true }).parse(listings[0]).updatedAt
-      ).toBeNull();
+      expect(SkillListItemSchema.parse(listings[0]).updatedAt).toBeNull();
       expect(onQuery).not.toHaveBeenCalled();
     } finally {
       frontSequelize.removeHook("afterQuery", "global-skill-search-no-db");
@@ -571,9 +577,12 @@ describe("custom skill search", () => {
       searchTerm: "",
       permissionFiltering: "redact_unreadable",
     });
-    expect(
-      SkillListItemSchema.omit({ editors: true }).strict().parse(redacted)
-    ).toEqual(toSkillListItem(auth, document));
+    expect(SkillListItemSchema.strict().parse(redacted)).toMatchObject({
+      sId: skill.sId,
+      name: skill.name,
+      canAdministrate: skill.toJSON(auth).canAdministrate,
+      requestedSpaceIds: document.requested_space_ids,
+    });
     expect(
       mockSearch.mock.lastCall![0].query.bool.should[0].bool.filter
     ).toEqual([{ term: { workspace_id: workspace.sId } }]);
@@ -711,7 +720,7 @@ describe("custom skill search", () => {
     }));
     mockSearch.mockResolvedValue({ hits: { hits } });
 
-    const result = await searchSkills(auth, {
+    const result = await SkillResource.search(auth, {
       searchTerm: "",
       cursor: Buffer.from(JSON.stringify([4, 10, "previous-id"])).toString(
         "base64url"
@@ -722,7 +731,12 @@ describe("custom skill search", () => {
 
     const lastSort = hits[Math.min(hitCount, 2) - 1]?.sort;
     expect(result.value).toEqual({
-      skills: hits.slice(0, 2).map((hit) => toSkillListItem(auth, hit._source)),
+      skills: hits.slice(0, 2).map((hit) =>
+        expect.objectContaining({
+          sId: hit._source.skill_id,
+          name: hit._source.name,
+        })
+      ),
       hasMore: hitCount > 2,
       nextCursor: lastSort
         ? Buffer.from(JSON.stringify(lastSort)).toString("base64url")
