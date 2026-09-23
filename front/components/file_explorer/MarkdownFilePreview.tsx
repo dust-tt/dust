@@ -41,8 +41,7 @@ export function MarkdownFilePreviewViewModeSwitch({
 }: MarkdownFilePreviewViewModeSwitchProps) {
   return (
     <ButtonsSwitchList
-      key={viewMode}
-      defaultValue={viewMode}
+      value={viewMode}
       size="xs"
       disabled={disabled}
       onValueChange={(value) => {

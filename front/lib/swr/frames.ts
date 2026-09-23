@@ -83,6 +83,56 @@ export function useEditFrameText({
   );
 }
 
+export type FrameTextEditParams = Parameters<EditTextFn>[0];
+
+/**
+ * Flush staged live edits in one request so the server applies them and publishes once.
+ */
+export function useBatchEditFrameText({
+  conversationId,
+  fileId,
+  owner,
+}: {
+  conversationId?: string;
+  fileId: string;
+  owner: LightWorkspaceType;
+}): (
+  edits: FrameTextEditParams[]
+) => Promise<{ success: boolean; error?: string }> {
+  return useCallback(
+    async (edits) => {
+      if (edits.length === 0) {
+        return { success: true };
+      }
+
+      try {
+        // Location-based batches always target the Frame fileId. Legacy batches without source
+        // may include targetFileId per item; the API routes those individually.
+        const response = await clientFetch(
+          `/api/w/${owner.sId}/files/${encodeURIComponent(fileId)}/edit-text`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversationId, edits }),
+          }
+        );
+        if (!response.ok) {
+          const errorData = await getErrorFromResponse(response);
+          return { success: false, error: errorData.message };
+        }
+
+        return { success: true };
+      } catch (error) {
+        return {
+          success: false,
+          error: normalizeAsInternalDustError(error).message,
+        };
+      }
+    },
+    [conversationId, fileId, owner.sId]
+  );
+}
+
 export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
   const { fetcher } = useFetcher();
   const frameMetadataFetcher: Fetcher<PublicFrameResponseBodyType> = fetcher;

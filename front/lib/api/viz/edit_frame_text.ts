@@ -32,42 +32,37 @@ class EditFrameTextError extends Error {
   }
 }
 
+export type FrameTextEdit = {
+  source: string;
+  oldText: string;
+  newText: string;
+};
+
 /**
- * Apply a human "live edit" to a published Frame by source location.
+ * Apply one or more human live edits to a published Frame by source location, then rebuild once.
  *
- * The viz runtime hands us the clicked element's `data-source` (`<relPath>:<line>:<col>`, baked
- * into the bundle by the publisher) plus the old/new visible text. We route the edit back to the
- * SOURCE file in the mount, then rebuild the Frame so the rendered bundle reflects the change.
- *
- * Steps:
- * 1. Resolve the Frame's build root from `frameBundleRootPath` (only published Frames have one and
- *    thus carry `data-source` tags).
- * 2. Read the addressed source file from the mount and splice the new text by AST location.
- * 3. Write the updated source back to the mount (the durable source of truth).
- * 4. Rebuild via {@link publishFrame}, which re-reads the import graph, re-bundles, refreshes the
- *    rendered version, and recomputes the share allowlist. A text-only edit changes neither
- *    imports nor data refs, but rebuilding keeps the bundle and the source in lock-step.
- *
- * Note: the mount read/modify/write is not held under the publish lock (that lock is taken by
- * {@link publishFrame} and is not reentrant). Live edits are human-paced, so a concurrent edit to
- * the same file could lose an update, which is acceptable for now.
+ * Each edit is `{ source: "<relPath>:<line>:<col>", oldText, newText }` from the viz runtime.
+ * Edits to the same file are applied in order in memory (so intermediate publishes are skipped),
+ * written back, then a single {@link publishFrame} refreshes the rendered bundle.
  */
-export async function editFrameTextAtSource(
+export async function editFrameTextsAtSource(
   auth: Authenticator,
   {
     file,
-    source,
-    oldText,
-    newText,
+    edits,
     editedByAgentConfigurationId,
   }: {
     file: FileResource;
-    source: string;
-    oldText: string;
-    newText: string;
+    edits: FrameTextEdit[];
     editedByAgentConfigurationId?: string;
   }
 ): Promise<Result<{ warnings: ValidationWarning[] }, EditFrameTextError>> {
+  if (edits.length === 0) {
+    return new Err(
+      new EditFrameTextError("invalid_source", "No edits provided.")
+    );
+  }
+
   const root = file.useCaseMetadata?.frameBundleRootPath;
   if (!file.isInteractiveContent || !root) {
     return new Err(
@@ -78,19 +73,35 @@ export async function editFrameTextAtSource(
     );
   }
 
-  const location = parseSourceLocation(source);
-  if (!location) {
-    return new Err(
-      new EditFrameTextError(
-        "invalid_source",
-        `Invalid source location: ${source}.`
-      )
-    );
-  }
-
   try {
     const rootScopedPath = root.replace(/\/+$/, "");
-    const scopedPath = `${rootScopedPath}/${location.relPath}`;
+
+    // Group edits by source file so each file is read/written once. Validate locations before
+    // touching the mount so malformed sources stay `invalid_source` (not an FS error).
+    const editsByPath = new Map<
+      string,
+      Array<{ line: number; col: number; oldText: string; newText: string }>
+    >();
+    for (const edit of edits) {
+      const location = parseSourceLocation(edit.source);
+      if (!location) {
+        return new Err(
+          new EditFrameTextError(
+            "invalid_source",
+            `Invalid source location: ${edit.source}.`
+          )
+        );
+      }
+      const scopedPath = `${rootScopedPath}/${location.relPath}`;
+      const list = editsByPath.get(scopedPath) ?? [];
+      list.push({
+        line: location.line,
+        col: location.col,
+        oldText: edit.oldText,
+        newText: edit.newText,
+      });
+      editsByPath.set(scopedPath, list);
+    }
 
     const fsResult = await DustFileSystem.fromScopedPath(auth, rootScopedPath);
     if (fsResult.isErr()) {
@@ -100,51 +111,45 @@ export async function editFrameTextAtSource(
     }
     const dustFs = fsResult.value;
 
-    const bufferResult = await dustFs.readBuffer(scopedPath);
-    if (bufferResult.isErr()) {
-      return new Err(
-        new EditFrameTextError("read_failed", bufferResult.error.message)
-      );
-    }
-    if (bufferResult.value === null) {
-      return new Err(
-        new EditFrameTextError(
-          "source_not_found",
-          `Source file not found: ${scopedPath}.`
-        )
-      );
-    }
-    const content = bufferResult.value.toString("utf8");
+    for (const [scopedPath, fileEdits] of editsByPath) {
+      const bufferResult = await dustFs.readBuffer(scopedPath);
+      if (bufferResult.isErr()) {
+        return new Err(
+          new EditFrameTextError("read_failed", bufferResult.error.message)
+        );
+      }
+      if (bufferResult.value === null) {
+        return new Err(
+          new EditFrameTextError(
+            "source_not_found",
+            `Source file not found: ${scopedPath}.`
+          )
+        );
+      }
 
-    const edited = replaceJsxTextAtSourceLocation(content, {
-      line: location.line,
-      col: location.col,
-      oldText,
-      newText,
-    });
-    if (edited.isErr()) {
-      return new Err(
-        new EditFrameTextError("edit_failed", edited.error.message)
-      );
-    }
+      let content = bufferResult.value.toString("utf8");
+      for (const fileEdit of fileEdits) {
+        const edited = replaceJsxTextAtSourceLocation(content, fileEdit);
+        if (edited.isErr()) {
+          return new Err(
+            new EditFrameTextError("edit_failed", edited.error.message)
+          );
+        }
+        content = edited.value;
+      }
 
-    // Preserve the source file's existing content type when writing it back.
-    const stat = await dustFs.stat(scopedPath);
-    const contentType =
-      stat.isOk() && stat.value ? stat.value.contentType : file.contentType;
+      const stat = await dustFs.stat(scopedPath);
+      const contentType =
+        stat.isOk() && stat.value ? stat.value.contentType : file.contentType;
 
-    const writeResult = await dustFs.write(
-      scopedPath,
-      edited.value,
-      contentType
-    );
-    if (writeResult.isErr()) {
-      return new Err(
-        new EditFrameTextError("write_failed", writeResult.error.message)
-      );
+      const writeResult = await dustFs.write(scopedPath, content, contentType);
+      if (writeResult.isErr()) {
+        return new Err(
+          new EditFrameTextError("write_failed", writeResult.error.message)
+        );
+      }
     }
 
-    // Falls back to fileName for Frames published before frameEntryRelPath existed.
     const entryRelPath =
       file.useCaseMetadata?.frameEntryRelPath ?? file.fileName;
 
@@ -167,4 +172,31 @@ export async function editFrameTextAtSource(
       new EditFrameTextError("internal", normalizeError(err).message)
     );
   }
+}
+
+/**
+ * Apply a single live edit and republish. Prefer {@link editFrameTextsAtSource} when flushing
+ * multiple staged edits so the Frame is only rebuilt once.
+ */
+export async function editFrameTextAtSource(
+  auth: Authenticator,
+  {
+    file,
+    source,
+    oldText,
+    newText,
+    editedByAgentConfigurationId,
+  }: {
+    file: FileResource;
+    source: string;
+    oldText: string;
+    newText: string;
+    editedByAgentConfigurationId?: string;
+  }
+): Promise<Result<{ warnings: ValidationWarning[] }, EditFrameTextError>> {
+  return editFrameTextsAtSource(auth, {
+    file,
+    edits: [{ source, oldText, newText }],
+    editedByAgentConfigurationId,
+  });
 }

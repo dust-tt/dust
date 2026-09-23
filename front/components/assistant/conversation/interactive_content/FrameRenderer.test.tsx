@@ -14,7 +14,8 @@ import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  editFrameText: vi.fn(),
+  batchEditFrameText: vi.fn(),
+  confirm: vi.fn(),
   iframe: vi.fn(
     (_props: {
       frameId?: string;
@@ -124,8 +125,15 @@ vi.mock("@app/lib/swr/files", () => ({
     fileShare: { shareUrl: "https://dust.tt/share/frame/share-token" },
   }),
 }));
+vi.mock("@app/components/Confirm", async () => {
+  const React = await vi.importActual<typeof import("react")>("react");
+  return {
+    ConfirmContext: React.createContext(mocks.confirm),
+  };
+});
+
 vi.mock("@app/lib/swr/frames", () => ({
-  useEditFrameText: () => mocks.editFrameText,
+  useBatchEditFrameText: () => mocks.batchEditFrameText,
   useFramePermissions: () => ({
     isFrameAuthor: mocks.isFrameAuthor,
     packageRoot: null,
@@ -368,40 +376,8 @@ describe("FrameRenderer", () => {
     );
   });
 
-  it("keeps a successful edit successful when the content refresh fails", async () => {
-    mocks.editFrameText.mockResolvedValue({ success: true });
-    mocks.mutateFileContent.mockRejectedValue(new Error("refresh failed"));
-
-    render(
-      <FrameRenderer
-        conversation={conversation}
-        fileId="frame_1"
-        projectId={null}
-        owner={owner}
-        renderMode="v2"
-      />
-    );
-
-    fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
-
-    const onEditText = mocks.iframe.mock.calls.at(-1)?.[0].onEditText;
-    if (!onEditText) {
-      throw new Error("Expected Frame v2 to be editable.");
-    }
-
-    await act(async () => {
-      await expect(
-        onEditText({
-          newText: "Done",
-          oldText: "Ready",
-          source: "index.tsx:1:42",
-        })
-      ).resolves.toEqual({ success: true });
-    });
-  });
-
-  it("remounts the iframe after a successful edit refreshes content", async () => {
-    mocks.editFrameText.mockResolvedValue({ success: true });
+  it("stages edits without publishing until Save", async () => {
+    mocks.batchEditFrameText.mockResolvedValue({ success: true });
     mocks.mutateFileContent.mockResolvedValue(
       "export default function Frame() { return <p>Done</p>; }"
     );
@@ -431,34 +407,50 @@ describe("FrameRenderer", () => {
         oldText: "Ready",
         source: "index.tsx:1:42",
       });
+      await onEditText({
+        newText: "Two",
+        oldText: "One",
+        source: "index.tsx:2:1",
+      });
     });
 
+    expect(mocks.batchEditFrameText).not.toHaveBeenCalled();
+    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier).toBe(
+      identifierBefore
+    );
+
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    expect(saveButton).toBeEnabled();
+
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    await waitFor(() => {
+      expect(mocks.batchEditFrameText).toHaveBeenCalledWith([
+        {
+          newText: "Done",
+          oldText: "Ready",
+          source: "index.tsx:1:42",
+        },
+        {
+          newText: "Two",
+          oldText: "One",
+          source: "index.tsx:2:1",
+        },
+      ]);
+    });
+
+    await waitFor(() => {
+      expect(
+        mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier
+      ).toBe("viz-frame_1-1-edit");
+    });
     expect(mocks.mutateFileContent).toHaveBeenCalled();
-    const remountedIdentifier =
-      mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier;
-    expect(remountedIdentifier).not.toEqual(identifierBefore);
-    expect(remountedIdentifier).toBe("viz-frame_1-1-edit");
   });
 
-  it("defers remount until concurrent edits all settle", async () => {
-    let resolveFirst: (value: { success: true }) => void = () => undefined;
-    let resolveSecond: (value: { success: true }) => void = () => undefined;
-    mocks.editFrameText
-      .mockImplementationOnce(
-        () =>
-          new Promise<{ success: true }>((resolve) => {
-            resolveFirst = resolve;
-          })
-      )
-      .mockImplementationOnce(
-        () =>
-          new Promise<{ success: true }>((resolve) => {
-            resolveSecond = resolve;
-          })
-      );
-    mocks.mutateFileContent.mockResolvedValue(
-      "export default function Frame() { return <p>Done</p>; }"
-    );
+  it("asks to discard unsaved edits when leaving Edit", async () => {
+    mocks.confirm.mockResolvedValue(false);
 
     render(
       <FrameRenderer
@@ -473,51 +465,44 @@ describe("FrameRenderer", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Edit" }));
 
     const onEditText = mocks.iframe.mock.calls.at(-1)?.[0].onEditText;
-    const identifierBefore =
-      mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier;
     if (!onEditText) {
       throw new Error("Expected Frame v2 to be editable.");
     }
 
-    let firstDone = false;
-    let secondDone = false;
     await act(async () => {
-      void onEditText({
-        newText: "One",
-        oldText: "A",
-        source: "index.tsx:1:1",
-      }).then(() => {
-        firstDone = true;
-      });
-      void onEditText({
-        newText: "Two",
-        oldText: "B",
-        source: "index.tsx:2:1",
-      }).then(() => {
-        secondDone = true;
+      await onEditText({
+        newText: "Done",
+        oldText: "Ready",
+        source: "index.tsx:1:42",
       });
     });
 
     await act(async () => {
-      resolveFirst({ success: true });
+      fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
     });
-    await waitFor(() => expect(firstDone).toBe(true));
 
-    // First edit settled while the second is still in flight — do not remount yet.
-    expect(mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier).toBe(
-      identifierBefore
+    expect(mocks.confirm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        validateLabel: "Discard",
+      })
+    );
+    // Cancel keeps Edit mode.
+    expect(screen.getByRole("tab", { name: "Edit" })).toHaveAttribute(
+      "aria-selected",
+      "true"
     );
 
+    mocks.confirm.mockResolvedValue(true);
     await act(async () => {
-      resolveSecond({ success: true });
+      fireEvent.click(screen.getByRole("tab", { name: "Preview" }));
     });
-    await waitFor(() => expect(secondDone).toBe(true));
 
     await waitFor(() => {
-      expect(
-        mocks.iframe.mock.calls.at(-1)?.[0]?.visualization?.identifier
-      ).toBe("viz-frame_1-1-edit");
+      expect(screen.getByRole("tab", { name: "Preview" })).toHaveAttribute(
+        "aria-selected",
+        "true"
+      );
     });
-    expect(mocks.mutateFileContent).toHaveBeenCalledTimes(2);
+    expect(mocks.batchEditFrameText).not.toHaveBeenCalled();
   });
 });

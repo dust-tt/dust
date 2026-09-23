@@ -23,12 +23,16 @@ import {
   useFileMetadata,
   useShareInteractiveContentFile,
 } from "@app/lib/swr/files";
-import { useEditFrameText, useFramePermissions } from "@app/lib/swr/frames";
+import {
+  useBatchEditFrameText,
+  useFramePermissions,
+} from "@app/lib/swr/frames";
 import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { EditTextFn } from "@app/types/assistant/visualization";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -175,17 +179,21 @@ export function FrameRenderer({
   // refreshed bundle. Without this, react-runner keeps the old module and any Frame re-render
   // overwrites the optimistic DOM textContent patch — edits look saved then snap back (#10579).
   const [contentRevision, setContentRevision] = useState(0);
-  // Concurrent field saves must not remount mid-flight: the first success would destroy the
-  // iframe (and drop later edits). Track in-flight edits and remount once they all settle.
-  const inFlightEditsRef = useRef(0);
-  const pendingRemountRef = useRef(false);
+  // Staged live edits accumulate until Save; discarded when leaving Edit without saving.
+  const [pendingEdits, setPendingEdits] = useState<Parameters<EditTextFn>[0][]>(
+    []
+  );
+  const pendingEditsRef = useRef(pendingEdits);
+  pendingEditsRef.current = pendingEdits;
+  const [isSavingEdits, setIsSavingEdits] = useState(false);
   if (editModeState.fileId !== fileId) {
     setEditModeState({ fileId, enabled: false });
     setContentRevision(0);
-    inFlightEditsRef.current = 0;
-    pendingRemountRef.current = false;
+    setPendingEdits([]);
+    setIsSavingEdits(false);
   }
   const isEditMode = editModeState.enabled;
+  const hasPendingEdits = pendingEdits.length > 0;
 
   // A legacy Frame renders its own source, so `fileContent` is the code. A Frames v2 package
   // renders a built bundle, so its sources are fetched separately, and only once shown.
@@ -221,7 +229,7 @@ export function FrameRenderer({
   // permissions (packageRoot) have loaded so the iframe does not mount with a null root.
   const isFramePathPending =
     renderMode === "v2" && Boolean(conversation) && isFramePermissionsLoading;
-  const editFrameText = useEditFrameText({
+  const batchEditFrameText = useBatchEditFrameText({
     owner,
     fileId,
     conversationId: conversation?.sId,
@@ -239,33 +247,126 @@ export function FrameRenderer({
   // Include edit mode so Preview↔Edit remounts and resets contentHeight (async-network-loading-state).
   const vizInstanceId = `viz-${fileId}-${contentRevision}-${isEditable ? "edit" : "preview"}`;
 
-  const handleEditText = useCallback(
-    async (params: Parameters<typeof editFrameText>[0]) => {
-      inFlightEditsRef.current += 1;
-      try {
-        const result = await editFrameText(params);
+  // Stage edits locally. Coalesce repeats on the same source so Save still matches the on-disk
+  // oldText from the first edit of that span.
+  const handleEditText = useCallback<EditTextFn>(async (params) => {
+    setPendingEdits((prev) => {
+      const key =
+        params.source ?? `${params.targetFileId ?? ""}:${params.oldText}`;
+      const existingIndex = prev.findIndex((edit) => {
+        const editKey =
+          edit.source ?? `${edit.targetFileId ?? ""}:${edit.oldText}`;
+        return editKey === key;
+      });
+      const next =
+        existingIndex >= 0
+          ? prev.map((edit, index) =>
+              index === existingIndex
+                ? { ...edit, newText: params.newText }
+                : edit
+            )
+          : [...prev, params];
+      pendingEditsRef.current = next;
+      return next;
+    });
+    return { success: true };
+  }, []);
 
-        if (result.success) {
-          try {
-            await mutateFileContent();
-            // Remount after the SWR cache holds the new publication so getCodeToExecute returns it.
-            pendingRemountRef.current = true;
-          } catch {
-            // The mutation already succeeded. Keep the inline edit and let the next reload fetch
-            // the active publication rather than reporting a false save failure to the iframe.
-          }
-        }
+  const flushInProgressEditable = useCallback(async () => {
+    const contentWindow = iframeRef.current?.contentWindow;
+    if (!contentWindow) {
+      return;
+    }
 
-        return result;
-      } finally {
-        inFlightEditsRef.current -= 1;
-        if (inFlightEditsRef.current === 0 && pendingRemountRef.current) {
-          pendingRemountRef.current = false;
-          setContentRevision((revision) => revision + 1);
+    await new Promise<void>((resolve) => {
+      const timeout = window.setTimeout(() => {
+        window.removeEventListener("message", onMessage);
+        resolve();
+      }, 2000);
+
+      function onMessage(event: MessageEvent) {
+        if (event.data?.type === "FLUSH_EDITABLES_DONE") {
+          window.clearTimeout(timeout);
+          window.removeEventListener("message", onMessage);
+          resolve();
         }
       }
+
+      window.addEventListener("message", onMessage);
+      contentWindow.postMessage({ type: "FLUSH_EDITABLES" }, "*");
+    });
+  }, []);
+
+  const handleSaveEdits = useCallback(async () => {
+    if (isSavingEdits) {
+      return;
+    }
+
+    setIsSavingEdits(true);
+    try {
+      await flushInProgressEditable();
+      const editsToSave = pendingEditsRef.current;
+      if (editsToSave.length === 0) {
+        return;
+      }
+
+      const result = await batchEditFrameText(editsToSave);
+      if (!result.success) {
+        sendNotification({
+          type: "error",
+          title: "Couldn't save edits",
+          description: result.error ?? "Please try again.",
+        });
+        return;
+      }
+
+      setPendingEdits([]);
+      try {
+        await mutateFileContent();
+      } catch {
+        // Mutation succeeded server-side; remount anyway so the next load picks up content.
+      }
+      setContentRevision((revision) => revision + 1);
+    } finally {
+      setIsSavingEdits(false);
+    }
+  }, [
+    batchEditFrameText,
+    flushInProgressEditable,
+    isSavingEdits,
+    mutateFileContent,
+    sendNotification,
+  ]);
+
+  const handleViewModeChange = useCallback(
+    async (mode: "preview" | "edit") => {
+      if (mode === "edit") {
+        setEditModeState({ fileId, enabled: true });
+        return;
+      }
+
+      if (!hasPendingEdits) {
+        setEditModeState({ fileId, enabled: false });
+        return;
+      }
+
+      const discard = await confirm({
+        title: "Discard unsaved edits?",
+        message: "You have unsaved text edits. Leaving Edit will discard them.",
+        validateLabel: "Discard",
+        validateVariant: "warning",
+        cancelLabel: "Cancel",
+      });
+      if (!discard) {
+        return;
+      }
+
+      setPendingEdits([]);
+      setEditModeState({ fileId, enabled: false });
+      // Remount so optimistic DOM text is wiped and Preview shows the last published content.
+      setContentRevision((revision) => revision + 1);
     },
-    [editFrameText, mutateFileContent]
+    [confirm, fileId, hasPendingEdits]
   );
 
   const restoreLayout = useCallback(() => {
@@ -453,16 +554,32 @@ export function FrameRenderer({
           <div className="flex min-w-0 items-center gap-1">
             {isAuthor &&
               (canEnterEditMode ? (
-                <MarkdownFilePreviewViewModeSwitch
-                  viewMode={isEditable ? "edit" : "preview"}
-                  hideLabels={isMobile}
-                  onViewModeChange={(mode) =>
-                    setEditModeState({
-                      fileId,
-                      enabled: mode === "edit",
-                    })
-                  }
-                />
+                <>
+                  <MarkdownFilePreviewViewModeSwitch
+                    viewMode={isEditable ? "edit" : "preview"}
+                    hideLabels={isMobile}
+                    disabled={isSavingEdits}
+                    onViewModeChange={(mode) => {
+                      void handleViewModeChange(mode);
+                    }}
+                  />
+                  {isEditable && (
+                    <Button
+                      label={isMobile ? undefined : "Save"}
+                      size="xs"
+                      variant="primary"
+                      isLoading={isSavingEdits}
+                      disabled={!hasPendingEdits || isSavingEdits}
+                      onClick={() => {
+                        void handleSaveEdits();
+                      }}
+                      aria-label="Save"
+                      tooltip={
+                        hasPendingEdits ? "Save text edits" : "No unsaved edits"
+                      }
+                    />
+                  )}
+                </>
               ) : (
                 <Tooltip
                   label="Text editing isn't available for this Frame right now."

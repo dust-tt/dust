@@ -8,7 +8,7 @@ import {
   TooltipTrigger,
 } from "@viz/components/ui/tooltip";
 import type { ReactNode } from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const EDITABLE_SELECTOR = "[data-editable]";
 
@@ -51,6 +51,7 @@ export function EditableFrame({ children }: EditableFrameProps) {
   const [hoverState, setHoverState] = useState<HoverState | null>(null);
   const lastHoverPosRef = useRef<HoverState | null>(null);
   const hoveredSpanRef = useRef<HTMLElement | null>(null);
+  const commitInFlightRef = useRef<Promise<void> | null>(null);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const target = (e.target as Element).closest<HTMLElement>(
@@ -107,13 +108,9 @@ export function EditableFrame({ children }: EditableFrameProps) {
     target.focus();
   }, []);
 
-  const handleBlur = useCallback(
-    (e: React.FocusEvent) => {
-      const target = (e.target as Element).closest<HTMLElement>(
-        EDITABLE_SELECTOR
-      );
-
-      if (!target || target.contentEditable !== "true") {
+  const commitEditable = useCallback(
+    async (target: HTMLElement) => {
+      if (target.contentEditable !== "true") {
         return;
       }
 
@@ -169,20 +166,64 @@ export function EditableFrame({ children }: EditableFrameProps) {
             };
           })();
 
-      // Allow overlapping saves: a boolean gate dropped the second blur while the first
-      // publish was still in flight (only the first edit stuck).
-      void editText(editParams).then((result) => {
-        if (!result.success) {
-          target.textContent = originalVisibleText;
-          flash(FAILED_CLS);
-        } else {
-          // Keep data-raw-text in sync so chained edits on the same span stay correct.
-          target.dataset.rawText = encodeURIComponent(newRawText);
-        }
-      });
+      // Parent stages the edit until Save; we still await so FLUSH_EDITABLES can wait for it.
+      const result = await editText(editParams);
+      if (!result.success) {
+        target.textContent = originalVisibleText;
+        flash(FAILED_CLS);
+      } else {
+        // Keep data-raw-text in sync so chained edits on the same span stay correct.
+        target.dataset.rawText = encodeURIComponent(newRawText);
+      }
     },
     [editText]
   );
+
+  const handleBlur = useCallback(
+    (e: React.FocusEvent) => {
+      const target = (e.target as Element).closest<HTMLElement>(
+        EDITABLE_SELECTOR
+      );
+
+      if (!target) {
+        return;
+      }
+
+      const commit = commitEditable(target);
+      commitInFlightRef.current = commit.finally(() => {
+        if (commitInFlightRef.current === commit) {
+          commitInFlightRef.current = null;
+        }
+      });
+    },
+    [commitEditable]
+  );
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type !== "FLUSH_EDITABLES") {
+        return;
+      }
+
+      void (async () => {
+        const active = document.querySelector<HTMLElement>(
+          `${EDITABLE_SELECTOR}[contenteditable="true"]`
+        );
+        if (active) {
+          // Blur triggers handleBlur; also commit directly in case blur is a no-op.
+          active.blur();
+          await commitEditable(active);
+        }
+        if (commitInFlightRef.current) {
+          await commitInFlightRef.current;
+        }
+        window.parent.postMessage({ type: "FLUSH_EDITABLES_DONE" }, "*");
+      })();
+    };
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [commitEditable]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     const target = (e.target as Element).closest<HTMLElement>(
